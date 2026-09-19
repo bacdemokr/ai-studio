@@ -1,0 +1,55 @@
+<section id="bac-playground" data-part="playground" aria-label="Agent skill playground">
+<style>/* PLAYGROUND_CSS */</style>
+<div class="pg-heading spread">
+  <div><span class="quiet">ONE AGENT. LOTS TO TRY.</span><h2>What will your agent learn today?</h2><p class="quiet">Give it a personality, equip a skill, and try a small mission.</p></div>
+  <span class="pill">Practice mode · sample tools</span>
+</div>
+<div class="pg-layout">
+  <aside class="pg-passport">
+    <div class="pg-avatar" aria-hidden="true"><span></span><span></span></div>
+    <label class="field">Your agent’s name<input id="pg-name" value="Jinny" maxlength="16"></label>
+    <label class="field">Personality<select id="pg-persona"><option value="friendly">Friendly guide</option><option value="playful">Playful maker</option><option value="precise">Evidence-first editor</option></select></label>
+    <h3>Equip a skill</h3>
+    <div id="pg-loadout" class="pg-loadout"></div>
+    <p class="notice">Skills define what your agent can do. Access is checked separately.</p>
+    <div class="pg-keepsake"><span class="quiet">SESSION NOTE</span><p id="pg-memory-summary">Nothing remembered yet.</p></div>
+    <button class="action primary" id="pg-join">Join the BaC crew →</button>
+    <p class="notice">Your name, personality and equipped skills follow you into a team role.</p>
+  </aside>
+  <div class="pg-main">
+    <div id="pg-missions" class="pg-missions" aria-label="Choose a skill mission"></div>
+    <section class="pg-workbench" aria-labelledby="pg-mission-title">
+      <div class="spread"><div><span class="quiet" id="pg-mission-kicker"></span><h3 id="pg-mission-title"></h3></div><span class="pill tint" id="pg-equipped"></span></div>
+      <p id="pg-mission-description" class="quiet"></p>
+      <div class="pg-inputs" id="pg-weather-inputs">
+        <label class="field">Practice city<select id="pg-city"><option>Zurich</option><option>Austin</option><option>Seattle</option></select></label>
+        <p class="notice">Fictional weather samples for learning. These are not current forecasts.</p>
+      </div>
+      <div class="pg-inputs" id="pg-search-inputs" hidden>
+        <label class="field">Research mission<select id="pg-query"><option value="workshop">Find three beginner-friendly AI demo ideas</option><option value="event">What should I prepare for a hands-on event?</option></select></label>
+        <p class="notice">Prepared search examples with inspectable evidence cards. No live web request runs.</p>
+      </div>
+      <div class="pg-inputs" id="pg-telegram-inputs" hidden>
+        <div class="spread"><span id="pg-pair-status" class="pill">Practice phone · disconnected</span><button class="action" id="pg-pair">Pair practice phone</button></div>
+        <label class="field">Message from your phone<select id="pg-message"><option value="intro">Hi! What can you do?</option><option value="plan">How is our BaC plan coming along?</option><option value="note">What do you remember about me?</option></select></label>
+        <p class="notice">This phone is simulated. Real Telegram pairing and delivery are not connected.</p>
+      </div>
+      <div class="pg-inputs" id="pg-memory-inputs" hidden>
+        <label class="field">A preference to remember<input id="pg-note" value="I prefer beginner-friendly, hands-on demos." maxlength="180"></label>
+        <p class="notice">Saved only in this browser session. Used by the other practice missions; refresh clears it.</p>
+        <button class="action" id="pg-forget">Forget this note</button>
+      </div>
+      <div class="pg-runbar spread"><label id="pg-block-control" class="pg-check"><input type="checkbox" id="pg-block">Try a blocked connection</label><button class="action primary" id="pg-run">Try this mission</button></div>
+      <p id="pg-error" class="error" role="alert" hidden></p>
+      <div id="pg-permission" class="pg-permission" hidden>
+        <h3>Access decision · simulation</h3><p id="pg-permission-text"></p>
+        <div class="row"><button class="action" id="pg-allow">Simulate allow once</button><button class="action" id="pg-deny">Keep blocked</button></div>
+      </div>
+      <div class="pg-trace" id="pg-trace" aria-label="What the agent did"></div>
+      <div id="pg-result" class="pg-result" aria-live="polite"><span class="quiet">Pick a mission and watch your agent use its skills.</span></div>
+    </section>
+  </div>
+</div>
+<footer class="foot spread"><span>Explore with one agent, then put its skills to work in a crew.</span><span>Planned runtime: every agent shares one model on Spark</span></footer>
+<script>/* PLAYGROUND_JS */</script>
+</section>

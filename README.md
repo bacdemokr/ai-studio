@@ -1,8 +1,10 @@
 # BaC Crew
 
-An interactive prototype for planning a Build a Claw event with a crew of agents. Switch between **A · Crew village** and **C · Progress board**, inspect each persona and skill set, and build your own agent.
+An interactive agent playground: create a persona, try individual skills, then bring that agent into a crew to plan a Build a Claw event. Switch between **A · Crew village** and **C · Progress board** to inspect the team's work.
 
-**Current status:** working browser UI with deterministic, simulated agent handoffs and an OpenShell approval example. The village is currently a CSS illustration. Real 3D, LLM inference, agent orchestration, OpenShell enforcement and email delivery are not connected yet.
+**Current status:** working browser UI with practice weather, prepared search examples, a simulated Telegram phone, session notes, deterministic agent handoffs and access-decision examples. The village is currently a CSS illustration. Real 3D, LLM inference, live weather/search, Telegram, agent orchestration and OpenShell enforcement are not connected yet.
+
+![Skill playground](docs/playground.png)
 
 ## Run on DGX Spark
 
@@ -32,6 +34,17 @@ Open `http://SPARK_IP:8080`. This development server has no authentication. Stop
 
 ## Try the demo
 
+Start in **Skill playground**. Give your agent a name and personality, then choose a mission:
+
+| Mission | What works in this preview |
+|---|---|
+| Weather lookout | Inspect fictional city weather and a prepared recommendation; remove the skill or block the connection to see why execution stops. |
+| Web scout | Compare three prepared example results and open their evidence cards. These are not live search results. |
+| Telegram buddy | Equip the skill, pair a practice phone, preview a reply, then simulate allowing or denying delivery. No Telegram message is sent. |
+| Remember me | Save a preference in browser memory and see it reused by the other practice missions; forgetting or refreshing clears it. |
+
+**Join the BaC crew** carries the name, personality and equipped skills into role onboarding. You can also switch straight to **Plan a BaC**:
+
 1. Keep **Europe (EMEA) / Zurich / English**, or change the event brief. Defaults are 120 attendees, 180 minutes, groups of 5 and 15-minute sessions.
 2. Submit the brief and advance the handoffs. Each attendee is assigned to one interest-based topic.
 3. Compare A and C. Both show the same crew and shared brief version.
@@ -39,6 +52,8 @@ Open `http://SPARK_IP:8080`. This development server has no authentication. Stop
 5. Inspect demo runbooks, equipment/staffing calculations, invitation copy, promotional copy and the consistency review.
 6. Approve or deny the simulated policy request. Neither option sends a message or performs an external action.
 7. Select **Build your agent**, choose a name, role, persona and skills, try a solo task, then join the crew. This replaces the existing agent in the selected role.
+
+Return to **Skill playground → Telegram buddy → How is our BaC plan coming along?** to see the current shared brief in a phone-reply preview. Extending the event to 210 minutes also updates that reply.
 
 The interface is English. Generated template examples support English, Korean and Japanese. Inputs stay in browser memory; refreshing resets the demo. Venue details, event dates and registration links remain placeholders.
 
@@ -56,11 +71,13 @@ Staff includes one presenter per station, one floor assistant per 40 attendees (
 ## Project files
 
 - `src/bac-planner.html`: editable UI, styles, planning rules and simulated workflow.
+- `src/playground.html`, `src/playground.css`, `src/playground.js`: skill missions and the agent passport.
 - `scripts/build.py`: creates a standalone page without CDN or Codex dependencies.
 - `app/index.html`: generated runnable page; committed for convenient preview.
 - `start.sh` / `scripts/serve.py`: local server using only Python's standard library.
 - `docs/architecture.md`: current behavior and the intended live integration.
-- `tests/smoke.cjs`: optional browser smoke test.
+- `docs/skill-experiences.md`: attendee journey, reference implementations and live integration plan.
+- `tests/smoke.cjs`, `tests/playground.cjs`: optional browser smoke tests.
 
 After editing `src/bac-planner.html`, run `python3 scripts/build.py` or restart `./start.sh`, then refresh the browser.
 
@@ -72,8 +89,9 @@ The application does not need these dependencies. Install them only to run the s
 npm install --no-save --package-lock=false playwright
 npx playwright install chromium
 node tests/smoke.cjs
+node tests/playground.cjs
 ```
 
 On Linux, Playwright may also require OS browser libraries (`npx playwright install-deps chromium`). Alternatively set `CHROME_PATH` to an existing Chrome/Chromium executable.
 
-The prototype was validated on macOS Chromium, including the full workflow, both policy choices, onboarding and small-screen layouts. DGX Spark hardware execution has not yet been verified.
+The prototype was validated on macOS Chromium, including the full workflow, four skill missions, both policy choices, invalidation of outdated approvals, onboarding, shared brief updates and small-screen layouts. DGX Spark hardware execution has not yet been verified.

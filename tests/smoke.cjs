@@ -24,6 +24,7 @@ const { chromium } = require('playwright');
     const artifact = () => page.locator('[data-out="artifact"]').innerText();
     const english = async () => assert(!/[가-힣]/.test(await page.locator('#bac-planner').innerText()));
     await page.goto(url);
+    await click('[data-mode="crew"]');
     assert.equal(await page.locator('[name="region"]').inputValue(), 'Europe (EMEA)');
     assert.equal(await page.locator('[name="location"]').inputValue(), 'Zurich');
     assert.equal(await page.locator('[name="language"]').inputValue(), 'en');
@@ -79,6 +80,7 @@ const { chromium } = require('playwright');
     }
 
     await page.reload();
+    await click('[data-mode="crew"]');
     assert.equal(await page.locator('[name="location"]').inputValue(), 'Zurich');
     await page.locator('details').first().evaluate(el => { el.open = true; });
     await page.locator('[name="share0"]').fill('40');

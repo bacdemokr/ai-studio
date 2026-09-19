@@ -6,6 +6,8 @@ One browser session holds the event brief, its revision, agent profiles, selecte
 
 The onboarding screen lets attendees customize a role and try a sample response. Joining the crew replaces that role's agent. The permission text and approval controls are illustrative; no sandbox or email provider is running.
 
+The skill playground offers four independent missions before team participation: weather fixtures, prepared search examples, a simulated Telegram phone, and a real browser-session note. The passport's name, persona and equipped skill labels transfer into team-role onboarding. The latest event brief is available to the simulated phone reply. A browser event bridge connects the playground to the planner; there is still no backend or model inference. Joining a role does not make its scripted planner tasks autonomously invoke these skills.
+
 The UI makes no network calls. Python only serves static files. `app/index.html` is an offline standalone adaptation of the inline visualization; `src/bac-planner.html` retains its editable source.
 
 ## Intended live design — not implemented

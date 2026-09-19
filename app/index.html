@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Interactive BaC event planning prototype with agent personas, skills and handoffs.">
+<meta name="description" content="Build your agent, explore skills, and plan a BaC event with a crew.">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
-<title>BaC Crew — Virtual Event Planner</title>
+<title>BaC Crew — Agent Playground</title>
 <style>
 :root{color-scheme:light dark;background:light-dark(#edf1eb,#111816)}
 body{margin:0;padding:24px;max-width:1440px;margin-inline:auto}
@@ -26,7 +26,9 @@ body{margin:0;padding:24px;max-width:1440px;margin-inline:auto}
 @media(max-width:820px){#bac-planner .fields{grid-template-columns:repeat(2,minmax(0,1fr))}#bac-planner .scene{grid-template-columns:repeat(3,minmax(0,1fr));gap:35px 14px}#bac-planner .booth:nth-child(even){margin-top:0}#bac-planner .inspector{grid-template-columns:230px minmax(0,1fr)}#bac-planner .topics{grid-template-columns:1fr}#bac-planner .topic .fields{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){#bac-planner .scene,#bac-planner[data-view="board"] .scene{grid-template-columns:repeat(2,minmax(0,1fr));padding-left:12px;padding-right:12px}#bac-planner .fields{grid-template-columns:1fr 1fr}#bac-planner .inspector,#bac-planner .onboard{grid-template-columns:1fr}#bac-planner .profile{border-right:0;border-bottom:1px solid var(--line)}#bac-planner .step-list{grid-template-columns:1fr}#bac-planner .topbar,#bac-planner .hero,#bac-planner .artifact,#bac-planner .profile,#bac-planner .foot{padding-left:14px;padding-right:14px}#bac-planner .brief,#bac-planner .flow,#bac-planner .decision{margin-left:14px;margin-right:14px}#bac-planner .scene-wrap,#bac-planner .viewbar,#bac-planner .onboard{padding-left:14px;padding-right:14px}#bac-planner .flow-copy{min-width:0;flex-basis:100%}#bac-planner .persona{min-height:36px}#bac-planner .tabs button{padding-left:8px;padding-right:8px}}
 </style>
-<header class="topbar spread"><div class="brand"><span class="logo"><span aria-hidden="true">B</span></span>BaC Crew <span class="quiet">/ Plan together</span></div><span class="quiet">Interactive wireframe · simulated agents & OpenShell</span></header>
+<header class="topbar spread"><div class="brand"><span class="logo"><span aria-hidden="true">B</span></span>BaC Crew <span class="quiet">/ Explore together</span></div><span class="quiet">Interactive wireframe · simulated agents & OpenShell</span></header>
+<nav class="experience-nav" aria-label="Choose an experience"><button class="action" data-mode="playground" aria-pressed="true">Skill playground</button><button class="action" data-mode="crew" aria-pressed="false">Plan a BaC</button></nav>
+<div data-part="planner" hidden>
 <div class="hero spread"><div><span class="quiet">Your own Build a Claw event</span><h2 data-out="title">Let’s plan BaC Zurich</h2><div class="row"><span class="quiet" data-out="summary">Europe (EMEA) · 120 attendees · 180 min · English</span><span class="pill tint" data-out="session-summary">One topic · 5 people · 15 min</span></div></div><div class="row"><button class="action" data-action="brief">Event brief</button><button class="action tint" data-action="onboard">Build your agent</button></div></div>
 <form class="brief" data-part="brief"><div class="spread"><h3>Tell us about your BaC</h3><span class="quiet">Each attendee joins one interest-based topic</span></div><div class="fields"><label class="field">Region<select name="region"><option>Europe (EMEA)</option><option>North America</option><option>Latin America</option><option>Asia Pacific</option><option>Middle East and Africa</option></select></label><label class="field">City / location<input name="location" value="Zurich" maxlength="50" required></label><label class="field">Total attendees<input name="attendees" value="120" type="number" min="5" max="2000" required></label><label class="field">Event duration · min<input name="duration" value="180" type="number" min="30" max="1440" step="1" required></label><label class="field">Event language<select name="language"><option value="ko">Korean</option><option value="en" selected>English</option><option value="ja">Japanese</option></select></label><label class="field">Audience<select name="audience"><option value="beginner">First-time users</option><option value="mixed">Users and developers</option><option value="developer">Agent developers</option></select></label><label class="field">Welcome and breaks · min<input name="common" value="30" type="number" min="0" max="600" required></label><label class="field">Available DGX Sparks<input name="availableSpark" value="2" type="number" min="0" max="100" required></label><label class="field">Available workstations<input name="availableWs" value="1" type="number" min="0" max="100" required></label></div>
 <details><summary>Topic demand, device assignments and session settings</summary><div class="topics"><div class="topic"><strong>Build your agent</strong><div class="fields"><label class="field">Interest share · %<input name="share0" value="50" type="number" min="0" max="100" required></label><label class="field">Assigned demo device<select name="device0"><option value="spark">DGX Spark</option><option value="ws">Workstation</option></select></label></div></div><div class="topic"><strong>Multi-agent collaboration</strong><div class="fields"><label class="field">Interest share · %<input name="share1" value="30" type="number" min="0" max="100" required></label><label class="field">Assigned demo device<select name="device1"><option value="spark">DGX Spark</option><option value="ws">Workstation</option></select></label></div></div><div class="topic"><strong>Multimodal content</strong><div class="fields"><label class="field">Interest share · %<input name="share2" value="20" type="number" min="0" max="100" required></label><label class="field">Assigned demo device<select name="device2"><option value="ws">Workstation</option><option value="spark">DGX Spark</option></select></label></div></div></div><div class="fields" style="margin-top:12px"><label class="field">Max people per group<input name="groupSize" value="5" type="number" min="1" max="30" required></label><label class="field">Demo duration · min<input name="session" value="15" type="number" min="5" max="120" required></label><label class="field">Turnaround · min<input name="turnover" value="0" type="number" min="0" max="15" required></label><label class="field">Attendees per floor assistant<input name="helperRatio" value="40" type="number" min="5" max="200" required></label></div><p class="notice">Group size and session length are editable defaults. Device assignments are examples, not performance requirements. Assume one presenter per station and one event lead; spare devices are excluded. Venue logistics require a separate check.</p></details>
@@ -34,6 +36,268 @@ body{margin:0;padding:24px;max-width:1440px;margin-inline:auto}
 <section class="onboard" data-part="onboard" hidden><div><h3>Give your agent a role on the crew</h3><label class="field">Name<input data-input="agent-name" value="Jinny" maxlength="16"></label><label class="field">Role<select data-input="agent-role"><option value="3">Marketing</option><option value="2">Operations</option><option value="1">Demo producer</option><option value="4">Reviewer</option></select></label><h3>Equip skills</h3><div class="skills" data-out="skill-picker"></div><label class="field">Persona<select data-input="agent-persona"><option value="friendly">Friendly guide</option><option value="playful">Playful maker</option><option value="precise">Evidence-first editor</option></select></label><div class="row"><button class="action" data-action="solo">Try a solo task</button><button class="action primary" data-action="join">Join the crew</button><button class="action" data-action="close-agent">Back</button></div><p data-out="agent-error" class="error" role="alert" hidden></p></div><div class="passport"><span class="quiet">MY AGENT</span><span class="face" style="--tone:var(--rose)" aria-hidden="true"><i></i></span><h3 data-out="agent-name"></h3><p data-out="agent-preview"></p><div class="row" data-out="agent-skills" style="margin-top:12px"></div><p class="notice" data-out="agent-permission"></p><div class="sample" data-out="solo-output" aria-live="polite">Try the current brief with your selected skills and persona.</div><p class="notice">Equipping a skill does not grant external access.</p></div></section>
 <section data-part="workspace"><div class="viewbar spread"><div class="tabs" aria-label="Two views of the same crew"><button data-view-switch="village" aria-pressed="true">A · Crew village</button><button data-view-switch="board" aria-pressed="false">C · Progress board</button></div><span class="quiet" data-out="revision">Waiting for your brief</span></div><div class="scene-wrap"><div class="scene" data-out="scene" aria-label="Crew and task status"></div></div><div class="flow spread" aria-live="polite"><div class="flow-copy"><strong data-out="flow-title"></strong><p data-out="flow-text"></p></div><button class="action primary" data-action="next">Start with an event brief</button></div><div class="decision" data-part="capacity" hidden><h3>Equipment does not fit the current schedule</h3><p data-out="capacity-text"></p><div class="row"><button class="action" data-action="extra-gear">Plan for more devices</button><button class="action" data-action="extend" data-out="extend-label">Extend event time</button><button class="action" data-action="brief">Edit other inputs</button></div><p class="notice">This updates the plan only. No equipment is purchased or reserved.</p></div><div class="decision" data-part="policy" hidden><h3>OpenShell · example delivery block</h3><p>The marketing drafts are ready, but access to the demo delivery server is not allowed.</p><div class="row"><button class="action" data-action="approve">Simulate approval</button><button class="action" data-action="deny">Deny and keep drafts</button></div><p class="notice">No real email is sent. This is a policy interaction preview.</p></div>
 <div class="inspector"><aside class="profile"><h3 data-out="profile-title"></h3><span class="pill" data-out="profile-persona"></span><dl data-out="profile-facts"></dl></aside><div class="artifact"><div class="artifact-nav" aria-label="Shared deliverables"><button data-artifact="scenario" aria-pressed="true">Demo runbooks</button><button data-artifact="operations" aria-pressed="false">Operations</button><button data-artifact="email" aria-pressed="false">Invitation email</button><button data-artifact="promo" aria-pressed="false">Promo copy</button><button data-artifact="review" aria-pressed="false">Review</button></div><div class="artifact-content" data-out="artifact"></div></div></div><footer class="foot spread"><span>Event equipment is separate from the device running this demo.</span><span>Runtime plan: one Spark · one shared LLM for every agent</span></footer></section>
+</div>
+<section id="bac-playground" data-part="playground" aria-label="Agent skill playground">
+<style>#bac-planner .experience-nav{display:flex;gap:8px;padding:14px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+#bac-planner .experience-nav button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+#bac-playground .pg-heading{padding:22px 20px}
+#bac-playground .pg-layout{display:grid;grid-template-columns:245px minmax(0,1fr);gap:20px;padding:0 20px 24px}
+#bac-playground .pg-passport{border:1px solid var(--line);border-radius:16px;padding:20px;background:var(--soft);align-self:start;min-width:0}
+#bac-playground .pg-avatar{height:74px;width:74px;border-radius:25px;background:var(--rose);box-shadow:0 5px 0 var(--line);display:flex;gap:18px;align-items:center;justify-content:center;margin-bottom:22px;transform:rotate(-5deg)}
+#bac-playground .pg-avatar span{width:7px;height:11px;border-radius:9px;background:var(--ink)}
+#bac-playground .field{margin:12px 0}
+#bac-playground .pg-passport h3{margin:24px 0 10px}
+#bac-playground .pg-loadout{display:flex;flex-direction:column;gap:9px}
+#bac-playground .pg-loadout label{display:flex;align-items:center;gap:9px;font-size:13px;cursor:pointer}
+#bac-playground .pg-loadout input,#bac-playground .pg-check input{accent-color:var(--ink);width:17px;height:17px;flex:none}
+#bac-playground .pg-keepsake{margin:18px 0;padding:12px;border:1px dashed var(--line);border-radius:10px;font-size:12px;overflow-wrap:anywhere}
+#bac-playground .pg-keepsake p{margin-top:5px}
+#bac-playground .pg-main{min-width:0}
+#bac-playground .pg-missions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}
+#bac-playground .pg-mission{border:1px solid var(--line);border-radius:13px;padding:15px 12px;background:var(--paper);text-align:left;min-width:0}
+#bac-playground .pg-mission[aria-pressed="true"]{background:var(--tone);border-color:var(--ink)}
+#bac-playground .pg-mission strong{display:block;margin:9px 0 4px;font-size:13px}
+#bac-playground .pg-mission .quiet{font-size:11px}
+#bac-playground .pg-symbol{display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:var(--tone);font-size:20px}
+#bac-playground .pg-workbench{border:1px solid var(--line);border-radius:16px;padding:20px}
+#bac-playground .pg-workbench h3{margin:3px 0 8px;font-size:18px}
+#bac-playground .pg-inputs{margin:16px 0;padding:14px;background:var(--soft);border-radius:11px}
+#bac-playground .pg-inputs .field:first-child{margin-top:0}
+#bac-playground .pg-inputs .field:last-child{margin-bottom:0}
+#bac-playground .pg-runbar{margin:14px 0}
+#bac-playground .pg-check{display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer}
+#bac-playground .pg-permission{background:var(--warning);color:var(--warning-ink);border-radius:11px;padding:15px;margin-top:12px}
+#bac-playground .pg-permission p{font-size:13px;margin-bottom:10px}
+#bac-playground .pg-permission h3{font-size:15px}
+#bac-playground .pg-trace{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:18px 0}
+#bac-playground .pg-trace div{border-top:3px solid var(--line);padding-top:8px;font-size:11px;overflow-wrap:anywhere}
+#bac-playground .pg-trace div[data-state="done"]{border-color:light-dark(#639632,#acd76e)}
+#bac-playground .pg-trace div[data-state="blocked"]{border-color:light-dark(#aa6a12,#efba58)}
+#bac-playground .pg-trace strong{display:block;font-size:12px;margin-bottom:4px}
+#bac-playground .pg-result{padding:18px;background:var(--soft);border-radius:12px;font-size:13px;overflow-wrap:anywhere;min-height:86px}
+#bac-playground .pg-result h3{font-size:16px}
+#bac-playground .pg-result p+p{margin-top:9px}
+#bac-playground .pg-answer{font-size:15px;line-height:1.6;margin:10px 0!important}
+#bac-playground .pg-evidence{display:grid;gap:9px;margin-top:12px}
+#bac-playground .pg-evidence article{border:1px solid var(--line);border-radius:9px;padding:12px;background:var(--paper)}
+#bac-playground .pg-evidence details{margin:7px 0 0}
+#bac-playground .pg-evidence summary{margin-bottom:5px;font-size:12px}
+#bac-playground .pg-chat{display:flex;flex-direction:column;gap:10px;margin:12px 0}
+#bac-playground .pg-bubble{max-width:92%;padding:12px;border-radius:13px;background:var(--paper)}
+#bac-playground .pg-bubble.incoming{align-self:flex-end;background:var(--blue)}
+#bac-playground .pg-bubble .quiet{display:block;font-size:11px;margin-bottom:5px}
+#bac-playground .pg-bubble p{white-space:pre-wrap}
+@media(max-width:1020px){#bac-playground .pg-missions{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){#bac-playground .pg-layout{grid-template-columns:1fr;padding:0 14px 18px}#bac-playground .pg-passport{display:grid;grid-template-columns:1fr 1fr;gap:0 14px;padding:16px}#bac-playground .pg-passport .pg-avatar{display:none}#bac-playground .pg-passport>h3,#bac-playground .pg-loadout,#bac-playground .pg-passport>p,#bac-playground .pg-keepsake,#bac-playground #pg-join{grid-column:1/-1}#bac-playground .pg-loadout{display:grid;grid-template-columns:1fr 1fr}#bac-playground .pg-passport h3{margin-top:14px}#bac-playground .pg-workbench{padding:15px}#bac-playground .pg-heading{padding:20px 14px}#bac-playground .pg-trace{grid-template-columns:repeat(2,minmax(0,1fr))}#bac-playground .pg-inputs select{font-size:14px}}
+</style>
+<div class="pg-heading spread">
+  <div><span class="quiet">ONE AGENT. LOTS TO TRY.</span><h2>What will your agent learn today?</h2><p class="quiet">Give it a personality, equip a skill, and try a small mission.</p></div>
+  <span class="pill">Practice mode · sample tools</span>
+</div>
+<div class="pg-layout">
+  <aside class="pg-passport">
+    <div class="pg-avatar" aria-hidden="true"><span></span><span></span></div>
+    <label class="field">Your agent’s name<input id="pg-name" value="Jinny" maxlength="16"></label>
+    <label class="field">Personality<select id="pg-persona"><option value="friendly">Friendly guide</option><option value="playful">Playful maker</option><option value="precise">Evidence-first editor</option></select></label>
+    <h3>Equip a skill</h3>
+    <div id="pg-loadout" class="pg-loadout"></div>
+    <p class="notice">Skills define what your agent can do. Access is checked separately.</p>
+    <div class="pg-keepsake"><span class="quiet">SESSION NOTE</span><p id="pg-memory-summary">Nothing remembered yet.</p></div>
+    <button class="action primary" id="pg-join">Join the BaC crew →</button>
+    <p class="notice">Your name, personality and equipped skills follow you into a team role.</p>
+  </aside>
+  <div class="pg-main">
+    <div id="pg-missions" class="pg-missions" aria-label="Choose a skill mission"></div>
+    <section class="pg-workbench" aria-labelledby="pg-mission-title">
+      <div class="spread"><div><span class="quiet" id="pg-mission-kicker"></span><h3 id="pg-mission-title"></h3></div><span class="pill tint" id="pg-equipped"></span></div>
+      <p id="pg-mission-description" class="quiet"></p>
+      <div class="pg-inputs" id="pg-weather-inputs">
+        <label class="field">Practice city<select id="pg-city"><option>Zurich</option><option>Austin</option><option>Seattle</option></select></label>
+        <p class="notice">Fictional weather samples for learning. These are not current forecasts.</p>
+      </div>
+      <div class="pg-inputs" id="pg-search-inputs" hidden>
+        <label class="field">Research mission<select id="pg-query"><option value="workshop">Find three beginner-friendly AI demo ideas</option><option value="event">What should I prepare for a hands-on event?</option></select></label>
+        <p class="notice">Prepared search examples with inspectable evidence cards. No live web request runs.</p>
+      </div>
+      <div class="pg-inputs" id="pg-telegram-inputs" hidden>
+        <div class="spread"><span id="pg-pair-status" class="pill">Practice phone · disconnected</span><button class="action" id="pg-pair">Pair practice phone</button></div>
+        <label class="field">Message from your phone<select id="pg-message"><option value="intro">Hi! What can you do?</option><option value="plan">How is our BaC plan coming along?</option><option value="note">What do you remember about me?</option></select></label>
+        <p class="notice">This phone is simulated. Real Telegram pairing and delivery are not connected.</p>
+      </div>
+      <div class="pg-inputs" id="pg-memory-inputs" hidden>
+        <label class="field">A preference to remember<input id="pg-note" value="I prefer beginner-friendly, hands-on demos." maxlength="180"></label>
+        <p class="notice">Saved only in this browser session. Used by the other practice missions; refresh clears it.</p>
+        <button class="action" id="pg-forget">Forget this note</button>
+      </div>
+      <div class="pg-runbar spread"><label id="pg-block-control" class="pg-check"><input type="checkbox" id="pg-block">Try a blocked connection</label><button class="action primary" id="pg-run">Try this mission</button></div>
+      <p id="pg-error" class="error" role="alert" hidden></p>
+      <div id="pg-permission" class="pg-permission" hidden>
+        <h3>Access decision · simulation</h3><p id="pg-permission-text"></p>
+        <div class="row"><button class="action" id="pg-allow">Simulate allow once</button><button class="action" id="pg-deny">Keep blocked</button></div>
+      </div>
+      <div class="pg-trace" id="pg-trace" aria-label="What the agent did"></div>
+      <div id="pg-result" class="pg-result" aria-live="polite"><span class="quiet">Pick a mission and watch your agent use its skills.</span></div>
+    </section>
+  </div>
+</div>
+<footer class="foot spread"><span>Explore with one agent, then put its skills to work in a crew.</span><span>Planned runtime: every agent shares one model on Spark</span></footer>
+<script>(() => {
+  const root = document.getElementById('bac-playground');
+  const app = document.getElementById('bac-planner');
+  const el = id => root.querySelector('#pg-' + id);
+  const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const skills = [
+    {id:'weather', title:'Weather lookout', subtitle:'Read data. Make a plan.', symbol:'☀', tone:'sand', description:'Check a practice forecast, then suggest what to bring.'},
+    {id:'search', title:'Web scout', subtitle:'Search. Compare. Explain.', symbol:'⌕', tone:'blue', description:'Inspect three prepared results and compare what each one contributes.'},
+    {id:'telegram', title:'Telegram buddy', subtitle:'Your agent, on your phone.', symbol:'↗', tone:'rose', description:'Pair a practice phone and preview a reply from the same agent.'},
+    {id:'memory', title:'Remember me', subtitle:'Teach it a preference.', symbol:'✎', tone:'purple', description:'Save a short note and see it used in another mission.'},
+  ];
+  const state = {skill:'weather', equipped:new Set(['weather','search']), name:'Jinny', persona:'friendly', memory:'', paired:false, brief:null, pending:null};
+  const weather = {
+    Zurich:{temperature:16, condition:'light rain', suggestion:'Bring a light rain jacket and keep the hands-on demos indoors.'},
+    Austin:{temperature:30, condition:'sunny', suggestion:'Bring water and plan the hands-on demos in a shaded or indoor space.'},
+    Seattle:{temperature:13, condition:'cloudy', suggestion:'Bring an extra layer and keep a sheltered meeting point.'},
+  };
+  const examples = {
+    workshop:[
+      {title:'Make an agent your own', kind:'Onboarding example', excerpt:'Choose a name and persona, equip one skill, then compare the result with that skill removed.'},
+      {title:'Check the evidence', kind:'Search example', excerpt:'Open the underlying result cards. Compare a summary against the original snippets before using it.'},
+      {title:'Move a task to your phone', kind:'Messaging example', excerpt:'Pair a phone session, preview the destination and message, and handle a denied connection.'},
+    ],
+    event:[
+      {title:'Prepare a fallback', kind:'Demo runbook example', excerpt:'Keep example outputs available for each session in case a live service is unavailable.'},
+      {title:'Check station capacity', kind:'Operations example', excerpt:'Allocate attendees by interest, divide them into groups, then compare required stations with equipment availability.'},
+      {title:'Align the invitation', kind:'Marketing example', excerpt:'Use the approved event duration, session language and venue details in attendee-facing copy.'},
+    ],
+  };
+  function skill() { return skills.find(s => s.id === state.skill); }
+  function invalidate() {
+    state.pending = null;
+    el('permission').hidden = true;
+    el('error').hidden = true;
+    el('trace').replaceChildren();
+    el('result').innerHTML = '<span class="quiet">Ready for a new practice run.</span>';
+  }
+  function render() {
+    el('loadout').innerHTML = skills.map(s => `<label><input type="checkbox" data-equip="${s.id}" ${state.equipped.has(s.id)?'checked':''}>${s.title}</label>`).join('');
+    el('missions').innerHTML = skills.map(s => `<button class="pg-mission" data-mission="${s.id}" aria-pressed="${state.skill===s.id}" style="--tone:var(--${s.tone})"><span class="pg-symbol" aria-hidden="true">${s.symbol}</span><strong>${s.title}</strong><span class="quiet">${s.subtitle}</span></button>`).join('');
+    el('mission-kicker').textContent = state.name + ' · SOLO MISSION';
+    el('mission-title').textContent = skill().title;
+    el('mission-description').textContent = skill().description;
+    el('equipped').textContent = state.equipped.has(state.skill) ? 'Skill equipped' : 'Equip this skill to try it';
+    for (const s of skills) el(s.id + '-inputs').hidden = s.id !== state.skill;
+    el('block-control').hidden = !['weather','search'].includes(state.skill);
+    el('run').textContent = {weather:'Check practice weather',search:'Explore sample results',telegram:'Preview phone reply',memory:'Remember this note'}[state.skill];
+    el('pair-status').textContent = state.paired ? 'Practice phone · paired' : 'Practice phone · disconnected';
+    el('pair').textContent = state.paired ? 'Disconnect practice phone' : 'Pair practice phone';
+    el('memory-summary').textContent = state.memory || 'Nothing remembered yet.';
+  }
+  function trace(access, finished=false) {
+    const equipped = state.equipped.has(state.skill);
+    const items = [
+      ['Request',state.name+' received the mission','done'],
+      ['Skill',skill().title,equipped?'done':'blocked'],
+      ['Access',access,access.includes('blocked')?'blocked':equipped?'done':'waiting'],
+      ['Result',finished?'Ready to inspect':'Waiting',finished?'done':'waiting'],
+    ];
+    el('trace').innerHTML = items.map(([title,detail,status]) => `<div data-state="${status}"><strong>${title}</strong>${escape(detail)}</div>`).join('');
+  }
+  function error(text) { el('error').textContent = text; el('error').hidden = false; }
+  function prefix() {
+    return {friendly:'Let’s try this together. ',playful:'Tiny mission, useful discovery! ',precise:'Based on the supplied practice data: '}[state.persona];
+  }
+  function noteMarkup() {
+    return state.memory && state.equipped.has('memory') ? `<p class="quiet">Your saved preference: ${escape(state.memory)}</p>` : '';
+  }
+  function finish(request) {
+    state.pending = null;
+    el('permission').hidden = true;
+    if (request.skill === 'weather') {
+      const data = weather[request.city];
+      el('result').innerHTML = `<span class="pill">Fictional forecast · practice only</span><h3 style="margin-top:12px">${escape(request.city)} · ${data.temperature} °C · ${data.condition}</h3><p class="pg-answer">${escape(prefix()+data.suggestion)}</p>${noteMarkup()}<details><summary>Inspect the tool result</summary><p>Prepared fixture: city, temperature and condition. No weather service was contacted.</p></details>`;
+    } else if (request.skill === 'search') {
+      const cards = examples[request.query];
+      el('result').innerHTML = `<span class="pill">Prepared search examples · not live results</span><p class="pg-answer">${escape(prefix())}${request.query==='workshop'?'Try personalization, evidence checking and phone messaging as three short missions.':'Prepare fallback outputs, check station capacity and align attendee copy.'}</p>${noteMarkup()}<div class="pg-evidence">${cards.map((card,i)=>`<article><strong>${i+1}. ${card.title}</strong><p class="quiet">${card.kind}</p><details><summary>Inspect example evidence</summary><p>${card.excerpt}</p></details></article>`).join('')}</div>`;
+    } else if (request.skill === 'telegram') {
+      el('result').innerHTML = `<span class="pill">Phone preview · not delivered</span><div class="pg-chat"><div class="pg-bubble incoming"><span class="quiet">Practice phone → ${escape(state.name)}</span><p>${escape(request.message)}</p></div><div class="pg-bubble"><span class="quiet">${escape(state.name)} → practice phone</span><p>${escape(request.reply)}</p></div></div><p class="quiet">No Telegram account is connected and no message was sent.</p>`;
+    } else {
+      state.memory = request.note;
+      el('result').innerHTML = `<span class="pill">Saved in this session</span><p class="pg-answer">${escape(state.memory)}</p><p>Try Weather lookout or ask your practice phone what I remember.</p>`;
+      render();
+    }
+    trace(request.skill==='memory'?'Browser session only':'Allowed in simulation',true);
+  }
+  function makeRequest() {
+    const request = {skill:state.skill, city:el('city').value, query:el('query').value, note:el('note').value.trim()};
+    if (state.skill === 'telegram') {
+      const selected = el('message').value;
+      request.message = el('message').selectedOptions[0].text;
+      let reply;
+      if (selected === 'intro') reply = `I’m ${state.name}. My equipped skills are: ${skills.filter(s=>state.equipped.has(s.id)).map(s=>s.title).join(', ')}.`;
+      else if (selected === 'plan') reply = state.brief ? `The shared brief is for BaC ${state.brief.location}, ${state.brief.region}: ${state.brief.attendees} attendees, ${state.brief.duration} minutes, in ${state.brief.language}. Each group has up to ${state.brief.groupSize} people for a ${state.brief.session}-minute session. The crew view shows the current planning stage.` : 'There is no BaC brief yet. Open Plan a BaC to start one; I can use it here afterwards.';
+      else reply = !state.equipped.has('memory') ? 'Equip Remember me to access session notes.' : state.memory ? `You told me: ${state.memory}` : 'I do not have a note yet. Try Remember me first.';
+      request.reply = prefix() + reply;
+    }
+    return request;
+  }
+  function run() {
+    invalidate();
+    if (!state.name.trim()) { error('Give your agent a name first.'); return; }
+    if (!state.equipped.has(state.skill)) {
+      trace('Not checked');
+      error('Equip ' + skill().title + ' in your agent passport, then try again.');
+      return;
+    }
+    if (state.skill === 'telegram' && !state.paired) { trace('Pairing required'); error('Pair the practice phone before previewing a reply.'); return; }
+    const request = makeRequest();
+    if (state.skill === 'memory' && !request.note) { error('Write a short preference to remember.'); return; }
+    if (state.skill === 'telegram' || (['weather','search'].includes(state.skill) && el('block').checked)) {
+      state.pending = request;
+      trace('Connection blocked');
+      el('permission-text').textContent = state.skill === 'telegram' ? 'The reply is prepared. Previewing delivery to the practice phone needs a simulated access decision.' : 'The skill is equipped, but this practice connection is blocked. Allow one attempt or keep it blocked.';
+      el('permission').hidden = false;
+      el('result').innerHTML = state.skill === 'telegram' ? `<strong>Prepared reply</strong><p class="pg-answer">${escape(request.reply)}</p><p class="quiet">Destination: practice phone · no real delivery</p>` : '<p>The request stopped before a tool result was available.</p>';
+      return;
+    }
+    finish(request);
+  }
+  root.addEventListener('click', event => {
+    const mission = event.target.closest('[data-mission]');
+    if (mission) { state.skill=mission.dataset.mission; invalidate(); render(); }
+  });
+  el('loadout').addEventListener('change', event => {
+    const id = event.target.dataset.equip;
+    if (!id) return;
+    if (event.target.checked) state.equipped.add(id); else state.equipped.delete(id);
+    invalidate(); render();
+  });
+  for (const id of ['city','query','message','block','note']) el(id).addEventListener('input', invalidate);
+  el('name').addEventListener('input', () => { state.name=el('name').value.trim(); invalidate(); render(); });
+  el('persona').addEventListener('change', () => { state.persona=el('persona').value; invalidate(); render(); });
+  el('pair').addEventListener('click', () => { state.paired=!state.paired; invalidate(); render(); });
+  el('run').addEventListener('click', run);
+  el('allow').addEventListener('click', () => { if (state.pending) finish(state.pending); });
+  el('deny').addEventListener('click', () => {
+    if (!state.pending) return;
+    state.pending=null; el('permission').hidden=true; trace('Connection blocked');
+    el('result').innerHTML='<strong>Kept blocked</strong><p>The skill stays equipped. No tool ran and nothing was delivered. Change the access choice and try again.</p>';
+  });
+  el('forget').addEventListener('click', () => { state.memory=''; invalidate(); render(); el('result').textContent='Session note cleared.'; });
+  el('join').addEventListener('click', () => {
+    if (!state.name.trim()) { error('Give your agent a name before joining the crew.'); return; }
+    app.dispatchEvent(new CustomEvent('bac:join-request',{detail:{name:state.name,persona:state.persona,extraSkills:skills.filter(s=>state.equipped.has(s.id)).map(s=>s.title)}}));
+  });
+  app.addEventListener('bac:brief-changed', event => { state.brief={...event.detail}; invalidate(); });
+  app.addEventListener('bac:agent-changed', event => {
+    state.name=event.detail.name; state.persona=event.detail.persona;
+    el('name').value=state.name; el('persona').value=state.persona;
+    invalidate(); render();
+  });
+  render();
+})();
+</script>
+</section>
+
 <script>
 (()=>{
 const root=document.getElementById('bac-planner'),q=s=>root.querySelector(s),out=k=>q('[data-out="'+k+'"]'),part=k=>q('[data-part="'+k+'"]');
@@ -41,8 +305,13 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const form=part('brief'),languages={ko:'Korean',en:'English',ja:'Japanese'},themes=['Build your agent','Multi-agent collaboration','Multimodal content'];
 const defaultAgents=[{name:'Milo',role:'Event lead',zone:'Event HQ',tone:'lime',persona:'Goals before tasks',skills:['Brief analysis','Task assignment'],input:'Your event brief',output:'Event brief',permission:'Task assignment · Connect deliverables'}, {name:'Nova',role:'Demo producer',zone:'Demo studio',tone:'blue',persona:'Learn by doing',skills:['Demo design','Session planning','Fallback design'],input:'Topics, audience and session length',output:'Topic runbooks',permission:'Write runbooks · no publishing access'}, {name:'Atlas',role:'Operations',zone:'Operations',tone:'sand',persona:'Show the assumptions',skills:['Capacity planning','Staff allocation','Equipment inventory'],input:'Topic demand and session length',output:'Equipment and staffing plan',permission:'Write plans · no purchases or reservations'}, {name:'Momo',role:'Marketing',zone:'Marketing studio',tone:'rose',persona:'Speak to your audience',skills:['Email drafting','Promo copy','Localization'],input:'Operations draft and event language',output:'Invitation and promotional drafts',permission:'Write drafts · external delivery needs permission'}, {name:'Pico',role:'Review',zone:'Review desk',tone:'purple',persona:'Check every promise',skills:['Constraint review','Number checks','Copy review'],input:'Runbooks, operations and copy',output:'Review report',permission:'Write feedback · no direct edits or permission changes'}];
 const personas={friendly:'Friendly guide',playful:'Playful maker',precise:'Evidence-first editor'};
-const state={brief:null,calc:null,phase:-1,revision:0,view:'village',selected:1,artifact:'scenario',resolution:null,policy:null,agents:defaultAgents.map(a=>({...a,skills:[...a.skills]})),draft:{name:'Jinny',role:3,persona:'friendly',skills:[...defaultAgents[3].skills]},changes:''};
+const state={brief:null,calc:null,phase:-1,revision:0,view:'village',selected:1,artifact:'scenario',resolution:null,policy:null,agents:defaultAgents.map(a=>({...a,skills:[...a.skills]})),draft:{name:'Jinny',role:3,persona:'friendly',skills:[...defaultAgents[3].skills],extraSkills:[]},changes:''};
 const design={corners:20,showPersona:true};
+function showMode(mode){part('planner').hidden=mode!=='crew';part('playground').hidden=mode!=='playground';root.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===mode));}
+function shareBrief(){if(state.brief)root.dispatchEvent(new CustomEvent('bac:brief-changed',{detail:{...state.brief,language:languages[state.brief.language]}}));}
+root.querySelectorAll('[data-mode]').forEach(button=>button.addEventListener('click',()=>showMode(button.dataset.mode)));
+root.addEventListener('bac:join-request',e=>{state.draft={...state.draft,...e.detail};q('[data-input="agent-name"]').value=state.draft.name;q('[data-input="agent-persona"]').value=state.draft.persona;showMode('crew');q('[data-action="onboard"]').click();});
+
 function readForm(){const v={};for(const el of form.elements){if(!el.name)continue;v[el.name]=el.type==='number'?Number(el.value):el.value.trim();}return v;}
 function allocate(total,shares){const raw=shares.map(x=>total*x/100),counts=raw.map(Math.floor);let remainder=total-counts.reduce((a,b)=>a+b,0);raw.map((x,i)=>({i,f:x-counts[i]})).sort((a,b)=>b.f-a.f||a.i-b.i).slice(0,remainder).forEach(x=>counts[x.i]++);return counts;}
 function calculate(b){const counts=allocate(b.attendees,[b.share0,b.share1,b.share2]),usable=b.duration-b.common,slot=b.session+b.turnover,rounds=Math.floor(usable/slot);const topics=themes.map((name,i)=>({name,count:counts[i],groups:Math.ceil(counts[i]/b.groupSize),device:b['device'+i],booths:counts[i]?Math.ceil(Math.ceil(counts[i]/b.groupSize)/Math.max(1,rounds)):0}));const spark=topics.filter(t=>t.device==='spark').reduce((s,t)=>s+t.booths,0),ws=topics.filter(t=>t.device==='ws').reduce((s,t)=>s+t.booths,0);const boothTotal=spark+ws,helpers=Math.ceil(b.attendees/b.helperRatio),staff=boothTotal+helpers+1;const limited=topics.map(()=>0);let feasible=true;for(const type of ['spark','ws']){const indices=topics.map((t,i)=>t.device===type&&t.count?i:-1).filter(i=>i>=0);let available=type==='spark'?b.availableSpark:b.availableWs;if(available<indices.length){feasible=false;continue;}indices.forEach(i=>limited[i]=1);available-=indices.length;while(available>0&&indices.some(i=>limited[i]<topics[i].groups)){const j=indices.filter(i=>limited[i]<topics[i].groups).sort((a,c)=>Math.ceil(topics[c].groups/limited[c])-Math.ceil(topics[a].groups/limited[a]))[0];limited[j]++;available--;}}
@@ -75,12 +344,12 @@ if(state.artifact==='operations'){out('artifact').innerHTML='<h3>Equipment and s
 if(state.artifact==='email'||state.artifact==='promo'){out('artifact').innerHTML='<h3>'+languages[b.language]+' '+(state.artifact==='email'?'invitation email':'promotional copy')+'</h3>'+version+'<div class="letter" lang="'+b.language+'">'+esc(state.artifact==='email'?email():promo())+'</div><p class="notice">Unconfirmed dates, venue details and registration links remain placeholders. Nothing is sent or published.</p>';}
 if(state.artifact==='review'){out('artifact').innerHTML='<h3>Plan consistency review</h3>'+version+'<div class="checks" style="margin-top:10px">'+['Topic allocations total '+c.counts.reduce((a,v)=>a+v,0)+' = '+b.attendees+' attendees','One topic per attendee · up to '+b.groupSize+' people per group',b.session+' minutes per demo · '+c.rounds+' slots per station',languages[b.language]+' invitation reflects the '+b.duration+'-minute event',state.resolution==='extra'?'To confirm: additional equipment availability':'Equipment plan fits the entered availability','Still open: date, detailed venue and registration link'].map(x=>'<div class="checkline">'+x+'</div>').join('')+'</div><p class="notice">This example checks inputs and planning rules. Real venue capacity and language quality still need validation.</p>';}}
 function render(){root.style.borderRadius=design.corners+'px';renderScene();const b=state.brief,c=state.calc,a=state.agents[state.selected];out('profile-title').textContent=a.name+' · '+a.role;out('profile-persona').textContent=a.persona;out('profile-facts').innerHTML=[['Input',a.input],['Skills',a.skills.join(' · ')],['Output',a.output],['Access',a.permission]].map(x=>'<dt>'+x[0]+'</dt><dd>'+esc(x[1])+'</dd>').join('');out('revision').textContent=b?'Shared brief v'+state.revision+' · same state in both views':'Waiting for your brief';if(b){out('session-summary').textContent='One topic · '+b.groupSize+' people · '+b.session+' min';out('title').textContent='Let’s plan BaC '+b.location;out('summary').textContent=b.region+' · '+b.attendees+' attendees · '+b.duration+' min · '+languages[b.language];}const f=flow();out('flow-title').textContent=f[0];out('flow-text').textContent=f[1]+(state.changes?' '+state.changes:'');const next=q('[data-action="next"]');next.textContent=f[2];next.disabled=state.phase<0||(state.phase===2&&hasGap())||state.phase===5;part('capacity').hidden=!(state.phase===2&&hasGap());part('policy').hidden=state.phase!==5;if(c){out('capacity-text').textContent=`Available: ${b.availableSpark} Sparks and ${b.availableWs} workstations. Shortfall: ${c.shortSpark} Sparks and ${c.shortWs} workstations.`;const ext=q('[data-action="extend"]');ext.disabled=!c.minDuration||c.minDuration>1440;ext.textContent=c.minDuration?'Extend to '+c.minDuration+' minutes':'Time alone cannot resolve this';}renderArtifact();}
-function start(b,changes=''){state.brief=b;state.calc=calculate(b);state.phase=0;state.revision++;state.resolution=null;state.policy=null;state.selected=1;state.artifact='scenario';state.changes=changes;part('brief').hidden=true;render();}
+function start(b,changes=''){state.brief=b;state.calc=calculate(b);state.phase=0;state.revision++;state.resolution=null;state.policy=null;state.selected=1;state.artifact='scenario';state.changes=changes;part('brief').hidden=true;render();shareBrief();}
 form.addEventListener('submit',e=>{e.preventDefault();if(!form.reportValidity())return;const b=readForm();let error='';if(Math.abs(b.share0+b.share1+b.share2-100)>0.001)error='Topic interest shares must total 100%.';if(b.duration-b.common<b.session+b.turnover)error='Allow time for at least one demo slot after welcome and breaks.';if(!b.location)error='Enter a city or location.';out('form-error').hidden=!error;out('form-error').textContent=error;if(error)return;start(b);});
-function previewAgent(){const d=state.draft,a=defaultAgents[d.role];out('agent-name').textContent=d.name||'My agent';out('agent-preview').textContent=a.role+' · '+personas[d.persona];out('agent-skills').innerHTML=d.skills.map(x=>'<span class="pill">'+x+'</span>').join('');out('agent-permission').textContent=a.permission;out('agent-error').hidden=true;}
+function previewAgent(){const d=state.draft,a=defaultAgents[d.role];out('agent-name').textContent=d.name||'My agent';out('agent-preview').textContent=a.role+' · '+personas[d.persona];out('agent-skills').innerHTML=[...d.skills,...d.extraSkills].map(x=>'<span class="pill">'+esc(x)+'</span>').join('');out('agent-permission').textContent=a.permission;out('agent-error').hidden=true;root.dispatchEvent(new CustomEvent('bac:agent-changed',{detail:{name:d.name,persona:d.persona}}));}
 function skillPicker(){const d=state.draft;out('skill-picker').innerHTML=defaultAgents[d.role].skills.map(s=>'<label class="skill"><input type="checkbox" data-skill="'+s+'" '+(d.skills.includes(s)?'checked':'')+'>'+s+'</label>').join('');}
 function solo(){const d=state.draft,required=defaultAgents[d.role].skills[0];if(!d.skills.includes(required)){out('solo-output').textContent='Skill check: equip '+required+' to try this task.';return;}const b=state.brief||readForm();const lead={friendly:'Let’s work through this together. ',playful:'Let’s make this BaC an experience to remember. ',precise:'First, I will separate confirmed inputs from assumptions. '}[d.persona];const text=d.role===3?`Draft a ${languages[b.language]} invitation for BaC ${b.location}, ${b.region}. Each attendee joins one ${b.session}-minute session with up to ${b.groupSize} people.`:d.role===2?`Allocate ${b.attendees} attendees by topic in groups of up to ${b.groupSize}, then size stations for the usable time in a ${b.duration}-minute event.`:d.role===1?`Fit the introduction, hands-on activity and review into ${b.session} minutes. Prepare the session in ${languages[b.language]}.`:'Compare attendee counts and timings in the invitation with the operations plan.';out('solo-output').textContent='Example response: '+lead+text;}
-root.addEventListener('click',e=>{const switcher=e.target.closest('[data-view-switch]');if(switcher){state.view=switcher.dataset.viewSwitch;render();return;}const art=e.target.closest('[data-artifact]');if(art){state.artifact=art.dataset.artifact;renderArtifact();return;}const agent=e.target.closest('[data-agent]');if(agent){state.selected=Number(agent.dataset.agent);render();return;}const button=e.target.closest('[data-action]');if(!button)return;const action=button.dataset.action;if(action==='brief'){part('brief').hidden=!part('brief').hidden;part('onboard').hidden=true;part('workspace').hidden=false;}if(action==='onboard'){part('brief').hidden=true;part('onboard').hidden=false;part('workspace').hidden=true;skillPicker();previewAgent();}if(action==='close-agent'){part('onboard').hidden=true;part('workspace').hidden=false;if(!state.brief)part('brief').hidden=false;}if(action==='solo')solo();if(action==='join'){const d=state.draft,required=defaultAgents[d.role].skills[0];if(!d.name.trim()||!d.skills.includes(required)){out('agent-error').textContent='Enter a name and equip '+required+' to join the crew.';out('agent-error').hidden=false;return;}state.agents[d.role]={...defaultAgents[d.role],name:d.name.trim(),skills:[...d.skills],persona:personas[d.persona]};state.selected=d.role;part('onboard').hidden=true;part('workspace').hidden=false;if(!state.brief)part('brief').hidden=false;render();}if(action==='next'){if(state.phase<0||state.phase===5||state.phase===2&&hasGap())return;if(state.phase===6){part('brief').hidden=false;return;}state.phase++;state.changes='';state.selected=[1,2,2,3,4,3,0][state.phase];state.artifact=['scenario','scenario','operations','email','review','email','email'][state.phase];render();}if(action==='extra-gear'){state.resolution='extra';state.changes='Additional devices are marked as pending availability.';render();}if(action==='extend'){if(!state.calc.minDuration)return;const old=state.brief.duration;state.brief={...state.brief,duration:state.calc.minDuration};form.elements.duration.value=state.brief.duration;state.calc=calculate(state.brief);state.revision++;state.resolution='extended';state.changes=`Event duration changed from ${old} to ${state.brief.duration} minutes. Marketing will use the updated brief.`;render();}if(action==='approve'||action==='deny'){state.policy=action;state.phase=6;render();}});
+root.addEventListener('click',e=>{const switcher=e.target.closest('[data-view-switch]');if(switcher){state.view=switcher.dataset.viewSwitch;render();return;}const art=e.target.closest('[data-artifact]');if(art){state.artifact=art.dataset.artifact;renderArtifact();return;}const agent=e.target.closest('[data-agent]');if(agent){state.selected=Number(agent.dataset.agent);render();return;}const button=e.target.closest('[data-action]');if(!button)return;const action=button.dataset.action;if(action==='brief'){part('brief').hidden=!part('brief').hidden;part('onboard').hidden=true;part('workspace').hidden=false;}if(action==='onboard'){part('brief').hidden=true;part('onboard').hidden=false;part('workspace').hidden=true;skillPicker();previewAgent();}if(action==='close-agent'){part('onboard').hidden=true;part('workspace').hidden=false;if(!state.brief)part('brief').hidden=false;}if(action==='solo')solo();if(action==='join'){const d=state.draft,required=defaultAgents[d.role].skills[0];if(!d.name.trim()||!d.skills.includes(required)){out('agent-error').textContent='Enter a name and equip '+required+' to join the crew.';out('agent-error').hidden=false;return;}state.agents[d.role]={...defaultAgents[d.role],name:d.name.trim(),skills:[...d.skills,...d.extraSkills],persona:personas[d.persona]};state.selected=d.role;part('onboard').hidden=true;part('workspace').hidden=false;if(!state.brief)part('brief').hidden=false;render();}if(action==='next'){if(state.phase<0||state.phase===5||state.phase===2&&hasGap())return;if(state.phase===6){part('brief').hidden=false;return;}state.phase++;state.changes='';state.selected=[1,2,2,3,4,3,0][state.phase];state.artifact=['scenario','scenario','operations','email','review','email','email'][state.phase];render();}if(action==='extra-gear'){state.resolution='extra';state.changes='Additional devices are marked as pending availability.';render();}if(action==='extend'){if(!state.calc.minDuration)return;const old=state.brief.duration;state.brief={...state.brief,duration:state.calc.minDuration};form.elements.duration.value=state.brief.duration;state.calc=calculate(state.brief);state.revision++;state.resolution='extended';state.changes=`Event duration changed from ${old} to ${state.brief.duration} minutes. Marketing will use the updated brief.`;render();shareBrief();}if(action==='approve'||action==='deny'){state.policy=action;state.phase=6;render();}});
 q('[data-input="agent-name"]').addEventListener('input',e=>{state.draft.name=e.target.value;previewAgent();});q('[data-input="agent-role"]').addEventListener('change',e=>{state.draft.role=Number(e.target.value);state.draft.skills=[...defaultAgents[state.draft.role].skills];skillPicker();previewAgent();out('solo-output').textContent='Try a solo task with this role.';});q('[data-input="agent-persona"]').addEventListener('change',e=>{state.draft.persona=e.target.value;previewAgent();out('solo-output').textContent='Try a solo task with this persona.';});out('skill-picker').addEventListener('change',e=>{if(!e.target.dataset.skill)return;const s=e.target.dataset.skill;state.draft.skills=e.target.checked?[...state.draft.skills,s]:state.draft.skills.filter(x=>x!==s);previewAgent();});
 render();if(globalThis.Tweak){const t=new Tweak({container:root,onChange:render});t.addSlider(design,'corners',{label:'Corner radius',min:0,max:28,unit:'px'});t.addToggle(design,'showPersona',{label:'Show personas in the village'});}
 })();
