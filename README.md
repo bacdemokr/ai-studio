@@ -1,6 +1,6 @@
 # NVIDIA Build a Claw — Agent Studio
 
-Create your own agents, give each a recognizable look and useful skills, and choose who joins your crew. Move between three rooms: **Workshop**, **Agent lounge** and **Mission room**. The NVIDIA-inspired charcoal interface keeps neutral lighting and restrained green accents.
+Create your own agents, give each a recognizable look and useful skills, and choose who joins your crew. Move between **Workshop**, **Agent lounge**, **Mission room** and a dedicated **Policies** tab. The NVIDIA-inspired charcoal interface keeps neutral lighting and restrained green accents.
 
 Workshop offers a large character preview and OpenClaw connection details. The lounge grows with your saved agents. Mission room keeps five specialist desks around a shared brief, with active workbenches and document packets illustrating observed handoffs. Switch between **3D crew** and **Mission control** inside that room.
 
@@ -17,12 +17,13 @@ Click a 3D view and press **Enter**, double-click an empty area, or use **Full s
 - **Distinct appearances:** choose Classic, Orbit or Rover, six accent colors and four accessories. Appearance is saved with the profile, survives refreshes and follows personal agents into crew assignments. New creations suggest an unused look; existing agents receive stable defaults.
 - **Persistent onboarding:** name, persona and editable skill loadout; native OpenClaw identity/skill files are provisioned on the first mission. Memory, conversations, files and jobs survive app updates.
 - **Useful solo missions:** live weather, reading public websites, optional Brave web search, document questions, HTML mini-app creation with an isolated playable preview, campaign drafts and explicit preference memory.
-- **A real crew workflow:** your selected agent leads four specialists. Assign any of your other agents to demo production, operations, marketing or review; unfilled slots use Nova, Atlas, Momo and Pico. The workshop has five role stations, independently of your collection size. Separate OpenClaw agents receive a shared brief and previous deliverables; the reviewer checks the specialists. A real server-side decision stops the workflow if equipment is insufficient.
+- **A real crew workflow:** Milo leads the ready-made Nova, Atlas, Momo and Pico crew, all with OpenShell off. Run it before creating a personal agent. For a custom crew, select **Let … lead instead of Milo** and assign your other agents to specialist roles; personal agents retain their own protection settings. The workshop has five role stations, independently of your collection size. Separate OpenClaw agents receive a shared brief and previous deliverables; the reviewer checks the specialists. A real server-side decision stops the workflow if equipment is insufficient.
 - **Visible evidence:** observed task states, role handoffs and actual saved files drive the scene and board. Character motion illustrates those states; it is not a model reasoning trace.
 - **Phone continuity:** optional Telegram pairing routes a participant’s private messages to the same OpenClaw agent and conversation as the web. Pairing tokens expire and can only be used once. Switching agents in the browser does not reroute a paired phone. Pairing a different agent moves that private chat to the newly paired agent.
 - **Persistent follow-ups:** scheduled jobs survive refresh/restart and run through the same queue. Results appear in the web workspace. This is the BaC scheduler, not OpenClaw cron.
 - **Attendee controls:** stop after the active model call, reset your mission board while preserving memory/files, deliberate retry, labeled fallbacks and an evidence download for your facilitator.
 - **Inspectable handoffs:** open each role’s shared inputs, prior deliverables, fingerprints and output files; download the selected mission’s evidence.
+- **Personal-agent policies:** choose OpenShell off/on during onboarding or in **Policies**. Protected agents start with no internet permissions. Approve or revoke only the selected agent’s curated public reads: weather, the Zurich guide, Wikipedia search and the public GitHub API. Inspect loaded policy revisions and sanitized access logs separately from your approval history. A missing host setup or unverified policy never triggers an unprotected fallback.
 - **OpenShell Security lab:** an illustrative boundary walkthrough plus separately labeled host evidence. `./bac openshell prove` collects deny → narrow permission → allow → still-deny evidence in a dedicated temporary sandbox. This does not certify every agent’s traffic. See the [requirements and acceptance checklist](docs/cohort-requirements.md).
 
 All roles use **one shared `bac-local` model on one Spark**. Requests run sequentially to avoid loading a model per agent. This demonstrates role boundaries, dependencies and review; it does not claim a parallel speedup.
@@ -77,7 +78,9 @@ Optional integrations:
 ./bac openshell prove            # optional fixed network probes in a separate temporary sandbox
 ```
 
-Website reading and the weather endpoint do not require a Brave key. Telegram uses the BaC transport adapter into OpenClaw, not a claim of native Telegram-channel configuration.
+After updating from an earlier OpenShell-enabled release, run `./bac openshell enable` once again to prepare per-agent opt-in and the default-deny policy. It keeps the existing gateway selection and skips reinstalling the same pinned plugin. Existing agents keep their files; choose protection explicitly in Policies. The preset crew stays outside OpenShell.
+
+Website reading and the weather endpoint do not require a Brave key. Protected agents use sandboxed `curl`; their host-side `web_fetch` and `web_search` tools are disabled. Wikipedia search is the curated search permission in this mode. Shared inference and the Telegram transport remain on the host, outside the tool sandbox. Telegram uses the BaC transport adapter into OpenClaw, not a claim of native Telegram-channel configuration.
 
 ## Review the interface without a model
 
@@ -93,10 +96,10 @@ Only Python 3.9+ and a modern WebGL2 browser are needed for UI review. The runti
 2. In **Agent lounge**, select your robot and choose **Make something playable**. Run the mission and play the actual generated file.
 3. Ask it to remember a preference. Refresh, then ask what it remembers.
 4. Choose **Ask your documents**, upload a document or use the labeled sample brief, and inspect the answer alongside the source.
-5. Use **Create an agent** to make a second teammate with different skills. See each new robot join the lounge. Switch between them to see separate memory and workspaces. Open **Mission room** and assign your teammates when launching a crew for **Zurich / Europe / English**. Defaults: 120 attendees, 180 minutes, groups of 5, sessions of 15 minutes; all are editable.
+5. Use **Create an agent** to make a second teammate with different skills. See each new robot join the lounge. Switch between them to see separate memory and workspaces. Open **Mission room** to run the preset crew or opt into your own lead and assign your teammates when launching a crew for **Zurich / Europe / English**. Defaults: 120 attendees, 180 minutes, groups of 5, sessions of 15 minutes; all are editable.
 6. Watch role handoffs in **3D crew**, switch to **Mission control**, approve the equipment assumption if needed, and open each deliverable. Your assigned agents keep their saved appearances.
 7. If the host configured Telegram, pair a phone and continue the same conversation.
-8. Open **Security lab** to explore the boundary. Open **Help & fallback** when a live dependency is unavailable.
+8. Choose OpenShell on for a personal agent, then open **Policies**. Try a weather request, inspect its denial, approve just the weather API, retry, and revoke it. The host must have OpenShell configured for this live exercise. The separate **Security lab** also offers a labeled concept walkthrough. Open **Help & fallback** when a live dependency is unavailable.
 
 Dates, venues and registration URLs stay unconfirmed unless supplied. Equipment counts are transparent event-station assumptions, not an inference-capacity benchmark. See the [presenter runbook](docs/demo-runbook.md).
 
@@ -105,6 +108,8 @@ Dates, venues and registration URLs stay unconfirmed unless supplied. Equipment 
 The collection limit is 12 personal agents per attendee; a crew mission has five distinct roles. Attendees share a limit of three pending missions across their collection, and the server executes one task at a time on the shared model. Crew assignment does not add tools to an agent’s skill loadout. Crew inputs and outputs are shared explicitly, while the combined package stays in the lead’s workspace. A specialist assigned to a pending crew has a shortcut back to that crew’s board. The update migrates existing single-agent state in place, preserving native identity, memory, files, phone pairing and board history.
 
 **Delete an agent:** select its robot or collection card in Agent lounge, then choose **Delete agent** beside **Customize this agent**. The confirmation names the agent and explains the scope. Pending personal missions and crew assignments must finish or be cancelled first. Deletion removes its app history, workspace, Telegram pairing, native identity and its own built-in specialist identities; other personal agents and their completed crew packages remain. OpenClaw's supported deletion command checks shared storage and purges its session store; native files can move to the host's Trash, so this is not secure erasure of backups or external messages. Partial cleanup leaves the agent paused with **Retry deletion**, including after app restart. Deleting the last agent returns to Workshop with a fresh identity for the next creation. The shared model stays installed.
+
+Policy validation includes `tests/test_agent_policy.py` and `tests/policies.cjs`: preset crew without onboarding, protected deny → approve → allow → revoke → deny, policy-update recovery, per-agent isolation and CSRF. Browser network decisions use an explicitly labeled policy fixture, not a real firewall.
 
 Deletion validation includes Python ownership/lifecycle tests, `tests/deletion.cjs` for confirmation, cancellation, retries, multi-tab recovery and 3D collection updates, and an isolated run of the real pinned OpenClaw deletion CLI. Runtime cleanup in browser tests uses an explicit fixture; host-specific OpenShell resources still require host verification.
 
@@ -118,6 +123,8 @@ python3 -m unittest discover -s tests -p 'test*.py'
 python3 tests/fixture_studio.py   # separate terminal, port 8082
 node tests/studio.cjs
 node tests/rooms.cjs
+node tests/policies.cjs
+node tests/deletion.cjs
 node tests/smoke.cjs
 node tests/playground.cjs
 node tests/campus.cjs
@@ -129,6 +136,7 @@ node tests/campus.cjs
 - `src/studio-world.js`: native fullscreen, keyboard controls and full-window fallback.
 - `src/world-scene.js`, `src/campus.*`: Three.js world, characters and accessible hotspots.
 - `scripts/studio.py`, `scripts/serve.py`: durable queue, participant API, shared crew state.
+- `src/studio-policies.js`, `scripts/agent_policy.py`, `scripts/studio_policy.py`: per-agent network approvals, native sandbox lookup and actual policy/log inspection.
 - `scripts/agent_runtime.py`: native OpenClaw workspaces and gateway adapter.
 - `scripts/ops_runtime.py`: pinned runtime, optional search, Telegram and OpenShell setup.
 - `scripts/telegram_bridge.py`: private-chat pairing and transport continuity.

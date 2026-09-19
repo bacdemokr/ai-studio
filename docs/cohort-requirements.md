@@ -4,7 +4,7 @@ This checklist maps the four requirements in the supplied **Jinho and Korea team
 
 | Requirement | Implemented experience | Acceptance still needed |
 | --- | --- | --- |
-| Second working implementation for the cohort | Three rooms for creation/setup, a growing personal-agent lounge and five-role collaboration; up to 12 agents with saved appearances, editable personas/skills, real OpenClaw execution, one shared model, mission control and an editable event brief | Run the complete journey with Qwen or Gemma on the actual Spark; record timing and review output quality. Local protocol fixtures are not LLM acceptance. |
+| Second working implementation for the cohort | Three 3D rooms for creation/setup, a growing personal-agent lounge and five-role collaboration, plus a dedicated per-agent Policies tab; up to 12 agents with saved appearances, editable personas/skills, real OpenClaw execution, one shared model, mission control and an editable event brief | Run the complete journey with Qwen or Gemma on the actual Spark; record timing and review output quality. Local protocol fixtures are not LLM acceptance. |
 | Agent roles, handoffs, shared state and visible evidence | Five distinct native agent identities/workspaces, with custom agents assignable to specialist roles. Inspect shared state shows each role’s actual brief, received prior outputs, timestamps, input/output hashes and saved deliverables. Owner-scoped evidence export. | Inspect the produced event plan and reviewer’s findings on the chosen model. The hash is an app fingerprint, not cryptographic attestation. |
 | Safe attendee controls, reset, fallback and escalation | Queued/waiting cancel; running stop at a model-call boundary; reset only the selected agent’s mission board; recovery with explicit retry; local-tool and labeled-rehearsal fallbacks; evidence download for the facilitator | Rehearse stop during inference, runtime loss and app restart on Spark. A current call can still write files before stopping. Never claim instant GPU cancellation. |
 | NeMoReef comparison and attendee routing | Facilitator guidance in the presenter runbook compares the Studio’s onboarding/skills/crew focus with the supplied Reef brief. | Facilitator confirms the event’s available demos and station or launch URL. No attendee-facing routing control is provided. |
@@ -25,7 +25,9 @@ The Studio provides reset, stop after the active model call, recovery, shared-in
 
 ![Illustrative Security lab walkthrough](security-lab.png)
 
-Open **Access gate** in the 3D world or **Security lab** above it.
+For a live personal-agent exercise, open **Policies**: select an owned agent, choose OpenShell on/off, inspect approved destinations, approve/revoke curated public reads and compare actual access logs with approval history. Protected internet requests use sandboxed curl; the preset multi-agent crew is outside OpenShell. Follow the [host acceptance sequence](live-studio.md#openshell).
+
+The separate concept/evidence lab is available through **Access gate** in the 3D world or **Security lab** above it.
 
 1. **Try the concept** is an explicitly illustrative walkthrough. Attempt a public read, see default denial, propose a narrow operator permission, retry, and discover that another destination remains denied. No command or policy change is executed by these learner buttons.
 2. **Inspect host evidence** displays only a report collected by the operator test. With no report, it says **NO COMPLETE HOST PROOF**. Each step requires both the expected request outcome and a matching policy log for the exact host and `/usr/bin/curl`.
@@ -37,9 +39,9 @@ The probe follows the official [OpenShell policy example at a pinned commit](htt
 ### Boundaries that must remain explicit
 
 - The proof sandbox is separate from native OpenClaw agent sandboxes. A successful probe does **not** establish that all attendee traffic is sandboxed.
-- The configured OpenClaw plugin routes native filesystem operations through OpenShell. Host-side `web_fetch`, `web_search` and the BaC Telegram adapter are not automatically isolated by that integration.
+- The configured OpenClaw plugin routes protected native filesystem and exec operations through OpenShell. Protected agents disable host-side `web_fetch`/`web_search`; standard agents retain their usual tools. The shared LLM and BaC Telegram adapter remain on the host, outside the sandbox network policy.
 - Equipment planning approval, stop/reset and session/file-access guards are application controls. Generated-HTML isolation is a browser control. Neither is an OpenShell enforcement event.
-- To inspect the real agent sandbox after a mission, run `./bac openshell check` and use the host’s OpenShell sandbox/policy logs. Do not weaken a participant’s policy from the public UI.
+- To inspect the real agent sandbox after a mission, run `./bac openshell check` and use the host’s OpenShell sandbox/policy logs. The Policies UI can change only the participant’s own idle personal agents and predefined public-read permissions; host/global policies remain under operator control.
 
 ## Presenter fault checks
 

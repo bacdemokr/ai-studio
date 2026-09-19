@@ -3,6 +3,7 @@ import getpass
 import hashlib
 import json
 import os
+from pathlib import Path
 import platform
 import re
 import shutil
@@ -128,7 +129,7 @@ def configure_search():
             'enabled': True, 'config': {'webSearch': {'apiKey': key, 'mode': 'web'}}}
         config['tools'].setdefault('web', {})['search'] = {'provider': 'brave', 'maxResults': 5}
         for agent in config['agents']['entries'].values():
-            if 'bac-web' in agent.get('skills', []):
+            if 'bac-web' in agent.get('skills', []) and agent.get('sandbox', {}).get('mode') != 'all':
                 allow = agent.setdefault('tools', {}).setdefault('allow', [])
                 if 'web_search' not in allow:
                     allow.append('web_search')
@@ -154,12 +155,22 @@ def openshell(action):
         print(r.cli('sandbox', 'explain'))
         print(r.cli('sandbox', 'list'))
         return
-    print(r.cli('plugins', 'install', '@openclaw/openshell-sandbox@2026.9.4', timeout=240))
+    current = c.read_json(r.config_path())
+    installed = current.get('plugins', {}).get('installs', {}).get('openshell', {})
+    package = Path(installed.get('installPath') or r.root() / 'state/extensions/openshell') / 'package.json'
+    if c.read_json(package, {}).get('version') != r.VERSION:
+        operation = 'update' if installed else 'install'
+        print(r.cli('plugins', operation, '@openclaw/openshell-sandbox@' + r.VERSION, timeout=240))
     with r.config_lock():
         config = c.read_json(r.config_path())
         previous = json.loads(json.dumps(config))
-        config['agents']['defaults']['sandbox'] = {'mode': 'all', 'backend': 'openshell', 'scope': 'session', 'workspaceAccess': 'rw'}
-        config.setdefault('plugins', {}).setdefault('entries', {})['openshell'] = {'enabled': True, 'config': {'from': 'openclaw', 'mode': 'mirror'}}
+        from agent_policy import default_path, policy_document
+        c.write_json(default_path(), policy_document())
+        config['agents']['defaults']['sandbox'] = {'mode': 'off'}
+        entry = config.setdefault('plugins', {}).setdefault('entries', {}).setdefault('openshell', {})
+        entry['enabled'] = True
+        entry.setdefault('config', {}).update({
+            'from': 'openclaw', 'mode': 'mirror', 'autoProviders': False, 'providers': [], 'policy': str(default_path())})
         r.save_config(config)
         try:
             print(r.cli('config', 'validate'))
@@ -167,4 +178,4 @@ def openshell(action):
             r.save_config(previous)
             raise
     c.service('bac-openclaw', 'restart')
-    print('OpenShell backend configured in mirror mode. Run a mission, then ./bac openshell check to inspect the actual sandbox.')
+    print('OpenShell is ready for per-agent opt-in. The preset crew stays outside OpenShell. New protected agents start with no outbound network permissions. Inspect their actual policies in the Policies tab.')

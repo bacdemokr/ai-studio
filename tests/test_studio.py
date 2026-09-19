@@ -17,6 +17,9 @@ class Adapter:
     def __init__(self):
         self.agents = {}
         self.calls = []
+        self.profiles = {}
+        self.permissions = {}
+        self.policy_logs = {}
 
     def status(self):
         return {'ready': True, 'gateway': True, 'model': True}
@@ -25,12 +28,34 @@ class Adapter:
         workspace.mkdir(parents=True, exist_ok=True)
         (workspace / 'inbox').mkdir(exist_ok=True)
         self.agents[agent_id] = workspace
+        self.profiles[agent_id] = dict(profile)
 
     def remove(self, agent_id, workspace):
         self.agents.pop(agent_id, None)
+        self.profiles.pop(agent_id, None)
+
+    def policy_status(self, agent_id, mode, approved):
+        from agent_policy import CATALOG, policy_document, network_rows
+        native = agent_id in self.agents
+        current = self.permissions.get(agent_id, [])
+        return {'mode': mode, 'hostReady': True, 'status': 'standard' if mode == 'standard' else 'awaiting-first-mission' if not native else 'applied' if current == approved else 'needs-review',
+                'catalog': CATALOG, 'requested': approved, 'checkedAt': time.time(), 'testFixture': True,
+                'sandboxes': [{'name': 'fixture-' + agent_id, 'running': True, 'revision': 1, 'loaded': True, 'matchesRequest': current == approved}] if native else [],
+                'rules': network_rows(policy_document(current)), 'logs': self.policy_logs.get(agent_id, [])}
+
+    def policy_apply(self, agent_id, approved):
+        if agent_id not in self.agents:
+            raise RuntimeError('Fixture sandbox does not exist yet')
+        self.permissions[agent_id] = list(approved)
+        return self.policy_status(agent_id, 'openshell', approved)
 
     def respond(self, agent_id, session, prompt):
         self.calls.append((agent_id, session, prompt))
+        if self.profiles.get(agent_id, {}).get('protection') == 'openshell' and 'weather' in prompt.lower():
+            allowed = 'weather' in self.permissions.get(agent_id, [])
+            self.policy_logs.setdefault(agent_id, []).insert(0, {'action': 'allow' if allowed else 'deny', 'host': 'api.open-meteo.com', 'binary': '/usr/bin/curl', 'source': 'Simulated test fixture'})
+            if not allowed:
+                raise RuntimeError('TEST FIXTURE: OpenShell denied api.open-meteo.com. Approve Weather in Policies before retrying.')
         if 'remember' in prompt:
             (self.agents[agent_id] / 'MEMORY.md').write_text('# Saved preferences\nVegetarian, concise English.\n')
         if 'app fixture' in prompt:
@@ -40,6 +65,8 @@ class Adapter:
 
 class StudioTests(unittest.TestCase):
     def setUp(self):
+        agent_runtime._expected_identity.clear()
+        self.addCleanup(agent_runtime._expected_identity.clear)
         self.temp = tempfile.TemporaryDirectory()
         self.adapter = Adapter()
         self.studio = Studio(self.temp.name, self.adapter, start_worker=False)

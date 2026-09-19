@@ -24,7 +24,7 @@ world_scene = (ROOT / 'src/world-scene.js').read_text(encoding='utf-8').replace(
 world_scene = world_scene.replace('/* AGENT_CHARACTER */', (ROOT / 'src/agent-character.js').read_text(encoding='utf-8')).replace('/* WORLD_ROOMS */', (ROOT / 'src/world-rooms.js').read_text(encoding='utf-8'))
 campus_js = '(function(){const exports={};\n' + vendor + '\nconst THREE=exports;\n' + (ROOT / 'src/campus.js').read_text(encoding='utf-8').replace('/* WORLD_SCENE */', world_scene) + '\n})();'
 fragment = fragment.replace('<!-- CAMPUS_SCRIPT -->', '<script>' + campus_js.replace('</script', '<\\/script') + '</script>')
-studio_js = (ROOT / 'src/studio.js').read_text(encoding='utf-8').replace('/* STUDIO_WORLD */', (ROOT / 'src/studio-world.js').read_text(encoding='utf-8')).replace('/* STUDIO_ROOMS */', (ROOT / 'src/studio-rooms.js').read_text(encoding='utf-8')).replace('/* STUDIO_SAFETY */', (ROOT / 'src/studio-safety.js').read_text(encoding='utf-8'))
+studio_js = (ROOT / 'src/studio.js').read_text(encoding='utf-8').replace('/* STUDIO_WORLD */', (ROOT / 'src/studio-world.js').read_text(encoding='utf-8')).replace('/* STUDIO_ROOMS */', (ROOT / 'src/studio-rooms.js').read_text(encoding='utf-8')).replace('/* STUDIO_SAFETY */', (ROOT / 'src/studio-safety.js').read_text(encoding='utf-8')).replace('/* STUDIO_POLICIES */', (ROOT / 'src/studio-policies.js').read_text(encoding='utf-8'))
 fragment = fragment.replace('<!-- STUDIO_SCRIPT -->', '<script>' + studio_js.replace('</script', '<\\/script') + '</script>')
 fragment = fragment.replace('<!-- NVIDIA_THEME -->', '<style>\n' + (ROOT / 'src/nvidia-theme.css').read_text(encoding='utf-8') + '\n</style>')
 version = os.environ.get('BAC_DEMO_VERSION', 'local-preview')

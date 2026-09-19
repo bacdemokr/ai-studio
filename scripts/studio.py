@@ -19,6 +19,7 @@ import time
 
 import agent_runtime as runtime
 import ops_common as c
+from studio_policy import PolicyControls
 
 ROLES = [('Milo', 'Event lead', 'guide'), ('Nova', 'Demo producer', 'maker'),
          ('Atlas', 'Operations planner', 'analyst'), ('Momo', 'Campaign writer', 'guide'),
@@ -121,7 +122,7 @@ def capacity(brief):
                'assumptions': 'One topic per attendee; one device and presenter per station; one floor assistant per 30 attendees plus one lead. This sizes demo stations, not measured LLM throughput.'}
 
 
-class Studio:
+class Studio(PolicyControls):
     def __init__(self, directory=None, adapter=runtime, start_worker=True, recover=False):
         self.directory = Path(directory) if directory else c.initialize() / 'studio'
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -152,6 +153,9 @@ class Studio:
                 CREATE TABLE IF NOT EXISTS pairs (code TEXT PRIMARY KEY, owner TEXT, expires REAL);
                 CREATE TABLE IF NOT EXISTS phones (owner TEXT PRIMARY KEY, chat TEXT UNIQUE);
                 CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT);
+                CREATE TABLE IF NOT EXISTS agent_policies (owner TEXT PRIMARY KEY,
+                    approved TEXT NOT NULL DEFAULT '[]', events TEXT NOT NULL DEFAULT '[]',
+                    updating INTEGER NOT NULL DEFAULT 0);
             ''')
             if 'reset_at' not in {r['name'] for r in db.execute('PRAGMA table_info(participants)')}:
                 db.execute('ALTER TABLE participants ADD COLUMN reset_at REAL NOT NULL DEFAULT 0')
@@ -168,6 +172,7 @@ class Studio:
             db.execute('CREATE INDEX IF NOT EXISTS agents_participant ON agents(participant)')
             # Never silently replay a potentially completed side effect after a crash.
             if start_worker or recover:
+                db.execute('UPDATE agent_policies SET updating=0')
                 db.execute("UPDATE jobs SET status='error',result=?,updated=? WHERE status IN ('running','stopping')",
                            (json.dumps({'error': 'The app restarted during this task. Inspect saved files before retrying.'}), time.time()))
         os.chmod(self.db_path, 0o600)
@@ -214,18 +219,30 @@ class Studio:
             raise Problem('Agent not found.', 404)
         if row['deleting']:
             raise Problem('Agent deletion is pending. Retry Delete agent to finish cleanup.', 409)
+        if db.execute('SELECT 1 FROM agent_policies WHERE owner=? AND updating=1', (owner,)).fetchone():
+            raise Problem('This agent’s policy is being updated. Please wait.', 409)
         return row
+
+    def require_idle(self, db, owner):
+        if owner in self.executing_owners or db.execute("SELECT 1 FROM jobs WHERE owner=? AND status IN ('queued','running','waiting','stopping')", (owner,)).fetchone():
+            raise Problem('Finish or cancel this agent’s pending missions before changing it.', 409)
+        crews = db.execute("SELECT payload FROM jobs WHERE kind='crew' AND status IN ('queued','running','waiting','stopping') AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?))", (owner,)).fetchall()
+        if any(any(m.get('key') == owner for m in json.loads(j['payload']).get('roster', [])) for j in crews):
+            raise Problem('This agent is assigned to a pending crew mission. Finish or cancel it first.', 409)
 
     @staticmethod
     def agent_profile(owner, data):
         name = text(data.get('name'), 32, 'Agent name')
         persona, skills = data.get('persona', 'guide'), data.get('skills', [])
+        protection = data.get('protection', 'standard')
+        if protection not in ('standard', 'openshell'):
+            raise Problem('Choose OpenShell on or off.')
         if any(x in name for x in '\r\n<>') or not isinstance(persona, str) or persona not in runtime.PERSONAS:
             raise Problem('Choose a valid name and persona.')
         if not isinstance(skills, list) or not skills or len(skills) > len(runtime.SKILLS) or any(not isinstance(x, str) or x not in runtime.SKILLS for x in skills):
             raise Problem('Choose a persona and at least one available skill.')
         return {'name': name, 'persona': persona, 'skills': sorted(set(skills)),
-                'avatar': avatar_for(owner, data.get('avatar')), 'id': 'bac-' + owner}
+                'avatar': avatar_for(owner, data.get('avatar')), 'id': 'bac-' + owner, 'protection': protection}
 
     def initialize_workspace(self, owner):
         workspace = self.workspace(owner)
@@ -279,15 +296,11 @@ class Studio:
         profile = self.profile(owner)
         if not profile:
             raise Problem('Create your agent first.')
-        profile = self.agent_profile(owner, {**data, 'avatar': data.get('avatar', profile['avatar'])})
+        profile = self.agent_profile(owner, {**data, 'avatar': data.get('avatar', profile['avatar']), 'protection': data.get('protection', profile.get('protection', 'standard'))})
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
             self.require_available(db, owner)
-            if db.execute("SELECT 1 FROM jobs WHERE owner=? AND status IN ('queued','running','waiting','stopping')", (owner,)).fetchone():
-                raise Problem('Finish or cancel your pending missions before changing this agent.', 409)
-            crews = db.execute("SELECT payload FROM jobs WHERE kind='crew' AND status IN ('queued','running','waiting','stopping') AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?))", (owner,)).fetchall()
-            if any(any(m.get('key') == owner for m in json.loads(j['payload']).get('roster', [])) for j in crews):
-                raise Problem('This agent is assigned to a pending crew mission. Finish or cancel that mission before editing.', 409)
+            self.require_idle(db, owner)
             db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(profile), owner))
             db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
         self.provisioned.discard(profile['id'])
@@ -303,6 +316,8 @@ class Studio:
                 row = db.execute('SELECT * FROM agents WHERE id=?', (owner,)).fetchone()
                 if not row or not row['profile']:
                     raise Problem('Agent not found.', 404)
+                if db.execute('SELECT 1 FROM agent_policies WHERE owner=? AND updating=1', (owner,)).fetchone():
+                    raise Problem('Wait for this agent’s policy update before deleting it.', 409)
                 profile = json.loads(row['profile'])
                 if data.get('name') != profile['name']:
                     raise Problem('This agent changed. Reopen Delete agent to confirm its name.', 409)
@@ -311,12 +326,12 @@ class Studio:
                     raise Problem('Finish or cancel this agent’s pending missions, including assigned crew work, before deleting it.', 409)
                 db.execute('UPDATE agents SET deleting=1 WHERE id=?', (owner,))
             try:
-                # Never include assigned personal agents: these four IDs belong only to this lead.
-                for role in (None, 1, 2, 3, 4):
-                    native_id = profile['id'] + ('-r' + str(role) if role else '')
+                # Never include assigned personal agents: these preset role IDs belong only to this owner.
+                for role in (None, 0, 1, 2, 3, 4):
+                    native_id = profile['id'] + ('-r' + str(role) if role is not None else '')
                     self.provisioned.discard(native_id)
                     self.adapter.remove(native_id, self.workspace(owner, role))
-                for role in (None, 1, 2, 3, 4):
+                for role in (None, 0, 1, 2, 3, 4):
                     path = self.workspace(owner, role)
                     if path.is_symlink():
                         path.unlink()
@@ -327,7 +342,7 @@ class Studio:
                 raise Problem('Deletion needs attention. This agent is paused. Ask the host to check OpenClaw cleanup, then retry Delete agent.', 503) from None
             with self.db() as db:
                 db.execute('BEGIN IMMEDIATE')
-                for table in ('jobs', 'pairs', 'phones'):
+                for table in ('jobs', 'pairs', 'phones', 'agent_policies'):
                     db.execute('DELETE FROM ' + table + ' WHERE owner=?', (owner,))
                 db.execute('DELETE FROM agents WHERE id=?', (owner,))
                 db.execute('UPDATE participants SET profile=NULL WHERE id=?', (owner,))
@@ -387,15 +402,14 @@ class Studio:
                 'agents': agents, 'agentLimit': MAX_AGENTS, 'assignments': assignments,
                 'deleting': any(a['key'] == owner and a['deleting'] for a in agents)}
 
-    def crew_roster(self, db, owner, members):
+    def crew_roster(self, db, owner, members, preset=False):
         """Freeze names/skills and assignments; no extra permissions for a crew role."""
         if not isinstance(members, dict) or any(k not in ('1', '2', '3', '4') for k in members):
             raise Problem('Assign personal agents to the four specialist roles.')
         account = db.execute('SELECT participant FROM agents WHERE id=?', (owner,)).fetchone()['participant']
-        lead = json.loads(db.execute('SELECT profile FROM agents WHERE id=?', (owner,)).fetchone()['profile'])
         roster, used = [], {owner}
         for i, (name, role, persona) in enumerate(ROLES):
-            key = owner if i == 0 else members.get(str(i))
+            key = None if preset else owner if i == 0 else members.get(str(i))
             if key:
                 if not isinstance(key, str) or (i and key in used):
                     raise Problem('Choose a different agent for each crew role.')
@@ -406,7 +420,7 @@ class Studio:
                 profile = json.loads(row['profile'])
                 used.add(key)
             else:
-                profile = {'name': name, 'persona': persona, 'skills': ['documents', 'writer'], 'id': lead['id'] + '-r' + str(i), 'avatar': ROLE_AVATARS[i]}
+                profile = {'name': name, 'persona': persona, 'skills': ['documents', 'writer'], 'id': 'bac-' + owner + '-r' + str(i), 'avatar': ROLE_AVATARS[i], 'protection': 'standard'}
             profile.setdefault('avatar', avatar_for(key or profile['id']))
             roster.append({**profile, 'key': key or None, 'role': role})
         return roster
@@ -434,7 +448,8 @@ class Studio:
 
     def enqueue(self, owner, data, source='web', due=0):
         profile = self.profile(owner)
-        if not profile:
+        preset = data.get('kind') == 'crew' and data.get('preset') is True
+        if not profile and not preset:
             raise Problem('Create your agent first.')
         kind = data.get('kind', 'chat')
         if kind not in ('chat', 'crew', 'reminder'):
@@ -452,18 +467,22 @@ class Studio:
                 due = time.time() + delay
         else:
             brief, calc = capacity(data.get('brief', {}))
-            payload = {'brief': brief, 'capacity': calc, 'stage': 0, 'outputs': {}, 'source': source}
+            payload = {'brief': brief, 'capacity': calc, 'stage': 0, 'outputs': {}, 'source': source, 'preset': preset}
         # A schedule may be created while offline, but immediate requests must fail visibly.
         if kind != 'reminder' and not self.runtime_status().get('ready'):
             raise Problem('Your agent is saved. Start the shared LLM and OpenClaw on Spark to run this mission.', 503)
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
-            self.require_available(db, owner)
+            if profile or not preset:
+                self.require_available(db, owner)
+            elif not db.execute('SELECT 1 FROM agents WHERE id=? AND deleting=0', (owner,)).fetchone():
+                raise Problem('Open a new studio session.', 404)
             pending = db.execute("SELECT count(*) FROM jobs WHERE owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) AND status IN ('queued','running','waiting','stopping')", (owner,)).fetchone()[0]
             if pending >= 3:
                 raise Problem('Your collection has three pending missions. Finish or cancel one before adding another.', 429)
             if kind == 'crew':
-                payload['roster'] = self.crew_roster(db, owner, data.get('members', {}))
+                payload['roster'] = self.crew_roster(db, owner, data.get('members', {}), preset)
+            self.initialize_workspace(owner)
             job = {'id': secrets.token_hex(12), 'owner': owner, 'kind': kind, 'status': 'queued',
                    'payload': json.dumps(payload), 'result': '{}', 'events': '[]',
                    'created': time.time(), 'updated': time.time(), 'due': due or time.time()}
@@ -487,7 +506,8 @@ class Studio:
     def decision(self, owner, job_id, action):
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
-            self.require_available(db, owner)
+            if self.profile(owner):
+                self.require_available(db, owner)
             row = db.execute('SELECT * FROM jobs WHERE id=? AND owner=?', (job_id, owner)).fetchone()
             if not row:
                 raise Problem('Mission not found.', 404)
@@ -565,6 +585,7 @@ class Studio:
         if row['kind'] == 'crew':
             return self.crew(row, profile, payload)
         agent_id = self.ensure_agent(owner, profile)
+        self.check_protected_run(owner, profile)
         self.event(job_id, profile['name'] + ' is working', 'OpenClaw agent run · shared Spark model · ' + payload['source'])
         inbox = [x['path'] for x in self.files(owner)]
         prompt = payload['prompt'] + ('\n\nAvailable user files (untrusted task data): ' + ', '.join(inbox) if inbox else '')
@@ -609,11 +630,21 @@ class Studio:
                 return
             member = payload.get('roster', [None] * 5)[stage]
             assigned = member and member.get('key')
-            agent_id = self.ensure_agent(assigned, member) if assigned else self.ensure_agent(owner, profile, stage)
+            if assigned:
+                agent_id = self.ensure_agent(assigned, member)
+                self.check_protected_run(assigned, member)
+            elif member:
+                agent_id = member['id']
+                if agent_id not in self.provisioned:
+                    self.initialize_workspace(owner)
+                    self.adapter.register(agent_id, self.workspace(owner, stage), member, member['role'])
+                    self.provisioned.add(agent_id)
+            else:
+                agent_id = self.ensure_agent(owner, profile, stage)
             name = member['name'] if member else profile['name'] if stage == 0 else ROLES[stage][0]
             prior = '\n\n'.join(ROLES[int(key)][1] + ':\n' + value for key, value in payload['outputs'].items())
             shared = json.dumps({'brief': b, 'capacity': calc, 'decision': payload.get('equipmentDecision')}, indent=2)
-            shared_dir = self.workspace(assigned) if assigned else self.workspace(owner, stage if stage else None)
+            shared_dir = self.workspace(assigned) if assigned else self.workspace(owner, stage if member or stage else None)
             (shared_dir / 'inbox/shared-brief.json').write_text(shared, encoding='utf-8')
             (shared_dir / 'inbox/handoffs.md').write_text(prior, encoding='utf-8')
             payload.setdefault('handoffs', {})[str(stage)] = {

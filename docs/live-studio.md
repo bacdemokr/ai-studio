@@ -6,7 +6,7 @@ Browser → session/CSRF-protected BaC API → durable SQLite queue → OpenClaw
 
 OpenClaw 2026.9.4 is pinned. The gateway listens on `127.0.0.1:18789`, vLLM on `127.0.0.1:8000`. The gateway bearer token is an operator credential and stays in the host’s mode-0600 configuration file. The browser receives neither the token nor a raw gateway proxy.
 
-Each personal agent has a random OpenClaw agent ID, native `IDENTITY.md`, `SOUL.md`, `USER.md`, `AGENTS.md`, `MEMORY.md` and `skills/bac-*/SKILL.md`. Registration happens lazily on the first task. Persona/skill changes take effect on the next task. The selected agent leads the crew. The other four roles can use ready-made specialists or other agents from the attendee’s collection. Assignments are frozen in each mission’s roster; each keeps its native workspace and equipped tools. Specialist crew turns use a mission-specific conversation; personal web and phone messages retain the agent’s stable conversation. All have a model allowlist containing only `bac-vllm/bac-local`.
+Each personal agent has a random OpenClaw agent ID, native `IDENTITY.md`, `SOUL.md`, `USER.md`, `AGENTS.md`, `MEMORY.md` and `skills/bac-*/SKILL.md`. Registration happens lazily on the first task. Persona/skill changes take effect on the next task. The preset crew uses Milo plus four specialists, all explicitly outside OpenShell, and needs no personal onboarding. In a custom crew the selected personal agent leads, with optional assignments from the attendee’s collection. Personal assignments retain their protection mode. Assignments are frozen in each mission’s roster; each keeps its native workspace and equipped tools. Specialist crew turns use a mission-specific conversation; personal web and phone messages retain the agent’s stable conversation. All have a model allowlist containing only `bac-vllm/bac-local`.
 
 The serial queue and `agents.defaults.maxConcurrent=1` limit model concurrency. A waiting human decision releases the queue for other work. A restart marks interrupted tasks as needing attention rather than silently replaying potentially completed work. Due tasks persist, but the host must be running. The service uses a process lock to avoid two app workers sharing the same data directory.
 
@@ -36,13 +36,29 @@ This is a BaC channel adapter around the OpenClaw HTTP API. It is not the native
 
 ### Web search
 
-Website reading (`web_fetch`) and Open-Meteo weather work without a search account. `./bac search configure` stores a Brave API key under the pinned release’s canonical `plugins.entries.brave.config.webSearch` and enables `web_search` only for agents with the Web explorer skill. It adds no second LLM. The host owns any provider charges. Search credentials were not available for live validation here.
+Website reading (`web_fetch`) and Open-Meteo weather work without a search account. `./bac search configure` stores a Brave API key under the pinned release’s canonical `plugins.entries.brave.config.webSearch` and enables `web_search` only for standard agents with the Web explorer skill. OpenShell-protected agents instead use sandboxed curl and the curated Wikipedia search permission. It adds no second LLM. The host owns any provider charges. Search credentials were not available for live validation here.
 
 ### OpenShell
 
-OpenShell is separate from OpenClaw. Start with an installed, working OpenShell CLI and gateway; then `./bac openshell enable` installs `@openclaw/openshell-sandbox@2026.9.4`, selects the `openshell` sandbox backend, session scope, read/write workspace access and **mirror** mode. Mirror mode matters because the app writes uploads/shared briefs on the host; remote mode seeds once and would not reflect those updates reliably.
+OpenShell is separate from OpenClaw. Start with an installed, working OpenShell CLI and gateway; then run `./bac openshell enable`. It installs `@openclaw/openshell-sandbox@2026.9.4` if needed, prepares a host-owned deny-by-default policy, and uses **mirror** mode. Run it once again after updating from a release with global sandbox defaults. It preserves the operator's gateway/workspace selection. The default is OpenShell off; only personal agents explicitly selecting protection get `mode=all`, backend `openshell`, **agent scope** and read/write workspace access. Every preset crew role explicitly uses `mode=off`.
 
-`./bac openshell check` reads actual OpenShell gateway state and OpenClaw sandbox explanations/listings. After running a task, inspect the created sandbox and its policy on the host. Configuration alone is not enforcement proof, and the UI says so. Native filesystem tools route through the sandbox integration; host-side HTTP tools and the BaC Telegram adapter are not automatically isolated by it. The app’s equipment decision is an application approval, not an OpenShell network-policy approval. Browser automation is not enabled: the pinned OpenShell backend does not support sandbox browser mode.
+The Workshop and Policies tab save a personal agent's protection choice. The next mission writes its native configuration. A live `agents.list` identity fingerprint must match the new tool/sandbox configuration before sending a model request, including when switching off → on. A missing OpenShell setup fails closed. Mirror mode keeps host uploads and shared briefs available inside the sandbox.
+
+Protected agents have host-side `web_fetch` and `web_search` disabled. Their internet reads use native `exec` with `host=sandbox` and `/usr/bin/curl`; a caller cannot redirect that configured executor to the gateway. Automatic provider attachment is disabled, and new sandboxes start with an empty network allowlist. This limits **tool network access**: shared inference and the BaC Telegram transport run on the host and are outside this policy. Browser automation is not enabled.
+
+**Policies** lists four curated groups: Open-Meteo weather/geocoding, Zurich visitor pages, Wikipedia search, and the public GitHub API. Approval permits only the listed HTTPS destinations and read-only REST access for `/usr/bin/curl`. These demo controls never accept arbitrary YAML, shell commands, providers or credentials. Selecting a skill alone grants no network access. Switching off retains earlier approval choices; re-enabling requires checking the current sandbox policy before a mission. If a sandbox was recreated, reapply saved approvals explicitly.
+
+The API resolves the participant-owned native agent to sandbox names through `openclaw sandbox list --json`; it never guesses or accepts a browser-supplied sandbox name. It updates that sandbox with `openshell policy set --wait`, then verifies the effective policy and its **loaded** revision against the desired permissions. Host/global policy is reported for review and is never overwritten. Pending, failed or mismatched updates remain unconfirmed and block protected missions. Mutations require idle agents, owner/session checks and CSRF. Approval history is stored separately from sanitized OpenShell access logs; no raw logs or credentials reach the browser.
+
+`./bac openshell check` reports gateway state and native sandboxes. Configuration alone is not enforcement proof. On the actual Spark, perform this acceptance sequence:
+
+1. Run the preset crew before onboarding; confirm all five roles are OpenShell off.
+2. Create a personal agent with Weather lookout and Web explorer, with OpenShell on. Ask for Zurich's current weather. Its first task provisions the sandbox; confirm a matching deny log in Policies, not merely a generic fetch failure.
+3. Approve **Weather & city lookup**, verify the loaded revision and exact two destinations, then retry and inspect the live result and matching allow log.
+4. Request Wikipedia search while it remains unapproved; confirm it is denied. Revoke weather, retry weather, and confirm denial again.
+5. Switch this agent off and run its standard weather tool; another protected agent must remain blocked. Reload and check saved choices. Do not change a mode while that agent has pending work.
+
+Local tests use explicit model/policy fixtures for this sequence. Actual sandbox enforcement, endpoint responses, filesystem restrictions and real model behavior still require the Spark checks above.
 
 Without OpenShell, native filesystem tools are restricted to each agent’s workspace (`tools.fs.workspaceOnly=true`). Exec, process, browser, nodes, gateway, cron, messaging and cross-agent session tools are denied; the BaC orchestrator performs controlled handoffs. These app/native tool guards are not an OS isolation boundary. Use this deployment on a trusted workshop network, not as a public adversarial multi-tenant service.
 
@@ -52,6 +68,7 @@ Without OpenShell, native filesystem tools are restricted to each agent’s work
 
 - `models/`, `runtime/vllm-env/`: model weights and vLLM installation.
 - `openclaw/node/`, `openclaw/package/`: private supported Node and pinned OpenClaw.
+- `openclaw/policies/`: host-owned initial and per-agent policy documents, outside editable agent workspaces.
 - `openclaw/state/`: native configuration and OpenClaw conversation state.
 - `studio/studio.sqlite`: participants, personal agents, queue, handoffs, schedules and pairing state.
 - `studio/workspaces/`: persona/skills, uploads, memory and output files.
@@ -72,6 +89,9 @@ Implementation was checked against the upstream tag, not mutable latest document
 - [Agent entries schema](https://github.com/openclaw/openclaw/blob/v2026.9.4/src/config/zod-schema.agent-entry-base.ts) and [tool policy types](https://github.com/openclaw/openclaw/blob/v2026.9.4/src/config/types.tools.ts).
 - [Native agent workspaces](https://github.com/openclaw/openclaw/blob/v2026.9.4/docs/concepts/agent-workspace.md).
 - [OpenShell integration](https://github.com/openclaw/openclaw/blob/v2026.9.4/docs/gateway/openshell.md).
+- [OpenShell CLI policy inspection and loaded revision contract](https://github.com/NVIDIA/OpenShell/blob/fa0bfa490e42c87a74a70be6ebb40faee7fb8faa/crates/openshell-cli/src/run.rs), and [canonical policy schema](https://github.com/NVIDIA/OpenShell/blob/fa0bfa490e42c87a74a70be6ebb40faee7fb8faa/crates/openshell-policy-schema/src/lib.rs).
 - [Brave configuration](https://github.com/openclaw/openclaw/blob/v2026.9.4/docs/tools/brave-search.md).
 
 Actual local validation used the installed pinned gateway with a protocol fixture behind `bac-local`, not a real LLM: agent registration (with a read-only discovery barrier for hot reload), native write/read tools, persistent memory, repeated HTTP turns and a complete five-agent crew with persisted handoffs passed. See `tests/fixture_model.py`. Spark GPU/model quality and real optional integrations still need host-side acceptance testing.
+
+The per-agent sandbox/tool configuration was also validated with the real pinned gateway in an isolated temporary state directory. Live `agents.list` reflected off → on → off configuration fingerprints. This checks native configuration and reload, not OpenShell execution or network enforcement.

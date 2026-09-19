@@ -87,6 +87,8 @@ class Handler(SimpleHTTPRequestHandler):
             if parsed.path == '/api/security':
                 from security_lab import public_report
                 return self.json_response(public_report(studio.directory))
+            if parsed.path == '/api/agent-policy':
+                return self.json_response(studio.policy_report(owner))
             if parsed.path == '/api/evidence':
                 return self.json_response(studio.evidence(owner, parse_qs(parsed.query).get('id', [''])[0]))
             if parsed.path == '/api/file':
@@ -124,6 +126,7 @@ class Handler(SimpleHTTPRequestHandler):
                 '/api/onboard': lambda: studio.onboard(owner, data),
                 '/api/profile': lambda: studio.configure(owner, data),
                 '/api/delete-agent': lambda: studio.delete_agent(owner, data),
+                '/api/agent-policy': lambda: studio.policy_change(owner, data),
                 '/api/jobs': lambda: studio.enqueue(owner, data),
                 '/api/upload': lambda: studio.upload(owner, data),
                 '/api/decision': lambda: studio.decision(owner, data.get('id'), data.get('action')),
