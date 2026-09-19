@@ -1,7 +1,7 @@
 // Three places in one studio: creation, a growing personal collection, and crew work.
 const appearanceColors={green:'#76b900',cyan:'#55bfff',amber:'#f4b34f',coral:'#ff8873',violet:'#b49aff',ice:'#cbddea'};
 const roomCopy={
-  workshop:['ONBOARDING / CREATE & CONNECT','A personality you can see.','Choose a body, a personality and useful skills. Watch your teammate take shape.'],
+  workshop:['HIRING / YOUR NEXT TEAMMATE','A personality you can see.','Choose a look, a working style and a voice. Then decide what your agent can help you with.'],
   lounge:['AGENT LOUNGE / YOUR COLLECTION','Your people. Your possibilities.','Every agent you create gets a place here. Select one to talk, teach it a skill or give it a mission.'],
   mission:['MISSION ROOM / READY-MADE CREW','Different strengths. One shared brief.','Five specialists, ready to work. The preset crew runs without OpenShell restrictions.'],
   policies:['POLICIES / PERSONAL AGENT ACCESS','Useful skills. Deliberate access.','Choose the boundaries for your own agents. Inspect what is approved and what OpenShell actually enforces.']
@@ -11,7 +11,14 @@ function updateDraft(){
   root.querySelectorAll('[data-body]').forEach(b=>{if(b.tagName==='BUTTON')b.setAttribute('aria-pressed',b.dataset.body===draftAvatar.body);});
   root.querySelectorAll('[data-avatar-color]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.avatarColor===draftAvatar.color));
   draftAvatar.accessory=el('accessory').value;
-  window.BacCampus?.setDraft({name:el('name').value.trim()||'Your new agent',persona,avatar:{...draftAvatar}});
+  const verbosity=el('verbosity').value;
+  root.querySelectorAll('[data-tone]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.tone===draftTone));
+  const opening={kind:'Happy to help.',direct:'Here’s the plan.',playful:'Let’s give that idea some legs.',cynical:'Optimism is nice. A plan helps.'};
+  const action={guide:'We’ll turn your idea into a plan.',maker:'We’ll turn your idea into a prototype.',analyst:'We’ll compare the options and check the evidence.'};
+  const detail={guide:'First, we’ll define the goal. Then we’ll break it into clear steps, with a next action for each.',maker:'First, we’ll sketch a small version. Then we’ll build it, try it out, and see what needs improving.',analyst:'First, we’ll define the question. Then we’ll collect sources, compare tradeoffs, and flag what we still don’t know.'};
+  el('voice-preview').textContent=opening[draftTone]+(verbosity==='brief'?'':(' '+action[persona]))+(verbosity==='verbose'?' '+detail[persona]:'');
+  el('voice-preview-label').textContent='SAMPLE REPLY · '+tones[draftTone][0].toUpperCase()+' / '+verbosityLabels[verbosity].toUpperCase();
+  window.BacCampus?.setDraft({name:el('name').value.trim()||'Your new agent',persona,tone:draftTone,verbosity,avatar:{...draftAvatar}});
 }
 function fillCreator(creating){
   draftMode=creating?'new':'edit';draftOwner=agentId;
@@ -23,13 +30,14 @@ function fillCreator(creating){
   const p=creating?{name,persona:['guide','maker','analyst'][n%3],skills:Object.keys(titles),avatar:defaults}:data.profile;
   if(!p)return fillCreator(true);
   el('name').value=p.name;persona=p.persona;draftAvatar={...(p.avatar||defaults)};el('accessory').value=draftAvatar.accessory;
+  draftTone=p.tone||'kind';el('verbosity').value=p.verbosity||'balanced';
   root.querySelectorAll('[data-persona]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.persona===persona));
   el('skill-picker').querySelectorAll('input').forEach(i=>i.checked=p.skills.includes(i.value));
   el('onboarding').querySelectorAll('[name=protection]').forEach(i=>i.checked=i.value===(p.protection||'standard'));
-  el('creator-title').textContent=creating?'Meet your next teammate.':'Make '+p.name+' your own.';
-  el('creator-note').textContent=creating?'Their own look. Their own memory. Your choice of skills.':'Update the look, persona and skills. Memory and files stay with this agent.';
-  el('create').textContent=creating?'Bring my agent to life ↗':'Save my agent ↗';el('cancel-create').hidden=!data.profile;el('create').disabled=creating&&n>=(data.agentLimit||12);
-  updateDraft();
+  el('creator-title').textContent=creating?'Hire your next teammate.':'Make '+p.name+' your own.';
+  el('creator-note').textContent=creating?'A helpful partner, with a voice of its own.':'Update its look, working style, voice and abilities. Memory and files stay with this agent.';
+  el('create').textContent=creating?'Hire my agent ↗':'Save my agent ↗';el('cancel-create').hidden=!data.profile;el('create').disabled=creating&&n>=(data.agentLimit||12);
+  updateDraft();el('workshop').scrollTop=0;
 }
 function setRoom(next,options={}){
   if(!roomCopy[next])return;
@@ -51,9 +59,9 @@ function renderRoomVisibility(){
   el('experiences').hidden=!lounge;el('workspace').hidden=workshop||policies;el('safety-bar').hidden=policies;
   root.querySelector('.studio-crew-invite').hidden=!lounge;
   el('campus-tab').setAttribute('aria-pressed',!board);el('board-tab').setAttribute('aria-pressed',board);
-  const action=el('room-action');action.hidden=workshop&&!data.profile;action.textContent=mission?'Launch a crew mission ↗':lounge?'＋ Create an agent':'Back to my lounge ↗';
+  const action=el('room-action');action.hidden=workshop&&!data.profile;action.textContent=mission?'Launch a crew mission ↗':lounge?'＋ Hire an agent':'Back to my lounge ↗';
   document.getElementById('campus-roster').hidden=!mission;
-  document.getElementById('campus-location').textContent=workshop?'ONBOARDING / LIVE APPEARANCE PREVIEW':lounge?'YOUR LOUNGE / '+(data.agents?.length||0)+' AGENTS':document.getElementById('campus-location').textContent;
+  document.getElementById('campus-location').textContent=workshop?'HIRING / MEET YOUR NEXT AGENT':lounge?'YOUR LOUNGE / '+(data.agents?.length||0)+' AGENTS':document.getElementById('campus-location').textContent;
   if(workshop)document.getElementById('campus-motion-status').textContent='Your draft · choose a look and bring it to life';
   if(lounge)document.getElementById('campus-motion-status').textContent=data.agents?.length?'Your actual agents · select a teammate to open its workspace':'A place for every agent you create';
 }
@@ -73,6 +81,8 @@ el('color-picker').innerHTML=Object.entries(appearanceColors).map(([name,color])
 el('body-picker').onclick=e=>{const b=e.target.closest('[data-body]');if(b){draftAvatar.body=b.dataset.body;updateDraft();}};
 el('color-picker').onclick=e=>{const b=e.target.closest('[data-avatar-color]');if(b){draftAvatar.color=b.dataset.avatarColor;updateDraft();}};
 el('accessory').onchange=updateDraft;el('name').addEventListener('input',updateDraft);
+el('verbosity').onchange=updateDraft;
+el('tone-picker').onclick=e=>{const button=e.target.closest('[data-tone]');if(button){draftTone=button.dataset.tone;updateDraft();}};
 root.querySelectorAll('[data-persona]').forEach(button=>button.onclick=()=>{persona=button.dataset.persona;root.querySelectorAll('[data-persona]').forEach(b=>b.setAttribute('aria-pressed',b===button));updateDraft();});
 el('rooms').onclick=e=>{const b=e.target.closest('[data-room]');if(b)setRoom(b.dataset.room);};
 root.addEventListener('bac:world-room',e=>setRoom(e.detail.room,{fromWorld:true}));
@@ -105,13 +115,13 @@ el('delete-agent').onclick=()=>{
 el('connection-setup').onclick=setup;el('connection-security').onclick=()=>setRoom('policies');
 el('onboarding').onsubmit=async e=>{
   e.preventDefault();const mode=draftMode,target=draftOwner,first=!data.agents?.length;
-  const payload={name:el('name').value,persona,skills:[...el('skill-picker').querySelectorAll('input:checked')].map(x=>x.value),avatar:{...draftAvatar},protection:el('onboarding').querySelector('[name=protection]:checked').value};
+  const payload={name:el('name').value,persona,tone:draftTone,verbosity:el('verbosity').value,skills:[...el('skill-picker').querySelectorAll('input:checked')].map(x=>x.value),avatar:{...draftAvatar},protection:el('onboarding').querySelector('[name=protection]:checked').value};
   el('create').disabled=true;
   try{
     const result=await api(mode==='edit'?'profile':first?'onboard':'agents',payload,target);
     if(mode==='new'&&!first)await switchAgent(result.agentId);else await refresh();
     setRoom('lounge');el('room-heading').scrollIntoView({behavior:'smooth',block:'start'});
-    alert(mode==='edit'?'Your agent’s look, persona and skills are saved.':payload.name+' has joined your lounge. Give your new teammate a mission.');
+    alert(mode==='edit'?'Your agent’s look, working style, voice and abilities are saved.':payload.name+' has joined your lounge. Give your new teammate a mission.');
   }catch(error){alert(error.message);}finally{el('create').disabled=draftMode==='new'&&(data.agents?.length||0)>=(data.agentLimit||12);}
 };
 // Selecting a resident updates its workspace without moving the visitor's view.

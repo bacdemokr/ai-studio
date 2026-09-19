@@ -1,6 +1,6 @@
 // One persistent floor plan. Room changes move the camera, never swap worlds.
 const studioRooms={
-  workshop:{group:workshopRoom,x:0,z:18,title:'Onboarding',verb:'Create & connect',number:'01'},
+  workshop:{group:workshopRoom,x:0,z:18,title:'Hiring',verb:'Meet your next agent',number:'01'},
   lounge:{group:loungeRoom,x:0,z:0,title:'Agent lounge',verb:'Meet your agents',number:'02'},
   mission:{group:missionRoom,x:24,z:0,title:'BaC mission room',verb:'Work as a crew',number:'03'}
 };

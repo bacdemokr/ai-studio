@@ -3,10 +3,14 @@
   const el = name => document.getElementById('studio-' + name);
   const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const titles = {weather:'Weather lookout',web:'Web explorer',documents:'Document detective',builder:'Mini app maker',writer:'Campaign studio',memory:'Remember me'};
-  const personas = {guide:'Warm, patient and clear.',maker:'Inventive, practical and curious.',analyst:'Precise, evidence-led and careful.'};
+  const personas = {guide:'Explains ideas and turns them into practical plans.',maker:'Turns ideas into drafts, prototypes and small apps.',analyst:'Researches questions and compares the evidence.'};
+  const tones={kind:['Kind','Warm & encouraging'],direct:['Direct','Clear & candid'],playful:['Playful','Light & witty'],cynical:['Cynical','Dry humor & skepticism']};
+  const verbosityLabels={brief:'Brief',balanced:'Balanced',verbose:'Detailed'};
+  const capabilities={weather:['Check the weather','Conditions & practical advice'],web:['Research the web','Read sites & cite sources'],documents:['Read my documents','Summaries & answers'],builder:['Build small apps','Ideas into interactive tools'],writer:['Write content','Invitations, posts & drafts'],memory:['Remember preferences','Personalize future answers']};
   const roles = [['Milo','Event lead','Turns an idea into a shared brief.'],['Nova','Demo producer','Designs participant actions and visible outcomes.'],['Atlas','Operations planner','Sizes equipment and staffing; surfaces gaps.'],['Momo','Campaign writer','Uses the approved plan to draft invitations.'],['Pico','Evidence reviewer','Checks the work of the other specialists.']];
   const defaultNames=roles.map(r=>r[0]);
-  const personaLabels={guide:'Guide',maker:'Maker',analyst:'Analyst'};
+  const personaLabels={guide:'Helper',maker:'Creator',analyst:'Researcher'};
+  function voiceSummary(p){return (tones[p.tone]?.[0]||'Kind')+' · '+(verbosityLabels[p.verbosity]||'Balanced')+' answers';}
   const missions = [
     {id:'builder',icon:'⌘',title:'Make something playable',sub:'An idea → a tiny working app',tag:'CREATE',color:'#b4dc83',prompt:'Build a polished reaction-time game as a single self-contained HTML file. Use a dark NVIDIA-inspired style, green action buttons, keyboard and touch controls, and a personal best score. Explain how to play. Save it in artifacts/.'},
     {id:'weather',icon:'☀',title:'Plan around the weather',sub:'Live conditions → useful advice',tag:'EXPLORE',color:'#e8cd80',prompt:'Check the current weather in Zurich using your weather skill. Tell me when the observation was made and whether I should bring a jacket for a walk before BaC. Cite the actual source.'},
@@ -18,6 +22,7 @@
   let csrf = '', data = {profile:null,jobs:[],files:[],memory:'',phone:false}, runtime = {}, persona = 'guide', skill = null, selectedJob = null, resultKey = '', board = false, connected = false, busy = false;
   let agentId='',changingAgent=false,removingAgent=false,pendingWrites=0,refreshVersion=0,collectionKey='';
   let room='workshop',roomsReady=false,draftMode='new',draftOwner='',draftAvatar={body:'classic',color:'green',accessory:'antenna'};
+  let draftTone='kind';
   let policySnapshot=null,policyVersion=0,policyLoading=false,policySaving=false;
   let selectedCrewRole=0;
   root.classList.add('studio-enabled');
@@ -35,7 +40,8 @@
   el('experiences').after(el('workspace'));
   el('workspace').after(root.querySelector('.studio-crew-invite'));el('collection').after(layout);layout.after(el('safety-bar'));el('safety-bar').after(el('connections'));root.querySelector('.campus-heading').append(el('runtime'));el('journey').hidden=true;layout.after(el('collection'));
   el('collection').after(el('policies'));
-  el('skill-picker').innerHTML=Object.entries(titles).map(([key,title])=>`<label><input type="checkbox" value="${key}" checked>${title}</label>`).join('');
+  el('skill-picker').innerHTML=Object.entries(capabilities).map(([key,[title,detail]])=>`<label><input type="checkbox" value="${key}" checked><span><strong>${title}</strong><small>${detail}</small></span></label>`).join('');
+  el('tone-picker').innerHTML=Object.entries(tones).map(([key,[title,detail]])=>`<button type="button" data-tone="${key}" aria-pressed="${key==='kind'}"><strong>${title}</strong><small>${detail}</small></button>`).join('');
   el('missions').innerHTML=missions.map(m=>`<button class="studio-mission" data-studio-mission="${m.id}" aria-pressed="false" style="--mission-color:${m.color}"><span>${m.icon}</span><em>${m.tag}</em><strong>${m.title}</strong><small>${m.sub}</small></button>`).join('');
   let alertTimer=null;
   function dismissAlert(){clearTimeout(alertTimer);alertTimer=null;el('alert').hidden=true;}
@@ -101,7 +107,7 @@
     if(profile)roles[0][0]=profile.name;
     renderCollection();
     el('onboarding').hidden=false;el('companion').hidden=!profile;el('lounge-empty').hidden=!!profile;
-    if(profile){el('agent-name').textContent=profile.name;el('personality').textContent=personas[profile.persona];el('equipped').innerHTML=profile.skills.map(s=>'<span>'+escape(titles[s])+'</span>').join('');}
+    if(profile){el('agent-name').textContent=profile.name;el('personality').textContent=personaLabels[profile.persona]+' · '+voiceSummary(profile);el('equipped').innerHTML=profile.skills.map(s=>'<span>'+escape(titles[s])+'</span>').join('');}
     const active=data.jobs.find(j=>['running','stopping'].includes(j.status))||data.jobs.find(j=>['queued','waiting'].includes(j.status));
     el('task-state').textContent=active?({'running':'WORKING ON YOUR MISSION','stopping':'STOPPING AFTER THE ACTIVE CALL','queued':active.due>Date.now()/1000?'FOLLOW-UP SCHEDULED':'IN THE SHARED MODEL QUEUE','waiting':'YOUR DECISION IS NEEDED'}[active.status]):'READY FOR A MISSION';
     el('task-summary').textContent=active?(active.kind==='crew'?'Your specialists are building the event plan.':active.payload.prompt.slice(0,135)):'Choose a mission below, or ask for something of your own.';

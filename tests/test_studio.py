@@ -99,6 +99,63 @@ class StudioTests(unittest.TestCase):
         job = restarted.enqueue(self.owner, {'kind': 'crew', 'brief': {}, 'members': {'1': key}})
         self.assertEqual(restarted.state(self.owner)['jobs'][0]['payload']['roster'][1]['avatar'], appearance)
 
+    def test_voice_persists_reprovisions_and_follows_crew(self):
+        created = self.studio.add_agent(self.owner, {'name': 'Skeptic', 'persona': 'analyst',
+                         'skills': ['documents'], 'tone': 'cynical', 'verbosity': 'verbose'})
+        key = created['agentId']
+        restarted = Studio(self.temp.name, self.adapter, start_worker=False)
+        for profile in (restarted.profile(key), next(a for a in restarted.state(self.owner)['agents'] if a['key'] == key)):
+            self.assertEqual((profile['tone'], profile['verbosity']), ('cynical', 'verbose'))
+        restarted.ensure_agent(key, restarted.profile(key))
+        native_id = created['profile']['id']
+        self.assertIn(native_id, restarted.provisioned)
+        # Older clients that omit the new settings must not overwrite them.
+        restarted.configure(key, {'name': 'Skeptic II', 'persona': 'maker', 'skills': ['writer']})
+        self.assertNotIn(native_id, restarted.provisioned)
+        self.assertEqual(restarted.profile(key)['tone'], 'cynical')
+        self.assertEqual(restarted.profile(key)['verbosity'], 'verbose')
+        restarted.enqueue(self.owner, {'kind': 'crew', 'brief': {}, 'members': {'1': key}})
+        roster = restarted.state(self.owner)['jobs'][0]['payload']['roster']
+        self.assertEqual((roster[1]['tone'], roster[1]['verbosity']), ('cynical', 'verbose'))
+        self.assertEqual((roster[2]['tone'], roster[2]['verbosity']), ('kind', 'balanced'))
+        restarted.execute(restarted.next_job())
+        self.assertEqual(self.adapter.profiles[native_id]['tone'], 'cynical')
+        self.assertEqual(self.adapter.profiles[native_id]['verbosity'], 'verbose')
+
+    def test_legacy_voice_defaults_and_invalid_voice_rejection(self):
+        profile = self.studio.profile(self.owner)
+        profile.pop('tone')
+        profile.pop('verbosity')
+        with self.studio.db() as db:
+            db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(profile), self.owner))
+        for result in (self.studio.profile(self.owner), self.studio.state(self.owner)['agents'][0]):
+            self.assertEqual((result['tone'], result['verbosity']), ('kind', 'balanced'))
+        for field in ('tone', 'verbosity'):
+            for bad in ('invented', None, [], {}, True):
+                with self.subTest(field=field, bad=bad), self.assertRaises(Problem):
+                    self.studio.configure(self.owner, {**profile, field: bad})
+        self.assertEqual(self.studio.profile(self.owner)['tone'], 'kind')
+
+    def test_native_voice_configuration_preserves_memory_and_permissions(self):
+        workspace = Path(self.temp.name) / 'voice-workspace'
+        profile = {'name': 'Sage', 'persona': 'analyst', 'skills': ['documents'], 'tone': 'cynical', 'verbosity': 'verbose'}
+        with patch('agent_runtime.root', return_value=Path(self.temp.name) / 'native'):
+            agent_runtime.save_config(agent_runtime.initial_config())
+            agent_runtime.register('bac-voice', workspace, profile)
+            soul = (workspace / 'SOUL.md').read_text()
+            self.assertIn('dry humor', soul)
+            self.assertIn('detailed answer', soul)
+            self.assertIn('explicit request', soul)
+            self.assertNotIn('Be concise.', (workspace / 'AGENTS.md').read_text())
+            before = json.loads(agent_runtime.config_path().read_text())['agents']['entries']['bac-voice']['tools']
+            (workspace / 'MEMORY.md').write_text('Keep my vegetarian preference.')
+            agent_runtime.register('bac-voice', workspace, {**profile, 'tone': 'kind', 'verbosity': 'brief'})
+            self.assertIn('warm, patient', (workspace / 'SOUL.md').read_text())
+            self.assertIn('short answer', (workspace / 'SOUL.md').read_text())
+            self.assertNotIn('dry humor', (workspace / 'SOUL.md').read_text())
+            self.assertEqual((workspace / 'MEMORY.md').read_text(), 'Keep my vegetarian preference.')
+            self.assertEqual(json.loads(agent_runtime.config_path().read_text())['agents']['entries']['bac-voice']['tools'], before)
+
     def test_legacy_appearance_is_stable_and_invalid_appearance_is_rejected(self):
         profile = self.studio.profile(self.owner)
         profile.pop('avatar')

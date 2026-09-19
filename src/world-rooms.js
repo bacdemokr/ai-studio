@@ -33,5 +33,5 @@ function animateRooms(dt){
 }
 function roomHitTargets(){return room==='lounge'?residentMeshes:[];}
 function selectRoomObject(object){if(object.userData.resident)root.dispatchEvent(new CustomEvent('bac:collection-select',{detail:object.userData.resident}));}
-function residentInfo(){return residents.map(r=>({key:r.key,avatar:r.appearance,persona:r.persona,position:r.group.position.toArray(),activity:r.activity,speech:r.speechText||null}));}
+function residentInfo(){return residents.map(r=>({key:r.key,avatar:r.appearance,persona:r.persona,tone:r.tone,verbosity:r.verbosity,position:r.group.position.toArray(),activity:r.activity,speech:r.speechText||null}));}
 setDraft(draftProfile);

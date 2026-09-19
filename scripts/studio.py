@@ -234,6 +234,11 @@ class Studio(PolicyControls):
     def agent_profile(owner, data):
         name = text(data.get('name'), 32, 'Agent name')
         persona, skills = data.get('persona', 'guide'), data.get('skills', [])
+        tone, verbosity = data.get('tone', 'kind'), data.get('verbosity', 'balanced')
+        if not isinstance(tone, str) or tone not in runtime.TONES:
+            raise Problem('Choose an available speaking tone.')
+        if not isinstance(verbosity, str) or verbosity not in runtime.VERBOSITIES:
+            raise Problem('Choose an available answer length.')
         protection = data.get('protection', 'standard')
         if protection not in ('standard', 'openshell'):
             raise Problem('Choose OpenShell on or off.')
@@ -241,7 +246,7 @@ class Studio(PolicyControls):
             raise Problem('Choose a valid name and persona.')
         if not isinstance(skills, list) or not skills or len(skills) > len(runtime.SKILLS) or any(not isinstance(x, str) or x not in runtime.SKILLS for x in skills):
             raise Problem('Choose a persona and at least one available skill.')
-        return {'name': name, 'persona': persona, 'skills': sorted(set(skills)),
+        return {'name': name, 'persona': persona, 'tone': tone, 'verbosity': verbosity, 'skills': sorted(set(skills)),
                 'avatar': avatar_for(owner, data.get('avatar')), 'id': 'bac-' + owner, 'protection': protection}
 
     def initialize_workspace(self, owner):
@@ -261,7 +266,7 @@ class Studio(PolicyControls):
             if not db.execute('SELECT id FROM agents WHERE participant=? AND profile IS NOT NULL', (participant,)).fetchone():
                 raise Problem('Create your first agent before adding another.')
             if db.execute('SELECT count(*) FROM agents WHERE participant=?', (participant,)).fetchone()[0] >= MAX_AGENTS:
-                raise Problem('This workshop supports up to %d personal agents per attendee.' % MAX_AGENTS, 409)
+                raise Problem('This studio supports up to %d personal agents per attendee.' % MAX_AGENTS, 409)
             self.initialize_workspace(owner)
             db.execute('INSERT INTO agents (id,participant,profile,created) VALUES (?,?,?,?)',
                        (owner, participant, json.dumps(profile), time.time()))
@@ -277,6 +282,8 @@ class Studio(PolicyControls):
             return None
         profile = json.loads(row['profile'])
         profile.setdefault('avatar', avatar_for(owner))
+        profile.setdefault('tone', 'kind')
+        profile.setdefault('verbosity', 'balanced')
         return profile
 
     def onboard(self, owner, data):
@@ -296,7 +303,9 @@ class Studio(PolicyControls):
         profile = self.profile(owner)
         if not profile:
             raise Problem('Create your agent first.')
-        profile = self.agent_profile(owner, {**data, 'avatar': data.get('avatar', profile['avatar']), 'protection': data.get('protection', profile.get('protection', 'standard'))})
+        profile = self.agent_profile(owner, {**data, 'avatar': data.get('avatar', profile['avatar']),
+                    'tone': data.get('tone', profile['tone']), 'verbosity': data.get('verbosity', profile['verbosity']),
+                    'protection': data.get('protection', profile.get('protection', 'standard'))})
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
             self.require_available(db, owner)
@@ -388,6 +397,8 @@ class Studio(PolicyControls):
                        'pending': sum(j['owner'] == r['id'] or any(m.get('key') == r['id'] for m in json.loads(j['payload']).get('roster', [])) for j in active)} for r in collection]
             for agent in agents:
                 agent.setdefault('avatar', avatar_for(agent['key']))
+                agent.setdefault('tone', 'kind')
+                agent.setdefault('verbosity', 'balanced')
             names = {a['key']: a['name'] for a in agents}
             assignments = [{'job': j['id'], 'lead': j['owner'], 'name': names[j['owner']], 'role': m['role'], 'status': j['status']}
                            for j in active if j['owner'] != owner for m in json.loads(j['payload']).get('roster', []) if m.get('key') == owner]
@@ -422,6 +433,8 @@ class Studio(PolicyControls):
             else:
                 profile = {'name': name, 'persona': persona, 'skills': ['documents', 'writer'], 'id': 'bac-' + owner + '-r' + str(i), 'avatar': ROLE_AVATARS[i], 'protection': 'standard'}
             profile.setdefault('avatar', avatar_for(key or profile['id']))
+            profile.setdefault('tone', 'kind')
+            profile.setdefault('verbosity', 'balanced')
             roster.append({**profile, 'key': key or None, 'role': role})
         return roster
 

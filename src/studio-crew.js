@@ -17,7 +17,7 @@ function renderCrewPassport(){
   else if(crew){status='WAITING FOR ITS TURN';task=i?'Waiting for the shared brief and earlier deliverables. '+description:'Waiting for the shared model to start the brief.';}
   el('crew-number').textContent=String(i+1).padStart(2,'0')+' / 05';
   el('crew-name').textContent=name;el('crew-role').textContent=role;
-  el('crew-persona').textContent=personas[persona]||description;
+  el('crew-persona').textContent=(personas[persona]||description)+' '+voiceSummary(member||{});
   const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';
   const color=appearanceColors[avatar.color]||appearanceColors.green;
   portrait.style.setProperty('--avatar-accent',color);el('crew-passport').style.setProperty('--crew-color',color);

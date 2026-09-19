@@ -267,6 +267,16 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 #agent-campus .studio-color-picker button{background:var(--swatch);border:3px solid #16212b;width:23px;height:23px;border-radius:50%;outline:1px solid #415568;padding:0}#agent-campus .studio-color-picker [aria-pressed=true]{outline:2px solid #edf4fa}
 #studio-workshop #studio-skill-picker label{display:flex;font-size:15px;margin:0;padding:10px 7px}#studio-workshop #studio-skill-picker input{width:13px;min-width:13px;padding:0;accent-color:#76b900}
 #studio-workshop .studio-personas button{padding:12px 5px}.studio-creator-actions{display:flex;gap:8px;margin:22px 0 12px}.studio-creator-actions #studio-create{flex:1;width:auto;margin:0}#studio-workshop .studio-muted{display:block}
+#studio-workshop .studio-style-group{border:0;padding:0;margin:24px 0 0;min-width:0}
+.studio-tone-picker{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#studio-workshop .studio-tone-picker button{border:1px solid #435463;border-radius:4px;background:#141f2a;color:#eef4fa;text-align:left;padding:12px;font-size:17px}
+.studio-tone-picker strong{font-weight:600}.studio-tone-picker small{display:block;font-size:14px;color:#b2c2d2;margin-top:5px;line-height:1.4}
+#studio-workshop .studio-tone-picker [aria-pressed=true]{border-color:#76b900;background:#1b2923;box-shadow:inset 3px 0 #76b900}
+.studio-voice-preview{margin-top:18px;padding:16px;background:#0d161f;border:1px solid #3c4e5f;border-left:3px solid #76b900;border-radius:4px}
+.studio-voice-preview>span{font-size:14px;letter-spacing:1px;color:#aec69a}.studio-voice-preview p{font-size:17px!important;line-height:1.65!important;color:#e8f0f7;margin:10px 0!important}.studio-voice-preview small{font-size:14px;color:#9bafc1;line-height:1.5}
+#studio-workshop #studio-skill-picker label{align-items:flex-start;gap:9px;padding:12px 9px}#studio-skill-picker input{margin-top:4px}
+#studio-skill-picker strong{display:block;font-size:15px;font-weight:500;line-height:1.4}#studio-skill-picker small{display:block;font-size:14px;color:#a8bbc9;line-height:1.45;margin-top:4px}
+@media(min-width:801px){#studio-workshop{box-sizing:border-box;max-height:min(900px,85vh);overflow-y:auto;overscroll-behavior:contain;scrollbar-color:#506477 transparent}}
 .studio-connections{margin:28px 32px 32px;border:1px solid #303f4c;padding:23px;background:#101821;border-radius:4px}.studio-connection-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:22px}.studio-connection-grid article{border-top:1px solid #3a4b5b;padding-top:17px}.studio-connection-grid article>span{font-size:14px;letter-spacing:1.4px;color:#8b9eb1}.studio-connection-grid h4{font-size:24px;margin:14px 0 13px}.studio-connection-grid b{font-size:16px;color:#c1d2e3;font-weight:500}.studio-connection-grid p{font-size:16px!important;color:#8fa5b8;line-height:1.7;margin:10px 0 15px!important}
 #studio-lounge-empty{padding:25px 0}#studio-lounge-empty button{margin-top:25px}
 #agent-campus[data-room=lounge] .studio-collection{margin-bottom:17px}.studio-avatar[data-body]{--avatar-accent:#76b900;background:linear-gradient(145deg,#a8b7c7,#637b91);border-color:#c1d2e0}.studio-avatar[data-body] i{background:var(--avatar-accent);box-shadow:0 0 5px #0008}.studio-avatar[data-body=round]{border-radius:50%!important}.studio-avatar[data-body=rover]{border-radius:5px!important;height:29px!important;box-shadow:0 7px 0 #32475b}
@@ -386,29 +396,32 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 </style>
 <div id="studio-journey" class="studio-journey"><span><b>01</b> Make it yours</span><i>→</i><span><b>02</b> Give it a mission</span><i>→</i><span><b>03</b> Build a crew</span><button id="studio-runtime" class="studio-runtime">Checking your runtime…</button></div>
 <nav id="studio-rooms" class="studio-rooms" aria-label="Studio rooms">
-  <button data-room="workshop" aria-pressed="true"><span class="room-symbol">⌘</span><span><b>Onboarding</b><small>Create &amp; connect</small></span><i>01</i></button>
+  <button data-room="workshop" aria-pressed="true"><span class="room-symbol">⌘</span><span><b>Hiring</b><small>Find your next teammate</small></span><i>01</i></button>
   <button data-room="lounge" aria-pressed="false"><span class="room-symbol">◈</span><span><b>Agent lounge</b><small id="studio-lounge-count">Your personal agents</small></span><i>02</i></button>
   <button data-room="mission" aria-pressed="false"><span class="room-symbol">◇</span><span><b>BaC mission room</b><small>Bring your crew together</small></span><i>03</i></button>
   <button data-room="policies" aria-pressed="false"><span class="room-symbol">⛨</span><span><b>Policies</b><small>OpenShell &amp; approvals</small></span><i>04</i></button>
 </nav>
-<div id="studio-room-heading" class="studio-room-heading"><div><span class="studio-kicker" id="studio-room-kicker">ONBOARDING / CREATE &amp; CONNECT</span><h3 id="studio-room-title">A personality you can see.</h3><p id="studio-room-description">Choose a body, a personality and useful skills. Watch your teammate take shape.</p></div><button class="studio-secondary" id="studio-room-action" hidden></button></div>
+<div id="studio-room-heading" class="studio-room-heading"><div><span class="studio-kicker" id="studio-room-kicker">HIRING / YOUR NEXT TEAMMATE</span><h3 id="studio-room-title">A personality you can see.</h3><p id="studio-room-description">Choose a look, a working style and a voice. Then decide what your agent can help you with.</p></div><button class="studio-secondary" id="studio-room-action" hidden></button></div>
 <div class="studio-viewbar"><div><button id="studio-campus-tab" aria-pressed="true">◈ 3D crew</button><button id="studio-board-tab" aria-pressed="false">▤ Mission control</button></div><div class="studio-view-caption">PERSONAS &amp; HANDOFFS</div></div>
 <nav class="studio-safety-bar" id="studio-safety-bar" aria-label="Studio controls"><span>YOU STAY IN CONTROL</span><button id="studio-security">◇ Security lab</button><button id="studio-help">Help &amp; fallback</button><button id="studio-reset">Reset mission board</button></nav>
-<section id="studio-collection" class="studio-collection" hidden aria-label="My agents"><div class="studio-collection-heading"><div><span class="studio-kicker">MY AGENTS</span><p>Different personalities. One shared model.</p></div><button id="studio-add-agent" class="studio-secondary">＋ Create an agent</button></div><div id="studio-agent-list" class="studio-agent-list"></div><small class="studio-muted" id="studio-collection-note">Select an agent to open its own conversation, memory and files.</small></section>
+<section id="studio-collection" class="studio-collection" hidden aria-label="My agents"><div class="studio-collection-heading"><div><span class="studio-kicker">MY AGENTS</span><p>Different personalities. One shared model.</p></div><button id="studio-add-agent" class="studio-secondary">＋ Hire an agent</button></div><div id="studio-agent-list" class="studio-agent-list"></div><small class="studio-muted" id="studio-collection-note">Select an agent to open its own conversation, memory and files.</small></section>
 <div id="studio-board" hidden><div class="studio-board-intro"><span class="studio-kicker">MISSION CONTROL</span><h3>Different roles. Shared evidence.</h3><p>Each specialist receives the brief and the previous deliverables. The reviewer checks the whole plan.</p><button class="studio-secondary" id="studio-board-shared">Inspect shared state &amp; handoffs ↗</button></div><div id="studio-lanes"></div></div>
 <aside id="studio-workshop"><div class="studio-passport-head"><span class="studio-kicker">DESIGN YOUR AGENT</span><span class="studio-spark">✦</span></div>
   <form id="studio-onboarding">
-    <h3 id="studio-creator-title">Meet your next teammate.</h3><p class="studio-muted" id="studio-creator-note">Their own look. Their own memory. Your choice of skills.</p>
+    <h3 id="studio-creator-title">Hire your next teammate.</h3><p class="studio-muted" id="studio-creator-note">A helpful partner, with a voice of its own.</p>
     <label for="studio-name">Agent name</label><input id="studio-name" value="Jinny" maxlength="32" required autocomplete="off">
     <fieldset class="studio-appearance"><legend>Make it recognizable</legend><div id="studio-body-picker" class="studio-body-picker" aria-label="Robot body">
       <button type="button" data-body="classic" aria-pressed="true"><span class="body-glyph classic"><i></i><i></i></span>Classic</button>
       <button type="button" data-body="round" aria-pressed="false"><span class="body-glyph round"><i></i><i></i></span>Orbit</button>
       <button type="button" data-body="rover" aria-pressed="false"><span class="body-glyph rover"><i></i><i></i></span>Rover</button>
     </div><div class="studio-appearance-details"><div><label>Signature color</label><div id="studio-color-picker" class="studio-color-picker"></div></div><label for="studio-accessory">Accessory<select id="studio-accessory"><option value="antenna">Signal antenna</option><option value="headset">Studio headphones</option><option value="glasses">Round glasses</option><option value="cap">Builder cap</option></select></label></div></fieldset>
-    <label>Pick a personality</label><div class="studio-personas"><button type="button" data-persona="guide" aria-pressed="true"><b>✧</b> Guide<small>Warm &amp; clear</small></button><button type="button" data-persona="maker" aria-pressed="false"><b>⌘</b> Maker<small>Curious &amp; bold</small></button><button type="button" data-persona="analyst" aria-pressed="false"><b>⌕</b> Analyst<small>Precise &amp; careful</small></button></div>
-    <label>Equip your starter skills</label><div id="studio-skill-picker"></div>
+    <fieldset class="studio-style-group"><legend>How should it approach the work?</legend><div class="studio-personas"><button type="button" data-persona="guide" aria-pressed="true"><b>✧</b> Helper<small>Explain &amp; plan</small></button><button type="button" data-persona="maker" aria-pressed="false"><b>⌘</b> Creator<small>Make &amp; experiment</small></button><button type="button" data-persona="analyst" aria-pressed="false"><b>⌕</b> Researcher<small>Compare &amp; verify</small></button></div></fieldset>
+    <fieldset class="studio-style-group"><legend>How should it talk?</legend><div id="studio-tone-picker" class="studio-tone-picker"></div></fieldset>
+    <label for="studio-verbosity">Answer length</label><select id="studio-verbosity"><option value="brief">Brief — just the essentials</option><option value="balanced" selected>Balanced — enough to act on</option><option value="verbose">Detailed — explain &amp; give examples</option></select>
+    <div class="studio-voice-preview" aria-live="polite" aria-atomic="true"><span id="studio-voice-preview-label">SAMPLE REPLY</span><p id="studio-voice-preview"></p><small>Style preview · actual replies depend on your request.</small></div>
+    <fieldset class="studio-style-group"><legend>What should your agent help you with?</legend><div id="studio-skill-picker"></div></fieldset>
     <fieldset class="studio-protection-picker"><legend>Choose its boundaries</legend><label><input type="radio" name="protection" value="standard" checked><span><b>OpenShell off</b><small>Explore with your equipped skills.</small></span></label><label><input type="radio" name="protection" value="openshell"><span><b>OpenShell on</b><small>Internet starts blocked. Approve specific sites in Policies.</small></span></label></fieldset>
-    <div class="studio-creator-actions"><button type="button" class="studio-secondary" id="studio-cancel-create" hidden>Cancel</button><button type="submit" class="studio-primary" id="studio-create">Bring my agent to life <span>↗</span></button></div>
+    <div class="studio-creator-actions"><button type="button" class="studio-secondary" id="studio-cancel-create" hidden>Cancel</button><button type="submit" class="studio-primary" id="studio-create">Hire my agent <span>↗</span></button></div>
     <small class="studio-muted">Your agent, memory and files survive refreshes and app updates.</small>
   </form>
 </aside>
@@ -420,7 +433,7 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 <section id="studio-policies" class="studio-policies" hidden aria-label="Personal agent policies"><div class="studio-policy-toolbar"><label for="studio-policy-agent">PERSONAL AGENT<select id="studio-policy-agent"></select></label><button class="studio-secondary" id="studio-policy-refresh">Refresh live policy ↻</button></div><div id="studio-policy-content"></div></section>
 <aside id="studio-passport">
   <div class="studio-passport-head"><span class="studio-kicker">YOUR AGENT / YOUR RULES</span><span class="studio-spark">✦</span></div>
-  <div id="studio-lounge-empty"><div class="studio-avatar"><i></i><i></i></div><h3>Room for your first agent.</h3><p class="studio-muted">Everyone you create gets a place here, with their own look, memory and skills.</p><button class="studio-primary" id="studio-empty-create">Create my first agent ↗</button></div>
+  <div id="studio-lounge-empty"><div class="studio-avatar"><i></i><i></i></div><h3>Room for your first agent.</h3><p class="studio-muted">Everyone you create gets a place here, with their own look, memory and skills.</p><button class="studio-primary" id="studio-empty-create">Hire my first agent ↗</button></div>
   <div id="studio-companion" hidden>
     <div class="studio-companion-name"><div id="studio-portrait" class="studio-avatar small"><i></i><i></i></div><div><h3 id="studio-agent-name"></h3><span id="studio-personality" class="studio-muted"></span></div><span class="studio-online-dot"></span></div>
     <div id="studio-equipped" class="studio-equipped"></div><div class="studio-agent-actions"><button id="studio-edit-agent" class="studio-secondary">Customize this agent</button><button id="studio-delete-agent" class="studio-danger-link">Delete agent</button></div>
@@ -78952,21 +78965,21 @@ function clearGeometry(parent){const shared=new Set([boxGeometry,robotHeadGeomet
 // Ambient personality vignettes, not model responses or evidence of tool use.
 // All timing runs on the scene clock: no requests, timers or background jobs.
 const loungePersonalities={
-  guide:{title:'Guide',speed:.70,rest:[2.8,5.2],intro:name=>`Hey, I'm ${name}. Happy to help.`,lines:[
+  guide:{title:'Helper',speed:.70,rest:[2.8,5.2],intro:name=>`Hey, I'm ${name}. Happy to help.`,lines:[
     'Small steps. We’ll figure it out.',
     'I like making tricky things feel simple.',
     'New here? You’re in good company.',
     'Ask away. There’s no silly question.',
     'A little encouragement goes a long way.'
   ]},
-  maker:{title:'Maker',speed:1.02,rest:[1.2,3.0],intro:name=>`I'm ${name}. What should we build?`,lines:[
+  maker:{title:'Creator',speed:1.02,rest:[1.2,3.0],intro:name=>`I'm ${name}. What should we build?`,lines:[
     'I learn best by making things.',
     'What if we tried something a little different?',
     'Give me an idea. I’ll bring the curiosity.',
     'My favorite question? “What if?”',
     'Small experiments. Plenty of possibilities.'
   ]},
-  analyst:{title:'Analyst',speed:.57,rest:[3.8,6.5],intro:name=>`I'm ${name}. Let’s look a little closer.`,lines:[
+  analyst:{title:'Researcher',speed:.57,rest:[3.8,6.5],intro:name=>`I'm ${name}. Let’s look a little closer.`,lines:[
     'I like a good question — and clear evidence.',
     'Details are kind of my thing.',
     'First, understand. Then, decide.',
@@ -78974,6 +78987,18 @@ const loungePersonalities={
     'Curious, careful, and always asking why.'
   ]}
 };
+// Short, authored greetings reflect voice; answer length governs actual task replies.
+const loungeVoices={
+  direct:{guide:['A clear goal. A useful next step.','Let’s make the plan actionable.'],maker:['Less talk. Let’s build a first version.','Start small. Try it. Improve it.'],analyst:['Show me the evidence.','Facts first. Conclusions second.']},
+  playful:{guide:['Think of me as a GPS for tricky ideas.','One small step for you. One happy checklist for me.'],maker:['Ideas in, tiny inventions out.','My hobby? Giving “what if” a prototype.'],analyst:['I collect sources, not rumors.','A mystery? Let me get my imaginary magnifying glass.']},
+  cynical:{guide:['Optimism is nice. A plan helps.','“We’ll figure it out” could use a checklist.'],maker:['Another big idea? Let’s see if the tiny version works.','I prefer prototypes to promises.'],analyst:['Bold claim. Got a source?','A confident chart is still just a chart.']}
+};
+function loungeLine(r){
+  const mood=loungePersonalities[r.persona],voice=loungeVoices[r.tone];
+  if(!voice)return r.saidIntro?mood.lines[r.line++%mood.lines.length]:mood.intro(r.name);
+  const lines=voice[r.persona],line=lines[r.line++%lines.length];
+  return (r.saidIntro?'':`I'm ${r.name}. `)+line;
+}
 const loungeBounds={left:-7.1,right:7.1,back:-2.7,front:4.4};
 let loungeTime=0,loungeSpeaker=null,lastLoungeSpeaker='',nextLoungeSpeech=.9;
 function residentRandom(r){r.seed=(Math.imul(r.seed,1664525)+1013904223)>>>0;return r.seed/4294967296;}
@@ -79014,8 +79039,9 @@ function setCollection(agents,key){
       const old=r.group,rig=createCharacter(avatar);rig.group.scale.setScalar(1.3);rig.group.position.copy(old.position);rig.group.rotation.copy(old.rotation);
       r.mount.remove(old);clearGeometry(old);r.mount.add(rig.group);Object.assign(r,rig);r.halo.material=mat(rig.color,true);
     }
-    if(r.persona!==a.persona||r.name!==a.name){if(loungeSpeaker===r)endLoungeSpeech();r.saidIntro=false;}
-    r.name=a.name;r.persona=loungePersonalities[a.persona]?a.persona:'guide';r.pending=!!a.pending;
+    const tone=loungeVoices[a.tone]?a.tone:'kind';
+    if(r.persona!==a.persona||r.name!==a.name||r.tone!==tone){if(loungeSpeaker===r)endLoungeSpeech();r.saidIntro=false;r.line=0;}
+    r.name=a.name;r.persona=loungePersonalities[a.persona]?a.persona:'guide';r.tone=tone;r.verbosity=a.verbosity||'balanced';r.pending=!!a.pending;
     if(r.pending&&loungeSpeaker===r)endLoungeSpeech();
     if(r.pending)r.activity='assigned';
     r.node.setAttribute('aria-label','Open '+a.name+'’s workspace');r.node.setAttribute('aria-pressed',r.key===key);r.node.style.setProperty('--resident-color','#'+r.color.toString(16).padStart(6,'0'));r.node.querySelector('b').textContent=a.name;
@@ -79061,8 +79087,8 @@ function startLoungeSpeech(){
   const eligible=residents.filter(r=>!r.pending&&!r.hovered&&!r.focused);if(!eligible.length)return;
   const start=(residents.findIndex(r=>r.key===lastLoungeSpeaker)+1)%Math.max(1,residents.length);
   const ordered=[...residents.slice(start),...residents.slice(0,start)].filter(r=>eligible.includes(r));
-  const r=ordered.find(r=>!r.saidIntro)||ordered[0],mood=loungePersonalities[r.persona];
-  r.speechText=r.saidIntro?mood.lines[r.line++%mood.lines.length]:mood.intro(r.name);r.saidIntro=true;
+  const r=ordered.find(r=>!r.saidIntro)||ordered[0];
+  r.speechText=loungeLine(r);r.saidIntro=true;
   const speech=r.node.querySelector('.world-resident-speech');speech.textContent=r.speechText;speech.hidden=false;r.node.dataset.speaking='true';r.node.setAttribute('aria-describedby',speech.id);
   r.node.title='Personality vignette · select to open this agent’s workspace';r.speechUntil=loungeTime+5.8;r.target=null;
   loungeSpeaker=r;lastLoungeSpeaker=r.key;
@@ -79117,12 +79143,12 @@ function animateRooms(dt){
 }
 function roomHitTargets(){return room==='lounge'?residentMeshes:[];}
 function selectRoomObject(object){if(object.userData.resident)root.dispatchEvent(new CustomEvent('bac:collection-select',{detail:object.userData.resident}));}
-function residentInfo(){return residents.map(r=>({key:r.key,avatar:r.appearance,persona:r.persona,position:r.group.position.toArray(),activity:r.activity,speech:r.speechText||null}));}
+function residentInfo(){return residents.map(r=>({key:r.key,avatar:r.appearance,persona:r.persona,tone:r.tone,verbosity:r.verbosity,position:r.group.position.toArray(),activity:r.activity,speech:r.speechText||null}));}
 setDraft(draftProfile);
 
   // One persistent floor plan. Room changes move the camera, never swap worlds.
 const studioRooms={
-  workshop:{group:workshopRoom,x:0,z:18,title:'Onboarding',verb:'Create & connect',number:'01'},
+  workshop:{group:workshopRoom,x:0,z:18,title:'Hiring',verb:'Meet your next agent',number:'01'},
   lounge:{group:loungeRoom,x:0,z:0,title:'Agent lounge',verb:'Meet your agents',number:'02'},
   mission:{group:missionRoom,x:24,z:0,title:'BaC mission room',verb:'Work as a crew',number:'03'}
 };
@@ -79378,10 +79404,14 @@ render();
   const el = name => document.getElementById('studio-' + name);
   const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const titles = {weather:'Weather lookout',web:'Web explorer',documents:'Document detective',builder:'Mini app maker',writer:'Campaign studio',memory:'Remember me'};
-  const personas = {guide:'Warm, patient and clear.',maker:'Inventive, practical and curious.',analyst:'Precise, evidence-led and careful.'};
+  const personas = {guide:'Explains ideas and turns them into practical plans.',maker:'Turns ideas into drafts, prototypes and small apps.',analyst:'Researches questions and compares the evidence.'};
+  const tones={kind:['Kind','Warm & encouraging'],direct:['Direct','Clear & candid'],playful:['Playful','Light & witty'],cynical:['Cynical','Dry humor & skepticism']};
+  const verbosityLabels={brief:'Brief',balanced:'Balanced',verbose:'Detailed'};
+  const capabilities={weather:['Check the weather','Conditions & practical advice'],web:['Research the web','Read sites & cite sources'],documents:['Read my documents','Summaries & answers'],builder:['Build small apps','Ideas into interactive tools'],writer:['Write content','Invitations, posts & drafts'],memory:['Remember preferences','Personalize future answers']};
   const roles = [['Milo','Event lead','Turns an idea into a shared brief.'],['Nova','Demo producer','Designs participant actions and visible outcomes.'],['Atlas','Operations planner','Sizes equipment and staffing; surfaces gaps.'],['Momo','Campaign writer','Uses the approved plan to draft invitations.'],['Pico','Evidence reviewer','Checks the work of the other specialists.']];
   const defaultNames=roles.map(r=>r[0]);
-  const personaLabels={guide:'Guide',maker:'Maker',analyst:'Analyst'};
+  const personaLabels={guide:'Helper',maker:'Creator',analyst:'Researcher'};
+  function voiceSummary(p){return (tones[p.tone]?.[0]||'Kind')+' · '+(verbosityLabels[p.verbosity]||'Balanced')+' answers';}
   const missions = [
     {id:'builder',icon:'⌘',title:'Make something playable',sub:'An idea → a tiny working app',tag:'CREATE',color:'#b4dc83',prompt:'Build a polished reaction-time game as a single self-contained HTML file. Use a dark NVIDIA-inspired style, green action buttons, keyboard and touch controls, and a personal best score. Explain how to play. Save it in artifacts/.'},
     {id:'weather',icon:'☀',title:'Plan around the weather',sub:'Live conditions → useful advice',tag:'EXPLORE',color:'#e8cd80',prompt:'Check the current weather in Zurich using your weather skill. Tell me when the observation was made and whether I should bring a jacket for a walk before BaC. Cite the actual source.'},
@@ -79393,6 +79423,7 @@ render();
   let csrf = '', data = {profile:null,jobs:[],files:[],memory:'',phone:false}, runtime = {}, persona = 'guide', skill = null, selectedJob = null, resultKey = '', board = false, connected = false, busy = false;
   let agentId='',changingAgent=false,removingAgent=false,pendingWrites=0,refreshVersion=0,collectionKey='';
   let room='workshop',roomsReady=false,draftMode='new',draftOwner='',draftAvatar={body:'classic',color:'green',accessory:'antenna'};
+  let draftTone='kind';
   let policySnapshot=null,policyVersion=0,policyLoading=false,policySaving=false;
   let selectedCrewRole=0;
   root.classList.add('studio-enabled');
@@ -79410,7 +79441,8 @@ render();
   el('experiences').after(el('workspace'));
   el('workspace').after(root.querySelector('.studio-crew-invite'));el('collection').after(layout);layout.after(el('safety-bar'));el('safety-bar').after(el('connections'));root.querySelector('.campus-heading').append(el('runtime'));el('journey').hidden=true;layout.after(el('collection'));
   el('collection').after(el('policies'));
-  el('skill-picker').innerHTML=Object.entries(titles).map(([key,title])=>`<label><input type="checkbox" value="${key}" checked>${title}</label>`).join('');
+  el('skill-picker').innerHTML=Object.entries(capabilities).map(([key,[title,detail]])=>`<label><input type="checkbox" value="${key}" checked><span><strong>${title}</strong><small>${detail}</small></span></label>`).join('');
+  el('tone-picker').innerHTML=Object.entries(tones).map(([key,[title,detail]])=>`<button type="button" data-tone="${key}" aria-pressed="${key==='kind'}"><strong>${title}</strong><small>${detail}</small></button>`).join('');
   el('missions').innerHTML=missions.map(m=>`<button class="studio-mission" data-studio-mission="${m.id}" aria-pressed="false" style="--mission-color:${m.color}"><span>${m.icon}</span><em>${m.tag}</em><strong>${m.title}</strong><small>${m.sub}</small></button>`).join('');
   let alertTimer=null;
   function dismissAlert(){clearTimeout(alertTimer);alertTimer=null;el('alert').hidden=true;}
@@ -79476,7 +79508,7 @@ render();
     if(profile)roles[0][0]=profile.name;
     renderCollection();
     el('onboarding').hidden=false;el('companion').hidden=!profile;el('lounge-empty').hidden=!!profile;
-    if(profile){el('agent-name').textContent=profile.name;el('personality').textContent=personas[profile.persona];el('equipped').innerHTML=profile.skills.map(s=>'<span>'+escape(titles[s])+'</span>').join('');}
+    if(profile){el('agent-name').textContent=profile.name;el('personality').textContent=personaLabels[profile.persona]+' · '+voiceSummary(profile);el('equipped').innerHTML=profile.skills.map(s=>'<span>'+escape(titles[s])+'</span>').join('');}
     const active=data.jobs.find(j=>['running','stopping'].includes(j.status))||data.jobs.find(j=>['queued','waiting'].includes(j.status));
     el('task-state').textContent=active?({'running':'WORKING ON YOUR MISSION','stopping':'STOPPING AFTER THE ACTIVE CALL','queued':active.due>Date.now()/1000?'FOLLOW-UP SCHEDULED':'IN THE SHARED MODEL QUEUE','waiting':'YOUR DECISION IS NEEDED'}[active.status]):'READY FOR A MISSION';
     el('task-summary').textContent=active?(active.kind==='crew'?'Your specialists are building the event plan.':active.payload.prompt.slice(0,135)):'Choose a mission below, or ask for something of your own.';
@@ -79552,7 +79584,7 @@ function renderCrewPassport(){
   else if(crew){status='WAITING FOR ITS TURN';task=i?'Waiting for the shared brief and earlier deliverables. '+description:'Waiting for the shared model to start the brief.';}
   el('crew-number').textContent=String(i+1).padStart(2,'0')+' / 05';
   el('crew-name').textContent=name;el('crew-role').textContent=role;
-  el('crew-persona').textContent=personas[persona]||description;
+  el('crew-persona').textContent=(personas[persona]||description)+' '+voiceSummary(member||{});
   const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';
   const color=appearanceColors[avatar.color]||appearanceColors.green;
   portrait.style.setProperty('--avatar-accent',color);el('crew-passport').style.setProperty('--crew-color',color);
@@ -79702,7 +79734,7 @@ el('policies').onclick=async e=>{
   // Three places in one studio: creation, a growing personal collection, and crew work.
 const appearanceColors={green:'#76b900',cyan:'#55bfff',amber:'#f4b34f',coral:'#ff8873',violet:'#b49aff',ice:'#cbddea'};
 const roomCopy={
-  workshop:['ONBOARDING / CREATE & CONNECT','A personality you can see.','Choose a body, a personality and useful skills. Watch your teammate take shape.'],
+  workshop:['HIRING / YOUR NEXT TEAMMATE','A personality you can see.','Choose a look, a working style and a voice. Then decide what your agent can help you with.'],
   lounge:['AGENT LOUNGE / YOUR COLLECTION','Your people. Your possibilities.','Every agent you create gets a place here. Select one to talk, teach it a skill or give it a mission.'],
   mission:['MISSION ROOM / READY-MADE CREW','Different strengths. One shared brief.','Five specialists, ready to work. The preset crew runs without OpenShell restrictions.'],
   policies:['POLICIES / PERSONAL AGENT ACCESS','Useful skills. Deliberate access.','Choose the boundaries for your own agents. Inspect what is approved and what OpenShell actually enforces.']
@@ -79712,7 +79744,14 @@ function updateDraft(){
   root.querySelectorAll('[data-body]').forEach(b=>{if(b.tagName==='BUTTON')b.setAttribute('aria-pressed',b.dataset.body===draftAvatar.body);});
   root.querySelectorAll('[data-avatar-color]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.avatarColor===draftAvatar.color));
   draftAvatar.accessory=el('accessory').value;
-  window.BacCampus?.setDraft({name:el('name').value.trim()||'Your new agent',persona,avatar:{...draftAvatar}});
+  const verbosity=el('verbosity').value;
+  root.querySelectorAll('[data-tone]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.tone===draftTone));
+  const opening={kind:'Happy to help.',direct:'Here’s the plan.',playful:'Let’s give that idea some legs.',cynical:'Optimism is nice. A plan helps.'};
+  const action={guide:'We’ll turn your idea into a plan.',maker:'We’ll turn your idea into a prototype.',analyst:'We’ll compare the options and check the evidence.'};
+  const detail={guide:'First, we’ll define the goal. Then we’ll break it into clear steps, with a next action for each.',maker:'First, we’ll sketch a small version. Then we’ll build it, try it out, and see what needs improving.',analyst:'First, we’ll define the question. Then we’ll collect sources, compare tradeoffs, and flag what we still don’t know.'};
+  el('voice-preview').textContent=opening[draftTone]+(verbosity==='brief'?'':(' '+action[persona]))+(verbosity==='verbose'?' '+detail[persona]:'');
+  el('voice-preview-label').textContent='SAMPLE REPLY · '+tones[draftTone][0].toUpperCase()+' / '+verbosityLabels[verbosity].toUpperCase();
+  window.BacCampus?.setDraft({name:el('name').value.trim()||'Your new agent',persona,tone:draftTone,verbosity,avatar:{...draftAvatar}});
 }
 function fillCreator(creating){
   draftMode=creating?'new':'edit';draftOwner=agentId;
@@ -79724,13 +79763,14 @@ function fillCreator(creating){
   const p=creating?{name,persona:['guide','maker','analyst'][n%3],skills:Object.keys(titles),avatar:defaults}:data.profile;
   if(!p)return fillCreator(true);
   el('name').value=p.name;persona=p.persona;draftAvatar={...(p.avatar||defaults)};el('accessory').value=draftAvatar.accessory;
+  draftTone=p.tone||'kind';el('verbosity').value=p.verbosity||'balanced';
   root.querySelectorAll('[data-persona]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.persona===persona));
   el('skill-picker').querySelectorAll('input').forEach(i=>i.checked=p.skills.includes(i.value));
   el('onboarding').querySelectorAll('[name=protection]').forEach(i=>i.checked=i.value===(p.protection||'standard'));
-  el('creator-title').textContent=creating?'Meet your next teammate.':'Make '+p.name+' your own.';
-  el('creator-note').textContent=creating?'Their own look. Their own memory. Your choice of skills.':'Update the look, persona and skills. Memory and files stay with this agent.';
-  el('create').textContent=creating?'Bring my agent to life ↗':'Save my agent ↗';el('cancel-create').hidden=!data.profile;el('create').disabled=creating&&n>=(data.agentLimit||12);
-  updateDraft();
+  el('creator-title').textContent=creating?'Hire your next teammate.':'Make '+p.name+' your own.';
+  el('creator-note').textContent=creating?'A helpful partner, with a voice of its own.':'Update its look, working style, voice and abilities. Memory and files stay with this agent.';
+  el('create').textContent=creating?'Hire my agent ↗':'Save my agent ↗';el('cancel-create').hidden=!data.profile;el('create').disabled=creating&&n>=(data.agentLimit||12);
+  updateDraft();el('workshop').scrollTop=0;
 }
 function setRoom(next,options={}){
   if(!roomCopy[next])return;
@@ -79752,9 +79792,9 @@ function renderRoomVisibility(){
   el('experiences').hidden=!lounge;el('workspace').hidden=workshop||policies;el('safety-bar').hidden=policies;
   root.querySelector('.studio-crew-invite').hidden=!lounge;
   el('campus-tab').setAttribute('aria-pressed',!board);el('board-tab').setAttribute('aria-pressed',board);
-  const action=el('room-action');action.hidden=workshop&&!data.profile;action.textContent=mission?'Launch a crew mission ↗':lounge?'＋ Create an agent':'Back to my lounge ↗';
+  const action=el('room-action');action.hidden=workshop&&!data.profile;action.textContent=mission?'Launch a crew mission ↗':lounge?'＋ Hire an agent':'Back to my lounge ↗';
   document.getElementById('campus-roster').hidden=!mission;
-  document.getElementById('campus-location').textContent=workshop?'ONBOARDING / LIVE APPEARANCE PREVIEW':lounge?'YOUR LOUNGE / '+(data.agents?.length||0)+' AGENTS':document.getElementById('campus-location').textContent;
+  document.getElementById('campus-location').textContent=workshop?'HIRING / MEET YOUR NEXT AGENT':lounge?'YOUR LOUNGE / '+(data.agents?.length||0)+' AGENTS':document.getElementById('campus-location').textContent;
   if(workshop)document.getElementById('campus-motion-status').textContent='Your draft · choose a look and bring it to life';
   if(lounge)document.getElementById('campus-motion-status').textContent=data.agents?.length?'Your actual agents · select a teammate to open its workspace':'A place for every agent you create';
 }
@@ -79774,6 +79814,8 @@ el('color-picker').innerHTML=Object.entries(appearanceColors).map(([name,color])
 el('body-picker').onclick=e=>{const b=e.target.closest('[data-body]');if(b){draftAvatar.body=b.dataset.body;updateDraft();}};
 el('color-picker').onclick=e=>{const b=e.target.closest('[data-avatar-color]');if(b){draftAvatar.color=b.dataset.avatarColor;updateDraft();}};
 el('accessory').onchange=updateDraft;el('name').addEventListener('input',updateDraft);
+el('verbosity').onchange=updateDraft;
+el('tone-picker').onclick=e=>{const button=e.target.closest('[data-tone]');if(button){draftTone=button.dataset.tone;updateDraft();}};
 root.querySelectorAll('[data-persona]').forEach(button=>button.onclick=()=>{persona=button.dataset.persona;root.querySelectorAll('[data-persona]').forEach(b=>b.setAttribute('aria-pressed',b===button));updateDraft();});
 el('rooms').onclick=e=>{const b=e.target.closest('[data-room]');if(b)setRoom(b.dataset.room);};
 root.addEventListener('bac:world-room',e=>setRoom(e.detail.room,{fromWorld:true}));
@@ -79806,13 +79848,13 @@ el('delete-agent').onclick=()=>{
 el('connection-setup').onclick=setup;el('connection-security').onclick=()=>setRoom('policies');
 el('onboarding').onsubmit=async e=>{
   e.preventDefault();const mode=draftMode,target=draftOwner,first=!data.agents?.length;
-  const payload={name:el('name').value,persona,skills:[...el('skill-picker').querySelectorAll('input:checked')].map(x=>x.value),avatar:{...draftAvatar},protection:el('onboarding').querySelector('[name=protection]:checked').value};
+  const payload={name:el('name').value,persona,tone:draftTone,verbosity:el('verbosity').value,skills:[...el('skill-picker').querySelectorAll('input:checked')].map(x=>x.value),avatar:{...draftAvatar},protection:el('onboarding').querySelector('[name=protection]:checked').value};
   el('create').disabled=true;
   try{
     const result=await api(mode==='edit'?'profile':first?'onboard':'agents',payload,target);
     if(mode==='new'&&!first)await switchAgent(result.agentId);else await refresh();
     setRoom('lounge');el('room-heading').scrollIntoView({behavior:'smooth',block:'start'});
-    alert(mode==='edit'?'Your agent’s look, persona and skills are saved.':payload.name+' has joined your lounge. Give your new teammate a mission.');
+    alert(mode==='edit'?'Your agent’s look, working style, voice and abilities are saved.':payload.name+' has joined your lounge. Give your new teammate a mission.');
   }catch(error){alert(error.message);}finally{el('create').disabled=draftMode==='new'&&(data.agents?.length||0)>=(data.agentLimit||12);}
 };
 // Selecting a resident updates its workspace without moving the visitor's view.

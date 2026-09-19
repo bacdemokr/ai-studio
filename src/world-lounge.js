@@ -1,21 +1,21 @@
 // Ambient personality vignettes, not model responses or evidence of tool use.
 // All timing runs on the scene clock: no requests, timers or background jobs.
 const loungePersonalities={
-  guide:{title:'Guide',speed:.70,rest:[2.8,5.2],intro:name=>`Hey, I'm ${name}. Happy to help.`,lines:[
+  guide:{title:'Helper',speed:.70,rest:[2.8,5.2],intro:name=>`Hey, I'm ${name}. Happy to help.`,lines:[
     'Small steps. We’ll figure it out.',
     'I like making tricky things feel simple.',
     'New here? You’re in good company.',
     'Ask away. There’s no silly question.',
     'A little encouragement goes a long way.'
   ]},
-  maker:{title:'Maker',speed:1.02,rest:[1.2,3.0],intro:name=>`I'm ${name}. What should we build?`,lines:[
+  maker:{title:'Creator',speed:1.02,rest:[1.2,3.0],intro:name=>`I'm ${name}. What should we build?`,lines:[
     'I learn best by making things.',
     'What if we tried something a little different?',
     'Give me an idea. I’ll bring the curiosity.',
     'My favorite question? “What if?”',
     'Small experiments. Plenty of possibilities.'
   ]},
-  analyst:{title:'Analyst',speed:.57,rest:[3.8,6.5],intro:name=>`I'm ${name}. Let’s look a little closer.`,lines:[
+  analyst:{title:'Researcher',speed:.57,rest:[3.8,6.5],intro:name=>`I'm ${name}. Let’s look a little closer.`,lines:[
     'I like a good question — and clear evidence.',
     'Details are kind of my thing.',
     'First, understand. Then, decide.',
@@ -23,6 +23,18 @@ const loungePersonalities={
     'Curious, careful, and always asking why.'
   ]}
 };
+// Short, authored greetings reflect voice; answer length governs actual task replies.
+const loungeVoices={
+  direct:{guide:['A clear goal. A useful next step.','Let’s make the plan actionable.'],maker:['Less talk. Let’s build a first version.','Start small. Try it. Improve it.'],analyst:['Show me the evidence.','Facts first. Conclusions second.']},
+  playful:{guide:['Think of me as a GPS for tricky ideas.','One small step for you. One happy checklist for me.'],maker:['Ideas in, tiny inventions out.','My hobby? Giving “what if” a prototype.'],analyst:['I collect sources, not rumors.','A mystery? Let me get my imaginary magnifying glass.']},
+  cynical:{guide:['Optimism is nice. A plan helps.','“We’ll figure it out” could use a checklist.'],maker:['Another big idea? Let’s see if the tiny version works.','I prefer prototypes to promises.'],analyst:['Bold claim. Got a source?','A confident chart is still just a chart.']}
+};
+function loungeLine(r){
+  const mood=loungePersonalities[r.persona],voice=loungeVoices[r.tone];
+  if(!voice)return r.saidIntro?mood.lines[r.line++%mood.lines.length]:mood.intro(r.name);
+  const lines=voice[r.persona],line=lines[r.line++%lines.length];
+  return (r.saidIntro?'':`I'm ${r.name}. `)+line;
+}
 const loungeBounds={left:-7.1,right:7.1,back:-2.7,front:4.4};
 let loungeTime=0,loungeSpeaker=null,lastLoungeSpeaker='',nextLoungeSpeech=.9;
 function residentRandom(r){r.seed=(Math.imul(r.seed,1664525)+1013904223)>>>0;return r.seed/4294967296;}
@@ -63,8 +75,9 @@ function setCollection(agents,key){
       const old=r.group,rig=createCharacter(avatar);rig.group.scale.setScalar(1.3);rig.group.position.copy(old.position);rig.group.rotation.copy(old.rotation);
       r.mount.remove(old);clearGeometry(old);r.mount.add(rig.group);Object.assign(r,rig);r.halo.material=mat(rig.color,true);
     }
-    if(r.persona!==a.persona||r.name!==a.name){if(loungeSpeaker===r)endLoungeSpeech();r.saidIntro=false;}
-    r.name=a.name;r.persona=loungePersonalities[a.persona]?a.persona:'guide';r.pending=!!a.pending;
+    const tone=loungeVoices[a.tone]?a.tone:'kind';
+    if(r.persona!==a.persona||r.name!==a.name||r.tone!==tone){if(loungeSpeaker===r)endLoungeSpeech();r.saidIntro=false;r.line=0;}
+    r.name=a.name;r.persona=loungePersonalities[a.persona]?a.persona:'guide';r.tone=tone;r.verbosity=a.verbosity||'balanced';r.pending=!!a.pending;
     if(r.pending&&loungeSpeaker===r)endLoungeSpeech();
     if(r.pending)r.activity='assigned';
     r.node.setAttribute('aria-label','Open '+a.name+'’s workspace');r.node.setAttribute('aria-pressed',r.key===key);r.node.style.setProperty('--resident-color','#'+r.color.toString(16).padStart(6,'0'));r.node.querySelector('b').textContent=a.name;
@@ -110,8 +123,8 @@ function startLoungeSpeech(){
   const eligible=residents.filter(r=>!r.pending&&!r.hovered&&!r.focused);if(!eligible.length)return;
   const start=(residents.findIndex(r=>r.key===lastLoungeSpeaker)+1)%Math.max(1,residents.length);
   const ordered=[...residents.slice(start),...residents.slice(0,start)].filter(r=>eligible.includes(r));
-  const r=ordered.find(r=>!r.saidIntro)||ordered[0],mood=loungePersonalities[r.persona];
-  r.speechText=r.saidIntro?mood.lines[r.line++%mood.lines.length]:mood.intro(r.name);r.saidIntro=true;
+  const r=ordered.find(r=>!r.saidIntro)||ordered[0];
+  r.speechText=loungeLine(r);r.saidIntro=true;
   const speech=r.node.querySelector('.world-resident-speech');speech.textContent=r.speechText;speech.hidden=false;r.node.dataset.speaking='true';r.node.setAttribute('aria-describedby',speech.id);
   r.node.title='Personality vignette · select to open this agent’s workspace';r.speechUntil=loungeTime+5.8;r.target=null;
   loungeSpeaker=r;lastLoungeSpeaker=r.key;
