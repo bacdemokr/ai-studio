@@ -2,6 +2,7 @@
 #agent-campus #campus-sound-toggle{width:auto;min-height:35px;height:auto;padding:4px 9px;font-size:15px;white-space:nowrap;color:#b8c9d7;border:1px solid #526071;background:#191e25;border-radius:3px}
 #agent-campus #campus-sound-toggle[aria-pressed=true]{color:#d3edb5;border-color:#5f843c;background:#1d2a22}
 .studio-sound-level{position:relative;color:#afc3d3}
+#agent-campus .studio-sound-level,#agent-campus .studio-sound-level summary{margin:0}
 .studio-sound-level summary{display:grid;place-items:center;width:27px;height:33px;border:1px solid #43586b;border-radius:3px;cursor:pointer;list-style:none;font-size:16px}
 .studio-sound-level summary::-webkit-details-marker{display:none}
 .studio-sound-panel{position:absolute;bottom:calc(100% + 10px);right:0;z-index:12;box-sizing:border-box;width:225px;padding:16px;background:#15212d;border:1px solid #587389;border-radius:6px;box-shadow:0 8px 26px #0008;color:#e0ecf6;text-align:left}

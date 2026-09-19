@@ -92,3 +92,39 @@
 @keyframes lounge-speech-in{from{opacity:0}to{opacity:1}}
 @media(max-width:560px){#agent-campus[data-room=lounge] #campus-viewport{min-height:430px}#agent-campus .world-resident[data-speaking=true]{width:218px;padding:10px 12px 12px}.world-resident-speech{font-size:17px;margin-top:7px}}
 @media(prefers-reduced-motion:reduce){.world-resident-speech{animation:none}}
+
+/* Crew selection lives beside the world, with the same treatment as the lounge. */
+#studio-crew-passport{position:relative;min-width:0;min-height:0;border-left:1px solid #344553;background:linear-gradient(150deg,#19232e,#101821);--crew-color:#76b900}
+.studio-crew-passport-content{position:absolute;inset:0;padding:24px;overflow:auto;overscroll-behavior:contain;scrollbar-color:#506477 transparent}
+#studio-crew-passport .studio-companion-name{align-items:center;margin:22px 0}
+#studio-crew-passport .studio-avatar{flex-shrink:0}
+#studio-crew-passport h3{color:#f2f6fa;font-size:31px;line-height:1.2;letter-spacing:-.65px;overflow-wrap:anywhere}
+#studio-crew-passport .studio-passport-head{gap:12px}
+#studio-crew-number{margin-left:auto;white-space:nowrap}
+#agent-campus #studio-crew-close{display:none;padding:0 8px;font-size:26px;line-height:1.2}
+.studio-crew-persona{border-left:2px solid var(--crew-color);padding-left:13px;color:#c8d7e5;font-size:17px;line-height:1.65;margin:0 0 24px!important}
+#studio-crew-skills{margin:12px 0 23px}
+#studio-crew-state{border-left-color:var(--crew-color);margin:20px 0 24px}
+#studio-crew-state[data-state=attention]{border-left-color:#f4b34f}
+.studio-crew-handoff{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px;padding:0 0 20px;border-bottom:1px solid #344553}
+.studio-crew-handoff .studio-kicker{font-size:12px;letter-spacing:.9px;line-height:1.6;display:block}
+.studio-crew-handoff b{display:block;font-size:16px;line-height:1.5;color:#e0ebf5;margin-top:8px;font-weight:500;overflow-wrap:anywhere}
+.studio-crew-handoff>span{color:var(--crew-color)}
+#studio-crew-access{margin:20px 0!important;font-size:14px!important}
+#studio-crew-deliverable{border:1px solid #3e5266;padding:12px;background:#111c27;margin:20px 0}
+#studio-crew-deliverable summary{font-size:16px;color:#dfeaf5;margin:0}
+#studio-crew-output{font-family:inherit;font-size:15px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;max-height:280px;overflow:auto;color:#c1d4e3;margin:16px 0 0}
+#studio-crew-output-empty{margin:18px 0!important}
+#studio-crew-action{width:100%;margin-top:12px}
+#agent-campus .world-expanded #studio-crew-passport{display:none!important}
+#agent-campus.studio-world-open[data-room=mission][data-crew-details=true] .campus-layout.world-expanded{grid-template-columns:minmax(0,1fr) 365px!important}
+#agent-campus.studio-world-open[data-room=mission][data-crew-details=true] #studio-crew-passport{display:block!important}
+#agent-campus.studio-world-open #studio-crew-close{display:block}
+@media(max-width:800px){
+  #studio-crew-passport{border-left:0;border-top:1px solid #344553}
+  .studio-crew-passport-content{position:relative;max-height:680px}
+  #agent-campus.studio-world-open[data-room=mission][data-crew-details=true] .campus-layout.world-expanded{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr) min(42vh,320px)}
+  #agent-campus.studio-world-open #studio-crew-passport .studio-crew-passport-content{position:absolute;max-height:none}
+}
+@media(max-width:560px){.studio-crew-passport-content{padding:22px 18px}}
+@media(max-height:600px){#agent-campus .world-expanded #campus-motion-status{display:none}#agent-campus .world-expanded .campus-scene-bottom{padding-top:8px;padding-bottom:8px}}

@@ -2,7 +2,7 @@
 
 Create your own agents, give each a recognizable look and useful skills, and choose who joins your crew. Move between **Onboarding**, **Agent lounge**, **BaC mission room** and a dedicated **Policies** tab. The three 3D rooms form an L: Agent lounge at the upper left, BaC at the upper right, and Onboarding below the lounge. Three lit corridors connect every pair directly, including a bent bridge from Onboarding to BaC. Each room has two working doorways; the small map mirrors this loop. Click a doorway to travel between them, or use **See the whole studio** to pull back and choose a room. A small map keeps your location visible, including in fullscreen. Room changes preserve your unfinished agent setup; reduced-motion preferences skip camera travel. The NVIDIA-inspired charcoal interface keeps neutral lighting and restrained green accents.
 
-Onboarding offers a large character preview and OpenClaw connection details. The lounge grows with your saved agents. Mission room keeps five specialist desks around a shared brief, with active workbenches and document packets illustrating observed handoffs. Switch between **3D crew** and **Mission control** inside that room.
+Onboarding offers a large character preview and OpenClaw connection details. The lounge grows with your saved agents. Mission room keeps five specialist desks around a shared brief, with active workbenches and document packets illustrating observed handoffs. Selecting a robot or its roster button updates a docked panel with that member’s identity, skills, current state, handoff partners and saved deliverable. Selection stays in place during polling; fullscreen opens the same panel beside the world, with a close button to restore the full view. Switch between **3D crew** and **Mission control** inside that room.
 
 Click a 3D view and press **Enter**, double-click an empty area, or use **Full screen**. **Enter**, **Esc** or the exit button returns to the original size and camera. Browsers without fullscreen support use the full window.
 
@@ -125,6 +125,7 @@ python3 -m unittest discover -s tests -p 'test*.py'
 python3 tests/fixture_studio.py   # separate terminal, port 8082
 node tests/studio.cjs
 node tests/rooms.cjs
+node tests/crew-panel.cjs
 node tests/connected.cjs
 node tests/lounge.cjs
 node tests/sound.cjs
@@ -138,6 +139,7 @@ node tests/campus.cjs
 ## Editable source
 
 - `src/studio.*`: attendee journey, mission control and API client.
+- `src/studio-crew.js`: selected crew member panel, roster identity and live role state.
 - `src/studio-world.js`: native fullscreen, keyboard controls and full-window fallback.
 - `src/world-navigation.js`: connected room layout, doorways, overview and interruptible camera travel.
 - `src/world-lounge.js`: resident reconciliation, wandering, spacing and authored persona bubbles.

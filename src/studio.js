@@ -19,6 +19,7 @@
   let agentId='',changingAgent=false,removingAgent=false,pendingWrites=0,refreshVersion=0,collectionKey='';
   let room='workshop',roomsReady=false,draftMode='new',draftOwner='',draftAvatar={body:'classic',color:'green',accessory:'antenna'};
   let policySnapshot=null,policyVersion=0,policyLoading=false,policySaving=false;
+  let selectedCrewRole=0;
   root.classList.add('studio-enabled');
   root.querySelector('.campus-heading h2').textContent='Your ideas. An agent that gets them done.';
   root.querySelector('.campus-heading .quiet').textContent='Make it yours. Give it useful skills. Watch one agent become a team.';
@@ -28,7 +29,7 @@
   el('journey').after(el('rooms'));el('rooms').after(el('room-heading'));el('room-heading').after(root.querySelector('.studio-viewbar'));
   root.querySelector('.studio-viewbar').after(el('safety-bar'));
   el('safety-bar').after(el('collection'));
-  layout.append(el('workshop'),el('passport'));layout.after(el('connections'));
+  layout.append(el('workshop'),el('passport'),el('crew-passport'));layout.after(el('connections'));
   layout.after(el('board'));
   el('board').after(el('experiences'));
   el('experiences').after(el('workspace'));
@@ -139,7 +140,7 @@
     const crew=crewMission(), stage=crew?.payload.stage??-1;
     roles.forEach((r,i)=>r[0]=crew?.payload.roster?.[i]?.name||(i===0&&room!=='mission'?data.profile?.name:null)||defaultNames[i]);
     el('lanes').innerHTML=roles.map(([name,role,description],i)=>{const done=!!crew?.payload.outputs?.[i],working=['running','stopping'].includes(crew?.status)&&stage===i,waiting=crew?.status==='waiting'&&i===2;return `<article class="studio-lane" data-state="${waiting?'waiting':done?'done':working?'running':'ready'}"><span>0${i+1} / ${waiting?'NEEDS YOU':done?'DELIVERED':working?(crew?.status==='stopping'?'STOPPING':'WORKING'):'READY'}</span><h4>${escape(name)}</h4><strong>${role}</strong><p>${description}</p>${done?'<button data-role-output="'+i+'">Open deliverable ↗</button>':''}</article>`;}).join('');
-    const active=data.jobs.find(j=>['running','stopping'].includes(j.status))||data.jobs.find(j=>j.status==='waiting');
+    const active=room==='mission'?(crew&&['running','stopping','waiting'].includes(crew.status)?crew:null):data.jobs.find(j=>['running','stopping'].includes(j.status))||data.jobs.find(j=>j.status==='waiting');
     const s=window.BacDemo.snapshot();
     const a=roles.map(([name,role,description],i)=>({...s.agents[i],name,role,persona:description,skills:i===0?['Shared brief']:i===1?['Demo design']:i===2?['Capacity planning']:i===3?['Campaign writing']:['Evidence review'],lane:0,status:'Ready',task:description,permission:'Scoped workspace · shared local model'}));
     crew?.payload.roster?.forEach((m,i)=>{a[i].persona=personas[m.persona];a[i].skills=m.skills.map(x=>titles[x]);a[i].avatar=m.avatar;});
@@ -153,9 +154,11 @@
     }else if(data.profile&&room!=='mission'){a[0].name=data.profile.name;a[0].role='Your personal agent';a[0].persona=personas[data.profile.persona];a[0].skills=data.profile.skills.map(x=>titles[x]);}
     if(data.profile&&!crew&&room!=='mission')a[0].avatar=data.profile.avatar;
     const b=crew?.payload.brief;
-    window.BacCampus?.setLive({...s,live:true,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected,flow,gap:active?.status==='waiting',brief:b?{...b,location:b.city}:null,calc:crew?.payload.capacity||null,policy:null});
+    window.BacCampus?.setLive({...s,live:true,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected:room==='mission'?selectedCrewRole:selected,flow,gap:active?.status==='waiting',brief:b?{...b,location:b.city}:null,calc:crew?.payload.capacity||null,policy:null});
     document.getElementById('campus-motion-status').textContent=active?flow[0]:'Explore your crew · movement is ambient until a task runs';
+    renderCrewPassport();
   }
+  /* STUDIO_CREW */
   async function refresh(){if(changingAgent||removingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion&&target===agentId&&!changingAgent){data=state;render();}}catch(error){if(version===refreshVersion){if(error.status===404){try{const state=await api('state',undefined,'');if(version===refreshVersion&&!changingAgent){el('dialog').close();openAgentState(state);alert('This agent was deleted in another tab. Your collection is up to date.');}}catch(recovery){alert(recovery.message);}}else if(!document.hidden)alert(error.message);}}finally{if(version===refreshVersion)busy=false;}}
   el('missions').onclick=e=>{const button=e.target.closest('[data-studio-mission]');if(!button)return;const mission=missions.find(m=>m.id===button.dataset.studioMission);if(!data.profile){alert('Give your agent a name and click “Bring my agent to life” first.');agentForm(true);el('name').focus();return;}if(!data.profile.skills.includes(mission.id)){alert('This starter agent did not equip '+titles[mission.id]+'. Its current skills are shown in the passport.');return;}setRoom('lounge');skill=mission.id;el('prompt').value=mission.id==='web'&&runtime.search?'Search the web for three useful places to visit in Zurich before BaC. Compare options and cite the sources you actually used.':mission.prompt;el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===button));if(mission.id==='documents'&&!data.files.some(f=>f.kind==='inbox')){sampleDocument();}el('prompt').focus();el('passport').scrollIntoView({behavior:'smooth',block:'center'});};
   el('chat').onsubmit=async e=>{e.preventDefault();el('send').disabled=true;try{const result=await api('jobs',{kind:'chat',prompt:el('prompt').value,skill});selectedJob=result.id;await refresh();el('workspace').scrollIntoView({behavior:'smooth',block:'start'});}catch(error){alert(error.message);}finally{el('send').disabled=false;}};
@@ -179,7 +182,12 @@
   function showBoard(value){board=value;setRoom('mission');}
   el('campus-tab').onclick=()=>showBoard(false);el('board-tab').onclick=()=>showBoard(true);
   el('lanes').onclick=e=>{const b=e.target.closest('[data-role-output]');if(!b)return;const crew=crewMission();dialog('REAL AGENT DELIVERABLE','<h3>'+roles[b.dataset.roleOutput][1]+'</h3><pre>'+escape(crew.payload.outputs[b.dataset.roleOutput])+'</pre>');};
-  root.addEventListener('bac:live-select',e=>{const i=e.detail;const crew=crewMission();const [name,role,description]=roles[i];const member=crew?.payload.roster?.[i]||{persona:['guide','maker','analyst','guide','analyst'][i],skills:['documents','writer'],protection:'standard'};if(i===0&&data.profile&&crew?.payload.roster?.[0]?.key===agentId&&!worldOpen&&!data.jobs.some(j=>j.kind==='crew'&&j.status==='running')){el('passport').scrollIntoView({behavior:'smooth',block:'center'});return;}dialog('AGENT PASSPORT',`<h3>${escape(name)} <span class="studio-muted">/ ${role}</span></h3><p>${description}</p>${member?'<p>'+escape(personas[member.persona])+'</p><p class="studio-muted">'+(member.protection==='openshell'?'OpenShell on · Personal agent’s policy applies':'OpenShell off · Ready to collaborate')+'</p><div class="studio-equipped">'+member.skills.map(s=>'<span>'+escape(titles[s])+'</span>').join('')+'</div>':''}<div class="studio-runtime-grid"><div><b>Own identity &amp; workspace</b><small>Separate role instructions and conversation. Receives shared brief and prior deliverables.</small></div><div><b>Shared model</b><small>bac-local on Spark. No extra model loaded for this role.</small></div></div><pre>${escape(crew?.payload.outputs?.[i]||'No deliverable yet. Launch a crew mission to give this role work.')}</pre>`);});
+  root.addEventListener('bac:live-select',e=>{
+    if(room!=='mission'||!Number.isInteger(e.detail)||!roles[e.detail])return;
+    const changed=selectedCrewRole!==e.detail;selectedCrewRole=e.detail;root.dataset.crewDetails='true';
+    if(changed){el('crew-deliverable').open=false;el('crew-passport').firstElementChild.scrollTop=0;}
+    renderCrewPassport();
+  });
   async function openFile(path){const target=agentId;try{const file=await api('file?path='+encodeURIComponent(path));if(target!==agentId)return;const html=path.endsWith('.html');dialog(html?'PLAY YOUR MINI APP':'WORKSPACE FILE',`<h3>${escape(path.split('/').pop())}</h3>${html?'<p>Interactive preview · scripts run in an isolated frame with network access blocked.</p><iframe id="studio-app-frame" title="Generated mini app" sandbox="allow-scripts"></iframe>':'<pre>'+escape(file.content)+'</pre>'}<div class="studio-dialog-actions"><button class="studio-primary" id="studio-download">Download file ↓</button></div>`);const protection='<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\'; style-src \'unsafe-inline\'; img-src data:; connect-src \'none\'; form-action \'none\'; base-uri \'none\'">';if(html)el('app-frame').srcdoc=protection+file.content;el('download').onclick=()=>{const blob=new Blob([(html?protection:'')+file.content],{type:html?'text/html':'text/plain'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=path.split('/').pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};}catch(error){alert(error.message);}}
   root.addEventListener('click',async e=>{const file=e.target.closest('[data-studio-file]');if(file){openFile(file.dataset.studioFile);return;}const history=e.target.closest('[data-studio-job]');if(history){selectedJob=history.dataset.studioJob;render();return;}const choice=e.target.closest('[data-decision]');if(choice){try{await api('decision',{id:current().id,action:choice.dataset.decision});await refresh();}catch(error){alert(error.message);}}});
   el('read-aloud').onclick=()=>{if(!('speechSynthesis' in window)){alert('This browser does not support speech playback.');return;}window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance((current()?.result.answer||'').slice(0,4000));utterance.lang='en-US';window.speechSynthesis.speak(utterance);el('read-aloud').textContent='Browser voice · playing';utterance.onend=()=>el('read-aloud').textContent='▷ Hear the answer';};

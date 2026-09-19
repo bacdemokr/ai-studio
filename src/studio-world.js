@@ -30,6 +30,7 @@
   async function enterWorld(){
     if(worldOpen||el('dialog').open)return;
     worldOpen=true;const epoch=++worldEpoch;
+    root.dataset.crewDetails='false';
     worldPreviousFocus=document.activeElement;worldScroll=[window.scrollX,window.scrollY];worldOverflow=document.body.style.overflow;
     // The window-filling fallback has the same keyboard boundary as native fullscreen.
     for(let node=root;node.parentElement&&node!==document.body;node=node.parentElement){

@@ -44,7 +44,7 @@ function renderRoomVisibility(){
   const workshop=room==='workshop',lounge=room==='lounge',mission=room==='mission',policies=room==='policies';
   root.querySelectorAll('[data-room]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.room===room));
   const [kicker,title,description]=roomCopy[room];el('room-kicker').textContent=kicker;el('room-title').textContent=title;el('room-description').textContent=description;
-  el('workshop').hidden=!workshop;el('passport').hidden=workshop||policies;el('connections').hidden=!workshop;el('policies').hidden=!policies;
+  el('workshop').hidden=!workshop;el('passport').hidden=!lounge;el('crew-passport').hidden=!mission;el('connections').hidden=!workshop;el('policies').hidden=!policies;
   el('collection').hidden=!lounge||!data.profile;
   root.querySelector('.studio-viewbar').hidden=!mission;
   layout.hidden=policies||(mission&&board);el('board').hidden=!mission||!board;

@@ -331,10 +331,47 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 @media(max-width:560px){#agent-campus[data-room=lounge] #campus-viewport{min-height:430px}#agent-campus .world-resident[data-speaking=true]{width:218px;padding:10px 12px 12px}.world-resident-speech{font-size:17px;margin-top:7px}}
 @media(prefers-reduced-motion:reduce){.world-resident-speech{animation:none}}
 
+/* Crew selection lives beside the world, with the same treatment as the lounge. */
+#studio-crew-passport{position:relative;min-width:0;min-height:0;border-left:1px solid #344553;background:linear-gradient(150deg,#19232e,#101821);--crew-color:#76b900}
+.studio-crew-passport-content{position:absolute;inset:0;padding:24px;overflow:auto;overscroll-behavior:contain;scrollbar-color:#506477 transparent}
+#studio-crew-passport .studio-companion-name{align-items:center;margin:22px 0}
+#studio-crew-passport .studio-avatar{flex-shrink:0}
+#studio-crew-passport h3{color:#f2f6fa;font-size:31px;line-height:1.2;letter-spacing:-.65px;overflow-wrap:anywhere}
+#studio-crew-passport .studio-passport-head{gap:12px}
+#studio-crew-number{margin-left:auto;white-space:nowrap}
+#agent-campus #studio-crew-close{display:none;padding:0 8px;font-size:26px;line-height:1.2}
+.studio-crew-persona{border-left:2px solid var(--crew-color);padding-left:13px;color:#c8d7e5;font-size:17px;line-height:1.65;margin:0 0 24px!important}
+#studio-crew-skills{margin:12px 0 23px}
+#studio-crew-state{border-left-color:var(--crew-color);margin:20px 0 24px}
+#studio-crew-state[data-state=attention]{border-left-color:#f4b34f}
+.studio-crew-handoff{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px;padding:0 0 20px;border-bottom:1px solid #344553}
+.studio-crew-handoff .studio-kicker{font-size:12px;letter-spacing:.9px;line-height:1.6;display:block}
+.studio-crew-handoff b{display:block;font-size:16px;line-height:1.5;color:#e0ebf5;margin-top:8px;font-weight:500;overflow-wrap:anywhere}
+.studio-crew-handoff>span{color:var(--crew-color)}
+#studio-crew-access{margin:20px 0!important;font-size:14px!important}
+#studio-crew-deliverable{border:1px solid #3e5266;padding:12px;background:#111c27;margin:20px 0}
+#studio-crew-deliverable summary{font-size:16px;color:#dfeaf5;margin:0}
+#studio-crew-output{font-family:inherit;font-size:15px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;max-height:280px;overflow:auto;color:#c1d4e3;margin:16px 0 0}
+#studio-crew-output-empty{margin:18px 0!important}
+#studio-crew-action{width:100%;margin-top:12px}
+#agent-campus .world-expanded #studio-crew-passport{display:none!important}
+#agent-campus.studio-world-open[data-room=mission][data-crew-details=true] .campus-layout.world-expanded{grid-template-columns:minmax(0,1fr) 365px!important}
+#agent-campus.studio-world-open[data-room=mission][data-crew-details=true] #studio-crew-passport{display:block!important}
+#agent-campus.studio-world-open #studio-crew-close{display:block}
+@media(max-width:800px){
+  #studio-crew-passport{border-left:0;border-top:1px solid #344553}
+  .studio-crew-passport-content{position:relative;max-height:680px}
+  #agent-campus.studio-world-open[data-room=mission][data-crew-details=true] .campus-layout.world-expanded{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr) min(42vh,320px)}
+  #agent-campus.studio-world-open #studio-crew-passport .studio-crew-passport-content{position:absolute;max-height:none}
+}
+@media(max-width:560px){.studio-crew-passport-content{padding:22px 18px}}
+@media(max-height:600px){#agent-campus .world-expanded #campus-motion-status{display:none}#agent-campus .world-expanded .campus-scene-bottom{padding-top:8px;padding-bottom:8px}}
+
 .studio-sound{display:flex;align-items:center;gap:3px;flex-shrink:0}
 #agent-campus #campus-sound-toggle{width:auto;min-height:35px;height:auto;padding:4px 9px;font-size:15px;white-space:nowrap;color:#b8c9d7;border:1px solid #526071;background:#191e25;border-radius:3px}
 #agent-campus #campus-sound-toggle[aria-pressed=true]{color:#d3edb5;border-color:#5f843c;background:#1d2a22}
 .studio-sound-level{position:relative;color:#afc3d3}
+#agent-campus .studio-sound-level,#agent-campus .studio-sound-level summary{margin:0}
 .studio-sound-level summary{display:grid;place-items:center;width:27px;height:33px;border:1px solid #43586b;border-radius:3px;cursor:pointer;list-style:none;font-size:16px}
 .studio-sound-level summary::-webkit-details-marker{display:none}
 .studio-sound-panel{position:absolute;bottom:calc(100% + 10px);right:0;z-index:12;box-sizing:border-box;width:225px;padding:16px;background:#15212d;border:1px solid #587389;border-radius:6px;box-shadow:0 8px 26px #0008;color:#e0ecf6;text-align:left}
@@ -393,6 +430,20 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
     <form id="studio-chat"><label for="studio-prompt">What should we make happen?</label><textarea id="studio-prompt" rows="4" maxlength="6000" placeholder="Build me a tiny reaction-time game…" required></textarea><div class="studio-compose-actions"><button type="button" id="studio-attach">＋ Add a document</button><button type="submit" class="studio-primary" id="studio-send">Run mission ↗</button></div></form>
     <div class="studio-quick-links"><button id="studio-memory">▧ Memory</button><button id="studio-phone">↗ Take it to Telegram</button><button id="studio-schedule">◷ Follow up later</button></div>
     <div class="studio-native-note"><span>OPENCLAW</span><p>Native persona · skills · persistent conversation<br>Every agent uses the same model on Spark.</p></div>
+  </div>
+</aside>
+<aside id="studio-crew-passport" hidden aria-label="Selected crew member">
+  <div class="studio-crew-passport-content">
+    <div class="studio-passport-head"><span class="studio-kicker">MEET YOUR CREW</span><span id="studio-crew-number" class="studio-muted"></span><button id="studio-crew-close" class="studio-secondary" aria-label="Hide crew details">×</button></div>
+    <div class="studio-companion-name"><div id="studio-crew-portrait" class="studio-avatar small"><i></i><i></i></div><div><h3 id="studio-crew-name"></h3><span id="studio-crew-role" class="studio-muted"></span></div></div>
+    <p id="studio-crew-persona" class="studio-crew-persona"></p>
+    <span class="studio-kicker">EQUIPPED SKILLS</span><div id="studio-crew-skills" class="studio-equipped"></div>
+    <div id="studio-crew-state" class="studio-agent-state"><span class="studio-kicker" id="studio-crew-status" role="status"></span><p id="studio-crew-task"></p></div>
+    <div class="studio-crew-handoff"><div><span class="studio-kicker">RECEIVES FROM</span><b id="studio-crew-from"></b></div><span aria-hidden="true">→</span><div><span class="studio-kicker">HANDS OFF TO</span><b id="studio-crew-to"></b></div></div>
+    <p id="studio-crew-access" class="studio-muted"></p>
+    <details id="studio-crew-deliverable"><summary>Deliverable</summary><pre id="studio-crew-output"></pre></details>
+    <p id="studio-crew-output-empty" class="studio-muted"></p>
+    <button id="studio-crew-action" class="studio-secondary">Launch a crew mission ↗</button>
   </div>
 </aside>
 <section id="studio-experiences" class="studio-experiences">
@@ -79343,6 +79394,7 @@ render();
   let agentId='',changingAgent=false,removingAgent=false,pendingWrites=0,refreshVersion=0,collectionKey='';
   let room='workshop',roomsReady=false,draftMode='new',draftOwner='',draftAvatar={body:'classic',color:'green',accessory:'antenna'};
   let policySnapshot=null,policyVersion=0,policyLoading=false,policySaving=false;
+  let selectedCrewRole=0;
   root.classList.add('studio-enabled');
   root.querySelector('.campus-heading h2').textContent='Your ideas. An agent that gets them done.';
   root.querySelector('.campus-heading .quiet').textContent='Make it yours. Give it useful skills. Watch one agent become a team.';
@@ -79352,7 +79404,7 @@ render();
   el('journey').after(el('rooms'));el('rooms').after(el('room-heading'));el('room-heading').after(root.querySelector('.studio-viewbar'));
   root.querySelector('.studio-viewbar').after(el('safety-bar'));
   el('safety-bar').after(el('collection'));
-  layout.append(el('workshop'),el('passport'));layout.after(el('connections'));
+  layout.append(el('workshop'),el('passport'),el('crew-passport'));layout.after(el('connections'));
   layout.after(el('board'));
   el('board').after(el('experiences'));
   el('experiences').after(el('workspace'));
@@ -79463,7 +79515,7 @@ render();
     const crew=crewMission(), stage=crew?.payload.stage??-1;
     roles.forEach((r,i)=>r[0]=crew?.payload.roster?.[i]?.name||(i===0&&room!=='mission'?data.profile?.name:null)||defaultNames[i]);
     el('lanes').innerHTML=roles.map(([name,role,description],i)=>{const done=!!crew?.payload.outputs?.[i],working=['running','stopping'].includes(crew?.status)&&stage===i,waiting=crew?.status==='waiting'&&i===2;return `<article class="studio-lane" data-state="${waiting?'waiting':done?'done':working?'running':'ready'}"><span>0${i+1} / ${waiting?'NEEDS YOU':done?'DELIVERED':working?(crew?.status==='stopping'?'STOPPING':'WORKING'):'READY'}</span><h4>${escape(name)}</h4><strong>${role}</strong><p>${description}</p>${done?'<button data-role-output="'+i+'">Open deliverable ↗</button>':''}</article>`;}).join('');
-    const active=data.jobs.find(j=>['running','stopping'].includes(j.status))||data.jobs.find(j=>j.status==='waiting');
+    const active=room==='mission'?(crew&&['running','stopping','waiting'].includes(crew.status)?crew:null):data.jobs.find(j=>['running','stopping'].includes(j.status))||data.jobs.find(j=>j.status==='waiting');
     const s=window.BacDemo.snapshot();
     const a=roles.map(([name,role,description],i)=>({...s.agents[i],name,role,persona:description,skills:i===0?['Shared brief']:i===1?['Demo design']:i===2?['Capacity planning']:i===3?['Campaign writing']:['Evidence review'],lane:0,status:'Ready',task:description,permission:'Scoped workspace · shared local model'}));
     crew?.payload.roster?.forEach((m,i)=>{a[i].persona=personas[m.persona];a[i].skills=m.skills.map(x=>titles[x]);a[i].avatar=m.avatar;});
@@ -79477,9 +79529,49 @@ render();
     }else if(data.profile&&room!=='mission'){a[0].name=data.profile.name;a[0].role='Your personal agent';a[0].persona=personas[data.profile.persona];a[0].skills=data.profile.skills.map(x=>titles[x]);}
     if(data.profile&&!crew&&room!=='mission')a[0].avatar=data.profile.avatar;
     const b=crew?.payload.brief;
-    window.BacCampus?.setLive({...s,live:true,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected,flow,gap:active?.status==='waiting',brief:b?{...b,location:b.city}:null,calc:crew?.payload.capacity||null,policy:null});
+    window.BacCampus?.setLive({...s,live:true,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected:room==='mission'?selectedCrewRole:selected,flow,gap:active?.status==='waiting',brief:b?{...b,location:b.city}:null,calc:crew?.payload.capacity||null,policy:null});
     document.getElementById('campus-motion-status').textContent=active?flow[0]:'Explore your crew · movement is ambient until a task runs';
+    renderCrewPassport();
   }
+  // A persistent inspector: selection is independent of the role currently working.
+function renderCrewPassport(){
+  if(room!=='mission')return;
+  const i=selectedCrewRole,crew=crewMission(),member=crew?.payload.roster?.[i];
+  const name=member?.name||defaultNames[i],role=roles[i][1],description=roles[i][2];
+  const persona=member?.persona||['guide','maker','analyst','guide','analyst'][i];
+  const avatar=member?.avatar||window.BacCampus?.inspect().crewAvatars?.[i]||{};
+  const output=crew?.payload.outputs?.[i],stage=crew?.payload.stage??-1;
+  const done=!!output,working=['running','stopping'].includes(crew?.status)&&stage===i;
+  const waiting=crew?.status==='waiting'&&i===2,failed=crew?.status==='error'&&stage===i;
+  let status='READY TO COLLABORATE',task=description;
+  if(waiting){status='YOUR DECISION IS NEEDED';task='Equipment needs exceed the available devices. Review the capacity plan in Mission control.';}
+  else if(done){status='DELIVERED';task=i===4?'The crew review is ready. Open the deliverable below.':'This role’s output is saved and available to the crew.';}
+  else if(failed){status='NEEDS ATTENTION';task=crew.result?.error||'This step could not finish. Open Mission control to review recovery options.';}
+  else if(working){status=crew.status==='stopping'?'FINISHING THE CURRENT STEP':'WORKING ON THE BRIEF';}
+  else if(crew?.status==='cancelled'){status='MISSION CANCELLED';task='This role did not deliver an output before the mission was cancelled.';}
+  else if(crew){status='WAITING FOR ITS TURN';task=i?'Waiting for the shared brief and earlier deliverables. '+description:'Waiting for the shared model to start the brief.';}
+  el('crew-number').textContent=String(i+1).padStart(2,'0')+' / 05';
+  el('crew-name').textContent=name;el('crew-role').textContent=role;
+  el('crew-persona').textContent=personas[persona]||description;
+  const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';
+  const color=appearanceColors[avatar.color]||appearanceColors.green;
+  portrait.style.setProperty('--avatar-accent',color);el('crew-passport').style.setProperty('--crew-color',color);
+  const skills=(member?.skills||['documents','writer']).map(s=>titles[s]||s),markup=skills.map(s=>'<span>'+escape(s)+'</span>').join('');
+  if(el('crew-skills').innerHTML!==markup)el('crew-skills').innerHTML=markup;
+  el('crew-status').textContent=status;el('crew-task').textContent=task;
+  el('crew-state').dataset.state=waiting||failed?'attention':done?'done':working?'working':'ready';
+  const roleName=index=>crew?.payload.roster?.[index]?.name||defaultNames[index];
+  el('crew-from').textContent=i?roleName(i-1)+' · '+roles[i-1][1]:'Your event brief';
+  el('crew-to').textContent=i<4?roleName(i+1)+' · '+roles[i+1][1]:'Your reviewed plan';
+  el('crew-access').textContent=member?.protection==='openshell'?'OpenShell on · Uses this personal agent’s policy.':'OpenShell off · Ready to collaborate.';
+  el('crew-deliverable').hidden=!done;el('crew-output-empty').hidden=done;
+  if(el('crew-output').textContent!==(output||''))el('crew-output').textContent=output||'';
+  el('crew-output-empty').textContent=crew?'No deliverable from this role yet.':'Give the crew an event brief to see this role in action.';
+  el('crew-action').textContent=crew?'Open Mission control ↗':'Launch a crew mission ↗';
+}
+el('crew-close').onclick=()=>{root.dataset.crewDetails='false';worldViewport.focus({preventScroll:true});};
+el('crew-action').onclick=()=>crewMission()?showBoard(true):crewForm();
+
   async function refresh(){if(changingAgent||removingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion&&target===agentId&&!changingAgent){data=state;render();}}catch(error){if(version===refreshVersion){if(error.status===404){try{const state=await api('state',undefined,'');if(version===refreshVersion&&!changingAgent){el('dialog').close();openAgentState(state);alert('This agent was deleted in another tab. Your collection is up to date.');}}catch(recovery){alert(recovery.message);}}else if(!document.hidden)alert(error.message);}}finally{if(version===refreshVersion)busy=false;}}
   el('missions').onclick=e=>{const button=e.target.closest('[data-studio-mission]');if(!button)return;const mission=missions.find(m=>m.id===button.dataset.studioMission);if(!data.profile){alert('Give your agent a name and click “Bring my agent to life” first.');agentForm(true);el('name').focus();return;}if(!data.profile.skills.includes(mission.id)){alert('This starter agent did not equip '+titles[mission.id]+'. Its current skills are shown in the passport.');return;}setRoom('lounge');skill=mission.id;el('prompt').value=mission.id==='web'&&runtime.search?'Search the web for three useful places to visit in Zurich before BaC. Compare options and cite the sources you actually used.':mission.prompt;el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===button));if(mission.id==='documents'&&!data.files.some(f=>f.kind==='inbox')){sampleDocument();}el('prompt').focus();el('passport').scrollIntoView({behavior:'smooth',block:'center'});};
   el('chat').onsubmit=async e=>{e.preventDefault();el('send').disabled=true;try{const result=await api('jobs',{kind:'chat',prompt:el('prompt').value,skill});selectedJob=result.id;await refresh();el('workspace').scrollIntoView({behavior:'smooth',block:'start'});}catch(error){alert(error.message);}finally{el('send').disabled=false;}};
@@ -79529,6 +79621,7 @@ render();
   async function enterWorld(){
     if(worldOpen||el('dialog').open)return;
     worldOpen=true;const epoch=++worldEpoch;
+    root.dataset.crewDetails='false';
     worldPreviousFocus=document.activeElement;worldScroll=[window.scrollX,window.scrollY];worldOverflow=document.body.style.overflow;
     // The window-filling fallback has the same keyboard boundary as native fullscreen.
     for(let node=root;node.parentElement&&node!==document.body;node=node.parentElement){
@@ -79652,7 +79745,7 @@ function renderRoomVisibility(){
   const workshop=room==='workshop',lounge=room==='lounge',mission=room==='mission',policies=room==='policies';
   root.querySelectorAll('[data-room]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.room===room));
   const [kicker,title,description]=roomCopy[room];el('room-kicker').textContent=kicker;el('room-title').textContent=title;el('room-description').textContent=description;
-  el('workshop').hidden=!workshop;el('passport').hidden=workshop||policies;el('connections').hidden=!workshop;el('policies').hidden=!policies;
+  el('workshop').hidden=!workshop;el('passport').hidden=!lounge;el('crew-passport').hidden=!mission;el('connections').hidden=!workshop;el('policies').hidden=!policies;
   el('collection').hidden=!lounge||!data.profile;
   root.querySelector('.studio-viewbar').hidden=!mission;
   layout.hidden=policies||(mission&&board);el('board').hidden=!mission||!board;
@@ -79730,7 +79823,12 @@ fillCreator(true);setRoom('workshop');
   function showBoard(value){board=value;setRoom('mission');}
   el('campus-tab').onclick=()=>showBoard(false);el('board-tab').onclick=()=>showBoard(true);
   el('lanes').onclick=e=>{const b=e.target.closest('[data-role-output]');if(!b)return;const crew=crewMission();dialog('REAL AGENT DELIVERABLE','<h3>'+roles[b.dataset.roleOutput][1]+'</h3><pre>'+escape(crew.payload.outputs[b.dataset.roleOutput])+'</pre>');};
-  root.addEventListener('bac:live-select',e=>{const i=e.detail;const crew=crewMission();const [name,role,description]=roles[i];const member=crew?.payload.roster?.[i]||{persona:['guide','maker','analyst','guide','analyst'][i],skills:['documents','writer'],protection:'standard'};if(i===0&&data.profile&&crew?.payload.roster?.[0]?.key===agentId&&!worldOpen&&!data.jobs.some(j=>j.kind==='crew'&&j.status==='running')){el('passport').scrollIntoView({behavior:'smooth',block:'center'});return;}dialog('AGENT PASSPORT',`<h3>${escape(name)} <span class="studio-muted">/ ${role}</span></h3><p>${description}</p>${member?'<p>'+escape(personas[member.persona])+'</p><p class="studio-muted">'+(member.protection==='openshell'?'OpenShell on · Personal agent’s policy applies':'OpenShell off · Ready to collaborate')+'</p><div class="studio-equipped">'+member.skills.map(s=>'<span>'+escape(titles[s])+'</span>').join('')+'</div>':''}<div class="studio-runtime-grid"><div><b>Own identity &amp; workspace</b><small>Separate role instructions and conversation. Receives shared brief and prior deliverables.</small></div><div><b>Shared model</b><small>bac-local on Spark. No extra model loaded for this role.</small></div></div><pre>${escape(crew?.payload.outputs?.[i]||'No deliverable yet. Launch a crew mission to give this role work.')}</pre>`);});
+  root.addEventListener('bac:live-select',e=>{
+    if(room!=='mission'||!Number.isInteger(e.detail)||!roles[e.detail])return;
+    const changed=selectedCrewRole!==e.detail;selectedCrewRole=e.detail;root.dataset.crewDetails='true';
+    if(changed){el('crew-deliverable').open=false;el('crew-passport').firstElementChild.scrollTop=0;}
+    renderCrewPassport();
+  });
   async function openFile(path){const target=agentId;try{const file=await api('file?path='+encodeURIComponent(path));if(target!==agentId)return;const html=path.endsWith('.html');dialog(html?'PLAY YOUR MINI APP':'WORKSPACE FILE',`<h3>${escape(path.split('/').pop())}</h3>${html?'<p>Interactive preview · scripts run in an isolated frame with network access blocked.</p><iframe id="studio-app-frame" title="Generated mini app" sandbox="allow-scripts"></iframe>':'<pre>'+escape(file.content)+'</pre>'}<div class="studio-dialog-actions"><button class="studio-primary" id="studio-download">Download file ↓</button></div>`);const protection='<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\'; style-src \'unsafe-inline\'; img-src data:; connect-src \'none\'; form-action \'none\'; base-uri \'none\'">';if(html)el('app-frame').srcdoc=protection+file.content;el('download').onclick=()=>{const blob=new Blob([(html?protection:'')+file.content],{type:html?'text/html':'text/plain'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=path.split('/').pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};}catch(error){alert(error.message);}}
   root.addEventListener('click',async e=>{const file=e.target.closest('[data-studio-file]');if(file){openFile(file.dataset.studioFile);return;}const history=e.target.closest('[data-studio-job]');if(history){selectedJob=history.dataset.studioJob;render();return;}const choice=e.target.closest('[data-decision]');if(choice){try{await api('decision',{id:current().id,action:choice.dataset.decision});await refresh();}catch(error){alert(error.message);}}});
   el('read-aloud').onclick=()=>{if(!('speechSynthesis' in window)){alert('This browser does not support speech playback.');return;}window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance((current()?.result.answer||'').slice(0,4000));utterance.lang='en-US';window.speechSynthesis.speak(utterance);el('read-aloud').textContent='Browser voice · playing';utterance.onend=()=>el('read-aloud').textContent='▷ Hear the answer';};
