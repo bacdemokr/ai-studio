@@ -14,6 +14,27 @@ const {chromium}=require('playwright');
   await page.locator('#studio-name').fill('Riley');await page.locator('[data-persona="maker"]').click();await page.locator('#studio-create').click();
   await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Riley');
   assert.match(await page.locator('#studio-personality').innerText(),/Inventive/);
+  await page.locator('#studio-alert button').click();
+  // Canvas dimensions must not become the grid's minimum height after fullscreen.
+  const world=page.locator('#campus-viewport');
+  for(const size of [{width:1500,height:1100},{width:390,height:844}]){
+    await page.setViewportSize(size);await page.waitForTimeout(180);
+    const original=await world.boundingBox(),camera=await page.evaluate(()=>BacCampus.inspect().camera);
+    for(const exit of ['Enter','Enter','Escape','button']){
+      await world.focus();await page.keyboard.press('Enter');
+      await page.waitForFunction(()=>document.fullscreenElement?.id==='agent-campus');
+      await page.waitForTimeout(120);
+      if(exit==='button')await page.locator('#studio-focus').click();else await page.keyboard.press(exit);
+      await page.waitForFunction(()=>!document.fullscreenElement&&!document.querySelector('.world-expanded'));
+      await page.waitForTimeout(180);
+      const restored=await world.boundingBox(),canvas=await page.locator('#campus-viewport canvas').boundingBox();
+      assert(Math.abs(restored.width-original.width)<1&&Math.abs(restored.height-original.height)<1,
+        'World size drift after '+exit+' at '+size.width+': '+JSON.stringify({original,restored}));
+      assert(Math.abs(canvas.width-restored.width)<1&&Math.abs(canvas.height-restored.height)<1,'Canvas must follow its viewport');
+      assert.deepEqual(await page.evaluate(()=>BacCampus.inspect().camera),camera,'Fullscreen must retain the camera');
+    }
+  }
+  await page.setViewportSize({width:1500,height:1100});
   await page.locator('#campus-viewport').scrollIntoViewIfNeeded();
   const first=await page.evaluate(()=>BacCampus.inspect().robots);await page.waitForFunction(initial=>JSON.stringify(BacCampus.inspect().robots)!==JSON.stringify(initial),first,{timeout:12000});
   await page.locator('#campus-motion').click();const paused=await page.evaluate(()=>BacCampus.inspect().robots);await page.waitForTimeout(300);assert.deepEqual(paused,await page.evaluate(()=>BacCampus.inspect().robots));await page.locator('#campus-motion').click();

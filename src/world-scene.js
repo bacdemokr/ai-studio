@@ -142,7 +142,8 @@ function createScene() {
   let packetStart=new THREE.Vector3(),packetEnd=new THREE.Vector3(),packetTime=-20;
   const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
   function cam(){camera.position.set(Math.sin(azimuth)*Math.cos(elevation)*30,Math.sin(elevation)*30,Math.cos(azimuth)*Math.cos(elevation)*30);camera.lookAt(focus);camera.zoom=zoom;camera.updateProjectionMatrix();}
-  function resize(){const w=viewport.clientWidth,h=viewport.clientHeight;if(!w||!h)return;const aspect=w/h,vertical=aspect<1?12.5:aspect<1.5?10.2:8.0;camera.left=-vertical*aspect;camera.right=vertical*aspect;camera.top=vertical;camera.bottom=-vertical;renderer.setSize(w,h);cam();renderer.render(scene,camera);}
+  // CSS owns layout; resize only the drawing buffer, not the canvas's CSS dimensions.
+  function resize(){const w=viewport.clientWidth,h=viewport.clientHeight;if(!w||!h)return;const aspect=w/h,vertical=aspect<1?12.5:aspect<1.5?10.2:8.0;camera.left=-vertical*aspect;camera.right=vertical*aspect;camera.top=vertical;camera.bottom=-vertical;renderer.setSize(w,h,false);cam();renderer.render(scene,camera);}
   function movement(){
     robots.forEach(r=>{r.path=r.robot.position.distanceTo(r.home)>.06?[r.home.clone()]:[];r.packet.visible=false;});
     const active=state.agents.findIndex(a=>a.lane===1||a.lane===2);

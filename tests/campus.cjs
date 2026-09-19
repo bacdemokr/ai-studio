@@ -43,6 +43,10 @@ const {chromium}=require('playwright');
     await page.keyboard.press('Escape');
     await page.waitForFunction(()=>!document.fullscreenElement&&!document.querySelector('.world-expanded'));
     assert(await page.locator('#studio-passport').isVisible());
+    await page.waitForTimeout(180);
+    const restored=await page.locator('#campus-viewport').boundingBox();
+    assert(Math.abs(restored.width-embedded.width)<1&&Math.abs(restored.height-embedded.height)<1,
+      'Leaving fullscreen must restore the embedded dimensions: '+JSON.stringify({embedded,restored}));
     // Click+Enter and a double-click are alternatives to the visible button.
     await page.locator('#campus-viewport canvas').click({position:{x:20,y:180}});await page.keyboard.press('Enter');
     await page.waitForFunction(()=>document.fullscreenElement?.id==='agent-campus');
@@ -63,6 +67,9 @@ const {chromium}=require('playwright');
     await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.body.style.overflow),'');
     assert.equal(await page.evaluate(()=>document.querySelector('[data-mode="playground"]').inert),false);
     await page.evaluate(()=>document.getElementById('agent-campus').requestFullscreen=window.testFullscreen);await page.setViewportSize({width:1440,height:1100});
+    await page.waitForTimeout(180);
+    const resizedBack=await page.locator('#campus-viewport').boundingBox();
+    assert(Math.abs(resizedBack.width-embedded.width)<1&&Math.abs(resizedBack.height-embedded.height)<1,'Fullscreen resizes must not enlarge the restored layout');
     assert.equal(await page.locator('[data-world-skill]').count(),9);
     await page.locator('#studio-board-tab').click();assert(await page.locator('#studio-board').isVisible());
     await page.locator('#studio-campus-tab').click();assert(await page.locator('#campus-viewport').isVisible());
