@@ -34,7 +34,7 @@ Edit persona/skills after the mission finishes. Schedule a one-minute follow-up;
 
 ## Presentation boundaries
 
-Keep the dark NVIDIA-inspired shell and familiar panel layout. Use Expand world only when showing the spatial experience. Character wandering is ambient when idle; movement toward a station represents an observed task state. The evidence panel contains app events and actual files, not a fine-grained tool trace or hidden reasoning.
+Keep the dark NVIDIA-inspired shell and familiar panel layout. For the spatial experience, click the 3D view and press Enter, double-click an empty area, or use Full screen. The side panel hides and the workshop fills the display. Esc or Exit full screen restores the studio; the camera and running work are preserved. Hotspot dialogs remain usable in fullscreen, and selecting a personal skill returns to the mission composer. Character wandering is ambient when idle; movement toward a station represents an observed task state. The evidence panel contains app events and actual files, not a fine-grained tool trace or hidden reasoning.
 
 OpenClaw owns agent execution, identity, skills, tool use and conversation state. The BaC app owns onboarding, the shared brief, role orchestration, scheduling and UI. OpenShell is the optional execution sandbox; an application approval is not proof of an OpenShell policy boundary.
 

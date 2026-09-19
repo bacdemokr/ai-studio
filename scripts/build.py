@@ -20,7 +20,7 @@ fragment = fragment.replace('<!-- AGENT_CAMPUS -->', campus)
 vendor = (ROOT / 'src/vendor/three-r180.cjs').read_text(encoding='utf-8')
 campus_js = '(function(){const exports={};\n' + vendor + '\nconst THREE=exports;\n' + (ROOT / 'src/campus.js').read_text(encoding='utf-8').replace('/* WORLD_SCENE */', (ROOT / 'src/world-scene.js').read_text(encoding='utf-8')) + '\n})();'
 fragment = fragment.replace('<!-- CAMPUS_SCRIPT -->', '<script>' + campus_js.replace('</script', '<\\/script') + '</script>')
-studio_js = (ROOT / 'src/studio.js').read_text(encoding='utf-8').replace('/* STUDIO_SAFETY */', (ROOT / 'src/studio-safety.js').read_text(encoding='utf-8'))
+studio_js = (ROOT / 'src/studio.js').read_text(encoding='utf-8').replace('/* STUDIO_WORLD */', (ROOT / 'src/studio-world.js').read_text(encoding='utf-8')).replace('/* STUDIO_SAFETY */', (ROOT / 'src/studio-safety.js').read_text(encoding='utf-8'))
 fragment = fragment.replace('<!-- STUDIO_SCRIPT -->', '<script>' + studio_js.replace('</script', '<\\/script') + '</script>')
 fragment = fragment.replace('<!-- NVIDIA_THEME -->', '<style>\n' + (ROOT / 'src/nvidia-theme.css').read_text(encoding='utf-8') + '\n</style>')
 version = os.environ.get('BAC_DEMO_VERSION', 'local-preview')

@@ -1,6 +1,6 @@
 # NVIDIA Build a Claw — Agent Studio
 
-Create your own agents, give each useful skills, and choose who joins your crew. The NVIDIA-inspired dark interface surrounds a miniature 3D workshop: five robot specialists work at distinct desks around one shared brief. Active workbenches light up and document packets illustrate observed handoffs. Small buttons on the library, maker desk, weather instrument and shared brief open the actual experiences. Switch between **Agent campus** and **Mission control**, or expand the world without changing the rest of the interface.
+Create your own agents, give each useful skills, and choose who joins your crew. The NVIDIA-inspired dark interface surrounds a miniature 3D workshop: five robot specialists work at distinct desks around one shared brief. Active workbenches light up and document packets illustrate observed handoffs. Small buttons on the library, maker desk, weather instrument and shared brief open the actual experiences. Switch between **Agent campus** and **Mission control**, or open the workshop in **Full screen**. Click the 3D view and press **Enter**, double-click an empty area, or use the Full screen button. **Esc** returns to the studio. The world fills the screen with the side panel hidden; browsers without fullscreen support use the full window.
 
 ![Agent Studio](docs/agent-studio.png)
 
@@ -116,6 +116,7 @@ node tests/campus.cjs
 ## Editable source
 
 - `src/studio.*`: attendee journey, mission control and API client.
+- `src/studio-world.js`: native fullscreen, keyboard controls and full-window fallback.
 - `src/world-scene.js`, `src/campus.*`: Three.js world, characters and accessible hotspots.
 - `scripts/studio.py`, `scripts/serve.py`: durable queue, participant API, shared crew state.
 - `scripts/agent_runtime.py`: native OpenClaw workspaces and gateway adapter.

@@ -25,10 +25,44 @@ const {chromium}=require('playwright');
     assert.deepEqual(await page.evaluate(()=>BacCampus.inspect().robots),paused,'Pause must freeze the scene');
     await page.locator('#campus-motion').click();
     await shot('campus');
+    const embedded=await page.locator('#campus-viewport').boundingBox();
     await page.locator('#studio-focus').click();
+    await page.waitForFunction(()=>document.fullscreenElement?.id==='agent-campus');
+    let expanded=await page.locator('#campus-viewport').boundingBox();
+    let windowSize=await page.evaluate(()=>({width:innerWidth,height:innerHeight}));
+    assert(expanded.width>=windowSize.width-2,'The 3D viewport must use the full screen width');
+    assert(expanded.height>windowSize.height*.8,'The 3D viewport must use most of the screen height');
+    assert(expanded.width*expanded.height>embedded.width*embedded.height*1.5,'Fullscreen must materially enlarge the actual renderer');
+    assert(!(await page.locator('#studio-passport').isVisible()));
+    assert.equal(await page.locator('#studio-focus').getAttribute('aria-expanded'),'true');
+    // Hotspots and their dialogs remain usable in the native fullscreen subtree.
+    await page.locator('[data-world-skill="runtime"]').click();await page.locator('#studio-dialog').waitFor({state:'visible'});await page.locator('#studio-dialog-close').click();
+    assert.equal(await page.evaluate(()=>document.fullscreenElement?.id),'agent-campus');
     const expandedFrame=await page.evaluate(()=>BacCampus.inspect().clock);
     await page.waitForFunction(before=>BacCampus.inspect().clock>before+.2,expandedFrame,{timeout:12000});
     await page.keyboard.press('Escape');
+    await page.waitForFunction(()=>!document.fullscreenElement&&!document.querySelector('.world-expanded'));
+    assert(await page.locator('#studio-passport').isVisible());
+    // Click+Enter and a double-click are alternatives to the visible button.
+    await page.locator('#campus-viewport canvas').click({position:{x:20,y:180}});await page.keyboard.press('Enter');
+    await page.waitForFunction(()=>document.fullscreenElement?.id==='agent-campus');
+    await page.evaluate(()=>document.exitFullscreen());await page.waitForFunction(()=>!document.querySelector('.world-expanded'));
+    await page.locator('#campus-viewport canvas').dblclick({position:{x:20,y:180}});await page.waitForFunction(()=>document.fullscreenElement?.id==='agent-campus');
+    await page.locator('#studio-focus').click();await page.waitForFunction(()=>!document.fullscreenElement&&!document.querySelector('.world-expanded'));
+    // Unsupported/denied native fullscreen still fills the window and restores scrolling.
+    await page.evaluate(()=>{window.testFullscreen=document.getElementById('agent-campus').requestFullscreen;document.getElementById('agent-campus').requestFullscreen=()=>Promise.reject(new Error('Test: fullscreen denied'));});
+    await page.locator('#studio-focus').click();assert(await page.locator('.world-expanded').isVisible());
+    assert.equal(await page.evaluate(()=>document.fullscreenElement),null);
+    for(const size of [{width:900,height:420},{width:390,height:844}]){
+      await page.setViewportSize(size);await page.waitForFunction(()=>document.querySelector('#campus-viewport canvas').getBoundingClientRect().width===innerWidth);
+      const frame=await page.locator('#campus-viewport').boundingBox(),exit=await page.locator('#studio-focus').boundingBox();
+      assert(frame.width>=size.width-2&&frame.height>size.height*.65,'Small screens must retain a large usable viewport');
+      assert(exit.y>=0&&exit.y+exit.height<=size.height,'Exit must remain on screen');
+      assert(!(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)));
+    }
+    await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.body.style.overflow),'');
+    assert.equal(await page.evaluate(()=>document.querySelector('[data-mode="playground"]').inert),false);
+    await page.evaluate(()=>document.getElementById('agent-campus').requestFullscreen=window.testFullscreen);await page.setViewportSize({width:1440,height:1100});
     assert.equal(await page.locator('[data-world-skill]').count(),9);
     await page.locator('#studio-board-tab').click();assert(await page.locator('#studio-board').isVisible());
     await page.locator('#studio-campus-tab').click();assert(await page.locator('#campus-viewport').isVisible());
@@ -72,6 +106,6 @@ const {chromium}=require('playwright');
     await fallback.goto(url);assert.equal(await fallback.locator('#agent-campus').getAttribute('data-renderer'),'fallback');
     assert(await fallback.locator('#campus-fallback').isVisible());assert(await fallback.locator('#studio-name').isVisible());
     await fallback.close();
-    console.log('PASS: real WebGL, robot movement, pause, world hotspots, board switching, CSV upload and report, PNG download, XSS protection, responsive layouts, reduced motion and WebGL fallback.');
+    console.log('PASS: real WebGL, robot movement, pause, native fullscreen sizing/keyboard/double-click/exit, fullscreen dialogs, denied-fullscreen fallback on desktop/mobile, world hotspots, board switching, CSV upload and report, PNG download, XSS protection, responsive layouts, reduced motion and WebGL fallback.');
   }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
