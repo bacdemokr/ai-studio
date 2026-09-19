@@ -4,7 +4,7 @@ const root = document.getElementById('agent-campus');
 const el = name => document.getElementById('campus-' + name);
 const api = window.BacDemo;
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const colors = [0xa3dc53, 0x75b6e7, 0xe3b85d, 0xf18f73, 0xc1a2ed];
+const colors = [0x76b900, 0x55bfff, 0xf4b34f, 0xff8873, 0xb49aff];
 const hex = i => '#' + colors[i].toString(16);
 let snapshot = api.snapshot(), selected = 0, playing = false, timer = null, lastEvent = '', lastPhase = -2;
 let sceneView = null, live = false;

@@ -9,7 +9,7 @@ This prototype uses a local theme informed by the public [NVIDIA Build interface
 - White headings, readable gray supporting text and amber for blocked requests or pending decisions.
 - Small, consistent corner radii, thin borders and simple line icons.
 - A shared treatment across the skill playground, agent onboarding, Agent campus, Mission control and artifacts.
-- Robot characters with graphite bodies and green eyes, preserving the approachable agent identities.
+- White and silver 3D robots with dark visors and distinct role accents; graphite profile icons with green eyes preserve the approachable identities.
 - A fixed dark appearance so the demo is consistent across host OS themes.
 
 The font stack uses locally available NVIDIA Sans, then Arial, Helvetica and a generic sans-serif. No font files, icon libraries or remote styling dependencies are required. The header currently renders the NVIDIA name as text.
@@ -29,3 +29,17 @@ Agent campus emphasizes agent identity and Mission control emphasizes task statu
 ![Agent campus — miniature workshop](agent-studio.png)
 
 The same underlying job state also drives Mission control. See the [runtime guide](live-studio.md) for the live execution contract.
+
+## Charcoal palette and neutral lighting
+
+The workshop geometry, camera, controls and panel layout are unchanged. The olive cast was removed from both scene materials and UI surfaces:
+
+- UI canvas: near-black charcoal (`#0b0d11`); raised surfaces use graphite and cool neutral gray. Text uses white and readable gray rather than pale green.
+- Primary actions: NVIDIA green (`#76b900`). Selection, running work and state indicators retain restrained green accents. Amber and coral remain meaningful warning/denial colors.
+- Scene: neutral white key light, cooler low-intensity fill, and a dark neutral ground light replace the cream/green lighting. Reduced exposure and emissive intensity keep details from washing out.
+- Materials: graphite flooring, silver worktops, white robot shells, dark visors and distinct role accessories. Green stays concentrated in the shared-brief core, edge trim and indicators.
+- Signs: their canvas textures bypass scene tone mapping, keeping white lettering and small color details clear.
+
+The scene palette lives in `src/world-scene.js`, role accents in `src/campus.js`, and Studio panels in `src/studio.css` / `src/campus.css`. Existing dark styling for local tools and workflow rehearsal remains in `src/nvidia-theme.css`.
+
+![Fullscreen workshop with neutral lighting](agent-world.png)
