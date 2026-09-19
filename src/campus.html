@@ -1,0 +1,28 @@
+<section id="agent-campus" data-part="campus" aria-label="3D agent campus">
+<style>/* CAMPUS_CSS */</style>
+<div class="campus-heading spread"><div><div class="campus-eyebrow"><span></span> BUILD A CLAW / AGENT CAMPUS</div><h2>Meet your crew. Watch it work.</h2><p class="quiet">One shared brief. Five personalities. See every handoff.</p></div><div class="row"><button class="action" id="campus-customize">＋ Create your agent</button><button class="action primary" id="campus-play">▶ Run the crew</button></div></div>
+<div class="campus-layout">
+  <div class="campus-stage">
+    <div class="campus-stage-top"><span class="campus-location" id="campus-location">ZURICH / SWITZERLAND</span><span class="campus-sim">SCRIPTED WORKFLOW · NO LIVE LLM</span></div>
+    <div id="campus-viewport" role="img" aria-label="Interactive 3D workspace with five robot agents. Drag to orbit. Use the agent buttons below to select a role."><div id="campus-fallback" hidden><strong>3D is unavailable in this browser.</strong><p>Enable hardware acceleration or use the agent controls and progress board below. The planning workflow still works.</p></div><div id="campus-labels" aria-hidden="true"></div></div>
+    <div class="campus-scene-bottom"><span id="campus-motion-status">Ready to explore</span><div class="row"><span class="campus-camera-hint">Drag to orbit · scroll to zoom</span><button id="campus-motion" title="Pause scene motion" aria-label="Pause scene motion">Ⅱ</button><button id="campus-camera" title="Reset camera" aria-label="Reset camera">⌖</button></div></div>
+    <div id="campus-roster" class="campus-roster" aria-label="Select an agent"></div>
+  </div>
+  <aside class="campus-inspector">
+    <div class="spread"><span class="campus-eyebrow">AGENT PASSPORT</span><span id="campus-agent-number" class="quiet"></span></div>
+    <div class="campus-person"><span class="campus-portrait" id="campus-portrait"><i></i><i></i></span><div><h3 id="campus-agent-name"></h3><p id="campus-agent-role" class="quiet"></p></div></div>
+    <p class="campus-persona" id="campus-persona"></p>
+    <span class="campus-caption">EQUIPPED SKILLS</span><div id="campus-skills" class="campus-skills"></div>
+    <div class="campus-current"><span class="campus-caption">CURRENT TASK</span><p id="campus-task"></p><span id="campus-agent-status" class="campus-status"></span></div>
+    <div class="campus-access"><span class="campus-caption">ACCESS BOUNDARY</span><p id="campus-access"></p></div>
+    <button class="action" id="campus-inspect-output">Inspect shared deliverables ↗</button>
+    <div class="campus-runtime"><span class="campus-chip">▥</span><div><strong>One Spark. One shared model.</strong><p>Planned runtime · all five roles use the same endpoint.</p></div></div>
+  </aside>
+</div>
+<div class="campus-bottom-grid">
+  <section class="campus-mission"><div class="spread"><span class="campus-eyebrow">CREW MISSION / <span id="campus-revision">READY</span></span><button class="campus-text-button" id="campus-edit">Edit event brief ↗</button></div><h3 id="campus-flow-title">Plan your next Build a Claw</h3><p id="campus-flow-text">Start a guided collaboration, then make the decisions that move the crew forward.</p><div class="campus-metrics" id="campus-metrics"><span><strong>120</strong> attendees</span><span><strong>180</strong> minutes</span><span><strong>English</strong> event language</span></div><div class="campus-progress" id="campus-progress" aria-label="Workflow stages"></div><div class="campus-choices" id="campus-choices"></div><div class="spread campus-run-controls"><button class="action" id="campus-step">Start planning →</button><button class="campus-text-button" id="campus-board">Open progress board ↗</button></div></section>
+  <section class="campus-activity"><div class="spread"><span class="campus-eyebrow">VISIBLE EVIDENCE</span><span class="campus-log-label">Workflow events</span></div><ol id="campus-log" aria-live="polite"></ol></section>
+</div>
+<section class="campus-discover"><div><span class="campus-eyebrow">BEYOND THE CREW</span><h3>Give your agent a new superpower.</h3><p class="quiet">Try a skill yourself, then bring your agent into the team.</p></div><button data-campus-skill="analyst"><span class="campus-tile-icon">▥</span><strong>Data analyst</strong><span>CSV → chart → report</span><em>LOCAL TOOL</em></button><button data-campus-skill="poster"><span class="campus-tile-icon">◩</span><strong>Poster studio</strong><span>Event brief → PNG</span><em>LOCAL TOOL</em></button><button data-campus-skill="telegram"><span class="campus-tile-icon">↗</span><strong>Telegram buddy</strong><span>Your agent, on your phone</span><em>PRACTICE</em></button></section>
+<footer class="foot spread"><span>3D movement follows the demo workflow. Agent reasoning and external services are simulated.</span><span>Built for a hands-on BaC experience</span></footer>
+</section>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the editable UI fragment into a dependency-free standalone page."""
+"""Build the editable UI fragment into a standalone page with a bundled 3D renderer."""
 from pathlib import Path
 from html import escape
 import json
@@ -9,8 +9,15 @@ ROOT = Path(__file__).resolve().parents[1]
 fragment = (ROOT / 'src/bac-planner.html').read_text(encoding='utf-8')
 playground = (ROOT / 'src/playground.html').read_text(encoding='utf-8')
 playground = playground.replace('/* PLAYGROUND_CSS */', (ROOT / 'src/playground.css').read_text(encoding='utf-8'))
+playground = playground.replace('/* SKILL_TOOLS_JS */', (ROOT / 'src/skill-tools.js').read_text(encoding='utf-8'))
 playground = playground.replace('/* PLAYGROUND_JS */', (ROOT / 'src/playground.js').read_text(encoding='utf-8'))
 fragment = fragment.replace('<!-- SKILL_PLAYGROUND -->', playground)
+campus = (ROOT / 'src/campus.html').read_text(encoding='utf-8')
+campus = campus.replace('/* CAMPUS_CSS */', (ROOT / 'src/campus.css').read_text(encoding='utf-8'))
+fragment = fragment.replace('<!-- AGENT_CAMPUS -->', campus)
+vendor = (ROOT / 'src/vendor/three-r180.cjs').read_text(encoding='utf-8')
+campus_js = '(function(){const exports={};\n' + vendor + '\nconst THREE=exports;\n' + (ROOT / 'src/campus.js').read_text(encoding='utf-8') + '\n})();'
+fragment = fragment.replace('<!-- CAMPUS_SCRIPT -->', '<script>' + campus_js.replace('</script', '<\\/script') + '</script>')
 fragment = fragment.replace('<!-- NVIDIA_THEME -->', '<style>\n' + (ROOT / 'src/nvidia-theme.css').read_text(encoding='utf-8') + '\n</style>')
 version = os.environ.get('BAC_DEMO_VERSION', 'local-preview')
 label = version if version == 'local-preview' else version[:12]
@@ -35,4 +42,4 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 (ROOT / 'app').mkdir(exist_ok=True)
 (ROOT / 'app/index.html').write_text(page, encoding='utf-8')
 (ROOT / 'app/version.json').write_text(json.dumps({'version': version}) + '\n', encoding='utf-8')
-print('Built app/index.html (no third-party runtime dependencies).')
+print('Built app/index.html (bundled Three.js; no runtime downloads).')

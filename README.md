@@ -1,12 +1,12 @@
 # BaC Crew
 
-An interactive agent playground: create a persona, try individual skills, then bring that agent into a crew to plan a Build a Claw event. Switch between **A · Crew village** and **C · Progress board** to inspect the team's work.
+An interactive agent playground: create a persona, try individual skills, then bring that agent into a crew to plan a Build a Claw event. Switch between **A · 3D campus** and **C · Progress board** to inspect the team's work.
 
-**Current status:** working browser UI with practice weather, prepared search examples, a simulated Telegram phone, session notes, deterministic agent handoffs and access-decision examples. The village is currently a CSS illustration. Real 3D, LLM inference, live weather/search, Telegram, agent orchestration and OpenShell enforcement are not connected yet.
+**Current status:** a real WebGL 3D campus with moving robots, clickable agent passports, camera orbit/zoom, visible handoffs and decision stops. The skill playground includes real local CSV analysis/report downloads and poster PNG creation, plus practice weather, search, Telegram and session memory. Agent reasoning and collaboration are scripted. LLM inference, live weather/search, Telegram and OpenShell enforcement are not connected yet.
 
-![Skill playground](docs/playground.png)
+![3D agent campus](docs/agent-campus.png)
 
-The interface now uses an NVIDIA-inspired dark theme: neutral panels, green primary actions, compact line icons and matching styles across both crew views. See [visual design](docs/visual-design.md).
+The interface uses an NVIDIA-inspired dark theme: neutral panels, green primary actions, compact line icons and matching styles across both crew views. See [visual design](docs/visual-design.md).
 
 ## Repeated review on Spark
 
@@ -25,7 +25,7 @@ These commands prepare the model endpoint independently; they do not turn the cu
 
 ## Run on DGX Spark
 
-Requires Git, Python 3.8+ and a current Chrome, Edge or Firefox browser. No pip packages, Node.js, GPU drivers or model downloads are needed for this prototype.
+Requires Git, Python 3.8+ and a current Chrome, Edge or Firefox browser with WebGL2 for the 3D view. No pip packages, Node.js, GPU drivers or model downloads are needed for this prototype.
 
 ```bash
 git clone https://github.com/bacdemokr/tmp.git
@@ -51,20 +51,24 @@ Open `http://SPARK_IP:8080`. This development server has no authentication. Stop
 
 ## Try the demo
 
-Start in **Skill playground**. Give your agent a name and personality, then choose a mission:
+The app opens in **Agent campus**. Click a robot or its name to inspect its persona, skills and current task. Drag to orbit the scene, scroll to zoom, and use the pause button to freeze movement. Click **Run the crew** to advance the same planning workflow shown in the progress board. It stops for capacity and delivery decisions; it never automatically grants permission. Use **Edit event brief** to change the location, attendees, language or timings.
+
+**Create your agent** opens the skill playground. Give your agent a name and personality, then choose a mission:
 
 | Mission | What works in this preview |
 |---|---|
 | Weather lookout | Inspect fictional city weather and a prepared recommendation; remove the skill or block the connection to see why execution stops. |
 | Web scout | Compare three prepared example results and open their evidence cards. These are not live search results. |
 | Telegram buddy | Equip the skill, pair a practice phone, preview a reply, then simulate allowing or denying delivery. No Telegram message is sent. |
+| Data analyst | Upload or edit a `topic,attendees` CSV, combine repeated topics, inspect a chart and download a Markdown report. Calculations happen locally; no file is uploaded. |
+| Poster studio | Enter event details or use the current crew brief, render a local poster layout and download a real 1080 × 1350 PNG. No image model is used. |
 | Remember me | Save a preference in browser memory and see it reused by the other practice missions; forgetting or refreshing clears it. |
 
 **Join the BaC crew** carries the name, personality and equipped skills into role onboarding. You can also switch straight to **Plan a BaC**:
 
 1. Keep **Europe (EMEA) / Zurich / English**, or change the event brief. Defaults are 120 attendees, 180 minutes, groups of 5 and 15-minute sessions.
 2. Submit the brief and advance the handoffs. Each attendee is assigned to one interest-based topic.
-3. Compare A and C. Both show the same crew and shared brief version.
+3. Compare A (3D campus) and C (progress board). Both use the same crew and shared brief version. The A button returns to the campus.
 4. Operations detects a device shortage. Extend the event to **210 minutes** or mark additional devices as pending.
 5. Inspect demo runbooks, equipment/staffing calculations, invitation copy, promotional copy and the consistency review.
 6. Approve or deny the simulated policy request. Neither option sends a message or performs an external action.
@@ -87,6 +91,9 @@ Staff includes one presenter per station, one floor assistant per 40 attendees (
 
 ## Project files
 
+- `src/campus.html`, `src/campus.css`, `src/campus.js`: real 3D workspace, robot animation and controls linked to planner state.
+- `src/skill-tools.js`: local CSV analysis, report downloads and poster rendering.
+- `src/vendor/`: bundled Three.js r180 and its MIT license; no CDN request is needed.
 - `src/bac-planner.html`: editable UI, styles, planning rules and simulated workflow.
 - `src/playground.html`, `src/playground.css`, `src/playground.js`: skill missions and the agent passport.
 - `src/nvidia-theme.css`: the shared NVIDIA-inspired visual theme.
@@ -109,11 +116,12 @@ npm install --no-save --package-lock=false playwright
 npx playwright install chromium
 node tests/smoke.cjs
 node tests/playground.cjs
+node tests/campus.cjs
 ```
 
 On Linux, Playwright may also require OS browser libraries (`npx playwright install-deps chromium`). Alternatively set `CHROME_PATH` to an existing Chrome/Chromium executable.
 
-The prototype was validated on macOS Chromium, including the full workflow, four skill missions, both policy choices, invalidation of outdated approvals, onboarding, shared brief updates and small-screen layouts. DGX Spark hardware execution has not yet been verified.
+The prototype was validated on macOS Chromium, including the full workflow, six skill missions, both policy choices, invalidation of outdated approvals, onboarding, shared brief updates and small-screen layouts. The 3D suite also covers real robot movement, decision stops, local artifact downloads, reduced motion and a fallback when WebGL is unavailable. DGX Spark hardware execution has not yet been verified. See [the 3D campus guide](docs/agent-campus.md) for the visual workflow and limitations.
 
 Host-only management tests (no model downloads or systemd changes):
 

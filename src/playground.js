@@ -4,6 +4,8 @@
   const el = id => root.querySelector('#pg-' + id);
   const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const iconPaths = {
+    analyst:'<path d="M4 20V4m0 16h17M8 17v-5m5 5V7m5 10V3"/>',
+    poster:'<rect x="4" y="3" width="16" height="18" rx="1"/><path d="m6 16 4-5 3 3 3-5 2 7M7 6h7"/>',
     weather:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/>',
     search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/>',
     telegram:'<path d="m21 3-7 18-4-7-7-4 18-7ZM10 14 21 3"/>',
@@ -15,6 +17,8 @@
     {id:'search', title:'Web scout', subtitle:'Search. Compare. Explain.', symbol:'⌕', tone:'blue', description:'Inspect three prepared results and compare what each one contributes.'},
     {id:'telegram', title:'Telegram buddy', subtitle:'Your agent, on your phone.', symbol:'↗', tone:'rose', description:'Pair a practice phone and preview a reply from the same agent.'},
     {id:'memory', title:'Remember me', subtitle:'Teach it a preference.', symbol:'✎', tone:'purple', description:'Save a short note and see it used in another mission.'},
+    {id:'analyst',title:'Data analyst',subtitle:'CSV. Chart. Download.',symbol:'▥',tone:'lime',description:'Analyze your own audience CSV and download the calculation report.'},
+    {id:'poster',title:'Poster studio',subtitle:'Brief to a real PNG.',symbol:'◩',tone:'sand',description:'Create a shareable poster from your event details or the crew’s current brief.'},
   ];
   const state = {skill:'weather', equipped:new Set(['weather','search']), name:'Jinny', persona:'friendly', memory:'', paired:false, brief:null, pending:null};
   const weather = {
@@ -45,13 +49,14 @@
   function render() {
     el('loadout').innerHTML = skills.map(s => `<label><input type="checkbox" data-equip="${s.id}" ${state.equipped.has(s.id)?'checked':''}>${s.title}</label>`).join('');
     el('missions').innerHTML = skills.map(s => `<button class="pg-mission" data-mission="${s.id}" aria-pressed="${state.skill===s.id}" style="--tone:var(--${s.tone})"><span class="pg-symbol" aria-hidden="true">${icon(s.id)}</span><strong>${s.title}</strong><span class="quiet">${s.subtitle}</span></button>`).join('');
+    el('mode-badge').textContent=['analyst','poster'].includes(state.skill)?'Local tool · runs in your browser':'Practice mode · sample tools';
     el('mission-kicker').textContent = state.name + ' · SOLO MISSION';
     el('mission-title').textContent = skill().title;
     el('mission-description').textContent = skill().description;
     el('equipped').textContent = state.equipped.has(state.skill) ? 'Skill equipped' : 'Equip this skill to try it';
     for (const s of skills) el(s.id + '-inputs').hidden = s.id !== state.skill;
     el('block-control').hidden = !['weather','search'].includes(state.skill);
-    el('run').textContent = {weather:'Check practice weather',search:'Explore sample results',telegram:'Preview phone reply',memory:'Remember this note'}[state.skill];
+    el('run').textContent = {weather:'Check practice weather',search:'Explore sample results',telegram:'Preview phone reply',memory:'Remember this note',analyst:'Analyze this CSV',poster:'Create my poster'}[state.skill];
     el('pair-status').textContent = state.paired ? 'Practice phone · paired' : 'Practice phone · disconnected';
     el('pair').textContent = state.paired ? 'Disconnect practice phone' : 'Pair practice phone';
     el('memory-summary').textContent = state.memory || 'Nothing remembered yet.';
@@ -84,12 +89,21 @@
       el('result').innerHTML = `<span class="pill">Prepared search examples · not live results</span><p class="pg-answer">${escape(prefix())}${request.query==='workshop'?'Try personalization, evidence checking and phone messaging as three short missions.':'Prepare fallback outputs, check station capacity and align attendee copy.'}</p>${noteMarkup()}<div class="pg-evidence">${cards.map((card,i)=>`<article><strong>${i+1}. ${card.title}</strong><p class="quiet">${card.kind}</p><details><summary>Inspect example evidence</summary><p>${card.excerpt}</p></details></article>`).join('')}</div>`;
     } else if (request.skill === 'telegram') {
       el('result').innerHTML = `<span class="pill">Phone preview · not delivered</span><div class="pg-chat"><div class="pg-bubble incoming"><span class="quiet">Practice phone → ${escape(state.name)}</span><p>${escape(request.message)}</p></div><div class="pg-bubble"><span class="quiet">${escape(state.name)} → practice phone</span><p>${escape(request.reply)}</p></div></div><p class="quiet">No Telegram account is connected and no message was sent.</p>`;
+    } else if(request.skill==='analyst') {
+      const output=request.analysis;
+      el('result').innerHTML=output.html;
+      el('download').addEventListener('click',()=>window.BacSkillTools.download(new Blob([output.report],{type:'text/markdown;charset=utf-8'}),'bac-audience-report.md'));
+    } else if(request.skill==='poster') {
+      el('result').innerHTML='<span class="pill">Created locally · downloadable PNG</span><div class="pg-poster-preview"><canvas id="pg-poster-canvas" role="img" aria-label="Your event poster preview"></canvas><div><h3>'+escape(request.title)+'</h3><p>'+escape(request.city)+'</p><p class="notice">1080 × 1350 PNG · dates and venue remain unconfirmed. The layout uses your inputs.</p><button class="action primary pg-download" id="pg-download">Download poster .png ↓</button></div></div>';
+      const canvas=window.BacSkillTools.poster(request,el('poster-canvas'));
+      el('download').addEventListener('click',()=>canvas.toBlob(blob=>{if(blob)window.BacSkillTools.download(blob,'bac-event-poster.png');},'image/png'));
     } else {
       state.memory = request.note;
       el('result').innerHTML = `<span class="pill">Saved in this session</span><p class="pg-answer">${escape(state.memory)}</p><p>Try Weather lookout or ask your practice phone what I remember.</p>`;
       render();
     }
-    trace(request.skill==='memory'?'Browser session only':'Allowed in simulation',true);
+    trace(['memory','analyst','poster'].includes(request.skill)?'Browser only':'Allowed in simulation',true);
+    app.dispatchEvent(new CustomEvent('bac:skill-result',{detail:{name:state.name,skill:skill().title,evidence:request.skill==='analyst'?request.analysis.total+' attendees across '+request.analysis.topics+' topics. Local calculation.':request.skill==='poster'?'Created a downloadable 1080 × 1350 PNG locally.':'Practice result produced in the browser. No external service contacted.'}}));
   }
   function makeRequest() {
     const request = {skill:state.skill, city:el('city').value, query:el('query').value, note:el('note').value.trim()};
@@ -102,6 +116,8 @@
       else reply = !state.equipped.has('memory') ? 'Equip Remember me to access session notes.' : state.memory ? `You told me: ${state.memory}` : 'I do not have a note yet. Try Remember me first.';
       request.reply = prefix() + reply;
     }
+    if(state.skill==='analyst')request.analysis=window.BacSkillTools.analyze(el('csv').value);
+    if(state.skill==='poster'){Object.assign(request,{title:el('poster-title').value.trim(),tagline:el('poster-tagline').value.trim(),city:el('poster-city').value.trim(),language:el('poster-language').value,details:state.brief?state.brief.duration+' minutes · '+state.brief.attendees+' attendees':'Hands-on demos · Build your own agent'});if(!request.title||!request.city)throw new Error('Add a title and city for the poster.');}
     return request;
   }
   function run() {
@@ -113,7 +129,7 @@
       return;
     }
     if (state.skill === 'telegram' && !state.paired) { trace('Pairing required'); error('Pair the practice phone before previewing a reply.'); return; }
-    const request = makeRequest();
+    let request;try{request=makeRequest();}catch(e){error(e.message);return;}
     if (state.skill === 'memory' && !request.note) { error('Write a short preference to remember.'); return; }
     if (state.skill === 'telegram' || (['weather','search'].includes(state.skill) && el('block').checked)) {
       state.pending = request;
@@ -135,7 +151,7 @@
     if (event.target.checked) state.equipped.add(id); else state.equipped.delete(id);
     invalidate(); render();
   });
-  for (const id of ['city','query','message','block','note']) el(id).addEventListener('input', invalidate);
+  for (const id of ['city','query','message','block','note','csv','poster-title','poster-tagline','poster-city','poster-language']) el(id).addEventListener('input', invalidate);
   el('name').addEventListener('input', () => { state.name=el('name').value.trim(); invalidate(); render(); });
   el('persona').addEventListener('change', () => { state.persona=el('persona').value; invalidate(); render(); });
   el('pair').addEventListener('click', () => { state.paired=!state.paired; invalidate(); render(); });
@@ -157,5 +173,19 @@
     el('name').value=state.name; el('persona').value=state.persona;
     invalidate(); render();
   });
+  let uploadVersion=0;
+  el('csv-file').addEventListener('change',async()=>{
+    const version=++uploadVersion,file=el('csv-file').files[0];if(!file)return;invalidate();
+    if(file.size>65536){error('Use a CSV smaller than 64 KB.');return;}
+    try{const text=await file.text();if(version!==uploadVersion)return;el('csv').value=text;invalidate();}catch(e){error('This file could not be read. Try another CSV.');}
+  });
+  el('csv').addEventListener('input',()=>{uploadVersion++;});
+  el('use-brief').addEventListener('click',()=>{
+    if(!state.brief){error('Start a crew plan first, or enter the poster details above.');return;}
+    el('poster-city').value=state.brief.location;el('poster-title').value='Build a Claw · '+state.brief.location;
+    el('poster-language').value={English:'en',Korean:'ko',Japanese:'ja'}[state.brief.language]||'en';
+    invalidate();
+  });
+  app.addEventListener('bac:open-skill',event=>{if(!skills.some(s=>s.id===event.detail))return;state.skill=event.detail;invalidate();render();});
   render();
 })();

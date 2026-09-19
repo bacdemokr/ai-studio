@@ -71,8 +71,9 @@ const { chromium } = require('playwright');
       await page.setViewportSize({ width, height: 1200 });
       await page.emulateMedia({ colorScheme: width === 360 ? 'dark' : 'light' });
       for (const view of ['village', 'board']) {
+        await click('[data-mode="crew"]');
         await click('[data-view-switch="' + view + '"]');
-        await click('[data-artifact="operations"]');
+        if(view==='board') await click('[data-artifact="operations"]');
         await english();
         assert(!(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)), 'Page overflow');
         assert(!(await page.locator('[data-out="artifact"]').evaluate(el => el.scrollWidth > el.clientWidth + 1)), 'Artifact overflow');

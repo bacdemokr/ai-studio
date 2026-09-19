@@ -11,24 +11,28 @@
 
 Participants can stop after any solo mission. Planning an event is one team activity within the playground.
 
-## First four experiences
+## Six experiences
 
 | Experience | Visible learning moment | Current state | Live implementation needed |
 |---|---|---|---|
 | Weather | Tool data → recommendation; a persona changes presentation | Fictional city fixtures, skill and access checks | Weather provider adapter, real location resolution, units, forecast timestamps and attribution |
 | Web search | Search results → inspectable sources → supported summary | Prepared example cards, not external sources | Search provider or browser adapter; URLs and excerpts from actual results; source-aware summary through the shared model |
 | Telegram | A phone request reaches the same agent and receives its answer | Practice pairing, draft reply, simulated access decision | Bot adapter, attendee/session pairing, inbound routing and explicit destination-aware outbound actions |
+| CSV analysis | Uploaded rows become an inspectable chart and downloadable report | Actual browser calculation, strict columns and validation, no upload | Shared-model interpretation and a sandboxed backend for broader formats |
+| Poster studio | Brief changes produce a new downloadable visual artifact | Actual Canvas layout rendered to PNG; en/ko/ja template headlines | Model-written copy or an image-generation adapter, with provenance |
 | Remember me | A preference affects the next task; forgetting removes it | One browser-session note, reused in practice outputs | Session-isolated durable storage, retrieval into agent context and deletion controls |
 
 Telegram is a communication channel. It should reuse the attendee's agent identity, tools and session context rather than require an unrelated agent with a separate model. The interface may present connecting that channel as a skill to make onboarding approachable.
 
 No tool in the current preview makes an external request. The practice permission controls illustrate a decision; they do not configure or enforce OpenShell policy.
 
-## How to make the eventual 3D view useful
+## The current 3D experience
 
-Give the village recognizable places: a weather station, a research desk, a phone booth and the event studio. An agent's current activity should move or highlight it at the relevant place. Clicking it reveals the actual request, selected skill, access outcome and resulting artifact. Moving from a solo mission into the event studio preserves its name, persona and equipped skills.
+The initial screen is a real WebGL campus with Event HQ, Demo Studio, Operations, Marketing, Review, a shared-brief hub and an access gate. Robots walk and carry a small document during scripted handoffs. Click a robot or a roster button to inspect the role's persona, skills, task and access. Drag to orbit, scroll to zoom, or pause scene motion.
 
-Drive those changes from real execution events once the backend exists. Keep the C progress board for the same run's dependencies, blocked tasks and results. The current implementation still uses CSS panels rather than a 3D scene.
+Run the crew to advance the same planner state used by the C progress board. It stops at a resource shortage and at the simulated delivery boundary. Agent onboarding updates the role and passport in both views. This is not independent model reasoning; moving robots do not imply that an LLM or OpenShell is running.
+
+The Data analyst and Poster studio tiles lead to actual local tools. Their completion events appear in the campus evidence feed; solo skill runs do not currently move a character to a separate skill station. All work is local to one browser session.
 
 ## Shared Spark runtime
 

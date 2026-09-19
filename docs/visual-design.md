@@ -20,12 +20,12 @@ The font stack uses locally available NVIDIA Sans, then Arial, Helvetica and a g
 
 After making a change, run `python3 scripts/build.py`. Inspect both A/C views, onboarding and the playground at desktop and mobile widths. Color alone should not convey a task's state; retain the existing status labels and access explanations.
 
-The visual update does not introduce model inference, live tools, OpenShell enforcement or a 3D renderer. Those remain separate integration work.
+The current update adds a real Three.js renderer and two local browser tools. Model inference, external tools and OpenShell enforcement remain separate integration work. The renderer is bundled in the standalone HTML, alongside its MIT license in the source tree.
 
 ## Crew views
 
-The village emphasizes agent identity and the progress board emphasizes task status. They use the same theme and shared run state.
+The 3D campus emphasizes agent identity and the progress board emphasizes task status. They use the same theme and shared run state.
 
-![A — Crew village](crew-village.png)
+![A — 3D campus](agent-campus.png)
 
 ![C — Progress board](progress-board.png)

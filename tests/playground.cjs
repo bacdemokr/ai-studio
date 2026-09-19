@@ -17,6 +17,7 @@ const { chromium } = require('playwright');
     const run = () => click('#pg-run');
     const mission = id => click('[data-mission="'+id+'"]');
     await page.goto(url);
+    await click('[data-mode="playground"]');
     assert(await page.locator('#bac-playground').isVisible());
     assert(!(await page.locator('[data-part="planner"]').isVisible()));
     await page.locator('#pg-name').fill('Riley');

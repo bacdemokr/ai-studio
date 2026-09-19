@@ -49,3 +49,20 @@
 #bac-playground .pg-bubble p{white-space:pre-wrap}
 @media(max-width:1020px){#bac-playground .pg-missions{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){#bac-playground .pg-layout{grid-template-columns:1fr;padding:0 14px 18px}#bac-playground .pg-passport{display:grid;grid-template-columns:1fr 1fr;gap:0 14px;padding:16px}#bac-playground .pg-passport .pg-avatar{display:none}#bac-playground .pg-passport>h3,#bac-playground .pg-loadout,#bac-playground .pg-passport>p,#bac-playground .pg-keepsake,#bac-playground #pg-join{grid-column:1/-1}#bac-playground .pg-loadout{display:grid;grid-template-columns:1fr 1fr}#bac-playground .pg-passport h3{margin-top:14px}#bac-playground .pg-workbench{padding:15px}#bac-playground .pg-heading{padding:20px 14px}#bac-playground .pg-trace{grid-template-columns:repeat(2,minmax(0,1fr))}#bac-playground .pg-inputs select{font-size:14px}}
+#bac-planner #bac-playground .pg-missions{grid-template-columns:repeat(3,minmax(0,1fr))}
+#bac-planner #bac-playground .field textarea{display:block;width:100%;resize:vertical;border:1px solid #595959;border-radius:4px;margin-top:6px;padding:12px;background:#101010;color:#e7e7e7;font:13px/1.7 monospace;min-height:130px}
+#bac-planner #bac-playground .pg-data-summary{display:flex;gap:36px;margin:22px 0;flex-wrap:wrap}
+#bac-planner #bac-playground .pg-data-summary strong{font-size:28px;color:#b9e785}
+#bac-planner #bac-playground .pg-data-summary small{display:block;font-size:11px;font-weight:400;color:#b3b3b3;margin-top:5px}
+#bac-planner #bac-playground .pg-chart-row{margin:17px 0}
+#bac-planner #bac-playground .pg-chart-row>div{display:flex;justify-content:space-between;gap:15px;margin-bottom:8px;font-size:12px}
+#bac-planner #bac-playground .pg-chart-row>div span{overflow-wrap:anywhere;min-width:0}
+#bac-planner #bac-playground .pg-chart-row>div strong{white-space:nowrap}
+#bac-planner #bac-playground .pg-chart-track{height:13px;background:#343c2a;display:block;border-radius:2px;overflow:hidden}
+#bac-planner #bac-playground .pg-chart-track i{height:100%;background:#76b900;display:block}
+#bac-planner #bac-playground .pg-download{margin-top:20px}
+#bac-planner #bac-playground .pg-poster-preview{display:grid;grid-template-columns:minmax(0,1fr) 200px;gap:24px;margin-top:22px;align-items:center}
+#bac-planner #bac-playground .pg-poster-preview canvas{width:100%;height:auto;border:1px solid #48563a;box-shadow:0 12px 25px #0004}
+#bac-planner #bac-playground #pg-use-brief{margin-top:15px;font-size:12px}
+@media(max-width:1100px){#bac-planner #bac-playground .pg-missions{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){#bac-planner #bac-playground .pg-poster-preview{grid-template-columns:1fr}#bac-planner #bac-playground .pg-data-summary{gap:24px}}

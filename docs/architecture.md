@@ -2,17 +2,19 @@
 
 ## What runs today
 
-One browser session holds the event brief, its revision, agent profiles, selected view, current handoff, calculated capacity and policy choice. A and C read the same state. Buttons advance a scripted workflow. Artifact text comes from templates and planning rules, not an LLM. Data is not persisted between refreshes or shared across browsers.
+One browser session holds the event brief, its revision, agent profiles, selected view, current handoff, calculated capacity and policy choice. A and C read the same state. Buttons or campus autoplay advance a scripted workflow; autoplay pauses for human decisions. Artifact text comes from templates and planning rules, not an LLM. Data is not persisted between refreshes or shared across browsers.
 
 The onboarding screen lets attendees customize a role and try a sample response. Joining the crew replaces that role's agent. The permission text and approval controls are illustrative; no sandbox or email provider is running.
 
-The skill playground offers four independent missions before team participation: weather fixtures, prepared search examples, a simulated Telegram phone, and a real browser-session note. The passport's name, persona and equipped skill labels transfer into team-role onboarding. The latest event brief is available to the simulated phone reply. A browser event bridge connects the playground to the planner; there is still no backend or model inference. Joining a role does not make its scripted planner tasks autonomously invoke these skills.
+The skill playground offers six independent missions: weather fixtures, prepared search examples, a simulated Telegram phone, a real browser-session note, local CSV analysis with a downloadable report, and a Canvas poster renderer with a downloadable PNG. The passport's name, persona and equipped skill labels transfer into team-role onboarding. The latest event brief is available to the simulated phone reply. A browser event bridge connects the playground to the planner; there is still no backend or model inference. Joining a role does not make its scripted planner tasks autonomously invoke these skills.
+
+A Three.js r180 WebGL scene renders the initial campus. Robot paths, state labels, evidence and decision stops consume the planner snapshot through `bac:crew-state`; this is a visualization of scripted execution, not a separate orchestrator. Solo tool results are added to its evidence feed.
 
 The UI makes no network calls. Python only serves static files. `app/index.html` is an offline standalone adaptation of the inline visualization; `src/bac-planner.html` retains its editable source.
 
 ## Intended live design — not implemented
 
-Use one model-serving endpoint on the demo host. Every agent uses that same endpoint with a different role, persona, tool/skill set and scoped state. Select Qwen or Gemma for the whole crew, rather than loading one model per agent. The preferred Qwen3.6 NVFP4/vLLM configuration and a Gemma4 alternative still need verification on the target Spark and are not installed by this repository.
+Use one model-serving endpoint on the demo host. Every agent uses that same endpoint with a different role, persona, tool/skill set and scoped state. Select Qwen or Gemma for the whole crew, rather than loading one model per agent. The preferred Qwen3.6 NVFP4/vLLM configuration and a Gemma4 alternative still need verification on the target Spark and have separate `./bac llm` installation/start commands. They are not connected to this UI yet.
 
 Keep authoritative brief revisions, tasks and artifacts in a backend. Emit real task events to the UI so agent movement, handoffs, blocked states and recovery correspond to actual execution. The 3D village and progress board should remain two views of the same event stream.
 
@@ -45,5 +47,5 @@ The model assumes a dedicated station for each active topic, one device per stat
 1. Backend run state, durable artifact revisions and a shared model client.
 2. Real role execution with bounded concurrency on a measured Spark serving configuration.
 3. OpenShell tool boundaries and observable approval/denial/recovery.
-4. Replace the CSS village with a 3D scene driven by those same events.
+4. Connect the existing 3D scene to backend execution events instead of the scripted browser state.
 5. Add restart/reset, prepared fallback artifacts and multi-attendee session isolation.

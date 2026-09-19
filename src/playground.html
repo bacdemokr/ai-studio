@@ -1,8 +1,8 @@
-<section id="bac-playground" data-part="playground" aria-label="Agent skill playground">
+<section id="bac-playground" data-part="playground" hidden aria-label="Agent skill playground">
 <style>/* PLAYGROUND_CSS */</style>
 <div class="pg-heading spread">
   <div><span class="quiet">BUILD A CLAW / AGENT PLAYGROUND</span><h2>Your agent. Built by you.</h2><p class="quiet">Choose a persona. Equip skills. Explore what your agent can do.</p></div>
-  <span class="pill">Practice mode · sample tools</span>
+  <span class="pill" id="pg-mode-badge">Practice mode · sample tools</span>
 </div>
 <div class="pg-layout">
   <aside class="pg-passport">
@@ -39,6 +39,21 @@
         <p class="notice">Saved only in this browser session. Used by the other practice missions; refresh clears it.</p>
         <button class="action" id="pg-forget">Forget this note</button>
       </div>
+      <div class="pg-inputs" id="pg-analyst-inputs" hidden>
+        <label class="field">Audience interest CSV<textarea id="pg-csv" rows="5" spellcheck="false">topic,attendees
+Build your agent,60
+Multi-agent collaboration,36
+Multimodal content,24</textarea></label>
+        <label class="field">Or open a CSV file<input id="pg-csv-file" type="file" accept=".csv,text/csv"></label>
+        <p class="notice">Use topic,attendees columns. Up to 500 rows / 64 KB. Your file stays in this browser.</p>
+      </div>
+      <div class="pg-inputs" id="pg-poster-inputs" hidden>
+        <label class="field">Poster title<input id="pg-poster-title" value="Build a Claw · Zurich" maxlength="54"></label>
+        <label class="field">Tagline<input id="pg-poster-tagline" value="Meet your first AI teammate. Build it your way." maxlength="100"></label>
+        <div class="fields"><label class="field">City<input id="pg-poster-city" value="Zurich" maxlength="50"></label><label class="field">Poster language<select id="pg-poster-language"><option value="en">English</option><option value="ko">Korean</option><option value="ja">Japanese</option></select></label></div>
+        <button class="action" id="pg-use-brief">Use the current crew brief</button>
+        <p class="notice">Creates a real PNG from a local layout. No image model or external service is used.</p>
+      </div>
       <div class="pg-runbar spread"><label id="pg-block-control" class="pg-check"><input type="checkbox" id="pg-block">Try a blocked connection</label><button class="action primary" id="pg-run">Try this mission</button></div>
       <p id="pg-error" class="error" role="alert" hidden></p>
       <div id="pg-permission" class="pg-permission" hidden>
@@ -51,5 +66,6 @@
   </div>
 </div>
 <footer class="foot spread"><span>Explore with one agent, then put its skills to work in a crew.</span><span>Planned runtime: every agent shares one model on Spark</span></footer>
-<script>/* PLAYGROUND_JS */</script>
+<script>/* SKILL_TOOLS_JS */
+/* PLAYGROUND_JS */</script>
 </section>
