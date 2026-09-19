@@ -21,7 +21,7 @@ function renderCrewPassport(){
   const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';
   const color=appearanceColors[avatar.color]||appearanceColors.green;
   portrait.style.setProperty('--avatar-accent',color);el('crew-passport').style.setProperty('--crew-color',color);
-  const skills=(member?.skills||['documents','writer']).map(s=>titles[s]||s),markup=skills.map(s=>'<span>'+escape(s)+'</span>').join('');
+  const skills=(member?.skills||(i===3?['documents','writer','web']:['documents','writer'])).map(s=>titles[s]||s),markup=skills.map(s=>'<span>'+escape(s)+'</span>').join('');
   if(el('crew-skills').innerHTML!==markup)el('crew-skills').innerHTML=markup;
   el('crew-status').textContent=status;el('crew-task').textContent=task;
   el('crew-state').dataset.state=waiting||failed?'attention':done?'done':working?'working':'ready';

@@ -25,7 +25,7 @@ const {chromium}=require('playwright');
  assert.equal((await page.evaluate(()=>BacCampus.inspect().residents))[0].avatar.color,'violet');
  // The whole collection grows; the mission room still has five role stations.
  await page.locator('button[data-room=mission]').click();assert.equal(await page.locator('[data-campus-agent]').count(),5);
- await page.locator('#studio-room-action').click();await page.locator('[name=member1]').selectOption(keys[1]);await page.locator('[name=member2]').selectOption(keys[2]);await page.locator('#studio-crew-form button').click();await page.waitForFunction(()=>BacStudio.inspect().jobs[0]?.status==='done');
+ await page.locator('#studio-room-action').click();await page.locator('.event-crew-choice summary').click();await page.locator('[name=member1]').selectOption(keys[1]);await page.locator('[name=member2]').selectOption(keys[2]);await page.locator('#studio-launch-event').click();await page.waitForFunction(()=>BacStudio.inspect().jobs[0]?.status==='done');
  const roster=await page.evaluate(()=>BacStudio.inspect().jobs[0].payload.roster);
  assert.equal(roster[0].avatar.color,'violet');assert.deepEqual(roster[1].avatar,looks[1]);assert.deepEqual(roster[2].avatar,looks[2]);
  assert.deepEqual((await page.evaluate(()=>BacCampus.inspect().crewAvatars)).slice(0,3),roster.slice(0,3).map(m=>m.avatar));
