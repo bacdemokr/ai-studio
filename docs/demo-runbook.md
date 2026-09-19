@@ -37,3 +37,13 @@ Edit persona/skills after the mission finishes. Schedule a one-minute follow-up;
 Keep the dark NVIDIA-inspired shell and familiar panel layout. Use Expand world only when showing the spatial experience. Character wandering is ambient when idle; movement toward a station represents an observed task state. The evidence panel contains app events and actual files, not a fine-grained tool trace or hidden reasoning.
 
 OpenClaw owns agent execution, identity, skills, tool use and conversation state. The BaC app owns onboarding, the shared brief, role orchestration, scheduling and UI. OpenShell is the optional execution sandbox; an application approval is not proof of an OpenShell policy boundary.
+
+## Add a security and recovery segment
+
+Open **Inspect shared state** during a crew mission. Show the actual received brief, completed prior-role outputs, timestamps and files. This is the concrete reason for several roles: Momo drafts from a plan resolved by other specialists, and Pico sees the complete package.
+
+For a five-minute security segment, click **Access gate**. In **Try the concept**, let the attendee attempt the request, propose a narrow operator permission, retry and test a different destination. Keep the illustrative label visible. Switch to **Inspect host evidence** and show a capture from `./bac openshell prove`, if the operator has run it. Explain that the timestamped result belongs to a dedicated proof sandbox. Then inspect a real agent sandbox on the host before making claims about its enforcement. Do not claim host-side web tools automatically run inside that sandbox.
+
+Demonstrate **Stop after active call**: the pending model request may finish, but the next role does not start. Reset while running must visibly refuse; after completion, **Reset mission board** preserves the participant’s agent, memory and files. Use **Help & fallback** to show an error, download its evidence, enter a labeled fallback or retry deliberately.
+
+Finish with **Find your next demo** and route participants interested in persistent assignments and policy/recovery to the facilitator’s NeMoReef station. Before the event, complete the [requirements and fault checks](cohort-requirements.md), especially real Spark inference and OpenShell enforcement.

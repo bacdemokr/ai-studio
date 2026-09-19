@@ -38,7 +38,7 @@ def main():
     for name in ('setup', 'start', 'stop', 'check', 'logs'):
         agent.add_parser(name)
     shell = commands.add_parser('openshell').add_subparsers(dest='action', required=True)
-    for name in ('enable', 'check'):
+    for name in ('enable', 'check', 'prove'):
         shell.add_parser(name)
     commands.add_parser('telegram').add_subparsers(dest='action', required=True).add_parser('configure')
     commands.add_parser('search').add_subparsers(dest='action', required=True).add_parser('configure')

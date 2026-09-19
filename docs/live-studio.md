@@ -49,7 +49,11 @@ Without OpenShell, native filesystem tools are restricted to each agent’s work
 - `studio/workspaces/`: persona/skills, uploads, memory and output files.
 - `demo/releases/`, `demo/current`, `demo/previous`: immutable application releases.
 
-`./bac update` changes only the application release and restarts its service. It preserves the LLM, OpenClaw, agent files and database. An in-flight task is marked interrupted after the restart; wait for a mission to finish before updating during a presentation. Rollback changes application code, not participant data. No destructive participant-reset control is exposed in the public UI.
+`./bac update` changes only the application release and restarts its service. It preserves the LLM, OpenClaw, agent files and database. An in-flight task is marked interrupted after the restart; wait for a mission to finish before updating during a presentation. Rollback changes application code, not participant data. The attendee reset archives only their visible board and cancels pending work; it preserves files/memory and refuses to run during active inference. A different attendee should use a new browser profile.
+
+### OpenShell evidence lab
+
+The 3D Access gate opens **Security lab**. Its concept walkthrough is always labeled illustrative; learner buttons do not execute requests or change policies. The host evidence tab reads a host-only capture report. Run `./bac openshell prove` to collect fixed public GET outcomes and matching OpenShell policy logs in a newly created dedicated sandbox, then clean up that sandbox. The report is timestamped and is not proof of current enforcement for the actual agents. See [scope, failure criteria and host acceptance](cohort-requirements.md).
 
 ## Source contract
 

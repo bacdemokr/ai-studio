@@ -84,6 +84,11 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.json_response(studio.state(owner))
             if parsed.path == '/api/runtime':
                 return self.json_response(studio.runtime_status())
+            if parsed.path == '/api/security':
+                from security_lab import public_report
+                return self.json_response(public_report(studio.directory))
+            if parsed.path == '/api/evidence':
+                return self.json_response(studio.evidence(owner, parse_qs(parsed.query).get('id', [''])[0]))
             if parsed.path == '/api/file':
                 name = parse_qs(parsed.query).get('path', [''])[0]
                 if not (name.startswith(('inbox/', 'artifacts/')) or name in ('MEMORY.md', 'IDENTITY.md', 'SOUL.md', 'AGENTS.md')):
@@ -120,6 +125,7 @@ class Handler(SimpleHTTPRequestHandler):
                 '/api/upload': lambda: studio.upload(owner, data),
                 '/api/decision': lambda: studio.decision(owner, data.get('id'), data.get('action')),
                 '/api/pair': lambda: studio.pair(owner),
+                '/api/reset': lambda: studio.reset_board(owner),
             }
             if self.path not in routes:
                 raise Problem('Not found.', 404)

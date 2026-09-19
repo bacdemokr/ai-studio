@@ -1,7 +1,8 @@
 <style>/* STUDIO_CSS */</style>
 <div id="studio-journey" class="studio-journey"><span><b>01</b> Make it yours</span><i>→</i><span><b>02</b> Give it a mission</span><i>→</i><span><b>03</b> Build a crew</span><button id="studio-runtime" class="studio-runtime">Checking your runtime…</button></div>
 <div class="studio-viewbar"><div><button id="studio-campus-tab" aria-pressed="true">◈ Agent campus</button><button id="studio-board-tab" aria-pressed="false">▤ Mission control</button></div><div class="studio-view-caption">PERSONAS &amp; HANDOFFS <span>/</span> ONE SHARED MODEL</div></div>
-<div id="studio-board" hidden><div class="studio-board-intro"><span class="studio-kicker">MISSION CONTROL</span><h3>Different roles. Shared evidence.</h3><p>Each specialist receives the brief and the previous deliverables. The reviewer checks the whole plan.</p></div><div id="studio-lanes"></div></div>
+<nav class="studio-safety-bar" id="studio-safety-bar" aria-label="Workshop controls"><span>YOU STAY IN CONTROL</span><button id="studio-security">◇ Security lab</button><button id="studio-route">Find your next demo ↗</button><button id="studio-help">Help &amp; fallback</button><button id="studio-reset">Reset mission board</button></nav>
+<div id="studio-board" hidden><div class="studio-board-intro"><span class="studio-kicker">MISSION CONTROL</span><h3>Different roles. Shared evidence.</h3><p>Each specialist receives the brief and the previous deliverables. The reviewer checks the whole plan.</p><button class="studio-secondary" id="studio-board-shared">Inspect shared state &amp; handoffs ↗</button></div><div id="studio-lanes"></div></div>
 <aside id="studio-passport">
   <div class="studio-passport-head"><span class="studio-kicker">YOUR AGENT / YOUR RULES</span><span class="studio-spark">✦</span></div>
   <form id="studio-onboarding">
@@ -28,6 +29,7 @@
 </section>
 <section class="studio-workspace" id="studio-workspace">
   <div class="studio-workspace-main"><div class="studio-section-heading"><div><span class="studio-kicker">WORK THAT YOU CAN OPEN</span><h3 id="studio-result-title">Your first useful result starts here.</h3></div><button class="studio-secondary" id="studio-read-aloud" hidden>▷ Hear the answer</button></div>
+    <div id="studio-mission-controls" class="studio-mission-controls" aria-label="Current mission controls"></div>
     <div id="studio-result" class="studio-result"><div class="studio-empty-art"><span>↗</span><div><strong>Go from an idea to something real.</strong><p>A playable mini app. A brief with sources. A plan your whole crew can use.</p></div></div></div>
     <div id="studio-job-history" class="studio-history"></div>
   </div>

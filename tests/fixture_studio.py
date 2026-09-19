@@ -15,6 +15,9 @@ class BrowserAdapter(Adapter):
                 'version': 'TEST FIXTURE', 'openshell': 'not configured', 'telegram': False}
 
     def respond(self, agent_id, session, prompt):
+        if '[fixture:fail-once]' in prompt and agent_id not in getattr(self, 'failed_agents', set()):
+            self.failed_agents = getattr(self, 'failed_agents', set()) | {agent_id}
+            raise RuntimeError('TEST FIXTURE: model unavailable; saved files remain.')
         time.sleep(.25)
         if 'reaction-time game' in prompt:
             prompt += ' app fixture'

@@ -157,6 +157,67 @@ class StudioTests(unittest.TestCase):
             self.assertEqual([c.args[0] for c in calls], ['/v1/models', '/v1/models', '/v1/chat/completions'])
             self.assertEqual(calls[-1].args[1]['user'], 'stable-user')
 
+    def test_running_stop_keeps_completed_work_and_never_starts_next_role(self):
+        job = self.studio.enqueue(self.owner, {'kind': 'crew', 'brief': {}})
+        original = self.adapter.respond
+        def stop_during_call(*args):
+            self.assertEqual(self.studio.decision(self.owner, job['id'], 'cancel')['status'], 'stopping')
+            with self.assertRaises(Problem):
+                self.studio.reset_board(self.owner)
+            return original(*args)
+        with patch.object(self.adapter, 'respond', side_effect=stop_during_call):
+            self.run_next()
+        state = self.studio.state(self.owner)
+        self.assertEqual(state['jobs'][0]['status'], 'cancelled')
+        self.assertEqual(len(self.adapter.calls), 1)
+        self.assertTrue(state['files'])
+        handoff = state['jobs'][0]['payload']['handoffs']['0']
+        self.assertEqual(handoff['receivedFrom'], [])
+        self.assertEqual(handoff['sharedState']['brief']['city'], 'Zurich')
+        self.assertEqual(len(handoff['outputSHA256']), 64)
+        self.assertIsNone(self.studio.next_job())
+
+    def test_stop_solo_does_not_send_channel_reply(self):
+        job = self.studio.enqueue(self.owner, {'prompt': 'Make a draft'}, source='telegram')
+        def finish(*args):
+            self.studio.decision(self.owner, job['id'], 'cancel')
+            return 'Draft created while the active call was completing.'
+        with patch.object(self.adapter, 'respond', side_effect=finish), patch('telegram_bridge.reply_to_owner') as send:
+            self.run_next()
+            send.assert_not_called()
+        self.assertEqual(self.studio.state(self.owner)['jobs'][0]['status'], 'cancelled')
+
+    def test_reset_archives_only_own_board_and_preserves_memory_files_evidence(self):
+        self.studio.enqueue(self.owner, {'prompt': 'remember my preferences'})
+        self.run_next()
+        job = self.studio.enqueue(self.owner, {'kind': 'reminder', 'prompt': 'pending', 'delay': 60})
+        other, _ = self.studio.session()
+        self.studio.onboard(other['id'], {'name': 'Other', 'persona': 'guide', 'skills': ['writer']})
+        other_job = self.studio.enqueue(other['id'], {'kind': 'reminder', 'prompt': 'different participant', 'delay': 60})
+        self.studio.reset_board(self.owner)
+        state = self.studio.state(self.owner)
+        self.assertEqual(state['jobs'], [])
+        self.assertIn('Vegetarian', state['memory'])
+        self.assertEqual(state['profile']['name'], 'Jinny')
+        self.assertTrue(state['files'])
+        self.assertEqual(self.studio.state(other['id'])['jobs'][0]['id'], other_job['id'])
+        self.assertEqual(self.studio.evidence(self.owner, job['id'])['mission']['status'], 'cancelled')
+        with self.assertRaises(Problem):
+            self.studio.evidence(other['id'], job['id'])
+        export = json.dumps(self.studio.evidence(self.owner, job['id']))
+        self.assertNotIn(self.person['token'], export)
+        self.assertNotIn(self.person['csrf'], export)
+
+    def test_stop_and_reset_claims_do_not_survive_crash_as_false_success(self):
+        job = self.studio.enqueue(self.owner, {'prompt': 'in flight'})
+        self.studio.next_job()
+        self.studio.decision(self.owner, job['id'], 'cancel')
+        with self.assertRaises(Problem):
+            self.studio.reset_board(self.owner)
+        restarted = Studio(self.temp.name, self.adapter, start_worker=False, recover=True)
+        self.assertEqual(restarted.state(self.owner)['jobs'][0]['status'], 'error')
+        self.assertIsNone(restarted.next_job())
+
 
 if __name__ == '__main__':
     unittest.main()

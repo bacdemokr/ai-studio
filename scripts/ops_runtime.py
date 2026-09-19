@@ -144,6 +144,9 @@ def configure_search():
 
 
 def openshell(action):
+    if action == 'prove':
+        from security_lab import prove
+        return prove()
     if not shutil.which('openshell'):
         raise RuntimeError('Install the official OpenShell CLI and create a gateway first. See docs/live-studio.md. No sandbox was enabled.')
     c.run(['openshell', 'gateway', 'list'])
