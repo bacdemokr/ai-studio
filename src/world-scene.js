@@ -26,7 +26,7 @@ function createScene() {
   function ring(parent,x,y,z,r,color){const mesh=new THREE.Mesh(new THREE.TorusGeometry(r,.022,6,64),mat(color,true));mesh.rotation.x=-Math.PI/2;mesh.position.set(x,y,z);parent.add(mesh);return mesh;}
   function label(text,width=512,height=100,color='#e8eef5',bg=null){const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;const context=canvas.getContext('2d');if(bg){context.fillStyle=bg;context.fillRect(0,0,width,height);}context.fillStyle=color;context.font='600 '+Math.floor(height*.43)+'px Arial';context.textAlign='center';context.textBaseline='middle';context.fillText(text,width/2,height/2,width*.94);const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;return new THREE.MeshBasicMaterial({map:texture,transparent:!bg,depthWrite:false,toneMapped:false});}
   function sign(parent,text,x,y,z,w,h,color,bg){const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),label(text,512,100,color,bg));mesh.position.set(x,y,z);parent.add(mesh);return mesh;}
-  // A compact exhibition floor, built entirely from geometry; no downloaded assets.
+  // A compact exhibition floor; the workshop artwork is bundled for offline use.
   box(scene,0,-.42,0,18,.75,12.6,0x151b23);
   box(scene,0,-.025,0,17.85,.07,12.45,0x2a333e);
   box(scene,0,-.3,6.31,17.3,.075,.025,0x76b900,true);
@@ -36,11 +36,17 @@ function createScene() {
   box(scene,-8.85,.65,0,.15,1.35,12,0x1e2732);
   box(scene,0,1.36,-6.05,18,.055,.24,0x63778b);
   box(scene,-8.85,1.36,0,.22,.055,12,0x63778b);
-  // Back wall feature, screen, and common model server.
-  box(scene,-.6,1.65,-5.97,6.6,2.3,.14,0x0c121b);
-  sign(scene,'BUILD A CLAW',-.6,2.02,-5.86,5.6,.63,'#f2f6fb');
-  sign(scene,'ONE BRIEF. FIVE SPECIALISTS.',-.6,1.43,-5.85,5.4,.38,'#9eafc1');
-  for(let i=0;i<9;i++)box(scene,-3.1+i*.62,.92,-5.82,.4,.075,.02,0x76b900,true);
+  // A framed workshop display keeps the supplied illustration inside the 3D space.
+  box(scene,-.6,2.4,-5.97,5.8,3.8,.14,0x0c121b);
+  sign(scene,'BUILD A CLAW',-.6,4.0,-5.86,4.9,.38,'#f2f6fb');
+  const artworkWidth=5.22,artworkHeight=artworkWidth*508/904;
+  box(scene,-.6,2.175,-5.875,artworkWidth+.14,artworkHeight+.14,.025,0x343f4c);
+  const artworkTexture=new THREE.TextureLoader().load('__WORKSHOP_ART_DATA_URL__');
+  artworkTexture.colorSpace=THREE.SRGBColorSpace;
+  artworkTexture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+  const artwork=new THREE.Mesh(new THREE.PlaneGeometry(artworkWidth,artworkHeight),new THREE.MeshBasicMaterial({map:artworkTexture,toneMapped:false}));
+  artwork.position.set(-.6,2.175,-5.849);scene.add(artwork);
+  box(scene,-.6,.60,-5.86,5.22,.026,.02,0x76b900,true);
   const positions=[[-5,-3.3],[0,-3.3],[5,-3.3],[-4.8,3.0],[3.8,3.0]];
   const homes=positions.map(([x,z])=>new THREE.Vector3(x,.05,z+1));
   const titles=['EVENT HQ','DEMO STUDIO','OPERATIONS','MARKETING','REVIEW'];
