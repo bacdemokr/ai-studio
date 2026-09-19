@@ -1,3 +1,5 @@
+> Historical guide for the original offline rehearsal. The current main Agent Studio is documented in [live-studio.md](live-studio.md) and the repository README.
+
 # A campus you can explore
 
 The default screen now renders a real WebGL workspace using bundled [Three.js r180](https://github.com/mrdoob/three.js/tree/r180). It uses generated geometry and local Canvas textures, so Spark does not need Node, an asset server, a CDN or a second model. Your browser renders the scene. A laptop viewing Spark's web page renders it on the laptop, not on the model-serving Spark.

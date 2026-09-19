@@ -12,8 +12,8 @@
 @media(max-width:820px){#bac-planner .fields{grid-template-columns:repeat(2,minmax(0,1fr))}#bac-planner .scene{grid-template-columns:repeat(3,minmax(0,1fr));gap:35px 14px}#bac-planner .booth:nth-child(even){margin-top:0}#bac-planner .inspector{grid-template-columns:230px minmax(0,1fr)}#bac-planner .topics{grid-template-columns:1fr}#bac-planner .topic .fields{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){#bac-planner .scene,#bac-planner[data-view="board"] .scene{grid-template-columns:repeat(2,minmax(0,1fr));padding-left:12px;padding-right:12px}#bac-planner .fields{grid-template-columns:1fr 1fr}#bac-planner .inspector,#bac-planner .onboard{grid-template-columns:1fr}#bac-planner .profile{border-right:0;border-bottom:1px solid var(--line)}#bac-planner .step-list{grid-template-columns:1fr}#bac-planner .topbar,#bac-planner .hero,#bac-planner .artifact,#bac-planner .profile,#bac-planner .foot{padding-left:14px;padding-right:14px}#bac-planner .brief,#bac-planner .flow,#bac-planner .decision{margin-left:14px;margin-right:14px}#bac-planner .scene-wrap,#bac-planner .viewbar,#bac-planner .onboard{padding-left:14px;padding-right:14px}#bac-planner .flow-copy{min-width:0;flex-basis:100%}#bac-planner .persona{min-height:36px}#bac-planner .tabs button{padding-left:8px;padding-right:8px}}
 </style>
-<header class="topbar spread"><div class="brand"><span class="nv-brand">NVIDIA</span><span class="brand-divider" aria-hidden="true"></span><span>Build a Claw</span></div><div class="row"><span class="demo-label">Interactive demo · simulated agents</span><!-- BUILD_VERSION --></div></header>
-<nav class="experience-nav" aria-label="Choose an experience"><button class="action" data-mode="campus" aria-pressed="true">Agent campus <span class="campus-nav-tag">3D</span></button><button class="action" data-mode="playground" aria-pressed="false">Skill playground</button><button class="action" data-mode="crew" aria-pressed="false">Plan a BaC</button></nav>
+<header class="topbar spread"><div class="brand"><span class="nv-brand">NVIDIA</span><span class="brand-divider" aria-hidden="true"></span><span>Build a Claw</span></div><div class="row"><span class="demo-label">Agent Studio · local-first</span><!-- BUILD_VERSION --></div></header>
+<nav class="experience-nav" aria-label="Choose an experience"><button class="action" data-mode="campus" aria-pressed="true">Agent studio <span class="campus-nav-tag">3D</span></button><button class="action" data-mode="playground" aria-pressed="false">Local tools &amp; samples</button><button class="action" data-mode="crew" aria-pressed="false">Workflow rehearsal</button></nav>
 <!-- AGENT_CAMPUS -->
 <div data-part="planner" hidden>
 <div class="hero spread"><div><span class="quiet">Your own Build a Claw event</span><h2 data-out="title">Let’s plan BaC Zurich</h2><div class="row"><span class="quiet" data-out="summary">Europe (EMEA) · 120 attendees · 180 min · English</span><span class="pill tint" data-out="session-summary">One topic · 5 people · 15 min</span></div></div><div class="row"><button class="action" data-action="brief">Event brief</button><button class="action tint" data-action="onboard">Build your agent</button></div></div>
@@ -85,4 +85,5 @@ showMode('campus');render();if(globalThis.Tweak){const t=new Tweak({container:ro
 })();
 </script>
 <!-- CAMPUS_SCRIPT -->
+<!-- STUDIO_SCRIPT -->
 </div>

@@ -1,3 +1,5 @@
+> Historical guide for the original offline rehearsal. The current main Agent Studio is documented in [live-studio.md](live-studio.md) and the repository README.
+
 # Current prototype and next integration
 
 ## What runs today

@@ -1,130 +1,117 @@
-# BaC Crew
+# NVIDIA Build a Claw — Agent Studio
 
-An interactive agent playground: create a persona, try individual skills, then bring that agent into a crew to plan a Build a Claw event. Switch between **A · 3D campus** and **C · Progress board** to inspect the team's work.
+Create a personal agent, give it useful skills, and bring it into a crew. The NVIDIA-inspired dark interface surrounds an interactive 3D campus: click the library, maker workshop, weather lookout or crew stage to start a mission. Switch between **Agent campus (A)** and **Mission control (C)**, or expand the world without changing the rest of the interface.
 
-**Current status:** a real WebGL 3D campus with moving robots, clickable agent passports, camera orbit/zoom, visible handoffs and decision stops. The skill playground includes real local CSV analysis/report downloads and poster PNG creation, plus practice weather, search, Telegram and session memory. Agent reasoning and collaboration are scripted. LLM inference, live weather/search, Telegram and OpenShell enforcement are not connected yet.
+![Agent Studio](docs/agent-studio.png)
 
-![3D agent campus](docs/agent-campus.png)
+## What is implemented
 
-The interface uses an NVIDIA-inspired dark theme: neutral panels, green primary actions, compact line icons and matching styles across both crew views. See [visual design](docs/visual-design.md).
+- **Persistent onboarding:** name, persona and editable skill loadout; native OpenClaw identity/skill files are provisioned on the first mission. Memory, conversations, files and jobs survive app updates.
+- **Useful solo missions:** live weather, reading public websites, optional Brave web search, document questions, HTML mini-app creation with an isolated playable preview, campaign drafts and explicit preference memory.
+- **A real crew workflow:** your personal agent leads Nova, Atlas, Momo and Pico. Separate OpenClaw agents receive a shared brief and previous deliverables; the reviewer checks the specialists. A real server-side decision stops the workflow if equipment is insufficient.
+- **Visible evidence:** observed task states, role handoffs and actual saved files drive the scene and board. Character motion illustrates those states; it is not a model reasoning trace.
+- **Phone continuity:** optional Telegram pairing routes a participant’s private messages to the same OpenClaw agent and conversation as the web. Pairing tokens expire and can only be used once.
+- **Persistent follow-ups:** scheduled jobs survive refresh/restart and run through the same queue. Results appear in the web workspace. This is the BaC scheduler, not OpenClaw cron.
+- **Independent OpenShell integration:** optional native OpenClaw sandbox plugin setup/check commands. The UI reports configuration, not verified enforcement. See the [runtime guide](docs/live-studio.md).
 
-## Repeated review on Spark
+All roles use **one shared `bac-local` model on one Spark**. Requests run sequentially to avoid loading a model per agent. This demonstrates role boundaries, dependencies and review; it does not claim a parallel speedup.
 
-Use the new [Spark setup and update guide](docs/spark-operations.md) to manage the model and app separately. After the one-time prerequisites and Git authentication:
+The separate **Local tools & samples** and **Workflow rehearsal** tabs retain the previous offline examples, real browser CSV analysis and downloadable poster generation. Those sample weather/search/Telegram responses remain explicitly fictional. The main Agent Studio never substitutes a sample answer for a failed live request.
 
-```bash
-./bac llm setup qwen   # once: shared vLLM environment and Qwen weights
-./bac llm start qwen   # background model server (optional while reviewing this UI)
-./bac llm check        # confirm readiness after warmup
-./bac app start       # background app on port 8080
-```
+## First setup on Spark
 
-For each later code review, run `./bac update` and refresh the browser. This updates only the app; model files and the running LLM stay in place. `./bac rollback` restores the previous application release. To try Gemma, run `./bac llm setup gemma` once, then `./bac llm start gemma`. To delete only one model, use `./bac llm remove qwen --yes` or `./bac llm remove gemma --yes`.
-
-These commands prepare the model endpoint independently; they do not turn the current simulated UI into live agents. The serving profiles follow the supplied HackMD setup, but actual GPU setup still needs a first verification on Spark.
-
-## Run on DGX Spark
-
-Requires Git, Python 3.8+ and a current Chrome, Edge or Firefox browser with WebGL2 for the 3D view. No pip packages, Node.js, GPU drivers or model downloads are needed for this prototype.
+Clone this private repository using your authenticated Git account:
 
 ```bash
 git clone https://github.com/bacdemokr/tmp.git
 cd tmp
-./start.sh
+./bac llm setup qwen
+./bac llm start qwen
+./bac llm check
+./bac runtime setup
+./bac runtime start
+./bac runtime check
+./bac app start
 ```
 
-Open **http://localhost:8080** in a browser on Spark. For a private repository, authenticate Git on Spark before cloning, or download the repository ZIP while signed into GitHub.
+Open **http://localhost:8080**. `runtime setup` installs a private Node.js 24.16.0 and OpenClaw 2026.9.4; it does not change system Node. For another model, install `gemma` once and use `./bac llm start gemma`. This switches the shared endpoint for every agent.
 
-If you use Spark remotely, keep the server running and create a tunnel from your laptop:
+For remote access, keep the app bound to loopback and forward port 8080 from your laptop:
 
 ```bash
 ssh -N -L 8080:127.0.0.1:8080 YOUR_SPARK_USER@YOUR_SPARK_HOST
 ```
 
-Then open **http://localhost:8080** on your laptop. To make the UI available directly on a trusted local network instead:
+For a trusted workshop LAN, use `./bac app start --host 0.0.0.0`. This is a workshop server with browser-session isolation, **not an authenticated public service**. Keep the OpenClaw gateway and vLLM ports on loopback.
+
+## Repeated review and cleanup
 
 ```bash
-./start.sh --host 0.0.0.0 --port 8080
+./bac update                     # update the app, preserve model/runtime/user data
+./bac rollback                   # return to the previous app release
+./bac llm remove qwen --yes       # remove only Qwen weights
+./bac llm remove gemma --yes      # remove only Gemma weights
+./bac llm remove-runtime --yes    # remove the managed vLLM environment
 ```
 
-Open `http://SPARK_IP:8080`. This development server has no authentication. Stop it with Ctrl+C. Use `--port 8081` if port 8080 is occupied. The generated `app/index.html` also works directly as a local file.
+Model removal supports a preview by omitting `--yes`. Runtime setup is independent from app releases; `./bac update` does not reinstall OpenClaw or restart the model. [Full Spark operations](docs/spark-operations.md).
 
-## Try the demo
-
-The app opens in **Agent campus**. Click a robot or its name to inspect its persona, skills and current task. Drag to orbit the scene, scroll to zoom, and use the pause button to freeze movement. Click **Run the crew** to advance the same planning workflow shown in the progress board. It stops for capacity and delivery decisions; it never automatically grants permission. Use **Edit event brief** to change the location, attendees, language or timings.
-
-**Create your agent** opens the skill playground. Give your agent a name and personality, then choose a mission:
-
-| Mission | What works in this preview |
-|---|---|
-| Weather lookout | Inspect fictional city weather and a prepared recommendation; remove the skill or block the connection to see why execution stops. |
-| Web scout | Compare three prepared example results and open their evidence cards. These are not live search results. |
-| Telegram buddy | Equip the skill, pair a practice phone, preview a reply, then simulate allowing or denying delivery. No Telegram message is sent. |
-| Data analyst | Upload or edit a `topic,attendees` CSV, combine repeated topics, inspect a chart and download a Markdown report. Calculations happen locally; no file is uploaded. |
-| Poster studio | Enter event details or use the current crew brief, render a local poster layout and download a real 1080 × 1350 PNG. No image model is used. |
-| Remember me | Save a preference in browser memory and see it reused by the other practice missions; forgetting or refreshing clears it. |
-
-**Join the BaC crew** carries the name, personality and equipped skills into role onboarding. You can also switch straight to **Plan a BaC**:
-
-1. Keep **Europe (EMEA) / Zurich / English**, or change the event brief. Defaults are 120 attendees, 180 minutes, groups of 5 and 15-minute sessions.
-2. Submit the brief and advance the handoffs. Each attendee is assigned to one interest-based topic.
-3. Compare A (3D campus) and C (progress board). Both use the same crew and shared brief version. The A button returns to the campus.
-4. Operations detects a device shortage. Extend the event to **210 minutes** or mark additional devices as pending.
-5. Inspect demo runbooks, equipment/staffing calculations, invitation copy, promotional copy and the consistency review.
-6. Approve or deny the simulated policy request. Neither option sends a message or performs an external action.
-7. Select **Build your agent**, choose a name, role, persona and skills, try a solo task, then join the crew. This replaces the existing agent in the selected role.
-
-Return to **Skill playground → Telegram buddy → How is our BaC plan coming along?** to see the current shared brief in a phone-reply preview. Extending the event to 210 minutes also updates that reply.
-
-The interface is English. Generated template examples support English, Korean and Japanese. Inputs stay in browser memory; refreshing resets the demo. Venue details, event dates and registration links remain placeholders.
-
-## Equipment planning
-
-The default topic split is 50% / 30% / 20%. These are editable planning assumptions, not measured GPU throughput or official hardware sizing guidance.
-
-| Default brief | Spark stations | Workstations | Staff |
-|---|---:|---:|---:|
-| 120 attendees, 180 minutes | 3 | 1 | 8 |
-| Same brief, extended to 210 minutes | 2 | 1 | 7 |
-
-Staff includes one presenter per station, one floor assistant per 40 attendees (rounded up), and one event lead. Open **Calculations and assumptions** for the formulas. The hardware counts describe equipment at the planned event; they are independent of the single Spark hosting this demo.
-
-## Project files
-
-- `src/campus.html`, `src/campus.css`, `src/campus.js`: real 3D workspace, robot animation and controls linked to planner state.
-- `src/skill-tools.js`: local CSV analysis, report downloads and poster rendering.
-- `src/vendor/`: bundled Three.js r180 and its MIT license; no CDN request is needed.
-- `src/bac-planner.html`: editable UI, styles, planning rules and simulated workflow.
-- `src/playground.html`, `src/playground.css`, `src/playground.js`: skill missions and the agent passport.
-- `src/nvidia-theme.css`: the shared NVIDIA-inspired visual theme.
-- `scripts/build.py`: creates a standalone page without CDN or Codex dependencies.
-- `app/index.html`: generated runnable page; committed for convenient preview.
-- `start.sh` / `scripts/serve.py`: local server using only Python's standard library.
-- `bac`, `scripts/ops_*.py`, `runtime/profiles.json`: independent model lifecycle, app deployment and rollback.
-- `docs/architecture.md`: current behavior and the intended live integration.
-- `docs/skill-experiences.md`: attendee journey, reference implementations and live integration plan.
-- `tests/smoke.cjs`, `tests/playground.cjs`: optional browser smoke tests.
-
-After editing `src/bac-planner.html`, run `python3 scripts/build.py` or restart `./start.sh`, then refresh the browser.
-
-## Optional browser validation
-
-The application does not need these dependencies. Install them only to run the smoke test:
+Optional integrations:
 
 ```bash
-npm install --no-save --package-lock=false playwright
-npx playwright install chromium
+./bac telegram configure         # hidden prompt for a dedicated bot token
+./bac search configure           # hidden prompt for a Brave Search API key
+./bac openshell enable           # requires an installed OpenShell CLI and active gateway
+./bac openshell check
+```
+
+Website reading and the weather endpoint do not require a Brave key. Telegram uses the BaC transport adapter into OpenClaw, not a claim of native Telegram-channel configuration.
+
+## Review the interface without a model
+
+```bash
+./start.sh
+```
+
+Only Python 3.9+ and a modern WebGL2 browser are needed for UI review. The runtime indicator stays offline, onboarding is saved, and live missions explain the setup requirement. Local CSV/poster tools and the explicit workflow rehearsal remain usable. Use the server rather than opening `app/index.html` as a file for Agent Studio functionality.
+
+## A 15-minute attendee journey
+
+1. Name an agent and choose its persona/skills.
+2. Click **Maker workshop**, create a mini game and play the actual generated file.
+3. Ask it to remember a preference. Refresh, then ask what it remembers.
+4. Open **Knowledge library**, upload a document or use the labeled sample brief, and inspect the answer alongside the source.
+5. Launch a crew for **Zurich / Europe / English**. Defaults: 120 attendees, 180 minutes, groups of 5, sessions of 15 minutes; all are editable.
+6. Watch role handoffs in the campus, switch to Mission control, approve the equipment assumption if needed, and open each deliverable.
+7. If the host configured Telegram, pair a phone and continue the same conversation.
+
+Dates, venues and registration URLs stay unconfirmed unless supplied. Equipment counts are transparent event-station assumptions, not an inference-capacity benchmark. See the [presenter runbook](docs/demo-runbook.md).
+
+## Validation and limits
+
+The pinned **real OpenClaw gateway** was installed and tested locally with a clearly identified protocol fixture as its model: native agent registration (including immediate first use), write/read tools, persistent memory, HTTP conversation continuity and the complete five-role crew workflow worked. Python and browser tests cover lifecycle/update isolation, participant boundaries, scheduling, equipment approvals, file handling, onboarding and 3D controls. Fixtures are test-only and never loaded by the production app.
+
+**Still requires Spark verification:** Qwen/Gemma inference quality and latency, actual NVIDIA GPU setup, real Telegram credentials, Brave credentials and OpenShell sandbox enforcement. No live Telegram message or promotional email was sent during development.
+
+```bash
+python3 -m unittest discover -s tests -p 'test*.py'
+# Optional browser tests; requires Playwright + Chromium, or CHROME_PATH
+python3 tests/fixture_studio.py   # separate terminal, port 8082
+node tests/studio.cjs
 node tests/smoke.cjs
 node tests/playground.cjs
 node tests/campus.cjs
 ```
 
-On Linux, Playwright may also require OS browser libraries (`npx playwright install-deps chromium`). Alternatively set `CHROME_PATH` to an existing Chrome/Chromium executable.
+## Editable source
 
-The prototype was validated on macOS Chromium, including the full workflow, six skill missions, both policy choices, invalidation of outdated approvals, onboarding, shared brief updates and small-screen layouts. The 3D suite also covers real robot movement, decision stops, local artifact downloads, reduced motion and a fallback when WebGL is unavailable. DGX Spark hardware execution has not yet been verified. See [the 3D campus guide](docs/agent-campus.md) for the visual workflow and limitations.
+- `src/studio.*`: attendee journey, mission control and API client.
+- `src/world-scene.js`, `src/campus.*`: Three.js world, characters and accessible hotspots.
+- `scripts/studio.py`, `scripts/serve.py`: durable queue, participant API, shared crew state.
+- `scripts/agent_runtime.py`: native OpenClaw workspaces and gateway adapter.
+- `scripts/ops_runtime.py`: pinned runtime, optional search, Telegram and OpenShell setup.
+- `scripts/telegram_bridge.py`: private-chat pairing and transport continuity.
+- `src/playground.*`, `src/skill-tools.js`, `src/bac-planner.html`: local tools and explicitly scripted rehearsals.
+- `scripts/build.py`: rebuilds the bundled UI, with no runtime CDN requirement.
 
-Host-only management tests (no model downloads or systemd changes):
-
-```bash
-python3 -m unittest discover -s tests -p 'test_management.py' -v
-```
+After UI changes: `python3 scripts/build.py`. All mutable state lives outside the checkout under `~/.local/share/bac-demo` (or `BAC_DATA_DIR`). Keep that directory private and do not commit or share it.

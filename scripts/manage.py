@@ -10,6 +10,7 @@ import sys
 import ops_common as c
 import ops_deploy as app
 import ops_llm as llm
+import ops_runtime as runtime
 
 
 def main():
@@ -33,7 +34,35 @@ def main():
         command = model.add_parser(name)
         if name == 'remove-runtime':
             command.add_argument('--yes', action='store_true')
+    agent = commands.add_parser('runtime').add_subparsers(dest='action', required=True)
+    for name in ('setup', 'start', 'stop', 'check', 'logs'):
+        agent.add_parser(name)
+    shell = commands.add_parser('openshell').add_subparsers(dest='action', required=True)
+    for name in ('enable', 'check'):
+        shell.add_parser(name)
+    commands.add_parser('telegram').add_subparsers(dest='action', required=True).add_parser('configure')
+    commands.add_parser('search').add_subparsers(dest='action', required=True).add_parser('configure')
     args = parser.parse_args()
+    if args.command in ('runtime', 'openshell', 'telegram', 'search'):
+        if args.command == 'runtime' and args.action == 'check':
+            runtime.check()
+        elif args.command == 'runtime' and args.action == 'logs':
+            c.run(['journalctl', '--user', '-u', 'bac-openclaw', '-n', '100', '--no-pager'])
+        else:
+            with c.locked():
+                if args.command == 'openshell':
+                    runtime.openshell(args.action)
+                elif args.command == 'search':
+                    runtime.configure_search()
+                elif args.command == 'telegram':
+                    runtime.configure_telegram()
+                elif args.action == 'setup':
+                    runtime.setup()
+                elif args.action == 'start':
+                    runtime.start()
+                elif args.action == 'stop':
+                    c.service('bac-openclaw', 'stop')
+        return
     if args.command == 'doctor':
         print('Host:', platform.system(), platform.machine())
         for tool in ('git', 'python3', 'nvidia-smi', 'ffmpeg', 'uv', 'systemctl'):

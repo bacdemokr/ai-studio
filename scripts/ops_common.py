@@ -94,7 +94,7 @@ def require_systemd():
 
 
 def unit_path(name):
-    if name not in ('bac-demo', 'bac-llm'):
+    if name not in ('bac-demo', 'bac-llm', 'bac-openclaw'):
         raise RuntimeError('Unknown service.')
     return Path(os.environ.get('XDG_CONFIG_HOME', str(Path.home() / '.config'))) / 'systemd/user' / (name + '.service')
 

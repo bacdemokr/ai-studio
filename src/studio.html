@@ -1,0 +1,39 @@
+<style>/* STUDIO_CSS */</style>
+<div id="studio-journey" class="studio-journey"><span><b>01</b> Make it yours</span><i>→</i><span><b>02</b> Give it a mission</span><i>→</i><span><b>03</b> Build a crew</span><button id="studio-runtime" class="studio-runtime">Checking your runtime…</button></div>
+<div class="studio-viewbar"><div><button id="studio-campus-tab" aria-pressed="true">◈ Agent campus</button><button id="studio-board-tab" aria-pressed="false">▤ Mission control</button></div><div class="studio-view-caption">PERSONAS &amp; HANDOFFS <span>/</span> ONE SHARED MODEL</div></div>
+<div id="studio-board" hidden><div class="studio-board-intro"><span class="studio-kicker">MISSION CONTROL</span><h3>Different roles. Shared evidence.</h3><p>Each specialist receives the brief and the previous deliverables. The reviewer checks the whole plan.</p></div><div id="studio-lanes"></div></div>
+<aside id="studio-passport">
+  <div class="studio-passport-head"><span class="studio-kicker">YOUR AGENT / YOUR RULES</span><span class="studio-spark">✦</span></div>
+  <form id="studio-onboarding">
+    <div class="studio-avatar"><span class="studio-antenna"></span><i></i><i></i><small>＋</small></div>
+    <h3>Meet your next teammate.</h3><p class="studio-muted">Give it a name, a personality and a few useful skills.</p>
+    <label for="studio-name">Agent name</label><input id="studio-name" value="Jinny" maxlength="32" required autocomplete="off">
+    <label>Pick a personality</label><div class="studio-personas"><button type="button" data-persona="guide" aria-pressed="true"><b>✧</b> Guide<small>Warm &amp; clear</small></button><button type="button" data-persona="maker" aria-pressed="false"><b>⌘</b> Maker<small>Curious &amp; bold</small></button><button type="button" data-persona="analyst" aria-pressed="false"><b>⌕</b> Analyst<small>Precise &amp; careful</small></button></div>
+    <label>Equip your starter skills</label><div id="studio-skill-picker"></div>
+    <button type="submit" class="studio-primary" id="studio-create">Bring my agent to life <span>↗</span></button>
+    <small class="studio-muted">Your agent, memory and files survive refreshes and app updates.</small>
+  </form>
+  <div id="studio-companion" hidden>
+    <div class="studio-companion-name"><div class="studio-avatar small"><i></i><i></i></div><div><h3 id="studio-agent-name"></h3><span id="studio-personality" class="studio-muted"></span></div><span class="studio-online-dot"></span></div>
+    <div id="studio-equipped" class="studio-equipped"></div><button id="studio-edit-agent" class="studio-secondary">Edit persona &amp; skills</button>
+    <div class="studio-agent-state"><span class="studio-kicker" id="studio-task-state">READY FOR A MISSION</span><p id="studio-task-summary">Choose a mission below, or ask for something of your own.</p></div>
+    <form id="studio-chat"><label for="studio-prompt">What should we make happen?</label><textarea id="studio-prompt" rows="4" maxlength="6000" placeholder="Build me a tiny reaction-time game…" required></textarea><div class="studio-compose-actions"><button type="button" id="studio-attach">＋ Add a document</button><button type="submit" class="studio-primary" id="studio-send">Run mission ↗</button></div></form>
+    <div class="studio-quick-links"><button id="studio-memory">▧ Memory</button><button id="studio-phone">↗ Take it to Telegram</button><button id="studio-schedule">◷ Follow up later</button></div>
+    <div class="studio-native-note"><span>OPENCLAW</span><p>Native persona · skills · persistent conversation<br>Every agent uses the same model on Spark.</p></div>
+  </div>
+</aside>
+<section id="studio-experiences" class="studio-experiences">
+  <div class="studio-section-heading"><div><span class="studio-kicker">START WITH A LITTLE WOW</span><h3>One agent. A world of possibilities.</h3></div><span class="studio-muted">Choose a mission. Make it your own.</span></div>
+  <div id="studio-missions" class="studio-missions"></div>
+</section>
+<section class="studio-workspace" id="studio-workspace">
+  <div class="studio-workspace-main"><div class="studio-section-heading"><div><span class="studio-kicker">WORK THAT YOU CAN OPEN</span><h3 id="studio-result-title">Your first useful result starts here.</h3></div><button class="studio-secondary" id="studio-read-aloud" hidden>▷ Hear the answer</button></div>
+    <div id="studio-result" class="studio-result"><div class="studio-empty-art"><span>↗</span><div><strong>Go from an idea to something real.</strong><p>A playable mini app. A brief with sources. A plan your whole crew can use.</p></div></div></div>
+    <div id="studio-job-history" class="studio-history"></div>
+  </div>
+  <aside class="studio-evidence"><div class="studio-section-heading"><span class="studio-kicker">VISIBLE EVIDENCE</span><span class="studio-evidence-dot"></span></div><ol id="studio-events"><li><b>No mission has run yet.</b><small>Gateway requests, role handoffs and saved files appear here as they happen.</small></li></ol><div class="studio-files-head"><span class="studio-kicker">YOUR WORKSPACE</span><button id="studio-refresh-files">↻</button></div><div id="studio-files"><p class="studio-muted">Uploaded documents and deliverables live here.</p></div></aside>
+</section>
+<section class="studio-crew-invite"><div class="studio-crew-orbits"><i>✦</i><i>⌕</i><i>▥</i><i>✎</i><i>✓</i></div><div><span class="studio-kicker">BETTER TOGETHER</span><h3>Give one big idea to a whole crew.</h3><p>Plan a Build a Claw event. Watch strategy become demos, equipment, invitations and a reviewed plan.</p></div><button class="studio-primary" id="studio-plan">Launch a crew mission ↗</button></section>
+<div id="studio-alert" class="studio-alert" role="alert" hidden><span></span><button aria-label="Dismiss message">×</button></div>
+<input type="file" id="studio-upload" accept=".txt,.md,.csv" hidden>
+<dialog id="studio-dialog"><div class="studio-dialog-heading"><span class="studio-kicker" id="studio-dialog-kicker">AGENT STUDIO</span><button id="studio-dialog-close" aria-label="Close dialog">×</button></div><div id="studio-dialog-body"></div></dialog>

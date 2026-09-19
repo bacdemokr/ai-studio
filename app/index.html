@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Build your agent, explore skills, and plan a BaC event with a crew.">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
-<title>BaC Crew — Agent Playground</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; frame-src 'self' blob:; base-uri 'none'; form-action 'none'; object-src 'none'">
+<title>NVIDIA Build a Claw — Agent Studio</title>
 <style>
 :root{color-scheme:dark;background:#0c0c0c}
 body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
@@ -25,8 +25,8 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 @media(max-width:820px){#bac-planner .fields{grid-template-columns:repeat(2,minmax(0,1fr))}#bac-planner .scene{grid-template-columns:repeat(3,minmax(0,1fr));gap:35px 14px}#bac-planner .booth:nth-child(even){margin-top:0}#bac-planner .inspector{grid-template-columns:230px minmax(0,1fr)}#bac-planner .topics{grid-template-columns:1fr}#bac-planner .topic .fields{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){#bac-planner .scene,#bac-planner[data-view="board"] .scene{grid-template-columns:repeat(2,minmax(0,1fr));padding-left:12px;padding-right:12px}#bac-planner .fields{grid-template-columns:1fr 1fr}#bac-planner .inspector,#bac-planner .onboard{grid-template-columns:1fr}#bac-planner .profile{border-right:0;border-bottom:1px solid var(--line)}#bac-planner .step-list{grid-template-columns:1fr}#bac-planner .topbar,#bac-planner .hero,#bac-planner .artifact,#bac-planner .profile,#bac-planner .foot{padding-left:14px;padding-right:14px}#bac-planner .brief,#bac-planner .flow,#bac-planner .decision{margin-left:14px;margin-right:14px}#bac-planner .scene-wrap,#bac-planner .viewbar,#bac-planner .onboard{padding-left:14px;padding-right:14px}#bac-planner .flow-copy{min-width:0;flex-basis:100%}#bac-planner .persona{min-height:36px}#bac-planner .tabs button{padding-left:8px;padding-right:8px}}
 </style>
-<header class="topbar spread"><div class="brand"><span class="nv-brand">NVIDIA</span><span class="brand-divider" aria-hidden="true"></span><span>Build a Claw</span></div><div class="row"><span class="demo-label">Interactive demo · simulated agents</span><span class="demo-label" title="Application build">Build local-preview</span></div></header>
-<nav class="experience-nav" aria-label="Choose an experience"><button class="action" data-mode="campus" aria-pressed="true">Agent campus <span class="campus-nav-tag">3D</span></button><button class="action" data-mode="playground" aria-pressed="false">Skill playground</button><button class="action" data-mode="crew" aria-pressed="false">Plan a BaC</button></nav>
+<header class="topbar spread"><div class="brand"><span class="nv-brand">NVIDIA</span><span class="brand-divider" aria-hidden="true"></span><span>Build a Claw</span></div><div class="row"><span class="demo-label">Agent Studio · local-first</span><span class="demo-label" title="Application build">Build local-preview</span></div></header>
+<nav class="experience-nav" aria-label="Choose an experience"><button class="action" data-mode="campus" aria-pressed="true">Agent studio <span class="campus-nav-tag">3D</span></button><button class="action" data-mode="playground" aria-pressed="false">Local tools &amp; samples</button><button class="action" data-mode="crew" aria-pressed="false">Workflow rehearsal</button></nav>
 <section id="agent-campus" data-part="campus" aria-label="3D agent campus">
 <style>#bac-planner .campus-nav-tag{font-size:10px;padding:2px 5px;background:#28351a;color:#b7e976;margin-left:5px;border:1px solid #465c2c;border-radius:2px}
 #agent-campus{--campus-green:#96d63c;background:#0c0e0c}
@@ -118,6 +118,104 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 @media(max-width:560px){#agent-campus .campus-heading{padding:24px 16px 20px}#agent-campus .campus-heading h2{font-size:27px}#agent-campus .campus-heading>.row{width:100%}#agent-campus .campus-heading .action{font-size:12px;flex:1;padding:9px}#agent-campus .campus-layout{margin:0 12px}#agent-campus .campus-stage-top{top:14px;left:12px;right:12px;display:block}#agent-campus .campus-location{font-size:9px}#agent-campus .campus-sim{display:block;border:0;padding:6px 0;background:none;letter-spacing:.5px}#campus-viewport{height:350px}#agent-campus .campus-agent-label{font-size:9px;padding:3px 5px}#agent-campus .campus-agent-label small{font-size:7px}#agent-campus .campus-roster button{font-size:10px;padding:12px 5px}#agent-campus .campus-roster small{font-size:8px}#agent-campus .campus-person h3{font-size:23px}#agent-campus .campus-bottom-grid{margin:12px 12px 0;gap:12px}#agent-campus .campus-mission,#agent-campus .campus-activity{padding:16px}#agent-campus .campus-discover{margin:20px 12px;grid-template-columns:1fr}#agent-campus .campus-discover>button{padding:15px 15px 15px 56px}#agent-campus .campus-tile-icon{position:absolute;left:18px;top:15px}#agent-campus .campus-discover>div{padding:0}#agent-campus .campus-discover em{top:16px}#agent-campus .campus-inspector{grid-template-columns:1fr}#agent-campus .campus-runtime{padding-top:12px;border-top:1px solid #353d2f}#bac-planner .experience-nav{gap:18px}#bac-planner .experience-nav .action{font-size:12px}.campus-nav-tag{display:none}}
 </style>
 <div class="campus-heading spread"><div><div class="campus-eyebrow"><span></span> BUILD A CLAW / AGENT CAMPUS</div><h2>Meet your crew. Watch it work.</h2><p class="quiet">One shared brief. Five personalities. See every handoff.</p></div><div class="row"><button class="action" id="campus-customize">＋ Create your agent</button><button class="action primary" id="campus-play">▶ Run the crew</button></div></div>
+<style>/* A restrained NVIDIA palette: carbon, fine rules, green only for action and live state. */
+#agent-campus.studio-enabled{background:#0b0e0d;--studio-line:#303a33;--studio-muted:#a0aaa3;--studio-green:#a0d941}
+.studio-enabled .campus-heading{padding:32px 32px 22px!important}
+.studio-enabled .campus-heading h2{font-size:39px!important;max-width:900px;letter-spacing:-1.5px!important}
+.studio-enabled .campus-heading .quiet{font-size:14px;line-height:1.6}
+.studio-enabled .campus-heading>.row,.studio-enabled .campus-bottom-grid,.studio-enabled .campus-discover,.studio-enabled>.foot{display:none!important}
+.studio-enabled .campus-layout{grid-template-columns:minmax(0,1fr) 365px!important;border-radius:3px!important}
+.studio-enabled .campus-inspector{display:none!important}
+.studio-enabled #campus-viewport{height:535px}
+.studio-enabled .campus-stage{display:flex;flex-direction:column;justify-content:center;background:radial-gradient(ellipse at 45% 44%,#253629,#0e1712 80%)}
+.studio-enabled .campus-roster{margin-top:auto}
+.studio-enabled .campus-stage-top{align-items:center}
+.studio-enabled .campus-sim{max-width:190px;text-align:right;color:#bdc9ba}
+.studio-journey{margin:0 32px 18px;display:flex;align-items:center;gap:17px;font-size:11px;color:#b5bfb7;border-top:1px solid #28332c;padding-top:19px}
+.studio-journey b{font-weight:500;color:#91c846;margin-right:7px;font-size:10px}.studio-journey i{font-style:normal;color:#566358}
+#studio-runtime{margin-left:auto;padding:7px 10px;background:#1c251b;border:1px solid #42503b;color:#c8d2bf;border-radius:3px;font-size:10px;white-space:nowrap}
+#studio-runtime[data-ready=true]{border-color:#609025;color:#b9e974}
+.studio-viewbar{display:flex;justify-content:space-between;align-items:center;margin:0 32px 13px}.studio-viewbar button{padding:9px 14px;border:1px solid #354239;background:#141c16;color:#a8b7aa;font-size:11px}.studio-viewbar button:first-child{border-radius:3px 0 0 3px}.studio-viewbar button:last-child{border-radius:0 3px 3px 0}.studio-viewbar button[aria-pressed=true]{background:#293b1f;color:#d2f1b4;border-color:#698443}.studio-view-caption{color:#788b7d;font-size:9px;letter-spacing:1.6px}.studio-view-caption span{margin:0 10px;color:#455949}
+#studio-passport{border-left:1px solid #354136;background:linear-gradient(150deg,#1b241d,#121813);padding:22px;min-width:0}
+.studio-passport-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.studio-kicker{font-size:9px;letter-spacing:1.5px;font-weight:600;color:#b1c49f}.studio-spark{color:#a7d86a;font-size:19px}
+.studio-avatar{width:68px;height:64px;background:linear-gradient(145deg,#647357,#313b2b);border:1px solid #8fa479;border-radius:17px;box-shadow:0 6px 0 #081205,0 0 45px #9cde5620;position:relative;display:flex;align-items:center;justify-content:center;gap:17px;margin:17px 0 20px}.studio-avatar i{width:6px;height:10px;background:#b8f470;border-radius:2px;box-shadow:0 0 12px #9bdd5d55}.studio-antenna{position:absolute;top:-9px;left:30px;width:5px;height:8px;background:#b0e876}.studio-avatar small{position:absolute;right:-8px;bottom:-4px;border:1px solid #9ab17e;background:#a4d866;color:#17220b;border-radius:50%;padding:1px 7px;font-size:18px}.studio-avatar.small{width:49px;height:46px;border-radius:12px;gap:11px;margin:0}.studio-avatar.small i{height:7px;width:5px}
+#studio-passport h3{font-size:23px;line-height:1.2;letter-spacing:-.65px;margin:0 0 9px}.studio-muted{font-size:11px!important;color:var(--studio-muted,#a0aaa3)!important;line-height:1.6!important}
+#studio-passport label,#studio-dialog label{display:block;color:#c5d0c7;font-size:10px;line-height:1.4;margin:16px 0 7px}#studio-passport input,#studio-passport textarea,#studio-dialog input,#studio-dialog select,#studio-dialog textarea{box-sizing:border-box;background:#0d140f;border:1px solid #475248;border-radius:3px;color:#eef5ec;padding:10px 12px;outline:none;width:100%;font:inherit;font-size:13px}#studio-passport input:focus,#studio-passport textarea:focus,#studio-dialog input:focus,#studio-dialog textarea:focus{border-color:#a3d95a;box-shadow:0 0 0 2px #81bd3820}
+.studio-personas{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.studio-personas button{border:1px solid #3d483d;border-radius:3px;background:#19231b;color:#c5d0c2;padding:8px 4px;font-size:11px}.studio-personas b{display:block;font-size:20px;font-weight:400;color:#9fb38e;margin-bottom:4px}.studio-personas small{font-size:8px;display:block;margin-top:3px;color:#8f9f8e}.studio-personas [aria-pressed=true]{border-color:#88b34d;background:#2c4020;color:#edf8e3}.studio-personas [aria-pressed=true] b{color:#b7ef72}
+#studio-skill-picker{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:17px}#studio-skill-picker label{display:flex;align-items:center;gap:6px;background:#19221a;border:1px solid #394539;border-radius:3px;padding:7px 6px;margin:0;font-size:9px;cursor:pointer}#studio-skill-picker input{width:13px;height:13px;accent-color:#9ed349;flex-shrink:0;padding:0}
+#bac-planner .studio-primary{border:1px solid #96ca40;border-radius:3px;background:#93cd32;color:#101608;font-size:11px;font-weight:700;padding:11px 15px;display:inline-flex;justify-content:center;align-items:center;gap:16px;cursor:pointer}#bac-planner .studio-primary:hover{background:#b0e759}#bac-planner .studio-primary:disabled{opacity:.5;cursor:wait}#studio-create{width:100%;margin-bottom:12px;justify-content:space-between!important}
+.studio-companion-name{display:flex;align-items:center;gap:13px;margin:19px 0}.studio-companion-name h3{margin-bottom:3px!important;font-size:26px!important}.studio-online-dot{width:6px;height:6px;border-radius:50%;background:#89b43d;margin-left:auto;box-shadow:0 0 10px #98d14455}.studio-equipped{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:19px}.studio-equipped span{border:1px solid #405035;background:#25331c;color:#bbd49d;padding:4px 7px;font-size:9px;border-radius:3px}.studio-agent-state{background:#1d2b1e;border:1px solid #3e5337;border-left:2px solid #8fba4e;padding:13px 11px;margin:17px 0}.studio-agent-state p{font-size:12px;margin-top:9px!important;color:#c5d7bc;line-height:1.6}.studio-compose-actions{display:flex;gap:10px;align-items:center;justify-content:space-between;margin:10px 0 20px}.studio-compose-actions>button:first-child{background:none;border:0;color:#a6baa1;font-size:10px;padding:0}.studio-quick-links{display:flex;flex-wrap:wrap;gap:8px;padding-top:16px;border-top:1px solid #354335}.studio-quick-links button{color:#c6d6bc;border:1px solid #3f5037;background:#1d2a1b;padding:8px;font-size:9px;border-radius:3px}.studio-native-note{display:flex;gap:12px;align-items:center;padding-top:23px}.studio-native-note>span{border:1px solid #577039;font-size:8px;letter-spacing:1px;padding:8px 5px;color:#9cc76d}.studio-native-note p{font-size:9px;color:#8f9f87;line-height:1.7}
+.studio-experiences{margin:31px 32px 0}.studio-section-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:17px}.studio-section-heading h3{font-size:22px;font-weight:600;letter-spacing:-.6px;margin:9px 0 0!important}.studio-missions{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}.studio-mission{position:relative;border:1px solid #354238;border-radius:4px;background:linear-gradient(135deg,#202a23,#141b17);padding:17px 14px 16px;text-align:left;color:#d6e1d7;min-width:0;transition:transform .18s,border-color .18s}.studio-mission:hover{transform:translateY(-3px);border-color:#7ca658}.studio-mission[aria-pressed=true]{border-color:#9bcc5a;background:#273c21}.studio-mission>span{display:block;color:var(--mission-color,#b1d877);font-size:24px;margin-bottom:15px}.studio-mission strong{display:block;font-size:12px;margin-bottom:7px;line-height:1.4}.studio-mission small{display:block;color:#97a798;font-size:9px;line-height:1.6}.studio-mission em{position:absolute;right:11px;top:17px;font-style:normal;font-size:7px;color:#829a78;letter-spacing:1px}
+.studio-workspace{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(260px,1fr);gap:18px;margin:26px 32px}.studio-workspace-main,.studio-evidence{border:1px solid #344137;background:#131b16;border-radius:4px;padding:22px;min-width:0}.studio-workspace .studio-section-heading h3{font-size:20px}.studio-result{font-size:12px;line-height:1.75;color:#cedccc;max-height:520px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}.studio-empty-art{display:flex;gap:23px;align-items:center;padding:40px 20px;white-space:normal}.studio-empty-art>span{font-size:40px;color:#5c8151;border:1px solid #43563b;padding:3px 17px;background:#20301e}.studio-empty-art strong{font-size:17px;color:#b8ceb0;line-height:1.5}.studio-empty-art p{font-size:12px;color:#849a7e;line-height:1.7;margin-top:9px!important}.studio-history{display:flex;gap:6px;margin-top:17px;flex-wrap:wrap}.studio-history button{border:1px solid #3e503b;background:#1c2a1b;color:#a9c397;border-radius:3px;padding:5px 8px;font-size:9px}.studio-history [aria-pressed=true]{border-color:#90b766;color:#daf1bc}.studio-secondary{border:1px solid #506445;border-radius:3px;background:#23301e;color:#b8d29f;font-size:10px;padding:8px 10px}.studio-evidence-dot{width:6px;height:6px;background:#95c25a;border-radius:50%}#studio-events{list-style:none;padding:0;margin:0;max-height:240px;overflow:auto}#studio-events li{position:relative;border-left:1px solid #415337;padding:0 0 17px 15px;font-size:11px;margin:0}#studio-events li:before{content:'';position:absolute;left:-3px;top:4px;width:5px;height:5px;background:#a0c671;border-radius:50%}#studio-events b{font-weight:500;color:#c7d7bd}#studio-events small{display:block;font-size:9px;color:#839a77;line-height:1.6;margin-top:4px}.studio-files-head{display:flex;justify-content:space-between;align-items:center;margin:10px 0 10px;padding-top:16px;border-top:1px solid #34462e}.studio-files-head button{background:none;border:0;color:#b8d59c;font-size:16px}#studio-files{max-height:205px;overflow:auto}#studio-files button{display:flex;gap:9px;align-items:center;justify-content:space-between;width:100%;background:#1c2a1c;border:1px solid #374b2f;border-radius:3px;padding:8px 10px;margin-top:6px;font-size:10px;color:#bdd1af;text-align:left;overflow-wrap:anywhere}#studio-files button span{font-size:8px;white-space:nowrap;color:#7e9970}
+.studio-crew-invite{margin:0 32px 32px;border:1px solid #486a31;background:linear-gradient(110deg,#1f3219,#142018 70%);display:flex;gap:27px;padding:27px 25px;align-items:center;border-radius:4px}.studio-crew-invite h3{font-size:23px;letter-spacing:-.5px;margin:8px 0!important}.studio-crew-invite p{color:#a0b597;font-size:12px;line-height:1.6}.studio-crew-invite>.studio-primary{margin-left:auto;white-space:nowrap}.studio-crew-orbits{width:100px;min-width:100px;height:82px;position:relative}.studio-crew-orbits i{position:absolute;border:1px solid #6e9850;border-radius:10px;background:#344e28;color:#c3f597;width:32px;height:31px;display:grid;place-items:center;font-size:16px;font-style:normal;box-shadow:0 4px 0 #102309}.studio-crew-orbits i:nth-child(1){left:33px;top:0}.studio-crew-orbits i:nth-child(2){left:0;top:25px}.studio-crew-orbits i:nth-child(3){left:65px;top:25px}.studio-crew-orbits i:nth-child(4){left:19px;top:51px}.studio-crew-orbits i:nth-child(5){left:51px;top:51px}
+#studio-board{margin:0 32px;border:1px solid #374c31;background:#121d15;padding:26px}.studio-board-intro h3{font-size:28px;margin:10px 0!important}.studio-board-intro p{color:#9db494;font-size:12px;margin-bottom:25px!important}#studio-lanes{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}.studio-lane{position:relative;min-height:230px;background:#1c2a1c;border:1px solid #3b4f32;padding:17px;border-radius:4px}.studio-lane:not(:last-child):after{content:'→';position:absolute;right:-13px;top:40px;z-index:1;color:#bad591}.studio-lane[data-state=running]{border-color:#9cce5a;background:#2b4023;box-shadow:0 0 25px #8bbb3220}.studio-lane[data-state=done]{border-top:3px solid #86b34c}.studio-lane[data-state=waiting]{border-color:#c8a051}.studio-lane>span{color:#a8c282;font-size:10px}.studio-lane h4{font-size:24px;margin:20px 0 4px}.studio-lane strong{font-size:10px;color:#c2d6b3}.studio-lane p{font-size:11px;color:#8ea77e;line-height:1.6;margin:15px 0!important}.studio-lane button{border:1px solid #587447;background:#2a3d21;color:#bfdf9f;padding:8px;font-size:9px;border-radius:3px}
+.studio-alert{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);width:min(680px,calc(100vw - 48px));z-index:100;background:#333222;border:1px solid #9b9657;color:#f0e8bf;box-shadow:0 15px 60px #0008;padding:16px 18px;display:flex;gap:20px;align-items:center;font-size:12px;line-height:1.5;border-radius:4px}.studio-alert button{margin-left:auto;border:0;background:none;color:#ece7c9;font-size:24px}#studio-dialog{box-sizing:border-box;color:#e4ebdf;width:min(850px,calc(100vw - 32px));max-height:90vh;overflow:auto;background:#131d16;border:1px solid #667f4f;border-radius:5px;padding:25px;box-shadow:0 25px 100px #000b}#studio-dialog::backdrop{background:#030904c9;backdrop-filter:blur(6px)}.studio-dialog-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:19px}.studio-dialog-heading button{background:none;border:0;color:#b9cbb0;font-size:25px;padding:0 5px}#studio-dialog h3{font-size:29px;letter-spacing:-.8px;margin:0 0 12px}#studio-dialog p{color:#a6bca0;font-size:12px;line-height:1.7;margin:12px 0}#studio-dialog pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:50vh;overflow:auto;font-size:11px;background:#0b130d;border:1px solid #334a2b;padding:18px;line-height:1.8;color:#bed4b0}#studio-dialog code{color:#bee890}#studio-dialog iframe{width:100%;height:460px;border:1px solid #425c36;background:white;border-radius:3px}.studio-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0 14px}.studio-form-grid .wide{grid-column:1/-1}.studio-dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}.studio-runtime-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:19px 0}.studio-runtime-grid>div{border:1px solid #3c5233;background:#1a291b;padding:15px}.studio-runtime-grid b{display:block;font-size:12px}.studio-runtime-grid small{display:block;color:#98b18a;font-size:10px;line-height:1.7;margin-top:7px}.studio-app-preview{margin-top:16px;padding:13px;border:1px solid #648746;background:#23371c;border-radius:3px}.studio-app-preview strong{font-size:13px;display:block;margin-bottom:9px}.studio-waiting{border:1px solid #9c8443;background:#332f1b;color:#e6d6a0;padding:15px;border-radius:4px;font-size:12px;line-height:1.6;margin-bottom:15px}.studio-waiting button{margin:12px 9px 0 0}
+@media(max-width:1100px){.studio-enabled .campus-layout{grid-template-columns:minmax(0,1fr) 320px!important}.studio-enabled .campus-heading h2{font-size:33px!important}.studio-missions{grid-template-columns:repeat(3,1fr)}.studio-crew-orbits{display:none}.studio-view-caption{display:none}}
+@media(max-width:800px){.studio-enabled .campus-layout{grid-template-columns:1fr!important}#studio-passport{border-left:0;border-top:1px solid #354136}.studio-enabled #campus-viewport{height:420px}.studio-workspace{grid-template-columns:1fr}.studio-journey{flex-wrap:wrap;gap:12px}.studio-journey #studio-runtime{margin-left:0}.studio-crew-invite{flex-wrap:wrap}.studio-crew-invite>.studio-primary{margin-left:0}#studio-lanes{grid-template-columns:1fr 1fr}.studio-lane:not(:last-child):after{display:none}.studio-lane{min-height:160px}.studio-form-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.studio-enabled .campus-heading{padding:24px 16px 20px!important}.studio-enabled .campus-heading h2{font-size:31px!important}.studio-journey,.studio-viewbar,.studio-experiences,.studio-workspace,.studio-crew-invite,#studio-board{margin-left:12px;margin-right:12px}.studio-journey{font-size:9px}.studio-enabled #campus-viewport{height:335px}.studio-missions{grid-template-columns:1fr 1fr}.studio-section-heading>.studio-muted{display:none}.studio-section-heading h3{font-size:21px}.studio-crew-invite{padding:22px}.studio-runtime-grid{grid-template-columns:1fr}.studio-form-grid{grid-template-columns:1fr 1fr}.studio-workspace-main,.studio-evidence{padding:17px}.studio-empty-art{padding:22px 0}.studio-empty-art>span{display:none}}
+@media(prefers-reduced-motion:reduce){.studio-mission{transition:none}.studio-mission:hover{transform:none}}
+.world-hotspots{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#agent-campus .world-hotspot{position:absolute;transform:translate(-50%,-100%);pointer-events:auto;background:#182b22eb;border:1px solid #7e9e76;box-shadow:0 4px 14px #162c2338;border-radius:3px;padding:5px 8px;text-align:center;white-space:nowrap;color:#e4efda;line-height:1.25;max-width:165px}
+#agent-campus .world-hotspot b{font-size:8px;font-weight:600;letter-spacing:.8px;display:block}
+#agent-campus .world-hotspot small{font-size:8px;color:#b2caa8;display:none;margin-top:4px}
+#agent-campus .world-hotspot:hover,#agent-campus .world-hotspot:focus{z-index:10;border-color:#b1e46f;background:#294425}
+#agent-campus .world-hotspot:hover small,#agent-campus .world-hotspot:focus small{display:block}
+#agent-campus #studio-focus{width:auto;padding:4px 8px;font-size:9px;white-space:nowrap}
+#agent-campus .campus-agent-label{background:#233923ef;border-color:#849d71;z-index:2;font-size:11px;box-shadow:0 4px 10px #19342035}
+#agent-campus .campus-stage-top{pointer-events:none}
+#agent-campus .campus-stage{background:#86a997!important}
+#agent-campus .campus-scene-bottom{background:#1c2e23;padding-top:9px}
+#agent-campus .campus-stage-top .campus-location{color:#213d2d;background:#e7efdbcb;padding:6px 8px;border-radius:3px}
+#agent-campus .campus-stage-top .campus-sim{background:#1c342ada;color:#e1ebd4;border-color:#587d59}
+#agent-campus .campus-layout.world-expanded{position:fixed;inset:18px;z-index:80;margin:0;box-shadow:0 0 0 30px #06110ddb;grid-template-columns:minmax(0,1fr) 320px!important}
+#agent-campus .world-expanded .campus-stage{height:100%;min-height:0}
+#agent-campus .world-expanded #campus-viewport{height:auto!important;flex:1}
+#agent-campus .world-expanded #studio-passport{overflow:auto}
+@media(max-width:800px){#agent-campus .campus-layout.world-expanded{grid-template-columns:1fr!important;inset:8px}#agent-campus .world-expanded #studio-passport{display:none}#agent-campus .world-hotspot b{font-size:7px;letter-spacing:.2px}#agent-campus .world-hotspot{padding:4px 5px}.world-hotspot small{max-width:130px;white-space:normal}}
+
+.studio-enabled #campus-viewport{flex:1;min-height:535px}
+@media(max-width:800px){.studio-enabled #campus-viewport{min-height:420px}}
+@media(max-width:560px){.studio-enabled #campus-viewport{min-height:335px}}
+</style>
+<div id="studio-journey" class="studio-journey"><span><b>01</b> Make it yours</span><i>→</i><span><b>02</b> Give it a mission</span><i>→</i><span><b>03</b> Build a crew</span><button id="studio-runtime" class="studio-runtime">Checking your runtime…</button></div>
+<div class="studio-viewbar"><div><button id="studio-campus-tab" aria-pressed="true">◈ Agent campus</button><button id="studio-board-tab" aria-pressed="false">▤ Mission control</button></div><div class="studio-view-caption">PERSONAS &amp; HANDOFFS <span>/</span> ONE SHARED MODEL</div></div>
+<div id="studio-board" hidden><div class="studio-board-intro"><span class="studio-kicker">MISSION CONTROL</span><h3>Different roles. Shared evidence.</h3><p>Each specialist receives the brief and the previous deliverables. The reviewer checks the whole plan.</p></div><div id="studio-lanes"></div></div>
+<aside id="studio-passport">
+  <div class="studio-passport-head"><span class="studio-kicker">YOUR AGENT / YOUR RULES</span><span class="studio-spark">✦</span></div>
+  <form id="studio-onboarding">
+    <div class="studio-avatar"><span class="studio-antenna"></span><i></i><i></i><small>＋</small></div>
+    <h3>Meet your next teammate.</h3><p class="studio-muted">Give it a name, a personality and a few useful skills.</p>
+    <label for="studio-name">Agent name</label><input id="studio-name" value="Jinny" maxlength="32" required autocomplete="off">
+    <label>Pick a personality</label><div class="studio-personas"><button type="button" data-persona="guide" aria-pressed="true"><b>✧</b> Guide<small>Warm &amp; clear</small></button><button type="button" data-persona="maker" aria-pressed="false"><b>⌘</b> Maker<small>Curious &amp; bold</small></button><button type="button" data-persona="analyst" aria-pressed="false"><b>⌕</b> Analyst<small>Precise &amp; careful</small></button></div>
+    <label>Equip your starter skills</label><div id="studio-skill-picker"></div>
+    <button type="submit" class="studio-primary" id="studio-create">Bring my agent to life <span>↗</span></button>
+    <small class="studio-muted">Your agent, memory and files survive refreshes and app updates.</small>
+  </form>
+  <div id="studio-companion" hidden>
+    <div class="studio-companion-name"><div class="studio-avatar small"><i></i><i></i></div><div><h3 id="studio-agent-name"></h3><span id="studio-personality" class="studio-muted"></span></div><span class="studio-online-dot"></span></div>
+    <div id="studio-equipped" class="studio-equipped"></div><button id="studio-edit-agent" class="studio-secondary">Edit persona &amp; skills</button>
+    <div class="studio-agent-state"><span class="studio-kicker" id="studio-task-state">READY FOR A MISSION</span><p id="studio-task-summary">Choose a mission below, or ask for something of your own.</p></div>
+    <form id="studio-chat"><label for="studio-prompt">What should we make happen?</label><textarea id="studio-prompt" rows="4" maxlength="6000" placeholder="Build me a tiny reaction-time game…" required></textarea><div class="studio-compose-actions"><button type="button" id="studio-attach">＋ Add a document</button><button type="submit" class="studio-primary" id="studio-send">Run mission ↗</button></div></form>
+    <div class="studio-quick-links"><button id="studio-memory">▧ Memory</button><button id="studio-phone">↗ Take it to Telegram</button><button id="studio-schedule">◷ Follow up later</button></div>
+    <div class="studio-native-note"><span>OPENCLAW</span><p>Native persona · skills · persistent conversation<br>Every agent uses the same model on Spark.</p></div>
+  </div>
+</aside>
+<section id="studio-experiences" class="studio-experiences">
+  <div class="studio-section-heading"><div><span class="studio-kicker">START WITH A LITTLE WOW</span><h3>One agent. A world of possibilities.</h3></div><span class="studio-muted">Choose a mission. Make it your own.</span></div>
+  <div id="studio-missions" class="studio-missions"></div>
+</section>
+<section class="studio-workspace" id="studio-workspace">
+  <div class="studio-workspace-main"><div class="studio-section-heading"><div><span class="studio-kicker">WORK THAT YOU CAN OPEN</span><h3 id="studio-result-title">Your first useful result starts here.</h3></div><button class="studio-secondary" id="studio-read-aloud" hidden>▷ Hear the answer</button></div>
+    <div id="studio-result" class="studio-result"><div class="studio-empty-art"><span>↗</span><div><strong>Go from an idea to something real.</strong><p>A playable mini app. A brief with sources. A plan your whole crew can use.</p></div></div></div>
+    <div id="studio-job-history" class="studio-history"></div>
+  </div>
+  <aside class="studio-evidence"><div class="studio-section-heading"><span class="studio-kicker">VISIBLE EVIDENCE</span><span class="studio-evidence-dot"></span></div><ol id="studio-events"><li><b>No mission has run yet.</b><small>Gateway requests, role handoffs and saved files appear here as they happen.</small></li></ol><div class="studio-files-head"><span class="studio-kicker">YOUR WORKSPACE</span><button id="studio-refresh-files">↻</button></div><div id="studio-files"><p class="studio-muted">Uploaded documents and deliverables live here.</p></div></aside>
+</section>
+<section class="studio-crew-invite"><div class="studio-crew-orbits"><i>✦</i><i>⌕</i><i>▥</i><i>✎</i><i>✓</i></div><div><span class="studio-kicker">BETTER TOGETHER</span><h3>Give one big idea to a whole crew.</h3><p>Plan a Build a Claw event. Watch strategy become demos, equipment, invitations and a reviewed plan.</p></div><button class="studio-primary" id="studio-plan">Launch a crew mission ↗</button></section>
+<div id="studio-alert" class="studio-alert" role="alert" hidden><span></span><button aria-label="Dismiss message">×</button></div>
+<input type="file" id="studio-upload" accept=".txt,.md,.csv" hidden>
+<dialog id="studio-dialog"><div class="studio-dialog-heading"><span class="studio-kicker" id="studio-dialog-kicker">AGENT STUDIO</span><button id="studio-dialog-close" aria-label="Close dialog">×</button></div><div id="studio-dialog-body"></div></dialog>
+
 <div class="campus-layout">
   <div class="campus-stage">
     <div class="campus-stage-top"><span class="campus-location" id="campus-location">ZURICH / SWITZERLAND</span><span class="campus-sim">SCRIPTED WORKFLOW · NO LIVE LLM</span></div>
@@ -78215,7 +78313,7 @@ const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<'
 const colors = [0xa3dc53, 0x75b6e7, 0xe3b85d, 0xf18f73, 0xc1a2ed];
 const hex = i => '#' + colors[i].toString(16);
 let snapshot = api.snapshot(), selected = 0, playing = false, timer = null, lastEvent = '', lastPhase = -2;
-let sceneView = null;
+let sceneView = null, live = false;
 const entries = [];
 function log(message, detail) {
   entries.unshift({message, detail}); entries.splice(7);
@@ -78237,7 +78335,7 @@ function run() {
   if (snapshot.phase<0) {stop();api.showMode('crew');return;}
   updatePlay(); schedule();
 }
-function choose(i) {selected=i;api.select(i);render();}
+function choose(i) {selected=i;if(live){render();root.dispatchEvent(new CustomEvent('bac:live-select',{detail:i}));}else{api.select(i);render();}}
 function render() {
   const a=snapshot.agents[selected], b=snapshot.brief;
   el('agent-number').textContent=String(selected+1).padStart(2,'0')+' / 05';
@@ -78264,6 +78362,7 @@ function render() {
   if(sceneView) sceneView.update(snapshot,selected);
 }
 app.addEventListener('bac:crew-state',event=>{
+  if(live)return;
   snapshot=event.detail;
   const key=[snapshot.revision,snapshot.phase,snapshot.gap,snapshot.policy].join(':');
   if(key!==lastEvent) {
@@ -78288,168 +78387,278 @@ app.addEventListener('bac:mode',event=>{if(event.detail!=='campus')stop();sceneV
 log('Your crew is ready to meet you.','Select a robot to explore its persona, skills and access.');
 log('The same brief connects all five roles.','Run the crew to see handoffs, resource checks and a delivery decision.');
 
+// A geometry-only, interactive island. Hotspots open the actual skill missions.
 function createScene() {
-  const viewport=el('viewport');
-  const scene=new THREE.Scene();
-  const renderer=new THREE.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true,powerPreference:'low-power'});
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.6));
-  renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-  renderer.outputColorSpace=THREE.SRGBColorSpace;
-  renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;
-  viewport.prepend(renderer.domElement); renderer.domElement.setAttribute('aria-hidden','true');
-  const camera=new THREE.OrthographicCamera(-11,11,7,-7,.1,100);
-  const focus=new THREE.Vector3(0,.15,0);
-  let azimuth=.43,elevation=.76,zoom=1,drag=null,moved=false;
+  const viewport=el('viewport'), scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x8fb4a3);scene.fog=new THREE.Fog(0x8fb4a3,42,88);
+  const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true,powerPreference:'low-power'});
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.6));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.04;
+  viewport.prepend(renderer.domElement);renderer.domElement.setAttribute('aria-hidden','true');
+  const camera=new THREE.OrthographicCamera(-15,15,9,-9,.1,120),focus=new THREE.Vector3(0,0,0);
+  let azimuth=.18,elevation=.85,zoom=1,drag=null,moved=false,motion=!matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let state=snapshot,activeSelection=0,phase=-2,lastKey='',clock=0,lastFrame=0,visible=true,lost=false;
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-  let motion=!reduced.matches,visible=true,lastFrame=0,clock=0,phase=-2,state=snapshot,activeSelection=selected;
-  let lost=false;
-  scene.add(new THREE.HemisphereLight(0xf3f5ef,0x42513a,2.6));
-  const sun=new THREE.DirectionalLight(0xfff9eb,3.0);sun.position.set(-5,15,8);sun.castShadow=true;
-  sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-12;sun.shadow.camera.right=12;sun.shadow.camera.top=10;sun.shadow.camera.bottom=-10;sun.shadow.normalBias=.035;scene.add(sun);
-  const fill=new THREE.DirectionalLight(0xd8edc5,1.2);fill.position.set(8,6,-9);scene.add(fill);
+  scene.add(new THREE.HemisphereLight(0xf8fff1,0x799f8a,1.8));
+  const sun=new THREE.DirectionalLight(0xfff0cd,2.6);sun.position.set(-7,20,10);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-18,right:18,top:16,bottom:-16});sun.shadow.normalBias=.04;scene.add(sun);
   const materials=new Map();
-  function mat(color,glow=false){const key=color+':'+glow;if(!materials.has(key))materials.set(key,new THREE.MeshStandardMaterial({color,roughness:.68,metalness:.12,...(glow?{emissive:color,emissiveIntensity:.6}:{})}));return materials.get(key);}
-  const boxGeometry=new THREE.BoxGeometry(1,1,1);
-  function box(parent,x,y,z,w,h,d,color,glow=false){const object=new THREE.Mesh(boxGeometry,mat(color,glow));object.position.set(x,y,z);object.scale.set(w,h,d);object.castShadow=true;object.receiveShadow=true;parent.add(object);return object;}
-  function cylinder(parent,x,y,z,r,h,color,segments=24){const object=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,segments),mat(color));object.position.set(x,y,z);object.castShadow=true;object.receiveShadow=true;parent.add(object);return object;}
-  function ring(parent,x,y,z,r,color){const mesh=new THREE.Mesh(new THREE.TorusGeometry(r,.022,6,64),mat(color,true));mesh.rotation.x=-Math.PI/2;mesh.position.set(x,y,z);parent.add(mesh);return mesh;}
-  function label(text,width=512,height=100,color='#d9e9c0',bg=null){const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;const context=canvas.getContext('2d');if(bg){context.fillStyle=bg;context.fillRect(0,0,width,height);}context.fillStyle=color;context.font='600 '+Math.floor(height*.43)+'px Arial';context.textAlign='center';context.textBaseline='middle';context.fillText(text,width/2,height/2,width*.94);const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;return new THREE.MeshBasicMaterial({map:texture,transparent:!bg,depthWrite:false});}
-  function sign(parent,text,x,y,z,w,h,color,bg){const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),label(text,512,100,color,bg));mesh.position.set(x,y,z);parent.add(mesh);return mesh;}
-  // A compact exhibition floor, built entirely from geometry; no downloaded assets.
-  box(scene,0,-.42,0,18,.75,12.6,0x30382c);
-  box(scene,0,-.025,0,17.85,.07,12.45,0x48503f);
-  box(scene,0,-.3,6.31,17.3,.075,.025,0x91c940,true);
-  for(let x=-8;x<=8;x+=1)box(scene,x,.02,0,.014,.008,12,0x58634b);
-  for(let z=-6;z<=6;z+=1)box(scene,0,.02,z,17.8,.008,.014,0x58634b);
-  box(scene,0,.65,-6.05,18,1.35,.18,0x3c4634);
-  box(scene,-8.85,.65,0,.15,1.35,12,0x3c4634);
-  box(scene,0,1.36,-6.05,18,.055,.24,0x9cb579);
-  box(scene,-8.85,1.36,0,.22,.055,12,0x9cb579);
-  // Back wall feature, screen, and common model server.
-  box(scene,-.6,1.65,-5.97,6.6,2.3,.14,0x172016);
-  sign(scene,'BUILD A CLAW',-.6,2.02,-5.86,5.6,.63,'#b7e878');
-  sign(scene,'AGENT CAMPUS / ZURICH',-.6,1.43,-5.85,5.4,.38,'#879b73');
-  for(let i=0;i<9;i++)box(scene,-3.1+i*.62,.92,-5.82,.4,.075,.02,0x6b9738,true);
-  const positions=[[-5,-3.3],[0,-3.3],[5,-3.3],[-4.8,3.0],[3.8,3.0]];
-  const homes=positions.map(([x,z])=>new THREE.Vector3(x,.05,z+1));
-  const titles=['EVENT HQ','DEMO STUDIO','OPERATIONS','MARKETING','REVIEW'];
-  const deskLights=[];
-  positions.forEach(([x,z],i)=>{
-    box(scene,x,.035,z,3.35,.04,2.65,0x535f46);
-    box(scene,x,.064,z+1.25,3.3,.04,.045,colors[i],true);
-    box(scene,x,.82,z,2.1,.14,.85,0xb2b9a0);
-    box(scene,x-.75,.42,z,.14,.8,.55,0x414d37);box(scene,x+.75,.42,z,.14,.8,.55,0x414d37);
-    box(scene,x,1.36,z-.22,1.45,.76,.1,0x26331e);
-    box(scene,x,1.36,z-.159,1.29,.61,.016,0x14200e);
-    for(let row=0;row<3;row++){box(scene,x-.32,1.53-row*.16,z-.145,.39+.13*row,.033,.01,colors[i],true);box(scene,x+.43,1.41-row*.09,z-.145,.17,.026,.01,0x536c3a);}
-    box(scene,x,.92,z+.22,.74,.018,.24,0x6b775b);
-    sign(scene,titles[i],x,.15,z+1.35,2.7,.32,'#e3edce','#3b4830');
-    cylinder(scene,x+.85,.98,z+.12,.1,.21,colors[i],12);
-    deskLights.push(ring(scene,x,.085,z,.38,colors[i]));
-  });
-  // Shared state hub: all agents use this same versioned brief.
-  cylinder(scene,0,.23,.4,1.14,.44,0x25351d,48);cylinder(scene,0,.48,.4,1.02,.07,0x91ae6c,48);
-  ring(scene,0,.525,.4,.93,0x9bdc48);
-  const core=box(scene,0,.97,.4,.67,.8,.67,0x84b94a);core.rotation.y=Math.PI/4;
-  const coreRing=ring(scene,0,1.24,.4,.72,0xc8f188);
-  sign(scene,'SHARED BRIEF',0,.7,1.34,1.7,.25,'#d2ecb2','#2b3c20');
-  // The access gate sits at the edge of the workspace.
-  box(scene,7.2,.13,2.15,1.45,.26,1.8,0x38402d);
-  box(scene,6.55,1.03,2.15,.12,1.8,.16,0x728753);box(scene,7.85,1.03,2.15,.12,1.8,.16,0x728753);
-  const gate=box(scene,7.2,1.36,2.15,1.42,.09,.09,0xb4cf8a,true);
-  sign(scene,'ACCESS',7.2,1.93,2.17,1.5,.3,'#d7e8bf','#27351d');
-  // Small Spark-like appliance and planters, for scale and life.
-  box(scene,7.35,.54,-5.03,1.1,1.05,.74,0x26331f);
-  for(let y=.2;y<.9;y+=.11)box(scene,7.35,y,-4.65,.8,.035,.015,0x68834b);
-  box(scene,7.67,.92,-4.64,.065,.065,.02,0xa4df5e,true);
-  sign(scene,'SHARED MODEL',7.2,1.24,-4.63,1.7,.23,'#d8e9c1');
-  function plant(x,z){cylinder(scene,x,.25,z,.24,.5,0x333d2a,8);for(let i=0;i<5;i++){const leaf=new THREE.Mesh(new THREE.ConeGeometry(.18,.62,5),mat(i%2?0x87a660:0x507637));leaf.position.set(x+Math.sin(i*2)*.18,.65+Math.cos(i)*.12,z+Math.cos(i*2)*.18);leaf.rotation.z=Math.sin(i)*.28;scene.add(leaf);}}
-  plant(-8,-5.15);plant(-8,4.9);plant(8,5.15);plant(3.4,-5.2);
-  // Narrow lit walkways visually tie all workstations to the shared state.
-  positions.forEach(([x,z])=>{
-    const points=[new THREE.Vector3(x,.073,z+1.05),new THREE.Vector3(x,.073,.4),new THREE.Vector3(0,.073,.4)];
-    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:0xa0ba78,transparent:true,opacity:.65})));
-  });
-  const brand=sign(scene,'NVIDIA',0,.075,5.5,3.25,.72,'#bac6a8');brand.rotation.x=-Math.PI/2;
-  const robots=[];const hitTargets=[];const labels=[];
-  const headShape=new THREE.Shape();headShape.moveTo(-.29,-.2);headShape.lineTo(.29,-.2);headShape.lineTo(.29,.2);headShape.lineTo(-.29,.2);headShape.closePath();
-  const headGeometry=new THREE.ExtrudeGeometry(headShape,{depth:.38,bevelEnabled:true,bevelThickness:.07,bevelSize:.065,bevelSegments:2,steps:1});headGeometry.translate(0,0,-.19);
-  positions.forEach((_,i)=>{
-    const robot=new THREE.Group();robot.position.copy(homes[i]);scene.add(robot);
-    const body=new THREE.Group();robot.add(body);
-    const torso=box(body,0,.55,0,.4,.38,.27,0xc1c8b2);
-    const head=new THREE.Mesh(headGeometry,mat(0xc8cfb9));head.position.y=.98;head.castShadow=true;body.add(head);
-    box(body,0,.99,.26,.49,.25,.025,0x24331e);
-    box(body,-.125,1.005,.28,.062,.075,.024,colors[i],true);box(body,.125,1.005,.28,.062,.075,.024,colors[i],true);
-    box(body,0,.53,.153,.23,.095,.021,colors[i],true);
-    cylinder(body,0,1.29,0,.028,.16,0x617647,8);cylinder(body,0,1.4,0,.063,.06,colors[i],10);
+  function mat(color,glow=false){const k=color+':'+glow;if(!materials.has(k))materials.set(k,new THREE.MeshStandardMaterial({color,roughness:.65,metalness:.08,...(glow?{emissive:color,emissiveIntensity:.35}:{})}));return materials.get(k);}
+  function mesh(parent,geo,x,y,z,color,scale=[1,1,1]){const o=new THREE.Mesh(geo,mat(color));o.position.set(x,y,z);o.scale.set(...scale);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o;}
+  const cube=new THREE.BoxGeometry(1,1,1),sphere=new THREE.SphereGeometry(1,16,12);
+  const box=(p,x,y,z,w,h,d,c)=>mesh(p,cube,x,y,z,c,[w,h,d]);
+  const ball=(p,x,y,z,rx,ry,rz,c)=>mesh(p,sphere,x,y,z,c,[rx,ry,rz]);
+  const cyl=(p,x,y,z,r,h,c,n=40)=>mesh(p,new THREE.CylinderGeometry(r,r,h,n),x,y,z,c);
+  function ring(p,x,y,z,r,color,width=.035){const o=mesh(p,new THREE.TorusGeometry(r,width,8,64),x,y,z,color);o.rotation.x=-Math.PI/2;return o;}
+  function sign(p,text,x,y,z,w,h,color='#e4f0d9',background='#203527'){
+    const c=document.createElement('canvas');c.width=768;c.height=128;const ctx=c.getContext('2d');if(background){ctx.fillStyle=background;ctx.fillRect(0,0,768,128);}ctx.fillStyle=color;ctx.font='600 52px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,384,64,720);const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;const o=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:texture,transparent:!background}));o.position.set(x,y,z);p.add(o);return o;
+  }
+  // Quiet water and a gently irregular, raised island with a luminous shoreline.
+  const water=mesh(scene,new THREE.PlaneGeometry(200,200),0,-.58,0,0x6d9d90);water.rotation.x=-Math.PI/2;water.receiveShadow=true;
+  const shore=new THREE.Shape();const outline=[];
+  for(let i=0;i<=96;i++){const a=i/96*Math.PI*2,r=1+.032*Math.sin(a*5)+.018*Math.cos(a*9);const x=Math.cos(a)*12*r,z=Math.sin(a)*8.2*r;outline.push([x,z]);if(i===0)shore.moveTo(x,z);else shore.lineTo(x,z);}
+  const island=mesh(scene,new THREE.ExtrudeGeometry(shore,{depth:.58,bevelEnabled:true,bevelSize:.24,bevelThickness:.25,bevelSegments:3,steps:1}),0,-.42,0,0xe3e3ca);island.rotation.x=-Math.PI/2;
+  const shoreLine=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(outline.map(([x,z])=>new THREE.Vector3(x*1.022,-.29,-z*1.024))),new THREE.LineBasicMaterial({color:0xe7fff2,transparent:true,opacity:.85}));scene.add(shoreLine);
+  const waveRings=[];for(let i=0;i<3;i++){const o=ring(scene,0,-.43-i*.025,0,12.7+i*.85,0xc5eee0,.018);o.scale.z=.72;o.material=new THREE.MeshBasicMaterial({color:0xd7f7e9,transparent:true,opacity:.35-i*.07});waveRings.push(o);}
+  function plant(x,z,height=1){const g=new THREE.Group();g.position.set(x,0,z);scene.add(g);cyl(g,0,height*.42,0,.055,height*.9,0x947f50,8);for(let i=0;i<5;i++){const a=i/5*Math.PI*2;const leaf=ball(g,Math.sin(a)*.32,height*.88,Math.cos(a)*.32,.15,.055,.55,i%2?0x608f58:0x85aa6a);leaf.rotation.y=a;leaf.rotation.z=Math.sin(a)*.15;}return g;}
+  function grass(x,z,c=0x81b6a0){for(let i=0;i<4;i++){const o=mesh(scene,new THREE.ConeGeometry(.05,.52+(.1*i),4),x+i*.11,.2,z+Math.sin(i)*.1,c);o.rotation.z=(i-1.5)*.12;}}
+  [[-10,-2,1.9],[-8,-5,1.5],[8,-5,2.1],[10,1,1.7],[-8,4.8,1.6],[6,6,1.9]].forEach(x=>plant(...x));
+  [[-10,1],[-6,-6],[3,-6.7],[10,3],[3,7],[-5,6.5],[-11,-1],[8,5]].forEach(([x,z],i)=>grass(x,z,i%2?0x91b779:0x85b5a2));
+  for(let i=0;i<12;i++){const a=i*2.4;ball(scene,Math.cos(a)*11.3,.1,Math.sin(a)*7.6,.18+(i%3)*.1,.12,.17,0xb9cbb3);}
+  const hotspotLayer=document.createElement('div');hotspotLayer.className='world-hotspots';viewport.append(hotspotLayer);
+  const hotspots=[],hitTargets=[],labels=[],robots=[],deskLights=[],positions=[[-1,-1.1],[-5,-.2],[5,-.7],[-3.7,3.7],[3.6,3.9]];
+  const homes=positions.map(([x,z])=>new THREE.Vector3(x,.28,z));
+  function hotspot(id,title,subtitle,x,y,z){const b=document.createElement('button');b.className='world-hotspot';b.dataset.worldSkill=id;b.innerHTML='<b>'+escape(title)+'</b><small>'+escape(subtitle)+'</small>';b.onclick=()=>root.dispatchEvent(new CustomEvent('bac:world-skill',{detail:id}));hotspotLayer.append(b);hotspots.push({id,button:b,position:new THREE.Vector3(x,y,z)});}
+  function platform(x,z,r,color=0xcad5bc){cyl(scene,x,.2,z,r,.16,color);ring(scene,x,.29,z,r*.96,0x9db588,.026);}
+  // A small stage hosts the crew: the shared brief glows at its center.
+  platform(0,-4.4,2.4,0xc5d0b6);box(scene,0,.62,-5.5,4.1,.76,.5,0x344839);box(scene,0,1.05,-5.54,4.5,.12,.74,0x6c9157);
+  box(scene,-2.05,1.9,-5.45,.1,2.5,.1,0x526c4a);box(scene,2.05,1.9,-5.45,.1,2.5,.1,0x526c4a);box(scene,0,3.13,-5.45,4.4,.1,.15,0x536e4b);
+  sign(scene,'BUILD A CLAW',0,2.68,-5.36,4.2,.65,'#c6ed91','#172b20');sign(scene,'CREATE  /  COLLABORATE  /  EXPLORE',0,2.2,-5.34,4.1,.27,'#d8e8c2','#24382b');
+  hotspot('crew','CREW STAGE','Plan an event together',0,3.5,-5.4);
+  // Document library / persistent memory: readable books, a lamp, and a small tree.
+  const library=new THREE.Group();library.position.set(-7,0,-2.8);scene.add(library);platform(-7,-2.8,1.45);
+  box(library,0,1.14,0,1.8,2.0,.5,0x8d7854);for(let y=.45;y<2.0;y+=.55){box(library,0,y,.09,1.9,.09,.6,0xc6b98e);for(let j=0;j<7;j++)box(library,-.73+j*.24,y+.23,.12,.15,.34+(j%3)*.045,.35,[0x82b395,0xd2a272,0x9ab7ce,0xc2b286][j%4]);}
+  hotspot('documents','KNOWLEDGE LIBRARY','Documents & memory',-7,2.7,-2.8);
+  // Maker workshop: a screen, a tiny arcade cabinet, and game blocks.
+  const maker=new THREE.Group();maker.position.set(-7,0,2.5);scene.add(maker);platform(-7,2.5,1.5,0xd5d8bd);
+  box(maker,0,.95,0,2.15,.12,1.05,0x9c8a61);for(const x of [-.84,.84])box(maker,x,.53,0,.13,.8,.8,0x6d7553);
+  box(maker,-.36,1.51,-.1,1.1,.85,.12,0x233c36);sign(maker,'<  PLAY  >',-.36,1.52,-.03,1.02,.59,'#b7ef69','#243b32');box(maker,-.36,1.04,.25,.77,.035,.22,0x506f5b);
+  box(maker,.8,1.25,0,.48,.55,.55,0x85b0c6);box(maker,.8,1.56,.03,.43,.14,.5,0xaccfdd);ball(maker,.8,1.67,.1,.05,.05,.05,0x24443e);
+  hotspot('builder','MAKER WORKSHOP','Build a playable mini app',-7,2.3,2.5);
+  // Weather observatory with a sun/cloud mobile and telescope.
+  platform(7.1,-3.2,1.45,0xd9dbc0);const weather=new THREE.Group();weather.position.set(7.1,0,-3.2);scene.add(weather);
+  for(const a of [0,2.1,4.2]){const leg=cyl(weather,Math.sin(a)*.36,.73,Math.cos(a)*.36,.045,1.05,0x746b4c,8);leg.rotation.z=Math.sin(a)*.35;}
+  const telescope=cyl(weather,0,1.42,0,.22,1.4,0x4d8290,16);telescope.rotation.z=1.05;const lens=cyl(weather,-.58,1.75,0,.26,.08,0xaad9d1,16);lens.rotation.z=1.05;
+  const sunBall=ball(weather,.9,2.35,-.2,.33,.33,.14,0xe5c75b);for(let i=0;i<4;i++)ball(weather,.45+i*.22,2.0,.06,.27,.18,.16,0xf1f2dc);
+  hotspot('weather','WEATHER LOOKOUT','Live conditions → a plan',7.1,3,-3.2);
+  // Operations rack and a separate OpenShell gate remain clearly distinct.
+  platform(8,1.5,1.45,0xc2d3c2);box(scene,8,1.04,1.5,1.28,1.6,.8,0x31453b);for(let i=0;i<5;i++){box(scene,8,.51+i*.27,1.94,1.05,.16,.03,0x78917a);ball(scene,8.39,.51+i*.27,1.97,.025,.025,.02,0xa8db69);}hotspot('runtime','SPARK ENGINE ROOM','One model for the whole crew',8,2.45,1.5);
+  const gateGroup=new THREE.Group();gateGroup.position.set(7.2,0,4.8);scene.add(gateGroup);box(gateGroup,-.7,1.05,0,.12,1.65,.17,0x658965);box(gateGroup,.7,1.05,0,.12,1.65,.17,0x658965);const gate=box(gateGroup,0,1.85,0,1.55,.14,.18,0xa6d768);sign(gateGroup,'OPENSHELL',0,1.45,.1,1.23,.3,'#1e492b','#b4d79c');hotspot('runtime','ACCESS GATE','Inspect the sandbox connection',7.2,2.3,4.8);
+  // Marketing atelier: a poster easel and a stack of deliverables.
+  platform(-2,5.6,1.3,0xdedac0);for(const x of [-2.48,-1.52]){const leg=box(scene,x,.86,5.6,.065,1.45,.08,0x998465);leg.rotation.z=x<-2?.1:-.1;}box(scene,-2,1.51,5.54,1.35,1.15,.09,0xe8e6c8);sign(scene,'BUILD A CLAW',-2,1.69,5.6,1.2,.24,'#1e4230','#e8e6c8');box(scene,-2,1.42,5.61,.97,.15,.01,0x7bad48);sign(scene,'ZURICH  /  MAKE IT YOURS',-2,1.17,5.62,1.1,.16,'#47623b','#e8e6c8');hotspot('writer','CAMPAIGN ATELIER','Turn the brief into an invitation',-2,2.5,5.6);
+  // A floating globe for browsing, and a phone pier for the companion channel.
+  platform(-8,-.2,.65);const globe=ball(scene,-8,1.3,-.2,.48,.48,.48,0x73ada3);const meridian=ring(scene,-8,1.3,-.2,.56,0xd5e7b9,.03);meridian.rotation.z=.7;meridian.rotation.x=.3;cyl(scene,-8,.63,-.2,.05,.7,0x6a8e6c,10);hotspot('web','WEB EXPLORER','Read sources. Follow your curiosity.',-9.2,1.7,.1);
+  for(let j=0;j<5;j++)box(scene,3.4,.1,6.4+j*.38,2,.12,.33,0xa38d61);box(scene,3.4,.65,6.8,.62,1.04,.07,0x294b42);sign(scene,'↗',3.4,.68,6.85,.5,.78,'#d4f0da','#4d978a');hotspot('telegram','TELEGRAM PIER','The same agent, on your phone',3.4,1.75,7.2);
+  // Central model/brief monument with restrained NVIDIA lettering.
+  cyl(scene,0,.3,.5,1.26,.34,0x324d3b);cyl(scene,0,.5,.5,1.13,.09,0xc9d9af);ring(scene,0,.56,.5,1.05,0x93c756,.055);
+  const brand=sign(scene,'NVIDIA',0,.562,.67,1.5,.38,'#1c3a29',null);brand.rotation.x=-Math.PI/2;
+  const core=box(scene,0,1.05,.2,.62,.65,.62,0x8cae68);core.rotation.y=.4;const coreRing=ring(scene,0,1.29,.2,.53,0xc7e2a0);
+  const briefLabel=sign(scene,'SHARED BRIEF',0,.74,1.33,1.8,.26,'#dcebd0','#29422f');
+  // Five expressive claw companions, each with its own colors and role accessory.
+  const shells=[0x97c85b,0x77b5d0,0xe0b659,0xd58f83,0xb0a0d4];
+  homes.forEach((home,i)=>{
+    const robot=new THREE.Group();robot.position.copy(home);scene.add(robot);const body=new THREE.Group();robot.add(body);
+    ball(body,0,.54,0,.46,.27,.33,shells[i]);ball(body,0,.47,.21,.31,.12,.16,0xf1e6c9);
+    const eyes=[];for(const side of [-1,1]){const stalk=cyl(body,side*.22,.93,.1,.036,.49,shells[i],8);stalk.rotation.z=-side*.14;const eye=ball(body,side*.25,1.17,.1,.115,.12,.1,0xf3f0d9);ball(body,side*.25,1.175,.19,.047,.052,.035,0x243b2f);eyes.push(eye);}
+    const smile=mesh(body,new THREE.TorusGeometry(.1,.012,5,18,Math.PI),0,.48,.344,0x567348);smile.rotation.z=Math.PI;
     const arms=[],legs=[];
-    for(const side of [-1,1]){const arm=new THREE.Group();arm.position.set(side*.29,.7,0);box(arm,0,-.15,0,.12,.3,.14,0xa0ad8f);body.add(arm);arms.push(arm);const leg=new THREE.Group();leg.position.set(side*.12,.34,0);box(leg,0,-.12,0,.14,.24,.15,0x80916c);box(leg,0,-.25,.045,.18,.08,.24,0x394d29);body.add(leg);legs.push(leg);}
-    const halo=ring(scene,homes[i].x,.086,homes[i].z,.48,colors[i]);
-    const packet=box(body,.39,.7,.2,.21,.27,.045,colors[i],true);packet.visible=false;
-    robot.traverse(object=>{if(object.isMesh){object.userData.agent=i;hitTargets.push(object);}});
-    const badge=document.createElement('div');badge.className='campus-agent-label';el('labels').append(badge);labels.push(badge);
-    robots.push({robot,body,arms,legs,halo,packet,home:homes[i],path:[],idle:i*.9,destination:homes[i].clone()});
+    for(const side of [-1,1]){
+      const arm=new THREE.Group();arm.position.set(side*.43,.59,.08);body.add(arm);const segment=ball(arm,side*.23,.04,.06,.28,.075,.08,shells[i]);segment.rotation.z=side*.2;
+      const claw=new THREE.Group();claw.position.set(side*.46,.15,.11);arm.add(claw);ball(claw,0,0,0,.17,.18,.14,shells[i]);const finger=ball(claw,side*.075,.15,.03,.075,.18,.09,shells[i]);finger.rotation.z=-side*.33;const other=ball(claw,-side*.075,.1,.055,.06,.12,.08,shells[i]);other.rotation.z=side*.42;arms.push(arm);
+      for(let j=0;j<3;j++){const leg=new THREE.Group();leg.position.set(side*.3,.39,-.18+j*.18);const upper=ball(leg,side*.2,-.055,.03,.24,.052,.06,shells[i]);upper.rotation.z=-side*.3;const lower=ball(leg,side*.38,-.16,.06,.045,.14,.055,shells[i]);lower.rotation.z=side*.22;body.add(leg);legs.push(leg);}
+    }
+    // Role badges are visible on the shell; color travels with a handoff packet.
+    const badge=box(body,0,.57,.336,.19,.13,.015,0x34543b);sign(body,['★','⌘','▥','✎','✓'][i],0,.576,.35,.16,.11,'#eff6dc',null);
+    if(i===1){box(body,0,.86,-.03,.48,.08,.32,0x547f8a);ball(body,0,.91,-.03,.22,.12,.16,0x547f8a);}
+    if(i===2){const helmet=ball(body,0,.82,-.04,.32,.16,.23,0xf1c661);box(body,0,.77,.05,.75,.055,.35,0xf1c661);}
+    const halo=ring(scene,home.x,.27,home.z,.81,shells[i],.028);const packet=box(body,.82,.62,.12,.22,.3,.045,0xe9ecd5);packet.visible=false;
+    robot.traverse(o=>{if(o.isMesh){o.userData.agent=i;hitTargets.push(o);}});
+    const label=document.createElement('div');label.className='campus-agent-label';el('labels').append(label);labels.push(label);
+    robots.push({robot,body,arms,legs,halo,packet,home,path:[],idle:i*.85,eyes});deskLights.push(ring(scene,home.x,.26,home.z,1.02,0xbee684,.025));
   });
+  const packets=[];for(let i=0;i<6;i++){const dot=ball(scene,0,.6,0,.05,.05,.05,0xd7eeb4);dot.visible=false;packets.push(dot);}
+  let packetStart=new THREE.Vector3(),packetEnd=new THREE.Vector3(),packetTime=-20;
   const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
-  function cam(){const distance=22;camera.position.set(Math.sin(azimuth)*Math.cos(elevation)*distance,Math.sin(elevation)*distance,Math.cos(azimuth)*Math.cos(elevation)*distance);camera.lookAt(focus);camera.zoom=zoom;camera.updateProjectionMatrix();}
-  function resize(){const w=viewport.clientWidth,h=viewport.clientHeight;if(!w||!h)return;const aspect=w/h;const vertical=aspect<1.15?10.5:7.8;camera.left=-vertical*aspect;camera.right=vertical*aspect;camera.top=vertical;camera.bottom=-vertical;renderer.setSize(w,h);cam();}
+  function cam(){camera.position.set(Math.sin(azimuth)*Math.cos(elevation)*30,Math.sin(elevation)*30,Math.cos(azimuth)*Math.cos(elevation)*30);camera.lookAt(focus);camera.zoom=zoom;camera.updateProjectionMatrix();}
+  function resize(){const w=viewport.clientWidth,h=viewport.clientHeight;if(!w||!h)return;const aspect=w/h,vertical=aspect<1?13:aspect<1.5?11:9.4;camera.left=-vertical*aspect;camera.right=vertical*aspect;camera.top=vertical;camera.bottom=-vertical;renderer.setSize(w,h);cam();renderer.render(scene,camera);}
   function movement(){
     robots.forEach(r=>{r.path=[r.home.clone()];r.packet.visible=false;});
-    const moving={0:[0,homes[1]],1:[1,homes[2]],2:[2,new THREE.Vector3(0,.05,1.8)],3:[3,homes[4]],4:[4,new THREE.Vector3(0,.05,1.8)],5:[3,new THREE.Vector3(7.2,.05,3.3)]}[state.phase];
-    if(moving){const [i,target]=moving,r=robots[i];r.packet.visible=true;r.path=[new THREE.Vector3(r.robot.position.x,.05,.5),new THREE.Vector3(target.x,.05,.5),target.clone()];}
-    gate.material=mat(state.phase===5?0xe4ad4f:state.phase===6?0xa5e85c:0xb4cf8a,true);
-    el('motion-status').textContent=state.phase<0?'Crew ready · explore the campus':state.phase===5?'Waiting at the access boundary':state.phase===2&&state.gap?'Capacity gap · your decision needed':state.phase===6?'Planning package ready':'Handoff in progress · brief v'+state.revision;
-    if(!motion){robots.forEach(r=>{if(r.path.length)r.robot.position.copy(r.path[r.path.length-1]);r.path=[];});}
+    const active=state.agents.findIndex(a=>a.lane===1||a.lane===2);
+    if(active>=0){
+      const r=robots[active],station={builder:[-5.5,2.4],documents:[-5.7,-2.5],memory:[-5.7,-2.5],weather:[5.8,-3],web:[-6.5,.1],writer:[-1.7,4.5]}[state.missionSkill];
+      const target=station?new THREE.Vector3(station[0],.28,station[1]):new THREE.Vector3([0,-4,4,-2,2][active],.28,[-2.6,-.8,-1,3,2][active]);
+      r.path=[new THREE.Vector3(r.robot.position.x,.28,1.7),new THREE.Vector3(target.x,.28,1.7),target];r.packet.visible=true;
+      packetStart=robots[Math.max(0,active-1)].robot.position.clone();packetEnd=target.clone();packetTime=clock;
+    }
+    if(!motion)robots.forEach(r=>{if(r.path.length)r.robot.position.copy(r.path.at(-1));r.path=[];});
   }
-  function update(next,index){state=next;activeSelection=index;if(state.phase!==phase){phase=state.phase;movement();}labels.forEach((badge,i)=>{badge.innerHTML=escape(state.agents[i].name)+'<small>'+escape(state.agents[i].role)+'</small>';badge.classList.toggle('selected',i===index);badge.classList.toggle('waiting',state.agents[i].lane===2);});}
-  function syncMotionButton(){el('motion').textContent=motion?'Ⅱ':'▶';el('motion').setAttribute('aria-label',motion?'Pause scene motion':'Resume scene motion');}
-  el('motion').addEventListener('click',()=>{motion=!motion;syncMotionButton();});
-  reduced.addEventListener('change',()=>{motion=!reduced.matches;syncMotionButton();});
-  el('camera').addEventListener('click',()=>{azimuth=.43;elevation=.76;zoom=1;cam();});
-  renderer.domElement.addEventListener('pointerdown',event=>{drag={x:event.clientX,y:event.clientY};moved=false;renderer.domElement.setPointerCapture(event.pointerId);});
-  renderer.domElement.addEventListener('pointermove',event=>{if(!drag)return;const dx=event.clientX-drag.x,dy=event.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>2)moved=true;azimuth-=dx*.006;elevation=Math.max(.45,Math.min(1.3,elevation+dy*.004));drag={x:event.clientX,y:event.clientY};cam();});
-  renderer.domElement.addEventListener('pointerup',event=>{if(!moved){const rect=renderer.domElement.getBoundingClientRect();pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);const hits=raycaster.intersectObjects(hitTargets);if(hits.length)choose(hits[0].object.userData.agent);}drag=null;});
-  renderer.domElement.addEventListener('pointercancel',()=>{drag=null;});
-  renderer.domElement.addEventListener('wheel',event=>{event.preventDefault();zoom=Math.max(.75,Math.min(1.65,zoom-event.deltaY*.0008));cam();},{passive:false});
-  renderer.domElement.addEventListener('webglcontextlost',event=>{event.preventDefault();lost=true;el('fallback').hidden=false;root.dataset.renderer='lost';});
-  renderer.domElement.addEventListener('webglcontextrestored',()=>{lost=false;el('fallback').hidden=true;root.dataset.renderer='webgl';});
-  new ResizeObserver(resize).observe(viewport);
-  new IntersectionObserver(items=>{visible=items[0].isIntersecting;},{threshold:0}).observe(viewport);
-  function animate(now){
-    requestAnimationFrame(animate);
-    if(document.hidden||root.hidden||!visible||lost){lastFrame=now;return;}
-    if(now-lastFrame<32)return;
-    const dt=Math.min((now-lastFrame)/1000,.07);lastFrame=now;
-    if(motion)clock+=dt;
-    robots.forEach((r,i)=>{
-      let walking=false;
-      if(motion){
-        if(r.path.length){const target=r.path[0],delta=target.clone().sub(r.robot.position),distance=delta.length();if(distance<.08){r.path.shift();}else{walking=true;r.robot.position.addScaledVector(delta.normalize(),Math.min(distance,dt*2.1));r.robot.rotation.y=Math.atan2(delta.x,delta.z);}}
-        else if(state.phase<0){const target=r.home.clone().add(new THREE.Vector3(Math.sin(clock*.55+i)*.52,0,Math.cos(clock*.55+i)*.22));const delta=target.clone().sub(r.robot.position);walking=true;r.robot.position.lerp(target,.05);r.robot.rotation.y=Math.atan2(delta.x,delta.z);}
-        else r.robot.rotation.y=THREE.MathUtils.lerp(r.robot.rotation.y,.2,.04);
-        r.body.position.y=walking?Math.abs(Math.sin(clock*9+i))*.047:Math.sin(clock*2+i)*.012;
-        r.arms.forEach((arm,j)=>arm.rotation.x=walking?Math.sin(clock*9+i+j*Math.PI)*.5:Math.sin(clock*2+i)*.08);
-        r.legs.forEach((leg,j)=>leg.rotation.x=walking?Math.sin(clock*9+i+j*Math.PI)*.42:0);
-      }
-      r.halo.position.x=r.robot.position.x;r.halo.position.z=r.robot.position.z;r.halo.visible=i===activeSelection||state.agents[i].lane===1;
-      const projected=r.robot.position.clone().add(new THREE.Vector3(0,1.65,0)).project(camera);
-      labels[i].style.left=(projected.x*.5+.5)*viewport.clientWidth+'px';labels[i].style.top=(-projected.y*.5+.5)*viewport.clientHeight+'px';
-      labels[i].style.display=projected.z>1?'none':'block';
-      deskLights[i].visible=state.agents[i].lane===1;
-    });
-    if(motion){core.rotation.y=clock*.35;coreRing.position.y=1.22+Math.sin(clock*1.6)*.04;}
+  function update(next,index){state=next;activeSelection=index;phase=state.phase;const key=[state.jobId,state.phase,state.missionSkill,state.agents.map(a=>a.lane).join('')].join(':');if(key!==lastKey){lastKey=key;movement();}labels.forEach((b,i)=>{b.innerHTML=escape(state.agents[i].name)+'<small>'+escape(state.agents[i].lane===1?'Working · '+state.agents[i].role:state.agents[i].lane===2?'Waiting for you':state.agents[i].role)+'</small>';b.classList.toggle('selected',index===i);b.classList.toggle('waiting',state.agents[i].lane===2);});}
+  function motionButton(){el('motion').textContent=motion?'Ⅱ':'▶';el('motion').setAttribute('aria-label',motion?'Pause scene motion':'Resume scene motion');}
+  el('motion').onclick=()=>{motion=!motion;motionButton();};reduced.addEventListener('change',()=>{motion=!reduced.matches;motionButton();});
+  el('camera').onclick=()=>{azimuth=.18;elevation=.85;zoom=1;cam();};
+  renderer.domElement.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};moved=false;renderer.domElement.setPointerCapture(e.pointerId);});
+  renderer.domElement.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>2)moved=true;azimuth-=dx*.005;elevation=Math.max(.5,Math.min(1.35,elevation+dy*.003));drag={x:e.clientX,y:e.clientY};cam();});
+  renderer.domElement.addEventListener('pointerup',e=>{if(!moved){const rect=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);const hits=raycaster.intersectObjects(hitTargets);if(hits.length)choose(hits[0].object.userData.agent);}drag=null;});
+  renderer.domElement.addEventListener('pointercancel',()=>drag=null);
+  renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.75,Math.min(1.9,zoom-e.deltaY*.0007));cam();},{passive:false});
+  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();lost=true;el('fallback').hidden=false;root.dataset.renderer='lost';});renderer.domElement.addEventListener('webglcontextrestored',()=>{lost=false;el('fallback').hidden=true;root.dataset.renderer='webgl';});
+  new ResizeObserver(resize).observe(viewport);new IntersectionObserver(items=>visible=items[0].isIntersecting).observe(viewport);
+  function positionLabel(node,point){const p=point.clone().project(camera);node.style.left=(p.x*.5+.5)*viewport.clientWidth+'px';node.style.top=(-p.y*.5+.5)*viewport.clientHeight+'px';node.style.display=p.z>1?'none':'';}
+  function animate(now){requestAnimationFrame(animate);if(document.hidden||root.hidden||!visible||lost){lastFrame=now;return;}if(now-lastFrame<32)return;const dt=Math.min((now-lastFrame)/1000,.06);lastFrame=now;if(motion)clock+=dt;
+    robots.forEach((r,i)=>{let walking=false;if(motion){if(r.path.length){const delta=r.path[0].clone().sub(r.robot.position),dist=delta.length();if(dist<.1)r.path.shift();else{walking=true;r.robot.position.addScaledVector(delta.normalize(),Math.min(dist,dt*1.65));r.robot.rotation.y=Math.atan2(delta.x,delta.z);}}else if(state.agents[i].lane===0){const target=r.home.clone().add(new THREE.Vector3(Math.sin(clock*.28+i)*1.2,0,Math.cos(clock*.28+i)*.75));const delta=target.clone().sub(r.robot.position);walking=delta.length()>.05;r.robot.position.lerp(target,.025);r.robot.rotation.y=THREE.MathUtils.lerp(r.robot.rotation.y,Math.atan2(delta.x,delta.z),.04);}else r.robot.rotation.y=THREE.MathUtils.lerp(r.robot.rotation.y,0,.04);r.body.position.y=walking?Math.abs(Math.sin(clock*8+i))*.04:Math.sin(clock*2+i)*.02;r.legs.forEach((l,j)=>l.rotation.x=walking?Math.sin(clock*9+i+j)*.4:0);r.arms.forEach((a,j)=>a.rotation.z=Math.sin(clock*(walking?5:1.6)+j+i)*.16);}
+      r.halo.position.set(r.robot.position.x,.29,r.robot.position.z);r.halo.visible=i===activeSelection||state.agents[i].lane!==0;deskLights[i].visible=state.agents[i].lane===1;positionLabel(labels[i],r.robot.position.clone().add(new THREE.Vector3(0,1.57,0)));});
+    hotspots.forEach(h=>positionLabel(h.button,h.position));
+    if(motion){core.rotation.y=clock*.25;coreRing.position.y=1.25+Math.sin(clock*1.5)*.06;globe.rotation.y=clock*.12;sunBall.position.y=2.35+Math.sin(clock)*.055;waveRings.forEach((r,i)=>{r.scale.setScalar(1+Math.sin(clock*.45+i)*.016);r.scale.z*=.72;});}
+    packets.forEach((p,i)=>{const t=(clock-packetTime-i*.13)/2.8;p.visible=t>=0&&t<=1&&state.phase>=0;if(p.visible){p.position.lerpVectors(packetStart,packetEnd,t);p.position.y=.65+Math.sin(t*Math.PI)*1.15;}});
     renderer.render(scene,camera);
   }
-  syncMotionButton();resize();update(snapshot,selected);requestAnimationFrame(animate);
-  root.dataset.renderer='webgl';
-  return {resize,update,inspect:()=>({robots:robots.map(r=>r.robot.position.toArray()),phase,motion,camera:[azimuth,elevation,zoom]})};
+  motionButton();resize();update(snapshot,0);requestAnimationFrame(animate);root.dataset.renderer='webgl';
+  return {resize,update,inspect:()=>({robots:robots.map(r=>r.robot.position.toArray()),phase,motion,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
 }
+
 try {sceneView=createScene();}catch(error){el('fallback').hidden=false;root.dataset.renderer='fallback';console.warn('3D unavailable; accessible workflow controls remain available.',error.message);}
-window.BacCampus={inspect:()=>sceneView?.inspect()||{fallback:true}};
+window.BacCampus={inspect:()=>sceneView?.inspect()||{fallback:true},setLive:next=>{live=true;stop();snapshot=next;selected=next.selected;render();}};
 render();
 
 })();</script>
+<script>(() => {
+  const root = document.getElementById('agent-campus');
+  const el = name => document.getElementById('studio-' + name);
+  const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const titles = {weather:'Weather lookout',web:'Web explorer',documents:'Document detective',builder:'Mini app maker',writer:'Campaign studio',memory:'Remember me'};
+  const personas = {guide:'Warm, patient and clear.',maker:'Inventive, practical and curious.',analyst:'Precise, evidence-led and careful.'};
+  const roles = [['Milo','Event lead','Turns an idea into a shared brief.'],['Nova','Demo producer','Designs participant actions and visible outcomes.'],['Atlas','Operations planner','Sizes equipment and staffing; surfaces gaps.'],['Momo','Campaign writer','Uses the approved plan to draft invitations.'],['Pico','Evidence reviewer','Checks the work of the other specialists.']];
+  const missions = [
+    {id:'builder',icon:'⌘',title:'Make something playable',sub:'An idea → a tiny working app',tag:'CREATE',color:'#b4dc83',prompt:'Build a polished reaction-time game as a single self-contained HTML file. Use a dark NVIDIA-inspired style, green action buttons, keyboard and touch controls, and a personal best score. Explain how to play. Save it in artifacts/.'},
+    {id:'weather',icon:'☀',title:'Plan around the weather',sub:'Live conditions → useful advice',tag:'EXPLORE',color:'#e8cd80',prompt:'Check the current weather in Zurich using your weather skill. Tell me when the observation was made and whether I should bring a jacket for a walk before BaC. Cite the actual source.'},
+    {id:'documents',icon:'▤',title:'Ask your documents',sub:'Your file → an answer with evidence',tag:'UNDERSTAND',color:'#99c8e3',prompt:'Read the documents in inbox/. Summarize the key points, identify three useful follow-up actions, and cite the exact filename and supporting text for each. Separate facts from assumptions.'},
+    {id:'web',icon:'⌕',title:'Explore the web',sub:'A website → a sourced briefing',tag:'RESEARCH',color:'#adbbe8',prompt:'Read https://www.zuerich.com/en/visit and suggest three ideas for an attendee with two free hours in Zurich. Cite the pages you actually read and mark opening hours or prices you could not verify.'},
+    {id:'writer',icon:'✎',title:'Launch your next idea',sub:'An event brief → a campaign',tag:'COMMUNICATE',color:'#e6af8e',prompt:'Draft an English invitation and three short social posts for a Build a Claw event in Zurich. 120 attendees, 180 minutes, hands-on demos in groups of five for 15 minutes. Leave date, venue and registration URL as placeholders. Save the drafts in artifacts/.'},
+    {id:'memory',icon:'▧',title:'Teach it your style',sub:'A preference → a lasting memory',tag:'PERSONALIZE',color:'#c3ace9',prompt:'Please remember that I prefer concise English answers with three practical bullets, and I like vegetarian food. Save this preference to MEMORY.md. Tell me exactly what you saved.'},
+  ];
+  let csrf = '', data = {profile:null,jobs:[],files:[],memory:'',phone:false}, runtime = {}, persona = 'guide', skill = null, selectedJob = null, resultKey = '', board = false, connected = false, busy = false;
+  root.classList.add('studio-enabled');
+  root.querySelector('.campus-heading h2').textContent='Your ideas. An agent that gets them done.';
+  root.querySelector('.campus-heading .quiet').textContent='Make it yours. Give it useful skills. Watch one agent become a team.';
+  root.querySelector('.campus-eyebrow').innerHTML='<span></span> BUILD A CLAW / AGENT STUDIO';
+  const layout = root.querySelector('.campus-layout');
+  root.querySelector('.campus-heading').after(el('journey'));
+  el('journey').after(root.querySelector('.studio-viewbar'));
+  layout.append(el('passport'));
+  layout.after(el('board'));
+  el('board').after(el('experiences'));
+  el('experiences').after(el('workspace'));
+  el('workspace').after(root.querySelector('.studio-crew-invite'));
+  el('skill-picker').innerHTML=Object.entries(titles).map(([key,title])=>`<label><input type="checkbox" value="${key}" checked>${title}</label>`).join('');
+  el('missions').innerHTML=missions.map(m=>`<button class="studio-mission" data-studio-mission="${m.id}" aria-pressed="false" style="--mission-color:${m.color}"><span>${m.icon}</span><em>${m.tag}</em><strong>${m.title}</strong><small>${m.sub}</small></button>`).join('');
+  function alert(message) {el('alert').querySelector('span').textContent=message;el('alert').hidden=false;}
+  el('alert').querySelector('button').onclick=()=>el('alert').hidden=true;
+  async function api(path, payload) {
+    const options = payload===undefined ? {} : {method:'POST',headers:{'Content-Type':'application/json','X-BaC-CSRF':csrf},body:JSON.stringify(payload)};
+    let response;
+    try {response=await fetch('/api/'+path,options);} catch {throw new Error('Open this demo through ./start.sh or ./bac app start. The agent API needs the local app server.');}
+    let result;
+    try {result=await response.json();} catch {throw new Error('The app server did not return a valid response. Refresh after updating the app.');}
+    if(!response.ok)throw new Error(result.error||'The request could not be completed.');
+    return result;
+  }
+  function dialog(kicker, html) {el('dialog-kicker').textContent=kicker;el('dialog-body').innerHTML=html;if(!el('dialog').open)el('dialog').showModal();}
+  el('dialog-close').onclick=()=>el('dialog').close();
+  el('dialog').addEventListener('click',e=>{if(e.target===el('dialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
+  function setup() {
+    dialog('ONE SPARK / ONE SHARED MODEL',`<h3>Your agent’s engine room.</h3><p>The app, OpenClaw and the model are separate. Updating the experience keeps your model weights, agent memories and files.</p><div class="studio-runtime-grid"><div><b>Shared local model</b><small>${runtime.model?'Connected · bac-local':'Waiting for the host to start vLLM'}<br>One model for every role · one active task at a time</small></div><div><b>OpenClaw ${escape(runtime.version||'2026.9.4')}</b><small>${runtime.gateway?'Gateway connected':'Gateway not connected'}<br>Native identities, skills, tools and conversation state</small></div><div><b>OpenShell</b><small>${escape(runtime.openshell||'Not configured')}<br>Separate sandbox backend. A UI approval is not sandbox enforcement.</small></div><div><b>Telegram</b><small>${runtime.telegram?'Host bot configured · pair your own chat':'Optional · host bot setup required'}<br>Web and phone share the same agent conversation.</small></div></div><pre>./bac llm start qwen\n./bac runtime setup\n./bac runtime start\n./bac app start\n\n# Later UI updates:\n./bac update\n\n# Optional:\n./bac telegram configure\n./bac openshell enable</pre><p>Qwen and Gemma are host-wide alternatives. Set up the model once with <code>./bac llm setup qwen</code> (or <code>gemma</code>) before starting it. These commands run on your Spark.</p>`);
+  }
+  el('runtime').onclick=setup;
+  function runtimeBadge(){el('runtime').textContent=runtime.testFixture?'TEST FIXTURE · no real model':runtime.ready?'● OpenClaw connected · shared Spark model':'○ Connect your Spark runtime';el('runtime').dataset.ready=!!runtime.ready;root.querySelector('.campus-sim').textContent=runtime.testFixture?'TEST FIXTURE · NO REAL MODEL':runtime.ready?'OPENCLAW · LIVE TASK EVENTS':'CAMPUS PREVIEW · RUNTIME OFFLINE';}
+  function current(){return data.jobs.find(j=>j.id===selectedJob)||data.jobs[0];}
+  function render() {
+    const profile=data.profile, job=current();
+    if(profile)roles[0][0]=profile.name;
+    el('onboarding').hidden=!!profile;el('companion').hidden=!profile;
+    if(profile){el('agent-name').textContent=profile.name;el('personality').textContent=personas[profile.persona];el('equipped').innerHTML=profile.skills.map(s=>'<span>'+escape(titles[s])+'</span>').join('');}
+    const active=data.jobs.find(j=>j.status==='running')||data.jobs.find(j=>['queued','waiting'].includes(j.status));
+    el('task-state').textContent=active?({'running':'WORKING ON YOUR MISSION','queued':active.due>Date.now()/1000?'FOLLOW-UP SCHEDULED':'IN THE SHARED MODEL QUEUE','waiting':'YOUR DECISION IS NEEDED'}[active.status]):'READY FOR A MISSION';
+    el('task-summary').textContent=active?(active.kind==='crew'?'Your specialists are building the event plan.':active.payload.prompt.slice(0,135)):'Choose a mission below, or ask for something of your own.';
+    el('journey').children[0].style.color=profile?'#bce883':'';
+    el('files').innerHTML=data.files.length?data.files.map(f=>`<button data-studio-file="${escape(f.path)}">${f.path.endsWith('.html')?'⌘':'▤'} ${escape(f.path.split('/').pop())}<span>${Math.ceil(f.size/1024)} KB ↗</span></button>`).join(''):'<p class="studio-muted">Uploaded documents and deliverables live here.</p>';
+    el('job-history').innerHTML=data.jobs.slice(0,12).map((j,i)=>`<button data-studio-job="${j.id}" aria-pressed="${job?.id===j.id}">${j.kind==='crew'?'Crew':j.kind==='reminder'?'Follow-up':'Mission'} ${data.jobs.length-i} · ${escape(j.status)}</button>`).join('');
+    if(job){
+      const events=[...job.events].reverse();
+      el('events').innerHTML=events.length?events.map(e=>`<li><b>${escape(e.title)}</b><small>${new Date(e.time*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · ${escape(e.detail)}</small></li>`).join(''):'<li><b>Waiting in the shared queue</b><small>All agents share one model. Scheduled jobs run when their time arrives.</small></li>';
+      const key=job.id+job.status+job.events.length;
+      if(key!==resultKey){
+        resultKey=key;el('result-title').textContent=job.status==='done'?'Your agent made this.':job.status==='error'?'This mission needs attention.':job.kind==='crew'?'Your crew is building the plan.':'From request to result.';
+        el('read-aloud').hidden=!job.result.answer;
+        el('result').replaceChildren();
+        if(job.status==='waiting'){
+          const box=document.createElement('div');box.className='studio-waiting';box.innerHTML='The plan needs '+job.payload.capacity.spark+' Sparks and '+job.payload.capacity.workstation+' workstations. Your available equipment does not cover it.<br><button class="studio-primary" data-decision="approve-equipment">Plan additional equipment</button><button class="studio-secondary" data-decision="cancel">Cancel and revise</button>';el('result').append(box);
+        }
+        const answer=document.createElement('div');answer.textContent=job.result.answer||job.result.error||Object.values(job.payload.outputs||{}).slice(-1)[0]||(job.status==='queued'?'Your mission is saved in the queue.':job.status==='cancelled'?'This mission was cancelled.':'The agent is working. Actual handoffs and saved files appear in the evidence panel.');el('result').append(answer);
+        const apps=(job.result.files||[]).filter(f=>f.endsWith('.html'));
+        if(apps.length){const preview=document.createElement('div');preview.className='studio-app-preview';preview.innerHTML='<strong>Your mini app is ready to try.</strong>'+apps.map(path=>`<button class="studio-primary" data-studio-file="${escape(path)}">Play your app ↗</button>`).join('');el('result').prepend(preview);}
+        if(job.status==='queued'){const cancel=document.createElement('button');cancel.className='studio-secondary';cancel.dataset.decision='cancel';cancel.textContent='Cancel queued task';el('result').append(cancel);}
+      }
+    }
+    renderCrew();
+  }
+  function renderCrew(){
+    const crew=data.jobs.find(j=>j.kind==='crew'), stage=crew?.payload.stage??-1;
+    el('lanes').innerHTML=roles.map(([name,role,description],i)=>{const done=!!crew?.payload.outputs?.[i],working=crew?.status==='running'&&stage===i,waiting=crew?.status==='waiting'&&i===2;return `<article class="studio-lane" data-state="${waiting?'waiting':done?'done':working?'running':'ready'}"><span>0${i+1} / ${waiting?'NEEDS YOU':done?'DELIVERED':working?'WORKING':'READY'}</span><h4>${name}</h4><strong>${role}</strong><p>${description}</p>${done?'<button data-role-output="'+i+'">Open deliverable ↗</button>':''}</article>`;}).join('');
+    const active=data.jobs.find(j=>j.status==='running')||data.jobs.find(j=>j.status==='waiting');
+    const s=window.BacDemo.snapshot();
+    const a=roles.map(([name,role,description],i)=>({...s.agents[i],name,role,persona:description,skills:i===0?['Shared brief']:i===1?['Demo design']:i===2?['Capacity planning']:i===3?['Campaign writing']:['Evidence review'],lane:0,status:'Ready',task:description,permission:'Scoped workspace · shared local model'}));
+    let phase=-1,selected=0,flow=['Your campus is ready','Choose a mission or launch a crew.','Start'];
+    if(active?.kind==='crew'){
+      selected=active.status==='waiting'?2:Math.min(4,active.payload.stage);phase=active.status==='waiting'?2:selected;
+      a[selected].lane=active.status==='waiting'?2:1;a[selected].status=active.status==='waiting'?'Decision required':'Running in OpenClaw';a[selected].task=active.events.at(-1)?.detail||roles[selected][2];
+      flow=[roles[selected][0]+' · '+a[selected].status,a[selected].task,'Open mission'];
+    }else if(active){
+      phase=0;a[0].name=data.profile?.name||'My agent';a[0].role='Your personal agent';a[0].persona=personas[data.profile?.persona]||'';a[0].skills=(data.profile?.skills||[]).map(x=>titles[x]);a[0].lane=1;a[0].status='Running in OpenClaw';a[0].task=active.payload.prompt;flow=[a[0].name+' is working',active.payload.prompt,'Open mission'];
+    }else if(data.profile){a[0].name=data.profile.name;a[0].role='Your personal agent';a[0].persona=personas[data.profile.persona];a[0].skills=data.profile.skills.map(x=>titles[x]);}
+    const b=crew?.payload.brief;
+    window.BacCampus?.setLive({...s,live:true,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected,flow,gap:active?.status==='waiting',brief:b?{...b,location:b.city}:null,calc:crew?.payload.capacity||null,policy:null});
+    document.getElementById('campus-motion-status').textContent=active?flow[0]:'Explore your crew · movement is ambient until a task runs';
+  }
+  async function refresh(){if(busy||!connected)return;busy=true;try{data=await api('state');render();}catch(error){if(!document.hidden)alert(error.message);}finally{busy=false;}}
+  el('onboarding').onsubmit=async e=>{e.preventDefault();el('create').disabled=true;try{await api('onboard',{name:el('name').value,persona,skills:[...el('skill-picker').querySelectorAll('input:checked')].map(x=>x.value)});await refresh();alert('Your agent is saved. Choose a mission to give it its first useful task.');}catch(error){alert(error.message);}finally{el('create').disabled=false;}};
+  root.querySelectorAll('[data-persona]').forEach(button=>button.onclick=()=>{persona=button.dataset.persona;root.querySelectorAll('[data-persona]').forEach(b=>b.setAttribute('aria-pressed',b===button));});
+  el('missions').onclick=e=>{const button=e.target.closest('[data-studio-mission]');if(!button)return;const mission=missions.find(m=>m.id===button.dataset.studioMission);if(!data.profile){alert('Give your agent a name and click “Bring my agent to life” first.');el('name').focus();return;}if(!data.profile.skills.includes(mission.id)){alert('This starter agent did not equip '+titles[mission.id]+'. Its current skills are shown in the passport.');return;}skill=mission.id;el('prompt').value=mission.id==='web'&&runtime.search?'Search the web for three useful places to visit in Zurich before BaC. Compare options and cite the sources you actually used.':mission.prompt;el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===button));if(mission.id==='documents'&&!data.files.some(f=>f.kind==='inbox')){sampleDocument();}el('prompt').focus();el('passport').scrollIntoView({behavior:'smooth',block:'center'});};
+  el('chat').onsubmit=async e=>{e.preventDefault();el('send').disabled=true;try{const result=await api('jobs',{kind:'chat',prompt:el('prompt').value,skill});selectedJob=result.id;await refresh();el('workspace').scrollIntoView({behavior:'smooth',block:'start'});}catch(error){alert(error.message);}finally{el('send').disabled=false;}};
+  el('prompt').addEventListener('input',()=>{skill=null;});
+  function sampleDocument(){dialog('DOCUMENT DETECTIVE','<h3>Give your agent something to read.</h3><p>Use your own text, Markdown or CSV file, or try a clearly labeled sample event brief.</p><div class="studio-dialog-actions"><button class="studio-secondary" id="studio-own-document">Upload my file</button><button class="studio-primary" id="studio-sample-document">Use sample brief</button></div>');el('own-document').onclick=()=>{el('dialog').close();el('upload').click();};el('sample-document').onclick=async()=>{try{await api('upload',{name:'sample-bac-brief.md',content:'# Sample event brief — fictional workshop data\n\nCity: Zurich. Region: Europe / EMEA. Event language: English.\nAttendance: 120. Duration: 180 minutes.\nEach participant joins one interest-based session, with 5 people per group for 15 minutes.\nInterests: agent onboarding 40%, collaboration 35%, creative tools 25%.\nWelcome and breaks: 30 minutes. Turnaround: 5 minutes.\nAvailable devices: 2 DGX Sparks, 1 workstation.\nStaffing assumption: 1 presenter per station, 1 assistant per 30 people, and 1 lead.\nVenue, date and registration URL are unconfirmed.\n'});el('dialog').close();await refresh();}catch(e){alert(e.message);}};}
+  el('edit-agent').onclick=()=>{const p=data.profile;dialog('PERSONA & SKILLS',`<h3>Make ${escape(p.name)} more like you.</h3><form id="studio-edit-form"><label>Agent name<input name="name" value="${escape(p.name)}" maxlength="32" required></label><label>Personality<select name="persona">${Object.entries(personas).map(([k,v])=>`<option value="${k}" ${p.persona===k?'selected':''}>${escape(v)}</option>`).join('')}</select></label><div class="studio-form-grid">${Object.entries(titles).map(([k,v])=>`<label style="display:flex;align-items:center;gap:8px"><input style="width:16px" type="checkbox" name="skills" value="${k}" ${p.skills.includes(k)?'checked':''}>${v}</label>`).join('')}</div><p>Existing memory and files stay with this agent. Pending missions must finish before its configuration changes.</p><div class="studio-dialog-actions"><button class="studio-primary">Save my agent</button></div></form>`);el('edit-form').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);try{await api('profile',{name:f.get('name'),persona:f.get('persona'),skills:f.getAll('skills')});el('dialog').close();await refresh();}catch(error){alert(error.message);}};};
+  el('attach').onclick=()=>el('upload').click();
+  el('upload').onchange=async()=>{const file=el('upload').files[0];if(!file)return;if(file.size>100000){alert('Choose a text, Markdown or CSV file smaller than 100 KB.');return;}try{const result=await api('upload',{name:file.name,content:await file.text()});await refresh();alert(result.path+' is ready for your agent.');}catch(error){alert(error.message);}finally{el('upload').value='';}};
+  el('refresh-files').onclick=refresh;
+  el('memory').onclick=()=>{dialog('PERSISTENT MEMORY',`<h3>What ${escape(data.profile.name)} remembers.</h3><p>This is the actual MEMORY.md in your agent’s workspace. Ask your agent to remember, correct or forget a preference.</p><pre>${escape(data.memory||'No saved preferences yet.')}</pre><p>Try refreshing this page, then ask “What do you remember about me?”</p><button class="studio-primary" id="studio-recall">Ask my agent ↗</button>`);el('recall').onclick=()=>{el('dialog').close();el('prompt').value='What do you remember about my preferences? Read MEMORY.md and apply my preferred response style.';skill='memory';el('prompt').focus();};};
+  el('phone').onclick=async()=>{try{const pair=await api('pair',{});dialog('SAME AGENT / ANOTHER CHANNEL',`<h3>Your agent. Now on your phone.</h3><p>Open Telegram and tap Start. This link is for your agent only and expires in five minutes. Messages use the same OpenClaw conversation as this page.</p><p><a href="${escape(pair.url)}" target="_blank" rel="noreferrer">Connect my Telegram chat ↗</a></p><p>Then ask: “What do you remember about me?” Your phone tasks will also appear in this workspace. Send /stop in Telegram to disconnect.</p>`);}catch(error){alert(error.message);}};
+  el('schedule').onclick=()=>{dialog('PERSISTENT FOLLOW-UP',`<h3>Give it something to come back to.</h3><p>The app keeps this task across refreshes and app restarts. It runs through OpenClaw when due; the result appears in this workspace. The Spark host must stay on.</p><form id="studio-schedule-form"><label for="studio-followup">Task</label><textarea id="studio-followup" rows="3" required>Read my saved preferences and suggest one useful next task for me to try.</textarea><label for="studio-delay">Run in</label><select id="studio-delay"><option value="60">1 minute · demo</option><option value="300">5 minutes</option><option value="3600">1 hour</option></select><div class="studio-dialog-actions"><button class="studio-primary">Schedule follow-up ↗</button></div></form>`);el('schedule-form').onsubmit=async e=>{e.preventDefault();try{const job=await api('jobs',{kind:'reminder',prompt:el('followup').value,delay:Number(el('delay').value)});selectedJob=job.id;el('dialog').close();await refresh();}catch(error){alert(error.message);}};};
+  function crewForm(){if(!data.profile){alert('Create your own agent first, then give the specialists a shared mission.');el('name').focus();return;}dialog('LAUNCH A CREW MISSION',`<h3>Where will your next BaC happen?</h3><p>Five distinct OpenClaw agents share the brief and hand over real outputs. They run in sequence on one local model; the reviewer checks the specialists’ work.</p><form id="studio-crew-form"><div class="studio-form-grid"><div><label>City<input name="city" value="Zurich" maxlength="80" required></label></div><div><label>Region<input name="region" value="Europe / EMEA" maxlength="80" required></label></div><div><label>Event language<select name="language"><option>English</option><option>German</option><option>French</option><option>Korean</option><option>Japanese</option></select></label></div>${[['attendees','Attendees',120,1,3000],['duration','Event length · minutes',180,30,1440],['groupSize','People per group',5,1,30],['session','Demo · minutes',15,5,120],['common','Welcome & breaks · minutes',30,0,600],['turnover','Turnaround · minutes',5,0,30],['spark','Available DGX Sparks',4,0,300],['workstation','Available workstations',2,0,300]].map(([key,label,value,min,max])=>`<div><label>${label}<input type="number" name="${key}" value="${value}" min="${min}" max="${max}" required></label></div>`).join('')}<div class="wide"><label>Interest split · agent / multi-agent / creative (%)</label><div class="studio-form-grid"><input aria-label="Personal agent share" name="share0" type="number" value="40" min="0" max="100" required><input aria-label="Multi-agent share" name="share1" type="number" value="35" min="0" max="100" required><input aria-label="Creative share" name="share2" type="number" value="25" min="0" max="100" required></div></div></div><p>One session per attendee. Station sizing is a planning calculation, not a GPU throughput benchmark. Invitations remain drafts.</p><div class="studio-dialog-actions"><button class="studio-primary">Give the brief to my crew ↗</button></div></form>`);el('crew-form').onsubmit=async e=>{e.preventDefault();const form=e.target,brief={};for(const [key,value] of new FormData(form))brief[key]=['city','region','language'].includes(key)?value:Number(value);brief.shares=[brief.share0,brief.share1,brief.share2];try{const job=await api('jobs',{kind:'crew',brief});selectedJob=job.id;el('dialog').close();await refresh();showBoard(false);}catch(error){alert(error.message);}};}
+  el('plan').onclick=crewForm;
+  root.addEventListener('bac:world-skill',e=>{const id=e.detail;if(id==='crew')crewForm();else if(id==='runtime')setup();else if(id==='telegram'){if(!data.profile){alert('Create your agent first to connect a phone.');return;}el('phone').click();}else el('missions').querySelector('[data-studio-mission="'+id+'"]')?.click();});
+  const focus=document.createElement('button');focus.id='studio-focus';focus.textContent='Expand world ↗';focus.title='Expand the 3D world';document.querySelector('.campus-scene-bottom .row').prepend(focus);focus.onclick=()=>{layout.classList.toggle('world-expanded');focus.textContent=layout.classList.contains('world-expanded')?'↙ Return to studio':'Expand world ↗';};
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){layout.classList.remove('world-expanded');focus.textContent='Expand world ↗';}});
+  function showBoard(value){board=value;layout.hidden=value;el('board').hidden=!value;el('campus-tab').setAttribute('aria-pressed',!value);el('board-tab').setAttribute('aria-pressed',value);}
+  el('campus-tab').onclick=()=>showBoard(false);el('board-tab').onclick=()=>showBoard(true);
+  el('lanes').onclick=e=>{const b=e.target.closest('[data-role-output]');if(!b)return;const crew=data.jobs.find(j=>j.kind==='crew');dialog('REAL AGENT DELIVERABLE','<h3>'+roles[b.dataset.roleOutput][1]+'</h3><pre>'+escape(crew.payload.outputs[b.dataset.roleOutput])+'</pre>');};
+  root.addEventListener('bac:live-select',e=>{const i=e.detail;const crew=data.jobs.find(j=>j.kind==='crew');const [name,role,description]=roles[i];if(i===0&&data.profile&&!data.jobs.some(j=>j.kind==='crew'&&j.status==='running')){el('passport').scrollIntoView({behavior:'smooth',block:'center'});return;}dialog('AGENT PASSPORT',`<h3>${name} <span class="studio-muted">/ ${role}</span></h3><p>${description}</p><div class="studio-runtime-grid"><div><b>Own identity &amp; workspace</b><small>Separate role instructions and conversation. Receives shared brief and prior deliverables.</small></div><div><b>Shared model</b><small>bac-local on Spark. No extra model loaded for this role.</small></div></div><pre>${escape(crew?.payload.outputs?.[i]||'No deliverable yet. Launch a crew mission to give this role work.')}</pre>`);});
+  async function openFile(path){try{const file=await api('file?path='+encodeURIComponent(path));const html=path.endsWith('.html');dialog(html?'PLAY YOUR MINI APP':'WORKSPACE FILE',`<h3>${escape(path.split('/').pop())}</h3>${html?'<p>Interactive preview · scripts run in an isolated frame with network access blocked.</p><iframe id="studio-app-frame" title="Generated mini app" sandbox="allow-scripts"></iframe>':'<pre>'+escape(file.content)+'</pre>'}<div class="studio-dialog-actions"><button class="studio-primary" id="studio-download">Download file ↓</button></div>`);const protection='<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\'; style-src \'unsafe-inline\'; img-src data:; connect-src \'none\'; form-action \'none\'; base-uri \'none\'">';if(html)el('app-frame').srcdoc=protection+file.content;el('download').onclick=()=>{const blob=new Blob([(html?protection:'')+file.content],{type:html?'text/html':'text/plain'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=path.split('/').pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};}catch(error){alert(error.message);}}
+  root.addEventListener('click',async e=>{const file=e.target.closest('[data-studio-file]');if(file){openFile(file.dataset.studioFile);return;}const history=e.target.closest('[data-studio-job]');if(history){selectedJob=history.dataset.studioJob;render();return;}const choice=e.target.closest('[data-decision]');if(choice){try{await api('decision',{id:current().id,action:choice.dataset.decision});await refresh();}catch(error){alert(error.message);}}});
+  el('read-aloud').onclick=()=>{if(!('speechSynthesis' in window)){alert('This browser does not support speech playback.');return;}window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance((current()?.result.answer||'').slice(0,4000));utterance.lang='en-US';window.speechSynthesis.speak(utterance);el('read-aloud').textContent='Browser voice · playing';utterance.onend=()=>el('read-aloud').textContent='▷ Hear the answer';};
+  async function boot(){try{const session=await api('session');csrf=session.csrf;runtime=session.runtime;data=session;connected=true;runtimeBadge();render();}catch(error){runtimeBadge();alert(error.message);el('create').disabled=true;}}
+  boot();setInterval(()=>{if(!document.hidden)refresh();},1500);setInterval(async()=>{if(connected&&!document.hidden){try{runtime=await api('runtime');runtimeBadge();}catch{}}},10000);
+  window.BacStudio={refresh,inspect:()=>({profile:data.profile,jobs:data.jobs,runtime,board}),showBoard};
+})();
+</script>
 </div>
 
 <noscript>Enable JavaScript to use the interactive planner.</noscript>

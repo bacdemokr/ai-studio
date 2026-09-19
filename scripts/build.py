@@ -13,11 +13,14 @@ playground = playground.replace('/* SKILL_TOOLS_JS */', (ROOT / 'src/skill-tools
 playground = playground.replace('/* PLAYGROUND_JS */', (ROOT / 'src/playground.js').read_text(encoding='utf-8'))
 fragment = fragment.replace('<!-- SKILL_PLAYGROUND -->', playground)
 campus = (ROOT / 'src/campus.html').read_text(encoding='utf-8')
+studio = (ROOT / 'src/studio.html').read_text(encoding='utf-8').replace('/* STUDIO_CSS */', (ROOT / 'src/studio.css').read_text(encoding='utf-8'))
+campus = campus.replace('<div class="campus-layout">', studio + '\n<div class="campus-layout">')
 campus = campus.replace('/* CAMPUS_CSS */', (ROOT / 'src/campus.css').read_text(encoding='utf-8'))
 fragment = fragment.replace('<!-- AGENT_CAMPUS -->', campus)
 vendor = (ROOT / 'src/vendor/three-r180.cjs').read_text(encoding='utf-8')
-campus_js = '(function(){const exports={};\n' + vendor + '\nconst THREE=exports;\n' + (ROOT / 'src/campus.js').read_text(encoding='utf-8') + '\n})();'
+campus_js = '(function(){const exports={};\n' + vendor + '\nconst THREE=exports;\n' + (ROOT / 'src/campus.js').read_text(encoding='utf-8').replace('/* WORLD_SCENE */', (ROOT / 'src/world-scene.js').read_text(encoding='utf-8')) + '\n})();'
 fragment = fragment.replace('<!-- CAMPUS_SCRIPT -->', '<script>' + campus_js.replace('</script', '<\\/script') + '</script>')
+fragment = fragment.replace('<!-- STUDIO_SCRIPT -->', '<script>' + (ROOT / 'src/studio.js').read_text(encoding='utf-8').replace('</script', '<\\/script') + '</script>')
 fragment = fragment.replace('<!-- NVIDIA_THEME -->', '<style>\n' + (ROOT / 'src/nvidia-theme.css').read_text(encoding='utf-8') + '\n</style>')
 version = os.environ.get('BAC_DEMO_VERSION', 'local-preview')
 label = version if version == 'local-preview' else version[:12]
@@ -28,8 +31,8 @@ page = '''<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Build your agent, explore skills, and plan a BaC event with a crew.">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
-<title>BaC Crew — Agent Playground</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; frame-src 'self' blob:; base-uri 'none'; form-action 'none'; object-src 'none'">
+<title>NVIDIA Build a Claw — Agent Studio</title>
 <style>
 :root{color-scheme:dark;background:#0c0c0c}
 body{margin:0;padding:0;max-width:1600px;margin-inline:auto}

@@ -80,7 +80,7 @@ const { chromium } = require('playwright');
     await click('[data-action="join"]');
     assert.match(await page.locator('[data-out="profile-title"]').innerText(),/Riley/);
     assert.match(await page.locator('[data-out="profile-facts"]').innerText(),/Weather lookout/);
-    await click('button[type="submit"]');
+    await click('[data-part="planner"] button[type="submit"]');
     await click('[data-action="next"]'); await click('[data-action="next"]');
     await click('[data-action="extend"]');
     await click('[data-mode="playground"]');

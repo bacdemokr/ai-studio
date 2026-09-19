@@ -135,7 +135,7 @@ def update():
     except BaseException:
         print('Application activation failed; the previous release was restored when available.', file=sys.stderr)
         raise
-    print('Refresh the browser to load the new UI. Unsaved browser-session state resets on refresh.')
+    print('Refresh the browser to load the new UI. Agent identities, files, memory and jobs are preserved outside the release.')
 
 
 def start(host=None, port=None):
@@ -152,7 +152,8 @@ def start(host=None, port=None):
     if not c.active('bac-demo') and not c.port_free(new_settings['port']):
         raise RuntimeError('Application port is already used. Stop ./start.sh or choose --port 8081.')
     c.install_unit('bac-demo', [sys.executable, c.home() / 'demo/current/scripts/serve.py',
-                              '--host', new_settings['host'], '--port', str(new_settings['port'])])
+                              '--host', new_settings['host'], '--port', str(new_settings['port'])],
+                   {'BAC_DATA_DIR': str(c.home())})
     c.write_json(c.home() / 'demo/settings.json', new_settings)
     c.service('bac-demo', 'enable')
     c.service('bac-demo', 'restart')
@@ -172,6 +173,7 @@ def status():
     current = release_target('current')
     print('Application service:', 'running' if c.active('bac-demo') else 'stopped / not managed')
     print('Application release:', c.read_json(current / '.bac-release.json')['commit'][:12] if current else 'not deployed')
+    print('OpenClaw service:', 'starting/running' if c.active('bac-openclaw') else 'stopped / not managed')
     print('Model service:', 'starting/running' if c.active('bac-llm') else 'stopped / not managed')
     print('Selected model:', c.read_json(c.home() / 'llm.json', {}).get('profile', 'none'))
     print('Persistent data:', c.home())

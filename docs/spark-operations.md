@@ -1,8 +1,10 @@
+> The main UI now connects to OpenClaw. After starting the LLM, run `./bac runtime setup`, `./bac runtime start`, and `./bac runtime check`. See [the live runtime guide](live-studio.md). Agent state is preserved across app updates.
+
 # Set up once, review many application updates
 
 Use one checkout of `bacdemokr/tmp` on Spark. Keep large model files and the Python serving environment outside that checkout. Application updates never run model setup or restart the LLM service.
 
-**Scope:** the management commands prepare a separate model server and manage the current UI prototype. The UI's agents and tools are still simulated; installing a model does not connect them to inference. Model startup and performance still require validation on your Spark.
+**Scope:** these commands manage vLLM independently from the app. The main Agent Studio connects through the separately installed OpenClaw runtime. Model startup, quality and performance still require validation on your Spark.
 
 ## 1. First-time prerequisites
 
@@ -96,7 +98,7 @@ Then open `http://localhost:8080` on the laptop. A direct trusted-LAN preview is
 ./bac app start --host 0.0.0.0 --port 8080
 ```
 
-Open `http://SPARK_IP:8080`. This prototype server has no authentication. LLM serving remains on loopback regardless of the app's host setting.
+Open `http://SPARK_IP:8080`. This workshop server uses browser-session isolation, not user-account authentication. LLM serving remains on loopback regardless of the app's host setting.
 
 ## 4. The everyday review loop
 
@@ -108,7 +110,7 @@ After a new version has been pushed to GitHub, run this from the existing checko
 
 The command fetches `origin/main`, accepts a fast-forward update, builds an immutable application snapshot, switches the current release, and restarts the app if it was running. It then checks that the app reports the expected commit. The LLM stays loaded; its environment, weights and selected profile are not changed. If the app was stopped, the new release is prepared but remains stopped until `./bac app start`.
 
-Refresh the browser to see the new UI. The header's **Build** label shows the deployed commit prefix. Automatic refresh is intentionally avoided because the current prototype stores its in-progress brief and agent customization only in browser memory; a refresh clears that session.
+Refresh the browser to see the new UI. The header's **Build** label shows the deployed commit prefix. Agent Studio saves participants, memory, files and jobs outside application releases. The separate historical rehearsal tabs retain browser-only state. Wait for active missions to finish before updating; interrupted tasks are marked for attention.
 
 No model downloads, Python package installs or GPU warmup happen as part of `./bac update`. A checkout with local edits or diverged commits is rejected; the command does not stash, reset or overwrite those edits.
 
