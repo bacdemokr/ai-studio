@@ -6,6 +6,8 @@ An interactive agent playground: create a persona, try individual skills, then b
 
 ![Skill playground](docs/playground.png)
 
+The interface now uses an NVIDIA-inspired dark theme: neutral panels, green primary actions, compact line icons and matching styles across both crew views. See [visual design](docs/visual-design.md).
+
 ## Run on DGX Spark
 
 Requires Git, Python 3.8+ and a current Chrome, Edge or Firefox browser. No pip packages, Node.js, GPU drivers or model downloads are needed for this prototype.
@@ -72,6 +74,7 @@ Staff includes one presenter per station, one floor assistant per 40 attendees (
 
 - `src/bac-planner.html`: editable UI, styles, planning rules and simulated workflow.
 - `src/playground.html`, `src/playground.css`, `src/playground.js`: skill missions and the agent passport.
+- `src/nvidia-theme.css`: the shared NVIDIA-inspired visual theme.
 - `scripts/build.py`: creates a standalone page without CDN or Codex dependencies.
 - `app/index.html`: generated runnable page; committed for convenient preview.
 - `start.sh` / `scripts/serve.py`: local server using only Python's standard library.

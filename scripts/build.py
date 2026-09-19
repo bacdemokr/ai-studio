@@ -8,8 +8,7 @@ playground = (ROOT / 'src/playground.html').read_text(encoding='utf-8')
 playground = playground.replace('/* PLAYGROUND_CSS */', (ROOT / 'src/playground.css').read_text(encoding='utf-8'))
 playground = playground.replace('/* PLAYGROUND_JS */', (ROOT / 'src/playground.js').read_text(encoding='utf-8'))
 fragment = fragment.replace('<!-- SKILL_PLAYGROUND -->', playground)
-# The inline preview host supplies this decorative icon. Keep the export offline.
-fragment = fragment.replace('<i data-lucide="sprout" aria-hidden="true"></i>', '<span aria-hidden="true">B</span>')
+fragment = fragment.replace('<!-- NVIDIA_THEME -->', '<style>\n' + (ROOT / 'src/nvidia-theme.css').read_text(encoding='utf-8') + '\n</style>')
 page = '''<!doctype html>
 <html lang="en">
 <head>
@@ -19,9 +18,8 @@ page = '''<!doctype html>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <title>BaC Crew — Agent Playground</title>
 <style>
-:root{color-scheme:light dark;background:light-dark(#edf1eb,#111816)}
-body{margin:0;padding:24px;max-width:1440px;margin-inline:auto}
-@media(max-width:600px){body{padding:8px}}
+:root{color-scheme:dark;background:#0c0c0c}
+body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 </style>
 </head><body>
 '''+fragment+'''

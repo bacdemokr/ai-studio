@@ -3,6 +3,13 @@
   const app = document.getElementById('bac-planner');
   const el = id => root.querySelector('#pg-' + id);
   const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const iconPaths = {
+    weather:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/>',
+    search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/>',
+    telegram:'<path d="m21 3-7 18-4-7-7-4 18-7ZM10 14 21 3"/>',
+    memory:'<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4"/><rect x="10" y="10" width="4" height="4"/>',
+  };
+  const icon = id => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'+iconPaths[id]+'</svg>';
   const skills = [
     {id:'weather', title:'Weather lookout', subtitle:'Read data. Make a plan.', symbol:'☀', tone:'sand', description:'Check a practice forecast, then suggest what to bring.'},
     {id:'search', title:'Web scout', subtitle:'Search. Compare. Explain.', symbol:'⌕', tone:'blue', description:'Inspect three prepared results and compare what each one contributes.'},
@@ -37,7 +44,7 @@
   }
   function render() {
     el('loadout').innerHTML = skills.map(s => `<label><input type="checkbox" data-equip="${s.id}" ${state.equipped.has(s.id)?'checked':''}>${s.title}</label>`).join('');
-    el('missions').innerHTML = skills.map(s => `<button class="pg-mission" data-mission="${s.id}" aria-pressed="${state.skill===s.id}" style="--tone:var(--${s.tone})"><span class="pg-symbol" aria-hidden="true">${s.symbol}</span><strong>${s.title}</strong><span class="quiet">${s.subtitle}</span></button>`).join('');
+    el('missions').innerHTML = skills.map(s => `<button class="pg-mission" data-mission="${s.id}" aria-pressed="${state.skill===s.id}" style="--tone:var(--${s.tone})"><span class="pg-symbol" aria-hidden="true">${icon(s.id)}</span><strong>${s.title}</strong><span class="quiet">${s.subtitle}</span></button>`).join('');
     el('mission-kicker').textContent = state.name + ' · SOLO MISSION';
     el('mission-title').textContent = skill().title;
     el('mission-description').textContent = skill().description;
