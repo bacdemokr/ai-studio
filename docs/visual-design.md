@@ -8,7 +8,7 @@ This prototype uses a local theme informed by the public [NVIDIA Build interface
 - NVIDIA green (`#76b900`) on primary actions, selected tabs, active missions and completed execution steps.
 - White headings, readable gray supporting text and amber for blocked requests or pending decisions.
 - Small, consistent corner radii, thin borders and simple line icons.
-- A shared treatment across the skill playground, agent onboarding, crew village, progress board and artifacts.
+- A shared treatment across the skill playground, agent onboarding, Agent campus, Mission control and artifacts.
 - Robot characters with graphite bodies and green eyes, preserving the approachable agent identities.
 - A fixed dark appearance so the demo is consistent across host OS themes.
 
@@ -18,14 +18,14 @@ The font stack uses locally available NVIDIA Sans, then Arial, Helvetica and a g
 
 `src/nvidia-theme.css` contains the shared theme. It is embedded after the layout styles by `scripts/build.py`, keeping the standalone preview offline. The simple skill icons are inline SVG in `src/playground.js`.
 
-After making a change, run `python3 scripts/build.py`. Inspect both A/C views, onboarding and the playground at desktop and mobile widths. Color alone should not convey a task's state; retain the existing status labels and access explanations.
+After making a change, run `python3 scripts/build.py`. Inspect Agent campus and Mission control, onboarding and the playground at desktop and mobile widths. Color alone should not convey a task's state; retain the existing status labels and access explanations.
 
 The current update adds a real Three.js renderer and two local browser tools. Model inference, external tools and OpenShell enforcement remain separate integration work. The renderer is bundled in the standalone HTML, alongside its MIT license in the source tree.
 
 ## Crew views
 
-The 3D campus emphasizes agent identity and the progress board emphasizes task status. They use the same theme and shared run state.
+Agent campus emphasizes agent identity and Mission control emphasizes task status. They use the same theme and shared run state.
 
-![A — 3D campus](agent-campus.png)
+![Agent campus](agent-campus.png)
 
-![C — Progress board](progress-board.png)
+![Mission control](progress-board.png)

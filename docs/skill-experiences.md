@@ -32,7 +32,7 @@ No tool in the current preview makes an external request. The practice permissio
 
 The initial screen is a real WebGL campus with Event HQ, Demo Studio, Operations, Marketing, Review, a shared-brief hub and an access gate. Robots walk and carry a small document during scripted handoffs. Click a robot or a roster button to inspect the role's persona, skills, task and access. Drag to orbit, scroll to zoom, or pause scene motion.
 
-Run the crew to advance the same planner state used by the C progress board. It stops at a resource shortage and at the simulated delivery boundary. Agent onboarding updates the role and passport in both views. This is not independent model reasoning; moving robots do not imply that an LLM or OpenShell is running.
+Run the crew to advance the same planner state used by Mission control. It stops at a resource shortage and at the simulated delivery boundary. Agent onboarding updates the role and passport in both views. This is not independent model reasoning; moving robots do not imply that an LLM or OpenShell is running.
 
 The Data analyst and Poster studio tiles lead to actual local tools. Their completion events appear in the campus evidence feed; solo skill runs do not currently move a character to a separate skill station. All work is local to one browser session.
 

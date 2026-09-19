@@ -11,7 +11,7 @@ The default screen now renders a real WebGL workspace using bundled [Three.js r1
 3. **Run the crew** starts the current form's brief (Zurich / English by default). Handoffs carry a small document from one role's workstation toward another. The evidence feed and phase strip come from the same planner state.
 4. At the default resource shortage, choose more event time or pending extra equipment. The shared brief and marketing assumptions update. Autoplay resumes after that decision.
 5. At the delivery gate, explicitly simulate approval or keep drafts local. Neither action sends a real message. Autoplay never grants this decision.
-6. Open the C progress board, then use **A · 3D campus** to come back. Inspect shared deliverables to see the generated planning templates.
+6. Open **Mission control**, then use **Agent campus** to come back. Inspect shared deliverables to see the generated planning templates.
 7. Try **Data analyst** with your own `topic,attendees` CSV, or **Poster studio** with the current brief. Download the actual Markdown report or PNG.
 
 ## What the visuals mean

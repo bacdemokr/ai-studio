@@ -24,7 +24,7 @@ Ask the agent to remember a preference. Open Memory to inspect the actual file, 
 
 Launch a BaC in Zurich, Europe / EMEA, in English. Let the attendee change attendance, duration and group/session sizes. Their agent becomes the event lead. Nova designs the participant experience; Atlas explains deterministic device/staff counts; Momo uses those outputs for invitation copy; Pico reviews the combined plan.
 
-Open A to see personalities and movement. Switch to C to inspect dependencies and completed deliverables. Deliberately enter too few devices. The server stops before marketing; the attendee can plan additional equipment (still unconfirmed) or cancel and revise the brief. The review calls out missing dates/venue/registration links.
+Open Agent campus to see personalities and movement. Switch to Mission control to inspect dependencies and completed deliverables. Deliberately enter too few devices. The server stops before marketing; the attendee can plan additional equipment (still unconfirmed) or cancel and revise the brief. The review calls out missing dates/venue/registration links.
 
 Explain the value in concrete terms: each role has a clear responsibility, its own context, and an output another role can inspect. The reviewer can catch inconsistencies. A single short task does not need a crew; a coordinated plan benefits from explicit dependencies. This implementation runs sequentially on one LLM, so it does not promise faster execution from concurrency.
 

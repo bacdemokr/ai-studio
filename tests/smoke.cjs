@@ -89,7 +89,7 @@ const { chromium } = require('playwright');
     assert.match(await page.locator('[data-out="form-error"]').innerText(), /100%/);
     assert.deepEqual(errors, []);
     assert.deepEqual(externalRequests, [], 'The standalone application must not need external resources');
-    console.log('PASS: defaults, sizing, capacity recovery, shared A/C views, approvals and denials, onboarding, localization, validation, responsive layouts and offline resources.');
+    console.log('PASS: defaults, sizing, capacity recovery, shared campus and mission-control views, approvals and denials, onboarding, localization, validation, responsive layouts and offline resources.');
   } finally {
     await browser.close();
   }
