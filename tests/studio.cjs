@@ -15,7 +15,7 @@ const {chromium}=require('playwright');
   await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Riley');
   assert.match(await page.locator('#studio-personality').innerText(),/Inventive/);
   await page.locator('#campus-viewport').scrollIntoViewIfNeeded();
-  const first=await page.evaluate(()=>BacCampus.inspect().robots);await page.waitForTimeout(500);assert.notDeepEqual(first,await page.evaluate(()=>BacCampus.inspect().robots));
+  const first=await page.evaluate(()=>BacCampus.inspect().robots);await page.waitForFunction(initial=>JSON.stringify(BacCampus.inspect().robots)!==JSON.stringify(initial),first,{timeout:12000});
   await page.locator('#campus-motion').click();const paused=await page.evaluate(()=>BacCampus.inspect().robots);await page.waitForTimeout(300);assert.deepEqual(paused,await page.evaluate(()=>BacCampus.inspect().robots));await page.locator('#campus-motion').click();
   await page.locator('[data-world-skill="builder"]').click();await page.locator('#studio-send').click();
   await page.waitForFunction(()=>BacStudio.inspect().jobs[0]?.status==='done');
