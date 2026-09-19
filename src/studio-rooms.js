@@ -1,7 +1,7 @@
 // Three places in one studio: creation, a growing personal collection, and crew work.
 const appearanceColors={green:'#76b900',cyan:'#55bfff',amber:'#f4b34f',coral:'#ff8873',violet:'#b49aff',ice:'#cbddea'};
 const roomCopy={
-  workshop:['WORKSHOP / CREATE & CONNECT','A personality you can see.','Choose a body, a personality and useful skills. Watch your teammate take shape.'],
+  workshop:['ONBOARDING / CREATE & CONNECT','A personality you can see.','Choose a body, a personality and useful skills. Watch your teammate take shape.'],
   lounge:['AGENT LOUNGE / YOUR COLLECTION','Your people. Your possibilities.','Every agent you create gets a place here. Select one to talk, teach it a skill or give it a mission.'],
   mission:['MISSION ROOM / READY-MADE CREW','Different strengths. One shared brief.','Five specialists, ready to work. The preset crew runs without OpenShell restrictions.'],
   policies:['POLICIES / PERSONAL AGENT ACCESS','Useful skills. Deliberate access.','Choose the boundaries for your own agents. Inspect what is approved and what OpenShell actually enforces.']
@@ -53,7 +53,7 @@ function renderRoomVisibility(){
   el('campus-tab').setAttribute('aria-pressed',!board);el('board-tab').setAttribute('aria-pressed',board);
   const action=el('room-action');action.hidden=workshop&&!data.profile;action.textContent=mission?'Launch a crew mission ↗':lounge?'＋ Create an agent':'Back to my lounge ↗';
   document.getElementById('campus-roster').hidden=!mission;
-  document.getElementById('campus-location').textContent=workshop?'WORKSHOP / LIVE APPEARANCE PREVIEW':lounge?'YOUR LOUNGE / '+(data.agents?.length||0)+' AGENTS':document.getElementById('campus-location').textContent;
+  document.getElementById('campus-location').textContent=workshop?'ONBOARDING / LIVE APPEARANCE PREVIEW':lounge?'YOUR LOUNGE / '+(data.agents?.length||0)+' AGENTS':document.getElementById('campus-location').textContent;
   if(workshop)document.getElementById('campus-motion-status').textContent='Your draft · choose a look and bring it to life';
   if(lounge)document.getElementById('campus-motion-status').textContent=data.agents?.length?'Your actual agents · select a teammate to open its workspace':'A place for every agent you create';
 }

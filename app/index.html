@@ -293,7 +293,6 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 @media(max-width:560px){.studio-policies{margin:0 12px 24px}.studio-policy-toolbar{flex-direction:column;align-items:stretch;gap:12px}.studio-permission-grid{grid-template-columns:1fr}.studio-permission p,.studio-permission ul{min-height:0}.studio-rooms button small{min-height:0}.studio-policy-evidence .studio-section-heading{gap:10px;align-items:flex-start;flex-direction:column}}
 
 /* A shared floor plan, with doors and a compact map inside the 3D viewport. */
-#studio-rooms button[data-room=workshop]:after,#studio-rooms button[data-room=lounge]:after{content:'';position:absolute;right:-13px;top:50%;height:2px;width:12px;background:#607d91;pointer-events:none}
 .world-navigation{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:4}
 #agent-campus .world-navigation button{pointer-events:auto;font-family:inherit;cursor:pointer}
 #agent-campus .world-overview-button{position:absolute;top:64px;left:20px;padding:9px 12px;background:#12202ded;color:#d8e8f4;border:1px solid #557185;border-radius:4px;font-size:13px;box-shadow:0 3px 15px #0003}
@@ -301,9 +300,12 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 .world-journey{position:absolute;left:50%;top:112px;transform:translateX(-50%);max-width:90%;padding:9px 16px;border:1px solid #4e6b80;border-radius:4px;background:#0f1b28ed;color:#d3e6f5;font-size:13px;line-height:1.5;text-align:center}
 .world-room-map{position:absolute;left:18px;bottom:18px;padding:12px 14px;border:1px solid #3e576b;border-radius:5px;background:#0d1824ed;box-shadow:0 6px 20px #0004;max-width:calc(100% - 36px)}
 .world-map-caption{display:block;font-size:11px;letter-spacing:1.5px;color:#95adbf;margin-bottom:10px}
-.world-room-map>div{display:flex;align-items:center;gap:20px}
-#agent-campus .world-room-map button{position:relative;display:flex;align-items:center;gap:8px;border:0;background:none;color:#a7bdce;padding:0;font-size:12px;white-space:nowrap}
-.world-room-map button:not(:last-child):after{content:'';position:absolute;left:calc(100% + 4px);width:12px;height:1px;background:#537088}
+.world-room-map>div{position:relative;width:280px;height:62px}
+.world-room-map svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;fill:none;stroke:#537088;stroke-width:1.5}
+#agent-campus .world-room-map [data-world-room=lounge]{left:0;top:0}
+#agent-campus .world-room-map [data-world-room=mission]{left:152px;top:0}
+#agent-campus .world-room-map [data-world-room=workshop]{left:0;top:38px}
+#agent-campus .world-room-map button{position:absolute;display:flex;align-items:center;gap:8px;border:0;background:#0d1824;color:#a7bdce;padding:0 6px 0 0;font-size:12px;white-space:nowrap}
 .world-room-map i{display:grid;place-items:center;width:23px;height:23px;border:1px solid #5f7d93;border-radius:50%;font-size:11px;font-style:normal;color:#a7c0d3}
 #agent-campus .world-room-map button.selected{color:#edffda}.world-room-map .selected i{background:#76b900;border-color:#96d52b;color:#101b0a;box-shadow:0 0 12px #76b90040}
 #agent-campus .world-doorway{position:absolute;transform:translate(-50%,-100%);background:#122131ef;border:1px solid #6e94ac;border-top:2px solid #96d52b;border-radius:4px;padding:8px 11px;color:#ecf6ff;text-align:left;white-space:nowrap;box-shadow:0 5px 16px #0005}
@@ -313,7 +315,7 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 .world-campus-room>span{display:block;font-size:11px;color:#a7bfce;margin-bottom:7px}.world-campus-room>b{font-size:16px}
 #agent-campus .world-campus-room[aria-current=location]{border-color:#96d52b;background:#1b2c23f5}
 #agent-campus .world-campus-room:hover{border-color:#96d52b}
-@media(max-width:700px){#studio-rooms button[data-room]:after{display:none}.world-room-map{left:10px;bottom:10px;max-width:calc(100% - 20px);padding:9px 10px}.world-room-map>div{gap:16px}.world-room-map button:not(:last-child):after{width:9px}.world-room-map i{display:none}#agent-campus .world-room-map button{font-size:11px}.world-map-caption{font-size:11px;margin-bottom:8px}#agent-campus .world-overview-button{left:12px;top:76px;padding:7px 9px;font-size:12px}.world-journey{top:115px;font-size:12px}.world-doorway>span{display:none}#agent-campus .world-doorway{padding:6px 8px}.world-doorway b{font-size:11px}.world-doorway i{margin-left:4px}#agent-campus .world-campus-room{padding:8px 9px}.world-campus-room>span{display:none}.world-campus-room>b{font-size:11px}}
+@media(max-width:700px){#studio-rooms button[data-room]:after{display:none}.world-room-map{left:10px;bottom:10px;max-width:calc(100% - 20px);padding:9px 10px}.world-room-map>div{width:230px;height:51px}.world-room-map .world-map-caption{display:none}#agent-campus .world-room-map [data-world-room=mission]{left:124px}#agent-campus .world-room-map [data-world-room=workshop]{top:31px}.world-room-map i{width:19px;height:19px;font-size:10px}#agent-campus .world-room-map button{font-size:11px}.world-map-caption{font-size:11px;margin-bottom:8px}#agent-campus .world-overview-button{left:12px;top:76px;padding:7px 9px;font-size:12px}.world-journey{top:115px;font-size:12px}.world-doorway>span{display:none}#agent-campus .world-doorway{padding:6px 8px}.world-doorway b{font-size:11px}.world-doorway i{margin-left:4px}#agent-campus .world-campus-room{padding:8px 9px}.world-campus-room>span{display:none}.world-campus-room>b{font-size:11px}}
 @media(prefers-reduced-motion:reduce){#agent-campus .world-doorway:hover{transform:translate(-50%,-100%)}}
 @media(max-width:700px){.world-navigation[data-overview=true][data-travelling=false] .world-journey{display:none}#agent-campus .world-overview-button{left:auto;right:12px;font-size:0}#agent-campus .world-overview-button:after{content:'⌑ Studio map';font-size:12px}#agent-campus .world-overview-button[aria-pressed=true]:after{content:'↙ Return to room'}}
 
@@ -344,14 +346,14 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 </style>
 <div id="studio-journey" class="studio-journey"><span><b>01</b> Make it yours</span><i>→</i><span><b>02</b> Give it a mission</span><i>→</i><span><b>03</b> Build a crew</span><button id="studio-runtime" class="studio-runtime">Checking your runtime…</button></div>
 <nav id="studio-rooms" class="studio-rooms" aria-label="Studio rooms">
-  <button data-room="workshop" aria-pressed="true"><span class="room-symbol">⌘</span><span><b>Workshop</b><small>Create &amp; connect</small></span><i>01</i></button>
+  <button data-room="workshop" aria-pressed="true"><span class="room-symbol">⌘</span><span><b>Onboarding</b><small>Create &amp; connect</small></span><i>01</i></button>
   <button data-room="lounge" aria-pressed="false"><span class="room-symbol">◈</span><span><b>Agent lounge</b><small id="studio-lounge-count">Your personal agents</small></span><i>02</i></button>
-  <button data-room="mission" aria-pressed="false"><span class="room-symbol">◇</span><span><b>Mission room</b><small>Bring your crew together</small></span><i>03</i></button>
+  <button data-room="mission" aria-pressed="false"><span class="room-symbol">◇</span><span><b>BaC mission room</b><small>Bring your crew together</small></span><i>03</i></button>
   <button data-room="policies" aria-pressed="false"><span class="room-symbol">⛨</span><span><b>Policies</b><small>OpenShell &amp; approvals</small></span><i>04</i></button>
 </nav>
-<div id="studio-room-heading" class="studio-room-heading"><div><span class="studio-kicker" id="studio-room-kicker">WORKSHOP / CREATE &amp; CONNECT</span><h3 id="studio-room-title">A personality you can see.</h3><p id="studio-room-description">Choose a body, a personality and useful skills. Watch your teammate take shape.</p></div><button class="studio-secondary" id="studio-room-action" hidden></button></div>
+<div id="studio-room-heading" class="studio-room-heading"><div><span class="studio-kicker" id="studio-room-kicker">ONBOARDING / CREATE &amp; CONNECT</span><h3 id="studio-room-title">A personality you can see.</h3><p id="studio-room-description">Choose a body, a personality and useful skills. Watch your teammate take shape.</p></div><button class="studio-secondary" id="studio-room-action" hidden></button></div>
 <div class="studio-viewbar"><div><button id="studio-campus-tab" aria-pressed="true">◈ 3D crew</button><button id="studio-board-tab" aria-pressed="false">▤ Mission control</button></div><div class="studio-view-caption">PERSONAS &amp; HANDOFFS</div></div>
-<nav class="studio-safety-bar" id="studio-safety-bar" aria-label="Workshop controls"><span>YOU STAY IN CONTROL</span><button id="studio-security">◇ Security lab</button><button id="studio-help">Help &amp; fallback</button><button id="studio-reset">Reset mission board</button></nav>
+<nav class="studio-safety-bar" id="studio-safety-bar" aria-label="Studio controls"><span>YOU STAY IN CONTROL</span><button id="studio-security">◇ Security lab</button><button id="studio-help">Help &amp; fallback</button><button id="studio-reset">Reset mission board</button></nav>
 <section id="studio-collection" class="studio-collection" hidden aria-label="My agents"><div class="studio-collection-heading"><div><span class="studio-kicker">MY AGENTS</span><p>Different personalities. One shared model.</p></div><button id="studio-add-agent" class="studio-secondary">＋ Create an agent</button></div><div id="studio-agent-list" class="studio-agent-list"></div><small class="studio-muted" id="studio-collection-note">Select an agent to open its own conversation, memory and files.</small></section>
 <div id="studio-board" hidden><div class="studio-board-intro"><span class="studio-kicker">MISSION CONTROL</span><h3>Different roles. Shared evidence.</h3><p>Each specialist receives the brief and the previous deliverables. The reviewer checks the whole plan.</p><button class="studio-secondary" id="studio-board-shared">Inspect shared state &amp; handoffs ↗</button></div><div id="studio-lanes"></div></div>
 <aside id="studio-workshop"><div class="studio-passport-head"><span class="studio-kicker">DESIGN YOUR AGENT</span><span class="studio-spark">✦</span></div>
@@ -78832,7 +78834,7 @@ function createCharacter(avatar=avatarDefaults[0]){
     const points=[new THREE.Vector3(x,.073,z+1.05),new THREE.Vector3(x,.073,.4),new THREE.Vector3(0,.073,.4)];
     const route=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:colors[routes.length],transparent:true,opacity:.2}));missionRoom.add(route);routes.push(route);
   });
-  const brand=sign(missionRoom,'NVIDIA',0,.075,5.5,3.25,.72,'#aebdce');brand.rotation.x=-Math.PI/2;
+  const brand=sign(missionRoom,'NVIDIA',-3.5,.075,5.5,2.8,.62,'#aebdce');brand.rotation.x=-Math.PI/2;
   const robots=[];const hitTargets=[];const labels=[];
   positions.forEach((_,i)=>{
     const rig=createCharacter(avatarDefaults[i]),robot=rig.group;robot.position.copy(homes[i]);missionRoom.add(robot);
@@ -78885,12 +78887,12 @@ const roomCameras={mission:[.43,.76,1],lounge:[.43,.76,1],workshop:[.34,.64,1]};
 function floor(parent,width,depth){box(parent,0,-.3,0,width,.55,depth,0x151b23);box(parent,0,-.012,0,width-.12,.05,depth-.12,0x26323f);box(parent,0,-.13,depth/2+.01,width-.45,.035,.02,0x76b900,true);for(let x=-width/2+1;x<width/2;x++)box(parent,x,.019,0,.012,.006,depth-.3,0x374654);for(let z=-depth/2+1;z<depth/2;z++)box(parent,0,.019,z,width-.3,.006,.012,0x374654);}
 floor(loungeRoom,18,12.6);
 box(loungeRoom,0,.65,-6.05,18,1.35,.18,0x1e2732);
-for(const [z,length] of [[-2.1,7.8],[5.1,1.8]])box(loungeRoom,-8.85,.65,z,.15,1.35,length,0x1e2732);
+box(loungeRoom,-8.85,.65,0,.15,1.35,12,0x1e2732);
 box(loungeRoom,0,1.36,-6.05,18,.055,.24,0x63778b);
-for(const [z,length] of [[-2.1,7.8],[5.1,1.8]])box(loungeRoom,-8.85,1.36,z,.22,.055,length,0x63778b);
+box(loungeRoom,-8.85,1.36,0,.22,.055,12,0x63778b);
 box(loungeRoom,0,2.0,-5.97,7.0,2.0,.14,0x0c121b);sign(loungeRoom,'YOUR AGENT LOUNGE',0,2.42,-5.86,6.2,.5,'#f2f6fb');sign(loungeRoom,'INDIVIDUAL MINDS. SHARED ENGINE.',0,1.74,-5.85,6.0,.27,'#9eafc1');
 for(const x of [-6.4,6.4]){box(loungeRoom,x,.45,-4.65,3.1,.7,.94,0x334453);box(loungeRoom,x,.9,-5.07,3.1,.7,.17,0x45596c);box(loungeRoom,x-1.5,.7,-4.65,.15,.7,.95,0x45596c);box(loungeRoom,x+1.5,.7,-4.65,.15,.7,.95,0x45596c);}
-const loungeBrand=sign(loungeRoom,'BUILD A CLAW',0,.04,5.65,3.2,.38,'#8fabc2');loungeBrand.rotation.x=-Math.PI/2;
+const loungeBrand=sign(loungeRoom,'BUILD A CLAW',-4,.04,5.65,3.2,.38,'#8fabc2');loungeBrand.rotation.x=-Math.PI/2;
 const residentPods=new THREE.Group();loungeRoom.add(residentPods);
 function clearGeometry(parent){const shared=new Set([boxGeometry,robotHeadGeometry,robotSphereGeometry,robotLensGeometry]),geometries=new Set();parent.traverse(o=>{if(o.geometry&&!shared.has(o.geometry))geometries.add(o.geometry);});geometries.forEach(g=>g.dispose());parent.clear();}
 // Ambient personality vignettes, not model responses or evidence of tool use.
@@ -79045,7 +79047,7 @@ function animateLounge(dt){
 }
 
 floor(workshopRoom,12,8.5);
-box(workshopRoom,0,.725,-4.16,12,1.45,.17,0x17222e);box(workshopRoom,0,1.46,-4.16,12,.035,.20,0x63778b);
+for(const x of [-3.6,3.6]){box(workshopRoom,x,.725,-4.16,4.8,1.45,.17,0x17222e);box(workshopRoom,x,1.46,-4.16,4.8,.035,.20,0x63778b);}
 cylinder(workshopRoom,0,.14,.5,1.85,.25,0x182432,64);cylinder(workshopRoom,0,.29,.5,1.65,.08,0x5e7184,64);
 const draftRing=ring(workshopRoom,0,.345,.5,1.57,0x76b900);
 for(const x of [-4.5,4.5]){box(workshopRoom,x,.75,-2.2,1.25,1.5,.85,0x314356);for(let y=.25;y<1.4;y+=.22)box(workshopRoom,x,y,-1.765,1.0,.065,.02,0x768d9f);box(workshopRoom,x+.42,1.32,-1.74,.08,.08,.02,0x76b900,true);}
@@ -79066,18 +79068,18 @@ setDraft(draftProfile);
 
   // One persistent floor plan. Room changes move the camera, never swap worlds.
 const studioRooms={
-  workshop:{group:workshopRoom,x:-22,title:'Workshop',verb:'Create & connect',number:'01'},
-  lounge:{group:loungeRoom,x:0,title:'Agent lounge',verb:'Meet your agents',number:'02'},
-  mission:{group:missionRoom,x:24,title:'Mission room',verb:'Work as a crew',number:'03'}
+  workshop:{group:workshopRoom,x:0,z:18,title:'Onboarding',verb:'Create & connect',number:'01'},
+  lounge:{group:loungeRoom,x:0,z:0,title:'Agent lounge',verb:'Meet your agents',number:'02'},
+  mission:{group:missionRoom,x:24,z:0,title:'BaC mission room',verb:'Work as a crew',number:'03'}
 };
-Object.entries(studioRooms).forEach(([id,entry])=>{entry.group.position.x=entry.x;entry.group.visible=true;entry.group.userData.studioRoom=id;});
+Object.entries(studioRooms).forEach(([id,entry])=>{entry.group.position.set(entry.x,0,entry.z);entry.group.visible=true;entry.group.userData.studioRoom=id;});
 let overview=false,journey=null,viewHalfHeight=0;
 const corridors=[],doorways=[],overviewLabels=[];
 const navigationLayer=document.createElement('div');navigationLayer.className='world-navigation';viewport.append(navigationLayer);
 const overviewButton=document.createElement('button');overviewButton.type='button';overviewButton.className='world-overview-button';overviewButton.dataset.worldOverview='';overviewButton.textContent='⌑ See the whole studio';overviewButton.setAttribute('aria-pressed','false');navigationLayer.append(overviewButton);
 const journeyNote=document.createElement('div');journeyNote.className='world-journey';journeyNote.setAttribute('role','status');journeyNote.setAttribute('aria-live','polite');journeyNote.hidden=true;navigationLayer.append(journeyNote);
 const roomMap=document.createElement('nav');roomMap.className='world-room-map';roomMap.setAttribute('aria-label','Connected studio rooms');
-roomMap.innerHTML='<span class="world-map-caption">ONE STUDIO</span><div>'+Object.entries(studioRooms).map(([id,r])=>'<button type="button" data-world-room="'+id+'"><i>'+r.number+'</i><span>'+r.title+'</span></button>').join('')+'</div>';
+roomMap.innerHTML='<span class="world-map-caption">STUDIO MAP</span><div><svg viewBox="0 0 280 62" aria-hidden="true"><path d="M12 12 H164 V50 H12 Z"/></svg>'+['lounge','mission','workshop'].map(id=>'<button type="button" data-world-room="'+id+'"><i>'+studioRooms[id].number+'</i><span>'+(id==='mission'?'BaC':studioRooms[id].title)+'</span></button>').join('')+'</div>';
 navigationLayer.append(roomMap);
 function goToRoom(next){
   const restoreFocus=navigationLayer.contains(document.activeElement);
@@ -79087,31 +79089,55 @@ function goToRoom(next){
 roomMap.onclick=e=>{const button=e.target.closest('[data-world-room]');if(button)goToRoom(button.dataset.worldRoom);};
 overviewButton.onclick=()=>overview?goToRoom(room):showOverview();
 
-// Low railings and continuous green floor lights make the connections tangible.
-for(const [from,to,start,end] of [['workshop','lounge',-16,-9],['lounge','mission',9,15]]){
-  const hall=new THREE.Group();scene.add(hall);
-  const x=(start+end)/2,w=end-start;
-  box(hall,x,-.18,3,w,.36,2.4,0x172330);box(hall,x,.015,3,w,.04,2.25,0x35485a);
-  for(const z of [1.86,4.14]){
-    box(hall,x,.055,z,w,.035,.045,0x76b900,true);
-    box(hall,x,.48,z,w,.055,.065,0x617b90);
-    for(const post of [start+.2,end-.2])box(hall,post,.24,z,.055,.48,.055,0x617b90);
-  }
-  for(let p=start+.65;p<end;p+=1.05)box(hall,p,.043,3,.38,.015,.1,0x92b4c9);
-  const pulse=box(hall,start,.11,3,.48,.035,1.7,0x96d52b,true);pulse.visible=false;
-  corridors.push({from,to,start,end,pulse});
+// Each pair has its own physical path. The third bridge bends around the courtyard.
+const connections=[
+  {from:'lounge',to:'mission',points:[[9,3],[15,3]]},
+  {from:'lounge',to:'workshop',points:[[0,6.3],[0,13.75]]},
+  {from:'workshop',to:'mission',points:[[6,21],[24,21],[24,6.3]]}
+];
+function hallRail(parent,x,z,length){
+  box(parent,x,.055,z,length,.035,.045,0x76b900,true);
+  box(parent,x,.48,z,length,.055,.065,0x617b90);
+  for(let p=-length/2+.12;p<length/2;p+=Math.max(.25,(length-.24)/Math.max(1,Math.ceil(length/4))))box(parent,x+p,.24,z,.055,.48,.055,0x617b90);
 }
-function doorway(from,to,x){
-  const group=new THREE.Group();group.position.set(x,0,3);studioRooms[from].group.add(group);group.userData.destination=to;
+for(const connection of connections){
+  const {points}=connection,segments=[];let length=0;
+  for(let i=1;i<points.length;i++){
+    const [sx,sz]=points[i-1],[ex,ez]=points[i],distance=Math.hypot(ex-sx,ez-sz),angle=-Math.atan2(ez-sz,ex-sx);
+    const hall=new THREE.Group();hall.position.set(sx,0,sz);hall.rotation.y=angle;scene.add(hall);
+    // Stop at the turn platform, leaving the inside of the bend open to walk through.
+    const start=i>1?1.2:0,end=distance-(i<points.length-1?1.2:0),width=end-start,x=(start+end)/2;
+    box(hall,x,-.18,0,width,.36,2.4,0x172330);box(hall,x,.015,0,width,.04,2.25,0x35485a);
+    for(const z of [-1.14,1.14])hallRail(hall,x,z,width);
+    for(let p=start+.6;p<end-.2;p+=1.05)box(hall,p,.043,0,.38,.015,.1,0x92b4c9);
+    segments.push({sx,sz,ex,ez,distance,offset:length,angle});length+=distance;
+  }
+  for(let i=1;i<points.length-1;i++){
+    const [x,z]=points[i],corner=new THREE.Group();corner.position.set(x,0,z);scene.add(corner);
+    box(corner,0,-.18,0,2.4,.36,2.4,0x172330);box(corner,0,.015,0,2.25,.04,2.25,0x35485a);
+    // The incoming/outgoing directions identify the two open sides of this junction.
+    const open=points.filter((_,j)=>j===i-1||j===i+1).map(([px,pz])=>[Math.sign(px-x),Math.sign(pz-z)]);
+    for(const [dx,dz] of [[-1,0],[1,0],[0,-1],[0,1]])if(!open.some(([ox,oz])=>dx===ox&&dz===oz)){
+      const edge=new THREE.Group();corner.add(edge);edge.rotation.y=dx?Math.PI/2:0;hallRail(edge,0,dx?dx*1.14:dz*1.14,2.4);
+    }
+    cylinder(corner,0,.045,0,.12,.025,0x92b4c9,16);
+  }
+  const pulse=box(scene,0,.11,0,.48,.035,1.7,0x96d52b,true);pulse.visible=false;
+  corridors.push({...connection,segments,length,pulse});
+}
+function doorway(from,to,x,z,rotation=0){
+  const group=new THREE.Group();group.position.set(x,0,z);group.rotation.y=rotation;studioRooms[from].group.add(group);group.userData.destination=to;
   box(group,0,.055,0,.65,.1,2.35,0x3d5265);
   for(const z of [-1.1,1.1]){box(group,0,1.1,z,.18,2.2,.18,0x627e93);box(group,.105,1.14,z,.03,1.94,.045,0x96d52b,true);}
   box(group,0,2.2,0,.22,.18,2.4,0x344d60);box(group,.13,2.2,0,.026,.09,2.04,0x96d52b,true);
   const node=document.createElement('button');node.type='button';node.className='world-doorway';node.dataset.doorwayFrom=from;node.dataset.worldRoom=to;
-  node.innerHTML='<span>WALK THROUGH</span><b>'+studioRooms[to].title+' <i>'+(studioRooms[to].x>studioRooms[from].x?'→':'←')+'</i></b>';
+  node.innerHTML='<span>WALK THROUGH</span><b>'+studioRooms[to].title+' <i>↗</i></b>';
   node.setAttribute('aria-label','Walk to '+studioRooms[to].title);node.onclick=()=>goToRoom(to);navigationLayer.append(node);
   doorways.push({from,to,group,node,point:new THREE.Vector3(0,2.55,0)});
 }
-doorway('workshop','lounge',5.8);doorway('lounge','workshop',-8.8);doorway('lounge','mission',8.8);doorway('mission','lounge',-8.8);
+doorway('lounge','mission',8.8,3);doorway('mission','lounge',-8.8,3);
+doorway('lounge','workshop',0,6.1,Math.PI/2);doorway('workshop','lounge',0,-4.05,Math.PI/2);
+doorway('workshop','mission',5.8,3);doorway('mission','workshop',0,6.1,Math.PI/2);
 Object.entries(studioRooms).forEach(([id,r])=>{
   const node=document.createElement('button');node.type='button';node.className='world-campus-room';node.dataset.worldRoom=id;
   node.innerHTML='<span>'+r.number+' / '+r.verb+'</span><b>'+r.title+' ↗</b>';node.onclick=()=>goToRoom(id);navigationLayer.append(node);overviewLabels.push({id,node,group:r.group});
@@ -79120,8 +79146,8 @@ function roomHeight(id){
   const aspect=viewport.clientWidth/Math.max(1,viewport.clientHeight);
   return id==='workshop'?Math.max(6.8,8/aspect):aspect<1?12.5:aspect<1.5?10.2:8.5;
 }
-function overviewHeight(){return Math.max(12.5,34/(viewport.clientWidth/Math.max(1,viewport.clientHeight)));}
-function roomFocus(id){return new THREE.Vector3(studioRooms[id].x,id==='workshop'?1.0:.25,.6);}
+function overviewHeight(){return Math.max(22,27/(viewport.clientWidth/Math.max(1,viewport.clientHeight)));}
+function roomFocus(id){return new THREE.Vector3(studioRooms[id].x,id==='workshop'?1.0:.25,studioRooms[id].z+.6);}
 function refreshNavigation(){
   navigationLayer.dataset.overview=String(overview);navigationLayer.dataset.travelling=String(!!journey);
   root.dataset.worldOverview=String(overview);root.dataset.worldTravelling=String(!!journey);
@@ -79154,11 +79180,11 @@ function setRoom(next,options={}){
   const previous=room;rememberCamera();room=next;overview=false;
   const [a,e,z]=roomCameras[room];
   journeyNote.textContent=previous===next?'Returning to '+studioRooms[next].title:studioRooms[previous].title+' → '+studioRooms[next].title;
-  travelTo({focus:roomFocus(room),azimuth:a,elevation:e,zoom:z,height:roomHeight(room),overview:false},options.instant);
+  travelTo({focus:roomFocus(room),azimuth:a,elevation:e,zoom:z,height:roomHeight(room),overview:false,from:previous,to:next},options.instant);
 }
 function showOverview(){
   rememberCamera();overview=true;journeyNote.textContent='Opening your connected studio';
-  travelTo({focus:new THREE.Vector3(2,.2,0),azimuth:.08,elevation:.94,zoom:1,height:overviewHeight(),overview:true});
+  travelTo({focus:new THREE.Vector3(12,.2,8),azimuth:.08,elevation:.94,zoom:1,height:overviewHeight(),overview:true});
 }
 function resetNavigation(){
   roomCameras[room]=room==='workshop'?[.34,.64,1]:[.43,.76,1];
@@ -79173,9 +79199,11 @@ function resizeNavigation(){
 function placeDoorway(d){
   positionLabel(d.node,d.group.localToWorld(d.point.clone()));
   const half=d.node.offsetWidth/2,w=viewport.clientWidth,h=viewport.clientHeight;
-  const offset=studioRooms[d.to].x<studioRooms[d.from].x?-42:20;
+  const offset=d.group.position.x<0?-42:d.group.position.x>0?20:0;
   d.node.style.left=Math.max(half+12,Math.min(w-half-12,parseFloat(d.node.style.left)+offset))+'px';
-  d.node.style.top=(w<700?Math.max(116+d.node.offsetHeight,h-96):Math.max(116+d.node.offsetHeight,Math.min(h-94,parseFloat(d.node.style.top))))+'px';
+  // In the short phone preview, keep the rear-door card beside the avatar's face.
+  if(w<700&&h<500&&d.from==='workshop'&&d.to==='lounge')d.node.style.left=(w-half-12)+'px';
+  d.node.style.top=Math.max(116+d.node.offsetHeight,Math.min(h-120,parseFloat(d.node.style.top)))+'px';
 }
 function animateNavigation(now){
   if(journey){
@@ -79193,7 +79221,15 @@ function animateNavigation(now){
     const controlsBottom=Math.max(overviewButton.offsetTop+overviewButton.offsetHeight,journeyNote.offsetHeight?journeyNote.offsetTop+journeyNote.offsetHeight:0);
     r.node.style.top=Math.max(controlsBottom+12+r.node.offsetHeight,parseFloat(r.node.style.top))+'px';
   });
-  corridors.forEach(c=>{c.pulse.visible=!!journey&&!reduced.matches;if(c.pulse.visible)c.pulse.position.x=c.start+((now*.001)%1)*(c.end-c.start);});
+  // Highlight only the bridge for the current trip, in the direction of travel.
+  corridors.forEach(c=>{
+    const target=journey?.target,forward=target?.from===c.from&&target?.to===c.to,backward=target?.from===c.to&&target?.to===c.from;
+    c.pulse.visible=!!journey&&!reduced.matches&&(forward||backward);
+    if(!c.pulse.visible)return;
+    const t=Math.min(1,(now-journey.began)/journey.duration),distance=(forward?t:1-t)*c.length;
+    const s=c.segments.find(s=>distance<=s.offset+s.distance)||c.segments[c.segments.length-1],p=(distance-s.offset)/s.distance;
+    c.pulse.position.set(THREE.MathUtils.lerp(s.sx,s.ex,p),.11,THREE.MathUtils.lerp(s.sz,s.ez,p));c.pulse.rotation.y=s.angle;
+  });
 }
 function navigationTargets(){
   if(overview)return Object.values(studioRooms).map(r=>r.group);
@@ -79206,7 +79242,7 @@ function selectNavigationObject(object){
   }
   return false;
 }
-function navigationInfo(){return {overview,travelling:!!journey,focus:focus.toArray(),rooms:Object.fromEntries(Object.entries(studioRooms).map(([id,r])=>[id,r.group.position.toArray()])),visibleRooms:Object.keys(studioRooms).filter(id=>studioRooms[id].group.visible),doorways:doorways.map(d=>({from:d.from,to:d.to}))};}
+function navigationInfo(){return {overview,travelling:!!journey,focus:focus.toArray(),rooms:Object.fromEntries(Object.entries(studioRooms).map(([id,r])=>[id,r.group.position.toArray()])),visibleRooms:Object.keys(studioRooms).filter(id=>studioRooms[id].group.visible),doorways:doorways.map(d=>({from:d.from,to:d.to})),corridors:corridors.map(c=>({from:c.from,to:c.to,points:c.points,active:c.pulse.visible}))};}
 reduced.addEventListener('change',()=>{if(reduced.matches)finishJourney();});
 focus.copy(roomFocus(room));viewHalfHeight=roomHeight(room);refreshNavigation();
 
@@ -79552,7 +79588,7 @@ el('policies').onclick=async e=>{
   // Three places in one studio: creation, a growing personal collection, and crew work.
 const appearanceColors={green:'#76b900',cyan:'#55bfff',amber:'#f4b34f',coral:'#ff8873',violet:'#b49aff',ice:'#cbddea'};
 const roomCopy={
-  workshop:['WORKSHOP / CREATE & CONNECT','A personality you can see.','Choose a body, a personality and useful skills. Watch your teammate take shape.'],
+  workshop:['ONBOARDING / CREATE & CONNECT','A personality you can see.','Choose a body, a personality and useful skills. Watch your teammate take shape.'],
   lounge:['AGENT LOUNGE / YOUR COLLECTION','Your people. Your possibilities.','Every agent you create gets a place here. Select one to talk, teach it a skill or give it a mission.'],
   mission:['MISSION ROOM / READY-MADE CREW','Different strengths. One shared brief.','Five specialists, ready to work. The preset crew runs without OpenShell restrictions.'],
   policies:['POLICIES / PERSONAL AGENT ACCESS','Useful skills. Deliberate access.','Choose the boundaries for your own agents. Inspect what is approved and what OpenShell actually enforces.']
@@ -79604,7 +79640,7 @@ function renderRoomVisibility(){
   el('campus-tab').setAttribute('aria-pressed',!board);el('board-tab').setAttribute('aria-pressed',board);
   const action=el('room-action');action.hidden=workshop&&!data.profile;action.textContent=mission?'Launch a crew mission ↗':lounge?'＋ Create an agent':'Back to my lounge ↗';
   document.getElementById('campus-roster').hidden=!mission;
-  document.getElementById('campus-location').textContent=workshop?'WORKSHOP / LIVE APPEARANCE PREVIEW':lounge?'YOUR LOUNGE / '+(data.agents?.length||0)+' AGENTS':document.getElementById('campus-location').textContent;
+  document.getElementById('campus-location').textContent=workshop?'ONBOARDING / LIVE APPEARANCE PREVIEW':lounge?'YOUR LOUNGE / '+(data.agents?.length||0)+' AGENTS':document.getElementById('campus-location').textContent;
   if(workshop)document.getElementById('campus-motion-status').textContent='Your draft · choose a look and bring it to life';
   if(lounge)document.getElementById('campus-motion-status').textContent=data.agents?.length?'Your actual agents · select a teammate to open its workspace':'A place for every agent you create';
 }
