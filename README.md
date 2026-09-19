@@ -8,6 +8,21 @@ An interactive agent playground: create a persona, try individual skills, then b
 
 The interface now uses an NVIDIA-inspired dark theme: neutral panels, green primary actions, compact line icons and matching styles across both crew views. See [visual design](docs/visual-design.md).
 
+## Repeated review on Spark
+
+Use the new [Spark setup and update guide](docs/spark-operations.md) to manage the model and app separately. After the one-time prerequisites and Git authentication:
+
+```bash
+./bac llm setup qwen   # once: shared vLLM environment and Qwen weights
+./bac llm start qwen   # background model server (optional while reviewing this UI)
+./bac llm check        # confirm readiness after warmup
+./bac app start       # background app on port 8080
+```
+
+For each later code review, run `./bac update` and refresh the browser. This updates only the app; model files and the running LLM stay in place. `./bac rollback` restores the previous application release. To try Gemma, run `./bac llm setup gemma` once, then `./bac llm start gemma`. To delete only one model, use `./bac llm remove qwen --yes` or `./bac llm remove gemma --yes`.
+
+These commands prepare the model endpoint independently; they do not turn the current simulated UI into live agents. The serving profiles follow the supplied HackMD setup, but actual GPU setup still needs a first verification on Spark.
+
 ## Run on DGX Spark
 
 Requires Git, Python 3.8+ and a current Chrome, Edge or Firefox browser. No pip packages, Node.js, GPU drivers or model downloads are needed for this prototype.
@@ -78,6 +93,7 @@ Staff includes one presenter per station, one floor assistant per 40 attendees (
 - `scripts/build.py`: creates a standalone page without CDN or Codex dependencies.
 - `app/index.html`: generated runnable page; committed for convenient preview.
 - `start.sh` / `scripts/serve.py`: local server using only Python's standard library.
+- `bac`, `scripts/ops_*.py`, `runtime/profiles.json`: independent model lifecycle, app deployment and rollback.
 - `docs/architecture.md`: current behavior and the intended live integration.
 - `docs/skill-experiences.md`: attendee journey, reference implementations and live integration plan.
 - `tests/smoke.cjs`, `tests/playground.cjs`: optional browser smoke tests.
@@ -98,3 +114,9 @@ node tests/playground.cjs
 On Linux, Playwright may also require OS browser libraries (`npx playwright install-deps chromium`). Alternatively set `CHROME_PATH` to an existing Chrome/Chromium executable.
 
 The prototype was validated on macOS Chromium, including the full workflow, four skill missions, both policy choices, invalidation of outdated approvals, onboarding, shared brief updates and small-screen layouts. DGX Spark hardware execution has not yet been verified.
+
+Host-only management tests (no model downloads or systemd changes):
+
+```bash
+python3 -m unittest discover -s tests -p 'test_management.py' -v
+```

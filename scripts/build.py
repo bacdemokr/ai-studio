@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Build the editable UI fragment into a dependency-free standalone page."""
 from pathlib import Path
+from html import escape
+import json
+import os
 
 ROOT = Path(__file__).resolve().parents[1]
 fragment = (ROOT / 'src/bac-planner.html').read_text(encoding='utf-8')
@@ -9,6 +12,9 @@ playground = playground.replace('/* PLAYGROUND_CSS */', (ROOT / 'src/playground.
 playground = playground.replace('/* PLAYGROUND_JS */', (ROOT / 'src/playground.js').read_text(encoding='utf-8'))
 fragment = fragment.replace('<!-- SKILL_PLAYGROUND -->', playground)
 fragment = fragment.replace('<!-- NVIDIA_THEME -->', '<style>\n' + (ROOT / 'src/nvidia-theme.css').read_text(encoding='utf-8') + '\n</style>')
+version = os.environ.get('BAC_DEMO_VERSION', 'local-preview')
+label = version if version == 'local-preview' else version[:12]
+fragment = fragment.replace('<!-- BUILD_VERSION -->', '<span class="demo-label" title="Application build">Build ' + escape(label) + '</span>')
 page = '''<!doctype html>
 <html lang="en">
 <head>
@@ -28,4 +34,5 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 '''
 (ROOT / 'app').mkdir(exist_ok=True)
 (ROOT / 'app/index.html').write_text(page, encoding='utf-8')
+(ROOT / 'app/version.json').write_text(json.dumps({'version': version}) + '\n', encoding='utf-8')
 print('Built app/index.html (no third-party runtime dependencies).')
