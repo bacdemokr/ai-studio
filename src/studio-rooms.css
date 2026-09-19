@@ -45,8 +45,8 @@
 #agent-campus[data-room] .campus-layout.world-expanded{grid-template-columns:minmax(0,1fr)!important}
 
 @media(max-width:560px){
-  #agent-campus .world-residents[data-dense=true] .world-resident:not([aria-pressed=true]):not(:hover):not(:focus-visible){width:15px;height:15px;max-width:none;padding:0;border-radius:50%;background:var(--resident-color);border:2px solid #172433;box-shadow:0 2px 6px #0008;transform:translate(-50%,-50%)}
-  .world-residents[data-dense=true] .world-resident:not([aria-pressed=true]):not(:hover):not(:focus-visible)>*{display:none}
+  #agent-campus .world-residents[data-dense=true] .world-resident:not([aria-pressed=true]):not([data-speaking=true]):not(:hover):not(:focus-visible){width:15px;height:15px;max-width:none;padding:0;border-radius:50%;background:var(--resident-color);border:2px solid #172433;box-shadow:0 2px 6px #0008;transform:translate(-50%,-50%)}
+  .world-residents[data-dense=true] .world-resident:not([aria-pressed=true]):not([data-speaking=true]):not(:hover):not(:focus-visible)>*{display:none}
 }
 
 .studio-rooms{grid-template-columns:repeat(4,minmax(0,1fr))}
@@ -81,3 +81,12 @@
 @media(max-width:700px){#studio-rooms button[data-room]:after{display:none}.world-room-map{left:10px;bottom:10px;max-width:calc(100% - 20px);padding:9px 10px}.world-room-map>div{gap:16px}.world-room-map button:not(:last-child):after{width:9px}.world-room-map i{display:none}#agent-campus .world-room-map button{font-size:11px}.world-map-caption{font-size:11px;margin-bottom:8px}#agent-campus .world-overview-button{left:12px;top:76px;padding:7px 9px;font-size:12px}.world-journey{top:115px;font-size:12px}.world-doorway>span{display:none}#agent-campus .world-doorway{padding:6px 8px}.world-doorway b{font-size:11px}.world-doorway i{margin-left:4px}#agent-campus .world-campus-room{padding:8px 9px}.world-campus-room>span{display:none}.world-campus-room>b{font-size:11px}}
 @media(prefers-reduced-motion:reduce){#agent-campus .world-doorway:hover{transform:translate(-50%,-100%)}}
 @media(max-width:700px){.world-navigation[data-overview=true][data-travelling=false] .world-journey{display:none}#agent-campus .world-overview-button{left:auto;right:12px;font-size:0}#agent-campus .world-overview-button:after{content:'⌑ Studio map';font-size:12px}#agent-campus .world-overview-button[aria-pressed=true]:after{content:'↙ Return to room'}}
+
+/* A speaking agent carries a readable bubble; everyone else keeps a quiet label. */
+#agent-campus .world-resident[data-speaking=true]{z-index:3;box-sizing:border-box;width:236px;max-width:calc(100% - 24px);padding:12px 15px 14px;border:1px solid var(--resident-color);border-top:3px solid var(--resident-color);border-radius:10px;background:#e0ebf3;color:#162531;text-align:left;box-shadow:0 8px 28px #0005}
+#agent-campus .world-resident[data-speaking=true]:after{content:'';position:absolute;bottom:-7px;left:var(--speech-tail,50%);width:12px;height:12px;transform:translateX(-50%) rotate(45deg);background:#e0ebf3;border-right:1px solid var(--resident-color);border-bottom:1px solid var(--resident-color)}
+.world-resident[data-speaking=true] b{font-size:14px}.world-resident[data-speaking=true] small{color:#4b6273;font-size:11px;margin-top:3px}
+.world-resident-speech{display:block;margin-top:9px;font-size:15px;line-height:1.45;font-weight:500;white-space:normal;overflow-wrap:anywhere;animation:lounge-speech-in .2s ease-out}
+@keyframes lounge-speech-in{from{opacity:0}to{opacity:1}}
+@media(max-width:560px){#agent-campus[data-room=lounge] #campus-viewport{min-height:430px}#agent-campus .world-resident[data-speaking=true]{width:218px;padding:10px 12px 12px}.world-resident-speech{font-size:14px;margin-top:7px}}
+@media(prefers-reduced-motion:reduce){.world-resident-speech{animation:none}}
