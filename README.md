@@ -16,6 +16,7 @@ Click a 3D view and press **Enter**, double-click an empty area, or use **Full s
 - **Three connected rooms:** Workshop pairs a large 3D character preview with creation and OpenClaw connection details. The lounge shows one selectable robot for every saved agent (up to 12). Mission room retains the five specialist stations and progress board.
 - **Distinct appearances:** choose Classic, Orbit or Rover, six accent colors and four accessories. Appearance is saved with the profile, survives refreshes and follows personal agents into crew assignments. New creations suggest an unused look; existing agents receive stable defaults.
 - **A lively lounge:** agents stroll, pause and gesture according to their Guide, Maker or Analyst persona. Short personality bubbles take turns; hover or keyboard focus holds a character still for selection. These are authored ambient vignettes, not model replies or task results, and make no model/tool calls. Assigned agents skip chatter. Scene pause and reduced-motion preferences stop both wandering and the chatter clock. Adding, editing or removing an agent preserves the others’ positions.
+- **Optional interface sounds:** switch **Sound off** to **Sound on** beside the 3D controls; the arrow opens a volume slider. Persona bubbles have distinct soft chirps. Observed mission starts, handoffs, completions and requests for attention have short cues, with repeated polls suppressed. Controls also follow Mission Control and fullscreen. Sound starts muted at 25%; the browser remembers your choice and requires a gesture to reactivate it after reload. Hidden tabs stay quiet and never replay missed cues. Tones are synthesized locally without downloads or model calls.
 - **Persistent onboarding:** name, persona and editable skill loadout; native OpenClaw identity/skill files are provisioned on the first mission. Memory, conversations, files and jobs survive app updates.
 - **Useful solo missions:** live weather, reading public websites, optional Brave web search, document questions, HTML mini-app creation with an isolated playable preview, campaign drafts and explicit preference memory.
 - **A real crew workflow:** Milo leads the ready-made Nova, Atlas, Momo and Pico crew, all with OpenShell off. Run it before creating a personal agent. For a custom crew, select **Let … lead instead of Milo** and assign your other agents to specialist roles; personal agents retain their own protection settings. The workshop has five role stations, independently of your collection size. Separate OpenClaw agents receive a shared brief and previous deliverables; the reviewer checks the specialists. A real server-side decision stops the workflow if equipment is insufficient.
@@ -126,6 +127,7 @@ node tests/studio.cjs
 node tests/rooms.cjs
 node tests/connected.cjs
 node tests/lounge.cjs
+node tests/sound.cjs
 node tests/policies.cjs
 node tests/deletion.cjs
 node tests/smoke.cjs
@@ -139,6 +141,7 @@ node tests/campus.cjs
 - `src/studio-world.js`: native fullscreen, keyboard controls and full-window fallback.
 - `src/world-navigation.js`: connected room layout, doorways, overview and interruptible camera travel.
 - `src/world-lounge.js`: resident reconciliation, wandering, spacing and authored persona bubbles.
+- `src/studio-sound.js`: quiet Web Audio cues, per-browser settings and observed mission transitions.
 - `src/world-scene.js`, `src/campus.*`: Three.js world, characters and accessible hotspots.
 - `scripts/studio.py`, `scripts/serve.py`: durable queue, participant API, shared crew state.
 - `src/studio-policies.js`, `scripts/agent_policy.py`, `scripts/studio_policy.py`: per-agent network approvals, native sandbox lookup and actual policy/log inspection.

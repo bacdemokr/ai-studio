@@ -129,6 +129,7 @@
   }
   el('assigned-crew').onclick=async()=>{const a=data.assignments?.[0];if(!a)return;await switchAgent(a.lead);if(agentId===a.lead){selectedJob=a.job;render();showBoard(true);}};
   function renderCrew(){
+    window.BacSound?.observeJobs(agentId,data.jobs);
     const crew=crewMission(), stage=crew?.payload.stage??-1;
     roles.forEach((r,i)=>r[0]=crew?.payload.roster?.[i]?.name||(i===0&&room!=='mission'?data.profile?.name:null)||defaultNames[i]);
     el('lanes').innerHTML=roles.map(([name,role,description],i)=>{const done=!!crew?.payload.outputs?.[i],working=['running','stopping'].includes(crew?.status)&&stage===i,waiting=crew?.status==='waiting'&&i===2;return `<article class="studio-lane" data-state="${waiting?'waiting':done?'done':working?'running':'ready'}"><span>0${i+1} / ${waiting?'NEEDS YOU':done?'DELIVERED':working?(crew?.status==='stopping'?'STOPPING':'WORKING'):'READY'}</span><h4>${escape(name)}</h4><strong>${role}</strong><p>${description}</p>${done?'<button data-role-output="'+i+'">Open deliverable ↗</button>':''}</article>`;}).join('');

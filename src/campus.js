@@ -81,6 +81,7 @@ app.addEventListener('bac:mode',event=>{if(event.detail!=='campus')stop();sceneV
 log('Your crew is ready to meet you.','Select a robot to explore its persona, skills and access.');
 log('The same brief connects all five roles.','Run the crew to see handoffs, resource checks and a delivery decision.');
 
+/* STUDIO_SOUND */
 /* WORLD_SCENE */
 try {sceneView=createScene();}catch(error){el('fallback').hidden=false;root.dataset.renderer='fallback';console.warn('3D unavailable; accessible workflow controls remain available.',error.message);}
 window.BacCampus={setRoom:(room,options)=>sceneView?.setRoom(room,options),overview:()=>sceneView?.overview(),setCollection:(agents,key)=>sceneView?.setCollection(agents,key),setDraft:profile=>sceneView?.setDraft(profile),inspect:()=>sceneView?.inspect()||{fallback:true},setLive:next=>{live=true;stop();snapshot=next;selected=next.selected;render();}};

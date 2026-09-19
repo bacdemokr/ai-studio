@@ -115,6 +115,9 @@ function startLoungeSpeech(){
   const speech=r.node.querySelector('.world-resident-speech');speech.textContent=r.speechText;speech.hidden=false;r.node.dataset.speaking='true';r.node.setAttribute('aria-describedby',speech.id);
   r.node.title='Personality vignette · select to open this agent’s workspace';r.speechUntil=loungeTime+5.8;r.target=null;
   loungeSpeaker=r;lastLoungeSpeaker=r.key;
+  // Measure at the cue itself; observer notifications can lag room/fullscreen changes.
+  const view=viewport.getBoundingClientRect();
+  if(view.width&&view.height&&view.right>0&&view.left<innerWidth&&view.bottom>0&&view.top<innerHeight)studioSound.speak(r.persona,r.group.position.x/24);
 }
 function placeResident(r){
   positionLabel(r.node,loungeRoom.localToWorld(r.group.position.clone().add(new THREE.Vector3(0,2.2,0))));

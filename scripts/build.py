@@ -14,7 +14,7 @@ playground = playground.replace('/* SKILL_TOOLS_JS */', (ROOT / 'src/skill-tools
 playground = playground.replace('/* PLAYGROUND_JS */', (ROOT / 'src/playground.js').read_text(encoding='utf-8'))
 fragment = fragment.replace('<!-- SKILL_PLAYGROUND -->', playground)
 campus = (ROOT / 'src/campus.html').read_text(encoding='utf-8')
-studio = (ROOT / 'src/studio.html').read_text(encoding='utf-8').replace('/* STUDIO_CSS */', (ROOT / 'src/studio.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-rooms.css').read_text(encoding='utf-8'))
+studio = (ROOT / 'src/studio.html').read_text(encoding='utf-8').replace('/* STUDIO_CSS */', (ROOT / 'src/studio.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-rooms.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-sound.css').read_text(encoding='utf-8'))
 campus = campus.replace('<div class="campus-layout">', studio + '\n<div class="campus-layout">')
 campus = campus.replace('/* CAMPUS_CSS */', (ROOT / 'src/campus.css').read_text(encoding='utf-8'))
 fragment = fragment.replace('<!-- AGENT_CAMPUS -->', campus)
@@ -22,7 +22,7 @@ vendor = (ROOT / 'src/vendor/three-r180.cjs').read_text(encoding='utf-8')
 workshop_art = 'data:image/png;base64,' + base64.b64encode((ROOT / 'src/assets/build-a-claw-workshop.png').read_bytes()).decode('ascii')
 world_scene = (ROOT / 'src/world-scene.js').read_text(encoding='utf-8').replace('__WORKSHOP_ART_DATA_URL__', workshop_art)
 world_scene = world_scene.replace('/* AGENT_CHARACTER */', (ROOT / 'src/agent-character.js').read_text(encoding='utf-8')).replace('/* WORLD_ROOMS */', (ROOT / 'src/world-rooms.js').read_text(encoding='utf-8').replace('/* LOUNGE_LIFE */', (ROOT / 'src/world-lounge.js').read_text(encoding='utf-8'))).replace('/* WORLD_NAVIGATION */', (ROOT / 'src/world-navigation.js').read_text(encoding='utf-8'))
-campus_js = '(function(){const exports={};\n' + vendor + '\nconst THREE=exports;\n' + (ROOT / 'src/campus.js').read_text(encoding='utf-8').replace('/* WORLD_SCENE */', world_scene) + '\n})();'
+campus_js = '(function(){const exports={};\n' + vendor + '\nconst THREE=exports;\n' + (ROOT / 'src/campus.js').read_text(encoding='utf-8').replace('/* STUDIO_SOUND */', (ROOT / 'src/studio-sound.js').read_text(encoding='utf-8')).replace('/* WORLD_SCENE */', world_scene) + '\n})();'
 fragment = fragment.replace('<!-- CAMPUS_SCRIPT -->', '<script>' + campus_js.replace('</script', '<\\/script') + '</script>')
 studio_js = (ROOT / 'src/studio.js').read_text(encoding='utf-8').replace('/* STUDIO_WORLD */', (ROOT / 'src/studio-world.js').read_text(encoding='utf-8')).replace('/* STUDIO_ROOMS */', (ROOT / 'src/studio-rooms.js').read_text(encoding='utf-8')).replace('/* STUDIO_SAFETY */', (ROOT / 'src/studio-safety.js').read_text(encoding='utf-8')).replace('/* STUDIO_POLICIES */', (ROOT / 'src/studio-policies.js').read_text(encoding='utf-8'))
 fragment = fragment.replace('<!-- STUDIO_SCRIPT -->', '<script>' + studio_js.replace('</script', '<\\/script') + '</script>')

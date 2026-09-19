@@ -170,7 +170,7 @@ function createScene() {
   }
   function update(next,index){state=next;activeSelection=index;phase=state.phase;dressCrew();const key=[state.jobId,state.phase,state.missionSkill,state.agents.map(a=>a.lane).join('')].join(':');if(key!==lastKey){lastKey=key;movement();}labels.forEach((b,i)=>{b.innerHTML=escape(state.agents[i].name)+'<small>'+escape(state.agents[i].lane===1?'Working · '+state.agents[i].role:state.agents[i].lane===2?'Waiting for you':state.agents[i].role)+'</small>';b.classList.toggle('selected',index===i);b.classList.toggle('waiting',state.agents[i].lane===2);});}
   function motionButton(){el('motion').textContent=motion?'Ⅱ':'▶';el('motion').setAttribute('aria-label',motion?'Pause scene motion':'Resume scene motion');}
-  el('motion').onclick=()=>{motion=!motion;motionButton();};reduced.addEventListener('change',()=>{motion=!reduced.matches;motionButton();});
+  el('motion').onclick=()=>{motion=!motion;if(!motion)studioSound.stop();motionButton();};reduced.addEventListener('change',()=>{motion=!reduced.matches;if(!motion)studioSound.stop();motionButton();});
   el('camera').onclick=resetNavigation;
   renderer.domElement.addEventListener('pointerdown',e=>{if(journey)return;drag={x:e.clientX,y:e.clientY};moved=false;renderer.domElement.setPointerCapture(e.pointerId);});
   renderer.domElement.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>2)moved=true;azimuth-=dx*.005;elevation=Math.max(room==='workshop'?.2:.5,Math.min(1.35,elevation+dy*.003));drag={x:e.clientX,y:e.clientY};cam();});
