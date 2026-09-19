@@ -1,6 +1,6 @@
 # NVIDIA Build a Claw — Agent Studio
 
-Create your own agents, give each a recognizable look and useful skills, and choose who joins your crew. Move between **Workshop**, **Agent lounge**, **Mission room** and a dedicated **Policies** tab. The NVIDIA-inspired charcoal interface keeps neutral lighting and restrained green accents.
+Create your own agents, give each a recognizable look and useful skills, and choose who joins your crew. Move between **Workshop**, **Agent lounge**, **Mission room** and a dedicated **Policies** tab. The three 3D rooms share one floor plan, linked by lit corridors. Click a doorway to travel between them, or use **See the whole studio** to pull back and choose a room. A small map keeps your location visible, including in fullscreen. Room changes preserve your unfinished agent setup; reduced-motion preferences skip camera travel. The NVIDIA-inspired charcoal interface keeps neutral lighting and restrained green accents.
 
 Workshop offers a large character preview and OpenClaw connection details. The lounge grows with your saved agents. Mission room keeps five specialist desks around a shared brief, with active workbenches and document packets illustrating observed handoffs. Switch between **3D crew** and **Mission control** inside that room.
 
@@ -123,6 +123,7 @@ python3 -m unittest discover -s tests -p 'test*.py'
 python3 tests/fixture_studio.py   # separate terminal, port 8082
 node tests/studio.cjs
 node tests/rooms.cjs
+node tests/connected.cjs
 node tests/policies.cjs
 node tests/deletion.cjs
 node tests/smoke.cjs
@@ -134,6 +135,7 @@ node tests/campus.cjs
 
 - `src/studio.*`: attendee journey, mission control and API client.
 - `src/studio-world.js`: native fullscreen, keyboard controls and full-window fallback.
+- `src/world-navigation.js`: connected room layout, doorways, overview and interruptible camera travel.
 - `src/world-scene.js`, `src/campus.*`: Three.js world, characters and accessible hotspots.
 - `scripts/studio.py`, `scripts/serve.py`: durable queue, participant API, shared crew state.
 - `src/studio-policies.js`, `scripts/agent_policy.py`, `scripts/studio_policy.py`: per-agent network approvals, native sandbox lookup and actual policy/log inspection.

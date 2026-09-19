@@ -177,6 +177,7 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 #campus-viewport:focus-visible{outline:2px solid #96d52b;outline-offset:-3px}
 #agent-campus.studio-world-open{position:fixed;inset:0;z-index:90;width:100%;height:100%;overflow:hidden;background:#090c10}
 #agent-campus.studio-world-open::backdrop{background:#090c10}
+#agent-campus.studio-world-open #studio-alert{top:12px;bottom:auto}
 #agent-campus.studio-world-open>:not(.campus-layout):not(#studio-dialog):not(#studio-alert){display:none!important}
 #agent-campus .campus-layout.world-expanded{position:absolute;inset:0;z-index:1;margin:0;width:100%;height:100%;max-width:none;border:0;border-radius:0!important;box-shadow:none;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr)}
 #agent-campus .world-expanded .campus-stage{height:100%;min-height:0;overflow:hidden}
@@ -290,6 +291,31 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 @media(max-width:1100px){.studio-permission-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.studio-rooms button small{line-height:1.5}.studio-rooms button b{font-size:16px}}
 @media(max-width:700px){.studio-rooms{grid-template-columns:repeat(2,minmax(0,1fr))}.studio-policy-hero{grid-template-columns:1fr;padding:22px;gap:24px}.studio-policy-switch{justify-self:start}.studio-policy-evidence{grid-template-columns:1fr}.studio-policy-route{gap:10px}.studio-policy-route b{font-size:14px}.studio-policy-route small{font-size:11px}.studio-policy-hero-actions{flex-direction:column;align-items:flex-start}.studio-policy-section-heading{align-items:flex-start;flex-direction:column;gap:12px}}
 @media(max-width:560px){.studio-policies{margin:0 12px 24px}.studio-policy-toolbar{flex-direction:column;align-items:stretch;gap:12px}.studio-permission-grid{grid-template-columns:1fr}.studio-permission p,.studio-permission ul{min-height:0}.studio-rooms button small{min-height:0}.studio-policy-evidence .studio-section-heading{gap:10px;align-items:flex-start;flex-direction:column}}
+
+/* A shared floor plan, with doors and a compact map inside the 3D viewport. */
+#studio-rooms button[data-room=workshop]:after,#studio-rooms button[data-room=lounge]:after{content:'';position:absolute;right:-13px;top:50%;height:2px;width:12px;background:#607d91;pointer-events:none}
+.world-navigation{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:4}
+#agent-campus .world-navigation button{pointer-events:auto;font-family:inherit;cursor:pointer}
+#agent-campus .world-overview-button{position:absolute;top:64px;left:20px;padding:9px 12px;background:#12202ded;color:#d8e8f4;border:1px solid #557185;border-radius:4px;font-size:13px;box-shadow:0 3px 15px #0003}
+#agent-campus .world-overview-button:hover{border-color:#96d52b;color:#edffd8}
+.world-journey{position:absolute;left:50%;top:112px;transform:translateX(-50%);max-width:90%;padding:9px 16px;border:1px solid #4e6b80;border-radius:4px;background:#0f1b28ed;color:#d3e6f5;font-size:13px;line-height:1.5;text-align:center}
+.world-room-map{position:absolute;left:18px;bottom:18px;padding:12px 14px;border:1px solid #3e576b;border-radius:5px;background:#0d1824ed;box-shadow:0 6px 20px #0004;max-width:calc(100% - 36px)}
+.world-map-caption{display:block;font-size:11px;letter-spacing:1.5px;color:#95adbf;margin-bottom:10px}
+.world-room-map>div{display:flex;align-items:center;gap:20px}
+#agent-campus .world-room-map button{position:relative;display:flex;align-items:center;gap:8px;border:0;background:none;color:#a7bdce;padding:0;font-size:12px;white-space:nowrap}
+.world-room-map button:not(:last-child):after{content:'';position:absolute;left:calc(100% + 4px);width:12px;height:1px;background:#537088}
+.world-room-map i{display:grid;place-items:center;width:23px;height:23px;border:1px solid #5f7d93;border-radius:50%;font-size:11px;font-style:normal;color:#a7c0d3}
+#agent-campus .world-room-map button.selected{color:#edffda}.world-room-map .selected i{background:#76b900;border-color:#96d52b;color:#101b0a;box-shadow:0 0 12px #76b90040}
+#agent-campus .world-doorway{position:absolute;transform:translate(-50%,-100%);background:#122131ef;border:1px solid #6e94ac;border-top:2px solid #96d52b;border-radius:4px;padding:8px 11px;color:#ecf6ff;text-align:left;white-space:nowrap;box-shadow:0 5px 16px #0005}
+.world-doorway>span{display:block;font-size:11px;letter-spacing:1.3px;color:#a9c3d5;margin-bottom:5px}.world-doorway b{font-size:13px;font-weight:600}.world-doorway i{font-style:normal;color:#acdf71;margin-left:10px}
+#agent-campus .world-doorway:hover{background:#203523;border-color:#a3d860;transform:translate(-50%,-100%) translateY(-3px)}
+#agent-campus .world-campus-room{position:absolute;transform:translate(-50%,-100%);padding:12px 17px;border:1px solid #58768b;background:#102031f5;color:#eaf6ff;border-radius:5px;white-space:nowrap;box-shadow:0 5px 24px #0005;text-align:left}
+.world-campus-room>span{display:block;font-size:11px;color:#a7bfce;margin-bottom:7px}.world-campus-room>b{font-size:16px}
+#agent-campus .world-campus-room[aria-current=location]{border-color:#96d52b;background:#1b2c23f5}
+#agent-campus .world-campus-room:hover{border-color:#96d52b}
+@media(max-width:700px){#studio-rooms button[data-room]:after{display:none}.world-room-map{left:10px;bottom:10px;max-width:calc(100% - 20px);padding:9px 10px}.world-room-map>div{gap:16px}.world-room-map button:not(:last-child):after{width:9px}.world-room-map i{display:none}#agent-campus .world-room-map button{font-size:11px}.world-map-caption{font-size:11px;margin-bottom:8px}#agent-campus .world-overview-button{left:12px;top:76px;padding:7px 9px;font-size:12px}.world-journey{top:115px;font-size:12px}.world-doorway>span{display:none}#agent-campus .world-doorway{padding:6px 8px}.world-doorway b{font-size:11px}.world-doorway i{margin-left:4px}#agent-campus .world-campus-room{padding:8px 9px}.world-campus-room>span{display:none}.world-campus-room>b{font-size:11px}}
+@media(prefers-reduced-motion:reduce){#agent-campus .world-doorway:hover{transform:translate(-50%,-100%)}}
+@media(max-width:700px){.world-navigation[data-overview=true][data-travelling=false] .world-journey{display:none}#agent-campus .world-overview-button{left:auto;right:12px;font-size:0}#agent-campus .world-overview-button:after{content:'⌑ Studio map';font-size:12px}#agent-campus .world-overview-button[aria-pressed=true]:after{content:'↙ Return to room'}}
 </style>
 <div id="studio-journey" class="studio-journey"><span><b>01</b> Make it yours</span><i>→</i><span><b>02</b> Give it a mission</span><i>→</i><span><b>03</b> Build a crew</span><button id="studio-runtime" class="studio-runtime">Checking your runtime…</button></div>
 <nav id="studio-rooms" class="studio-rooms" aria-label="Studio rooms">
@@ -78537,7 +78563,7 @@ function createScene() {
   renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;
   viewport.prepend(renderer.domElement); renderer.domElement.setAttribute('aria-hidden','true');
-  const camera=new THREE.OrthographicCamera(-11,11,7,-7,.1,100);
+  const camera=new THREE.OrthographicCamera(-11,11,7,-7,.1,180);
   const focus=new THREE.Vector3(0,.15,0);
   let azimuth=.43,elevation=.76,zoom=1,drag=null,moved=false;
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
@@ -78545,7 +78571,7 @@ function createScene() {
   let lost=false,lastKey='',lastActive=-1,lastJob=null;
   scene.add(new THREE.HemisphereLight(0xf4f7ff,0x161c26,1.65));
   const sun=new THREE.DirectionalLight(0xffffff,3.0);sun.position.set(-5,15,8);sun.castShadow=true;
-  sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-12;sun.shadow.camera.right=12;sun.shadow.camera.top=10;sun.shadow.camera.bottom=-10;sun.shadow.normalBias=.035;scene.add(sun);
+  sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-12;sun.shadow.camera.right=12;sun.shadow.camera.top=10;sun.shadow.camera.bottom=-10;sun.shadow.normalBias=.035;scene.add(sun);scene.add(sun.target);
   const fill=new THREE.DirectionalLight(0xc7ddff,.75);fill.position.set(8,6,-9);scene.add(fill);
   const materials=new Map();
   function mat(color,glow=false){const key=color+':'+glow;if(!materials.has(key))materials.set(key,new THREE.MeshStandardMaterial({color,roughness:.48,metalness:.16,...(glow?{emissive:color,emissiveIntensity:.35}:{})}));return materials.get(key);}
@@ -78600,9 +78626,9 @@ function createCharacter(avatar=avatarDefaults[0]){
   for(let x=-8;x<=8;x+=1)box(missionRoom,x,.02,0,.014,.008,12,0x3a4653);
   for(let z=-6;z<=6;z+=1)box(missionRoom,0,.02,z,17.8,.008,.014,0x3a4653);
   box(missionRoom,0,.65,-6.05,18,1.35,.18,0x1e2732);
-  box(missionRoom,-8.85,.65,0,.15,1.35,12,0x1e2732);
+  for(const [z,length] of [[-2.1,7.8],[5.1,1.8]])box(missionRoom,-8.85,.65,z,.15,1.35,length,0x1e2732);
   box(missionRoom,0,1.36,-6.05,18,.055,.24,0x63778b);
-  box(missionRoom,-8.85,1.36,0,.22,.055,12,0x63778b);
+  for(const [z,length] of [[-2.1,7.8],[5.1,1.8]])box(missionRoom,-8.85,1.36,z,.22,.055,length,0x63778b);
   // A framed workshop display keeps the supplied illustration inside the 3D space.
   box(missionRoom,-.6,2.4,-5.97,5.8,3.8,.14,0x0c121b);
   sign(missionRoom,'BUILD A CLAW',-.6,4.0,-5.86,4.9,.38,'#f2f6fb');
@@ -78703,14 +78729,16 @@ function createCharacter(avatar=avatarDefaults[0]){
   let room='mission';
   // All rooms share one renderer and the same camera/fullscreen lifecycle.
 const loungeRoom=new THREE.Group(),workshopRoom=new THREE.Group();scene.add(loungeRoom,workshopRoom);
-loungeRoom.visible=workshopRoom.visible=false;
+// All three rooms stay in one connected scene.
 const residentLayer=document.createElement('div');residentLayer.className='world-residents';viewport.append(residentLayer);residentLayer.hidden=true;
 const residents=[],residentMeshes=[];let residentKey='',collection=[],selectedResident='',draftProfile={name:'Jinny',persona:'guide',avatar:avatarDefaults[0]},draftRig=null,draftKey='';
 const roomCameras={mission:[.43,.76,1],lounge:[.43,.76,1],workshop:[.3,.38,1]};
 function floor(parent,width,depth){box(parent,0,-.3,0,width,.55,depth,0x151b23);box(parent,0,-.012,0,width-.12,.05,depth-.12,0x26323f);box(parent,0,-.13,depth/2+.01,width-.45,.035,.02,0x76b900,true);for(let x=-width/2+1;x<width/2;x++)box(parent,x,.019,0,.012,.006,depth-.3,0x374654);for(let z=-depth/2+1;z<depth/2;z++)box(parent,0,.019,z,width-.3,.006,.012,0x374654);}
 floor(loungeRoom,18,12.6);
-box(loungeRoom,0,.65,-6.05,18,1.35,.18,0x1e2732);box(loungeRoom,-8.85,.65,0,.15,1.35,12,0x1e2732);
-box(loungeRoom,0,1.36,-6.05,18,.055,.24,0x63778b);box(loungeRoom,-8.85,1.36,0,.22,.055,12,0x63778b);
+box(loungeRoom,0,.65,-6.05,18,1.35,.18,0x1e2732);
+for(const [z,length] of [[-2.1,7.8],[5.1,1.8]])box(loungeRoom,-8.85,.65,z,.15,1.35,length,0x1e2732);
+box(loungeRoom,0,1.36,-6.05,18,.055,.24,0x63778b);
+for(const [z,length] of [[-2.1,7.8],[5.1,1.8]])box(loungeRoom,-8.85,1.36,z,.22,.055,length,0x63778b);
 box(loungeRoom,0,2.0,-5.97,7.0,2.0,.14,0x0c121b);sign(loungeRoom,'YOUR AGENT LOUNGE',0,2.42,-5.86,6.2,.5,'#f2f6fb');sign(loungeRoom,'INDIVIDUAL MINDS. SHARED ENGINE.',0,1.74,-5.85,6.0,.27,'#9eafc1');
 for(const x of [-6.4,6.4]){box(loungeRoom,x,.45,-4.65,3.1,.7,.94,0x334453);box(loungeRoom,x,.9,-5.07,3.1,.7,.17,0x45596c);box(loungeRoom,x-1.5,.7,-4.65,.15,.7,.95,0x45596c);box(loungeRoom,x+1.5,.7,-4.65,.15,.7,.95,0x45596c);}
 const loungeBrand=sign(loungeRoom,'BUILD A CLAW',0,.04,5.65,3.2,.38,'#8fabc2');loungeBrand.rotation.x=-Math.PI/2;
@@ -78747,27 +78775,177 @@ function setDraft(profile){
   if(draftRig){workshopRoom.remove(draftRig.group);clearGeometry(draftRig.group);}
   draftRig=createCharacter(avatar);draftRig.group.scale.setScalar(2.55);draftRig.group.position.set(0,.35,.5);workshopRoom.add(draftRig.group);draftRing.material=mat(draftRig.color,true);
 }
-function setRoom(next){
-  if(!['mission','lounge','workshop'].includes(next))return;
-  if(next!==room){roomCameras[room]=[azimuth,elevation,zoom];room=next;[azimuth,elevation,zoom]=roomCameras[room];}
-  focus.set(0,room==='workshop'?1.1:.15,0);
-  missionRoom.visible=room==='mission';loungeRoom.visible=room==='lounge';workshopRoom.visible=room==='workshop';
-  hotspotLayer.hidden=room!=='mission';el('labels').hidden=room!=='mission';residentLayer.hidden=room!=='lounge';
-  resize();
-}
 function animateRooms(){
-  if(room==='workshop'&&draftRig){if(motion){draftRig.group.rotation.y=Math.sin(clock*.35)*.24;draftRig.body.position.y=Math.sin(clock*1.8)*.025;draftRig.arms[0].rotation.x=Math.sin(clock*1.5)*.12;}}
-  if(room==='lounge')residents.forEach(r=>{if(motion){r.body.position.y=Math.sin(clock*1.6+r.index)*.035;r.group.rotation.y=Math.sin(clock*.35+r.index)*.2;r.arms.forEach((a,i)=>a.rotation.x=Math.sin(clock*1.4+r.index+i)*.09);}positionLabel(r.node,new THREE.Vector3(r.x,2.4,r.z));});
+  if((room==='workshop'||overview||journey)&&draftRig){if(motion){draftRig.group.rotation.y=Math.sin(clock*.35)*.24;draftRig.body.position.y=Math.sin(clock*1.8)*.025;draftRig.arms[0].rotation.x=Math.sin(clock*1.5)*.12;}}
+  if(room==='lounge'||overview||journey)residents.forEach(r=>{if(motion){r.body.position.y=Math.sin(clock*1.6+r.index)*.035;r.group.rotation.y=Math.sin(clock*.35+r.index)*.2;r.arms.forEach((a,i)=>a.rotation.x=Math.sin(clock*1.4+r.index+i)*.09);}positionLabel(r.node,loungeRoom.localToWorld(new THREE.Vector3(r.x,2.4,r.z)));});
 }
 function roomHitTargets(){return room==='lounge'?residentMeshes:[];}
 function selectRoomObject(object){if(object.userData.resident)root.dispatchEvent(new CustomEvent('bac:collection-select',{detail:object.userData.resident}));}
 function residentInfo(){return residents.map(r=>({key:r.key,avatar:r.appearance,position:r.group.position.toArray()}));}
 setDraft(draftProfile);
 
+  // One persistent floor plan. Room changes move the camera, never swap worlds.
+const studioRooms={
+  workshop:{group:workshopRoom,x:-22,title:'Workshop',verb:'Create & connect',number:'01'},
+  lounge:{group:loungeRoom,x:0,title:'Agent lounge',verb:'Meet your agents',number:'02'},
+  mission:{group:missionRoom,x:24,title:'Mission room',verb:'Work as a crew',number:'03'}
+};
+Object.entries(studioRooms).forEach(([id,entry])=>{entry.group.position.x=entry.x;entry.group.visible=true;entry.group.userData.studioRoom=id;});
+let overview=false,journey=null,viewHalfHeight=0;
+const corridors=[],doorways=[],overviewLabels=[];
+const navigationLayer=document.createElement('div');navigationLayer.className='world-navigation';viewport.append(navigationLayer);
+const overviewButton=document.createElement('button');overviewButton.type='button';overviewButton.className='world-overview-button';overviewButton.dataset.worldOverview='';overviewButton.textContent='⌑ See the whole studio';overviewButton.setAttribute('aria-pressed','false');navigationLayer.append(overviewButton);
+const journeyNote=document.createElement('div');journeyNote.className='world-journey';journeyNote.setAttribute('role','status');journeyNote.setAttribute('aria-live','polite');journeyNote.hidden=true;navigationLayer.append(journeyNote);
+const roomMap=document.createElement('nav');roomMap.className='world-room-map';roomMap.setAttribute('aria-label','Connected studio rooms');
+roomMap.innerHTML='<span class="world-map-caption">ONE STUDIO</span><div>'+Object.entries(studioRooms).map(([id,r])=>'<button type="button" data-world-room="'+id+'"><i>'+r.number+'</i><span>'+r.title+'</span></button>').join('')+'</div>';
+navigationLayer.append(roomMap);
+function goToRoom(next){
+  const restoreFocus=navigationLayer.contains(document.activeElement);
+  root.dispatchEvent(new CustomEvent('bac:world-room',{detail:{room:next}}));
+  if(restoreFocus)roomMap.querySelector('[data-world-room="'+next+'"]').focus({preventScroll:true});
+}
+roomMap.onclick=e=>{const button=e.target.closest('[data-world-room]');if(button)goToRoom(button.dataset.worldRoom);};
+overviewButton.onclick=()=>overview?goToRoom(room):showOverview();
+
+// Low railings and continuous green floor lights make the connections tangible.
+for(const [from,to,start,end] of [['workshop','lounge',-16,-9],['lounge','mission',9,15]]){
+  const hall=new THREE.Group();scene.add(hall);
+  const x=(start+end)/2,w=end-start;
+  box(hall,x,-.18,3,w,.36,2.4,0x172330);box(hall,x,.015,3,w,.04,2.25,0x35485a);
+  for(const z of [1.86,4.14]){
+    box(hall,x,.055,z,w,.035,.045,0x76b900,true);
+    box(hall,x,.48,z,w,.055,.065,0x617b90);
+    for(const post of [start+.2,end-.2])box(hall,post,.24,z,.055,.48,.055,0x617b90);
+  }
+  for(let p=start+.65;p<end;p+=1.05)box(hall,p,.043,3,.38,.015,.1,0x92b4c9);
+  const pulse=box(hall,start,.11,3,.48,.035,1.7,0x96d52b,true);pulse.visible=false;
+  corridors.push({from,to,start,end,pulse});
+}
+function doorway(from,to,x){
+  const group=new THREE.Group();group.position.set(x,0,3);studioRooms[from].group.add(group);group.userData.destination=to;
+  box(group,0,.055,0,.65,.1,2.35,0x3d5265);
+  for(const z of [-1.1,1.1]){box(group,0,1.1,z,.18,2.2,.18,0x627e93);box(group,.105,1.14,z,.03,1.94,.045,0x96d52b,true);}
+  box(group,0,2.2,0,.22,.18,2.4,0x344d60);box(group,.13,2.2,0,.026,.09,2.04,0x96d52b,true);
+  const node=document.createElement('button');node.type='button';node.className='world-doorway';node.dataset.doorwayFrom=from;node.dataset.worldRoom=to;
+  node.innerHTML='<span>WALK THROUGH</span><b>'+studioRooms[to].title+' <i>'+(studioRooms[to].x>studioRooms[from].x?'→':'←')+'</i></b>';
+  node.setAttribute('aria-label','Walk to '+studioRooms[to].title);node.onclick=()=>goToRoom(to);navigationLayer.append(node);
+  doorways.push({from,to,group,node,point:new THREE.Vector3(0,2.55,0)});
+}
+doorway('workshop','lounge',5.8);doorway('lounge','workshop',-8.8);doorway('lounge','mission',8.8);doorway('mission','lounge',-8.8);
+Object.entries(studioRooms).forEach(([id,r])=>{
+  const node=document.createElement('button');node.type='button';node.className='world-campus-room';node.dataset.worldRoom=id;
+  node.innerHTML='<span>'+r.number+' / '+r.verb+'</span><b>'+r.title+' ↗</b>';node.onclick=()=>goToRoom(id);navigationLayer.append(node);overviewLabels.push({id,node,group:r.group});
+});
+function roomHeight(id){
+  const aspect=viewport.clientWidth/Math.max(1,viewport.clientHeight);
+  return id==='workshop'?(aspect<1?7.5:5.5):aspect<1?12.5:aspect<1.5?10.2:8.5;
+}
+function overviewHeight(){return Math.max(12.5,34/(viewport.clientWidth/Math.max(1,viewport.clientHeight)));}
+function roomFocus(id){return new THREE.Vector3(studioRooms[id].x,id==='workshop'?1.0:.25,.6);}
+function refreshNavigation(){
+  navigationLayer.dataset.overview=String(overview);navigationLayer.dataset.travelling=String(!!journey);
+  root.dataset.worldOverview=String(overview);root.dataset.worldTravelling=String(!!journey);
+  hotspotLayer.hidden=room!=='mission'||overview||!!journey;el('labels').hidden=room!=='mission'||overview||!!journey;residentLayer.hidden=room!=='lounge'||overview||!!journey;
+  overviewButton.textContent=overview?'↙ Return to '+studioRooms[room].title:'⌑ See the whole studio';overviewButton.setAttribute('aria-pressed',String(overview));
+  overviewButton.setAttribute('aria-label',overview?'Return to '+studioRooms[room].title:'See the whole studio');
+  roomMap.querySelectorAll('button').forEach(b=>{b.setAttribute('aria-current',b.dataset.worldRoom===room?'location':'false');b.classList.toggle('selected',b.dataset.worldRoom===room);});
+  doorways.forEach(d=>d.node.hidden=overview||!!journey||d.from!==room);
+  overviewLabels.forEach(r=>{r.node.hidden=!overview||!!journey;r.node.setAttribute('aria-current',r.id===room?'location':'false');});
+  journeyNote.hidden=!journey&&!overview;
+  if(!journey&&overview)journeyNote.textContent='Three connected rooms. Choose where to go.';
+}
+function rememberCamera(){if(!overview&&!journey)roomCameras[room]=[azimuth,elevation,zoom];}
+function travelTo(target,instant=false){
+  drag=null;
+  const start={focus:focus.clone(),azimuth,elevation,zoom,height:viewHalfHeight||roomHeight(room)};
+  const delta=Math.atan2(Math.sin(target.azimuth-azimuth),Math.cos(target.azimuth-azimuth));target.azimuth=azimuth+delta;
+  journey={start,target,began:performance.now(),duration:1050,lift:target.overview?0:Math.min(7,start.focus.distanceTo(target.focus)*.22)};
+  refreshNavigation();
+  if(instant||reduced.matches)finishJourney();
+}
+function finishJourney(){
+  if(!journey)return;const target=journey.target;
+  focus.copy(target.focus);azimuth=target.azimuth;elevation=target.elevation;zoom=target.zoom;viewHalfHeight=target.height;journey=null;
+  refreshNavigation();frame();renderer.render(scene,camera);
+}
+function setRoom(next,options={}){
+  if(!studioRooms[next])return;
+  if(next===room&&!overview&&!journey){resize();return;}
+  const previous=room;rememberCamera();room=next;overview=false;
+  const [a,e,z]=roomCameras[room];
+  journeyNote.textContent=previous===next?'Returning to '+studioRooms[next].title:studioRooms[previous].title+' → '+studioRooms[next].title;
+  travelTo({focus:roomFocus(room),azimuth:a,elevation:e,zoom:z,height:roomHeight(room),overview:false},options.instant);
+}
+function showOverview(){
+  rememberCamera();overview=true;journeyNote.textContent='Opening your connected studio';
+  travelTo({focus:new THREE.Vector3(2,.2,0),azimuth:.08,elevation:.94,zoom:1,height:overviewHeight(),overview:true});
+}
+function resetNavigation(){
+  roomCameras[room]=room==='workshop'?[.3,.38,1]:[.43,.76,1];
+  if(overview){showOverview();return;}
+  const [a,e,z]=roomCameras[room];journeyNote.textContent='Returning to '+studioRooms[room].title;
+  travelTo({focus:roomFocus(room),azimuth:a,elevation:e,zoom:z,height:roomHeight(room),overview:false});
+}
+function resizeNavigation(){
+  if(journey)journey.target.height=overview?overviewHeight():roomHeight(room);
+  else viewHalfHeight=overview?overviewHeight():roomHeight(room);
+}
+function placeDoorway(d){
+  positionLabel(d.node,d.group.localToWorld(d.point.clone()));
+  const half=d.node.offsetWidth/2,w=viewport.clientWidth,h=viewport.clientHeight;
+  const offset=studioRooms[d.to].x<studioRooms[d.from].x?-42:20;
+  d.node.style.left=Math.max(half+12,Math.min(w-half-12,parseFloat(d.node.style.left)+offset))+'px';
+  d.node.style.top=(w<700?Math.max(116+d.node.offsetHeight,h-96):Math.max(116+d.node.offsetHeight,Math.min(h-94,parseFloat(d.node.style.top))))+'px';
+}
+function animateNavigation(now){
+  if(journey){
+    const t=Math.min(1,(now-journey.began)/journey.duration),p=t*t*(3-2*t),{start,target}=journey;
+    focus.lerpVectors(start.focus,target.focus,p);
+    azimuth=THREE.MathUtils.lerp(start.azimuth,target.azimuth,p);elevation=THREE.MathUtils.lerp(start.elevation,target.elevation,p);zoom=THREE.MathUtils.lerp(start.zoom,target.zoom,p);
+    viewHalfHeight=THREE.MathUtils.lerp(start.height,target.height,p)+Math.sin(Math.PI*t)*journey.lift;
+    frame();if(t===1)finishJourney();
+  }
+  scene.updateMatrixWorld();
+  doorways.forEach(d=>{if(!d.node.hidden)placeDoorway(d);});
+  overviewLabels.forEach(r=>{
+    if(r.node.hidden)return;
+    positionLabel(r.node,r.group.localToWorld(new THREE.Vector3(0,4.5,-1.7)));
+    const controlsBottom=Math.max(overviewButton.offsetTop+overviewButton.offsetHeight,journeyNote.offsetHeight?journeyNote.offsetTop+journeyNote.offsetHeight:0);
+    r.node.style.top=Math.max(controlsBottom+12+r.node.offsetHeight,parseFloat(r.node.style.top))+'px';
+  });
+  corridors.forEach(c=>{c.pulse.visible=!!journey&&!reduced.matches;if(c.pulse.visible)c.pulse.position.x=c.start+((now*.001)%1)*(c.end-c.start);});
+}
+function navigationTargets(){
+  if(overview)return Object.values(studioRooms).map(r=>r.group);
+  return [...doorways.filter(d=>d.from===room).map(d=>d.group),...(room==='mission'?hitTargets:roomHitTargets())];
+}
+function selectNavigationObject(object){
+  for(let node=object;node;node=node.parent){
+    if(overview&&node.userData.studioRoom){goToRoom(node.userData.studioRoom);return true;}
+    if(!overview&&node.userData.destination){goToRoom(node.userData.destination);return true;}
+  }
+  return false;
+}
+function navigationInfo(){return {overview,travelling:!!journey,focus:focus.toArray(),rooms:Object.fromEntries(Object.entries(studioRooms).map(([id,r])=>[id,r.group.position.toArray()])),visibleRooms:Object.keys(studioRooms).filter(id=>studioRooms[id].group.visible),doorways:doorways.map(d=>({from:d.from,to:d.to}))};}
+reduced.addEventListener('change',()=>{if(reduced.matches)finishJourney();});
+focus.copy(roomFocus(room));viewHalfHeight=roomHeight(room);refreshNavigation();
+
   const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
-  function cam(){camera.position.set(Math.sin(azimuth)*Math.cos(elevation)*30,Math.sin(elevation)*30,Math.cos(azimuth)*Math.cos(elevation)*30);camera.lookAt(focus);camera.zoom=zoom;camera.updateProjectionMatrix();}
-  // CSS owns layout; resize only the drawing buffer, not the canvas's CSS dimensions.
-  function resize(){const w=viewport.clientWidth,h=viewport.clientHeight;if(!w||!h)return;const aspect=w/h,vertical=room==='workshop'?(aspect<1?7:4.8):aspect<1?12.5:aspect<1.5?10.2:8.0;camera.left=-vertical*aspect;camera.right=vertical*aspect;camera.top=vertical;camera.bottom=-vertical;renderer.setSize(w,h,false);cam();renderer.render(scene,camera);}
+  function cam(){
+    camera.position.set(Math.sin(azimuth)*Math.cos(elevation)*50,Math.sin(elevation)*50,Math.cos(azimuth)*Math.cos(elevation)*50).add(focus);
+    camera.lookAt(focus);camera.zoom=zoom;camera.updateProjectionMatrix();camera.updateMatrixWorld();
+    sun.position.copy(focus).add(new THREE.Vector3(-5,15,8));sun.target.position.copy(focus);sun.target.updateMatrixWorld();
+  }
+  function frame(){
+    const w=viewport.clientWidth,h=viewport.clientHeight;if(!w||!h)return;
+    const aspect=w/h,vertical=viewHalfHeight||roomHeight(room);
+    camera.left=-vertical*aspect;camera.right=vertical*aspect;camera.top=vertical;camera.bottom=-vertical;cam();
+  }
+  // CSS owns layout; resize only the drawing buffer, never the canvas's CSS size.
+  function resize(){
+    const w=viewport.clientWidth,h=viewport.clientHeight;if(!w||!h)return;
+    renderer.setSize(w,h,false);resizeNavigation();frame();renderer.render(scene,camera);
+  }
   function movement(){
     robots.forEach(r=>{r.path=r.robot.position.distanceTo(r.home)>.06?[r.home.clone()]:[];r.packet.visible=false;});
     const active=state.agents.findIndex(a=>a.lane===1||a.lane===2);
@@ -78785,31 +78963,31 @@ setDraft(draftProfile);
   function update(next,index){state=next;activeSelection=index;phase=state.phase;dressCrew();const key=[state.jobId,state.phase,state.missionSkill,state.agents.map(a=>a.lane).join('')].join(':');if(key!==lastKey){lastKey=key;movement();}labels.forEach((b,i)=>{b.innerHTML=escape(state.agents[i].name)+'<small>'+escape(state.agents[i].lane===1?'Working · '+state.agents[i].role:state.agents[i].lane===2?'Waiting for you':state.agents[i].role)+'</small>';b.classList.toggle('selected',index===i);b.classList.toggle('waiting',state.agents[i].lane===2);});}
   function motionButton(){el('motion').textContent=motion?'Ⅱ':'▶';el('motion').setAttribute('aria-label',motion?'Pause scene motion':'Resume scene motion');}
   el('motion').onclick=()=>{motion=!motion;motionButton();};reduced.addEventListener('change',()=>{motion=!reduced.matches;motionButton();});
-  el('camera').onclick=()=>{azimuth=room==='workshop'?.3:.43;elevation=room==='workshop'?.38:.76;zoom=1;cam();};
-  renderer.domElement.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};moved=false;renderer.domElement.setPointerCapture(e.pointerId);});
+  el('camera').onclick=resetNavigation;
+  renderer.domElement.addEventListener('pointerdown',e=>{if(journey)return;drag={x:e.clientX,y:e.clientY};moved=false;renderer.domElement.setPointerCapture(e.pointerId);});
   renderer.domElement.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>2)moved=true;azimuth-=dx*.005;elevation=Math.max(room==='workshop'?.2:.5,Math.min(1.35,elevation+dy*.003));drag={x:e.clientX,y:e.clientY};cam();});
-  renderer.domElement.addEventListener('pointerup',e=>{if(!moved){const rect=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);const hits=raycaster.intersectObjects(room==='mission'?hitTargets:roomHitTargets());if(hits.length){if(room==='mission')choose(hits[0].object.userData.agent);else selectRoomObject(hits[0].object);}}drag=null;});
+  renderer.domElement.addEventListener('pointerup',e=>{if(!drag)return;if(!moved){const rect=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);if(!journey){const hits=raycaster.intersectObjects(navigationTargets(),true);if(hits.length){const object=hits[0].object;if(!selectNavigationObject(object)){if(room==='mission')choose(object.userData.agent);else selectRoomObject(object);}}}}drag=null;});
   renderer.domElement.addEventListener('pointercancel',()=>drag=null);
-  renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.75,Math.min(1.9,zoom-e.deltaY*.0007));cam();},{passive:false});
+  renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();if(journey)return;zoom=Math.max(.75,Math.min(1.9,zoom-e.deltaY*.0007));cam();},{passive:false});
   renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();lost=true;el('fallback').hidden=false;root.dataset.renderer='lost';});renderer.domElement.addEventListener('webglcontextrestored',()=>{lost=false;el('fallback').hidden=true;root.dataset.renderer='webgl';});
   new ResizeObserver(resize).observe(viewport);new IntersectionObserver(items=>visible=items[0].isIntersecting).observe(viewport);
   function positionLabel(node,point){const p=point.clone().project(camera);node.style.left=(p.x*.5+.5)*viewport.clientWidth+'px';node.style.top=(-p.y*.5+.5)*viewport.clientHeight+'px';node.style.display=p.z>1?'none':'';}
   function animate(now){requestAnimationFrame(animate);if(document.hidden||root.hidden||!viewport.clientWidth||lost){lastFrame=now;return;}if(now-lastFrame<32)return;const dt=Math.min((now-lastFrame)/1000,.06);lastFrame=now;if(motion)clock+=dt;
-    animateRooms();
-    if(room==='mission')robots.forEach((r,i)=>{let walking=false;if(motion){if(r.path.length){const delta=r.path[0].clone().sub(r.robot.position),dist=delta.length();if(dist<.1)r.path.shift();else{walking=true;r.robot.position.addScaledVector(delta.normalize(),Math.min(dist,dt*1.65));r.robot.rotation.y=Math.atan2(delta.x,delta.z);}}else if(state.agents[i].lane===0){const target=r.home.clone().add(new THREE.Vector3(Math.sin(clock*.45+i)*.32,0,Math.cos(clock*.45+i)*.18));const delta=target.clone().sub(r.robot.position);walking=delta.length()>.05;r.robot.position.lerp(target,.025);r.robot.rotation.y=THREE.MathUtils.lerp(r.robot.rotation.y,Math.atan2(delta.x,delta.z),.04);}else r.robot.rotation.y=THREE.MathUtils.lerp(r.robot.rotation.y,0,.04);r.body.position.y=walking?Math.abs(Math.sin(clock*8+i))*.04:Math.sin(clock*2+i)*.02;r.legs.forEach((l,j)=>l.rotation.x=walking?Math.sin(clock*9+i+j*Math.PI)*.4:0);r.arms.forEach((a,j)=>a.rotation.x=Math.sin(clock*(walking?8:1.6)+j*Math.PI+i)*(walking ? .38 : .08));}
-      r.halo.position.set(r.robot.position.x,.086,r.robot.position.z);r.halo.visible=i===activeSelection||state.agents[i].lane!==0;deskLights[i].visible=state.agents[i].lane===1;positionLabel(labels[i],r.robot.position.clone().add(new THREE.Vector3(0,1.65,0)));});
-    if(room==='mission')hotspots.forEach(h=>positionLabel(h.button,h.position));
+    animateNavigation(now);animateRooms();
+    robots.forEach((r,i)=>{let walking=false;if(motion){if(r.path.length){const delta=r.path[0].clone().sub(r.robot.position),dist=delta.length();if(dist<.1)r.path.shift();else{walking=true;r.robot.position.addScaledVector(delta.normalize(),Math.min(dist,dt*1.65));r.robot.rotation.y=Math.atan2(delta.x,delta.z);}}else if(state.agents[i].lane===0){const target=r.home.clone().add(new THREE.Vector3(Math.sin(clock*.45+i)*.32,0,Math.cos(clock*.45+i)*.18));const delta=target.clone().sub(r.robot.position);walking=delta.length()>.05;r.robot.position.lerp(target,.025);r.robot.rotation.y=THREE.MathUtils.lerp(r.robot.rotation.y,Math.atan2(delta.x,delta.z),.04);}else r.robot.rotation.y=THREE.MathUtils.lerp(r.robot.rotation.y,0,.04);r.body.position.y=walking?Math.abs(Math.sin(clock*8+i))*.04:Math.sin(clock*2+i)*.02;r.legs.forEach((l,j)=>l.rotation.x=walking?Math.sin(clock*9+i+j*Math.PI)*.4:0);r.arms.forEach((a,j)=>a.rotation.x=Math.sin(clock*(walking?8:1.6)+j*Math.PI+i)*(walking ? .38 : .08));}
+      r.halo.position.set(r.robot.position.x,.086,r.robot.position.z);r.halo.visible=i===activeSelection||state.agents[i].lane!==0;deskLights[i].visible=state.agents[i].lane===1;positionLabel(labels[i],missionRoom.localToWorld(r.robot.position.clone().add(new THREE.Vector3(0,1.65,0))));});
+    if(room==='mission')hotspots.forEach(h=>positionLabel(h.button,missionRoom.localToWorld(h.position.clone())));
     if(motion){core.rotation.y=clock*.25;coreRing.position.y=1.35+Math.sin(clock*1.5)*.045;weatherRotor.rotation.y=clock*.28;}
     deskScreens.forEach((screen,i)=>{const busy=state.agents[i].lane===1;screen.material.emissive.setHex(busy?colors[i]:0);screen.material.emissiveIntensity=busy ? .12 : 0;});
     packets.forEach((p,i)=>{const t=(clock-packetTime-i*.13)/2.8;p.visible=t>=0&&t<=1&&state.phase>=0;if(p.visible){p.position.lerpVectors(packetStart,packetEnd,t);p.position.y=.65+Math.sin(t*Math.PI)*1.15;}});
     renderer.render(scene,camera);
   }
   motionButton();resize();update(snapshot,0);requestAnimationFrame(animate);root.dataset.renderer='webgl';
-  return {resize,update,setRoom,setCollection,setDraft,inspect:()=>({sceneStyle:'workshop',room,residents:residentInfo(),draft:draftProfile,crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
+  return {resize,update,setRoom,setCollection,setDraft,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
 }
 
 try {sceneView=createScene();}catch(error){el('fallback').hidden=false;root.dataset.renderer='fallback';console.warn('3D unavailable; accessible workflow controls remain available.',error.message);}
-window.BacCampus={setRoom:room=>sceneView?.setRoom(room),setCollection:(agents,key)=>sceneView?.setCollection(agents,key),setDraft:profile=>sceneView?.setDraft(profile),inspect:()=>sceneView?.inspect()||{fallback:true},setLive:next=>{live=true;stop();snapshot=next;selected=next.selected;render();}};
+window.BacCampus={setRoom:(room,options)=>sceneView?.setRoom(room,options),overview:()=>sceneView?.overview(),setCollection:(agents,key)=>sceneView?.setCollection(agents,key),setDraft:profile=>sceneView?.setDraft(profile),inspect:()=>sceneView?.inspect()||{fallback:true},setLive:next=>{live=true;stop();snapshot=next;selected=next.selected;render();}};
 render();
 
 })();</script>
@@ -79123,12 +79301,14 @@ function fillCreator(creating){
   el('create').textContent=creating?'Bring my agent to life ↗':'Save my agent ↗';el('cancel-create').hidden=!data.profile;el('create').disabled=creating&&n>=(data.agentLimit||12);
   updateDraft();
 }
-function setRoom(next){
+function setRoom(next,options={}){
   if(!roomCopy[next])return;
-  if(typeof worldOpen!=='undefined'&&worldOpen)leaveWorld();
+  const before=options.fromWorld&&!worldOpen?worldViewport.getBoundingClientRect().top:null;
+  if(typeof worldOpen!=='undefined'&&worldOpen&&(next==='policies'||board))leaveWorld();
   room=next;if(next!=='mission')board=false;
   root.dataset.room=next;worldViewport.setAttribute('aria-label',roomCopy[next][0]+'. Drag to orbit, scroll to zoom. Press Enter to toggle full screen.');if(roomsReady)try{sessionStorage.setItem('bac-studio-room',next);}catch{}
-  if(next==='mission')renderCrew();renderRoomVisibility();if(next==='policies')loadPolicy();else window.BacCampus?.setRoom(next);
+  if(next==='mission')renderCrew();renderRoomVisibility();if(next==='policies')loadPolicy();else window.BacCampus?.setRoom(next,{instant:!roomsReady});
+  if(before!==null)window.scrollBy(0,worldViewport.getBoundingClientRect().top-before);
 }
 function renderRoomVisibility(){
   const workshop=room==='workshop',lounge=room==='lounge',mission=room==='mission',policies=room==='policies';
@@ -79164,7 +79344,8 @@ el('body-picker').onclick=e=>{const b=e.target.closest('[data-body]');if(b){draf
 el('color-picker').onclick=e=>{const b=e.target.closest('[data-avatar-color]');if(b){draftAvatar.color=b.dataset.avatarColor;updateDraft();}};
 el('accessory').onchange=updateDraft;el('name').addEventListener('input',updateDraft);
 root.querySelectorAll('[data-persona]').forEach(button=>button.onclick=()=>{persona=button.dataset.persona;root.querySelectorAll('[data-persona]').forEach(b=>b.setAttribute('aria-pressed',b===button));updateDraft();});
-el('rooms').onclick=e=>{const b=e.target.closest('[data-room]');if(b){if(b.dataset.room==='workshop'&&room!=='workshop')fillCreator(true);setRoom(b.dataset.room);}};
+el('rooms').onclick=e=>{const b=e.target.closest('[data-room]');if(b)setRoom(b.dataset.room);};
+root.addEventListener('bac:world-room',e=>setRoom(e.detail.room,{fromWorld:true}));
 el('room-action').onclick=()=>room==='mission'?crewForm():room==='lounge'?agentForm(true):setRoom('lounge');
 el('edit-agent').onclick=()=>agentForm(false);el('add-agent').onclick=()=>agentForm(true);el('empty-create').onclick=()=>agentForm(true);el('cancel-create').onclick=()=>setRoom('lounge');
 el('delete-agent').onclick=()=>{

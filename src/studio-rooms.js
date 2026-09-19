@@ -31,12 +31,14 @@ function fillCreator(creating){
   el('create').textContent=creating?'Bring my agent to life ↗':'Save my agent ↗';el('cancel-create').hidden=!data.profile;el('create').disabled=creating&&n>=(data.agentLimit||12);
   updateDraft();
 }
-function setRoom(next){
+function setRoom(next,options={}){
   if(!roomCopy[next])return;
-  if(typeof worldOpen!=='undefined'&&worldOpen)leaveWorld();
+  const before=options.fromWorld&&!worldOpen?worldViewport.getBoundingClientRect().top:null;
+  if(typeof worldOpen!=='undefined'&&worldOpen&&(next==='policies'||board))leaveWorld();
   room=next;if(next!=='mission')board=false;
   root.dataset.room=next;worldViewport.setAttribute('aria-label',roomCopy[next][0]+'. Drag to orbit, scroll to zoom. Press Enter to toggle full screen.');if(roomsReady)try{sessionStorage.setItem('bac-studio-room',next);}catch{}
-  if(next==='mission')renderCrew();renderRoomVisibility();if(next==='policies')loadPolicy();else window.BacCampus?.setRoom(next);
+  if(next==='mission')renderCrew();renderRoomVisibility();if(next==='policies')loadPolicy();else window.BacCampus?.setRoom(next,{instant:!roomsReady});
+  if(before!==null)window.scrollBy(0,worldViewport.getBoundingClientRect().top-before);
 }
 function renderRoomVisibility(){
   const workshop=room==='workshop',lounge=room==='lounge',mission=room==='mission',policies=room==='policies';
@@ -72,7 +74,8 @@ el('body-picker').onclick=e=>{const b=e.target.closest('[data-body]');if(b){draf
 el('color-picker').onclick=e=>{const b=e.target.closest('[data-avatar-color]');if(b){draftAvatar.color=b.dataset.avatarColor;updateDraft();}};
 el('accessory').onchange=updateDraft;el('name').addEventListener('input',updateDraft);
 root.querySelectorAll('[data-persona]').forEach(button=>button.onclick=()=>{persona=button.dataset.persona;root.querySelectorAll('[data-persona]').forEach(b=>b.setAttribute('aria-pressed',b===button));updateDraft();});
-el('rooms').onclick=e=>{const b=e.target.closest('[data-room]');if(b){if(b.dataset.room==='workshop'&&room!=='workshop')fillCreator(true);setRoom(b.dataset.room);}};
+el('rooms').onclick=e=>{const b=e.target.closest('[data-room]');if(b)setRoom(b.dataset.room);};
+root.addEventListener('bac:world-room',e=>setRoom(e.detail.room,{fromWorld:true}));
 el('room-action').onclick=()=>room==='mission'?crewForm():room==='lounge'?agentForm(true):setRoom('lounge');
 el('edit-agent').onclick=()=>agentForm(false);el('add-agent').onclick=()=>agentForm(true);el('empty-create').onclick=()=>agentForm(true);el('cancel-create').onclick=()=>setRoom('lounge');
 el('delete-agent').onclick=()=>{

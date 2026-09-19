@@ -8,7 +8,7 @@ function createScene() {
   renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;
   viewport.prepend(renderer.domElement); renderer.domElement.setAttribute('aria-hidden','true');
-  const camera=new THREE.OrthographicCamera(-11,11,7,-7,.1,100);
+  const camera=new THREE.OrthographicCamera(-11,11,7,-7,.1,180);
   const focus=new THREE.Vector3(0,.15,0);
   let azimuth=.43,elevation=.76,zoom=1,drag=null,moved=false;
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
@@ -16,7 +16,7 @@ function createScene() {
   let lost=false,lastKey='',lastActive=-1,lastJob=null;
   scene.add(new THREE.HemisphereLight(0xf4f7ff,0x161c26,1.65));
   const sun=new THREE.DirectionalLight(0xffffff,3.0);sun.position.set(-5,15,8);sun.castShadow=true;
-  sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-12;sun.shadow.camera.right=12;sun.shadow.camera.top=10;sun.shadow.camera.bottom=-10;sun.shadow.normalBias=.035;scene.add(sun);
+  sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-12;sun.shadow.camera.right=12;sun.shadow.camera.top=10;sun.shadow.camera.bottom=-10;sun.shadow.normalBias=.035;scene.add(sun);scene.add(sun.target);
   const fill=new THREE.DirectionalLight(0xc7ddff,.75);fill.position.set(8,6,-9);scene.add(fill);
   const materials=new Map();
   function mat(color,glow=false){const key=color+':'+glow;if(!materials.has(key))materials.set(key,new THREE.MeshStandardMaterial({color,roughness:.48,metalness:.16,...(glow?{emissive:color,emissiveIntensity:.35}:{})}));return materials.get(key);}
@@ -35,9 +35,9 @@ function createScene() {
   for(let x=-8;x<=8;x+=1)box(missionRoom,x,.02,0,.014,.008,12,0x3a4653);
   for(let z=-6;z<=6;z+=1)box(missionRoom,0,.02,z,17.8,.008,.014,0x3a4653);
   box(missionRoom,0,.65,-6.05,18,1.35,.18,0x1e2732);
-  box(missionRoom,-8.85,.65,0,.15,1.35,12,0x1e2732);
+  for(const [z,length] of [[-2.1,7.8],[5.1,1.8]])box(missionRoom,-8.85,.65,z,.15,1.35,length,0x1e2732);
   box(missionRoom,0,1.36,-6.05,18,.055,.24,0x63778b);
-  box(missionRoom,-8.85,1.36,0,.22,.055,12,0x63778b);
+  for(const [z,length] of [[-2.1,7.8],[5.1,1.8]])box(missionRoom,-8.85,1.36,z,.22,.055,length,0x63778b);
   // A framed workshop display keeps the supplied illustration inside the 3D space.
   box(missionRoom,-.6,2.4,-5.97,5.8,3.8,.14,0x0c121b);
   sign(missionRoom,'BUILD A CLAW',-.6,4.0,-5.86,4.9,.38,'#f2f6fb');
@@ -137,10 +137,23 @@ function createScene() {
   let packetStart=new THREE.Vector3(),packetEnd=new THREE.Vector3(),packetTime=-20;
   let room='mission';
   /* WORLD_ROOMS */
+  /* WORLD_NAVIGATION */
   const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
-  function cam(){camera.position.set(Math.sin(azimuth)*Math.cos(elevation)*30,Math.sin(elevation)*30,Math.cos(azimuth)*Math.cos(elevation)*30);camera.lookAt(focus);camera.zoom=zoom;camera.updateProjectionMatrix();}
-  // CSS owns layout; resize only the drawing buffer, not the canvas's CSS dimensions.
-  function resize(){const w=viewport.clientWidth,h=viewport.clientHeight;if(!w||!h)return;const aspect=w/h,vertical=room==='workshop'?(aspect<1?7:4.8):aspect<1?12.5:aspect<1.5?10.2:8.0;camera.left=-vertical*aspect;camera.right=vertical*aspect;camera.top=vertical;camera.bottom=-vertical;renderer.setSize(w,h,false);cam();renderer.render(scene,camera);}
+  function cam(){
+    camera.position.set(Math.sin(azimuth)*Math.cos(elevation)*50,Math.sin(elevation)*50,Math.cos(azimuth)*Math.cos(elevation)*50).add(focus);
+    camera.lookAt(focus);camera.zoom=zoom;camera.updateProjectionMatrix();camera.updateMatrixWorld();
+    sun.position.copy(focus).add(new THREE.Vector3(-5,15,8));sun.target.position.copy(focus);sun.target.updateMatrixWorld();
+  }
+  function frame(){
+    const w=viewport.clientWidth,h=viewport.clientHeight;if(!w||!h)return;
+    const aspect=w/h,vertical=viewHalfHeight||roomHeight(room);
+    camera.left=-vertical*aspect;camera.right=vertical*aspect;camera.top=vertical;camera.bottom=-vertical;cam();
+  }
+  // CSS owns layout; resize only the drawing buffer, never the canvas's CSS size.
+  function resize(){
+    const w=viewport.clientWidth,h=viewport.clientHeight;if(!w||!h)return;
+    renderer.setSize(w,h,false);resizeNavigation();frame();renderer.render(scene,camera);
+  }
   function movement(){
     robots.forEach(r=>{r.path=r.robot.position.distanceTo(r.home)>.06?[r.home.clone()]:[];r.packet.visible=false;});
     const active=state.agents.findIndex(a=>a.lane===1||a.lane===2);
@@ -158,25 +171,25 @@ function createScene() {
   function update(next,index){state=next;activeSelection=index;phase=state.phase;dressCrew();const key=[state.jobId,state.phase,state.missionSkill,state.agents.map(a=>a.lane).join('')].join(':');if(key!==lastKey){lastKey=key;movement();}labels.forEach((b,i)=>{b.innerHTML=escape(state.agents[i].name)+'<small>'+escape(state.agents[i].lane===1?'Working · '+state.agents[i].role:state.agents[i].lane===2?'Waiting for you':state.agents[i].role)+'</small>';b.classList.toggle('selected',index===i);b.classList.toggle('waiting',state.agents[i].lane===2);});}
   function motionButton(){el('motion').textContent=motion?'Ⅱ':'▶';el('motion').setAttribute('aria-label',motion?'Pause scene motion':'Resume scene motion');}
   el('motion').onclick=()=>{motion=!motion;motionButton();};reduced.addEventListener('change',()=>{motion=!reduced.matches;motionButton();});
-  el('camera').onclick=()=>{azimuth=room==='workshop'?.3:.43;elevation=room==='workshop'?.38:.76;zoom=1;cam();};
-  renderer.domElement.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};moved=false;renderer.domElement.setPointerCapture(e.pointerId);});
+  el('camera').onclick=resetNavigation;
+  renderer.domElement.addEventListener('pointerdown',e=>{if(journey)return;drag={x:e.clientX,y:e.clientY};moved=false;renderer.domElement.setPointerCapture(e.pointerId);});
   renderer.domElement.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>2)moved=true;azimuth-=dx*.005;elevation=Math.max(room==='workshop'?.2:.5,Math.min(1.35,elevation+dy*.003));drag={x:e.clientX,y:e.clientY};cam();});
-  renderer.domElement.addEventListener('pointerup',e=>{if(!moved){const rect=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);const hits=raycaster.intersectObjects(room==='mission'?hitTargets:roomHitTargets());if(hits.length){if(room==='mission')choose(hits[0].object.userData.agent);else selectRoomObject(hits[0].object);}}drag=null;});
+  renderer.domElement.addEventListener('pointerup',e=>{if(!drag)return;if(!moved){const rect=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);if(!journey){const hits=raycaster.intersectObjects(navigationTargets(),true);if(hits.length){const object=hits[0].object;if(!selectNavigationObject(object)){if(room==='mission')choose(object.userData.agent);else selectRoomObject(object);}}}}drag=null;});
   renderer.domElement.addEventListener('pointercancel',()=>drag=null);
-  renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.75,Math.min(1.9,zoom-e.deltaY*.0007));cam();},{passive:false});
+  renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();if(journey)return;zoom=Math.max(.75,Math.min(1.9,zoom-e.deltaY*.0007));cam();},{passive:false});
   renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();lost=true;el('fallback').hidden=false;root.dataset.renderer='lost';});renderer.domElement.addEventListener('webglcontextrestored',()=>{lost=false;el('fallback').hidden=true;root.dataset.renderer='webgl';});
   new ResizeObserver(resize).observe(viewport);new IntersectionObserver(items=>visible=items[0].isIntersecting).observe(viewport);
   function positionLabel(node,point){const p=point.clone().project(camera);node.style.left=(p.x*.5+.5)*viewport.clientWidth+'px';node.style.top=(-p.y*.5+.5)*viewport.clientHeight+'px';node.style.display=p.z>1?'none':'';}
   function animate(now){requestAnimationFrame(animate);if(document.hidden||root.hidden||!viewport.clientWidth||lost){lastFrame=now;return;}if(now-lastFrame<32)return;const dt=Math.min((now-lastFrame)/1000,.06);lastFrame=now;if(motion)clock+=dt;
-    animateRooms();
-    if(room==='mission')robots.forEach((r,i)=>{let walking=false;if(motion){if(r.path.length){const delta=r.path[0].clone().sub(r.robot.position),dist=delta.length();if(dist<.1)r.path.shift();else{walking=true;r.robot.position.addScaledVector(delta.normalize(),Math.min(dist,dt*1.65));r.robot.rotation.y=Math.atan2(delta.x,delta.z);}}else if(state.agents[i].lane===0){const target=r.home.clone().add(new THREE.Vector3(Math.sin(clock*.45+i)*.32,0,Math.cos(clock*.45+i)*.18));const delta=target.clone().sub(r.robot.position);walking=delta.length()>.05;r.robot.position.lerp(target,.025);r.robot.rotation.y=THREE.MathUtils.lerp(r.robot.rotation.y,Math.atan2(delta.x,delta.z),.04);}else r.robot.rotation.y=THREE.MathUtils.lerp(r.robot.rotation.y,0,.04);r.body.position.y=walking?Math.abs(Math.sin(clock*8+i))*.04:Math.sin(clock*2+i)*.02;r.legs.forEach((l,j)=>l.rotation.x=walking?Math.sin(clock*9+i+j*Math.PI)*.4:0);r.arms.forEach((a,j)=>a.rotation.x=Math.sin(clock*(walking?8:1.6)+j*Math.PI+i)*(walking ? .38 : .08));}
-      r.halo.position.set(r.robot.position.x,.086,r.robot.position.z);r.halo.visible=i===activeSelection||state.agents[i].lane!==0;deskLights[i].visible=state.agents[i].lane===1;positionLabel(labels[i],r.robot.position.clone().add(new THREE.Vector3(0,1.65,0)));});
-    if(room==='mission')hotspots.forEach(h=>positionLabel(h.button,h.position));
+    animateNavigation(now);animateRooms();
+    robots.forEach((r,i)=>{let walking=false;if(motion){if(r.path.length){const delta=r.path[0].clone().sub(r.robot.position),dist=delta.length();if(dist<.1)r.path.shift();else{walking=true;r.robot.position.addScaledVector(delta.normalize(),Math.min(dist,dt*1.65));r.robot.rotation.y=Math.atan2(delta.x,delta.z);}}else if(state.agents[i].lane===0){const target=r.home.clone().add(new THREE.Vector3(Math.sin(clock*.45+i)*.32,0,Math.cos(clock*.45+i)*.18));const delta=target.clone().sub(r.robot.position);walking=delta.length()>.05;r.robot.position.lerp(target,.025);r.robot.rotation.y=THREE.MathUtils.lerp(r.robot.rotation.y,Math.atan2(delta.x,delta.z),.04);}else r.robot.rotation.y=THREE.MathUtils.lerp(r.robot.rotation.y,0,.04);r.body.position.y=walking?Math.abs(Math.sin(clock*8+i))*.04:Math.sin(clock*2+i)*.02;r.legs.forEach((l,j)=>l.rotation.x=walking?Math.sin(clock*9+i+j*Math.PI)*.4:0);r.arms.forEach((a,j)=>a.rotation.x=Math.sin(clock*(walking?8:1.6)+j*Math.PI+i)*(walking ? .38 : .08));}
+      r.halo.position.set(r.robot.position.x,.086,r.robot.position.z);r.halo.visible=i===activeSelection||state.agents[i].lane!==0;deskLights[i].visible=state.agents[i].lane===1;positionLabel(labels[i],missionRoom.localToWorld(r.robot.position.clone().add(new THREE.Vector3(0,1.65,0))));});
+    if(room==='mission')hotspots.forEach(h=>positionLabel(h.button,missionRoom.localToWorld(h.position.clone())));
     if(motion){core.rotation.y=clock*.25;coreRing.position.y=1.35+Math.sin(clock*1.5)*.045;weatherRotor.rotation.y=clock*.28;}
     deskScreens.forEach((screen,i)=>{const busy=state.agents[i].lane===1;screen.material.emissive.setHex(busy?colors[i]:0);screen.material.emissiveIntensity=busy ? .12 : 0;});
     packets.forEach((p,i)=>{const t=(clock-packetTime-i*.13)/2.8;p.visible=t>=0&&t<=1&&state.phase>=0;if(p.visible){p.position.lerpVectors(packetStart,packetEnd,t);p.position.y=.65+Math.sin(t*Math.PI)*1.15;}});
     renderer.render(scene,camera);
   }
   motionButton();resize();update(snapshot,0);requestAnimationFrame(animate);root.dataset.renderer='webgl';
-  return {resize,update,setRoom,setCollection,setDraft,inspect:()=>({sceneStyle:'workshop',room,residents:residentInfo(),draft:draftProfile,crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
+  return {resize,update,setRoom,setCollection,setDraft,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
 }

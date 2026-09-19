@@ -49,3 +49,7 @@ Demonstrate **Stop after active call**: the pending model request may finish, bu
 Before the event, complete the [requirements and fault checks](cohort-requirements.md), especially real Spark inference and OpenShell enforcement.
 
 If the event includes NeMoReef, the facilitator can explain the two experiences: this Studio focuses on personal onboarding, useful skills and visible crew handoffs; the supplied NeMoReef brief emphasizes persistent assignments, orchestration and policy/failure recovery. Confirm the event’s available demos before directing attendees to another station. This guidance is part of the presenter runbook.
+
+## Show the connected studio
+
+In Workshop, point out the lit doorway into Agent lounge. Click it to follow the corridor, then use **See the whole studio** to show where all three rooms sit. Choose Mission room from the overview to reach the ready-made crew. Enter fullscreen and use the doorways or the small map to move without leaving it. Draft names, appearance, selected agents and their work stay intact as you travel. Policies remains a separate control panel. For motion-sensitive attendees, the browser’s reduced-motion preference makes the camera changes immediate.

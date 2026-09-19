@@ -31,7 +31,7 @@ const {chromium}=require('playwright');
  assert.deepEqual((await page.evaluate(()=>BacCampus.inspect().crewAvatars)).slice(0,3),roster.slice(0,3).map(m=>m.avatar));
  // Camera sizing and actual renderer survive native fullscreen in every room.
  for(const room of ['workshop','lounge','mission']){
-   await page.locator('button[data-room='+room+']').click();await page.waitForTimeout(180);
+   await page.locator('button[data-room='+room+']').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);await page.waitForTimeout(180);
    const before=await page.locator('#campus-viewport').boundingBox();await page.locator('#campus-viewport').focus();await page.keyboard.press('Enter');await page.waitForFunction(()=>document.fullscreenElement?.id==='agent-campus');
    await page.waitForTimeout(150);const full=await page.locator('#campus-viewport').boundingBox();assert(full.width>=1599,'Fullscreen must fill width in '+room);
    await page.keyboard.press('Enter');await page.waitForFunction(()=>!document.fullscreenElement);await page.waitForTimeout(180);const after=await page.locator('#campus-viewport').boundingBox();assert(Math.abs(before.height-after.height)<1,room+' height drift');

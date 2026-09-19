@@ -14,7 +14,7 @@ const {chromium}=require('playwright');
   await page.locator('#studio-name').fill('Riley');await page.locator('[data-persona="maker"]').click();await page.locator('#studio-create').click();
   await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Riley');
   assert.match(await page.locator('#studio-personality').innerText(),/Inventive/);
-  await page.locator('button[data-room=mission]').click();
+  await page.locator('button[data-room=mission]').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
   await page.locator('#studio-alert button').click();
   // Canvas dimensions must not become the grid's minimum height after fullscreen.
   const world=page.locator('#campus-viewport');

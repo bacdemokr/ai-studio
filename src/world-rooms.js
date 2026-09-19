@@ -1,13 +1,15 @@
 // All rooms share one renderer and the same camera/fullscreen lifecycle.
 const loungeRoom=new THREE.Group(),workshopRoom=new THREE.Group();scene.add(loungeRoom,workshopRoom);
-loungeRoom.visible=workshopRoom.visible=false;
+// All three rooms stay in one connected scene.
 const residentLayer=document.createElement('div');residentLayer.className='world-residents';viewport.append(residentLayer);residentLayer.hidden=true;
 const residents=[],residentMeshes=[];let residentKey='',collection=[],selectedResident='',draftProfile={name:'Jinny',persona:'guide',avatar:avatarDefaults[0]},draftRig=null,draftKey='';
 const roomCameras={mission:[.43,.76,1],lounge:[.43,.76,1],workshop:[.3,.38,1]};
 function floor(parent,width,depth){box(parent,0,-.3,0,width,.55,depth,0x151b23);box(parent,0,-.012,0,width-.12,.05,depth-.12,0x26323f);box(parent,0,-.13,depth/2+.01,width-.45,.035,.02,0x76b900,true);for(let x=-width/2+1;x<width/2;x++)box(parent,x,.019,0,.012,.006,depth-.3,0x374654);for(let z=-depth/2+1;z<depth/2;z++)box(parent,0,.019,z,width-.3,.006,.012,0x374654);}
 floor(loungeRoom,18,12.6);
-box(loungeRoom,0,.65,-6.05,18,1.35,.18,0x1e2732);box(loungeRoom,-8.85,.65,0,.15,1.35,12,0x1e2732);
-box(loungeRoom,0,1.36,-6.05,18,.055,.24,0x63778b);box(loungeRoom,-8.85,1.36,0,.22,.055,12,0x63778b);
+box(loungeRoom,0,.65,-6.05,18,1.35,.18,0x1e2732);
+for(const [z,length] of [[-2.1,7.8],[5.1,1.8]])box(loungeRoom,-8.85,.65,z,.15,1.35,length,0x1e2732);
+box(loungeRoom,0,1.36,-6.05,18,.055,.24,0x63778b);
+for(const [z,length] of [[-2.1,7.8],[5.1,1.8]])box(loungeRoom,-8.85,1.36,z,.22,.055,length,0x63778b);
 box(loungeRoom,0,2.0,-5.97,7.0,2.0,.14,0x0c121b);sign(loungeRoom,'YOUR AGENT LOUNGE',0,2.42,-5.86,6.2,.5,'#f2f6fb');sign(loungeRoom,'INDIVIDUAL MINDS. SHARED ENGINE.',0,1.74,-5.85,6.0,.27,'#9eafc1');
 for(const x of [-6.4,6.4]){box(loungeRoom,x,.45,-4.65,3.1,.7,.94,0x334453);box(loungeRoom,x,.9,-5.07,3.1,.7,.17,0x45596c);box(loungeRoom,x-1.5,.7,-4.65,.15,.7,.95,0x45596c);box(loungeRoom,x+1.5,.7,-4.65,.15,.7,.95,0x45596c);}
 const loungeBrand=sign(loungeRoom,'BUILD A CLAW',0,.04,5.65,3.2,.38,'#8fabc2');loungeBrand.rotation.x=-Math.PI/2;
@@ -44,17 +46,9 @@ function setDraft(profile){
   if(draftRig){workshopRoom.remove(draftRig.group);clearGeometry(draftRig.group);}
   draftRig=createCharacter(avatar);draftRig.group.scale.setScalar(2.55);draftRig.group.position.set(0,.35,.5);workshopRoom.add(draftRig.group);draftRing.material=mat(draftRig.color,true);
 }
-function setRoom(next){
-  if(!['mission','lounge','workshop'].includes(next))return;
-  if(next!==room){roomCameras[room]=[azimuth,elevation,zoom];room=next;[azimuth,elevation,zoom]=roomCameras[room];}
-  focus.set(0,room==='workshop'?1.1:.15,0);
-  missionRoom.visible=room==='mission';loungeRoom.visible=room==='lounge';workshopRoom.visible=room==='workshop';
-  hotspotLayer.hidden=room!=='mission';el('labels').hidden=room!=='mission';residentLayer.hidden=room!=='lounge';
-  resize();
-}
 function animateRooms(){
-  if(room==='workshop'&&draftRig){if(motion){draftRig.group.rotation.y=Math.sin(clock*.35)*.24;draftRig.body.position.y=Math.sin(clock*1.8)*.025;draftRig.arms[0].rotation.x=Math.sin(clock*1.5)*.12;}}
-  if(room==='lounge')residents.forEach(r=>{if(motion){r.body.position.y=Math.sin(clock*1.6+r.index)*.035;r.group.rotation.y=Math.sin(clock*.35+r.index)*.2;r.arms.forEach((a,i)=>a.rotation.x=Math.sin(clock*1.4+r.index+i)*.09);}positionLabel(r.node,new THREE.Vector3(r.x,2.4,r.z));});
+  if((room==='workshop'||overview||journey)&&draftRig){if(motion){draftRig.group.rotation.y=Math.sin(clock*.35)*.24;draftRig.body.position.y=Math.sin(clock*1.8)*.025;draftRig.arms[0].rotation.x=Math.sin(clock*1.5)*.12;}}
+  if(room==='lounge'||overview||journey)residents.forEach(r=>{if(motion){r.body.position.y=Math.sin(clock*1.6+r.index)*.035;r.group.rotation.y=Math.sin(clock*.35+r.index)*.2;r.arms.forEach((a,i)=>a.rotation.x=Math.sin(clock*1.4+r.index+i)*.09);}positionLabel(r.node,loungeRoom.localToWorld(new THREE.Vector3(r.x,2.4,r.z)));});
 }
 function roomHitTargets(){return room==='lounge'?residentMeshes:[];}
 function selectRoomObject(object){if(object.userData.resident)root.dispatchEvent(new CustomEvent('bac:collection-select',{detail:object.userData.resident}));}
