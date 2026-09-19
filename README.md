@@ -1,16 +1,19 @@
 # NVIDIA Build a Claw — Agent Studio
 
-Create a personal agent, give it useful skills, and bring it into a crew. The NVIDIA-inspired dark interface surrounds a miniature 3D workshop: five robot specialists work at distinct desks around one shared brief. Active workbenches light up and document packets illustrate observed handoffs. Small buttons on the library, maker desk, weather instrument and shared brief open the actual experiences. Switch between **Agent campus** and **Mission control**, or expand the world without changing the rest of the interface.
+Create your own agents, give each useful skills, and choose who joins your crew. The NVIDIA-inspired dark interface surrounds a miniature 3D workshop: five robot specialists work at distinct desks around one shared brief. Active workbenches light up and document packets illustrate observed handoffs. Small buttons on the library, maker desk, weather instrument and shared brief open the actual experiences. Switch between **Agent campus** and **Mission control**, or expand the world without changing the rest of the interface.
 
 ![Agent Studio](docs/agent-studio.png)
 
+[Preview: your agent collection](docs/agent-collection.png)
+
 ## What is implemented
 
+- **My agents:** create and switch between up to 12 personal agents per browser session. Each has its own name, persona, skills, conversation, memory, files and mission board. The selected agent survives a page reload in the same tab.
 - **Persistent onboarding:** name, persona and editable skill loadout; native OpenClaw identity/skill files are provisioned on the first mission. Memory, conversations, files and jobs survive app updates.
 - **Useful solo missions:** live weather, reading public websites, optional Brave web search, document questions, HTML mini-app creation with an isolated playable preview, campaign drafts and explicit preference memory.
-- **A real crew workflow:** your personal agent leads Nova, Atlas, Momo and Pico. Separate OpenClaw agents receive a shared brief and previous deliverables; the reviewer checks the specialists. A real server-side decision stops the workflow if equipment is insufficient.
+- **A real crew workflow:** your selected agent leads four specialists. Assign any of your other agents to demo production, operations, marketing or review; unfilled slots use Nova, Atlas, Momo and Pico. The workshop has five role stations, independently of your collection size. Separate OpenClaw agents receive a shared brief and previous deliverables; the reviewer checks the specialists. A real server-side decision stops the workflow if equipment is insufficient.
 - **Visible evidence:** observed task states, role handoffs and actual saved files drive the scene and board. Character motion illustrates those states; it is not a model reasoning trace.
-- **Phone continuity:** optional Telegram pairing routes a participant’s private messages to the same OpenClaw agent and conversation as the web. Pairing tokens expire and can only be used once.
+- **Phone continuity:** optional Telegram pairing routes a participant’s private messages to the same OpenClaw agent and conversation as the web. Pairing tokens expire and can only be used once. Switching agents in the browser does not reroute a paired phone. Pairing a different agent moves that private chat to the newly paired agent.
 - **Persistent follow-ups:** scheduled jobs survive refresh/restart and run through the same queue. Results appear in the web workspace. This is the BaC scheduler, not OpenClaw cron.
 - **Attendee controls:** stop after the active model call, reset your mission board while preserving memory/files, deliberate retry, labeled fallbacks and an evidence download for your facilitator.
 - **Inspectable handoffs:** open each role’s shared inputs, prior deliverables, fingerprints and output files; download the selected mission’s evidence.
@@ -85,7 +88,7 @@ Only Python 3.9+ and a modern WebGL2 browser are needed for UI review. The runti
 2. Click **Maker workshop**, create a mini game and play the actual generated file.
 3. Ask it to remember a preference. Refresh, then ask what it remembers.
 4. Open **Knowledge library**, upload a document or use the labeled sample brief, and inspect the answer alongside the source.
-5. Launch a crew for **Zurich / Europe / English**. Defaults: 120 attendees, 180 minutes, groups of 5, sessions of 15 minutes; all are editable.
+5. Use **Create an agent** to make a second teammate with different skills. Switch between them to see separate memory and workspaces. Assign your teammates when launching a crew for **Zurich / Europe / English**. Defaults: 120 attendees, 180 minutes, groups of 5, sessions of 15 minutes; all are editable.
 6. Watch role handoffs in the campus, switch to Mission control, approve the equipment assumption if needed, and open each deliverable.
 7. If the host configured Telegram, pair a phone and continue the same conversation.
 8. Open **Security lab** to explore the boundary, then use **Find your next demo** for the NeMoReef learning path. Open **Help & fallback** when a live dependency is unavailable.
@@ -94,7 +97,9 @@ Dates, venues and registration URLs stay unconfirmed unless supplied. Equipment 
 
 ## Validation and limits
 
-The pinned **real OpenClaw gateway** was installed and tested locally with a clearly identified protocol fixture as its model: native agent registration (including immediate first use), write/read tools, persistent memory, HTTP conversation continuity and the complete five-role crew workflow worked. Python and browser tests cover lifecycle/update isolation, participant boundaries, scheduling, equipment approvals, file handling, onboarding and 3D controls. Fixtures are test-only and never loaded by the production app.
+The collection limit is 12 personal agents per attendee; a crew mission has five distinct roles. Attendees share a limit of three pending missions across their collection, and the server executes one task at a time on the shared model. Crew assignment does not add tools to an agent’s skill loadout. Crew inputs and outputs are shared explicitly, while the combined package stays in the lead’s workspace. A specialist assigned to a pending crew has a shortcut back to that crew’s board. The update migrates existing single-agent state in place, preserving native identity, memory, files, phone pairing and board history.
+
+The pinned **real OpenClaw gateway** was installed and tested locally with a clearly identified protocol fixture as its model: native agent registration (including immediate first use), write/read tools, persistent memory, HTTP conversation continuity and the complete five-role crew workflow worked. Python and browser tests cover lifecycle/update isolation, participant and agent boundaries, multi-agent creation/switching, custom crew assignments, migration, scheduling, equipment approvals, file handling, onboarding and 3D controls. Collection and custom-assignment tests use explicit adapter/browser fixtures; Spark inference still needs host verification. Fixtures are test-only and never loaded by the production app.
 
 **Still requires Spark verification:** Qwen/Gemma inference quality and latency, actual NVIDIA GPU setup, real Telegram credentials, Brave credentials and OpenShell sandbox enforcement. No live Telegram message or promotional email was sent during development.
 

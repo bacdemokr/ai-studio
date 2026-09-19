@@ -22,7 +22,7 @@ Ask the agent to remember a preference. Open Memory to inspect the actual file, 
 
 ## 7–13 minutes: why several agents?
 
-Launch a BaC in Zurich, Europe / EMEA, in English. Let the attendee change attendance, duration and group/session sizes. Their agent becomes the event lead. Nova designs the participant experience; Atlas explains deterministic device/staff counts; Momo uses those outputs for invitation copy; Pico reviews the combined plan.
+Click **Create an agent** to add a second teammate with a different persona and skill loadout. Switch back and forth to show separate memory and files. Then launch a BaC in Zurich, Europe / EMEA, in English. Let the attendee change attendance, duration and group/session sizes. Their selected agent becomes the event lead. Assign the new teammate to one of the four specialist roles; leave the rest at their ready-made defaults. With the default crew, Nova designs the participant experience; Atlas explains deterministic device/staff counts; Momo uses those outputs for invitation copy; Pico reviews the combined plan.
 
 Open Agent campus to see personalities and movement. Switch to Mission control to inspect dependencies and completed deliverables. Deliberately enter too few devices. The server stops before marketing; the attendee can plan additional equipment (still unconfirmed) or cancel and revise the brief. The review calls out missing dates/venue/registration links.
 
@@ -44,6 +44,6 @@ Open **Inspect shared state** during a crew mission. Show the actual received br
 
 For a five-minute security segment, click **Access gate**. In **Try the concept**, let the attendee attempt the request, propose a narrow operator permission, retry and test a different destination. Keep the illustrative label visible. Switch to **Inspect host evidence** and show a capture from `./bac openshell prove`, if the operator has run it. Explain that the timestamped result belongs to a dedicated proof sandbox. Then inspect a real agent sandbox on the host before making claims about its enforcement. Do not claim host-side web tools automatically run inside that sandbox.
 
-Demonstrate **Stop after active call**: the pending model request may finish, but the next role does not start. Reset while running must visibly refuse; after completion, **Reset mission board** preserves the participant’s agent, memory and files. Use **Help & fallback** to show an error, download its evidence, enter a labeled fallback or retry deliberately.
+Demonstrate **Stop after active call**: the pending model request may finish, but the next role does not start. Reset while running must visibly refuse; after completion, **Reset mission board** preserves the selected agent’s memory and files; the other agents’ boards stay unchanged. Use **Help & fallback** to show an error, download its evidence, enter a labeled fallback or retry deliberately.
 
 Finish with **Find your next demo** and route participants interested in persistent assignments and policy/recovery to the facilitator’s NeMoReef station. Before the event, complete the [requirements and fault checks](cohort-requirements.md), especially real Spark inference and OpenShell enforcement.

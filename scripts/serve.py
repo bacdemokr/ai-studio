@@ -77,7 +77,7 @@ class Handler(SimpleHTTPRequestHandler):
             parsed = urlparse(self.path)
             studio = self.server.studio
             row, new = self.participant(create=parsed.path == '/api/session')
-            owner = row['id']
+            owner = studio.resolve_agent(row['id'], self.headers.get('X-BaC-Agent'))
             if parsed.path == '/api/session':
                 return self.json_response({'csrf': row['csrf'], 'runtime': studio.runtime_status(), **studio.state(owner)}, cookie=row['token'] if new else None)
             if parsed.path == '/api/state':
@@ -117,8 +117,10 @@ class Handler(SimpleHTTPRequestHandler):
             data = json.loads(self.rfile.read(size))
             if not isinstance(data, dict):
                 raise Problem('Expected a JSON object.')
-            studio, owner = self.server.studio, row['id']
+            studio = self.server.studio
+            owner = studio.resolve_agent(row['id'], self.headers.get('X-BaC-Agent'))
             routes = {
+                '/api/agents': lambda: studio.add_agent(row['id'], data),
                 '/api/onboard': lambda: studio.onboard(owner, data),
                 '/api/profile': lambda: studio.configure(owner, data),
                 '/api/jobs': lambda: studio.enqueue(owner, data),

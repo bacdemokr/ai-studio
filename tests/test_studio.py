@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from studio import Studio, Problem, capacity, safe_file
+from studio import Studio, Problem, capacity, safe_file, MAX_AGENTS
 import agent_runtime
 from telegram_bridge import accept_message
 
@@ -52,6 +52,103 @@ class StudioTests(unittest.TestCase):
         self.assertIsNotNone(row)
         self.studio.execute(row)
         return row
+
+    def add_agent(self, name='Scout'):
+        return self.studio.add_agent(self.owner, {'name': name, 'persona': 'analyst', 'skills': ['documents', 'web']})['agentId']
+
+    def test_agent_collection_keeps_native_identity_memory_files_and_jobs_separate(self):
+        scout = self.add_agent()
+        self.studio.enqueue(self.owner, {'prompt': 'remember my preferences'})
+        self.run_next()
+        self.studio.upload(self.owner, {'name': 'private.md', 'content': 'Lead preferences'})
+        self.studio.enqueue(scout, {'prompt': 'Read a public page'})
+        self.run_next()
+        restarted = Studio(self.temp.name, self.adapter, start_worker=False)
+        self.assertEqual(len(restarted.state(scout)['agents']), 2)
+        self.assertEqual(restarted.resolve_agent(self.owner, scout), scout)
+        self.assertEqual(restarted.state(scout)['profile']['name'], 'Scout')
+        self.assertNotIn('Vegetarian', restarted.state(scout)['memory'])
+        self.assertFalse(any(f['path'] == 'inbox/private.md' for f in restarted.files(scout)))
+        self.assertEqual(len(restarted.state(scout)['jobs']), 1)
+        self.assertNotEqual(self.adapter.calls[0][0], self.adapter.calls[1][0])
+        self.assertNotEqual(self.adapter.calls[0][1], self.adapter.calls[1][1])
+        restarted.reset_board(scout)
+        self.assertEqual(restarted.state(scout)['jobs'], [])
+        self.assertEqual(len(restarted.state(self.owner)['jobs']), 1)
+        self.assertIn('Vegetarian', restarted.state(self.owner)['memory'])
+
+    def test_existing_single_agent_database_migrates_without_changing_ownership(self):
+        self.studio.enqueue(self.owner, {'prompt': 'remember my preferences'})
+        self.run_next()
+        self.studio.reset_board(self.owner)
+        with self.studio.db() as db:
+            db.execute('INSERT INTO phones VALUES (?,?)', (self.owner, 'fixture-chat'))
+            db.execute('DROP TABLE agents')  # Represents the previous single-agent schema.
+        migrated = Studio(self.temp.name, self.adapter, start_worker=False)
+        state = migrated.state(self.owner)
+        self.assertEqual(state['agentId'], self.owner)
+        self.assertEqual(state['profile']['id'], 'bac-' + self.owner)
+        self.assertEqual(state['jobs'], [])
+        self.assertIn('Vegetarian', state['memory'])
+        self.assertTrue(state['files'])
+        self.assertTrue(state['phone'])
+        self.assertFalse(migrated.session(self.person['token'])[1])
+        migrated.configure(self.owner, {'name': 'Renamed', 'persona': 'guide', 'skills': ['memory']})
+        again = Studio(self.temp.name, self.adapter, start_worker=False)
+        self.assertEqual(again.profile(self.owner)['name'], 'Renamed')
+
+    def test_custom_agents_receive_crew_handoffs_in_their_own_workspaces(self):
+        scout = self.add_agent()
+        writer = self.add_agent('Echo')
+        job = self.studio.enqueue(self.owner, {'kind': 'crew', 'brief': {}, 'members': {'1': scout, '3': writer}})
+        with self.assertRaises(Problem):
+            self.studio.configure(scout, {'name': 'Changed', 'skills': ['writer'], 'persona': 'guide'})
+        self.run_next()
+        evidence = self.studio.evidence(self.owner, job['id'])['mission']
+        self.assertEqual(evidence['status'], 'done')
+        self.assertEqual(evidence['payload']['roster'][1]['name'], 'Scout')
+        self.assertEqual(self.adapter.calls[1][0], 'bac-' + scout)
+        self.assertEqual(self.adapter.calls[3][0], 'bac-' + writer)
+        self.assertEqual(len(set(c[0] for c in self.adapter.calls)), 5)
+        self.assertIn('Operations planner', (self.studio.workspace(writer) / 'inbox/handoffs.md').read_text())
+        self.assertEqual(evidence['payload']['handoffs']['3']['receivedFrom'], ['0', '1', '2'])
+        self.assertEqual(self.studio.profile(scout)['skills'], ['documents', 'web'])
+        self.assertEqual(self.studio.state(scout)['agents'][1]['pending'], 0)
+        self.studio.configure(scout, {'name': 'Scout 2', 'skills': ['web'], 'persona': 'guide'})
+        self.assertEqual(self.studio.evidence(self.owner, job['id'])['mission']['payload']['roster'][1]['name'], 'Scout')
+
+    def test_collection_access_and_crew_assignments_are_account_scoped(self):
+        scout = self.add_agent()
+        other, _ = self.studio.session()
+        self.studio.onboard(other['id'], {'name': 'Other', 'persona': 'guide', 'skills': ['memory']})
+        with self.assertRaises(Problem):
+            self.studio.resolve_agent(other['id'], scout)
+        for members in ({'1': scout, '2': scout}, {'1': self.owner}, {'1': other['id']}, {'0': scout}, {'1': ['invalid']}):
+            with self.assertRaises(Problem):
+                self.studio.enqueue(self.owner, {'kind': 'crew', 'members': members})
+        self.assertEqual(self.studio.state(self.owner)['jobs'], [])
+        self.assertEqual(len(self.studio.state(other['id'])['agents']), 1)
+
+    def test_queue_budget_is_shared_across_personal_agents(self):
+        scout = self.add_agent()
+        for owner in (self.owner, scout, self.owner):
+            self.studio.enqueue(owner, {'kind': 'reminder', 'prompt': 'Follow up', 'delay': 60})
+        with self.assertRaises(Problem) as caught:
+            self.studio.enqueue(scout, {'kind': 'reminder', 'prompt': 'Fourth task', 'delay': 60})
+        self.assertEqual(caught.exception.status, 429)
+        self.studio.reset_board(scout)
+        self.assertEqual(len(self.studio.state(self.owner)['jobs']), 2)
+        self.studio.enqueue(scout, {'kind': 'reminder', 'prompt': 'Slot available', 'delay': 60})
+
+    def test_agent_limit_and_invalid_creation_leave_existing_collection_unchanged(self):
+        with self.assertRaises(Problem):
+            self.studio.add_agent(self.owner, {'name': 'No skills', 'skills': []})
+        self.assertEqual(len(self.studio.state(self.owner)['agents']), 1)
+        for i in range(MAX_AGENTS - 1):
+            self.add_agent('Agent ' + str(i))
+        with self.assertRaises(Problem):
+            self.add_agent('One too many')
+        self.assertEqual(len(self.studio.state(self.owner)['agents']), MAX_AGENTS)
 
     def test_native_memory_and_deliverables_survive_restart(self):
         self.studio.enqueue(self.owner, {'prompt': 'remember my preferences and make an app fixture'})

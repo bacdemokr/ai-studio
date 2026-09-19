@@ -2,13 +2,19 @@
 
 ## Execution path
 
-Browser → session/CSRF-protected BaC API → durable SQLite queue → OpenClaw `/v1/chat/completions` → shared vLLM `bac-local` → native allowed tools → per-participant workspace → saved result and UI events.
+Browser → session/CSRF-protected BaC API → durable SQLite queue → OpenClaw `/v1/chat/completions` → shared vLLM `bac-local` → native allowed tools → per-agent workspace → saved result and UI events.
 
 OpenClaw 2026.9.4 is pinned. The gateway listens on `127.0.0.1:18789`, vLLM on `127.0.0.1:8000`. The gateway bearer token is an operator credential and stays in the host’s mode-0600 configuration file. The browser receives neither the token nor a raw gateway proxy.
 
-Every participant has a random OpenClaw agent ID, native `IDENTITY.md`, `SOUL.md`, `USER.md`, `AGENTS.md`, `MEMORY.md` and `skills/bac-*/SKILL.md`. Registration happens lazily on the first task. Persona/skill changes take effect on the next task. The participant’s agent leads the crew; four additional agents have separate role workspaces and conversations. All have a model allowlist containing only `bac-vllm/bac-local`.
+Each personal agent has a random OpenClaw agent ID, native `IDENTITY.md`, `SOUL.md`, `USER.md`, `AGENTS.md`, `MEMORY.md` and `skills/bac-*/SKILL.md`. Registration happens lazily on the first task. Persona/skill changes take effect on the next task. The selected agent leads the crew. The other four roles can use ready-made specialists or other agents from the attendee’s collection. Assignments are frozen in each mission’s roster; each keeps its native workspace and equipped tools. Specialist crew turns use a mission-specific conversation; personal web and phone messages retain the agent’s stable conversation. All have a model allowlist containing only `bac-vllm/bac-local`.
 
 The serial queue and `agents.defaults.maxConcurrent=1` limit model concurrency. A waiting human decision releases the queue for other work. A restart marks interrupted tasks as needing attention rather than silently replaying potentially completed work. Due tasks persist, but the host must be running. The service uses a process lock to avoid two app workers sharing the same data directory.
+
+## Agent collections and ownership
+
+The session cookie authenticates the participant; `X-BaC-Agent` selects one of their agents for each request. The server checks collection ownership for all agent-scoped reads and writes. Selection lives per tab, and stale polls cannot replace the newly selected workspace. No global “current agent” redirects another tab or Telegram conversation.
+
+The `agents` table maps agent IDs to participants. Migration reuses the original participant ID for their first agent, preserving its native ID, workspace, queued jobs, reset timestamp and phone pairing. Added agents get independent IDs. One attendee may create up to 12 personal agents; the total pending-job budget remains three across that collection. Crew missions retain five distinct role slots and reject duplicate or foreign assignments. Pending assignments prevent persona/skill edits until the mission finishes or is cancelled. Reset applies only to the selected agent’s board; other agents keep their tasks.
 
 ## What the UI observes
 
@@ -22,7 +28,9 @@ The app uses deterministic station calculations before asking the operations age
 
 Run `./bac telegram configure` on the host. It asks for a dedicated bot token without echoing it, validates `getMe`, and refuses a bot with an existing webhook. Do not run another polling consumer on this bot. Credentials stay in `studio/telegram.json`, mode 0600.
 
-Participants request a one-use link valid for five minutes, open their private Telegram chat and tap Start. Group messages and unpaired chats are ignored. The web and Telegram paths use the same OpenClaw agent and stable `user` session identifier. Incoming messages explicitly request a reply to that chat; there is no unsolicited broadcast or bulk invitation function. `/stop` disconnects. Polling claims an update before handling it, preventing replayed outgoing replies after restart; a crash during handling can lose that inbound message, so the user may need to retry.
+Participants request a one-use link for the selected agent valid for five minutes, open their private Telegram chat and tap Start. Group messages and unpaired chats are ignored. The web and Telegram paths use the same OpenClaw agent and stable `user` session identifier. Incoming messages explicitly request a reply to that chat; there is no unsolicited broadcast or bulk invitation function. `/stop` disconnects. Polling claims an update before handling it, preventing replayed outgoing replies after restart; a crash during handling can lose that inbound message, so the user may need to retry.
+
+Switching the web selection does not affect an existing phone pairing. Explicitly pairing another agent moves that private Telegram chat to the new agent.
 
 This is a BaC channel adapter around the OpenClaw HTTP API. It is not the native OpenClaw Telegram plugin. The continuity demonstrated—agent identity, conversation and memory—is native OpenClaw state.
 
@@ -45,11 +53,11 @@ Without OpenShell, native filesystem tools are restricted to each agent’s work
 - `models/`, `runtime/vllm-env/`: model weights and vLLM installation.
 - `openclaw/node/`, `openclaw/package/`: private supported Node and pinned OpenClaw.
 - `openclaw/state/`: native configuration and OpenClaw conversation state.
-- `studio/studio.sqlite`: participants, queue, handoffs, schedules and pairing state.
+- `studio/studio.sqlite`: participants, personal agents, queue, handoffs, schedules and pairing state.
 - `studio/workspaces/`: persona/skills, uploads, memory and output files.
 - `demo/releases/`, `demo/current`, `demo/previous`: immutable application releases.
 
-`./bac update` changes only the application release and restarts its service. It preserves the LLM, OpenClaw, agent files and database. An in-flight task is marked interrupted after the restart; wait for a mission to finish before updating during a presentation. Rollback changes application code, not participant data. The attendee reset archives only their visible board and cancels pending work; it preserves files/memory and refuses to run during active inference. A different attendee should use a new browser profile.
+`./bac update` changes only the application release and restarts its service. It preserves the LLM, OpenClaw, agent files and database. An in-flight task is marked interrupted after the restart; wait for a mission to finish before updating during a presentation. Rollback changes application code, not participant data. The attendee reset archives only the selected agent’s visible board and cancels pending work; it preserves files/memory and refuses to run during active inference. A different attendee should use a new browser profile.
 
 ### OpenShell evidence lab
 
