@@ -46,4 +46,6 @@ For a five-minute security segment, click **Access gate**. In **Try the concept*
 
 Demonstrate **Stop after active call**: the pending model request may finish, but the next role does not start. Reset while running must visibly refuse; after completion, **Reset mission board** preserves the selected agent’s memory and files; the other agents’ boards stay unchanged. Use **Help & fallback** to show an error, download its evidence, enter a labeled fallback or retry deliberately.
 
-Finish with **Find your next demo** and route participants interested in persistent assignments and policy/recovery to the facilitator’s NeMoReef station. Before the event, complete the [requirements and fault checks](cohort-requirements.md), especially real Spark inference and OpenShell enforcement.
+Before the event, complete the [requirements and fault checks](cohort-requirements.md), especially real Spark inference and OpenShell enforcement.
+
+If the event includes NeMoReef, the facilitator can explain the two experiences: this Studio focuses on personal onboarding, useful skills and visible crew handoffs; the supplied NeMoReef brief emphasizes persistent assignments, orchestration and policy/failure recovery. Confirm the event’s available demos before directing attendees to another station. This guidance is part of the presenter runbook.

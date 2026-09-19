@@ -18,7 +18,6 @@ Create your own agents, give each useful skills, and choose who joins your crew.
 - **Attendee controls:** stop after the active model call, reset your mission board while preserving memory/files, deliberate retry, labeled fallbacks and an evidence download for your facilitator.
 - **Inspectable handoffs:** open each role’s shared inputs, prior deliverables, fingerprints and output files; download the selected mission’s evidence.
 - **OpenShell Security lab:** an illustrative boundary walkthrough plus separately labeled host evidence. `./bac openshell prove` collects deny → narrow permission → allow → still-deny evidence in a dedicated temporary sandbox. This does not certify every agent’s traffic. See the [requirements and acceptance checklist](docs/cohort-requirements.md).
-- **Cohort routing:** “Find your next demo” explains this Studio’s focus and the supplied NeMoReef brief’s persistent-work and policy/recovery focus.
 
 All roles use **one shared `bac-local` model on one Spark**. Requests run sequentially to avoid loading a model per agent. This demonstrates role boundaries, dependencies and review; it does not claim a parallel speedup.
 
@@ -91,7 +90,7 @@ Only Python 3.9+ and a modern WebGL2 browser are needed for UI review. The runti
 5. Use **Create an agent** to make a second teammate with different skills. Switch between them to see separate memory and workspaces. Assign your teammates when launching a crew for **Zurich / Europe / English**. Defaults: 120 attendees, 180 minutes, groups of 5, sessions of 15 minutes; all are editable.
 6. Watch role handoffs in the campus, switch to Mission control, approve the equipment assumption if needed, and open each deliverable.
 7. If the host configured Telegram, pair a phone and continue the same conversation.
-8. Open **Security lab** to explore the boundary, then use **Find your next demo** for the NeMoReef learning path. Open **Help & fallback** when a live dependency is unavailable.
+8. Open **Security lab** to explore the boundary. Open **Help & fallback** when a live dependency is unavailable.
 
 Dates, venues and registration URLs stay unconfirmed unless supplied. Equipment counts are transparent event-station assumptions, not an inference-capacity benchmark. See the [presenter runbook](docs/demo-runbook.md).
 

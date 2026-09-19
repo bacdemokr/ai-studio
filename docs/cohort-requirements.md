@@ -7,11 +7,11 @@ This checklist maps the four requirements in the supplied **Jinho and Korea team
 | Second working implementation for the cohort | A collection of up to 12 personal agents, editable personas/skills, six skills, real OpenClaw agents, one shared local model, interactive campus and mission control, editable event brief | Run the complete journey with Qwen or Gemma on the actual Spark; record timing and review output quality. Local protocol fixtures are not LLM acceptance. |
 | Agent roles, handoffs, shared state and visible evidence | Five distinct native agent identities/workspaces, with custom agents assignable to specialist roles. Inspect shared state shows each role’s actual brief, received prior outputs, timestamps, input/output hashes and saved deliverables. Owner-scoped evidence export. | Inspect the produced event plan and reviewer’s findings on the chosen model. The hash is an app fingerprint, not cryptographic attestation. |
 | Safe attendee controls, reset, fallback and escalation | Queued/waiting cancel; running stop at a model-call boundary; reset only the selected agent’s mission board; recovery with explicit retry; local-tool and labeled-rehearsal fallbacks; evidence download for the facilitator | Rehearse stop during inference, runtime loss and app restart on Spark. A current call can still write files before stopping. Never claim instant GPU cancellation. |
-| NeMoReef comparison and attendee routing | “Find your next demo” compares personal onboarding/skills/crew work with the supplied Reef brief’s persistent orchestration and policy/recovery emphasis. Recommends a learning path. | Facilitator supplies the event-specific Reef URL or physical station. No URL or verified live feature parity is invented. |
+| NeMoReef comparison and attendee routing | Facilitator guidance in the presenter runbook compares the Studio’s onboarding/skills/crew focus with the supplied Reef brief. | Facilitator confirms the event’s available demos and station or launch URL. No attendee-facing routing control is provided. |
 
 ## What changed after this review
 
-The initial Studio had native crew handoffs and saved outputs, but lacked a participant-facing reset, clear running-stop behavior, a structured recovery path, shared-input inspection and a NeMoReef routing guide. The initial OpenShell card showed configuration only. The new controls fill those gaps without replacing the existing dark NVIDIA-inspired layout.
+The Studio provides reset, stop after the active model call, recovery, shared-input inspection and the OpenShell Security lab within the existing dark NVIDIA-inspired layout. Cross-demo comparison and routing guidance live in the presenter runbook.
 
 ## Reset and failure semantics
 
