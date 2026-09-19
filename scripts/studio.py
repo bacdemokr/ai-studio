@@ -24,6 +24,26 @@ ROLES = [('Milo', 'Event lead', 'guide'), ('Nova', 'Demo producer', 'maker'),
          ('Pico', 'Evidence reviewer', 'analyst')]
 ACTIVE = ('queued', 'running', 'waiting', 'stopping')
 MAX_AGENTS = 12
+ROLE_AVATARS = [dict(body=b, color=c, accessory=a) for b, c, a in (
+    ('classic', 'green', 'antenna'), ('round', 'cyan', 'headset'), ('rover', 'amber', 'cap'),
+    ('round', 'coral', 'antenna'), ('classic', 'violet', 'glasses'))]
+AVATAR_OPTIONS = {'body': ('classic', 'round', 'rover'),
+                  'color': ('green', 'cyan', 'amber', 'coral', 'violet', 'ice'),
+                  'accessory': ('antenna', 'headset', 'glasses', 'cap')}
+
+
+def avatar_for(owner, avatar=None):
+    """Stable defaults also give legacy agents a persistent visual identity."""
+    seed = int(hashlib.sha256(owner.encode()).hexdigest()[:8], 16)
+    defaults = {key: values[(seed // (7 ** i)) % len(values)]
+                for i, (key, values) in enumerate(AVATAR_OPTIONS.items())}
+    if avatar is None:
+        return defaults
+    if not isinstance(avatar, dict) or set(avatar) != set(AVATAR_OPTIONS):
+        raise Problem('Choose a body, color and accessory for your agent.')
+    if any(not isinstance(avatar[key], str) or avatar[key] not in options for key, options in AVATAR_OPTIONS.items()):
+        raise Problem('Choose an available agent appearance.')
+    return dict(avatar)
 
 
 class Problem(Exception):
@@ -188,7 +208,8 @@ class Studio:
             raise Problem('Choose a valid name and persona.')
         if not isinstance(skills, list) or not skills or len(skills) > len(runtime.SKILLS) or any(not isinstance(x, str) or x not in runtime.SKILLS for x in skills):
             raise Problem('Choose a persona and at least one available skill.')
-        return {'name': name, 'persona': persona, 'skills': sorted(set(skills)), 'id': 'bac-' + owner}
+        return {'name': name, 'persona': persona, 'skills': sorted(set(skills)),
+                'avatar': avatar_for(owner, data.get('avatar')), 'id': 'bac-' + owner}
 
     def initialize_workspace(self, owner):
         workspace = self.workspace(owner)
@@ -219,7 +240,11 @@ class Studio:
     def profile(self, owner):
         with self.db() as db:
             row = db.execute('SELECT profile FROM agents WHERE id=?', (owner,)).fetchone()
-        return json.loads(row['profile']) if row and row['profile'] else None
+        if not row or not row['profile']:
+            return None
+        profile = json.loads(row['profile'])
+        profile.setdefault('avatar', avatar_for(owner))
+        return profile
 
     def onboard(self, owner, data):
         if self.profile(owner):
@@ -238,7 +263,7 @@ class Studio:
         profile = self.profile(owner)
         if not profile:
             raise Problem('Create your agent first.')
-        profile = self.agent_profile(owner, data)
+        profile = self.agent_profile(owner, {**data, 'avatar': data.get('avatar', profile['avatar'])})
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
             if db.execute("SELECT 1 FROM jobs WHERE owner=? AND status IN ('queued','running','waiting','stopping')", (owner,)).fetchone():
@@ -282,6 +307,8 @@ class Studio:
             active = db.execute("SELECT id,owner,status,payload FROM jobs WHERE status IN ('queued','running','waiting','stopping') AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) ORDER BY created", (owner,)).fetchall()
             agents = [{'key': r['id'], **json.loads(r['profile']),
                        'pending': sum(j['owner'] == r['id'] or any(m.get('key') == r['id'] for m in json.loads(j['payload']).get('roster', [])) for j in active)} for r in collection]
+            for agent in agents:
+                agent.setdefault('avatar', avatar_for(agent['key']))
             names = {a['key']: a['name'] for a in agents}
             assignments = [{'job': j['id'], 'lead': j['owner'], 'name': names[j['owner']], 'role': m['role'], 'status': j['status']}
                            for j in active if j['owner'] != owner for m in json.loads(j['payload']).get('roster', []) if m.get('key') == owner]
@@ -313,7 +340,8 @@ class Studio:
                 profile = json.loads(row['profile'])
                 used.add(key)
             else:
-                profile = {'name': name, 'persona': persona, 'skills': ['documents', 'writer'], 'id': lead['id'] + '-r' + str(i)}
+                profile = {'name': name, 'persona': persona, 'skills': ['documents', 'writer'], 'id': lead['id'] + '-r' + str(i), 'avatar': ROLE_AVATARS[i]}
+            profile.setdefault('avatar', avatar_for(key or profile['id']))
             roster.append({**profile, 'key': key or None, 'role': role})
         return roster
 

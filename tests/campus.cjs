@@ -15,6 +15,7 @@ const {chromium}=require('playwright');
     await page.goto(url);
     await page.waitForFunction(()=>document.getElementById('agent-campus').dataset.renderer==='webgl');
     assert(await page.locator('#agent-campus').isVisible());
+    await page.locator('button[data-room=mission]').click();
     const first=await page.evaluate(()=>BacCampus.inspect().robots);
     await page.waitForFunction(initial=>JSON.stringify(BacCampus.inspect().robots)!==JSON.stringify(initial),first,{timeout:12000});
     await page.locator('[data-campus-agent="3"]').click();

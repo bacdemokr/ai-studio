@@ -8,13 +8,13 @@ Open Agent Studio in a fresh browser profile. Confirm WebGL movement, no horizon
 
 ## 0–2 minutes: a teammate with a personality
 
-Ask the attendee to name their agent and choose Guide, Maker or Analyst. Let them change the skill loadout. The same identity appears in the world and survives refreshes. Explain that a persona changes how the agent approaches work; a skill supplies reusable instructions, and tool access is checked separately.
+Open **Workshop**. Ask the attendee to choose Classic, Orbit or Rover, pick a color and accessory, name their agent and choose Guide, Maker or Analyst. Let them change the skill loadout. Creating the agent opens **Agent lounge**, where one robot appears per saved agent. Its appearance and identity survive refreshes. Create another teammate to show the room growing; click either robot to open its own conversation and workspace. Explain that a persona changes how the agent approaches work; a skill supplies reusable instructions, and tool access is checked separately.
 
 ## 2–5 minutes: a visible, useful result
 
-Click the 3D Maker workshop. Request a tiny reaction-time game, wait for the real agent response, and open the saved HTML. Play it. The result is a file, not an animation of an imagined task. If generation fails, show the actual error and a local tool or a labeled rehearsal; do not claim a fallback is a live success.
+In **Agent lounge**, choose **Make something playable**. Request a tiny reaction-time game, wait for the real agent response, and open the saved HTML. Play it. The result is a file, not an animation of an imagined task. If generation fails, show the actual error and a local tool or a labeled rehearsal; do not claim a fallback is a live success.
 
-Alternative: click Knowledge library, add the sample brief or your own .txt/.md/.csv, and ask for an answer with filename evidence. Or click Weather lookout for a current observation and source.
+Alternative: choose **Ask your documents**, add the sample brief or your own .txt/.md/.csv, and ask for an answer with filename evidence. Or choose **Plan around the weather** for a current observation and source.
 
 ## 5–7 minutes: memory and continuity
 
@@ -22,9 +22,9 @@ Ask the agent to remember a preference. Open Memory to inspect the actual file, 
 
 ## 7–13 minutes: why several agents?
 
-Click **Create an agent** to add a second teammate with a different persona and skill loadout. Switch back and forth to show separate memory and files. Then launch a BaC in Zurich, Europe / EMEA, in English. Let the attendee change attendance, duration and group/session sizes. Their selected agent becomes the event lead. Assign the new teammate to one of the four specialist roles; leave the rest at their ready-made defaults. With the default crew, Nova designs the participant experience; Atlas explains deterministic device/staff counts; Momo uses those outputs for invitation copy; Pico reviews the combined plan.
+Click **Create an agent** to add a second teammate with a different persona and skill loadout. Switch back and forth to show separate memory and files. Open **Mission room**, then launch a BaC in Zurich, Europe / EMEA, in English. Let the attendee change attendance, duration and group/session sizes. Their selected agent becomes the event lead. Assign the new teammate to one of the four specialist roles; leave the rest at their ready-made defaults. With the default crew, Nova designs the participant experience; Atlas explains deterministic device/staff counts; Momo uses those outputs for invitation copy; Pico reviews the combined plan.
 
-Open Agent campus to see personalities and movement. Switch to Mission control to inspect dependencies and completed deliverables. Deliberately enter too few devices. The server stops before marketing; the attendee can plan additional equipment (still unconfirmed) or cancel and revise the brief. The review calls out missing dates/venue/registration links.
+Open **3D crew** to see personalities and movement. Switch to Mission control to inspect dependencies and completed deliverables. Deliberately enter too few devices. The server stops before marketing; the attendee can plan additional equipment (still unconfirmed) or cancel and revise the brief. The review calls out missing dates/venue/registration links.
 
 Explain the value in concrete terms: each role has a clear responsibility, its own context, and an output another role can inspect. The reviewer can catch inconsistencies. A single short task does not need a crew; a coordinated plan benefits from explicit dependencies. This implementation runs sequentially on one LLM, so it does not promise faster execution from concurrency.
 
@@ -34,7 +34,7 @@ Edit persona/skills after the mission finishes. Schedule a one-minute follow-up;
 
 ## Presentation boundaries
 
-Keep the dark NVIDIA-inspired shell and familiar panel layout. For the spatial experience, click the 3D view and press Enter, double-click an empty area, or use Full screen. The side panel hides and the workshop fills the display. Esc or Exit full screen restores the studio; the camera and running work are preserved. Hotspot dialogs remain usable in fullscreen, and selecting a personal skill returns to the mission composer. Character wandering is ambient when idle; movement toward a station represents an observed task state. The evidence panel contains app events and actual files, not a fine-grained tool trace or hidden reasoning.
+Keep the dark NVIDIA-inspired shell and familiar panel layout. Workshop contains a large character preview and OpenClaw connection details; Agent lounge contains only the attendee’s saved agents; Mission room contains the five specialist stations and Mission control. Personal agents keep their appearance when assigned to crew roles. For the spatial experience, click the 3D view and press Enter, double-click an empty area, or use Full screen. The side panel hides and the workshop fills the display. Esc or Exit full screen restores the studio; the camera and running work are preserved. Hotspot dialogs remain usable in fullscreen, and selecting a personal skill returns to the mission composer. Character wandering is ambient when idle; movement toward a station represents an observed task state. The evidence panel contains app events and actual files, not a fine-grained tool trace or hidden reasoning.
 
 OpenClaw owns agent execution, identity, skills, tool use and conversation state. The BaC app owns onboarding, the shared brief, role orchestration, scheduling and UI. OpenShell is the optional execution sandbox; an application approval is not proof of an OpenShell policy boundary.
 

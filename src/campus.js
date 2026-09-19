@@ -83,5 +83,5 @@ log('The same brief connects all five roles.','Run the crew to see handoffs, res
 
 /* WORLD_SCENE */
 try {sceneView=createScene();}catch(error){el('fallback').hidden=false;root.dataset.renderer='fallback';console.warn('3D unavailable; accessible workflow controls remain available.',error.message);}
-window.BacCampus={inspect:()=>sceneView?.inspect()||{fallback:true},setLive:next=>{live=true;stop();snapshot=next;selected=next.selected;render();}};
+window.BacCampus={setRoom:room=>sceneView?.setRoom(room),setCollection:(agents,key)=>sceneView?.setCollection(agents,key),setDraft:profile=>sceneView?.setDraft(profile),inspect:()=>sceneView?.inspect()||{fallback:true},setLive:next=>{live=true;stop();snapshot=next;selected=next.selected;render();}};
 render();

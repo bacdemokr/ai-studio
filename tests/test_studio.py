@@ -56,6 +56,34 @@ class StudioTests(unittest.TestCase):
     def add_agent(self, name='Scout'):
         return self.studio.add_agent(self.owner, {'name': name, 'persona': 'analyst', 'skills': ['documents', 'web']})['agentId']
 
+    def test_appearance_persists_and_follows_custom_crew_assignments(self):
+        appearance = {'body': 'rover', 'color': 'coral', 'accessory': 'glasses'}
+        created = self.studio.add_agent(self.owner, {'name': 'Rover', 'persona': 'analyst',
+                                       'skills': ['documents'], 'avatar': appearance})
+        key = created['agentId']
+        restarted = Studio(self.temp.name, self.adapter, start_worker=False)
+        self.assertEqual(restarted.profile(key)['avatar'], appearance)
+        self.assertEqual(next(a for a in restarted.state(self.owner)['agents'] if a['key'] == key)['avatar'], appearance)
+        restarted.configure(key, {'name': 'Rover II', 'persona': 'maker', 'skills': ['writer']})
+        self.assertEqual(restarted.profile(key)['avatar'], appearance)
+        job = restarted.enqueue(self.owner, {'kind': 'crew', 'brief': {}, 'members': {'1': key}})
+        self.assertEqual(restarted.state(self.owner)['jobs'][0]['payload']['roster'][1]['avatar'], appearance)
+
+    def test_legacy_appearance_is_stable_and_invalid_appearance_is_rejected(self):
+        profile = self.studio.profile(self.owner)
+        profile.pop('avatar')
+        with self.studio.db() as db:
+            db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(profile), self.owner))
+        expected = self.studio.profile(self.owner)['avatar']
+        restarted = Studio(self.temp.name, self.adapter, start_worker=False)
+        self.assertEqual(restarted.profile(self.owner)['avatar'], expected)
+        self.assertEqual(restarted.state(self.owner)['agents'][0]['avatar'], expected)
+        for avatar in ('bad', {}, {'body': '<script>', 'color': 'cyan', 'accessory': 'headset'},
+                       {'body': 'round', 'color': 'cyan', 'accessory': 'headset', 'extra': True}):
+            with self.assertRaises(Problem):
+                restarted.configure(self.owner, {**profile, 'avatar': avatar})
+        self.assertEqual(restarted.profile(self.owner)['avatar'], expected)
+
     def test_agent_collection_keeps_native_identity_memory_files_and_jobs_separate(self):
         scout = self.add_agent()
         self.studio.enqueue(self.owner, {'prompt': 'remember my preferences'})

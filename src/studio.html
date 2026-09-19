@@ -1,23 +1,41 @@
 <style>/* STUDIO_CSS */</style>
 <div id="studio-journey" class="studio-journey"><span><b>01</b> Make it yours</span><i>→</i><span><b>02</b> Give it a mission</span><i>→</i><span><b>03</b> Build a crew</span><button id="studio-runtime" class="studio-runtime">Checking your runtime…</button></div>
-<div class="studio-viewbar"><div><button id="studio-campus-tab" aria-pressed="true">◈ Agent campus</button><button id="studio-board-tab" aria-pressed="false">▤ Mission control</button></div><div class="studio-view-caption">PERSONAS &amp; HANDOFFS <span>/</span> ONE SHARED MODEL</div></div>
+<nav id="studio-rooms" class="studio-rooms" aria-label="Studio rooms">
+  <button data-room="workshop" aria-pressed="true"><span class="room-symbol">⌘</span><span><b>Workshop</b><small>Create &amp; connect</small></span><i>01</i></button>
+  <button data-room="lounge" aria-pressed="false"><span class="room-symbol">◈</span><span><b>Agent lounge</b><small id="studio-lounge-count">Your personal agents</small></span><i>02</i></button>
+  <button data-room="mission" aria-pressed="false"><span class="room-symbol">◇</span><span><b>Mission room</b><small>Bring your crew together</small></span><i>03</i></button>
+</nav>
+<div id="studio-room-heading" class="studio-room-heading"><div><span class="studio-kicker" id="studio-room-kicker">WORKSHOP / CREATE &amp; CONNECT</span><h3 id="studio-room-title">A personality you can see.</h3><p id="studio-room-description">Choose a body, a personality and useful skills. Watch your teammate take shape.</p></div><button class="studio-secondary" id="studio-room-action" hidden></button></div>
+<div class="studio-viewbar"><div><button id="studio-campus-tab" aria-pressed="true">◈ 3D crew</button><button id="studio-board-tab" aria-pressed="false">▤ Mission control</button></div><div class="studio-view-caption">PERSONAS &amp; HANDOFFS <span>/</span> ONE SHARED MODEL</div></div>
 <nav class="studio-safety-bar" id="studio-safety-bar" aria-label="Workshop controls"><span>YOU STAY IN CONTROL</span><button id="studio-security">◇ Security lab</button><button id="studio-help">Help &amp; fallback</button><button id="studio-reset">Reset mission board</button></nav>
 <section id="studio-collection" class="studio-collection" hidden aria-label="My agents"><div class="studio-collection-heading"><div><span class="studio-kicker">MY AGENTS</span><p>Different personalities. One shared model.</p></div><button id="studio-add-agent" class="studio-secondary">＋ Create an agent</button></div><div id="studio-agent-list" class="studio-agent-list"></div><small class="studio-muted" id="studio-collection-note">Select an agent to open its own conversation, memory and files.</small></section>
 <div id="studio-board" hidden><div class="studio-board-intro"><span class="studio-kicker">MISSION CONTROL</span><h3>Different roles. Shared evidence.</h3><p>Each specialist receives the brief and the previous deliverables. The reviewer checks the whole plan.</p><button class="studio-secondary" id="studio-board-shared">Inspect shared state &amp; handoffs ↗</button></div><div id="studio-lanes"></div></div>
-<aside id="studio-passport">
-  <div class="studio-passport-head"><span class="studio-kicker">YOUR AGENT / YOUR RULES</span><span class="studio-spark">✦</span></div>
+<aside id="studio-workshop"><div class="studio-passport-head"><span class="studio-kicker">DESIGN YOUR AGENT</span><span class="studio-spark">✦</span></div>
   <form id="studio-onboarding">
-    <div class="studio-avatar"><span class="studio-antenna"></span><i></i><i></i><small>＋</small></div>
-    <h3>Meet your next teammate.</h3><p class="studio-muted">Give it a name, a personality and a few useful skills.</p>
+    <h3 id="studio-creator-title">Meet your next teammate.</h3><p class="studio-muted" id="studio-creator-note">Their own look. Their own memory. Your choice of skills.</p>
     <label for="studio-name">Agent name</label><input id="studio-name" value="Jinny" maxlength="32" required autocomplete="off">
+    <fieldset class="studio-appearance"><legend>Make it recognizable</legend><div id="studio-body-picker" class="studio-body-picker" aria-label="Robot body">
+      <button type="button" data-body="classic" aria-pressed="true"><span class="body-glyph classic"><i></i><i></i></span>Classic</button>
+      <button type="button" data-body="round" aria-pressed="false"><span class="body-glyph round"><i></i><i></i></span>Orbit</button>
+      <button type="button" data-body="rover" aria-pressed="false"><span class="body-glyph rover"><i></i><i></i></span>Rover</button>
+    </div><div class="studio-appearance-details"><div><label>Signature color</label><div id="studio-color-picker" class="studio-color-picker"></div></div><label for="studio-accessory">Accessory<select id="studio-accessory"><option value="antenna">Signal antenna</option><option value="headset">Studio headphones</option><option value="glasses">Round glasses</option><option value="cap">Builder cap</option></select></label></div></fieldset>
     <label>Pick a personality</label><div class="studio-personas"><button type="button" data-persona="guide" aria-pressed="true"><b>✧</b> Guide<small>Warm &amp; clear</small></button><button type="button" data-persona="maker" aria-pressed="false"><b>⌘</b> Maker<small>Curious &amp; bold</small></button><button type="button" data-persona="analyst" aria-pressed="false"><b>⌕</b> Analyst<small>Precise &amp; careful</small></button></div>
     <label>Equip your starter skills</label><div id="studio-skill-picker"></div>
-    <button type="submit" class="studio-primary" id="studio-create">Bring my agent to life <span>↗</span></button>
+    <div class="studio-creator-actions"><button type="button" class="studio-secondary" id="studio-cancel-create" hidden>Cancel</button><button type="submit" class="studio-primary" id="studio-create">Bring my agent to life <span>↗</span></button></div>
     <small class="studio-muted">Your agent, memory and files survive refreshes and app updates.</small>
   </form>
+</aside>
+<section id="studio-connections" class="studio-connections"><div class="studio-section-heading"><div><span class="studio-kicker">POWERED BY OPENCLAW</span><h3>One engine. Every personality.</h3></div><button class="studio-secondary" id="studio-connection-setup">Connection &amp; setup ↗</button></div><div class="studio-connection-grid">
+<article><span>01 / IDENTITY</span><h4>OpenClaw</h4><b id="studio-gateway-state">Checking gateway…</b><p>Persona, skills and conversation belong to each agent.</p></article>
+<article><span>02 / INFERENCE</span><h4>One shared model</h4><b id="studio-model-state">Checking model…</b><p>All your agents share the same model on DGX Spark.</p></article>
+<article><span>03 / ACCESS</span><h4>OpenShell</h4><b id="studio-shell-state">Checking configuration…</b><p>Explore tool boundaries and inspect the host’s evidence.</p><button class="studio-secondary" id="studio-connection-security">Open Security lab ↗</button></article>
+</div></section>
+<aside id="studio-passport">
+  <div class="studio-passport-head"><span class="studio-kicker">YOUR AGENT / YOUR RULES</span><span class="studio-spark">✦</span></div>
+  <div id="studio-lounge-empty"><div class="studio-avatar"><i></i><i></i></div><h3>Room for your first agent.</h3><p class="studio-muted">Everyone you create gets a place here, with their own look, memory and skills.</p><button class="studio-primary" id="studio-empty-create">Create my first agent ↗</button></div>
   <div id="studio-companion" hidden>
-    <div class="studio-companion-name"><div class="studio-avatar small"><i></i><i></i></div><div><h3 id="studio-agent-name"></h3><span id="studio-personality" class="studio-muted"></span></div><span class="studio-online-dot"></span></div>
-    <div id="studio-equipped" class="studio-equipped"></div><button id="studio-edit-agent" class="studio-secondary">Edit persona &amp; skills</button>
+    <div class="studio-companion-name"><div id="studio-portrait" class="studio-avatar small"><i></i><i></i></div><div><h3 id="studio-agent-name"></h3><span id="studio-personality" class="studio-muted"></span></div><span class="studio-online-dot"></span></div>
+    <div id="studio-equipped" class="studio-equipped"></div><button id="studio-edit-agent" class="studio-secondary">Customize this agent</button>
     <div class="studio-agent-state"><span class="studio-kicker" id="studio-task-state">READY FOR A MISSION</span><p id="studio-task-summary">Choose a mission below, or ask for something of your own.</p></div>
     <button id="studio-assigned-crew" class="studio-secondary" hidden>Open assigned crew ↗</button>
     <form id="studio-chat"><label for="studio-prompt">What should we make happen?</label><textarea id="studio-prompt" rows="4" maxlength="6000" placeholder="Build me a tiny reaction-time game…" required></textarea><div class="studio-compose-actions"><button type="button" id="studio-attach">＋ Add a document</button><button type="submit" class="studio-primary" id="studio-send">Run mission ↗</button></div></form>

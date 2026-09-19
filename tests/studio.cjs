@@ -14,6 +14,7 @@ const {chromium}=require('playwright');
   await page.locator('#studio-name').fill('Riley');await page.locator('[data-persona="maker"]').click();await page.locator('#studio-create').click();
   await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Riley');
   assert.match(await page.locator('#studio-personality').innerText(),/Inventive/);
+  await page.locator('button[data-room=mission]').click();
   await page.locator('#studio-alert button').click();
   // Canvas dimensions must not become the grid's minimum height after fullscreen.
   const world=page.locator('#campus-viewport');
@@ -45,11 +46,11 @@ const {chromium}=require('playwright');
   const download=page.waitForEvent('download');await page.locator('#studio-download').click();assert((await download).suggestedFilename().endsWith('.html'));await page.locator('#studio-dialog-close').click();
   await page.locator('[data-studio-mission="memory"]').click();await page.locator('#studio-send').click();await page.waitForFunction(()=>BacStudio.inspect().jobs[0]?.status==='done'&&BacStudio.inspect().jobs.length===2);
   await page.reload();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Riley');await page.locator('#studio-memory').click();assert.match(await page.locator('#studio-dialog pre').innerText(),/Vegetarian/);await page.locator('#studio-dialog-close').click();
-  await page.locator('[data-world-skill="documents"]').click();await page.locator('#studio-sample-document').click();await page.waitForFunction(()=>document.querySelector('#studio-files').textContent.includes('sample-bac-brief'));
-  await page.locator('#studio-edit-agent').click();await page.locator('#studio-edit-form [name="persona"]').selectOption('analyst');await page.locator('#studio-edit-form button').click();await page.waitForFunction(()=>BacStudio.inspect().profile.persona==='analyst');
+  await page.locator('[data-studio-mission="documents"]').click();await page.locator('#studio-sample-document').click();await page.waitForFunction(()=>document.querySelector('#studio-files').textContent.includes('sample-bac-brief'));
+  await page.locator('#studio-edit-agent').click();await page.locator('[data-persona=analyst]').click();await page.locator('#studio-create').click();await page.waitForFunction(()=>BacStudio.inspect().profile.persona==='analyst');
   // A second personal agent has its own workspace; switching never erases the first.
   const rileyKey=await page.evaluate(()=>BacStudio.inspect().agentId);
-  await page.locator('#studio-add-agent').click();await page.locator('#studio-edit-form [name="name"]').fill('Scout');await page.locator('#studio-edit-form button').click();
+  await page.locator('#studio-add-agent').click();await page.locator('#studio-name').fill('Scout');await page.locator('#studio-create').click();
   await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Scout');
   const scoutKey=await page.evaluate(()=>BacStudio.inspect().agentId);
   assert.equal(await page.locator('[data-agent-key]').count(),2);assert.equal((await page.evaluate(()=>BacStudio.inspect().jobs)).length,0);
@@ -68,7 +69,7 @@ const {chromium}=require('playwright');
   await page.locator('#studio-plan').click();await page.locator('[name="member1"]').selectOption(scoutKey);assert(await page.locator('[name="member2"] option[value="'+scoutKey+'"]').evaluate(e=>e.disabled));await page.locator('#studio-crew-form [name="spark"]').fill('0');await page.locator('#studio-crew-form [name="workstation"]').fill('0');await page.locator('#studio-crew-form button').click();
   await page.waitForFunction(()=>BacStudio.inspect().jobs[0]?.status==='waiting');
   await page.locator('#studio-board-tab').click();assert(await page.locator('#studio-board').isVisible());assert.equal(await page.locator('[data-role-output]').count(),3);await page.locator('#studio-campus-tab').click();
-  await page.locator('[data-agent-key="'+scoutKey+'"]').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Scout');assert(await page.locator('#studio-assigned-crew').isVisible());await page.locator('#studio-assigned-crew').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Riley'&&BacStudio.inspect().board);await page.locator('#studio-campus-tab').click();
+  await page.locator('button[data-room=lounge]').click();await page.locator('[data-agent-key="'+scoutKey+'"]').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Scout');assert(await page.locator('#studio-assigned-crew').isVisible());await page.locator('#studio-assigned-crew').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Riley'&&BacStudio.inspect().board);await page.locator('#studio-campus-tab').click();
   await page.locator('[data-decision="approve-equipment"]').click();await page.waitForFunction(()=>BacStudio.inspect().jobs[0]?.status==='done');
   await page.locator('[data-safety="shared"]').click();assert.match(await page.locator('#studio-dialog-body').innerText(),/One brief. Five accountable roles/);assert.equal(await page.locator('.studio-handoff-list>li').count(),5);assert.match(await page.locator('.studio-handoff-list>li').last().innerText(),/Riley, Scout, Atlas, Momo/);await page.locator('#studio-dialog-close').click();
   await page.locator('#studio-board-tab').click();await page.locator('#studio-board-shared').click();assert.equal(await page.locator('.studio-handoff-list>li').count(),5);await page.locator('#studio-dialog-close').click();assert.equal(await page.locator('[data-role-output]').count(),5);assert.match(await page.locator('#studio-lanes').innerText(),/Scout/);await page.locator('[data-role-output="4"]').click();assert.match(await page.locator('#studio-dialog pre').innerText(),/Fixture deliverable/);await page.locator('#studio-dialog-close').click();await page.locator('#studio-campus-tab').click();
@@ -91,7 +92,7 @@ const {chromium}=require('playwright');
    assert.equal(await p2.evaluate(async({key,endpoint})=>(await fetch('/api/'+endpoint,{headers:{'X-BaC-Agent':key}})).status,{key:scoutKey,endpoint}),404);
   }
   // Reset applied only to Riley; Scout's personal task is still present.
-  await page.locator('[data-agent-key="'+scoutKey+'"]').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Scout');assert.equal((await page.evaluate(()=>BacStudio.inspect().jobs)).length,1);
+  await page.locator('button[data-room=lounge]').click();await page.locator('[data-agent-key="'+scoutKey+'"]').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Scout');assert.equal((await page.evaluate(()=>BacStudio.inspect().jobs)).length,1);
   assert.equal(await page.evaluate(async()=> (await fetch('/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:'bad csrf'})})).status),403);
   for(const width of [736,390]){await page.setViewportSize({width,height:950});for(const mode of ['campus','playground','crew']){await page.locator('[data-mode="'+mode+'"]').click();assert(!(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)),mode+' overflow at '+width);}}
   await page.locator('[data-mode="campus"]').click();await page.emulateMedia({reducedMotion:'reduce'});await page.waitForFunction(()=>BacCampus.inspect().motion===false);

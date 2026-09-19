@@ -1,6 +1,10 @@
 # NVIDIA Build a Claw — Agent Studio
 
-Create your own agents, give each useful skills, and choose who joins your crew. The NVIDIA-inspired charcoal interface uses green accents and a miniature 3D workshop with neutral white lighting: five robot specialists work at distinct desks around one shared brief. Active workbenches light up and document packets illustrate observed handoffs. Small buttons on the library, maker desk, weather instrument and shared brief open the actual experiences. Switch between **Agent campus** and **Mission control**, or open the workshop in **Full screen**. Click the 3D view and press **Enter**, double-click an empty area, or use the Full screen button. **Esc** returns to the studio. The world fills the screen with the side panel hidden; browsers without fullscreen support use the full window.
+Create your own agents, give each a recognizable look and useful skills, and choose who joins your crew. Move between three rooms: **Workshop**, **Agent lounge** and **Mission room**. The NVIDIA-inspired charcoal interface keeps neutral lighting and restrained green accents.
+
+Workshop offers a large character preview and OpenClaw connection details. The lounge grows with your saved agents. Mission room keeps five specialist desks around a shared brief, with active workbenches and document packets illustrating observed handoffs. Switch between **3D crew** and **Mission control** inside that room.
+
+Click a 3D view and press **Enter**, double-click an empty area, or use **Full screen**. **Enter**, **Esc** or the exit button returns to the original size and camera. Browsers without fullscreen support use the full window.
 
 ![Agent Studio](docs/agent-studio.png)
 
@@ -9,6 +13,8 @@ Create your own agents, give each useful skills, and choose who joins your crew.
 ## What is implemented
 
 - **My agents:** create and switch between up to 12 personal agents per browser session. Each has its own name, persona, skills, conversation, memory, files and mission board. The selected agent survives a page reload in the same tab.
+- **Three connected rooms:** Workshop pairs a large 3D character preview with creation and OpenClaw connection details. The lounge shows one selectable robot for every saved agent (up to 12). Mission room retains the five specialist stations and progress board.
+- **Distinct appearances:** choose Classic, Orbit or Rover, six accent colors and four accessories. Appearance is saved with the profile, survives refreshes and follows personal agents into crew assignments. New creations suggest an unused look; existing agents receive stable defaults.
 - **Persistent onboarding:** name, persona and editable skill loadout; native OpenClaw identity/skill files are provisioned on the first mission. Memory, conversations, files and jobs survive app updates.
 - **Useful solo missions:** live weather, reading public websites, optional Brave web search, document questions, HTML mini-app creation with an isolated playable preview, campaign drafts and explicit preference memory.
 - **A real crew workflow:** your selected agent leads four specialists. Assign any of your other agents to demo production, operations, marketing or review; unfilled slots use Nova, Atlas, Momo and Pico. The workshop has five role stations, independently of your collection size. Separate OpenClaw agents receive a shared brief and previous deliverables; the reviewer checks the specialists. A real server-side decision stops the workflow if equipment is insufficient.
@@ -83,12 +89,12 @@ Only Python 3.9+ and a modern WebGL2 browser are needed for UI review. The runti
 
 ## A 15-minute attendee journey
 
-1. Name an agent and choose its persona/skills.
-2. Click **Maker workshop**, create a mini game and play the actual generated file.
+1. In **Workshop**, name an agent and choose its body, color, accessory, persona and skills. Create it to join **Agent lounge**.
+2. In **Agent lounge**, select your robot and choose **Make something playable**. Run the mission and play the actual generated file.
 3. Ask it to remember a preference. Refresh, then ask what it remembers.
-4. Open **Knowledge library**, upload a document or use the labeled sample brief, and inspect the answer alongside the source.
-5. Use **Create an agent** to make a second teammate with different skills. Switch between them to see separate memory and workspaces. Assign your teammates when launching a crew for **Zurich / Europe / English**. Defaults: 120 attendees, 180 minutes, groups of 5, sessions of 15 minutes; all are editable.
-6. Watch role handoffs in the campus, switch to Mission control, approve the equipment assumption if needed, and open each deliverable.
+4. Choose **Ask your documents**, upload a document or use the labeled sample brief, and inspect the answer alongside the source.
+5. Use **Create an agent** to make a second teammate with different skills. See each new robot join the lounge. Switch between them to see separate memory and workspaces. Open **Mission room** and assign your teammates when launching a crew for **Zurich / Europe / English**. Defaults: 120 attendees, 180 minutes, groups of 5, sessions of 15 minutes; all are editable.
+6. Watch role handoffs in **3D crew**, switch to **Mission control**, approve the equipment assumption if needed, and open each deliverable. Your assigned agents keep their saved appearances.
 7. If the host configured Telegram, pair a phone and continue the same conversation.
 8. Open **Security lab** to explore the boundary. Open **Help & fallback** when a live dependency is unavailable.
 
@@ -107,6 +113,7 @@ python3 -m unittest discover -s tests -p 'test*.py'
 # Optional browser tests; requires Playwright + Chromium, or CHROME_PATH
 python3 tests/fixture_studio.py   # separate terminal, port 8082
 node tests/studio.cjs
+node tests/rooms.cjs
 node tests/smoke.cjs
 node tests/playground.cjs
 node tests/campus.cjs
