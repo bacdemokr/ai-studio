@@ -11,7 +11,7 @@ const navigationLayer=document.createElement('div');navigationLayer.className='w
 const overviewButton=document.createElement('button');overviewButton.type='button';overviewButton.className='world-overview-button';overviewButton.dataset.worldOverview='';overviewButton.textContent='⌑ See the whole studio';overviewButton.setAttribute('aria-pressed','false');navigationLayer.append(overviewButton);
 const journeyNote=document.createElement('div');journeyNote.className='world-journey';journeyNote.setAttribute('role','status');journeyNote.setAttribute('aria-live','polite');journeyNote.hidden=true;navigationLayer.append(journeyNote);
 const roomMap=document.createElement('nav');roomMap.className='world-room-map';roomMap.setAttribute('aria-label','Connected studio rooms');
-roomMap.innerHTML='<span class="world-map-caption">STUDIO MAP</span><div><svg viewBox="0 0 280 62" aria-hidden="true"><path d="M12 12 H164 V50 H12 Z"/></svg>'+['lounge','mission','workshop'].map(id=>'<button type="button" data-world-room="'+id+'"><i>'+studioRooms[id].number+'</i><span>'+(id==='mission'?'BaC':studioRooms[id].title)+'</span></button>').join('')+'</div>';
+roomMap.innerHTML='<span class="world-map-caption">STUDIO MAP</span><div><svg viewBox="0 0 320 66" aria-hidden="true"><path d="M13 13 H207 V53 H13 Z"/></svg>'+['lounge','mission','workshop'].map(id=>'<button type="button" data-world-room="'+id+'"><i>'+studioRooms[id].number+'</i><span>'+(id==='mission'?'BaC':studioRooms[id].title)+'</span></button>').join('')+'</div>';
 navigationLayer.append(roomMap);
 function goToRoom(next){
   const restoreFocus=navigationLayer.contains(document.activeElement);
@@ -135,7 +135,18 @@ function placeDoorway(d){
   d.node.style.left=Math.max(half+12,Math.min(w-half-12,parseFloat(d.node.style.left)+offset))+'px';
   // In the short phone preview, keep the rear-door card beside the avatar's face.
   if(w<700&&h<500&&d.from==='workshop'&&d.to==='lounge')d.node.style.left=(w-half-12)+'px';
-  d.node.style.top=Math.max(116+d.node.offsetHeight,Math.min(h-120,parseFloat(d.node.style.top)))+'px';
+  const minTop=Math.max(116,overviewButton.offsetTop+overviewButton.offsetHeight+12);
+  d.node.style.top=Math.max(minTop+d.node.offsetHeight,Math.min(h-120,parseFloat(d.node.style.top)))+'px';
+}
+function separateDoorways(){
+  const nodes=doorways.filter(d=>!d.node.hidden).map(d=>d.node);if(nodes.length!==2)return;
+  const boxes=nodes.map(node=>({node,x:parseFloat(node.style.left)-node.offsetWidth/2,y:parseFloat(node.style.top)-node.offsetHeight,w:node.offsetWidth,h:node.offsetHeight}));
+  const [a,b]=boxes,gap=10;if(a.x+a.w+gap<=b.x||b.x+b.w+gap<=a.x||a.y+a.h+gap<=b.y||b.y+b.h+gap<=a.y)return;
+  const minY=Math.max(116,overviewButton.offsetTop+overviewButton.offsetHeight+12),candidates=[];
+  for(const [box,other] of [[a,b],[b,a]])for(const [x,y] of [[other.x-box.w-gap,box.y],[other.x+other.w+gap,box.y],[box.x,other.y-box.h-gap],[box.x,other.y+other.h+gap]]){
+    if(x>=12&&x+box.w<=viewport.clientWidth-12&&y>=minY&&y+box.h<=viewport.clientHeight-110)candidates.push({box,x,y,cost:Math.abs(x-box.x)+Math.abs(y-box.y)});
+  }
+  candidates.sort((a,b)=>a.cost-b.cost);const move=candidates[0];if(move){move.box.node.style.left=(move.x+move.box.w/2)+'px';move.box.node.style.top=(move.y+move.box.h)+'px';}
 }
 function animateNavigation(now){
   if(journey){
@@ -147,6 +158,7 @@ function animateNavigation(now){
   }
   scene.updateMatrixWorld();
   doorways.forEach(d=>{if(!d.node.hidden)placeDoorway(d);});
+  separateDoorways();
   overviewLabels.forEach(r=>{
     if(r.node.hidden)return;
     positionLabel(r.node,r.group.localToWorld(new THREE.Vector3(0,4.5,-1.7)));
