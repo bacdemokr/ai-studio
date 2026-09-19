@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import re
 import secrets
+import shutil
 import sqlite3
 import threading
 import time
@@ -138,6 +139,8 @@ class Studio:
         self.signal = threading.Event()
         self.status_cache = (0, {})
         self.provisioned = set()
+        self.delete_lock = threading.Lock()
+        self.executing_owners = set()
         with self.db() as db:
             db.executescript('''
                 CREATE TABLE IF NOT EXISTS participants (
@@ -156,8 +159,12 @@ class Studio:
                 id TEXT PRIMARY KEY, participant TEXT NOT NULL, profile TEXT,
                 created REAL, reset_at REAL NOT NULL DEFAULT 0)''')
             # The original agent keeps its ID, native identity, jobs, phone and files.
-            db.execute('''INSERT OR IGNORE INTO agents (id,participant,profile,created,reset_at)
-                SELECT id,id,profile,created,reset_at FROM participants''')
+            if not db.execute("SELECT 1 FROM metadata WHERE key='agent-collection-migrated'").fetchone():
+                db.execute('''INSERT OR IGNORE INTO agents (id,participant,profile,created,reset_at)
+                    SELECT id,id,profile,created,reset_at FROM participants''')
+                db.execute("INSERT INTO metadata VALUES ('agent-collection-migrated','1')")
+            if 'deleting' not in {r['name'] for r in db.execute('PRAGMA table_info(agents)')}:
+                db.execute('ALTER TABLE agents ADD COLUMN deleting INTEGER NOT NULL DEFAULT 0')
             db.execute('CREATE INDEX IF NOT EXISTS agents_participant ON agents(participant)')
             # Never silently replay a potentially completed side effect after a crash.
             if start_worker or recover:
@@ -193,12 +200,21 @@ class Studio:
 
     def resolve_agent(self, participant, agent=None):
         """Resolve an explicitly selected agent within the authenticated account."""
-        agent = agent or participant
         with self.db() as db:
-            row = db.execute('SELECT id FROM agents WHERE id=? AND participant=?', (agent, participant)).fetchone()
+            row = (db.execute('SELECT id FROM agents WHERE id=? AND participant=?', (agent, participant)).fetchone()
+                   if agent else db.execute('SELECT id FROM agents WHERE participant=? ORDER BY created,id LIMIT 1', (participant,)).fetchone())
         if not row:
             raise Problem('Agent not found in your collection.', 404)
         return row['id']
+
+    @staticmethod
+    def require_available(db, owner):
+        row = db.execute('SELECT profile,deleting FROM agents WHERE id=?', (owner,)).fetchone()
+        if not row or not row['profile']:
+            raise Problem('Agent not found.', 404)
+        if row['deleting']:
+            raise Problem('Agent deletion is pending. Retry Delete agent to finish cleanup.', 409)
+        return row
 
     @staticmethod
     def agent_profile(owner, data):
@@ -225,7 +241,7 @@ class Studio:
         profile = self.agent_profile(owner, data)
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
-            if not db.execute('SELECT id FROM agents WHERE id=? AND profile IS NOT NULL', (participant,)).fetchone():
+            if not db.execute('SELECT id FROM agents WHERE participant=? AND profile IS NOT NULL', (participant,)).fetchone():
                 raise Problem('Create your first agent before adding another.')
             if db.execute('SELECT count(*) FROM agents WHERE participant=?', (participant,)).fetchone()[0] >= MAX_AGENTS:
                 raise Problem('This workshop supports up to %d personal agents per attendee.' % MAX_AGENTS, 409)
@@ -254,9 +270,9 @@ class Studio:
             changed = db.execute('UPDATE agents SET profile=? WHERE id=? AND profile IS NULL', (json.dumps(profile), owner)).rowcount
             if changed:
                 db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
+                self.initialize_workspace(owner)
         if not changed:
             raise Problem('Your agent was already created in another tab.', 409)
-        self.initialize_workspace(owner)
         return profile
 
     def configure(self, owner, data):
@@ -266,6 +282,7 @@ class Studio:
         profile = self.agent_profile(owner, {**data, 'avatar': data.get('avatar', profile['avatar'])})
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
+            self.require_available(db, owner)
             if db.execute("SELECT 1 FROM jobs WHERE owner=? AND status IN ('queued','running','waiting','stopping')", (owner,)).fetchone():
                 raise Problem('Finish or cancel your pending missions before changing this agent.', 409)
             crews = db.execute("SELECT payload FROM jobs WHERE kind='crew' AND status IN ('queued','running','waiting','stopping') AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?))", (owner,)).fetchall()
@@ -275,6 +292,53 @@ class Studio:
             db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
         self.provisioned.discard(profile['id'])
         return profile
+
+    def delete_agent(self, owner, data):
+        """Fence the identity first; retryable native cleanup precedes collection removal."""
+        if not self.delete_lock.acquire(blocking=False):
+            raise Problem('Another agent is being deleted. Please try again shortly.', 409)
+        try:
+            with self.db() as db:
+                db.execute('BEGIN IMMEDIATE')
+                row = db.execute('SELECT * FROM agents WHERE id=?', (owner,)).fetchone()
+                if not row or not row['profile']:
+                    raise Problem('Agent not found.', 404)
+                profile = json.loads(row['profile'])
+                if data.get('name') != profile['name']:
+                    raise Problem('This agent changed. Reopen Delete agent to confirm its name.', 409)
+                pending = db.execute("SELECT owner,payload FROM jobs WHERE status IN ('queued','running','waiting','stopping') AND owner IN (SELECT id FROM agents WHERE participant=?)", (row['participant'],)).fetchall()
+                if owner in self.executing_owners or any(j['owner'] == owner or any(m.get('key') == owner for m in json.loads(j['payload']).get('roster', [])) for j in pending):
+                    raise Problem('Finish or cancel this agent’s pending missions, including assigned crew work, before deleting it.', 409)
+                db.execute('UPDATE agents SET deleting=1 WHERE id=?', (owner,))
+            try:
+                # Never include assigned personal agents: these four IDs belong only to this lead.
+                for role in (None, 1, 2, 3, 4):
+                    native_id = profile['id'] + ('-r' + str(role) if role else '')
+                    self.provisioned.discard(native_id)
+                    self.adapter.remove(native_id, self.workspace(owner, role))
+                for role in (None, 1, 2, 3, 4):
+                    path = self.workspace(owner, role)
+                    if path.is_symlink():
+                        path.unlink()
+                    elif path.exists():
+                        shutil.rmtree(path)
+            except Exception:
+                # Keep the fence through errors/restarts; a partially removed identity must not run again.
+                raise Problem('Deletion needs attention. This agent is paused. Ask the host to check OpenClaw cleanup, then retry Delete agent.', 503) from None
+            with self.db() as db:
+                db.execute('BEGIN IMMEDIATE')
+                for table in ('jobs', 'pairs', 'phones'):
+                    db.execute('DELETE FROM ' + table + ' WHERE owner=?', (owner,))
+                db.execute('DELETE FROM agents WHERE id=?', (owner,))
+                db.execute('UPDATE participants SET profile=NULL WHERE id=?', (owner,))
+                next_agent = db.execute('SELECT id FROM agents WHERE participant=? ORDER BY created,id LIMIT 1', (row['participant'],)).fetchone()
+                next_id = next_agent['id'] if next_agent else secrets.token_hex(12)
+                if not next_agent:
+                    # A fresh placeholder keeps the account usable without reusing deleted native identity.
+                    db.execute('INSERT INTO agents (id,participant,created) VALUES (?,?,?)', (next_id, row['participant'], time.time()))
+            return {'deleted': owner, 'agentId': next_id}
+        finally:
+            self.delete_lock.release()
 
     def runtime_status(self):
         if not self.status_cache[1] or time.monotonic() - self.status_cache[0] > 8:
@@ -303,9 +367,9 @@ class Studio:
         with self.db() as db:
             jobs = [self.public_job(r) for r in db.execute('SELECT * FROM jobs WHERE owner=? AND created >= (SELECT reset_at FROM agents WHERE id=?) ORDER BY created DESC LIMIT 30', (owner, owner))]
             phone = db.execute('SELECT chat FROM phones WHERE owner=?', (owner,)).fetchone()
-            collection = db.execute('SELECT id,profile FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?) AND profile IS NOT NULL ORDER BY created,id', (owner,)).fetchall()
+            collection = db.execute('SELECT id,profile,deleting FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?) AND profile IS NOT NULL ORDER BY created,id', (owner,)).fetchall()
             active = db.execute("SELECT id,owner,status,payload FROM jobs WHERE status IN ('queued','running','waiting','stopping') AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) ORDER BY created", (owner,)).fetchall()
-            agents = [{'key': r['id'], **json.loads(r['profile']),
+            agents = [{'key': r['id'], **json.loads(r['profile']), 'deleting': bool(r['deleting']),
                        'pending': sum(j['owner'] == r['id'] or any(m.get('key') == r['id'] for m in json.loads(j['payload']).get('roster', [])) for j in active)} for r in collection]
             for agent in agents:
                 agent.setdefault('avatar', avatar_for(agent['key']))
@@ -320,7 +384,8 @@ class Studio:
             pass
         return {'profile': self.profile(owner), 'jobs': jobs, 'files': self.files(owner),
                 'memory': memory_text, 'phone': bool(phone), 'agentId': owner,
-                'agents': agents, 'agentLimit': MAX_AGENTS, 'assignments': assignments}
+                'agents': agents, 'agentLimit': MAX_AGENTS, 'assignments': assignments,
+                'deleting': any(a['key'] == owner and a['deleting'] for a in agents)}
 
     def crew_roster(self, db, owner, members):
         """Freeze names/skills and assignments; no extra permissions for a crew role."""
@@ -337,6 +402,7 @@ class Studio:
                 row = db.execute('SELECT profile FROM agents WHERE id=? AND participant=?', (key, account)).fetchone()
                 if not row or not row['profile']:
                     raise Problem('Assigned agent not found in your collection.', 404)
+                self.require_available(db, key)
                 profile = json.loads(row['profile'])
                 used.add(key)
             else:
@@ -359,8 +425,11 @@ class Studio:
         content = text(data.get('content'), 100_000, 'File content')
         if len(self.files(owner)) >= 80:
             raise Problem('Workspace file limit reached.')
-        path = safe_file(self.workspace(owner), 'inbox/' + name)
-        path.write_text(content, encoding='utf-8')
+        with self.db() as db:
+            db.execute('BEGIN IMMEDIATE')
+            self.require_available(db, owner)
+            path = safe_file(self.workspace(owner), 'inbox/' + name)
+            path.write_text(content, encoding='utf-8')
         return {'path': 'inbox/' + name}
 
     def enqueue(self, owner, data, source='web', due=0):
@@ -389,6 +458,7 @@ class Studio:
             raise Problem('Your agent is saved. Start the shared LLM and OpenClaw on Spark to run this mission.', 503)
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
+            self.require_available(db, owner)
             pending = db.execute("SELECT count(*) FROM jobs WHERE owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) AND status IN ('queued','running','waiting','stopping')", (owner,)).fetchone()[0]
             if pending >= 3:
                 raise Problem('Your collection has three pending missions. Finish or cancel one before adding another.', 429)
@@ -417,6 +487,7 @@ class Studio:
     def decision(self, owner, job_id, action):
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
+            self.require_available(db, owner)
             row = db.execute('SELECT * FROM jobs WHERE id=? AND owner=?', (job_id, owner)).fetchone()
             if not row:
                 raise Problem('Mission not found.', 404)
@@ -478,6 +549,14 @@ class Studio:
         return agent_id
 
     def execute(self, row):
+        # Keep the deletion fence until post-result work (including a phone reply) has ended.
+        self.executing_owners = {row['owner']} | {m['key'] for m in json.loads(row['payload']).get('roster', []) if m.get('key')}
+        try:
+            return self._execute(row)
+        finally:
+            self.executing_owners = set()
+
+    def _execute(self, row):
         owner, job_id = row['owner'], row['id']
         if self.stop_checkpoint(job_id):
             return
@@ -592,6 +671,8 @@ class Studio:
         username = result['username']
         code = secrets.token_urlsafe(24)
         with self.db() as db:
+            db.execute('BEGIN IMMEDIATE')
+            self.require_available(db, owner)
             db.execute('DELETE FROM pairs WHERE owner=? OR expires<?', (owner, time.time()))
             db.execute('INSERT INTO pairs VALUES (?,?,?)', (hashlib.sha256(code.encode()).hexdigest(), owner, time.time() + 300))
         return {'url': 'https://t.me/' + username + '?start=' + code, 'expires': time.time() + 300}

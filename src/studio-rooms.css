@@ -1,6 +1,14 @@
 /* A small studio with three distinct places, keeping the existing carbon shell. */
 #agent-campus .campus-heading{padding-bottom:18px!important}
 .studio-journey{padding-top:12px;margin-bottom:20px}
+.studio-agent-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#agent-campus .studio-danger-link{border:0;background:transparent;color:#dca49f;font-size:11px;padding:10px 0;text-decoration:underline;text-underline-offset:4px}
+#agent-campus .studio-danger-link:hover{color:#ffb8b1}
+.studio-delete-identity{display:flex;align-items:center;gap:17px;margin:20px 0 25px;font-size:9px;letter-spacing:1.5px;color:#b4c3d0}
+.studio-delete-actions{display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap;margin-top:26px}
+#studio-dialog .studio-danger{background:#c45048;border:1px solid #df6c64;color:white;padding:12px 18px;border-radius:3px;font-weight:600}
+#studio-dialog .studio-danger:hover{background:#da6259}#studio-dialog button:disabled{opacity:.5;cursor:wait}
+#studio-delete-error{color:#ffc1b9;border-left:2px solid #df6c64;padding-left:12px}
 .studio-rooms{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 32px 27px}
 #agent-campus .studio-rooms button{display:flex;align-items:center;gap:17px;text-align:left;border:1px solid #34414e;border-radius:5px;background:linear-gradient(125deg,#1b2631,#101720);padding:19px 21px;color:#e3edf7;min-width:0;position:relative}
 .studio-rooms button b{display:block;font-size:17px;font-weight:600}.studio-rooms button small{display:block;color:#9fadb9;font-size:10px;margin-top:7px}.studio-rooms button i{font-size:10px;font-style:normal;margin-left:auto;color:#647787}.room-symbol{font-size:25px;color:#b8cddd}

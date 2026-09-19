@@ -234,6 +234,14 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 /* A small studio with three distinct places, keeping the existing carbon shell. */
 #agent-campus .campus-heading{padding-bottom:18px!important}
 .studio-journey{padding-top:12px;margin-bottom:20px}
+.studio-agent-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#agent-campus .studio-danger-link{border:0;background:transparent;color:#dca49f;font-size:11px;padding:10px 0;text-decoration:underline;text-underline-offset:4px}
+#agent-campus .studio-danger-link:hover{color:#ffb8b1}
+.studio-delete-identity{display:flex;align-items:center;gap:17px;margin:20px 0 25px;font-size:9px;letter-spacing:1.5px;color:#b4c3d0}
+.studio-delete-actions{display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap;margin-top:26px}
+#studio-dialog .studio-danger{background:#c45048;border:1px solid #df6c64;color:white;padding:12px 18px;border-radius:3px;font-weight:600}
+#studio-dialog .studio-danger:hover{background:#da6259}#studio-dialog button:disabled{opacity:.5;cursor:wait}
+#studio-delete-error{color:#ffc1b9;border-left:2px solid #df6c64;padding-left:12px}
 .studio-rooms{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 32px 27px}
 #agent-campus .studio-rooms button{display:flex;align-items:center;gap:17px;text-align:left;border:1px solid #34414e;border-radius:5px;background:linear-gradient(125deg,#1b2631,#101720);padding:19px 21px;color:#e3edf7;min-width:0;position:relative}
 .studio-rooms button b{display:block;font-size:17px;font-weight:600}.studio-rooms button small{display:block;color:#9fadb9;font-size:10px;margin-top:7px}.studio-rooms button i{font-size:10px;font-style:normal;margin-left:auto;color:#647787}.room-symbol{font-size:25px;color:#b8cddd}
@@ -310,7 +318,7 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
   <div id="studio-lounge-empty"><div class="studio-avatar"><i></i><i></i></div><h3>Room for your first agent.</h3><p class="studio-muted">Everyone you create gets a place here, with their own look, memory and skills.</p><button class="studio-primary" id="studio-empty-create">Create my first agent ↗</button></div>
   <div id="studio-companion" hidden>
     <div class="studio-companion-name"><div id="studio-portrait" class="studio-avatar small"><i></i><i></i></div><div><h3 id="studio-agent-name"></h3><span id="studio-personality" class="studio-muted"></span></div><span class="studio-online-dot"></span></div>
-    <div id="studio-equipped" class="studio-equipped"></div><button id="studio-edit-agent" class="studio-secondary">Customize this agent</button>
+    <div id="studio-equipped" class="studio-equipped"></div><div class="studio-agent-actions"><button id="studio-edit-agent" class="studio-secondary">Customize this agent</button><button id="studio-delete-agent" class="studio-danger-link">Delete agent</button></div>
     <div class="studio-agent-state"><span class="studio-kicker" id="studio-task-state">READY FOR A MISSION</span><p id="studio-task-summary">Choose a mission below, or ask for something of your own.</p></div>
     <button id="studio-assigned-crew" class="studio-secondary" hidden>Open assigned crew ↗</button>
     <form id="studio-chat"><label for="studio-prompt">What should we make happen?</label><textarea id="studio-prompt" rows="4" maxlength="6000" placeholder="Build me a tiny reaction-time game…" required></textarea><div class="studio-compose-actions"><button type="button" id="studio-attach">＋ Add a document</button><button type="submit" class="studio-primary" id="studio-send">Run mission ↗</button></div></form>
@@ -78810,7 +78818,7 @@ render();
     {id:'memory',icon:'▧',title:'Teach it your style',sub:'A preference → a lasting memory',tag:'PERSONALIZE',color:'#c3ace9',prompt:'Please remember that I prefer concise English answers with three practical bullets, and I like vegetarian food. Save this preference to MEMORY.md. Tell me exactly what you saved.'},
   ];
   let csrf = '', data = {profile:null,jobs:[],files:[],memory:'',phone:false}, runtime = {}, persona = 'guide', skill = null, selectedJob = null, resultKey = '', board = false, connected = false, busy = false;
-  let agentId='',changingAgent=false,pendingWrites=0,refreshVersion=0,collectionKey='';
+  let agentId='',changingAgent=false,removingAgent=false,pendingWrites=0,refreshVersion=0,collectionKey='';
   let room='workshop',roomsReady=false,draftMode='new',draftOwner='',draftAvatar={body:'classic',color:'green',accessory:'antenna'};
   root.classList.add('studio-enabled');
   root.querySelector('.campus-heading h2').textContent='Your ideas. An agent that gets them done.';
@@ -78840,36 +78848,40 @@ render();
     try {response=await fetch('/api/'+path,options);} catch {throw new Error('Open this demo through ./start.sh or ./bac app start. The agent API needs the local app server.');}
     let result;
     try {result=await response.json();} catch {throw new Error('The app server did not return a valid response. Refresh after updating the app.');}
-    if(!response.ok)throw new Error(result.error||'The request could not be completed.');
+    if(!response.ok){const error=new Error(result.error||'The request could not be completed.');error.status=response.status;throw error;}
     return result;
     }finally{if(payload!==undefined)pendingWrites--;}
   }
   function rememberSelection(){try{sessionStorage.setItem('bac-selected-agent',agentId);}catch{}}
+  function openAgentState(state){
+    agentId=state.agentId;data=state;rememberSelection();selectedJob=null;resultKey='';skill=null;
+    el('prompt').value='';el('upload').value='';el('alert').hidden=true;
+    el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed','false'));
+    if('speechSynthesis' in window)window.speechSynthesis.cancel();
+    render();
+    if(!data.profile){fillCreator(true);setRoom('workshop');}
+  }
   async function switchAgent(next){
     if(next===agentId)return;
-    if(changingAgent||pendingWrites){alert('Wait for the current save to finish before switching agents.');return;}
+    if(changingAgent||pendingWrites||removingAgent){alert('Wait for the current save to finish before switching agents.');return;}
     changingAgent=true;++refreshVersion;
     try{
       const state=await api('state',undefined,next);
-      agentId=next;data=state;rememberSelection();selectedJob=null;resultKey='';skill=null;
-      el('prompt').value='';el('upload').value='';el('alert').hidden=true;
-      el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed','false'));
-      if('speechSynthesis' in window)window.speechSynthesis.cancel();
-      render();
+      openAgentState(state);
     }catch(error){alert(error.message);}finally{changingAgent=false;busy=false;}
   }
   function renderCollection(){
     el('collection').hidden=!data.profile;
     const key=JSON.stringify([agentId,data.agents]);
     if(key===collectionKey)return;collectionKey=key;
-    el('agent-list').innerHTML=(data.agents||[]).map(a=>`<button class="studio-agent-card" data-agent-key="${a.key}" data-personality="${a.persona}" aria-pressed="${a.key===agentId}">${avatarBadge(a.avatar)}<span><strong>${escape(a.name)}</strong><small>${personaLabels[a.persona]} · ${a.skills.length} skills${a.pending?' · '+a.pending+' pending':''}</small></span><em>${a.key===agentId?'SELECTED':'OPEN ↗'}</em></button>`).join('');
+    el('agent-list').innerHTML=(data.agents||[]).map(a=>`<button class="studio-agent-card" data-agent-key="${a.key}" data-personality="${a.persona}" aria-pressed="${a.key===agentId}">${avatarBadge(a.avatar)}<span><strong>${escape(a.name)}</strong><small>${personaLabels[a.persona]} · ${a.skills.length} skills${a.deleting?' · Deletion pending':a.pending?' · '+a.pending+' pending':''}</small></span><em>${a.key===agentId?'SELECTED':'OPEN ↗'}</em></button>`).join('');
     el('add-agent').disabled=(data.agents||[]).length>=data.agentLimit;
     el('collection-note').textContent=`${data.agents?.length||0} / ${data.agentLimit||12} agents · Each keeps its own conversation, memory and files. Assign them to roles when launching a crew.`;
   }
   el('agent-list').onclick=e=>{const b=e.target.closest('[data-agent-key]');if(b)switchAgent(b.dataset.agentKey);};
   function dialog(kicker, html) {el('dialog-kicker').textContent=kicker;el('dialog-body').innerHTML=html;if(!el('dialog').open)el('dialog').showModal();}
   el('dialog-close').onclick=()=>el('dialog').close();
-  el('dialog').addEventListener('click',e=>{if(e.target===el('dialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
+  el('dialog').addEventListener('click',e=>{if(e.target===el('dialog')&&!removingAgent){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
   function setup() {
     dialog('ONE SPARK / ONE SHARED MODEL',`<h3>Your agent’s engine room.</h3><p>The app, OpenClaw and the model are separate. Updating the experience keeps your model weights, agent memories and files.</p><div class="studio-runtime-grid"><div><b>Shared local model</b><small>${runtime.model?'Connected · bac-local':'Waiting for the host to start vLLM'}<br>One model for every role · one active task at a time</small></div><div><b>OpenClaw ${escape(runtime.version||'2026.9.4')}</b><small>${runtime.gateway?'Gateway connected':'Gateway not connected'}<br>Native identities, skills, tools and conversation state</small></div><div><b>OpenShell</b><small>${escape(runtime.openshell||'Not configured')}<br>Separate sandbox backend. A UI approval is not sandbox enforcement.</small></div><div><b>Telegram</b><small>${runtime.telegram?'Host bot configured · pair your own chat':'Optional · host bot setup required'}<br>Web and phone share the same agent conversation.</small></div></div><pre>./bac llm start qwen\n./bac runtime setup\n./bac runtime start\n./bac app start\n\n# Later UI updates:\n./bac update\n\n# Optional:\n./bac telegram configure\n./bac openshell enable</pre><p>Qwen and Gemma are host-wide alternatives. Set up the model once with <code>./bac llm setup qwen</code> (or <code>gemma</code>) before starting it. These commands run on your Spark.</p>`);
   }
@@ -78888,6 +78900,9 @@ render();
     el('task-summary').textContent=active?(active.kind==='crew'?'Your specialists are building the event plan.':active.payload.prompt.slice(0,135)):'Choose a mission below, or ask for something of your own.';
     const assignment=data.assignments?.[0];el('assigned-crew').hidden=!assignment;
     if(assignment){el('assigned-crew').textContent='Open '+assignment.name+'’s crew ↗';if(!active){el('task-state').textContent='ASSIGNED TO A CREW';el('task-summary').textContent=assignment.role+' for '+assignment.name+' · '+assignment.status+'. Follow the handoffs in the lead’s workspace.';}}
+    el('delete-agent').textContent=data.deleting?'Retry deletion':'Delete agent';
+    el('edit-agent').disabled=!!data.deleting;el('send').disabled=!!data.deleting;
+    if(data.deleting){el('task-state').textContent='DELETION NEEDS ATTENTION';el('task-summary').textContent='This agent is paused. Ask the host to check cleanup, then retry deletion.';}
 
     el('files').innerHTML=data.files.length?data.files.map(f=>`<button data-studio-file="${escape(f.path)}">${f.path.endsWith('.html')?'⌘':'▤'} ${escape(f.path.split('/').pop())}<span>${Math.ceil(f.size/1024)} KB ↗</span></button>`).join(''):'<p class="studio-muted">Uploaded documents and deliverables live here.</p>';
     el('job-history').innerHTML=data.jobs.slice(0,12).map((j,i)=>`<button data-studio-job="${j.id}" aria-pressed="${job?.id===j.id}">${j.kind==='crew'?'Crew':j.kind==='reminder'?'Follow-up':'Mission'} ${data.jobs.length-i} · ${escape(j.status)}</button>`).join('');
@@ -78933,7 +78948,7 @@ render();
     window.BacCampus?.setLive({...s,live:true,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected,flow,gap:active?.status==='waiting',brief:b?{...b,location:b.city}:null,calc:crew?.payload.capacity||null,policy:null});
     document.getElementById('campus-motion-status').textContent=active?flow[0]:'Explore your crew · movement is ambient until a task runs';
   }
-  async function refresh(){if(changingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion&&target===agentId&&!changingAgent){data=state;render();}}catch(error){if(version===refreshVersion&&!document.hidden)alert(error.message);}finally{if(version===refreshVersion)busy=false;}}
+  async function refresh(){if(changingAgent||removingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion&&target===agentId&&!changingAgent){data=state;render();}}catch(error){if(version===refreshVersion){if(error.status===404){try{const state=await api('state',undefined,'');if(version===refreshVersion&&!changingAgent){el('dialog').close();openAgentState(state);alert('This agent was deleted in another tab. Your collection is up to date.');}}catch(recovery){alert(recovery.message);}}else if(!document.hidden)alert(error.message);}}finally{if(version===refreshVersion)busy=false;}}
   el('missions').onclick=e=>{const button=e.target.closest('[data-studio-mission]');if(!button)return;const mission=missions.find(m=>m.id===button.dataset.studioMission);if(!data.profile){alert('Give your agent a name and click “Bring my agent to life” first.');agentForm(true);el('name').focus();return;}if(!data.profile.skills.includes(mission.id)){alert('This starter agent did not equip '+titles[mission.id]+'. Its current skills are shown in the passport.');return;}setRoom('lounge');skill=mission.id;el('prompt').value=mission.id==='web'&&runtime.search?'Search the web for three useful places to visit in Zurich before BaC. Compare options and cite the sources you actually used.':mission.prompt;el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===button));if(mission.id==='documents'&&!data.files.some(f=>f.kind==='inbox')){sampleDocument();}el('prompt').focus();el('passport').scrollIntoView({behavior:'smooth',block:'center'});};
   el('chat').onsubmit=async e=>{e.preventDefault();el('send').disabled=true;try{const result=await api('jobs',{kind:'chat',prompt:el('prompt').value,skill});selectedJob=result.id;await refresh();el('workspace').scrollIntoView({behavior:'smooth',block:'start'});}catch(error){alert(error.message);}finally{el('send').disabled=false;}};
   el('prompt').addEventListener('input',()=>{skill=null;});
@@ -79086,6 +79101,30 @@ root.querySelectorAll('[data-persona]').forEach(button=>button.onclick=()=>{pers
 el('rooms').onclick=e=>{const b=e.target.closest('[data-room]');if(b){if(b.dataset.room==='workshop'&&room!=='workshop')fillCreator(true);setRoom(b.dataset.room);}};
 el('room-action').onclick=()=>room==='mission'?crewForm():room==='lounge'?agentForm(true):setRoom('lounge');
 el('edit-agent').onclick=()=>agentForm(false);el('add-agent').onclick=()=>agentForm(true);el('empty-create').onclick=()=>agentForm(true);el('cancel-create').onclick=()=>setRoom('lounge');
+el('delete-agent').onclick=()=>{
+  if(!data.profile||pendingWrites||changingAgent||removingAgent)return;
+  const target=agentId,name=data.profile.name,agent=data.agents.find(a=>a.key===target);
+  if(agent?.pending){
+    dialog('FINISH THE MISSION FIRST',`<h3>${escape(name)} still has work in progress.</h3><p>Finish or cancel its pending missions before deleting it. This includes scheduled follow-ups and work assigned by another crew.</p><button class="studio-primary" id="studio-delete-view-work">View pending work ↗</button>`);
+    el('delete-view-work').onclick=()=>{el('dialog').close();if(data.assignments?.length)el('assigned-crew').click();else{const job=data.jobs.find(j=>['running','stopping','queued','waiting'].includes(j.status));selectedJob=job?.id;render();if(job?.kind==='crew'){showBoard(true);el('board').scrollIntoView({behavior:'smooth'});}else{setRoom('lounge');el('workspace').scrollIntoView({behavior:'smooth'});}}};
+    return;
+  }
+  dialog('YOUR COLLECTION',`<div class="studio-delete-identity">${avatarBadge(data.profile.avatar)}<span>REMOVE A TEAMMATE</span></div><h3>Delete ${escape(name)}?</h3><p>Remove this agent, its conversation, saved memory and workspace files from your studio. Its Telegram connection will also be removed.</p><p class="studio-muted">You cannot undo this in the app. Completed crew packages saved by other agents and messages already sent to Telegram remain. OpenClaw may move native files to the host’s Trash.</p><p id="studio-delete-error" role="alert" hidden></p><div class="studio-delete-actions"><button class="studio-secondary" id="studio-delete-cancel" autofocus>Keep agent</button><button class="studio-danger" id="studio-delete-confirm">Delete ${escape(name)}</button></div>`);
+  el('delete-cancel').onclick=()=>el('dialog').close();el('delete-cancel').focus();
+  el('delete-confirm').onclick=async()=>{
+    if(target!==agentId)return;
+    removingAgent=true;++refreshVersion;
+    const preventClose=e=>e.preventDefault();el('dialog').addEventListener('cancel',preventClose);
+    el('delete-confirm').disabled=true;el('delete-cancel').disabled=true;el('dialog-close').disabled=true;el('delete-confirm').textContent='Deleting…';
+    try{
+      const result=await api('delete-agent',{name},target);
+      const state=await api('state',undefined,result.agentId);
+      openAgentState(state);fillCreator(true);setRoom(data.profile?'lounge':'workshop');el('dialog').close();
+      alert(name+' was deleted. Your other agents are unchanged.');el('room-action').hidden?el('name').focus():el('room-action').focus();
+    }catch(error){el('delete-error').hidden=false;el('delete-error').textContent=error.message;el('delete-confirm').textContent='Retry deletion';el('delete-confirm').disabled=false;el('delete-cancel').disabled=false;}
+    finally{removingAgent=false;el('dialog-close').disabled=false;el('dialog').removeEventListener('cancel',preventClose);refresh();}
+  };
+};
 el('connection-setup').onclick=setup;el('connection-security').onclick=()=>securityLab();
 el('onboarding').onsubmit=async e=>{
   e.preventDefault();const mode=draftMode,target=draftOwner,first=!data.agents?.length;

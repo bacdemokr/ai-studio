@@ -26,6 +26,9 @@ class Adapter:
         (workspace / 'inbox').mkdir(exist_ok=True)
         self.agents[agent_id] = workspace
 
+    def remove(self, agent_id, workspace):
+        self.agents.pop(agent_id, None)
+
     def respond(self, agent_id, session, prompt):
         self.calls.append((agent_id, session, prompt))
         if 'remember' in prompt:
@@ -112,6 +115,7 @@ class StudioTests(unittest.TestCase):
         with self.studio.db() as db:
             db.execute('INSERT INTO phones VALUES (?,?)', (self.owner, 'fixture-chat'))
             db.execute('DROP TABLE agents')  # Represents the previous single-agent schema.
+            db.execute("DELETE FROM metadata WHERE key='agent-collection-migrated'")
         migrated = Studio(self.temp.name, self.adapter, start_worker=False)
         state = migrated.state(self.owner)
         self.assertEqual(state['agentId'], self.owner)

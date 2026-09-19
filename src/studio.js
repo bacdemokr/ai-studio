@@ -16,7 +16,7 @@
     {id:'memory',icon:'▧',title:'Teach it your style',sub:'A preference → a lasting memory',tag:'PERSONALIZE',color:'#c3ace9',prompt:'Please remember that I prefer concise English answers with three practical bullets, and I like vegetarian food. Save this preference to MEMORY.md. Tell me exactly what you saved.'},
   ];
   let csrf = '', data = {profile:null,jobs:[],files:[],memory:'',phone:false}, runtime = {}, persona = 'guide', skill = null, selectedJob = null, resultKey = '', board = false, connected = false, busy = false;
-  let agentId='',changingAgent=false,pendingWrites=0,refreshVersion=0,collectionKey='';
+  let agentId='',changingAgent=false,removingAgent=false,pendingWrites=0,refreshVersion=0,collectionKey='';
   let room='workshop',roomsReady=false,draftMode='new',draftOwner='',draftAvatar={body:'classic',color:'green',accessory:'antenna'};
   root.classList.add('studio-enabled');
   root.querySelector('.campus-heading h2').textContent='Your ideas. An agent that gets them done.';
@@ -46,36 +46,40 @@
     try {response=await fetch('/api/'+path,options);} catch {throw new Error('Open this demo through ./start.sh or ./bac app start. The agent API needs the local app server.');}
     let result;
     try {result=await response.json();} catch {throw new Error('The app server did not return a valid response. Refresh after updating the app.');}
-    if(!response.ok)throw new Error(result.error||'The request could not be completed.');
+    if(!response.ok){const error=new Error(result.error||'The request could not be completed.');error.status=response.status;throw error;}
     return result;
     }finally{if(payload!==undefined)pendingWrites--;}
   }
   function rememberSelection(){try{sessionStorage.setItem('bac-selected-agent',agentId);}catch{}}
+  function openAgentState(state){
+    agentId=state.agentId;data=state;rememberSelection();selectedJob=null;resultKey='';skill=null;
+    el('prompt').value='';el('upload').value='';el('alert').hidden=true;
+    el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed','false'));
+    if('speechSynthesis' in window)window.speechSynthesis.cancel();
+    render();
+    if(!data.profile){fillCreator(true);setRoom('workshop');}
+  }
   async function switchAgent(next){
     if(next===agentId)return;
-    if(changingAgent||pendingWrites){alert('Wait for the current save to finish before switching agents.');return;}
+    if(changingAgent||pendingWrites||removingAgent){alert('Wait for the current save to finish before switching agents.');return;}
     changingAgent=true;++refreshVersion;
     try{
       const state=await api('state',undefined,next);
-      agentId=next;data=state;rememberSelection();selectedJob=null;resultKey='';skill=null;
-      el('prompt').value='';el('upload').value='';el('alert').hidden=true;
-      el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed','false'));
-      if('speechSynthesis' in window)window.speechSynthesis.cancel();
-      render();
+      openAgentState(state);
     }catch(error){alert(error.message);}finally{changingAgent=false;busy=false;}
   }
   function renderCollection(){
     el('collection').hidden=!data.profile;
     const key=JSON.stringify([agentId,data.agents]);
     if(key===collectionKey)return;collectionKey=key;
-    el('agent-list').innerHTML=(data.agents||[]).map(a=>`<button class="studio-agent-card" data-agent-key="${a.key}" data-personality="${a.persona}" aria-pressed="${a.key===agentId}">${avatarBadge(a.avatar)}<span><strong>${escape(a.name)}</strong><small>${personaLabels[a.persona]} · ${a.skills.length} skills${a.pending?' · '+a.pending+' pending':''}</small></span><em>${a.key===agentId?'SELECTED':'OPEN ↗'}</em></button>`).join('');
+    el('agent-list').innerHTML=(data.agents||[]).map(a=>`<button class="studio-agent-card" data-agent-key="${a.key}" data-personality="${a.persona}" aria-pressed="${a.key===agentId}">${avatarBadge(a.avatar)}<span><strong>${escape(a.name)}</strong><small>${personaLabels[a.persona]} · ${a.skills.length} skills${a.deleting?' · Deletion pending':a.pending?' · '+a.pending+' pending':''}</small></span><em>${a.key===agentId?'SELECTED':'OPEN ↗'}</em></button>`).join('');
     el('add-agent').disabled=(data.agents||[]).length>=data.agentLimit;
     el('collection-note').textContent=`${data.agents?.length||0} / ${data.agentLimit||12} agents · Each keeps its own conversation, memory and files. Assign them to roles when launching a crew.`;
   }
   el('agent-list').onclick=e=>{const b=e.target.closest('[data-agent-key]');if(b)switchAgent(b.dataset.agentKey);};
   function dialog(kicker, html) {el('dialog-kicker').textContent=kicker;el('dialog-body').innerHTML=html;if(!el('dialog').open)el('dialog').showModal();}
   el('dialog-close').onclick=()=>el('dialog').close();
-  el('dialog').addEventListener('click',e=>{if(e.target===el('dialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
+  el('dialog').addEventListener('click',e=>{if(e.target===el('dialog')&&!removingAgent){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
   function setup() {
     dialog('ONE SPARK / ONE SHARED MODEL',`<h3>Your agent’s engine room.</h3><p>The app, OpenClaw and the model are separate. Updating the experience keeps your model weights, agent memories and files.</p><div class="studio-runtime-grid"><div><b>Shared local model</b><small>${runtime.model?'Connected · bac-local':'Waiting for the host to start vLLM'}<br>One model for every role · one active task at a time</small></div><div><b>OpenClaw ${escape(runtime.version||'2026.9.4')}</b><small>${runtime.gateway?'Gateway connected':'Gateway not connected'}<br>Native identities, skills, tools and conversation state</small></div><div><b>OpenShell</b><small>${escape(runtime.openshell||'Not configured')}<br>Separate sandbox backend. A UI approval is not sandbox enforcement.</small></div><div><b>Telegram</b><small>${runtime.telegram?'Host bot configured · pair your own chat':'Optional · host bot setup required'}<br>Web and phone share the same agent conversation.</small></div></div><pre>./bac llm start qwen\n./bac runtime setup\n./bac runtime start\n./bac app start\n\n# Later UI updates:\n./bac update\n\n# Optional:\n./bac telegram configure\n./bac openshell enable</pre><p>Qwen and Gemma are host-wide alternatives. Set up the model once with <code>./bac llm setup qwen</code> (or <code>gemma</code>) before starting it. These commands run on your Spark.</p>`);
   }
@@ -94,6 +98,9 @@
     el('task-summary').textContent=active?(active.kind==='crew'?'Your specialists are building the event plan.':active.payload.prompt.slice(0,135)):'Choose a mission below, or ask for something of your own.';
     const assignment=data.assignments?.[0];el('assigned-crew').hidden=!assignment;
     if(assignment){el('assigned-crew').textContent='Open '+assignment.name+'’s crew ↗';if(!active){el('task-state').textContent='ASSIGNED TO A CREW';el('task-summary').textContent=assignment.role+' for '+assignment.name+' · '+assignment.status+'. Follow the handoffs in the lead’s workspace.';}}
+    el('delete-agent').textContent=data.deleting?'Retry deletion':'Delete agent';
+    el('edit-agent').disabled=!!data.deleting;el('send').disabled=!!data.deleting;
+    if(data.deleting){el('task-state').textContent='DELETION NEEDS ATTENTION';el('task-summary').textContent='This agent is paused. Ask the host to check cleanup, then retry deletion.';}
 
     el('files').innerHTML=data.files.length?data.files.map(f=>`<button data-studio-file="${escape(f.path)}">${f.path.endsWith('.html')?'⌘':'▤'} ${escape(f.path.split('/').pop())}<span>${Math.ceil(f.size/1024)} KB ↗</span></button>`).join(''):'<p class="studio-muted">Uploaded documents and deliverables live here.</p>';
     el('job-history').innerHTML=data.jobs.slice(0,12).map((j,i)=>`<button data-studio-job="${j.id}" aria-pressed="${job?.id===j.id}">${j.kind==='crew'?'Crew':j.kind==='reminder'?'Follow-up':'Mission'} ${data.jobs.length-i} · ${escape(j.status)}</button>`).join('');
@@ -139,7 +146,7 @@
     window.BacCampus?.setLive({...s,live:true,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected,flow,gap:active?.status==='waiting',brief:b?{...b,location:b.city}:null,calc:crew?.payload.capacity||null,policy:null});
     document.getElementById('campus-motion-status').textContent=active?flow[0]:'Explore your crew · movement is ambient until a task runs';
   }
-  async function refresh(){if(changingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion&&target===agentId&&!changingAgent){data=state;render();}}catch(error){if(version===refreshVersion&&!document.hidden)alert(error.message);}finally{if(version===refreshVersion)busy=false;}}
+  async function refresh(){if(changingAgent||removingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion&&target===agentId&&!changingAgent){data=state;render();}}catch(error){if(version===refreshVersion){if(error.status===404){try{const state=await api('state',undefined,'');if(version===refreshVersion&&!changingAgent){el('dialog').close();openAgentState(state);alert('This agent was deleted in another tab. Your collection is up to date.');}}catch(recovery){alert(recovery.message);}}else if(!document.hidden)alert(error.message);}}finally{if(version===refreshVersion)busy=false;}}
   el('missions').onclick=e=>{const button=e.target.closest('[data-studio-mission]');if(!button)return;const mission=missions.find(m=>m.id===button.dataset.studioMission);if(!data.profile){alert('Give your agent a name and click “Bring my agent to life” first.');agentForm(true);el('name').focus();return;}if(!data.profile.skills.includes(mission.id)){alert('This starter agent did not equip '+titles[mission.id]+'. Its current skills are shown in the passport.');return;}setRoom('lounge');skill=mission.id;el('prompt').value=mission.id==='web'&&runtime.search?'Search the web for three useful places to visit in Zurich before BaC. Compare options and cite the sources you actually used.':mission.prompt;el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===button));if(mission.id==='documents'&&!data.files.some(f=>f.kind==='inbox')){sampleDocument();}el('prompt').focus();el('passport').scrollIntoView({behavior:'smooth',block:'center'});};
   el('chat').onsubmit=async e=>{e.preventDefault();el('send').disabled=true;try{const result=await api('jobs',{kind:'chat',prompt:el('prompt').value,skill});selectedJob=result.id;await refresh();el('workspace').scrollIntoView({behavior:'smooth',block:'start'});}catch(error){alert(error.message);}finally{el('send').disabled=false;}};
   el('prompt').addEventListener('input',()=>{skill=null;});

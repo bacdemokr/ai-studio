@@ -72,6 +72,30 @@ root.querySelectorAll('[data-persona]').forEach(button=>button.onclick=()=>{pers
 el('rooms').onclick=e=>{const b=e.target.closest('[data-room]');if(b){if(b.dataset.room==='workshop'&&room!=='workshop')fillCreator(true);setRoom(b.dataset.room);}};
 el('room-action').onclick=()=>room==='mission'?crewForm():room==='lounge'?agentForm(true):setRoom('lounge');
 el('edit-agent').onclick=()=>agentForm(false);el('add-agent').onclick=()=>agentForm(true);el('empty-create').onclick=()=>agentForm(true);el('cancel-create').onclick=()=>setRoom('lounge');
+el('delete-agent').onclick=()=>{
+  if(!data.profile||pendingWrites||changingAgent||removingAgent)return;
+  const target=agentId,name=data.profile.name,agent=data.agents.find(a=>a.key===target);
+  if(agent?.pending){
+    dialog('FINISH THE MISSION FIRST',`<h3>${escape(name)} still has work in progress.</h3><p>Finish or cancel its pending missions before deleting it. This includes scheduled follow-ups and work assigned by another crew.</p><button class="studio-primary" id="studio-delete-view-work">View pending work ↗</button>`);
+    el('delete-view-work').onclick=()=>{el('dialog').close();if(data.assignments?.length)el('assigned-crew').click();else{const job=data.jobs.find(j=>['running','stopping','queued','waiting'].includes(j.status));selectedJob=job?.id;render();if(job?.kind==='crew'){showBoard(true);el('board').scrollIntoView({behavior:'smooth'});}else{setRoom('lounge');el('workspace').scrollIntoView({behavior:'smooth'});}}};
+    return;
+  }
+  dialog('YOUR COLLECTION',`<div class="studio-delete-identity">${avatarBadge(data.profile.avatar)}<span>REMOVE A TEAMMATE</span></div><h3>Delete ${escape(name)}?</h3><p>Remove this agent, its conversation, saved memory and workspace files from your studio. Its Telegram connection will also be removed.</p><p class="studio-muted">You cannot undo this in the app. Completed crew packages saved by other agents and messages already sent to Telegram remain. OpenClaw may move native files to the host’s Trash.</p><p id="studio-delete-error" role="alert" hidden></p><div class="studio-delete-actions"><button class="studio-secondary" id="studio-delete-cancel" autofocus>Keep agent</button><button class="studio-danger" id="studio-delete-confirm">Delete ${escape(name)}</button></div>`);
+  el('delete-cancel').onclick=()=>el('dialog').close();el('delete-cancel').focus();
+  el('delete-confirm').onclick=async()=>{
+    if(target!==agentId)return;
+    removingAgent=true;++refreshVersion;
+    const preventClose=e=>e.preventDefault();el('dialog').addEventListener('cancel',preventClose);
+    el('delete-confirm').disabled=true;el('delete-cancel').disabled=true;el('dialog-close').disabled=true;el('delete-confirm').textContent='Deleting…';
+    try{
+      const result=await api('delete-agent',{name},target);
+      const state=await api('state',undefined,result.agentId);
+      openAgentState(state);fillCreator(true);setRoom(data.profile?'lounge':'workshop');el('dialog').close();
+      alert(name+' was deleted. Your other agents are unchanged.');el('room-action').hidden?el('name').focus():el('room-action').focus();
+    }catch(error){el('delete-error').hidden=false;el('delete-error').textContent=error.message;el('delete-confirm').textContent='Retry deletion';el('delete-confirm').disabled=false;el('delete-cancel').disabled=false;}
+    finally{removingAgent=false;el('dialog-close').disabled=false;el('dialog').removeEventListener('cancel',preventClose);refresh();}
+  };
+};
 el('connection-setup').onclick=setup;el('connection-security').onclick=()=>securityLab();
 el('onboarding').onsubmit=async e=>{
   e.preventDefault();const mode=draftMode,target=draftOwner,first=!data.agents?.length;

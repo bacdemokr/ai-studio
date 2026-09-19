@@ -4,6 +4,7 @@ import fcntl
 import json
 import os
 from pathlib import Path
+import re
 import secrets
 import subprocess
 import time
@@ -143,6 +144,30 @@ def register(agent_id, workspace, profile, role=None):
             'tools': {'allow': allow, 'fs': {'workspaceOnly': True}},
         }
         save_config(config)
+
+
+def remove(agent_id, workspace):
+    """Use the pinned native deletion command for its session/database cleanup safeguards."""
+    if not re.fullmatch(r'bac-[0-9a-f]{24}(?:-r[1-4])?', agent_id):
+        raise RuntimeError('Only personal BaC agents can be removed here.')
+    workspace = Path(workspace)
+    if workspace.is_symlink() or workspace.parent.is_symlink():
+        raise RuntimeError('The host must check the redirected workspace before deletion.')
+    with config_lock():
+        config = c.read_json(config_path(), {})
+        entry = config.get('agents', {}).get('entries', {}).get(agent_id)
+        native = root() / 'state/agents' / agent_id
+        previous_state = (native / 'agent').exists() or (native / 'sessions').exists() or (workspace / 'IDENTITY.md').exists()
+        if not entry and not previous_state:
+            return  # Created offline, never provisioned; or native cleanup already completed.
+        if entry and Path(entry.get('workspace', '')).resolve() != workspace.resolve():
+            raise RuntimeError('The native workspace changed. The host must review it before deletion.')
+        # CLI uses the running gateway when available and its supported local fallback otherwise.
+        # It retains shared storage and reports partial failures even with a zero exit code.
+        result = json.loads(cli('agents', 'delete', agent_id, '--force', '--json'))
+        if (result.get('agentId') != agent_id or result.get('purgeFailed')
+                or result.get('failed') or result.get('workspaceRetained')):
+            raise RuntimeError('OpenClaw cleanup is incomplete. Resolve host storage errors and retry deletion.')
 
 
 def gateway(path, payload=None, timeout=180):

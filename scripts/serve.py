@@ -123,6 +123,7 @@ class Handler(SimpleHTTPRequestHandler):
                 '/api/agents': lambda: studio.add_agent(row['id'], data),
                 '/api/onboard': lambda: studio.onboard(owner, data),
                 '/api/profile': lambda: studio.configure(owner, data),
+                '/api/delete-agent': lambda: studio.delete_agent(owner, data),
                 '/api/jobs': lambda: studio.enqueue(owner, data),
                 '/api/upload': lambda: studio.upload(owner, data),
                 '/api/decision': lambda: studio.decision(owner, data.get('id'), data.get('action')),

@@ -46,6 +46,9 @@ def accept_message(studio, message):
             pair = db.execute('SELECT * FROM pairs WHERE code=? AND expires>?', (code, time.time())).fetchone()
             if not pair:
                 return
+            agent = db.execute('SELECT deleting FROM agents WHERE id=?', (pair['owner'],)).fetchone()
+            if not agent or agent['deleting']:
+                return
             db.execute('DELETE FROM phones WHERE chat=? OR owner=?', (chat_id, pair['owner']))
             db.execute('INSERT INTO phones VALUES (?,?)', (pair['owner'], chat_id))
             db.execute('DELETE FROM pairs WHERE code=?', (code,))
