@@ -114,6 +114,7 @@ el('onboarding').onsubmit=async e=>{
     alert(mode==='edit'?'Your agent’s look, persona and skills are saved.':payload.name+' has joined your lounge. Give your new teammate a mission.');
   }catch(error){alert(error.message);}finally{el('create').disabled=draftMode==='new'&&(data.agents?.length||0)>=(data.agentLimit||12);}
 };
-root.addEventListener('bac:collection-select',async e=>{if(worldOpen)await leaveWorld();await switchAgent(e.detail);setRoom('lounge');el('passport').scrollIntoView({behavior:'smooth',block:'center'});});
+// Selecting a resident updates its workspace without moving the visitor's view.
+root.addEventListener('bac:collection-select',e=>switchAgent(e.detail));
 // Useful in file-only UI review too; live status is supplied by boot().
 fillCreator(true);setRoom('workshop');

@@ -36,8 +36,14 @@
   el('collection').after(el('policies'));
   el('skill-picker').innerHTML=Object.entries(titles).map(([key,title])=>`<label><input type="checkbox" value="${key}" checked>${title}</label>`).join('');
   el('missions').innerHTML=missions.map(m=>`<button class="studio-mission" data-studio-mission="${m.id}" aria-pressed="false" style="--mission-color:${m.color}"><span>${m.icon}</span><em>${m.tag}</em><strong>${m.title}</strong><small>${m.sub}</small></button>`).join('');
-  function alert(message) {el('alert').querySelector('span').textContent=message;el('alert').hidden=false;}
-  el('alert').querySelector('button').onclick=()=>el('alert').hidden=true;
+  let alertTimer=null;
+  function dismissAlert(){clearTimeout(alertTimer);alertTimer=null;el('alert').hidden=true;}
+  function alert(message) {
+    clearTimeout(alertTimer);
+    el('alert').querySelector('span').textContent=message;el('alert').hidden=false;
+    alertTimer=setTimeout(dismissAlert,5000);
+  }
+  el('alert').querySelector('button').onclick=dismissAlert;
   async function api(path, payload, target=agentId) {
     if(payload!==undefined&&changingAgent)throw new Error('Wait for your agent’s workspace to open.');
     const headers=target?{'X-BaC-Agent':target}:{};
@@ -55,7 +61,7 @@
   function rememberSelection(){try{sessionStorage.setItem('bac-selected-agent',agentId);}catch{}}
   function openAgentState(state){
     agentId=state.agentId;data=state;rememberSelection();selectedJob=null;resultKey='';skill=null;
-    el('prompt').value='';el('upload').value='';el('alert').hidden=true;
+    el('prompt').value='';el('upload').value='';dismissAlert();
     el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed','false'));
     if('speechSynthesis' in window)window.speechSynthesis.cancel();
     render();
