@@ -20,12 +20,12 @@ The font stack uses locally available NVIDIA Sans, then Arial, Helvetica and a g
 
 After making a change, run `python3 scripts/build.py`. Inspect Agent campus and Mission control, onboarding and the playground at desktop and mobile widths. Color alone should not convey a task's state; retain the existing status labels and access explanations.
 
-The current update adds a real Three.js renderer and two local browser tools. Model inference, external tools and OpenShell enforcement remain separate integration work. The renderer is bundled in the standalone HTML, alongside its MIT license in the source tree.
+The main experience uses a bundled Three.js workshop with a rectangular exhibition floor, five individual workbenches, small robot specialists and a central shared-brief hub. The existing carbon-and-green panels remain. Role colors, restrained desk lighting and moving document packets make responsibilities and handoffs visible. Idle movement is ambient; active lighting and transfers follow app-observed task states. The skill buttons connect the furniture to the actual Studio experiences. The renderer runs locally in the browser and requires no CDN.
 
 ## Crew views
 
 Agent campus emphasizes agent identity and Mission control emphasizes task status. They use the same theme and shared run state.
 
-![Agent campus](agent-campus.png)
+![Agent campus — miniature workshop](agent-studio.png)
 
-![Mission control](progress-board.png)
+The same underlying job state also drives Mission control. See the [runtime guide](live-studio.md) for the live execution contract.

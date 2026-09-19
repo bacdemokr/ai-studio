@@ -1,6 +1,6 @@
 # NVIDIA Build a Claw — Agent Studio
 
-Create a personal agent, give it useful skills, and bring it into a crew. The NVIDIA-inspired dark interface surrounds an interactive 3D campus: click the library, maker workshop, weather lookout or crew stage to start a mission. Switch between **Agent campus** and **Mission control**, or expand the world without changing the rest of the interface.
+Create a personal agent, give it useful skills, and bring it into a crew. The NVIDIA-inspired dark interface surrounds a miniature 3D workshop: five robot specialists work at distinct desks around one shared brief. Active workbenches light up and document packets illustrate observed handoffs. Small buttons on the library, maker desk, weather instrument and shared brief open the actual experiences. Switch between **Agent campus** and **Mission control**, or expand the world without changing the rest of the interface.
 
 ![Agent Studio](docs/agent-studio.png)
 
