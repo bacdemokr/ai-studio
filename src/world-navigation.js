@@ -52,7 +52,7 @@ Object.entries(studioRooms).forEach(([id,r])=>{
 });
 function roomHeight(id){
   const aspect=viewport.clientWidth/Math.max(1,viewport.clientHeight);
-  return id==='workshop'?(aspect<1?7.5:5.5):aspect<1?12.5:aspect<1.5?10.2:8.5;
+  return id==='workshop'?Math.max(6.8,8/aspect):aspect<1?12.5:aspect<1.5?10.2:8.5;
 }
 function overviewHeight(){return Math.max(12.5,34/(viewport.clientWidth/Math.max(1,viewport.clientHeight)));}
 function roomFocus(id){return new THREE.Vector3(studioRooms[id].x,id==='workshop'?1.0:.25,.6);}
@@ -95,7 +95,7 @@ function showOverview(){
   travelTo({focus:new THREE.Vector3(2,.2,0),azimuth:.08,elevation:.94,zoom:1,height:overviewHeight(),overview:true});
 }
 function resetNavigation(){
-  roomCameras[room]=room==='workshop'?[.3,.38,1]:[.43,.76,1];
+  roomCameras[room]=room==='workshop'?[.34,.64,1]:[.43,.76,1];
   if(overview){showOverview();return;}
   const [a,e,z]=roomCameras[room];journeyNote.textContent='Returning to '+studioRooms[room].title;
   travelTo({focus:roomFocus(room),azimuth:a,elevation:e,zoom:z,height:roomHeight(room),overview:false});
