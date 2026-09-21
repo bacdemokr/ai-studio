@@ -7,8 +7,8 @@
 Clone the repository on your PC, then start it. The same commands work on Intel/AMD and ARM64 (DGX Spark):
 
 ```bash
-git clone https://github.com/bacdemokr/tmp.git
-cd tmp
+git clone https://gitlab-master.nvidia.com/jinhol/bacdemo-tier2.git
+cd bacdemo-tier2
 ./bac start
 ```
 

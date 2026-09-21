@@ -31,7 +31,7 @@ CMD ["serve"]
 FROM runtime AS app
 USER 0
 LABEL org.opencontainers.image.title="BaC Agent Studio" \
-      org.opencontainers.image.source="https://github.com/bacdemokr/tmp"
+      org.opencontainers.image.source="https://gitlab-master.nvidia.com/jinhol/bacdemo-tier2"
 WORKDIR /opt/bac/app
 COPY scripts/ scripts/
 COPY src/ src/
@@ -58,4 +58,4 @@ RUN env -u BAC_CONTAINER -u BAC_OPENCLAW_PORT python3 -B -m unittest discover -s
 
 FROM runtime AS release
 LABEL org.opencontainers.image.title="BaC Agent Studio" \
-      org.opencontainers.image.source="https://github.com/bacdemokr/tmp"
+      org.opencontainers.image.source="https://gitlab-master.nvidia.com/jinhol/bacdemo-tier2"

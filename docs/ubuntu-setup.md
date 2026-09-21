@@ -12,8 +12,8 @@ Run as your normal login account. Ubuntu 22.04/24.04 on x86-64 or ARM64 supplies
 sudo apt-get update
 sudo apt-get install -y git python3 python3-venv curl ca-certificates openssh-client poppler-utils
 
-git clone https://github.com/bacdemokr/tmp.git
-cd tmp
+git clone https://gitlab-master.nvidia.com/jinhol/bacdemo-tier2.git
+cd bacdemo-tier2
 ./bac dev doctor
 ```
 

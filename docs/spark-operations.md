@@ -14,8 +14,8 @@ Use a normal Linux account with the Spark driver installed and a working systemd
 sudo apt-get update
 sudo apt-get install -y git python3 python3-venv curl ca-certificates openssh-client poppler-utils
 
-git clone https://github.com/bacdemokr/tmp.git
-cd tmp
+git clone https://gitlab-master.nvidia.com/jinhol/bacdemo-tier2.git
+cd bacdemo-tier2
 ./bac dev doctor
 ```
 

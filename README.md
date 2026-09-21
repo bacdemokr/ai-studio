@@ -9,8 +9,8 @@ Hire personal agents, try their skills, and run **Multi-Agent demo (BaC Planning
 Clone this repository, then start:
 
 ```bash
-git clone https://github.com/bacdemokr/tmp.git
-cd tmp
+git clone https://gitlab-master.nvidia.com/jinhol/bacdemo-tier2.git
+cd bacdemo-tier2
 ./bac start
 ```
 
