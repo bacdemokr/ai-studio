@@ -7,6 +7,7 @@ Read `inbox/agent-task.json` for this mission's brief, capacity and exact output
 ```
 python3 skills/bac-event-tools/scripts/event_agent_tools.py search "your query" "another query"
 python3 skills/bac-event-tools/scripts/event_agent_tools.py read S1 S3 S7
+python3 skills/bac-event-tools/scripts/event_agent_tools.py validate-themes
 python3 skills/bac-event-tools/scripts/event_agent_tools.py schedule
 ```
 
@@ -16,4 +17,4 @@ The schedule tool consumes your plan file, checks it, and exports JSON, Excel an
 
 Finish with a short human-readable summary. The application reads your actual saved files and native tool transcript; text claiming completion is not a replacement for tool execution.
 
-A multi-query search and multi-source read fetch independent requests concurrently (at most three). Read all chosen source IDs in one call. Long returned article text is explicitly marked as an excerpt with fullArticleFile and fullArticleChars; full retrieved text remains saved. Base claims on the text you inspect. Do not repeat a network read just to retrieve a longer excerpt; inspect the saved research file only when needed. After saving the themes JSON, finish with a short summary; the app validates the file and citations.
+A multi-query search and multi-source read fetch independent requests concurrently (at most three). Read only the sources needed for the requested themes, in one call where possible. Successful reads are cached for this mission. Search returns a compact index without article bodies. Read returns at most 1,800 article characters per source and 7,200 across a batch; longer text is explicitly marked as a leading excerpt with fullArticleFile and fullArticleChars. This is not a semantic summary; full retrieved text remains saved. Base claims on the text you inspect. Do not repeat a network read just to retrieve a longer excerpt; inspect the saved research file only when needed. After saving the themes JSON, run validate-themes. It checks the saved file, lengths and successful article reads without fetching again or rewriting content. Fix the named fields and rerun until validated; then finish with a short summary. The app repeats these checks at handoff.

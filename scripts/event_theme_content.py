@@ -1,7 +1,10 @@
 """Validate researched themes against retrieved sources; never fabricate gaps."""
+import json
 import re
 import unicodedata
 
+
+DESCRIPTION_LIMIT = 600
 
 def normalized(value):
     return re.sub(r'[^\w]+', ' ', unicodedata.normalize('NFKC', value).casefold()).strip()
@@ -18,11 +21,12 @@ def theme_issues(brief, demos, research):
         if key in seen: reasons.append('Return one activity per topic slot.')
         seen.add(key)
         for field in ('action','outcome','why','proof','risk','presenterExpertise'):
-            if not isinstance(item.get(field),str) or not 0 < len(item[field].strip()) <= 300:
-                reasons.append('Provide a concise '+field+'.')
+            if not isinstance(item.get(field),str) or not 0 < len(item[field].strip()) <= DESCRIPTION_LIMIT:
+                reasons.append(f'{field}: provide 1–{DESCRIPTION_LIMIT} characters (received {len(item[field].strip()) if isinstance(item.get(field), str) else "non-text"}).')
         title = item.get('title', ''); theme = item.get('theme', '')
         if not isinstance(title, str) or not isinstance(theme, str):
             errors[key] = ['Provide a text title and theme.']; continue
+        if not 1 <= len(theme.strip()) <= 100: reasons.append('theme: provide 1–100 characters.')
         source = sources.get(item.get('sourceId'))
         if not source: reasons.append('Cite a supplied source ID.')
         if not 5 <= len(title.strip()) <= 100: reasons.append('Use a clear title of 5–100 characters.')
@@ -41,6 +45,27 @@ def theme_issues(brief, demos, research):
     return errors
 
 
+def validate_saved_themes(brief, output, research):
+    """Shared preflight and handoff checks; preserve authored text verbatim."""
+    demos = output.get('demos') if isinstance(output, dict) else None
+    if not isinstance(demos, list) or any(not isinstance(d, dict) for d in demos):
+        raise ValueError('Save a JSON object with a demos array of objects.')
+    for item in demos:
+        if not isinstance(item.get('topic'), str) or item['topic'] not in brief['topics']:
+            raise ValueError('Each demo topic must be one of: '+', '.join(brief['topics']))
+        if not isinstance(item.get('sourceId'), str):
+            raise ValueError('Each demo sourceId must be a retrieved source ID string.')
+    issues = theme_issues(brief, demos, research)
+    sources = {s['id']: s for s in research.get('sources', [])}
+    for demo in demos:
+        source = sources.get(demo['sourceId'], {})
+        if not source.get('readAt') or not source.get('article') or source.get('readError'):
+            issues.setdefault(demo['topic'], []).append('Read the cited article successfully before selecting it.')
+    if issues:
+        raise ValueError(json.dumps(issues, ensure_ascii=False))
+    return output
+
+
 def apply_themes(brief,calc,demos,research):
     sources={s['id']:s for s in research.get('sources',[])}
     valid={};titles=set();issues=theme_issues(brief,demos,research)
@@ -50,7 +75,7 @@ def apply_themes(brief,calc,demos,research):
         title=item.get('title');theme=item.get('theme')
         fields=('action','outcome','why','proof','risk','presenterExpertise')
         if key not in brief['topics'] or key in valid or not source or key in issues:continue
-        if not all(isinstance(item.get(f),str) and 0<len(item[f].strip())<=300 for f in fields):continue
+        if not all(isinstance(item.get(f),str) and 0<len(item[f].strip())<=DESCRIPTION_LIMIT for f in fields):continue
         if not isinstance(title,str) or not 0<len(title.strip())<=160 or not isinstance(theme,str) or not 0<len(theme.strip())<=100:continue
         if theme.strip().casefold() in titles:continue
         titles.add(theme.strip().casefold());valid[key]=item

@@ -82,7 +82,7 @@ class CrewDefinitionTests(unittest.TestCase):
             self.assertFalse((workspace/'.bac-prepared-only').exists())
         self.assertIn('source', (self.studio.workspace(self.owner,1)/'AGENTS.md').read_text())
         self.assertIn('schedule in parallel', (self.studio.workspace(self.owner,2)/'AGENTS.md').read_text())
-        self.assertIn('Read back the files', (self.studio.workspace(self.owner,3)/'AGENTS.md').read_text())
+        self.assertIn('Check markers and placeholders with a short tool output', (self.studio.workspace(self.owner,3)/'AGENTS.md').read_text())
 
     def test_definitions_alone_do_not_require_native_cleanup(self):
         with patch.object(runtime,'delete_native',side_effect=AssertionError('Never registered')):

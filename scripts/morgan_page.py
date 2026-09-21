@@ -11,6 +11,22 @@ MODE = 'agent-html-v1'
 TOKENS = ('MORGAN_HEADLINE', 'MORGAN_INTRO', 'MORGAN_CTA', 'MORGAN_PROGRAM_TITLE', 'MORGAN_PROMOTION_TITLE', 'MORGAN_SOCIAL_POST')
 SCHEDULE_MOUNT='<section class="section" id="schedule"><h2>Presenter timetable</h2><!-- The app inserts Alex’s validated timetable here. Keep this block unchanged. --></section>'
 POST_MOUNT='<!-- BAC:SOCIAL_POST -->'
+SCHEDULE_MOUNT_ASCII=SCHEDULE_MOUNT.replace('Alex’s','Alex\'s')
+
+
+def protected_pattern(key):
+    return r'<!-- BAC:'+key+r' -->.*?<!-- /BAC:'+key+r' -->'
+
+
+def repair_blocks(payload, error):
+    """Give the model the exact trusted block it must restore, not a vague hint."""
+    original=starter(payload)
+    blocks=[]
+    for key in ('LOGISTICS','SCHEDULE'):
+        if 'Restore the exact BAC:'+key+' block' in str(error):
+            blocks.extend(re.findall(protected_pattern(key),original,re.S))
+    return ('\nRestore these exact original blocks; preserve all other authored content:\n'
+            + '\n'.join('```html\n'+block+'\n```' for block in blocks)) if blocks else ''
 
 
 def enabled(payload):
@@ -65,7 +81,7 @@ def prepare(workspace, job, payload):
                 'instructions': 'Edit the HTML file itself. Preserve both protected blocks exactly. Write the LinkedIn post file. No publishing. Final reply: a short human-readable summary.'}
     import agent_workflow
     if agent_workflow.enabled(payload):
-        contract['instructions']='Build the program cards, narrative and page layout yourself from the theme data. Only CSS and organizer logistics are prefilled. Leave BAC:SCHEDULE and the BAC:SOCIAL_POST marker unchanged: the app inserts Alex’s validated timetable and your own text post after validation. Do not read or rewrite the large timetable. Edit the existing HTML; write the social post once to its text file; read both saved files to verify.'
+        contract['instructions']='Build the program cards, narrative and page layout yourself from the theme data. Only CSS and organizer logistics are prefilled. Leave BAC:SCHEDULE and the BAC:SOCIAL_POST marker unchanged: the app inserts Alex’s validated timetable and your own text post after validation. Do not read or rewrite the large timetable. The app saves Morgan’s LinkedIn draft before HTML work begins. Preserve that post file unchanged. Edit the HTML output file, not the inbox reference. Read the starter once, replace unique placeholders and insert cards without rewriting CSS. Check placeholders with a short tool result instead of rereading the entire HTML.'
         contract['scheduleSummary']={k:payload['capacity'].get(k) for k in ('session','boothCount','presenterCount','scheduleCriteria','staffingPolicy')}
         contract['scheduleSelected']='2' in payload.get('outputs',{})
     safe_file(workspace, 'inbox/morgan-page.json').write_text(json.dumps(contract, ensure_ascii=False, indent=2), encoding='utf-8')
@@ -157,11 +173,18 @@ def validate(workspace,job,payload):
     errors=[]
     if any(t in html or t in post for t in TOKENS):errors.append('Replace every MORGAN_* placeholder in both files.')
     if len(post)<40:errors.append('Write the LinkedIn post, not only a title.')
+    if payload.get('socialDraft',{}).get('status')=='ready' and post!=payload['socialDraft']['text']:
+        errors.append('Restore the already shared LinkedIn draft unchanged in the post file.')
     original=starter(payload)
     for key in ('LOGISTICS','SCHEDULE'):
-        pattern=r'<!-- BAC:'+key+r' -->.*?<!-- /BAC:'+key+r' -->'
+        pattern=protected_pattern(key)
         expected=re.findall(pattern,original,re.S)
-        if not expected or re.findall(pattern,html,re.S)!=expected:errors.append('Restore the exact BAC:'+key+' block from the starter; do not recalculate or change it.')
+        actual=re.findall(pattern,html,re.S)
+        if assembled and key=='SCHEDULE':
+            # Only this known inert comment variant is equivalent. Keep markup,
+            # visible text, marker count, and schedule data strictly protected.
+            actual=[block.replace(SCHEDULE_MOUNT_ASCII,SCHEDULE_MOUNT) for block in actual]
+        if not expected or actual!=expected:errors.append('Restore the exact BAC:'+key+' block from the starter; do not recalculate or change it.')
     parser=Inspect()
     try:parser.feed(html);parser.close()
     except Exception:errors.append('Write parseable HTML.')
@@ -199,7 +222,7 @@ def validate(workspace,job,payload):
     source=html
     if assembled:
         schedule=payload.get('scheduleFragment') or '<section class="section" id="schedule"><h2>Timetable</h2><p>No scheduling contribution was selected.</p></section>'
-        html=html.replace(SCHEDULE_MOUNT,schedule).replace(POST_MOUNT,escape(post))
+        html=html.replace(SCHEDULE_MOUNT,schedule).replace(SCHEDULE_MOUNT_ASCII,schedule).replace(POST_MOUNT,escape(post))
         final=Inspect();final.feed(html);final.close()
         if final.errors or not {'program','schedule','promotion'}.issubset(final.section_text):
             raise PageError('The assembled webpage is incomplete or invalid. '+ '; '.join(final.errors))

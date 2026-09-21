@@ -377,6 +377,42 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(len(report['recentDenied']), 1)
         self.assertNotIn('host:example.com', report['catalog'])
 
+    def test_http_ocsf_denial_appears_in_latest_conversation(self):
+        self.run_job({'prompt': "What's the weather like today?"})
+        now = time.time()
+        log = (f'[{now}] [sandbox] [OCSF ] [ocsf] HTTP:GET [MED] DENIED '
+               '/usr/bin/curl(173) -> GET http://wttr.in/Zurich '
+               '[policy:- engine:opa] [reason:network connections not allowed by policy]')
+        with patch('agent_policy.shell', return_value=log):
+            entries = policy.public_logs('this-agent')
+        self.adapter.policy_logs[self.studio.profile(self.owner)['id']] = entries
+        report = self.studio.policy_report(self.owner)
+        self.assertEqual(report['pendingAccess'], [{'host': 'wttr.in', 'reason': 'blocked'}])
+        self.assertEqual(report['requested'], [])
+        self.assertEqual(entries[0]['time'], now)
+        self.assertEqual(entries[0]['binary'], '/usr/bin/curl')
+        with patch('agent_policy.shell', return_value=log.replace('DENIED', 'ALLOWED')):
+            self.assertEqual(policy.public_logs('this-agent')[0]['action'], 'allow')
+
+    def test_scout_backtick_destination_is_only_a_suggestion(self):
+        job = self.studio.enqueue(self.owner, {'prompt': "What's the weather like today?"})
+        self.studio.decision(self.owner, job['id'], 'cancel')
+        answers = [
+            ("If you want me to fetch the current weather, you can approve a destination like "
+             "`wttr.in` in the OpenShell Policies tab, and I'll be right on it.",
+             [{'host': 'wttr.in', 'reason': 'suggested'}]),
+            ('Weather reference: `wttr.in`.', []),
+            ('Please approve `127.0.0.1`, `metadata.internal`, and `*.example.com`.', []),
+        ]
+        for answer, expected in answers:
+            with self.subTest(answer=answer):
+                with self.studio.db() as db:
+                    db.execute('UPDATE jobs SET result=? WHERE id=?', (json.dumps({'answer': answer}), job['id']))
+                report = self.studio.policy_report(self.owner)
+                self.assertEqual(report['pendingAccess'], expected)
+                self.assertEqual(report['recentDenied'], [])
+                self.assertEqual(report['requested'], [])
+
     def test_latest_conversation_filters_old_denials(self):
         self.run_job({'prompt': 'can you access www.naver.com?'})
         with self.studio.db() as db:

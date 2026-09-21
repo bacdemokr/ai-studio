@@ -59,6 +59,10 @@ class MorganPageTests(unittest.TestCase):
             with self.subTest(fault=fault):
                 job=self.run_event([fault]);self.assertEqual(job['status'],'done');self.assertEqual(job['payload']['pageDraft']['attempts'],2)
                 calls=[c for c in self.adapter.calls if c[0]==3];self.assertEqual(len(calls),2);self.assertEqual(calls[0][1],calls[1][1]);self.assertIn('Repair your existing',calls[1][2])
+                if fault=='schedule':
+                    self.assertIn('Restore these exact original blocks',calls[1][2])
+                    self.assertIn('<!-- BAC:SCHEDULE -->',calls[1][2])
+                    self.assertIn('<!-- /BAC:SCHEDULE -->',calls[1][2])
 
     def test_second_failure_does_not_claim_a_completed_page(self):
         with self.assertRaisesRegex(RuntimeError,'one repair'):

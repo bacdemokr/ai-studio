@@ -21,10 +21,16 @@ def prepare(workspace,job,payload,stage):
     from studio import safe_file
     (Path(workspace)/'artifacts').mkdir(exist_ok=True)
     contract={'job':job,'files':paths(job),'brief':payload['brief'],'capacity':payload['capacity']}
-    if stage==2:
+    if stage==1:
+        contract['capacity']={'topics':[{'id':t['id']} for t in payload['capacity']['topics']]}
+        contract['outputGuidance']='Write only demos with the required short fields and sourceId. Each description: one brief phrase, usually 40–80 characters; use fewer when clear, hard limit 600. Never copy articles or search results. Topic IDs are neutral slots, not mandatory search subjects. Choose distinct evidence-backed subjects from retrieved articles. Final response: at most 30 words; do not repeat the JSON.'
+    elif stage==2:
         contract['capacity']={k:v for k,v in payload['capacity'].items() if k not in ('schedule','presenterDuty','booths','assumptions')}
         contract['capacity']['topics']=[{k:v for k,v in topic.items() if k!='presenters'} for topic in payload['capacity']['topics']]
         contract['slotMinutes']=payload['brief']['session']
+        contract['inputPriority']='The brief and capacity in this JSON are authoritative. Casey handoff prose may contain mistakes: never override attendee counts, group size, duration or topic allocations with prose. A group has brief.groupSize people; capacity.topics[].groups is the required number of visits.'
+        contract['distributionPolicy']='Spread visits across the full event, with flexible staggered starts. For each topic with G>1 visits and T=floor(duration/sessionMinutes)*days slots, no empty interval (including before first and after last visit) may exceed ceil(T/G) slots. Exact visit positions are your choice; do not force one exact slot per visit. Keep the supplied visit count. Single-visit topics may use any slot. Correct all reported distribution/rotation errors together by editing only the affected booth slots/rotation.'
+
     elif stage==3:
         # A second, full-capacity contract used to expose ~190 KB of timetable
         # rows even when Morgan's HTML starter was small. Keep one compact input.
@@ -35,9 +41,9 @@ def prepare(workspace,job,payload,stage):
 
 def task(stage):
     return {
-        0:'Write a concise common brief for the selected crew. The app dispatches the preset workflow: Dylan and Alex run in parallel, then Morgan receives their completed contributions. You write the brief; do not claim you chose this execution order or invoked delegation tools. Dylan selects queries, searches NVIDIA Blog, reads articles and writes themes. Alex chooses booth visit slots, staffing and rotations, then calls the supplied validation/export tool. The app binds theme names to stable booth/topic IDs without changing those assignments. Morgan edits the supplied HTML starter and authors the page content and LinkedIn post; the app renders and inserts the timetable. Return the complete brief itself, not a completion receipt; the app saves it. No publishing.',
-        1:'Use bac-event-tools and bac-nvidia-research. Read both skill files and inbox/agent-task.json together when possible; they are independent inputs. Choose 1–4 search queries; invoke the search tool yourself, inspect the results, then invoke read on the source IDs you will use. Write the demos JSON to the contract demos file. Every selected source needs a successful article read. Do not use model memory or invent sources. The app has not performed this research for you. Finish with a short human-readable account of queries, findings and saved file.',
-        2:'Use bac-event-tools and bac-event-scheduling. Read both skill files and inbox/agent-task.json together when possible; they are independent inputs. Presenter labels must be exactly Presenter NN (unassigned), for example Presenter 01 (unassigned); put expertise notes in check, never inside labels. Author the schedule-plan JSON: choose visit slots, topic-dedicated presenter slots, rotations, consecutive-session limit and explain criteria/tradeoffs. Use stable topic/booth IDs as placeholders while Dylan researches names. Each presenter stays on one booth/topic; mark actual expertise as awaiting Dylan’s handoff. Run the schedule tool to validate and export your plan; correct any errors once. The app supplies capacity arithmetic but no finished schedule. The supplied tool expands your chosen rotation and renders the HTML and Excel; do not claim you wrote its renderer or scheduling algorithm. Finish with your concrete scheduling choices and output files.',
+        0:'Write a concise common brief for the selected crew. Copy organizer numbers exactly; do not infer different group sizes, visit counts or staffing from attendee totals. The app dispatches the preset workflow: Dylan and Alex run in parallel, then Morgan receives their completed contributions. You write the brief; do not claim you chose this execution order or invoked delegation tools. Dylan selects queries, searches NVIDIA Blog, reads articles and writes themes. Alex chooses booth visit slots, staffing and rotations, then calls the supplied validation/export tool. The app binds theme names to stable booth/topic IDs without changing those assignments. Morgan edits the supplied HTML starter and authors the page content and LinkedIn post; the app renders and inserts the timetable. Return the complete brief itself, not a completion receipt; the app saves it. No publishing.',
+        1:'Use bac-event-tools and bac-nvidia-research. Read both skill files and inbox/agent-task.json together when possible; they are independent inputs. Choose 1–4 search queries; invoke the search tool yourself, inspect the results, then invoke read on the source IDs you will use. Write the demos JSON to the contract demos file using a file-writing tool; a chat completion claim does not save it. Then execute the validate-themes event tool and fix any reported fields before finishing. Use one brief phrase per description, usually 40–80 characters; use fewer when clear (hard limit 600), title 5–100 and theme 1–100 characters. Topic IDs such as cudax are neutral slot identifiers, not mandatory subjects; do not exhaust searches trying to match their names. Read only the sources needed for the requested themes, together in one call when possible. Never copy articles, URLs or the research bundle into the demos file; cite sourceId only. Every selected source needs a successful article read. Do not use model memory or invent sources. The app has not performed this research for you. After validate-themes passes, stop editing and return at most 30 words naming the themes and saved file; do not repeat JSON or full findings.',
+        2:'Use bac-event-tools and bac-event-scheduling. Read both skill files and inbox/agent-task.json together when possible; they are independent inputs. Presenter labels must be exactly Presenter NN (unassigned), for example Presenter 01 (unassigned); put expertise notes in check, never inside labels. Author the schedule-plan JSON: choose visit slots, topic-dedicated presenter slots, rotations, consecutive-session limit and explain criteria/tradeoffs. Treat the contract brief/capacity as authoritative over Casey prose. Keep criteria to brief phrases and rotation to its shortest repeating pattern. Spread visits across the entire event using the distributionPolicy in the contract; do not pack them into the opening hour. Choose offsets to stagger booths where feasible, preserve group counts, and explain idle periods. Use stable topic/booth IDs as placeholders while Dylan researches names. Each presenter stays on one booth/topic; mark actual expertise as awaiting Dylan’s handoff. Run the schedule tool to validate and export your plan; correct any errors once. The app supplies capacity arithmetic but no finished schedule. The supplied tool expands your chosen rotation and renders the HTML and Excel; do not claim you wrote its renderer or scheduling algorithm. Finish with your concrete scheduling choices and output files.',
     }.get(stage,'')
 
 
@@ -55,14 +61,8 @@ def validate(workspace,job,payload,stage,activity):
     if stage==1:
         require_action(activity,'search');require_action(activity,'read')
         research=read_json(workspace,files['research']);output=read_json(workspace,files['demos'])
-        from event_theme_content import theme_issues
-        issues=theme_issues(payload['brief'],output.get('demos'),research)
-        sources={s['id']:s for s in research.get('sources',[])}
-        for demo in output.get('demos',[]):
-            source=sources.get(demo.get('sourceId'),{})
-            if not source.get('readAt') or not source.get('article') or source.get('readError'):
-                issues[demo.get('topic','unknown')]=['Read the cited article successfully before selecting it.']
-        if issues:raise ValueError(json.dumps(issues,ensure_ascii=False))
+        from event_theme_content import validate_saved_themes
+        validate_saved_themes(payload['brief'],output,research)
         return {'research':research,'demos':output}
     if stage==2:
         require_action(activity,'schedule')

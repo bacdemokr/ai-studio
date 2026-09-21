@@ -3,6 +3,8 @@ import json
 import math
 import platform
 import re
+import sqlite3
+from contextlib import closing
 import subprocess
 import threading
 import time
@@ -19,23 +21,45 @@ def number(value):
     return value if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value >= 0 else None
 
 
-def measure(result, state_dir, agent, session, started):
+def context_usage(state_dir, agent, session, started, measured_at=None):
+    """Read this run's native session counters, never its aggregate API usage."""
+    context = limit = model = None
+    try:
+        root = Path(state_dir) / 'agents' / agent
+        database = root / 'agent/openclaw-agent.sqlite'
+        key = 'agent:' + agent + ':openai-user:' + session
+        if database.is_file():
+            with closing(sqlite3.connect(database.resolve().as_uri() + '?mode=ro', uri=True, timeout=.2)) as db:
+                row = db.execute('SELECT entry_json FROM session_nodes WHERE session_key=?', (key,)).fetchone()
+            entry = json.loads(row[0]) if row else {}
+        else:
+            entries = json.loads((root / 'sessions/sessions.json').read_text())
+            entry = entries.get(key, {})
+        updated = number(entry.get('updatedAt'))
+        if (updated is not None and updated >= started * 1000
+                and (measured_at is None or updated <= measured_at * 1000)
+                and entry.get('totalTokensFresh') is True and entry.get('totalTokensVersion') == 1):
+            context = number(entry.get('totalTokens'))
+            limit = number(entry.get('contextTokens'))
+            model = entry.get('model')
+    except (OSError, ValueError, TypeError, AttributeError, sqlite3.Error):
+        pass
+    return {'context': context, 'limit': limit, 'model': model}
+
+
+def measure(result, state_dir, agent, session, started, elapsed=None):
     usage = result.get('usage') or {}
     tokens = {key: number(usage.get(source)) for key, source in [('input','prompt_tokens'),('output','completion_tokens'),('total','total_tokens')]}
     # Gateway can return an all-zero placeholder when the provider reports nothing.
     if not any(value for value in tokens.values()):
         tokens = dict.fromkeys(tokens)
-    context = limit = model = None
-    try:
-        entries = json.loads((Path(state_dir) / 'agents' / agent / 'sessions/sessions.json').read_text())
-        entry = entries.get('agent:' + agent + ':openai-user:' + session, {})
-        if entry.get('updatedAt', 0) >= started * 1000 and entry.get('totalTokensFresh') is True and entry.get('totalTokensVersion') == 1:
-            context = number(entry.get('totalTokens'))
-            limit = number(entry.get('contextTokens'))
-            model = entry.get('model')
-    except (OSError, ValueError, TypeError, AttributeError):
-        pass
-    return {**tokens, 'context': context, 'limit': limit, 'model': model, 'measuredAt': time.time()}
+    duration = number(elapsed)
+    if duration == 0:
+        duration = None
+    speed = tokens['output'] / duration if duration is not None and tokens['output'] is not None else None
+    return {**tokens, **context_usage(state_dir, agent, session, started),
+            'runSeconds': duration, 'outputTokensPerSecond': speed,
+            'session': session, 'measuredAt': time.time()}
 
 _lock = threading.Lock()
 _cached = {'cpu': None, 'memory': None, 'sampledAt': 0}
@@ -76,18 +100,35 @@ def host():
 
 def report(studio, owner):
     agents = {}
+    sources = {}
     total = 0
     measured = missing = 0
     with studio.db() as db:
         # Histories can contain large research/handoff payloads. Read only measured
         # usage instead of decoding every saved task body on each meter refresh.
-        rows = db.execute("SELECT json_extract(payload,'$.metrics') AS metrics,kind FROM jobs WHERE owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) AND json_type(payload,'$.metrics')='object' ORDER BY created", (owner,))
+        rows = db.execute("SELECT id,owner,created,json_extract(payload,'$.preset') AS preset,json_extract(payload,'$.metrics') AS metrics,kind FROM jobs WHERE owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) AND json_type(payload,'$.metrics')='object' ORDER BY created", (owner,))
         for row in rows:
-            for record in json.loads(row['metrics']).values():
+            for stage, record in json.loads(row['metrics']).items():
                 key = (record['agent'], row['kind']=='crew')
                 previous = agents.get(key, {'total':0, 'calls':0})
                 amount = number(record.get('total'))
                 if amount is None: missing += 1
                 else: total += amount; measured += 1
                 agents[key] = {**record, 'total': previous['total'] + (amount or 0), 'calls': previous['calls'] + (amount is not None), 'crew': row['kind']=='crew'}
+                session = record.get('session')
+                if not session and row['kind'] == 'crew':
+                    session = 'bac-' + row['owner'] if stage == '0' and not row['preset'] else 'bac-crew-' + row['id'] + '-' + stage
+                elif not session and row['kind'] == 'chat':
+                    session = 'bac-' + row['owner']
+                sources[key] = (session, row['created'])
+    # Repair display of previously recorded runs without rewriting history or
+    # attributing a newer session's context to an older run.
+    from agent_runtime import root
+    for key, record in agents.items():
+        session, started = sources[key]
+        measured_at = number(record.get('measuredAt'))
+        if session and measured_at is not None and (record.get('context') is None or record.get('limit') is None):
+            observed = context_usage(root() / 'state', key[0], session, started, measured_at)
+            if observed['context'] is not None:
+                record.update(observed)
     return {'host':host(), 'agents':list(agents.values()), 'total':total if measured else None, 'measuredCalls':measured, 'unreportedCalls':missing}

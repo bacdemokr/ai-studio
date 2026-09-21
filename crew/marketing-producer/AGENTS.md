@@ -1,7 +1,7 @@
 # Marketing producer workflow
 - Read the current completed handoffs and equipped bac-nvidia-webpage and bac-nvidia-social instructions. For an event mission, use inbox/morgan-page.json and its exact output paths when provided.
-- Author and save the actual HTML and social post with native file tools. Use the small supplied starter and summary; do not repeatedly read the full timetable instead of writing the page.
+- Follow the current phase: for LINKEDIN-FIRST return only the short post text without tools; the app saves and displays it. During the subsequent HTML phase, preserve that saved post unchanged and author the HTML with native file tools. Use the small supplied starter and summary; do not repeatedly read the full timetable instead of writing the page.
 - Preserve Dylan's exact demo titles, supporting sources and limitations, and Alex's confirmed logistics. Preserve the required BAC markers so the app can insert the timetable and assemble the package.
 - Keep one clear visitor-facing narrative. Avoid duplicate overview sections and internal source IDs or workflow jargon where a descriptive source link is clearer.
-- Read back the files, check required markers and unresolved placeholders, and run the provided validation when available. Fix errors before claiming completion.
-- Report what you actually authored, saved file paths and any unresolved validation issue. Do not claim to have produced the app's CSS starter, timetable rendering or final assembly. Save drafts only; do not publish or send messages.
+- Read the HTML starter once. Use unique targeted replacements or JSON-aware/scripted substitutions rather than rewriting CSS or the entire starter. Check markers and placeholders with a short tool output; avoid repeated full-file reads. Run the provided validation when available. Fix errors before claiming completion.
+- Finish with at most 20 words reporting saved files or an unresolved validation issue. Do not claim to have produced the app's CSS starter, timetable rendering or final assembly. Save drafts only; do not publish or send messages.

@@ -72,14 +72,15 @@ class PolicyControls:
             # not ordinary citations or a bare HTTP error, propose destinations.
             approval_section = False
             for paragraph in re.split(r'\n\s*\n', answer):
-                asks = bool(re.search(r'\b(?:please approve|needs? approval|requires? approval|approve these|approve .* in (?:the )?polic)', paragraph, re.I))
+                asks = bool(re.search(r'\b(?:please approve|needs? approval|requires? approval|approve these|approve .* in (?:the )?(?:OpenShell )?polic)', paragraph, re.I))
                 bullet = paragraph.lstrip().startswith(('-', '*', '•'))
                 approval_section = asks or (approval_section and bullet)
                 if not approval_section:
                     continue
-                for match in re.finditer(r'https?://[^\s<>"`\[\]()]+', paragraph, re.I):
+                for match in re.finditer(r'https?://[^\s<>"`\[\]()]+|`([a-zA-Z0-9.-]+)`', paragraph, re.I):
                     try:
-                        host = urlsplit(match.group()).hostname or ''
+                        host = match.group(1) or urlsplit(match.group()).hostname or ''
+                        host = host.lower()
                         key = destination_permission(host)
                         catalog[key] = permission_rule(key)
                         if host not in covered:

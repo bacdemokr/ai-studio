@@ -11,6 +11,7 @@ import re
 import shutil
 import subprocess
 import time
+from urllib.parse import urlsplit
 
 import agent_runtime as runtime
 import ops_common as c
@@ -217,14 +218,22 @@ def public_logs(name):
     for line in re.sub(r'\x1b\[[0-9;]*m', '', logs).splitlines():
         action = re.search(r'(?:action[=:]\s*"?(allow|deny)\b|\b(ALLOWED|DENIED)\b)', line, re.I)
         host = re.search(r'(?:host|dst_host|destination)[=:]\s*"?([a-zA-Z0-9.-]+)', line) or re.search(r'->\s*([a-zA-Z0-9.-]+):[0-9]+', line)
-        if not action or not host:
+        # HTTP OCSF events use "-> GET http://host/path", unlike NET events.
+        http_target = re.search(r'->\s+[A-Z]+\s+(https?://[^\s]+)', line)
+        hostname = host.group(1) if host else None
+        if not hostname and http_target:
+            try:
+                hostname = urlsplit(http_target.group(1)).hostname
+            except ValueError:
+                pass
+        if not action or not hostname:
             continue
         verdict = (action.group(1) or action.group(2)).lower()
         reason = ('dns-failed' if re.search(r'DNS resolution failed|failed to lookup address', line, re.I)
                   else 'destination-blocked' if 'engine:ssrf' in line.lower()
                   else 'policy-denied' if verdict in ('deny', 'denied') else None)
         events.append({'reason': reason, 'action': 'allow' if verdict in ('allow', 'allowed') else 'deny',
-                       'host': host.group(1), 'binary': '/usr/bin/curl' if '/usr/bin/curl' in line else 'other process',
+                       'host': hostname, 'binary': '/usr/bin/curl' if '/usr/bin/curl' in line else 'other process',
                        'source': 'OpenShell policy log', 'time': float(re.search(r'^\[([0-9]+(?:\.[0-9]+)?)\]', line).group(1)) if re.search(r'^\[([0-9]+(?:\.[0-9]+)?)\]', line) else None, 'fingerprint': hashlib.sha256(line.encode()).hexdigest()[:16]})
     return events[-30:][::-1]
 

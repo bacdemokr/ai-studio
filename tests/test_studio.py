@@ -417,7 +417,7 @@ class StudioTests(unittest.TestCase):
             opener.open.reset_mock()
             opener.open.side_effect = error
             with patch('agent_runtime.c.read_json', return_value={'gateway': {'auth': {'token': 'fixture'}}}), patch('agent_runtime.urllib.request.build_opener', return_value=opener):
-                with self.assertRaisesRegex(RuntimeError, 'within 180 seconds'):
+                with self.assertRaisesRegex(RuntimeError, 'within 240 seconds'):
                     agent_runtime.gateway('/v1/chat/completions', {'messages': []})
             self.assertEqual(opener.open.call_count, 1)
 

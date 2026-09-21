@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 def compile_schedule(brief, capacity, spec):
     """Expand Alex's explicit slot/rotation choices; never choose a schedule for him."""
     c = copy.deepcopy(capacity)
+    issues = []
     session = spec.get('sessionMinutes')
     if type(session) is not int or not 5 <= session <= brief['session']:
         raise ValueError('Choose sessionMinutes between 5 and the requested session length.')
@@ -45,7 +46,7 @@ def compile_schedule(brief, capacity, spec):
             people[name] = key
         booth = dict(booth='Booth-'+str(list(topics).index(key)+1), topicId=key, topic=topic['topic'], demo=topic['demo'],
                      presenter=' / '.join(names), harnesses='OpenClaw')
-        booths.append(booth); remaining = topic['attendees']; count = 0
+        booths.append(booth); remaining = topic['attendees']; count = 0; chosen_slots = []
         days = plan.get('days', [])
         if not isinstance(days, list) or len(days) > brief['days']: raise ValueError('Use only the event days.')
         day_seen = set()
@@ -63,10 +64,22 @@ def compile_schedule(brief, capacity, spec):
                 person = names[rotation[i % len(rotation)]]
                 if (day, slot, person) in occupied: raise ValueError('Presenter double booking.')
                 occupied.add((day, slot, person)); count += 1
+                chosen_slots.append((day-1)*(brief['duration']//session)+slot)
                 seats = min(remaining, brief['groupSize']); remaining -= seats
                 rows.append({**booth, 'day':day, 'start':clock(start+slot*session), 'end':clock(start+(slot+1)*session),
                              'presenter':person, 'attendees':seats, 'presenterExpertise':topic.get('presenterExpertise', 'Dedicated specialist for '+key)})
         if remaining or count != topic['groups']: raise ValueError('Cover all '+str(topic['groups'])+' visits for '+key+'.')
+        # Allow staggered near-even plans rather than prescribing each visit.
+        # Bound the longest unserved interval, including opening/closing edges.
+        total_slots = (brief['duration']//session)*brief['days']
+        ordered = sorted(chosen_slots)
+        if count > 1:
+            max_idle = (total_slots+count-1)//count
+            gaps = [ordered[0]] + [right-left-1 for left,right in zip(ordered,ordered[1:])] + [total_slots-1-ordered[-1]]
+            if max(gaps) > max_idle:
+                issues.append(f'Spread {key} visits across the full event: longest empty interval '
+                              f'is {max(gaps)} slots; allow at most {max_idle} ({max_idle*session} minutes). '
+                              f'Keep all {count} visits; adjust only this booth slots, including opening/closing coverage.')
         topic.update(presenters=len(names), stations=1)
     duty = []
     lookup = {(r['day'], r['start'], r['presenter']):r for r in rows}
@@ -76,9 +89,11 @@ def compile_schedule(brief, capacity, spec):
             time = clock(start+slot*session)
             for person in people:
                 visit = lookup.get((day,time,person)); runs[person] = runs[person]+1 if visit else 0
-                if runs[person] > limit: raise ValueError(person+' exceeds the chosen consecutive-session limit.')
+                if runs[person] == limit+1: issues.append(person+' exceeds the chosen consecutive-session limit on day '+str(day)+' at '+time+'. Adjust its rotation or spacing.')
                 duty.append(dict(day=day,start=time,end=clock(start+(slot+1)*session),presenter=person,booth=visit['booth'] if visit else '',
                                  status='Presenting' if visit else 'Break',topic=visit['topic'] if visit else '',topicId=visit['topicId'] if visit else ''))
+    if issues:
+        raise ValueError('Schedule checks failed; fix all listed issues in one edit:\n'+'\n'.join(issues))
     c.update(booths=sorted(booths,key=lambda b:b['booth']), schedule=sorted(rows,key=lambda r:(r['day'],r['start'],r['booth'])),
              presenterDuty=duty,presenterCount=len(people),reliefPresenters=max(0,len(people)-len(booths)),
              session=session,slots=(brief['duration']//session)*brief['days'],adjusted=session!=brief['session'],staff=len(people)+c['floorHosts']+1,
@@ -117,6 +132,17 @@ def schedule_html(brief,calc):
     return '<section class="section" id="schedule"><h2>Presenter timetable</h2><p>Alex · '+criteria+'</p>'+tables(brief,calc)+'</section>'
 
 
+def source_view(source, research_file, article_budget=None):
+    """Small, explicitly extractive tool reply; saved evidence is unchanged."""
+    view={k:source[k] for k in ('id','title','url','published','readAt','readError') if k in source}
+    view['excerpt']=source.get('excerpt','')[:240]
+    if article_budget is not None and source.get('article'):
+        article=source['article']
+        view.update(article=article[:article_budget], articleTruncated=len(article)>article_budget,
+                    fullArticleChars=len(article), fullArticleFile=research_file)
+    return view
+
+
 def run(workspace, action, values):
     workspace=Path(workspace).resolve()
     contract=json.loads((workspace/'inbox/agent-task.json').read_text())
@@ -145,30 +171,32 @@ def run(workspace, action, values):
         rows=list(sources.values())
         research={'retrieved':stamp,'queries':queries,'sources':rows,'failedQueries':failures,'status':'available' if rows else 'unavailable','method':'Agent-selected NVIDIA Blog search queries'}
         saved.write_text(json.dumps(research,ensure_ascii=False,indent=2))
-        result=research
+        result={**research,'sources':[source_view(s,files['research']) for s in rows]}
     elif action=='read':
         research=json.loads((workspace/files['research']).read_text());selected=set(values)
         if not 1<=len(selected)<=6 or not selected.issubset({s['id'] for s in research['sources']}):raise ValueError('Read 1–6 retrieved source IDs.')
         chosen = [source for source in research['sources'] if source['id'] in selected]
         def read(source):
+            if source.get('article') and source.get('readAt') and not source.get('readError'):
+                return source['article'], None
             try:return read_article(source['url']), None
             except Exception as error:return None, type(error).__name__
         with ThreadPoolExecutor(max_workers=min(3, len(chosen))) as pool:
             for source, (article, error) in zip(chosen, pool.map(read, chosen)):
                 if error:source['readError']=error
-                else:source.update(article=article,readAt=stamp);source.pop('readError',None)
+                else:source.update(article=article,readAt=source.get('readAt') if source.get('article') and not source.get('readError') else stamp);source.pop('readError',None)
         (workspace/files['research']).write_text(json.dumps(research,ensure_ascii=False,indent=2))
         # Keep each selected source visible within the native tool output limit.
         # Full retrieved text stays in the saved research file; excerpts are explicit.
-        excerpts = []
-        budget = 18000 // len(chosen)
-        for source in chosen:
-            view = dict(source)
-            if len(view.get('article', '')) > budget:
-                view.update(article=view['article'][:budget], articleTruncated=True,
-                            fullArticleChars=len(source['article']), fullArticleFile=files['research'])
-            excerpts.append(view)
-        result={'sources':excerpts}
+        budget = min(1800, 7200 // len(chosen))
+        result={'sources':[source_view(source,files['research'],budget) for source in chosen],
+                'note':'Article fields are leading excerpts, not full articles. Use these for supported claims; inspect only a specific saved passage if needed. Do not copy article text into your themes file.'}
+    elif action=='validate-themes':
+        from event_theme_content import validate_saved_themes
+        research=json.loads((workspace/files['research']).read_text())
+        output=json.loads((workspace/files['demos']).read_text())
+        validate_saved_themes(contract['brief'],output,research)
+        result={'status':'validated','themes':len(output['demos']),'file':files['demos']}
     elif action=='schedule':
         from event_planner import workbook
         spec=json.loads((workspace/files['plan']).read_text());calc=compile_schedule(contract['brief'],contract['capacity'],spec)
@@ -183,7 +211,7 @@ def run(workspace, action, values):
 
 
 if __name__=='__main__':
-    parser=argparse.ArgumentParser();parser.add_argument('action',choices=['search','read','schedule']);parser.add_argument('values',nargs='*')
+    parser=argparse.ArgumentParser();parser.add_argument('action',choices=['search','read','validate-themes','schedule']);parser.add_argument('values',nargs='*')
     args=parser.parse_args()
     try:print(json.dumps(run(Path.cwd(),args.action,args.values),ensure_ascii=False))
     except Exception as error:parser.exit(1,str(error)+'\n')

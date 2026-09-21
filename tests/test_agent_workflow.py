@@ -20,10 +20,11 @@ import agent_activity
 def schedule_spec(contract):
     b=contract['brief'];c=contract['capacity'];daily=b['duration']//b['session'];booths=[]
     for i,t in enumerate(c['topics']):
-        days=[]
+        days=[];total=daily*b['days'];groups=t['groups']
+        selected=[j*total//groups+min(i,((j+1)*total//groups-1)-(j*total//groups)) for j in range(groups)]
         for d in range(1,b['days']+1):
-            count=(t['groups']+b['days']-d)//b['days']
-            if count:days.append({'day':d,'slots':list(range(min(i,daily-count),min(i,daily-count)+count)),'rotation':[0,0,1,1]})
+            slots=[slot%daily for slot in selected if slot//daily==d-1]
+            if slots:days.append({'day':d,'slots':slots,'rotation':[0,0,1,1]})
         booths.append({'topicId':t['id'],'presenters':['Presenter %02d (unassigned)'%(2*i+1),'Presenter %02d (unassigned)'%(2*i+2)],'days':days})
     return {'sessionMinutes':b['session'],'maxConsecutiveSessions':2,'criteria':['Stagger booth starts','Two consecutive visits before a break'],
             'tradeoff':'Two dedicated specialists per topic provide relief.','check':'Confirm each specialist’s availability.','booths':booths}
@@ -32,6 +33,8 @@ def schedule_spec(contract):
 class AgentToolsAdapter(EventAdapter):
     def __init__(self):super().__init__();self.tool_calls=[]
     def respond(self,agent,session,prompt):
+        if prompt.startswith('LINKEDIN-FIRST:'):
+            return Reply('Explore hands-on AI demos at our event. Discover practical ideas from the program and join us to learn together. #AI #BuildAClaw',{})
         stage=int(agent.rsplit('-r',1)[1]);work=Path(self.agents[agent]);actions=[]
         if stage in (1,2):
             contract=json.loads((work/'inbox/agent-task.json').read_text());files=contract['files']
@@ -42,7 +45,10 @@ class AgentToolsAdapter(EventAdapter):
                 (work/files['plan']).write_text(json.dumps(schedule_spec(contract)));run(work,'schedule',[]);actions=['schedule']
             text='I executed '+', '.join(actions)+' and saved the deliverable.'
         elif stage==3:
+            post_path=work/json.loads((work/'inbox/morgan-page.json').read_text())['files']['post']
+            saved_post=post_path.read_text()
             author_page(work)
+            post_path.write_text(saved_post)
             contract=json.loads((work/'inbox/morgan-page.json').read_text());path=work/contract['files']['html']
             cards=''.join('<article><h3>'+escape(t['demo'])+'</h3><p>'+escape(t.get('action',''))+'</p><a href="'+escape(t.get('source',''),quote=True)+'">Source</a></article>' for t in contract['themes'])
             path.write_text(path.read_text().replace('<!-- Author the demo cards here from Dylan’s themes. -->',cards))
@@ -84,6 +90,42 @@ class AgentWorkflowTests(unittest.TestCase):
         post=(self.studio.workspace(self.owner,3)/page_paths(job['id'])['post']).read_text().strip()
         self.assertEqual(raw.replace(SCHEDULE_MOUNT,p['scheduleFragment']).replace(POST_MOUNT,escape(post)),published)
         self.assertNotIn('Cross-training is required',published)
+
+    def test_long_but_bounded_descriptions_survive_validation_and_handoff(self):
+        original=self.adapter.respond
+        def verbose(*args):
+            reply=original(*args)
+            if args[0].endswith('-r1'):
+                work=Path(self.adapter.agents[args[0]])
+                contract=json.loads((work/'inbox/agent-task.json').read_text())
+                path=work/contract['files']['demos'];output=json.loads(path.read_text())
+                for demo in output['demos']:
+                    demo['why']='Source connection: '+('evidence ' * 64).strip()
+                path.write_text(json.dumps(output))
+                self.assertEqual(run(work,'validate-themes',[])['status'],'validated')
+            return reply
+        self.adapter.respond=verbose
+        job=self.event();self.assertEqual(job['status'],'done')
+        self.assertTrue(all(len(t['why'])>300 for t in job['payload']['capacity']['topics']))
+        self.assertTrue(all(t['researchStatus']=='sourced' for t in job['payload']['capacity']['topics']))
+
+    def test_themes_preflight_preserves_files_and_rejects_invalid_content(self):
+        job=self.event();work=self.studio.workspace(self.owner,1)
+        files=agent_workflow.paths(job['id']);path=work/files['demos']
+        original=path.read_text();self.assertEqual(run(work,'validate-themes',[])['status'],'validated')
+        self.assertEqual(path.read_text(),original)
+        output=json.loads(original);output['demos'][0]['why']='x'*601
+        path.write_text(json.dumps(output))
+        with self.assertRaisesRegex(ValueError,'why.*600.*601'):run(work,'validate-themes',[])
+        output['demos'][0]['why']='';path.write_text(json.dumps(output))
+        with self.assertRaisesRegex(ValueError,'why'):run(work,'validate-themes',[])
+        path.write_text(original)
+        researchPath=work/files['research'];research=json.loads(researchPath.read_text())
+        research['sources'][0]['readError']='Timeout';researchPath.write_text(json.dumps(research))
+        with self.assertRaisesRegex(ValueError,'Read the cited article'):run(work,'validate-themes',[])
+        for malformed in ({'demos':None},{'demos':[None]},{'demos':[{'topic':[]}]}):
+            path.write_text(json.dumps(malformed))
+            with self.assertRaises(ValueError):run(work,'validate-themes',[])
 
     def test_missing_native_tool_receipt_is_not_accepted_as_agent_work(self):
         original=self.adapter.respond
@@ -130,7 +172,13 @@ class AgentWorkflowTests(unittest.TestCase):
         with patch('nvidia_research.search_one',return_value=[]):
             after=run(workspace,'search',['narrower query'])
         self.assertEqual({s['id']:s['url'] for s in before['sources']},{s['id']:s['url'] for s in after['sources']})
-        self.assertEqual(after['sources'][0],read)
+        self.assertNotIn('article',after['sources'][0])
+        self.assertEqual(after['sources'][0]['readAt'],read['readAt'])
+        saved=json.loads((workspace/agent_workflow.paths('search-test')['research']).read_text())
+        self.assertEqual(saved['sources'][0]['article'],'Verified article text')
+        with patch('event_agent_tools.read_article',side_effect=AssertionError('Do not fetch a successful read again')):
+            cached=run(workspace,'read',['S1'])['sources'][0]
+        self.assertEqual(cached,read)
         self.assertEqual(after['queries'],['agents','narrower query'])
 
     def test_article_batch_overlaps_keeps_complete_evidence_and_bounds_reply(self):
@@ -150,9 +198,17 @@ class AgentWorkflowTests(unittest.TestCase):
             result = run(workspace, 'read', ids)
         saved = json.loads((workspace/agent_workflow.paths('batch-test')['research']).read_text())
         self.assertTrue(all(s['articleTruncated'] for s in result['sources']))
-        self.assertLessEqual(sum(len(s['article']) for s in result['sources']), 18000)
+        self.assertLessEqual(sum(len(s['article']) for s in result['sources']), 7200)
+        self.assertTrue(all(len(s['article'])<=1800 for s in result['sources']))
         self.assertTrue(all(len(s['article']) == 15300 for s in saved['sources'] if s['id'] in ids))
         self.assertEqual([s['id'] for s in result['sources']], ids)
+        with patch('event_agent_tools.read_article',return_value='Evidence ' * 1700):
+            all_sources=run(workspace,'read',[s['id'] for s in research['sources'][:6]])
+        self.assertLessEqual(sum(len(s['article']) for s in all_sources['sources']),7200)
+        self.assertEqual(len(all_sources['sources']),6)
+        contract=json.loads((workspace/'inbox/agent-task.json').read_text())
+        self.assertEqual(set(contract['capacity']),{'topics'})
+        self.assertLess(len(json.dumps(contract)),5000)
 
     def test_page_source_stays_small_and_repeated_citations_are_allowed(self):
         import morgan_page
@@ -166,6 +222,29 @@ class AgentWorkflowTests(unittest.TestCase):
         source.write_text(raw.replace('</main>',paragraph+paragraph+'</main>'))
         with self.assertRaisesRegex(morgan_page.PageError,'duplicated promotional'):
             morgan_page.validate(workspace,job['id'],payload)
+
+    def test_schedule_comment_apostrophe_is_allowed_but_markup_is_protected(self):
+        import morgan_page as page
+        job=self.event();payload=job['payload'];work=self.studio.workspace(self.owner,3)
+        source=work/page.paths(job['id'])['html'];raw=source.read_text()
+        variant=raw.replace(page.SCHEDULE_MOUNT,page.SCHEDULE_MOUNT_ASCII)
+        self.assertNotEqual(raw,variant)
+        source.write_text(variant)
+        result=page.validate(work,job['id'],payload)
+        self.assertEqual(result['sourceHtml'],variant)
+        self.assertIn(payload['scheduleFragment'],result['html'])
+        self.assertNotIn(page.SCHEDULE_MOUNT_ASCII,result['html'])
+        for replacement in (page.SCHEDULE_MOUNT_ASCII.replace('Presenter timetable','Changed timetable'),
+                            page.SCHEDULE_MOUNT_ASCII.replace('id="schedule"','id="other"'),
+                            page.SCHEDULE_MOUNT_ASCII+'<p>Changed schedule data</p>'):
+            with self.subTest(replacement=replacement):
+                source.write_text(raw.replace(page.SCHEDULE_MOUNT,replacement))
+                with self.assertRaisesRegex(page.PageError,'Restore the exact BAC:SCHEDULE') as error:
+                    page.validate(work,job['id'],payload)
+                repair=page.repair_blocks(payload,error.exception)
+                self.assertIn('<!-- BAC:SCHEDULE -->'+page.SCHEDULE_MOUNT+'<!-- /BAC:SCHEDULE -->',repair)
+                self.assertNotIn('<!-- BAC:LOGISTICS -->',repair)
+
 
     def test_large_event_never_passes_full_timetable_to_morgan_inputs(self):
         import morgan_page
@@ -185,10 +264,31 @@ class AgentWorkflowTests(unittest.TestCase):
         self.assertIn(payload['scheduleFragment'],page['html'])
         self.assertNotIn('<table',page['sourceHtml'])
 
+    def test_social_draft_persisted_before_html_and_truncated_receipt_is_completed(self):
+        original=self.adapter.respond;observed=[]
+        def observe(agent,session,prompt):
+            if agent.endswith('-r3') and not prompt.startswith('LINKEDIN-FIRST:'):
+                job=self.studio.state(self.owner)['jobs'][0]
+                observed.append(job['payload']['socialDraft']['text'])
+                self.assertEqual(job['status'],'running')
+                self.assertNotIn('website',job['payload'])
+                answer=original(agent,session,prompt)
+                reply=Reply("Everything\n⚠️ Reply truncated at the model's output token limit.",answer.metrics)
+                reply.activity=answer.activity
+                return reply
+            return original(agent,session,prompt)
+        self.adapter.respond=observe
+        job=self.event();self.assertEqual(job['status'],'done')
+        self.assertEqual(len(observed),1)
+        self.assertTrue(job['payload']['pageDraft']['replyTruncated'])
+        self.assertIn('saved and validated',job['payload']['outputs']['3'])
+        self.assertEqual(job['payload']['socialDraft']['text'],observed[0])
+        self.assertIn('LinkedIn draft is ready',' '.join(e['title'] for e in job['events']))
+
     def test_completion_claim_without_writes_is_repaired_in_a_fresh_context(self):
         original=self.adapter.respond;calls=[]
         def missing_first_write(agent,session,prompt):
-            if agent.endswith('-r3'):
+            if agent.endswith('-r3') and not prompt.startswith('LINKEDIN-FIRST:'):
                 calls.append((session,prompt))
                 if len(calls)==1:return Reply('The webpage and LinkedIn post are complete.',{})
             return original(agent,session,prompt)
@@ -203,7 +303,7 @@ class AgentWorkflowTests(unittest.TestCase):
     def test_repeated_completion_claims_without_writes_never_publish_a_page(self):
         original=self.adapter.respond;calls=[]
         def no_writes(agent,session,prompt):
-            if agent.endswith('-r3'):
+            if agent.endswith('-r3') and not prompt.startswith('LINKEDIN-FIRST:'):
                 calls.append(session)
                 return Reply('I finished and saved both files.',{})
             return original(agent,session,prompt)
@@ -214,6 +314,7 @@ class AgentWorkflowTests(unittest.TestCase):
         self.assertEqual(p['pageDraft']['status'],'failed');self.assertEqual(p['pageDraft']['attempts'],2)
         self.assertNotIn('3',p['outputs']);self.assertIn('1',p['outputs']);self.assertIn('2',p['outputs'])
         self.assertFalse(p.get('website',{}).get('authored'))
+        self.assertEqual(p['socialDraft']['status'],'ready')
         self.assertFalse(any(f.endswith('-event-page.html') for f in p.get('packageFiles',[])))
 
     def test_completed_source_must_contain_program_and_promotion_in_the_page(self):
@@ -243,8 +344,62 @@ class AgentWorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'one topic'):compile_schedule(b,c,bad)
         bad=copy.deepcopy(spec);bad['booths'][0]['days'][0]['slots'].pop()
         with self.assertRaisesRegex(ValueError,'Cover all'):compile_schedule(b,c,bad)
-        bad=copy.deepcopy(spec);bad['booths'][0]['days'][0]['rotation']=[0]
+        bad=copy.deepcopy(spec);bad['maxConsecutiveSessions']=1;bad['booths'][0]['days'][0]['rotation']=[0]
         with self.assertRaisesRegex(ValueError,'consecutive'):compile_schedule(b,c,bad)
+
+    def test_270_minutes_rejects_opening_cluster_and_accepts_spread(self):
+        from event_planner import plan
+        b,c=plan({'themeCount':4,'attendees':100,'duration':270,'session':15,'groupSize':5,'startTime':'10:00'})
+        spec=schedule_spec({'brief':b,'capacity':c})
+        for booth in spec['booths']:
+            booth['days']=[{'day':1,'slots':[0,4,8,12,17],'rotation':[0,1]}]
+        result=compile_schedule(b,c,spec)
+        self.assertEqual(len(result['schedule']),20)
+        self.assertEqual(sum(r['attendees'] for r in result['schedule']),100)
+        self.assertEqual(max(r['end'] for r in result['schedule']),'14:30')
+        for cluster in ([0,1,2,3,4],[13,14,15,16,17],[0,1,2,16,17]):
+            bad=copy.deepcopy(spec);bad['booths'][0]['days'][0]['slots']=cluster
+            with self.assertRaisesRegex(ValueError,'Spread.*full event'):compile_schedule(b,c,bad)
+
+    def test_actual_210_minute_staggered_plan_no_longer_needs_repairs(self):
+        from event_planner import plan
+        b,c=plan({'themeCount':3,'attendees':140,'duration':210,'session':15,'groupSize':5})
+        spec=schedule_spec({'brief':b,'capacity':c})
+        actual=[[0,1,3,4,5,7,8,9,11,12],
+                [0,2,3,5,6,8,9,10,12,13],
+                [0,2,4,5,6,7,9,10,11,13]]
+        for booth,slots in zip(spec['booths'],actual):
+            booth['days']=[{'day':1,'slots':slots,'rotation':[0,0,1,1]}]
+        result=compile_schedule(b,c,spec)
+        self.assertEqual(len(result['schedule']),30)
+        self.assertEqual(sum(r['attendees'] for r in result['schedule']),140)
+        for booth,slots in zip(spec['booths'],actual):
+            self.assertEqual(booth['days'][0]['slots'],slots)
+
+    def test_all_distribution_and_rotation_errors_return_together(self):
+        from event_planner import plan
+        b,c=plan({'themeCount':3,'attendees':75,'duration':270,'session':15,'groupSize':5})
+        spec=schedule_spec({'brief':b,'capacity':c})
+        for booth in spec['booths']:
+            booth['days']=[{'day':1,'slots':[0,1,2,3,4],'rotation':[0]}]
+        with self.assertRaises(ValueError) as error:compile_schedule(b,c,spec)
+        message=str(error.exception)
+        for topic in b['topics']:self.assertIn('Spread '+topic,message)
+        for booth in spec['booths']:self.assertIn(booth['presenters'][0]+' exceeds',message)
+        self.assertIn('fix all listed issues',message)
+
+    def test_distribution_across_days_and_single_visit(self):
+        from event_planner import plan
+        for args in ({'themeCount':3,'attendees':180,'days':2},
+                     {'themeCount':3,'attendees':3,'days':2}):
+            b,c=plan(args);spec=schedule_spec({'brief':b,'capacity':c})
+            result=compile_schedule(b,c,spec)
+            self.assertEqual(sum(r['attendees'] for r in result['schedule']),b['attendees'])
+            if b['attendees']==180:
+                self.assertEqual({r['day'] for r in result['schedule']},{1,2})
+                bad=copy.deepcopy(spec)
+                bad['booths'][0]['days']=[{'day':1,'slots':list(range(c['topics'][0]['groups'])),'rotation':[0,1]}]
+                with self.assertRaisesRegex(ValueError,'Spread.*full event'):compile_schedule(b,c,bad)
 
     def test_native_trace_is_scoped_and_does_not_include_file_contents(self):
         root=Path(self.temp.name);dbpath=root/'agents/test/agent/openclaw-agent.sqlite';dbpath.parent.mkdir(parents=True)

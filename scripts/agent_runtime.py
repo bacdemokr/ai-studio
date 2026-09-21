@@ -119,11 +119,11 @@ def initial_config():
             'baseUrl': 'http://127.0.0.1:8000/v1', 'apiKey': 'local-only', 'api': 'openai-completions',
             'models': [{'id': 'bac-local', 'name': 'Shared model', 'reasoning': True,
                         'input': ['text', 'image'], 'cost': {'input': 0, 'output': 0, 'cacheRead': 0, 'cacheWrite': 0},
-                        'contextWindow': 262144, 'contextTokens': 32768, 'maxTokens': 4096}]} }},
+                        'contextWindow': 262144, 'contextTokens': 32768, 'maxTokens': settings.MAX_OUTPUT_TOKENS}]} }},
         'agents': {'ownership': 'explicit', 'defaults': {'model': {'primary': MODEL, 'fallbacks': []},
                                 'maxConcurrent': 2, 'skipBootstrap': True, 'thinkingDefault': 'off',
                                 'heartbeat': {'every': '0m'},
-                                'timeoutSeconds': 180}, 'entries': {}},
+                                'timeoutSeconds': settings.AGENT_TIMEOUT_SECONDS}, 'entries': {}},
         'plugins': {'entries': {'memory-core': {'enabled': False}}},
         'tools': {'fs': {'workspaceOnly': False}, 'deny': ['exec', 'process', 'browser', 'message',
                    'sessions_spawn', 'sessions_send', 'cron', 'gateway', 'nodes'],
@@ -291,7 +291,7 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
         if skill == 'event-tools':
             import shutil
             scripts=directory/'scripts';scripts.mkdir(exist_ok=True)
-            for module in ('event_agent_tools','event_planner','event_rotation','event_dates','event_timetable','nvidia_research'):
+            for module in ('event_agent_tools','event_planner','event_rotation','event_dates','event_timetable','nvidia_research','event_theme_content'):
                 target=scripts/(module+'.py')
                 if overwrite or not target.exists():shutil.copyfile(Path(__file__).with_name(module+'.py'),target)
 
@@ -433,7 +433,7 @@ def live_agents():
     return json.loads(result.stdout)
 
 
-def gateway(path, payload=None, timeout=180):
+def gateway(path, payload=None, timeout=settings.AGENT_TIMEOUT_SECONDS):
     config = c.read_json(config_path(), {})
     token = config.get('gateway', {}).get('auth', {}).get('token')
     if not token:
@@ -477,6 +477,7 @@ def respond(agent_id, session, prompt, images=None):
     prompt = prompt + '\n\n' + user_location.context()
     started = time.time()
     content = prompt if not images else [{'type':'text','text':prompt}]+[{'type':'image_url','image_url':{'url':'data:'+image['mime']+';base64,'+image['data']}} for image in images]
+    request_started = time.monotonic()
     try:
         result = gateway('/v1/chat/completions', {
         'model': 'openclaw/' + agent_id, 'user': session, 'stream': False,
@@ -488,11 +489,12 @@ def respond(agent_id, session, prompt, images=None):
             raise RuntimeError('The image request failed. Check that the connected model supports image input and that its vision components are available. The image was not silently omitted. '+str(error)) from None
         raise
     choices = result.get('choices', [])
+    elapsed = time.monotonic() - request_started
     content = choices[0].get('message', {}).get('content') if choices else None
     if not isinstance(content, str) or not content.strip():
         raise RuntimeError('OpenClaw returned no text. Check the model tool-calling configuration and retry.')
     from telemetry import Reply, measure
-    answer=Reply(content, measure(result, root() / 'state', agent_id, session, started))
+    answer=Reply(content, measure(result, root() / 'state', agent_id, session, started, elapsed=elapsed))
     answer.activity = observed_activity(agent_id, session, started)
     return answer
 

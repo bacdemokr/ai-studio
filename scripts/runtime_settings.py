@@ -17,6 +17,9 @@ import urllib.request
 import ops_common as c
 import session_secrets as secrets
 
+MAX_OUTPUT_TOKENS = 8192
+AGENT_TIMEOUT_SECONDS = 240
+
 PROVIDERS = {
     'local': {'label': 'Local / on-prem', 'baseUrl': 'http://127.0.0.1:8000/v1', 'api': 'openai-completions'},
     'nvidia': {'label': 'NVIDIA Inference (Employee only)', 'baseUrl': 'https://inference-api.nvidia.com/v1', 'api': 'openai-completions'},
@@ -226,9 +229,10 @@ def apply_to_config(config, provider, profile):
     config.setdefault('models',{}).setdefault('providers',{})['bac-'+provider]={
         'baseUrl':secrets.proxy_url(provider,profile['baseUrl']) if profile['apiKey'] else profile['baseUrl'],'apiKey':'session-only' if profile['apiKey'] else 'local-only','api':PROVIDERS[provider]['api'],
         'models':[{'id':profile['model'],'name':profile['model'],'input':['text','image'],'reasoning':False,
-                   'contextWindow':profile['contextWindow'],'contextTokens':profile['contextWindow'],'maxTokens':4096,
+                   'contextWindow':profile['contextWindow'],'contextTokens':profile['contextWindow'],'maxTokens':MAX_OUTPUT_TOKENS,
                    'cost':{'input':0,'output':0,'cacheRead':0,'cacheWrite':0}}]}
     config['agents']['defaults']['model']={'primary':ref,'fallbacks':[]}
+    config['agents']['defaults']['timeoutSeconds']=AGENT_TIMEOUT_SECONDS
     for agent in config['agents']['entries'].values():
         agent['model']=ref;agent['modelPolicy']={'allow':[ref]}
         agent['identity']={'theme':'bac-model-'+str(time.time_ns())}

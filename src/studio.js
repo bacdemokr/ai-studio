@@ -188,6 +188,7 @@
     }
     if(!job){resultKey='';el('result-title').textContent='Results';el('result').textContent='';el('events').innerHTML='<li><b>No mission on this board.</b><small>Real handoffs and results will appear here.</small></li>';el('read-aloud').hidden=true;}
     renderCrew();renderSafety();renderRooms();renderEventPackage();renderConversation();
+    root.dispatchEvent(new Event('bac:state-rendered'));
   }
   el('assigned-crew').onclick=async()=>{const a=data.assignments?.[0];if(!a)return;await switchAgent(a.lead);if(agentId===a.lead){selectedJob=a.job;render();showBoard(true);}};
   function renderCrew(){
