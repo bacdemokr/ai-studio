@@ -34,27 +34,46 @@ class PlanningTests(unittest.TestCase):
                     self.assertEqual(end-start,c['session'])
                     self.assertLessEqual(end,600+b['duration'])
                 self.assertEqual(set(r['day'] for r in c['schedule']),set(range(1,b['days']+1)))
-        _,austin=planner.plan(planner.TEMPLATES[1]);self.assertTrue(austin['adjusted']);self.assertEqual(austin['session'],10)
+        _,busy=planner.plan({'attendees':240,'duration':120,'days':1,'topics':['physical','vision','cudax','agents']});self.assertTrue(busy['adjusted']);self.assertEqual(busy['session'],10)
 
     def test_weights_boundaries_and_invalid_briefs(self):
         b,c=planner.plan({'attendees':101,'topicWeights':[8,1,1]})
         self.assertEqual([t['attendees'] for t in c['topics']],[81,10,10])
-        for data in ({'attendees':True},{'duration':3.5},{'topics':['physical','physical']},{'topics':[]},{'harnesses':['bogus']},{'topicWeights':[0,0,0]}, {'boothLimit':7},{'boothLimit':2},{'startTime':'23:30','duration':60},{'attendees':3000,'duration':30,'groupSize':1},{'city':'bad\nheader'}):
+        for data in ({'attendees':True},{'duration':3.5},{'topics':['physical','physical']},{'topics':[]},{'harnesses':['bogus']},{'topicWeights':[0,0,0]}, {'boothLimit':7},{'startTime':'23:30','duration':60},{'attendees':3000,'duration':30,'groupSize':1},{'city':'bad\nheader'}):
             with self.subTest(data=data),self.assertRaises(ValueError):planner.plan(data)
         b,c=planner.plan({'attendees':1});self.assertEqual(sum(r['attendees'] for r in c['schedule']),1)
         _,c=planner.plan({'attendees':15,'duration':30,'session':60});self.assertEqual(c['session'],30)
 
-    def test_xlsx_numeric_cells_and_csv_export_all_visits(self):
+    def test_six_experiences_rotate_across_two_booths(self):
+        b,c=planner.plan({'topics':list(planner.TOPICS),'boothLimit':2})
+        self.assertEqual(len(c['topics']),6)
+        self.assertEqual(c['boothCount'],2)
+        self.assertEqual(sum(r['attendees'] for r in c['schedule']),b['attendees'])
+        self.assertEqual(len({(r['day'],r['booth'],r['start']) for r in c['schedule']}),len(c['schedule']))
+        self.assertEqual(len({r['topic'] for r in c['schedule']}),6)
+        for r in c['schedule']:
+            self.assertLessEqual(r['end'],'13:00')
+        self.assertEqual(len(planner.rota_grids(b,c)),b['days'])
+
+    def test_xlsx_matrices_and_numeric_details_cover_all_visits(self):
         b,c=planner.plan(planner.TEMPLATES[2]);blob=planner.workbook(b,c)
         with ZipFile(io.BytesIO(blob)) as z:
             for name in z.namelist():ET.fromstring(z.read(name))
             ns={'s':'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
-            rows=ET.fromstring(z.read('xl/worksheets/sheet3.xml')).findall('s:sheetData/s:row',ns)
+            rows=ET.fromstring(z.read('xl/worksheets/sheet%d.xml' % (b['days']+3))).findall('s:sheetData/s:row',ns)
             self.assertEqual(len(rows)-1,len(c['schedule']))
             total=sum(int(row.find("s:c[@r='G%s']/s:v"%row.attrib['r'],ns).text) for row in rows[1:])
             self.assertEqual(total,b['attendees'])
             self.assertFalse(ET.fromstring(z.read('xl/worksheets/sheet1.xml')).findall('.//s:f',ns))
-        self.assertEqual(len(planner.rota_csv(c).splitlines())-1,len(c['schedule']))
+            grids=planner.rota_grids(b,c)
+            self.assertEqual(len(grids),b['days'])
+            self.assertEqual(sum(bool(v) for _,rows in grids for row in rows[1:] for v in row[1:]),len(c['schedule']))
+            for day,(_,rows) in enumerate(grids,1):
+                for visit in (r for r in c['schedule'] if r['day']==day):
+                    row=next(r for r in rows[1:] if r[0]==visit['booth'])
+                    self.assertEqual(row[rows[0].index(visit['start'])],visit['presenter'])
+            pane=ET.fromstring(z.read('xl/worksheets/sheet1.xml')).find('s:sheetViews/s:sheetView/s:pane',ns)
+            self.assertEqual(pane.attrib['topLeftCell'],'B2')
 
 class EventPackageTests(unittest.TestCase):
     def setUp(self):
@@ -67,8 +86,8 @@ class EventPackageTests(unittest.TestCase):
 
     def test_package_files_native_web_skill_and_limited_shared_context(self):
         self.assertEqual(self.state['status'],'done')
-        p=self.state['payload'];self.assertEqual(len(p['handoffs']),5)
-        self.assertEqual(len(p['assignments']),4)
+        p=self.state['payload'];self.assertEqual(len(p['handoffs']),6)
+        self.assertEqual(len(p['assignments']),5)
         self.assertTrue(all(a['input']==p['handoffs']['0']['output'] for a in p['assignments']))
         self.assertIn('web',p['roster'][3]['skills'])
         self.assertNotIn('web',p['roster'][1]['skills'])
@@ -78,6 +97,26 @@ class EventPackageTests(unittest.TestCase):
         self.assertEqual(mail['X-Unsent'],'1');self.assertIsNone(mail['To']);self.assertIn('DRAFT',mail.get_body().get_content())
         self.assertLessEqual(len(p['handoffs']['2']['sharedState']['capacity']['schedule']),24)
         self.assertIn('venueResearch',p['handoffs']['3']['sharedState'])
+
+
+    def test_web_developer_receives_all_handoffs_and_saves_offline_page(self):
+        p=self.state['payload']
+        self.assertEqual(self.state['status'],'done')
+        self.assertEqual(p['roster'][5]['name'],'Wade')
+        self.assertEqual(p['handoffs']['5']['receivedFrom'],['0','1','2','3','4'])
+        self.assertIn('event-page',p['roster'][5]['skills'])
+        page=(self.studio.workspace(self.owner)/p['website']['path']).read_text()
+        self.assertIn('Build something worth sharing.',page)
+        self.assertIn(p['brief']['city'],page)
+        self.assertIn('Registration details coming soon',page)
+        self.assertNotIn('<script',page)
+        self.assertIn(p['website']['path'],p['packageFiles'])
+        from event_page import render_page
+        malicious={'headline':'<img src=x onerror=alert(1)>','intro':'Intro','highlight':'Hi'}
+        escaped=render_page(p['brief'],p['capacity'],p.get('campaign'),malicious)
+        self.assertIn('&lt;img',escaped)
+        self.assertNotIn('<img src=x',escaped)
+        with self.assertRaises(ValueError): render_page(p['brief'],p['capacity'],None,{})
 
     def test_producer_refines_export_without_changing_calculated_capacity(self):
         p=self.state['payload'];before=[(r['booth'],r['start'],r['attendees']) for r in p['capacity']['schedule']]
@@ -90,7 +129,7 @@ class EventPackageTests(unittest.TestCase):
         self.assertIn('1 of 3',p['capacity']['demoSource'])
         artifact=next(f for f in p['packageFiles'] if f.endswith('.xlsx'))
         with ZipFile(self.studio.workspace(self.owner)/artifact) as z:
-            self.assertIn('Build a travel companion',z.read('xl/worksheets/sheet2.xml').decode())
+            self.assertIn('Build a travel companion',z.read('xl/worksheets/sheet%d.xml' % (p['brief']['days']+2)).decode())
 
     def test_survey_is_anonymous_persistent_owner_scoped_and_replans(self):
         token=self.state['payload']['survey']['path'].split('/')[-1]

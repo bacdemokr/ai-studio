@@ -1,130 +1,175 @@
 // Three places in one studio: creation, a growing personal collection, and crew work.
+let editingInPlace=false,hiringArrival=false;
 const appearanceColors={green:'#76b900',cyan:'#55bfff',amber:'#f4b34f',coral:'#ff8873',violet:'#b49aff',ice:'#cbddea'};
 const roomCopy={
-  workshop:['HIRING / YOUR NEXT TEAMMATE','A personality you can see.','Choose a look, a working style and a voice. Then decide what your agent can help you with.'],
-  lounge:['AGENT LOUNGE / YOUR COLLECTION','Your people. Your possibilities.','Every agent you create gets a place here. Select one to talk, teach it a skill or give it a mission.'],
-  mission:['MISSION ROOM / READY-MADE CREW','Different strengths. One shared brief.','Five specialists, ready to work. The preset crew runs without OpenShell restrictions.'],
-  policies:['POLICIES / PERSONAL AGENT ACCESS','Useful skills. Deliberate access.','Choose the boundaries for your own agents. Inspect what is approved and what OpenShell actually enforces.']
+  workshop:'Hiring',
+  lounge:'Agent lounge',
+  mission:'Multi-Agent demo (BaC Planning)'
 };
 function avatarBadge(avatar={}){return `<span class="studio-avatar tiny" aria-hidden="true" data-body="${escape(avatar.body||'classic')}" data-accessory="${escape(avatar.accessory||'antenna')}" style="--avatar-accent:${appearanceColors[avatar.color]||appearanceColors.green}"><i></i><i></i></span>`;}
+// Presets and custom text edit the same two fields; no hidden tone overrides.
+function creatorPrompt(){
+  const text=el('purpose').value.trim();
+  const tone=text.match(/^Tone:[ \t]*([^]*?)(?=^Role:|$(?![^]))/im);
+  const role=text.match(/^Role:[ \t]*([^]*?)(?=^Tone:|$(?![^]))/im);
+  return {tonePrompt:tone?tone[1].trim():'',purpose:role?role[1].trim():tone?'':text};
+}
+function writeCreatorPrompt(tone,role){el('purpose').value='Tone: '+tone+'\nRole: '+role;}
+function tonePromptLabel(key){return tones[key][0]+' ('+tones[key][1]+')';}
+function matchesTonePrompt(key,text){return [tones[key][0],tonePromptLabel(key)].some(value=>value.toLowerCase()===text.toLowerCase());}
+function savedTonePrompt(profile){return profile.tonePrompt??tonePromptLabel(profile.tone||'kind');}
+function syncCreatorTone(){
+  const tone=creatorPrompt().tonePrompt.toLowerCase();
+  draftTone=Object.keys(tones).find(key=>matchesTonePrompt(key,tone))||'kind';
+}
 function updateDraft(){
   root.querySelectorAll('[data-body]').forEach(b=>{if(b.tagName==='BUTTON')b.setAttribute('aria-pressed',b.dataset.body===draftAvatar.body);});
   root.querySelectorAll('[data-avatar-color]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.avatarColor===draftAvatar.color));
   draftAvatar.accessory=el('accessory').value;
-  const verbosity=el('verbosity').value;
-  root.querySelectorAll('[data-tone]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.tone===draftTone));
-  const opening={kind:'Happy to help.',direct:'Here’s the plan.',playful:'Let’s give that idea some legs.',cynical:'Optimism is nice. A plan helps.'};
-  const action={guide:'We’ll turn your idea into a plan.',maker:'We’ll turn your idea into a prototype.',analyst:'We’ll compare the options and check the evidence.'};
-  const detail={guide:'First, we’ll define the goal. Then we’ll break it into clear steps, with a next action for each.',maker:'First, we’ll sketch a small version. Then we’ll build it, try it out, and see what needs improving.',analyst:'First, we’ll define the question. Then we’ll collect sources, compare tradeoffs, and flag what we still don’t know.'};
-  el('voice-preview').textContent=opening[draftTone]+(verbosity==='brief'?'':(' '+action[persona]))+(verbosity==='verbose'?' '+detail[persona]:'');
-  el('voice-preview-label').textContent='SAMPLE REPLY · '+tones[draftTone][0].toUpperCase()+' / '+verbosityLabels[verbosity].toUpperCase();
-  window.BacCampus?.setDraft({name:el('name').value.trim()||'Your new agent',persona,tone:draftTone,verbosity,avatar:{...draftAvatar}});
+  const verbosity='balanced';
+  root.querySelectorAll('[data-tone]').forEach(b=>b.setAttribute('aria-pressed',matchesTonePrompt(b.dataset.tone,creatorPrompt().tonePrompt)));
+  window.BacCampus?.setDraft({name:el('name').value.trim()||'Your new agent',...creatorPrompt(),persona,tone:draftTone,verbosity,protection:el('onboarding').querySelector('[name=protection]:checked')?.value||'standard',avatar:{...draftAvatar}});
 }
 function fillCreator(creating){
   draftMode=creating?'new':'edit';draftOwner=agentId;
   const n=data.agents?.length||0;
   const used=new Set((data.agents||[]).map(a=>[a.avatar?.body,a.avatar?.color,a.avatar?.accessory].join(':')));
   let defaults;
-  for(let offset=0;offset<12;offset++){const index=n+offset;defaults={body:['classic','round','rover'][index%3],color:Object.keys(appearanceColors)[index%6],accessory:['antenna','headset','glasses','cap'][index%4]};if(!used.has([defaults.body,defaults.color,defaults.accessory].join(':')))break;}
-  let name=['Jinny','Orbit','Scout','Echo','Pixel','Sage'][n%6];if(data.agents?.some(a=>a.name===name))name+=' '+(n+1);
-  const p=creating?{name,persona:['guide','maker','analyst'][n%3],skills:Object.keys(titles),avatar:defaults}:data.profile;
+  for(let offset=0;offset<12;offset++){const index=n+offset;defaults={body:['classic','round','rover','cat','claw','crab'][index%6],color:Object.keys(appearanceColors)[index%6],accessory:['antenna','headset','glasses','cap'][index%4]};if(!used.has([defaults.body,defaults.color,defaults.accessory].join(':')))break;}
+  const baseName=['Jinny','Orbit','Scout','Echo','Pixel','Sage'][n%6];let name=baseName,number=2;while(data.agents?.some(a=>a.name.toLowerCase()===name.toLowerCase()))name=baseName+'_'+number++;
+  const p=creating?{name,persona:'guide',purpose:roleTemplates[0].purpose,skills:[...roleTemplates[0].skills],avatar:defaults}:data.profile;
   if(!p)return fillCreator(true);
-  el('name').value=p.name;persona=p.persona;draftAvatar={...(p.avatar||defaults)};el('accessory').value=draftAvatar.accessory;
-  draftTone=p.tone||'kind';el('verbosity').value=p.verbosity||'balanced';
-  root.querySelectorAll('[data-persona]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.persona===persona));
+  el('name').value=p.name;writeCreatorPrompt(savedTonePrompt(p),p.purpose||(creating?'':personas[p.persona]));persona=p.persona;draftAvatar={...(p.avatar||defaults)};el('accessory').value=draftAvatar.accessory;
+  draftTone=p.tone||'kind';
+  el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(roleTemplates[Number(b.dataset.roleTemplate)]?.purpose===p.purpose)));
+  el('role-hint').textContent='Buttons fill the prompt. Edit either line freely.';
   el('skill-picker').querySelectorAll('input').forEach(i=>i.checked=p.skills.includes(i.value));
   el('onboarding').querySelectorAll('[name=protection]').forEach(i=>i.checked=i.value===(p.protection||'standard'));
-  el('creator-title').textContent=creating?'Hire your next teammate.':'Make '+p.name+' your own.';
-  el('creator-note').textContent=creating?'A helpful partner, with a voice of its own.':'Update its look, working style, voice and abilities. Memory and files stay with this agent.';
-  el('create').textContent=creating?'Hire my agent ↗':'Save my agent ↗';el('cancel-create').hidden=!data.profile;el('create').disabled=creating&&n>=(data.agentLimit||12);
+  el('onboarding').querySelector('.studio-protection-picker').hidden=!creating;
+  el('onboarding').querySelectorAll('[name=protection]').forEach(i=>i.disabled=!creating);
+  el('creator-title').textContent=creating?'Hire your own Agent.':'Edit '+p.name;
+  el('creator-note').hidden=creating;
+  el('creator-note').textContent=creating?'':'Update its look, working style, voice and abilities. Memory and files stay with this agent.';
+  el('create').textContent=creating?'Hire my agent':'Save my agent';el('cancel-create').hidden=!data.profile;el('create').disabled=creating&&n>=(data.agentLimit||12);
   updateDraft();el('workshop').scrollTop=0;
 }
 function setRoom(next,options={}){
+  const openPolicies=next==='policies';if(openPolicies)next='lounge';
   if(!roomCopy[next])return;
   const before=options.fromWorld&&!worldOpen?worldViewport.getBoundingClientRect().top:null;
-  if(typeof worldOpen!=='undefined'&&worldOpen&&(next==='policies'||board))leaveWorld();
-  room=next;if(next!=='mission')board=false;
-  root.dataset.room=next;worldViewport.setAttribute('aria-label',roomCopy[next][0]+'. Drag to orbit, scroll to zoom. Press Enter to toggle full screen.');if(roomsReady)try{sessionStorage.setItem('bac-studio-room',next);}catch{}
-  if(next==='mission')renderCrew();renderRoomVisibility();if(next==='policies')loadPolicy();else window.BacCampus?.setRoom(next,{instant:!roomsReady});
+  if(next!==room)closeSurface();
+  editingInPlace=false;room=next;if(next!=='mission')board=false;
+  root.dataset.room=next;worldViewport.setAttribute('aria-label',roomCopy[next]+'. Drag to orbit, scroll to zoom. Press Enter to toggle full screen.');if(roomsReady)try{sessionStorage.setItem('bac-studio-room',next);}catch{}
+  if(next==='mission')renderCrew();renderRoomVisibility();window.BacCampus?.setRoom(next,{instant:!roomsReady});
+  if(openPolicies)openSurface('policies');
   if(before!==null)window.scrollBy(0,worldViewport.getBoundingClientRect().top-before);
 }
 function renderRoomVisibility(){
-  const workshop=room==='workshop',lounge=room==='lounge',mission=room==='mission',policies=room==='policies';
-  root.querySelectorAll('[data-room]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.room===room));
-  const [kicker,title,description]=roomCopy[room];el('room-kicker').textContent=kicker;el('room-title').textContent=title;el('room-description').textContent=description;
-  el('workshop').hidden=!workshop;el('passport').hidden=!lounge;el('crew-passport').hidden=!mission;el('connections').hidden=!workshop;el('policies').hidden=!policies;
+  if(el('compare'))el('compare').hidden=room!=='lounge'||!comparison;
+  syncComposer();
+  const workshop=room==='workshop',lounge=room==='lounge',mission=room==='mission';
+  el('workshop').hidden=!(workshop||editingInPlace);el('passport').hidden=!lounge||editingInPlace;el('crew-passport').hidden=!mission;el('connections').hidden=!workshop;el('policies').hidden=false;el('policy-panel').hidden=!lounge;
   el('collection').hidden=!lounge||!data.profile;renderEventPackage();
-  root.querySelector('.studio-viewbar').hidden=!mission;
-  layout.hidden=policies||(mission&&board);el('board').hidden=!mission||!board;
-  el('experiences').hidden=!lounge;el('workspace').hidden=workshop||policies;el('safety-bar').hidden=policies;
-  root.querySelector('.studio-crew-invite').hidden=!lounge;
-  el('campus-tab').setAttribute('aria-pressed',!board);el('board-tab').setAttribute('aria-pressed',board);
-  const action=el('room-action');action.hidden=workshop&&!data.profile;action.textContent=mission?'Launch a crew mission ↗':lounge?'＋ Hire an agent':'Back to my lounge ↗';
+  layout.hidden=false;el('board').hidden=true;
+  el('experiences').hidden=!lounge;el('workspace').hidden=workshop||(mission?!crewMission():(!current()&&!data.files?.length));el('safety-bar').hidden=true;
+  const action=el('room-action');action.hidden=!mission;action.textContent='Plan a BaC';
   document.getElementById('campus-roster').hidden=!mission;
-  document.getElementById('campus-location').textContent=workshop?'HIRING / MEET YOUR NEXT AGENT':lounge?'YOUR LOUNGE / '+(data.agents?.length||0)+' AGENTS':document.getElementById('campus-location').textContent;
-  if(workshop)document.getElementById('campus-motion-status').textContent='Your draft · choose a look and bring it to life';
-  if(lounge)document.getElementById('campus-motion-status').textContent=data.agents?.length?'Your actual agents · select a teammate to open its workspace':'A place for every agent you create';
+  document.getElementById('campus-location').textContent=workshop?'HIRING / MEET YOUR NEXT AGENT':lounge?'LOUNGE / Current Agents: '+(data.agents?.length||0):'Multi-Agent demo (BaC Planning)';
+  syncSurface();
+  if(workshop)document.getElementById('campus-motion-status').textContent='';
+  if(lounge)document.getElementById('campus-motion-status').textContent='';
 }
 function renderRooms(){
-  if(!roomsReady){roomsReady=true;fillCreator(true);let saved;try{saved=sessionStorage.getItem('bac-studio-room');}catch{}setRoom(data.profile?(roomCopy[saved]?saved:'lounge'):'workshop');}
+  if(!roomsReady){roomsReady=true;fillCreator(true);let saved;try{saved=sessionStorage.getItem('bac-studio-room');}catch{}setRoom(data.profile?(roomCopy[saved]?saved:'lounge'):'workshop');window.BacCampus?.overview({instant:true});}
   renderRoomVisibility();
-  const agents=data.agents||[];el('lounge-count').textContent=agents.length?agents.length+' personal agent'+(agents.length===1?'':'s'):'Your personal agents';
-  el('gateway-state').textContent=runtime.testFixture?'Test fixture · no live gateway':runtime.gateway?'Gateway connected':'Waiting for your Spark host';
-  el('model-state').textContent=runtime.testFixture?'Test fixture · no live model':runtime.model?'Local model connected':'Start Qwen or Gemma on Spark';
+  const agents=data.agents||[];
+  el('gateway-state').textContent=runtime.testFixture?'Test fixture · no live gateway':runtime.gateway?'Gateway connected':'Not connected';
+  el('model-state').textContent=runtime.testFixture?'Test fixture · no live model':runtime.model?'Connected':'Not connected';
   el('shell-state').textContent=runtime.openshell||'Optional · not configured';
   if(data.profile){const a=data.profile.avatar||{};el('portrait').dataset.body=a.body||'classic';el('portrait').dataset.accessory=a.accessory||'antenna';el('portrait').style.setProperty('--avatar-accent',appearanceColors[a.color]||appearanceColors.green);}
   window.BacCampus?.setCollection(agents,agentId);
   renderPolicySelector();
 }
-function agentForm(creating=false){if(creating&&(data.agents?.length||0)>=(data.agentLimit||12)){alert('Your lounge is full. You can customize any of your existing agents.');return;}fillCreator(creating);setRoom('workshop');el('room-heading').scrollIntoView({behavior:'smooth',block:'start'});}
+function agentForm(creating=false){if(creating&&(data.agents?.length||0)>=(data.agentLimit||12)){alert('Your lounge is full. You can edit any of your existing agents.');return;}fillCreator(creating);if(creating)setRoom('workshop');else{editingInPlace=true;renderRoomVisibility();}el('workshop').scrollTop=0;}
 el('color-picker').innerHTML=Object.entries(appearanceColors).map(([name,color])=>`<button type="button" data-avatar-color="${name}" style="--swatch:${color}" aria-label="${name[0].toUpperCase()+name.slice(1)}" aria-pressed="false"></button>`).join('');
 el('body-picker').onclick=e=>{const b=e.target.closest('[data-body]');if(b){draftAvatar.body=b.dataset.body;updateDraft();}};
 el('color-picker').onclick=e=>{const b=e.target.closest('[data-avatar-color]');if(b){draftAvatar.color=b.dataset.avatarColor;updateDraft();}};
 el('accessory').onchange=updateDraft;el('name').addEventListener('input',updateDraft);
-el('verbosity').onchange=updateDraft;
-el('tone-picker').onclick=e=>{const button=e.target.closest('[data-tone]');if(button){draftTone=button.dataset.tone;updateDraft();}};
-root.querySelectorAll('[data-persona]').forEach(button=>button.onclick=()=>{persona=button.dataset.persona;root.querySelectorAll('[data-persona]').forEach(b=>b.setAttribute('aria-pressed',b===button));updateDraft();});
-el('rooms').onclick=e=>{const b=e.target.closest('[data-room]');if(b)setRoom(b.dataset.room);};
+const roleTemplates=[
+  {label:'Weather buddy',summary:'Current weather and practical outdoor advice.',purpose:'Check current weather and help me decide what to wear or whether to go outside. Keep advice short and practical.',skills:['weather']},
+  {label:'Paper scout',summary:'Find and compare recent papers with source links.',purpose:'Find three recent research papers on my topic. Compare their main ideas briefly, cite dates and links, and suggest one to read first.',skills:['web']},
+  {label:'Three Takeaways',summary:'Every answer in three clear points.',purpose:'Turn any question, document or event into exactly three concise takeaways, numbered 1, 2 and 3. Keep my chosen tone. Cite sources when supplied, and include any next step within the three points.',skills:['documents']},
+  {label:'Slack Announcer',summary:'Emoji-led updates in your chosen voice.',purpose:'Answer in the style of a concise Slack announcement: an emoji-led headline and short, useful lines. Keep my chosen tone and the supplied facts. Draft only; never send or publish.',skills:['writer']},
+];
+el('role-templates').innerHTML=roleTemplates.map((t,i)=>`<button type="button" data-role-template="${i}" aria-pressed="false">${t.label}</button>`).join('');
+function selectRoleSkills(skills){
+  el('skill-picker').querySelectorAll('input').forEach(input=>input.checked=skills.includes(input.value));
+  el('role-hint').textContent=skills.length?'Suggested skills selected. Adjust them below.':'No matching skills found. Choose below.';
+  updateDraft();
+}
+el('role-templates').onclick=e=>{const button=e.target.closest('[data-role-template]');if(!button)return;const template=roleTemplates[Number(button.dataset.roleTemplate)];writeCreatorPrompt(creatorPrompt().tonePrompt,template.purpose);el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));selectRoleSkills(template.skills);};
+el('purpose').addEventListener('input',()=>{el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed','false'));el('role-hint').textContent='Apply to suggest skills. Your prompt is also saved when you hire.';syncCreatorTone();updateDraft();});
+el('apply-prompt').onclick=()=>{
+  syncCreatorTone();
+  const role=creatorPrompt().purpose.toLowerCase();
+  const rules={weather:/weather|forecast|travel|trip|날씨|여행/,web:/research|paper|arxiv|논문|search|online|web|travel|trip|cafe|restaurant|리서치|조사|검색|웹|여행|맛집|카페/,documents:/takeaway|three points|meeting|notes|회의|메모|document|report|pdf|ppt|slides|deck|summar|요약|슬라이드|csv|spreadsheet|문서|보고서|자료|엑셀/,builder:/app|game|prototype|code|website|앱|게임|코딩|개발|웹사이트/,writer:/slack|announcement|공지|message|email|메시지|메일|writ|draft|content|invitation|social|campaign|marketing|copy|작성|글쓰기|초대|마케팅|콘텐츠/,memory:/remember|memor|preference|기억|선호/};
+  selectRoleSkills(Object.entries(rules).filter(([skill,rule])=>rule.test(role)).map(([skill])=>skill));
+};
+el('onboarding').querySelectorAll('[name=protection]').forEach(input=>input.onchange=updateDraft);
+el('tone-picker').onclick=e=>{const button=e.target.closest('[data-tone]');if(button){draftTone=button.dataset.tone;writeCreatorPrompt(tonePromptLabel(draftTone),creatorPrompt().purpose);updateDraft();}};
 root.addEventListener('bac:world-room',e=>setRoom(e.detail.room,{fromWorld:true}));
-el('room-action').onclick=()=>room==='mission'?crewForm():room==='lounge'?agentForm(true):setRoom('lounge');
-el('edit-agent').onclick=()=>agentForm(false);el('add-agent').onclick=()=>agentForm(true);el('empty-create').onclick=()=>agentForm(true);el('cancel-create').onclick=()=>setRoom('lounge');
+el('room-action').onclick=crewForm;
+el('edit-agent').onclick=()=>agentForm(false);el('cancel-create').onclick=()=>{if(editingInPlace){editingInPlace=false;fillCreator(true);renderRoomVisibility();}else setRoom('lounge');};
+async function deleteAgentAndWait(target,name,onWaiting=()=>{}){
+  const result=await api('delete-agent',{name},target);
+  if(!result.deleting)return result;
+  onWaiting();
+  while(true){
+    await new Promise(resolve=>setTimeout(resolve,1000));
+    // Query the collection without the removed identity so deletion cannot turn polling into a 404.
+    const state=await api('state',undefined,'');
+    const agent=state.agents.find(a=>a.key===target);
+    if(!agent)return {deleted:target,agentId:state.agentId};
+    if(!agent.deletionWaiting)throw new Error('Cleanup could not finish for '+name+'. Retry Delete agent.');
+  }
+}
 el('delete-agent').onclick=()=>{
   if(!data.profile||pendingWrites||changingAgent||removingAgent)return;
-  const target=agentId,name=data.profile.name,agent=data.agents.find(a=>a.key===target);
-  if(agent?.pending){
-    dialog('FINISH THE MISSION FIRST',`<h3>${escape(name)} still has work in progress.</h3><p>Finish or cancel its pending missions before deleting it. This includes scheduled follow-ups and work assigned by another crew.</p><button class="studio-primary" id="studio-delete-view-work">View pending work ↗</button>`);
-    el('delete-view-work').onclick=()=>{el('dialog').close();if(data.assignments?.length)el('assigned-crew').click();else{const job=data.jobs.find(j=>['running','stopping','queued','waiting'].includes(j.status));selectedJob=job?.id;render();if(job?.kind==='crew'){showBoard(true);el('board').scrollIntoView({behavior:'smooth'});}else{setRoom('lounge');el('workspace').scrollIntoView({behavior:'smooth'});}}};
-    return;
-  }
-  dialog('YOUR COLLECTION',`<div class="studio-delete-identity">${avatarBadge(data.profile.avatar)}<span>REMOVE A TEAMMATE</span></div><h3>Delete ${escape(name)}?</h3><p>Remove this agent, its conversation, saved memory and workspace files from your studio. Its Telegram connection will also be removed.</p><p class="studio-muted">You cannot undo this in the app. Completed crew packages saved by other agents and messages already sent to Telegram remain. OpenClaw may move native files to the host’s Trash.</p><p id="studio-delete-error" role="alert" hidden></p><div class="studio-delete-actions"><button class="studio-secondary" id="studio-delete-cancel" autofocus>Keep agent</button><button class="studio-danger" id="studio-delete-confirm">Delete ${escape(name)}</button></div>`);
+  const target=agentId,name=data.profile.name;
+  dialog('YOUR COLLECTION',`<div class="studio-delete-identity">${avatarBadge(data.profile.avatar)}<span>REMOVE A TEAMMATE</span></div><h3>Delete ${escape(name)}?</h3><p>Remove this agent, its conversation, saved memory and workspace files from your studio.</p><p>Pending requests and scheduled follow-ups will be cancelled. Any active crew task involving this agent will also stop. Deletion finishes after the current call ends.</p><p class="studio-muted">You cannot undo this in the app. Completed crew packages saved by other agents remain. OpenClaw may move native files to the host’s Trash.</p><p id="studio-delete-error" role="alert" hidden></p><div class="studio-delete-actions"><button class="studio-secondary" id="studio-delete-cancel" autofocus>Keep agent</button><button class="studio-danger" id="studio-delete-confirm">Delete ${escape(name)}</button></div>`);
   el('delete-cancel').onclick=()=>el('dialog').close();el('delete-cancel').focus();
   el('delete-confirm').onclick=async()=>{
     if(target!==agentId)return;
     removingAgent=true;++refreshVersion;
-    const preventClose=e=>e.preventDefault();el('dialog').addEventListener('cancel',preventClose);
-    el('delete-confirm').disabled=true;el('delete-cancel').disabled=true;el('dialog-close').disabled=true;el('delete-confirm').textContent='Deleting…';
+    el('dialog').close();
+    const progress=document.createElement('p');progress.className='studio-delete-progress';progress.setAttribute('role','status');
+    progress.textContent='Deleting '+name+' · cleaning up its workspace and runtime…';
+    el('companion').prepend(progress);el('delete-agent').disabled=true;
     try{
-      const result=await api('delete-agent',{name},target);
+      const result=await deleteAgentAndWait(target,name,()=>{progress.textContent='Deleting '+name+' · waiting for its current call to end…';});
       const state=await api('state',undefined,result.agentId);
-      openAgentState(state);fillCreator(true);setRoom(data.profile?'lounge':'workshop');el('dialog').close();
-      alert(name+' was deleted. Your other agents are unchanged.');el('room-action').hidden?el('name').focus():el('room-action').focus();
-    }catch(error){el('delete-error').hidden=false;el('delete-error').textContent=error.message;el('delete-confirm').textContent='Retry deletion';el('delete-confirm').disabled=false;el('delete-cancel').disabled=false;}
-    finally{removingAgent=false;el('dialog-close').disabled=false;el('dialog').removeEventListener('cancel',preventClose);refresh();}
+      const viewingRoom=room;openAgentState(state);fillCreator(true);setRoom(viewingRoom==='lounge'?(data.profile?'lounge':'workshop'):viewingRoom);
+      alert(name+' was deleted.');root.querySelector('.world-room-map [data-world-room="'+room+'"]')?.focus({preventScroll:true});
+    }catch(error){alert(error.message);}
+    finally{removingAgent=false;progress.remove();el('delete-agent').disabled=false;refresh();}
   };
 };
 el('connection-setup').onclick=setup;el('connection-security').onclick=()=>setRoom('policies');
 el('onboarding').onsubmit=async e=>{
-  e.preventDefault();const mode=draftMode,target=draftOwner,first=!data.agents?.length;
-  const payload={name:el('name').value,persona,tone:draftTone,verbosity:el('verbosity').value,skills:[...el('skill-picker').querySelectorAll('input:checked')].map(x=>x.value),avatar:{...draftAvatar},protection:el('onboarding').querySelector('[name=protection]:checked').value};
-  el('create').disabled=true;
+  e.preventDefault();if(hiringArrival)return;syncCreatorTone();const mode=draftMode,target=draftOwner,first=!data.agents?.length;
+  const payload={name:el('name').value,...creatorPrompt(),persona,tone:draftTone,verbosity:'balanced',skills:[...el('skill-picker').querySelectorAll('input:checked')].map(x=>x.value),avatar:{...draftAvatar},protection:el('onboarding').querySelector('[name=protection]:checked').value};
+  hiringArrival=true;el('create').disabled=true;el('onboarding').inert=true;
   try{
     const result=await api(mode==='edit'?'profile':first?'onboard':'agents',payload,target);
-    if(mode==='new'&&!first)await switchAgent(result.agentId);else await refresh();
-    setRoom('lounge');el('room-heading').scrollIntoView({behavior:'smooth',block:'start'});
-    alert(mode==='edit'?'Your agent’s look, working style, voice and abilities are saved.':payload.name+' has joined your lounge. Give your new teammate a mission.');
-  }catch(error){alert(error.message);}finally{el('create').disabled=draftMode==='new'&&(data.agents?.length||0)>=(data.agentLimit||12);}
+    // Bind the arrival to this response, never to a changing workspace selection.
+    const createdId=mode==='new'&&!first?result.agentId:target;
+    if(mode==='new'){++refreshVersion;openAgentState(await api('state',undefined,createdId));}else await refresh();
+    if(mode==='new'&&room==='workshop'){hiringArrival=true;el('create').textContent='Joining your lounge…';await window.BacCampus?.welcomeAgent(createdId);if(room!=='workshop'||root.dataset.worldOverview==='true'){fillCreator(true);return;}}
+    const stayHere=mode==='edit'&&editingInPlace;editingInPlace=false;fillCreator(true);if(stayHere)renderRoomVisibility();else setRoom('lounge');el('workshop').scrollTop=0;
+    alert(mode==='edit'?'Your agent’s look, working style, voice and abilities are saved.':(data.profile?.name||payload.name)+' has joined your lounge. Give your new teammate a mission.');
+  }catch(error){alert(error.message);}finally{hiringArrival=false;el('onboarding').inert=false;el('create').disabled=draftMode==='new'&&(data.agents?.length||0)>=(data.agentLimit||12);}
 };
 // Selecting a resident updates its workspace without moving the visitor's view.
-root.addEventListener('bac:collection-select',e=>switchAgent(e.detail));
+root.addEventListener('bac:collection-select',e=>{if(hiringArrival)return;editingInPlace=false;renderRoomVisibility();switchAgent(e.detail);});
 // Useful in file-only UI review too; live status is supplied by boot().
-fillCreator(true);setRoom('workshop');
+fillCreator(true);setRoom('workshop');window.BacCampus?.overview({instant:true});

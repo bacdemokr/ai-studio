@@ -1,38 +1,114 @@
-// A persistent inspector: selection is independent of the role currently working.
-function renderCrewPassport(){
-  if(room!=='mission')return;
-  const i=selectedCrewRole,crew=crewMission(),member=crew?.payload.roster?.[i];
-  const name=member?.name||defaultNames[i],role=roles[i][1],description=roles[i][2];
-  const persona=member?.persona||['guide','maker','analyst','guide','analyst'][i];
-  const avatar=member?.avatar||window.BacCampus?.inspect().crewAvatars?.[i]||{};
-  const output=crew?.payload.outputs?.[i],stage=crew?.payload.stage??-1;
-  const done=!!output,working=['running','stopping'].includes(crew?.status)&&stage===i;
-  const waiting=crew?.status==='waiting'&&i===2,failed=crew?.status==='error'&&stage===i;
-  let status='READY TO COLLABORATE',task=description;
-  if(waiting){status='YOUR DECISION IS NEEDED';task='Equipment needs exceed the available devices. Review the capacity plan in Mission control.';}
-  else if(done){status='DELIVERED';task=i===4?'The crew review is ready. Open the deliverable below.':'This role’s output is saved and available to the crew.';}
-  else if(failed){status='NEEDS ATTENTION';task=crew.result?.error||'This step could not finish. Open Mission control to review recovery options.';}
-  else if(working){status=crew.status==='stopping'?'FINISHING THE CURRENT STEP':'WORKING ON THE BRIEF';}
-  else if(crew?.status==='cancelled'){status='MISSION CANCELLED';task='This role did not deliver an output before the mission was cancelled.';}
-  else if(crew){status='WAITING FOR ITS TURN';task=i?'Waiting for the shared brief and earlier deliverables. '+description:'Waiting for the shared model to start the brief.';}
-  el('crew-number').textContent=String(i+1).padStart(2,'0')+' / 05';
-  el('crew-name').textContent=name;el('crew-role').textContent=role;
-  el('crew-persona').textContent=(personas[persona]||description)+' '+voiceSummary(member||{});
-  const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';
-  const color=appearanceColors[avatar.color]||appearanceColors.green;
-  portrait.style.setProperty('--avatar-accent',color);el('crew-passport').style.setProperty('--crew-color',color);
-  const skills=(member?.skills||(i===3?['documents','writer','web']:['documents','writer'])).map(s=>titles[s]||s),markup=skills.map(s=>'<span>'+escape(s)+'</span>').join('');
-  if(el('crew-skills').innerHTML!==markup)el('crew-skills').innerHTML=markup;
-  el('crew-status').textContent=status;el('crew-task').textContent=task;
-  el('crew-state').dataset.state=waiting||failed?'attention':done?'done':working?'working':'ready';
-  const roleName=index=>crew?.payload.roster?.[index]?.name||defaultNames[index];
-  el('crew-from').textContent=i?roleName(i-1)+' · '+roles[i-1][1]:'Your event brief';
-  el('crew-to').textContent=i<4?roleName(i+1)+' · '+roles[i+1][1]:'Your reviewed plan';
-  el('crew-access').textContent=member?.protection==='openshell'?'OpenShell on · Uses this personal agent’s policy.':'OpenShell off · Ready to collaborate.';
-  el('crew-deliverable').hidden=!done;el('crew-output-empty').hidden=done;
-  if(el('crew-output').textContent!==(output||''))el('crew-output').textContent=output||'';
-  el('crew-output-empty').textContent=crew?'No deliverable from this role yet.':'Give the crew an event brief to see this role in action.';
-  el('crew-action').textContent=crew?'Open Mission control ↗':'Launch a crew mission ↗';
+// Each specialist has a durable direct conversation, separate from crew execution.
+const crewDrafts=new Map();let crewChatKey='',crewChatSignature='',crewChatSending=false,crewResetEpoch='';
+// Reconstruct the submitted request from the saved brief, including after a refresh.
+function crewBriefMessage(job){
+ const b=job.payload.brief||{},lines=['Plan a Build-a-Claw event.'];
+ const fields=[['City',b.city],['Venue',b.venue],['Event start date',b.startDate],['Event end date',b.endDate],['Total attendees',b.attendees],['Event days',b.days],['Minutes per day',b.duration],['Daily start',b.startTime],['People per group',b.groupSize],['Preferred demo length',b.session==null?null:b.session+' minutes'],['Maximum booths',b.boothLimit]];
+ for(const [label,value] of fields)if(value!=null&&value!=='')lines.push(label+': '+value);
+ if(b.themeCount)lines.push('Themes to research: '+b.themeCount+' · one booth per theme');
+ else if(b.topics?.length)lines.push('Topics: '+b.topics.map(id=>eventCatalog?.topics?.[id]?.title||id).join(', '));
+ if(b.harnesses?.length)lines.push('Harnesses: '+b.harnesses.map(id=>eventCatalog?.harnesses?.[id]||id).join(', '));
+ lines.push('Crew: '+(job.payload.enabledRoles||roles.map((_,i)=>i)).map(i=>defaultNames[i]).join(', '));
+ if(job.payload.prompt)lines.push(job.payload.prompt);
+ return lines.join('\n');
 }
-el('crew-close').onclick=()=>{root.dataset.crewDetails='false';worldViewport.focus({preventScroll:true});};
-el('crew-action').onclick=()=>crewMission()?showBoard(true):crewForm();
+// Shared by Lounge, crew chat, event replies and roundtable reactions.
+function customSkillMarkup(activity){
+ if(!activity?.available||!Array.isArray(activity.calls))return '';
+ const skills=new Map();
+ for(const call of activity.calls){
+  const skill=call.customSkill;
+  if(call.tool==='read'&&call.status==='completed'&&/^bac-[a-z0-9-]+$/.test(skill?.id||'')&&typeof skill.label==='string')skills.set(skill.id,skill.label);
+ }
+ if(!skills.size)return '';
+ return '<div class="chat-custom-skills" aria-label="Custom skills loaded">'+[...skills.values()].map(label=>'<span class="chat-custom-skill" title="Skill instructions read during this reply"><span>Custom skill</span><strong>'+escape(label)+'</strong></span>').join('')+'</div>';
+}
+function crewActivityMarkup(job,role){
+ const activity=job.direct?job.result?.activity:job.payload.activity?.[role];
+ if(!activity)return '';
+ if(!activity.available)return '<p class="studio-muted">Tool activity could not be retrieved from the runtime.</p>';
+ const labels={read:'Read file',write:'Wrote file',edit:'Edited file',web_fetch:'Read webpage',web_search:'Searched the web',exec:'Executed tool'};
+ return '<details class="crew-tool-activity"><summary>Activity · '+activity.calls.length+' tool calls</summary><ol>'+activity.calls.map(call=>'<li><strong>'+escape(call.action?({search:'Searched NVIDIA Blog',read:'Read source articles',schedule:'Validated & exported timetable'}[call.action]||call.action):labels[call.tool]||call.tool)+'</strong><span>'+escape(call.status)+'</span><small>'+escape(call.target||'')+'</small></li>').join('')+'</ol><small>Observed OpenClaw tool calls</small></details>';
+}
+// Assignment records come from dispatched handoffs, not a generated conversation.
+function crewHandoffMessages(job,role){
+ const p=job.payload,roster=p.roster||[],name=i=>roster[i]?.name||defaultNames[i];
+ return Object.entries(p.handoffs||{}).filter(([stage,h])=>{
+  const target=Number(stage),sender=h.senderRole===undefined?((p.enabledRoles||roles.map((_,i)=>i)).includes(0)?0:null):h.senderRole;
+  return target!==0&&h.started&&(role===target||(role===0&&sender===0));
+ }).sort((a,b)=>a[1].started-b[1].started).map(([stage,h])=>{
+  const target=Number(stage),sender=h.senderRole===undefined?((p.enabledRoles||roles.map((_,i)=>i)).includes(0)?0:null):h.senderRole;
+  const recipient=h.recipientName||name(target),from='App workflow';
+  const task=h.task||p.assignments?.find(a=>a.name===recipient)?.task||'Received the event brief and available deliverables.';
+  const summary=p.assignments?.find(a=>a.name===recipient)?.task||task.split(/\.\s/)[0];
+  const received=h.receivedFrom||[],inputs=['Event brief',...received.map(i=>name(Number(i))+'’s deliverable')];
+  const details='<details><summary>View full task &amp; received inputs</summary><div class="chat-prose">'+messageMarkup(task)+'</div>'+(h.sharedState?'<pre>'+escape(JSON.stringify(h.sharedState,null,2))+'</pre>':'')+received.map(i=>'<details><summary>'+escape(name(Number(i)))+'’s deliverable</summary><div class="chat-prose">'+messageMarkup(p.outputs?.[i]||'Saved output unavailable.')+'</div></details>').join('')+'</details>';
+  return '<div class="chat-message chat-handoff" data-assignment-to="'+target+'"><small>'+escape(from)+' → '+escape(recipient)+' · '+(role===target?'Task received':'Task assigned')+' · '+new Date(h.started*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</small><div class="chat-prose">'+messageMarkup(summary)+'</div><p class="handoff-inputs">'+escape(inputs.join(' · '))+'</p>'+details+'</div>';
+ }).join('');
+}
+function syncCrewComposer(){
+ const blocked=!runtime.ready||!!data.deleting;
+ el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending;
+ el('crew-chat-connection').hidden=!blocked;
+ el('crew-chat-connection').textContent=data.deleting?'This workspace is being deleted.':!runtime.model?'Connect a model in Settings to message your crew.':'Reconnect the agent runtime in Settings to message your crew.';
+}
+function renderCrewPassport(){
+ const epoch=data.crewChatReset?.epoch||'';
+ if(epoch!==crewResetEpoch){
+  crewResetEpoch=epoch;crewDrafts.clear();crewChatKey='';crewChatSignature='';el('crew-prompt').value='';
+  for(const key of chatImageDrafts.keys())if(key.includes(':crew:'))chatImageDrafts.delete(key);
+ }
+ if(room!=='mission')return;
+ const i=selectedCrewRole,name=defaultNames[i],role=roles[i][1],crew=crewMission();
+ const avatar=window.BacCampus?.inspect().crewAvatars?.[i]||{};
+ el('crew-number').textContent=String(i+1).padStart(2,'0')+' / 4';
+ el('crew-name').textContent=name;el('crew-role').textContent=role;
+ const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';portrait.style.setProperty('--avatar-accent',appearanceColors[avatar.color]||appearanceColors.green);
+ const skills=window.BacCrewCatalog[i].skills;
+ const skillLabels={...titles,'event-tools':'Event tools','event-scheduling':'Presenter scheduling'};
+ const markup=skills.map(s=>'<span>'+escape(skillLabels[s]||s)+'</span>').join('');if(el('crew-skills').innerHTML!==markup)el('crew-skills').innerHTML=markup;
+ const key=agentId+':'+i,switched=key!==crewChatKey;
+ if(switched){if(crewChatKey)crewDrafts.set(crewChatKey,el('crew-prompt').value);crewChatKey=key;el('crew-prompt').value=crewDrafts.get(key)||'';el('crew-chat-error').hidden=true;}
+ renderImageDrafts(true);
+ el('crew-prompt').placeholder='Message '+name+'…';syncCrewComposer();
+ const turns=(data.crewChats||[]).filter(j=>j.payload.crewRole===i).map(j=>({...j,direct:true}));
+ for(const j of data.jobs||[])if(j.kind==='crew'&&j.created>=(data.crewChatReset?.at||0)&&(i===0||j.payload.handoffs?.[i]||j.payload.outputs?.[i]))turns.push({...j,direct:false});
+ turns.sort((a,b)=>a.created-b.created);
+ const signature=JSON.stringify([key,turns.map(j=>[j.id,j.status,j.result,j.direct?null:[j.payload.outputs?.[i],j.payload.website,j.payload.activity?.[i],i===0?j.payload.handoffs:j.payload.handoffs?.[i],i===0?[crewBriefMessage(j),j.payload.roundtable]:null]])]);
+ if(signature===crewChatSignature)return;
+ crewChatSignature=signature;const log=el('crew-conversation'),follow=switched||log.scrollHeight-log.scrollTop-log.clientHeight<70,top=log.scrollTop;
+ log.innerHTML=turns.length?turns.map(j=>{
+ const pending=['queued','running','waiting','stopping'].includes(j.status);
+ const answer=j.direct?(j.result?.answer||j.result?.error||''):(j.payload.outputs?.[i]||j.payload.stageErrors?.[i]||(j.status==='error'&&Number(j.payload.stage)===i?j.result?.error:''));
+ const webpage=!j.direct&&i===3&&j.payload.website?.authored?'<button class="studio-secondary" data-crew-webpage="'+escape(j.id)+'">Open webpage</button>':'';
+ const handoffs=j.direct?'':crewHandoffMessages(j,i);
+ const request=j.direct?(j.payload.prompt||'Describe the attached image.'):i===0?crewBriefMessage(j):'';
+ const status={queued:'Waiting to start…',running:'Working on your message…',waiting:'Waiting for a decision.',stopping:'Stopping…',cancelled:'Stopped.',error:'This message could not finish.'}[j.status];
+ return '<article class="chat-turn">'+(i!==0?handoffs:'')+(request?'<div class="chat-message chat-user"><small>You</small><div>'+escape(request).replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images)+'</div></div>':'')+'<div class="chat-message chat-agent"><small>'+escape(name)+(j.direct?'':' · Event mission')+'</small>'+customSkillMarkup(j.direct?j.result?.activity:j.payload.activity?.[i])+'<div class="chat-prose">'+messageMarkup(answer||(!j.direct&&pending?(i===0?'Your event brief is with the crew.':'Working on the assigned task…'):status)||'No text reply was returned.')+'</div>'+crewActivityMarkup(j,i)+webpage+(j.direct&&pending?'<div class="chat-progress"><button type="button" data-crew-chat-stop="'+escape(j.id)+'" '+(j.status==='stopping'?'disabled':'')+'>Stop</button></div>':'')+'</div>'+(i===0?handoffs+roundtableMarkup(j):'')+'</article>';
+ }).join(''):'<p class="chat-empty">'+escape(roles[i][2])+'</p>';
+ loadChatImages(log,agentId);
+ if(follow)log.scrollTop=log.scrollHeight;else log.scrollTop=top;
+}
+el('crew-chat').onsubmit=async e=>{
+ e.preventDefault();syncCrewComposer();if(el('crew-send').disabled)return;
+ const owner=agentId,index=selectedCrewRole,key=owner+':'+index,draft=captureChatDraft(true);
+ crewChatSending=true;syncCrewComposer();el('crew-chat-error').hidden=true;
+ try{await api('jobs',{kind:'crew-chat',crewRole:index,prompt:draft.prompt,images:draft.images},owner);acknowledgeChatDraft(draft);await refresh();}
+ catch(error){if(crewChatKey===key){el('crew-chat-error').textContent=error.message;el('crew-chat-error').hidden=false;}}
+ finally{crewChatSending=false;syncCrewComposer();}
+};
+el('crew-prompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();if(!el('crew-send').disabled)el('crew-chat').requestSubmit(el('crew-send'));}});
+el('crew-conversation').onclick=async e=>{const page=e.target.closest('[data-crew-webpage]');if(page){selectedJob=page.dataset.crewWebpage;openSurface('deliverables','webpage');return;}const button=e.target.closest('[data-crew-chat-stop]');if(!button)return;try{await api('decision',{id:button.dataset.crewChatStop,action:'cancel'});await refresh();}catch(error){el('crew-chat-error').textContent=error.message;el('crew-chat-error').hidden=false;}};
+
+function roundtableMarkup(job){
+ const meeting=job.payload.roundtable;if(!meeting?.members?.length&&!meeting?.skipped?.length)return '';
+ const intro=meeting.status==='invited'?'Your hired agents are joining the table. Their reactions follow the finished package.':'Personal reactions to this event · opinions, not independent tests.';
+ return '<section class="crew-roundtable-log"><h4>Your agents’ take</h4><p>'+(meeting.members.length?intro:'No personal agents are joining this event.')+'</p>'+(meeting.skipped||[]).map(m=>'<p class="studio-muted" data-roundtable-skipped="'+escape(m.key)+'">'+escape(m.name)+' · Skipped: '+escape(m.detail)+'</p>').join('')+meeting.members.map(member=>{const reply=meeting.replies?.[member.key]||{},text=reply.answer||reply.error||(meeting.status==='cancelled'?'Roundtable stopped before this reaction.':reply.status==='running'?'Considering the plan…':'Waiting for the results.');return '<article class="chat-message chat-agent" data-roundtable-reply="'+escape(member.key)+'"><small>'+escape(member.name)+' · '+escape(member.tonePrompt||member.tone||'')+'</small>'+customSkillMarkup(reply.activity)+'<div class="chat-prose">'+messageMarkup(text)+'</div>'+(reply.status==='error'&&job.status==='done'?'<button type="button" class="studio-secondary" data-retry-reaction="'+escape(member.key)+'" data-reaction-job="'+escape(job.id)+'">Retry this reaction</button>':'')+'</article>'}).join('')+'</section>';
+}
+
+root.addEventListener('click',async event=>{
+ const button=event.target.closest('[data-retry-reaction]');if(!button)return;
+ button.disabled=true;
+ try{await api('retry-reaction',{id:button.dataset.reactionJob,member:button.dataset.retryReaction});await refresh();}
+ catch(error){alert(error.message);button.disabled=false;}
+});

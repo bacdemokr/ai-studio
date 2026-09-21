@@ -1,0 +1,13 @@
+const assert=require('node:assert/strict'),{chromium}=require('playwright');
+(async()=>{const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});try{
+const page=await browser.newPage({viewport:{width:1600,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:8082');await page.waitForFunction(()=>BacStudio.inspect().runtime.testFixture);
+await page.locator('.world-room-map [data-world-room=mission]').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);await page.locator('#studio-focus').click();await page.locator('#studio-room-action').click();
+await page.locator('[name=crewRole]').first().waitFor();assert.equal(await page.locator('[name=crewRole]:checked').count(),6);assert.equal(await page.locator('[name=personalLead],[name^=member]').count(),0);
+for(const checkbox of await page.locator('[name=crewRole]').all())await checkbox.uncheck();assert(await page.locator('#studio-launch-event').isDisabled());
+for(const i of [0,2,4])await page.locator('[name=crewRole][value="'+i+'"]').check();await page.locator('.studio-crew-toggles').scrollIntoViewIfNeeded();await page.screenshot({path:'../../work/crew-selection.png'});
+await page.locator('#studio-launch-event').click();await page.waitForFunction(()=>BacStudio.inspect().jobs[0]?.status==='done',{}, {timeout:20000});const job=await page.evaluate(()=>BacStudio.inspect().jobs[0]);assert.deepEqual(job.payload.enabledRoles,[0,2,4]);assert.deepEqual(Object.keys(job.payload.outputs),['0','2','4']);assert(job.payload.roster.every(m=>m.key===null));
+await page.locator('[data-surface=control]').click();assert.equal(await page.locator('#studio-lanes .studio-lane').count(),3);assert(!await page.locator('#studio-lanes').innerText().then(t=>t.includes('Dylan')));await page.locator('#studio-surface-close').click();
+await page.locator('[data-crew-member="1"]').click();assert.equal(await page.locator('#studio-crew-status').innerText(),'NOT IN THIS MISSION');
+await page.locator('[data-surface=deliverables]').click();assert.equal(await page.locator('[data-package-tab]').count(),2);assert.equal(await page.locator('[data-package-tab=invitations],[data-package-tab=website]').count(),0);assert(await page.locator('[data-package-download$=".xlsx"]').isVisible());assert.deepEqual(errors,[]);
+console.log('PASS: six preset toggles, empty selection blocked, only selected roles run, omitted roles excluded from progress and outputs. Fixture inference.');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

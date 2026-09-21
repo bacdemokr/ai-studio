@@ -1,8 +1,8 @@
 // One persistent floor plan. Room changes move the camera, never swap worlds.
 const studioRooms={
-  workshop:{group:workshopRoom,x:0,z:18,title:'Hiring',verb:'Meet your next agent',number:'01'},
-  lounge:{group:loungeRoom,x:0,z:0,title:'Agent lounge',verb:'Meet your agents',number:'02'},
-  mission:{group:missionRoom,x:24,z:0,title:'BaC mission room',verb:'Work as a crew',number:'03'}
+  workshop:{group:workshopRoom,x:0,z:18,title:roomTitles.workshop,verb:'Meet your next agent',number:'01'},
+  lounge:{group:loungeRoom,x:0,z:0,title:roomTitles.lounge,verb:'Meet your agents',number:'02'},
+  mission:{group:missionRoom,x:24,z:0,title:roomTitles.mission,verb:'Multi-agent',number:'03'}
 };
 Object.entries(studioRooms).forEach(([id,entry])=>{entry.group.position.set(entry.x,0,entry.z);entry.group.visible=true;entry.group.userData.studioRoom=id;});
 let overview=false,journey=null,viewHalfHeight=0;
@@ -11,7 +11,7 @@ const navigationLayer=document.createElement('div');navigationLayer.className='w
 const overviewButton=document.createElement('button');overviewButton.type='button';overviewButton.className='world-overview-button';overviewButton.dataset.worldOverview='';overviewButton.textContent='⌑ See the whole studio';overviewButton.setAttribute('aria-pressed','false');navigationLayer.append(overviewButton);
 const journeyNote=document.createElement('div');journeyNote.className='world-journey';journeyNote.setAttribute('role','status');journeyNote.setAttribute('aria-live','polite');journeyNote.hidden=true;navigationLayer.append(journeyNote);
 const roomMap=document.createElement('nav');roomMap.className='world-room-map';roomMap.setAttribute('aria-label','Connected studio rooms');
-roomMap.innerHTML='<span class="world-map-caption">STUDIO MAP</span><div><svg viewBox="0 0 320 66" aria-hidden="true"><path d="M13 13 H207 V53 H13 Z"/></svg>'+['lounge','mission','workshop'].map(id=>'<button type="button" data-world-room="'+id+'"><i>'+studioRooms[id].number+'</i><span>'+(id==='mission'?'BaC':studioRooms[id].title)+'</span></button>').join('')+'</div>';
+roomMap.innerHTML='<span class="world-map-caption">STUDIO MAP</span><div><svg viewBox="0 0 320 66" aria-hidden="true"><path d="M13 53 V13 H207"/></svg>'+['lounge','mission','workshop'].map(id=>'<button type="button" data-world-room="'+id+'"><i>'+studioRooms[id].number+'</i><span>'+studioRooms[id].title+'</span></button>').join('')+'</div>';
 navigationLayer.append(roomMap);
 function goToRoom(next){
   const restoreFocus=navigationLayer.contains(document.activeElement);
@@ -21,11 +21,10 @@ function goToRoom(next){
 roomMap.onclick=e=>{const button=e.target.closest('[data-world-room]');if(button)goToRoom(button.dataset.worldRoom);};
 overviewButton.onclick=()=>overview?goToRoom(room):showOverview();
 
-// Each pair has its own physical path. The third bridge bends around the courtyard.
+// Hiring and BaC connect through the lounge; no long outer bridge.
 const connections=[
-  {from:'lounge',to:'mission',points:[[9,3],[15,3]]},
-  {from:'lounge',to:'workshop',points:[[0,6.3],[0,13.75]]},
-  {from:'workshop',to:'mission',points:[[6,21],[24,21],[24,6.3]]}
+  {from:'lounge',to:'mission',points:[[9,3],[13.2,3]]},
+  {from:'lounge',to:'workshop',points:[[0,6.3],[0,13.75]]}
 ];
 function hallRail(parent,x,z,length){
   box(parent,x,.055,z,length,.035,.045,0x76b900,true);
@@ -58,27 +57,23 @@ for(const connection of connections){
   corridors.push({...connection,segments,length,pulse});
 }
 function doorway(from,to,x,z,rotation=0){
-  const group=new THREE.Group();group.position.set(x,0,z);group.rotation.y=rotation;studioRooms[from].group.add(group);group.userData.destination=to;
+  const group=new THREE.Group();group.position.set(x,0,z);group.rotation.y=rotation;studioRooms[from].group.add(group);
   box(group,0,.055,0,.65,.1,2.35,0x3d5265);
   for(const z of [-1.1,1.1]){box(group,0,1.1,z,.18,2.2,.18,0x627e93);box(group,.105,1.14,z,.03,1.94,.045,0x96d52b,true);}
   box(group,0,2.2,0,.22,.18,2.4,0x344d60);box(group,.13,2.2,0,.026,.09,2.04,0x96d52b,true);
-  const node=document.createElement('button');node.type='button';node.className='world-doorway';node.dataset.doorwayFrom=from;node.dataset.worldRoom=to;
-  node.innerHTML='<span>WALK THROUGH</span><b>'+studioRooms[to].title+' <i>↗</i></b>';
-  node.setAttribute('aria-label','Walk to '+studioRooms[to].title);node.onclick=()=>goToRoom(to);navigationLayer.append(node);
-  doorways.push({from,to,group,node,point:new THREE.Vector3(0,2.55,0)});
+  doorways.push({from,to,group});
 }
-doorway('lounge','mission',8.8,3);doorway('mission','lounge',-8.8,3);
+doorway('lounge','mission',8.8,3);doorway('mission','lounge',-10.6,3);
 doorway('lounge','workshop',0,6.1,Math.PI/2);doorway('workshop','lounge',0,-4.05,Math.PI/2);
-doorway('workshop','mission',5.8,3);doorway('mission','workshop',0,6.1,Math.PI/2);
 Object.entries(studioRooms).forEach(([id,r])=>{
   const node=document.createElement('button');node.type='button';node.className='world-campus-room';node.dataset.worldRoom=id;
-  node.innerHTML='<span>'+r.number+' / '+r.verb+'</span><b>'+r.title+' ↗</b>';node.onclick=()=>goToRoom(id);navigationLayer.append(node);overviewLabels.push({id,node,group:r.group});
+  node.innerHTML='<span>'+r.number+' / '+r.verb+'</span><b>'+r.title+'</b>';node.onclick=()=>goToRoom(id);navigationLayer.append(node);overviewLabels.push({id,node,group:r.group});
 });
 function roomHeight(id){
   const aspect=viewport.clientWidth/Math.max(1,viewport.clientHeight);
-  return id==='workshop'?Math.max(6.8,8/aspect):aspect<1?12.5:aspect<1.5?10.2:8.5;
+  return id==='workshop'?Math.max(6.8,8/aspect):(aspect<1?12.5:aspect<1.5?10.2:8.5)*(id==='mission'?1.1:1);
 }
-function overviewHeight(){return Math.max(22,27/(viewport.clientWidth/Math.max(1,viewport.clientHeight)));}
+function overviewHeight(){return Math.max(16,27/(viewport.clientWidth/Math.max(1,viewport.clientHeight)));}
 function roomFocus(id){return new THREE.Vector3(studioRooms[id].x,id==='workshop'?1.0:.25,studioRooms[id].z+.6);}
 function refreshNavigation(){
   navigationLayer.dataset.overview=String(overview);navigationLayer.dataset.travelling=String(!!journey);
@@ -87,36 +82,47 @@ function refreshNavigation(){
   overviewButton.textContent=overview?'↙ Return to '+studioRooms[room].title:'⌑ See the whole studio';overviewButton.setAttribute('aria-pressed',String(overview));
   overviewButton.setAttribute('aria-label',overview?'Return to '+studioRooms[room].title:'See the whole studio');
   roomMap.querySelectorAll('button').forEach(b=>{b.setAttribute('aria-current',b.dataset.worldRoom===room?'location':'false');b.classList.toggle('selected',b.dataset.worldRoom===room);});
-  doorways.forEach(d=>d.node.hidden=overview||!!journey||d.from!==room);
   overviewLabels.forEach(r=>{r.node.hidden=!overview||!!journey;r.node.setAttribute('aria-current',r.id===room?'location':'false');});
   journeyNote.hidden=!journey&&!overview;
   if(!journey&&overview)journeyNote.textContent='Three connected rooms. Choose where to go.';
 }
 function rememberCamera(){if(!overview&&!journey)roomCameras[room]=[azimuth,elevation,zoom];}
-function travelTo(target,instant=false){
-  drag=null;
+function travelTo(target,instant=false,remaining=[]){
+  endResidentDrag(true);drag=null;
   const start={focus:focus.clone(),azimuth,elevation,zoom,height:viewHalfHeight||roomHeight(room)};
   const delta=Math.atan2(Math.sin(target.azimuth-azimuth),Math.cos(target.azimuth-azimuth));target.azimuth=azimuth+delta;
-  journey={start,target,began:performance.now(),duration:1050,lift:target.overview?0:Math.min(7,start.focus.distanceTo(target.focus)*.22)};
+  journey={start,target,began:performance.now(),duration:800,remaining,lift:target.overview?0:Math.min(.6,start.focus.distanceTo(target.focus)*.025)};
   refreshNavigation();
-  if(instant||reduced.matches)finishJourney();
+  if(instant||reduced.matches)finishJourney(true);
 }
-function finishJourney(){
-  if(!journey)return;const target=journey.target;
+function finishJourney(instant=false){
+  if(!journey)return;const {target,remaining}=journey;
   focus.copy(target.focus);azimuth=target.azimuth;elevation=target.elevation;zoom=target.zoom;viewHalfHeight=target.height;journey=null;
+  if(remaining.length){travelTo(remaining[0],instant,remaining.slice(1));return;}
   refreshNavigation();frame();renderer.render(scene,camera);
 }
 function setRoom(next,options={}){
+  if(arrival)finishArrival();
   if(!studioRooms[next])return;
   if(next===room&&!overview&&!journey){resize();return;}
-  const previous=room;rememberCamera();room=next;overview=false;
-  const [a,e,z]=roomCameras[room];
-  journeyNote.textContent=previous===next?'Returning to '+studioRooms[next].title:studioRooms[previous].title+' → '+studioRooms[next].title;
-  travelTo({focus:roomFocus(room),azimuth:a,elevation:e,zoom:z,height:roomHeight(room),overview:false,from:previous,to:next},options.instant);
+  // Finish the current corridor before rerouting rapid clicks; never cut across the courtyard.
+  const inFlight=!overview&&journey?.target.to?journey.target:null;
+  const previous=inFlight?.to||room;rememberCamera();room=next;overview=false;
+  const stops=previous!==next&&previous!=='lounge'&&next!=='lounge'?['lounge',next]:previous!==next?[next]:[];
+  const targets=inFlight?[inFlight]:[];
+  let from=previous;
+  for(const to of stops){
+    const [a,e,z]=roomCameras[to];
+    targets.push({focus:roomFocus(to),azimuth:a,elevation:e,zoom:z,height:roomHeight(to),overview:false,from,to});from=to;
+  }
+  if(!targets.length){const [a,e,z]=roomCameras[next];targets.push({focus:roomFocus(next),azimuth:a,elevation:e,zoom:z,height:roomHeight(next),overview:false,from:previous,to:next});}
+  journeyNote.textContent=[previous,...stops].map(id=>studioRooms[id].title).join(' → ');
+  travelTo(targets[0],options.instant,targets.slice(1));
 }
-function showOverview(){
+function showOverview(options={}){
+  if(arrival)finishArrival();
   rememberCamera();overview=true;journeyNote.textContent='Opening your connected studio';
-  travelTo({focus:new THREE.Vector3(12,.2,8),azimuth:.08,elevation:.94,zoom:1,height:overviewHeight(),overview:true});
+  travelTo({focus:new THREE.Vector3(12,.2,8),azimuth:.43,elevation:.64,zoom:1,height:overviewHeight(),overview:true},!!options.instant);
 }
 function resetNavigation(){
   roomCameras[room]=room==='workshop'?[.34,.64,1]:[.43,.76,1];
@@ -125,28 +131,8 @@ function resetNavigation(){
   travelTo({focus:roomFocus(room),azimuth:a,elevation:e,zoom:z,height:roomHeight(room),overview:false});
 }
 function resizeNavigation(){
-  if(journey)journey.target.height=overview?overviewHeight():roomHeight(room);
+  if(journey){for(const target of [journey.target,...journey.remaining])target.height=target.overview?overviewHeight():roomHeight(target.to||room);}
   else viewHalfHeight=overview?overviewHeight():roomHeight(room);
-}
-function placeDoorway(d){
-  positionLabel(d.node,d.group.localToWorld(d.point.clone()));
-  const half=d.node.offsetWidth/2,w=viewport.clientWidth,h=viewport.clientHeight;
-  const offset=d.group.position.x<0?-42:d.group.position.x>0?20:0;
-  d.node.style.left=Math.max(half+12,Math.min(w-half-12,parseFloat(d.node.style.left)+offset))+'px';
-  // In the short phone preview, keep the rear-door card beside the avatar's face.
-  if(w<700&&h<500&&d.from==='workshop'&&d.to==='lounge')d.node.style.left=(w-half-12)+'px';
-  const minTop=Math.max(116,overviewButton.offsetTop+overviewButton.offsetHeight+12);
-  d.node.style.top=Math.max(minTop+d.node.offsetHeight,Math.min(h-120,parseFloat(d.node.style.top)))+'px';
-}
-function separateDoorways(){
-  const nodes=doorways.filter(d=>!d.node.hidden).map(d=>d.node);if(nodes.length!==2)return;
-  const boxes=nodes.map(node=>({node,x:parseFloat(node.style.left)-node.offsetWidth/2,y:parseFloat(node.style.top)-node.offsetHeight,w:node.offsetWidth,h:node.offsetHeight}));
-  const [a,b]=boxes,gap=10;if(a.x+a.w+gap<=b.x||b.x+b.w+gap<=a.x||a.y+a.h+gap<=b.y||b.y+b.h+gap<=a.y)return;
-  const minY=Math.max(116,overviewButton.offsetTop+overviewButton.offsetHeight+12),candidates=[];
-  for(const [box,other] of [[a,b],[b,a]])for(const [x,y] of [[other.x-box.w-gap,box.y],[other.x+other.w+gap,box.y],[box.x,other.y-box.h-gap],[box.x,other.y+other.h+gap]]){
-    if(x>=12&&x+box.w<=viewport.clientWidth-12&&y>=minY&&y+box.h<=viewport.clientHeight-110)candidates.push({box,x,y,cost:Math.abs(x-box.x)+Math.abs(y-box.y)});
-  }
-  candidates.sort((a,b)=>a.cost-b.cost);const move=candidates[0];if(move){move.box.node.style.left=(move.x+move.box.w/2)+'px';move.box.node.style.top=(move.y+move.box.h)+'px';}
 }
 function animateNavigation(now){
   if(journey){
@@ -157,11 +143,9 @@ function animateNavigation(now){
     frame();if(t===1)finishJourney();
   }
   scene.updateMatrixWorld();
-  doorways.forEach(d=>{if(!d.node.hidden)placeDoorway(d);});
-  separateDoorways();
   overviewLabels.forEach(r=>{
     if(r.node.hidden)return;
-    positionLabel(r.node,r.group.localToWorld(new THREE.Vector3(0,4.5,-1.7)));
+    positionLabel(r.node,r.group.localToWorld(new THREE.Vector3(0,r.id==='workshop'?1:4.5,r.id==='workshop'?3:-1.7)));
     const controlsBottom=Math.max(overviewButton.offsetTop+overviewButton.offsetHeight,journeyNote.offsetHeight?journeyNote.offsetTop+journeyNote.offsetHeight:0);
     r.node.style.top=Math.max(controlsBottom+12+r.node.offsetHeight,parseFloat(r.node.style.top))+'px';
   });
@@ -177,15 +161,14 @@ function animateNavigation(now){
 }
 function navigationTargets(){
   if(overview)return Object.values(studioRooms).map(r=>r.group);
-  return [...doorways.filter(d=>d.from===room).map(d=>d.group),...(room==='mission'?hitTargets:roomHitTargets())];
+  return room==='mission'?hitTargets:roomHitTargets();
 }
 function selectNavigationObject(object){
   for(let node=object;node;node=node.parent){
     if(overview&&node.userData.studioRoom){goToRoom(node.userData.studioRoom);return true;}
-    if(!overview&&node.userData.destination){goToRoom(node.userData.destination);return true;}
   }
   return false;
 }
-function navigationInfo(){return {overview,travelling:!!journey,focus:focus.toArray(),rooms:Object.fromEntries(Object.entries(studioRooms).map(([id,r])=>[id,r.group.position.toArray()])),visibleRooms:Object.keys(studioRooms).filter(id=>studioRooms[id].group.visible),doorways:doorways.map(d=>({from:d.from,to:d.to})),corridors:corridors.map(c=>({from:c.from,to:c.to,points:c.points,active:c.pulse.visible}))};}
-reduced.addEventListener('change',()=>{if(reduced.matches)finishJourney();});
+function navigationInfo(){return {overview,travelling:!!journey,route:journey?[journey.target,...journey.remaining].map(t=>({from:t.from,to:t.to})):[],focus:focus.toArray(),rooms:Object.fromEntries(Object.entries(studioRooms).map(([id,r])=>[id,r.group.position.toArray()])),visibleRooms:Object.keys(studioRooms).filter(id=>studioRooms[id].group.visible),doorways:doorways.map(d=>({from:d.from,to:d.to})),corridors:corridors.map(c=>({from:c.from,to:c.to,points:c.points,active:c.pulse.visible}))};}
+reduced.addEventListener('change',()=>{if(reduced.matches)finishJourney(true);});
 focus.copy(roomFocus(room));viewHalfHeight=roomHeight(room);refreshNavigation();

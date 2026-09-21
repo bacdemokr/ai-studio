@@ -1,0 +1,41 @@
+const assert=require('node:assert/strict'),{chromium}=require('playwright');
+(async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH,args:['--enable-unsafe-swiftshader']});try{
+ const page=await browser.newPage({viewport:{width:1500,height:960}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(process.env.BASE_URL||'http://127.0.0.1:8080');
+ await page.waitForFunction(()=>window.BacStudio&&window.BacCampus?.inspect().navigation?.overview);
+ const travel=async room=>{await page.locator('.world-room-map [data-world-room='+room+']').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);};
+ await travel('workshop');await page.locator('#studio-focus').click();
+ assert(await page.locator('#agent-campus').evaluate(n=>n.classList.contains('studio-world-open')));
+ assert(await page.locator('#studio-workshop').isVisible());
+ await page.locator('#studio-name').fill('Fullscreen draft');
+ await page.locator('[data-body=fox]').click();
+ await page.locator('input[name=protection][value=openshell]').check();
+ assert(await page.locator('#studio-create').isVisible());
+ await travel('lounge');assert(await page.locator('#studio-passport').isVisible());
+ assert.equal(await page.locator('#studio-collection').evaluate(n=>n.parentElement.id),'studio-passport');
+ if(await page.locator('#studio-companion').isVisible()){
+  await page.locator('[data-surface=missions]').click();assert(await page.locator('#studio-surface').isVisible());
+  await page.locator('#studio-surface-close').click();
+  await page.locator('[data-surface=results]').click();assert(await page.locator('#studio-workspace').isVisible());
+  await page.locator('#studio-surface-close').click();
+  await page.locator('#studio-agent-policy').click();assert(await page.locator('#studio-policies').isVisible());
+  await page.locator('#studio-surface-close').click();
+ }
+ await travel('mission');assert(await page.locator('#studio-crew-passport').isVisible());
+ await page.locator('[data-crew-member="2"]').click();assert.equal(await page.locator('#studio-crew-name').innerText(),'Alex');
+ await page.locator('[data-surface=control]').click();assert(await page.locator('#studio-board').isVisible());
+ assert.equal(await page.locator('#studio-lanes .studio-lane').count(),5);
+ await page.evaluate(()=>BacStudio.refresh());assert(await page.locator('#studio-board').isVisible());
+ await page.screenshot({path:'../../work/fullscreen-control.png'});
+ await page.locator('#studio-surface-close').click();
+ assert(await page.locator('#studio-crew-passport').isVisible());
+ assert(await page.locator('#agent-campus').evaluate(n=>n.classList.contains('studio-world-open')));
+ await page.locator('#studio-room-action').click();await page.waitForSelector('#studio-crew-form');
+ assert(await page.locator('#studio-dialog').isVisible());await page.locator('#studio-dialog-close').click();
+ await travel('workshop');assert.equal(await page.locator('#studio-name').inputValue(),'Fullscreen draft');
+ await page.screenshot({path:'../../work/fullscreen-hiring.png'});
+ await page.locator('#studio-focus').click();assert(!(await page.locator('#agent-campus').evaluate(n=>n.classList.contains('studio-world-open'))));
+ assert(await page.locator('#studio-workshop').isVisible());
+ assert.equal(await page.locator('.studio-viewbar').count(),0);assert.deepEqual(errors,[]);
+ console.log('PASS: fullscreen hiring, room travel, persistent inspectors, crew selection, mission overlay, brief dialog, exit and draft preservation.');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

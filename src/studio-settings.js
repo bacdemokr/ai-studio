@@ -1,0 +1,122 @@
+// Host settings: tab changes keep drafts; model discovery is visibly selectable.
+async function waitForAgentRuntime(requireModel=false){
+  const deadline=Date.now()+45000;
+  do{
+    runtime=await api('runtime');runtimeBadge();
+    if(requireModel?runtime.ready:runtime.gateway)return;
+    await new Promise(resolve=>setTimeout(resolve,1500));
+  }while(Date.now()<deadline);
+  throw new Error(requireModel?'The model was verified, but the agent runtime has not applied the connection. Retry Connect model.':'Model settings are saved, but the agent runtime is not ready. Try Start agents again.');
+}
+const settingsButton=document.createElement('button');settingsButton.id='studio-config';settingsButton.className='studio-config';settingsButton.type='button';settingsButton.textContent='⚙';settingsButton.title='Settings';settingsButton.setAttribute('aria-label','Settings');settingsButton.hidden=true;document.querySelector('#bac-planner .topbar').append(settingsButton);
+settingsButton.onclick=async()=>{
+ try{
+  const settings=await api('settings');
+  dialog('Settings',`<form id="studio-config-form" novalidate><nav class="studio-settings-tabs" role="tablist" aria-label="Settings"><button type="button" role="tab" id="studio-settings-model-tab" data-settings-tab="model" aria-controls="studio-settings-model-panel" aria-selected="true">Model</button><button type="button" role="tab" id="studio-settings-location-tab" data-settings-tab="location" aria-controls="studio-settings-location-panel" aria-selected="false" tabindex="-1">Location</button><button type="button" role="tab" id="studio-settings-reset-tab" data-settings-tab="reset" aria-controls="studio-settings-reset-panel" aria-selected="false" tabindex="-1">Reset</button></nav>
+  <section id="studio-settings-model-panel" role="tabpanel" aria-labelledby="studio-settings-model-tab"><label for="studio-provider">Provider</label><select id="studio-provider">${Object.entries(settings.providers).map(([id,p])=>`<option value="${id}">${escape(p.label)}</option>`).join('')}</select><label for="studio-api-key">API key</label><input id="studio-api-key" type="password" autocomplete="off" spellcheck="false"><small id="studio-key-note"></small><div class="studio-settings-model"><label for="studio-model">Model</label><button type="button" id="studio-load-models" class="studio-secondary">Load models ↻</button></div><button type="button" id="studio-change-model" class="studio-secondary" aria-expanded="false" aria-controls="studio-model-options" hidden>Change model</button><p id="studio-model-status" role="status" aria-live="polite"></p><input id="studio-model-search" type="search" aria-label="Search models" placeholder="Search models…" autocomplete="off" spellcheck="false" hidden><select id="studio-model-options" size="6" aria-label="Available models" hidden></select><input id="studio-model" autocomplete="off" placeholder="Load models to choose, or enter a model ID" required><small>Choose a text model with tool calling.</small><details id="studio-connection-options"><summary>Connection options</summary><label for="studio-endpoint">API endpoint</label><input id="studio-endpoint" type="url" required><label for="studio-model-context">Context limit · tokens</label><input id="studio-model-context" type="number" min="8192" max="2000000" step="1" required></details><small>Keys stay in memory for this tab only. Closing or refreshing clears them.</small></section>
+
+  <section id="studio-settings-location-panel" role="tabpanel" aria-labelledby="studio-settings-location-tab" hidden><label for="studio-location-city">City</label><input id="studio-location-city" autocomplete="address-level2" maxlength="80" required aria-describedby="studio-location-note"><small id="studio-location-note">Default city for all agents’ weather and local requests.</small></section>
+  <section id="studio-settings-reset-panel" role="tabpanel" aria-labelledby="studio-settings-reset-tab" class="studio-agent-reset" hidden><div class="studio-reset-row"><div><h3>Lounge agents</h3><p>Remove hired agents and their data.</p></div><button type="button" id="studio-agent-reset" class="studio-secondary" aria-label="Reset Lounge agents" ${(data.agents||[]).length?'':'disabled'}>Reset</button></div><div class="studio-reset-row"><div><h3>BaC (Multi-Agent Demo)</h3><p>Clear the event board and team chats.</p></div><button type="button" id="studio-bac-reset" class="studio-secondary" aria-label="Reset BaC">Reset</button></div><div class="studio-reset-footer"><button type="button" id="studio-reset-all" class="studio-danger">Reset all</button></div></section>
+  <p id="studio-settings-status" role="status"></p><div class="studio-dialog-actions"><button type="button" id="studio-start-agents" class="studio-secondary" ${runtime.gateway?'hidden':''}>Start agents</button><button type="submit" class="studio-primary" id="studio-save-settings">Connect model</button></div></form>`);
+  const form=el('config-form'),modelList=el('model-options'),modelStatus=el('model-status'),loadButton=el('load-models');
+  el('location-city').value=settings.location?.city||'Zurich';
+  el('agent-reset').onclick=()=>resetStudio('lounge');
+  el('reset-all').onclick=()=>resetStudio('all');
+  el('bac-reset').onclick=()=>resetStudio('bac');
+  let tab='model',generation=0,availableModels=[],hasMoreModels=false,connecting=false;
+  const currentForm=()=>el('config-form')===form&&el('dialog').open;
+  const modelSearch=el('model-search'),changeModel=el('change-model');
+  let browsingWithKeyboard=false;
+  function closeModelList(){if(!modelList.value)return;el('model').value=modelList.value;modelList.hidden=true;modelSearch.hidden=true;changeModel.hidden=false;changeModel.setAttribute('aria-expanded','false');modelStatus.textContent='';el('model').focus();}
+  changeModel.onclick=()=>{modelSearch.hidden=false;filterModels();changeModel.setAttribute('aria-expanded','true');modelSearch.focus();};
+  function filterModels(){const query=modelSearch.value.trim().toLowerCase();const matches=availableModels.filter(m=>(m.id+' '+(m.name||'')).toLowerCase().includes(query));modelList.replaceChildren(...matches.map(m=>new Option(!m.name||m.name===m.id?m.id:m.name+' · '+m.id,m.id)));modelList.value=el('model').value;modelList.hidden=!matches.length;modelStatus.dataset.state=matches.length?'ready':'empty';modelStatus.textContent=(query?`${matches.length} of ${availableModels.length} models`:`${availableModels.length} models`)+(matches.length?'':' · No matches')+(hasMoreModels?' · More IDs can be entered manually.':'');}
+  modelSearch.oninput=filterModels;
+  modelSearch.onkeydown=e=>{if(e.key==='Enter')e.preventDefault();if(e.key==='ArrowDown'&&!modelList.hidden){e.preventDefault();modelList.focus();}};
+  function selectTab(next){if(connecting)return;tab=next;form.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===tab;b.setAttribute('aria-selected',active);b.tabIndex=active?0:-1;});el('settings-model-panel').hidden=tab!=='model';el('settings-location-panel').hidden=tab!=='location';el('settings-reset-panel').hidden=tab!=='reset';el('save-settings').textContent=tab==='location'?'Save location':'Connect model';el('save-settings').hidden=tab==='reset';el('start-agents').hidden=tab!=='model'||!!runtime.gateway;el('settings-status').textContent='';}
+  form.querySelectorAll('[data-settings-tab]').forEach(b=>{b.onclick=()=>selectTab(b.dataset.settingsTab);b.onkeydown=e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const tabs=['model','location','reset'];selectTab(e.key==='Home'?tabs[0]:e.key==='End'?tabs.at(-1):tabs[(tabs.indexOf(tab)+(e.key==='ArrowLeft'?-1:1)+tabs.length)%tabs.length]);el('settings-'+tab+'-tab').focus();}};});
+
+  const input=()=>({provider:el('provider').value,apiKey:el('api-key').value.trim(),baseUrl:el('endpoint').value.trim(),model:el('model').value.trim(),contextWindow:Number(el('model-context').value)});
+  function resetModels(){changeModel.hidden=true;changeModel.setAttribute('aria-expanded','false');availableModels=[];hasMoreModels=false;modelSearch.value='';modelSearch.hidden=true;generation++;loadButton.disabled=false;loadButton.textContent='Load models ↻';modelList.replaceChildren();modelList.hidden=true;modelStatus.textContent='';modelStatus.dataset.state='';}
+  function fill(){const id=el('provider').value,profile=settings.profiles[id]||{};el('connection-options').open=id==='local';el('endpoint').value=profile.baseUrl||settings.providers[id].baseUrl;el('model').value=profile.model||'';el('model-context').value=profile.contextWindow||32768;el('api-key').value='';el('api-key').placeholder=profile.hasKey?'Active in this tab · leave blank to keep':'Enter API key';el('key-note').textContent=id==='nvidia'?'Use your employee key from inference.nvidia.com.':id==='local'?'API key is optional for a local server.':'';resetModels();el('settings-status').textContent='';}
+  el('provider').value=settings.provider;el('provider').onchange=fill;fill();el('endpoint').oninput=resetModels;el('api-key').oninput=resetModels;
+  modelList.onchange=()=>{el('model').value=modelList.value;if(!browsingWithKeyboard)closeModelList();};
+  modelList.onpointerdown=()=>{browsingWithKeyboard=false;};
+  modelList.onclick=closeModelList;
+  modelList.onkeydown=e=>{browsingWithKeyboard=true;if(e.key==='Enter'){e.preventDefault();closeModelList();}else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();modelList.hidden=true;modelSearch.hidden=true;changeModel.hidden=false;changeModel.setAttribute('aria-expanded','false');changeModel.focus();}};
+  loadButton.onclick=async()=>{const token=++generation,request=input();loadButton.disabled=true;loadButton.textContent='Loading…';modelSearch.hidden=true;modelList.hidden=true;modelStatus.dataset.state='loading';modelStatus.textContent='Loading models…';const current=()=>el('config-form')===form&&el('dialog').open&&token===generation;
+    try{const result=await api('settings/models',request);if(!current())return;availableModels=result.models;hasMoreModels=!!result.hasMore;modelSearch.hidden=!availableModels.length;changeModel.hidden=!availableModels.length;changeModel.setAttribute('aria-expanded',String(!!availableModels.length));filterModels();if(!availableModels.length)modelStatus.textContent='No models returned for this key. Check its access or enter a model ID manually.';}
+    catch(error){if(current()){modelStatus.dataset.state='error';modelStatus.textContent=error.message;}}
+    finally{if(current()){loadButton.disabled=false;loadButton.textContent='Load models ↻';}}
+  };
+  el('start-agents').onclick=async()=>{if(connecting)return;connecting=true;el('start-agents').disabled=true;el('settings-status').textContent='Starting agent runtime…';try{await api('settings/start',{});await waitForAgentRuntime();if(!currentForm())return;el('settings-status').textContent=runtime.ready?'Model and agent runtime connected.':'Agent runtime ready. Reconnect the model to continue.';el('start-agents').hidden=true;}catch(error){if(currentForm())el('settings-status').textContent=error.message;}finally{connecting=false;if(currentForm())el('start-agents').disabled=false;}};
+  form.onsubmit=async e=>{
+    e.preventDefault();if(connecting||tab==='reset')return;
+    if(tab==='location'){
+      const field=el('location-city'),button=el('save-settings'),status=el('settings-status');
+      if(!field.checkValidity()){field.reportValidity();return;}
+      connecting=true;button.disabled=true;field.disabled=true;status.textContent='Saving location';
+      try{
+        const saved=await api('settings',{section:'location',location:{city:field.value.trim()}});
+        settings.location=saved.location;runtime.location=saved.location;
+        if(currentForm()){field.value=saved.location.city;status.textContent='Saved. Applies to every agent’s next request.';}
+      }catch(error){if(currentForm())status.textContent=error.message;}
+      finally{connecting=false;if(currentForm()){button.disabled=false;field.disabled=false;}}
+      return;
+    }
+    for(const id of ['model','endpoint','model-context']){const field=el(id);if(!field.checkValidity()){const details=field.closest('details');if(details)details.open=true;field.reportValidity();return;}}
+    const request=input(),button=el('save-settings'),status=el('settings-status');
+    const controls=[...form.querySelectorAll('#studio-settings-model-panel input,#studio-settings-model-panel select,#studio-settings-model-panel button,#studio-start-agents')].map(node=>[node,node.disabled]);
+    connecting=true;button.disabled=true;button.textContent='Connecting';status.dataset.state='connecting';status.textContent='Checking model connection';
+    controls.forEach(([node])=>node.disabled=true);
+    try{
+      await api('settings',{...request,section:'model',verifyConnection:true});
+      runtime=await api('runtime');
+      if(!runtime.installed&&!runtime.gateway)throw new Error('Model verified. Install the agent runtime on this host to run agents.');
+      if(!runtime.gateway){if(currentForm())status.textContent='Starting agent runtime…';await api('settings/start',{});await waitForAgentRuntime();}
+      if(!runtime.ready){if(currentForm())status.textContent='Applying model connection';await waitForAgentRuntime(true);}
+      runtimeBadge();render();
+      if(currentForm()){form.querySelector('#studio-api-key').value='';el('dialog').close();alert('Model and agent runtime connected.');}
+    }catch(error){if(currentForm()){status.dataset.state='error';status.textContent=error.message;}}
+    finally{connecting=false;if(currentForm()){button.disabled=false;button.textContent='Connect model';controls.forEach(([node,disabled])=>node.disabled=disabled);}}
+  };
+ }catch(error){alert(error.message);}
+};
+el('dialog').addEventListener('close',()=>{if(el('api-key'))el('api-key').value='';});
+
+async function resetStudio(scope){
+ if(removingAgent||pendingWrites||changingAgent)return;
+ removingAgent=true;++refreshVersion;
+ const modal=el('dialog'),status=el('settings-status'),blockClose=e=>e.preventDefault();
+ const buttons=[...modal.querySelectorAll('button')].map(button=>[button,button.disabled]);
+ modal.addEventListener('cancel',blockClose);buttons.forEach(([button])=>button.disabled=true);
+ status.textContent='Resetting';
+ let completed=0,total=0,next=agentId;
+ try{
+  const latest=await api('state',undefined,'');
+  const agents=scope==='bac'?[]:latest.agents||[];total=agents.length;
+  if(scope!=='lounge'){
+   await api('bac-reset',{},latest.agentId);selectedJob=null;demoPreparationId='';
+  }
+  for(const agent of agents){
+   status.textContent=`Removing ${completed+1} / ${total} · ${agent.name}`;
+   const result=await deleteAgentAndWait(agent.key,agent.name,()=>{status.textContent=`Waiting for ${agent.name} to finish its current call`;});
+   next=result.agentId;completed++;
+   try{const layout=JSON.parse(localStorage.getItem('bac-lounge-layout-v1')||'{}');delete layout[agent.key];localStorage.setItem('bac-lounge-layout-v1',JSON.stringify(layout));}catch{}
+  }
+  const state=await api('state',undefined,completed?next:agentId);
+  if(scope==='bac'){data=state;render();}
+  else{
+   clearTimeout(comparisonTimer);comparison=null;comparePanel.replaceChildren();delete comparePanel.dataset.batch;
+   openAgentState(state);fillCreator(true);setRoom('workshop');
+  }
+  status.textContent=scope==='all'?'Reset complete.':scope==='bac'?'BaC reset.':'Lounge agents reset.';
+ }catch(error){
+  status.textContent=(completed?`${completed} / ${total} removed. `:'')+error.message;
+  try{const state=await api('state',undefined,'');if(state.agentId===agentId){data=state;render();}else openAgentState(state);}catch{}
+ }finally{
+  removingAgent=false;modal.removeEventListener('cancel',blockClose);
+  buttons.forEach(([button,disabled])=>button.disabled=disabled);
+  if(el('agent-reset'))el('agent-reset').disabled=!(data.agents||[]).length;
+  refresh();
+ }
+}

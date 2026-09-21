@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "node": "24.16.0",
+  "openclaw": "2026.9.4",
+  "openshell": "0.0.116",
+  "baseImage": "debian:trixie-slim@sha256:a99cfc517144bc59b1978475ec53b46ecabec7e43635402ee5b77cc54cd1b20a",
+  "images": {
+    "gateway": "ghcr.io/nvidia/openshell/gateway@sha256:05cf77bbb022a739aed6f22daa0e7e164415f4ab273b5f84319e46d91eb8f645",
+    "supervisor": "ghcr.io/nvidia/openshell/supervisor@sha256:c8c42aef16c200063e32cbf72e553e4ead027085427b555efafd95063ecead42",
+    "openclaw": "ghcr.io/nvidia/openshell-community/sandboxes/openclaw@sha256:c116946b3f9e84791630f21f115ac35c9c9f669af70ec0eef3035d79833a9550"
+  },
+  "downloads": {
+    "amd64": {
+      "node": {
+        "url": "https://nodejs.org/dist/v24.16.0/node-v24.16.0-linux-x64.tar.gz",
+        "sha256": "2faf6a387e9b62b888e21c54f01249fb27537ffecf1842f29f4c919d0a59a0ff"
+      },
+      "openshell": {
+        "url": "https://github.com/NVIDIA/OpenShell/releases/download/v0.0.116/openshell-x86_64-unknown-linux-musl.tar.gz",
+        "sha256": "4fb4476d80a1875a0b83547ec3aba999cf0a2e2d75f95f2f709b622e2103520e"
+      }
+    },
+    "arm64": {
+      "node": {
+        "url": "https://nodejs.org/dist/v24.16.0/node-v24.16.0-linux-arm64.tar.gz",
+        "sha256": "589f5b6dd4fcfee4dfda73013903c966abaa8abd93dbc9d436544e472b4f0e74"
+      },
+      "openshell": {
+        "url": "https://github.com/NVIDIA/OpenShell/releases/download/v0.0.116/openshell-aarch64-unknown-linux-musl.tar.gz",
+        "sha256": "7a949c48d1e000cd280869eea1e203e24816b9cfefc575b68a8b72b939cb3f43"
+      }
+    }
+  }
+}

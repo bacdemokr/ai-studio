@@ -8,3 +8,8 @@ node_modules/
 test-results/
 playwright-report/
 app/version.json
+shared/*
+!shared/README.txt
+backups/
+release/
+image-metadata.json

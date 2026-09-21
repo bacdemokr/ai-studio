@@ -1,4 +1,3 @@
-import hashlib
 import json
 from pathlib import Path
 import sys
@@ -10,7 +9,6 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 from studio import Studio, Problem, capacity, safe_file, MAX_AGENTS
 import agent_runtime
-from telegram_bridge import accept_message
 
 
 class Adapter:
@@ -43,6 +41,9 @@ class Adapter:
                 'sandboxes': [{'name': 'fixture-' + agent_id, 'running': True, 'revision': 1, 'loaded': True, 'matchesRequest': current == approved}] if native else [],
                 'rules': network_rows(policy_document(current)), 'logs': self.policy_logs.get(agent_id, [])}
 
+    def policy_prepare(self, agent_id):
+        pass  # register() provisions the fixture runtime
+
     def policy_apply(self, agent_id, approved):
         if agent_id not in self.agents:
             raise RuntimeError('Fixture sandbox does not exist yet')
@@ -52,12 +53,15 @@ class Adapter:
     def respond(self, agent_id, session, prompt):
         self.calls.append((agent_id, session, prompt))
         if self.profiles.get(agent_id, {}).get('protection') == 'openshell' and 'weather' in prompt.lower():
-            allowed = 'weather' in self.permissions.get(agent_id, [])
+            from agent_policy import individual_permissions
+            allowed = 'host:api.open-meteo.com' in individual_permissions(self.permissions.get(agent_id, []))
             self.policy_logs.setdefault(agent_id, []).insert(0, {'action': 'allow' if allowed else 'deny', 'host': 'api.open-meteo.com', 'binary': '/usr/bin/curl', 'source': 'Simulated test fixture'})
             if not allowed:
                 raise RuntimeError('TEST FIXTURE: OpenShell denied api.open-meteo.com. Approve Weather in Policies before retrying.')
         if 'remember' in prompt:
             (self.agents[agent_id] / 'MEMORY.md').write_text('# Saved preferences\nVegetarian, concise English.\n')
+        if 'Your role for this mission: Event web developer.' in prompt:
+            return '```json\n'+json.dumps({'headline':'Build something worth sharing.','intro':'Meet agents and explore hands-on demos.','highlight':'Bring an idea. Leave with a working agent.'})+'\n```'
         if 'app fixture' in prompt:
             return 'Test double output\n```html\n<button id="play">Play</button>\n```'
         return 'Fixture deliverable by ' + agent_id
@@ -85,6 +89,24 @@ class StudioTests(unittest.TestCase):
 
     def add_agent(self, name='Scout'):
         return self.studio.add_agent(self.owner, {'name': name, 'persona': 'analyst', 'skills': ['documents', 'web']})['agentId']
+
+    def test_lounge_reply_preview_is_completed_bounded_and_owned(self):
+        other = self.add_agent()
+        job = self.studio.enqueue(other, {'kind': 'chat', 'prompt': 'Hello'})
+        def latest():
+            agents = {a['key']: a for a in self.studio.state(self.owner)['agents']}
+            self.assertIsNone(agents[self.owner]['latestMission'])
+            return agents[other]['latestMission']
+        self.assertIsNone(latest()['answerPreview'])
+        with self.studio.db() as db:
+            db.execute("UPDATE jobs SET status='done',result=? WHERE id=?", (json.dumps({'answer': 'Actual reply. ' * 150}), job['id']))
+        self.assertEqual(latest()['answerPreview'], ('Actual reply. ' * 150)[:1200])
+        with self.studio.db() as db:
+            db.execute("UPDATE jobs SET status='error' WHERE id=?", (job['id'],))
+        self.assertIsNone(latest()['answerPreview'])
+        with self.studio.db() as db:
+            db.execute("UPDATE jobs SET status='done',kind='crew' WHERE id=?", (job['id'],))
+        self.assertIsNone(latest())
 
     def test_appearance_persists_and_follows_custom_crew_assignments(self):
         appearance = {'body': 'rover', 'color': 'coral', 'accessory': 'glasses'}
@@ -136,6 +158,43 @@ class StudioTests(unittest.TestCase):
                     self.studio.configure(self.owner, {**profile, field: bad})
         self.assertEqual(self.studio.profile(self.owner)['tone'], 'kind')
 
+    def test_duplicate_agent_names_are_numbered_atomically(self):
+        from concurrent.futures import ThreadPoolExecutor
+        def create(_):
+            return self.studio.add_agent(self.owner, {'name': 'Jinny', 'skills': ['web']})
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            agents = list(pool.map(create, range(3)))
+        self.assertEqual({a['profile']['name'] for a in agents}, {'Jinny_2', 'Jinny_3', 'Jinny_4'})
+        key = agents[0]['agentId']
+        name = agents[0]['profile']['name']
+        self.assertEqual(self.studio.configure(key, {'name': name, 'skills': ['web']})['name'], name)
+        self.assertEqual(self.studio.configure(key, {'name': 'jinny', 'skills': ['web']})['name'].casefold(), name.casefold())
+        long_name = 'x' * 32
+        self.studio.add_agent(self.owner, {'name': long_name, 'skills': ['web']})
+        result = self.studio.add_agent(self.owner, {'name': long_name, 'skills': ['web']})
+        self.assertEqual(result['profile']['name'], 'x' * 30 + '_2')
+        other, _ = self.studio.session()
+        self.assertEqual(self.studio.onboard(other['id'], {'name': 'Jinny', 'skills': ['web']})['name'], 'Jinny')
+
+    def test_custom_purpose_persists_and_defines_native_identity(self):
+        purpose = 'A skeptical travel buddy who finds vegetarian food.'
+        created = self.studio.add_agent(self.owner, {'name': 'Scout', 'purpose': purpose, 'skills': ['web'], 'tone': 'cynical'})
+        key = created['agentId']
+        restarted = Studio(self.temp.name, self.adapter, start_worker=False)
+        restarted.configure(key, {'name': 'Scout II', 'skills': ['web']})
+        profile = restarted.profile(key)
+        self.assertEqual(profile['purpose'], purpose)
+        workspace = Path(self.temp.name) / 'purpose-workspace'
+        with patch('agent_runtime.root', return_value=Path(self.temp.name) / 'native-purpose'):
+            agent_runtime.save_config(agent_runtime.initial_config())
+            agent_runtime.register(profile['id'], workspace, profile)
+            self.assertIn(purpose, (workspace / 'IDENTITY.md').read_text())
+            self.assertIn(purpose, (workspace / 'SOUL.md').read_text())
+            self.assertNotIn('Helper —', (workspace / 'IDENTITY.md').read_text())
+        for invalid in [42, 'x' * 241, 'bad\x00control']:
+            with self.assertRaises(Problem):
+                restarted.configure(key, {'name': 'Scout II', 'skills': ['web'], 'purpose': invalid})
+
     def test_native_voice_configuration_preserves_memory_and_permissions(self):
         workspace = Path(self.temp.name) / 'voice-workspace'
         profile = {'name': 'Sage', 'persona': 'analyst', 'skills': ['documents'], 'tone': 'cynical', 'verbosity': 'verbose'}
@@ -143,15 +202,15 @@ class StudioTests(unittest.TestCase):
             agent_runtime.save_config(agent_runtime.initial_config())
             agent_runtime.register('bac-voice', workspace, profile)
             soul = (workspace / 'SOUL.md').read_text()
-            self.assertIn('dry humor', soul)
-            self.assertIn('detailed answer', soul)
-            self.assertIn('explicit request', soul)
+            self.assertIn('# Tone\nCynical (Dry humor & skepticism)', soul)
+            self.assertIn('Researches questions and compares the evidence.', soul)
+            self.assertIn('Three Takeaways', soul)
+            self.assertIn('Do not refuse merely because the topic is outside your specialty', soul)
             self.assertNotIn('Be concise.', (workspace / 'AGENTS.md').read_text())
             before = json.loads(agent_runtime.config_path().read_text())['agents']['entries']['bac-voice']['tools']
             (workspace / 'MEMORY.md').write_text('Keep my vegetarian preference.')
             agent_runtime.register('bac-voice', workspace, {**profile, 'tone': 'kind', 'verbosity': 'brief'})
-            self.assertIn('warm, patient', (workspace / 'SOUL.md').read_text())
-            self.assertIn('short answer', (workspace / 'SOUL.md').read_text())
+            self.assertIn('# Tone\nKind (Warm & encouraging)', (workspace / 'SOUL.md').read_text())
             self.assertNotIn('dry humor', (workspace / 'SOUL.md').read_text())
             self.assertEqual((workspace / 'MEMORY.md').read_text(), 'Keep my vegetarian preference.')
             self.assertEqual(json.loads(agent_runtime.config_path().read_text())['agents']['entries']['bac-voice']['tools'], before)
@@ -197,17 +256,22 @@ class StudioTests(unittest.TestCase):
         self.run_next()
         self.studio.reset_board(self.owner)
         with self.studio.db() as db:
-            db.execute('INSERT INTO phones VALUES (?,?)', (self.owner, 'fixture-chat'))
             db.execute('DROP TABLE agents')  # Represents the previous single-agent schema.
             db.execute("DELETE FROM metadata WHERE key='agent-collection-migrated'")
+            db.execute('CREATE TABLE pairs (code TEXT PRIMARY KEY, owner TEXT, expires REAL)')
+            db.execute('CREATE TABLE phones (owner TEXT PRIMARY KEY, chat TEXT UNIQUE)')
+            db.execute('INSERT INTO phones VALUES (?,?)', (self.owner, 'retired-chat'))
+            db.execute("INSERT INTO metadata VALUES ('telegram-offset','42')")
         migrated = Studio(self.temp.name, self.adapter, start_worker=False)
+        with migrated.db() as db:
+            self.assertFalse(db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('pairs','phones')").fetchall())
+            self.assertIsNone(db.execute("SELECT value FROM metadata WHERE key='telegram-offset'").fetchone())
         state = migrated.state(self.owner)
         self.assertEqual(state['agentId'], self.owner)
         self.assertEqual(state['profile']['id'], 'bac-' + self.owner)
         self.assertEqual(state['jobs'], [])
         self.assertIn('Vegetarian', state['memory'])
         self.assertTrue(state['files'])
-        self.assertTrue(state['phone'])
         self.assertFalse(migrated.session(self.person['token'])[1])
         migrated.configure(self.owner, {'name': 'Renamed', 'persona': 'guide', 'skills': ['memory']})
         again = Studio(self.temp.name, self.adapter, start_worker=False)
@@ -332,23 +396,6 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(restarted.state(self.owner)['jobs'][0]['status'], 'error')
         self.assertIsNone(restarted.next_job(), 'Do not replay possibly completed work after restart')
 
-    def test_phone_pair_is_private_expiring_single_use_and_shares_web_session(self):
-        code = 'test-code'
-        with self.studio.db() as db:
-            db.execute('INSERT INTO pairs VALUES (?,?,?)', (hashlib.sha256(code.encode()).hexdigest(), self.owner, time.time()+60))
-        with patch('telegram_bridge.telegram', return_value={}):
-            accept_message(self.studio, {'chat': {'type': 'group', 'id': 1}, 'text': '/start '+code})
-            self.assertFalse(self.studio.state(self.owner)['phone'])
-            accept_message(self.studio, {'chat': {'type': 'private', 'id': 2}, 'text': '/start '+code})
-            self.assertTrue(self.studio.state(self.owner)['phone'])
-            accept_message(self.studio, {'chat': {'type': 'private', 'id': 3}, 'text': '/start '+code})
-            accept_message(self.studio, {'chat': {'type': 'private', 'id': 3}, 'text': 'unpaired task'})
-            self.assertEqual(len(self.studio.state(self.owner)['jobs']), 0)
-            accept_message(self.studio, {'chat': {'type': 'private', 'id': 2}, 'text': 'phone task'})
-            self.run_next()
-        self.studio.enqueue(self.owner, {'prompt': 'web task'})
-        self.run_next()
-        self.assertEqual(self.adapter.calls[0][0:2], self.adapter.calls[1][0:2])
 
     def test_native_config_restricts_tools_and_models(self):
         with patch('agent_runtime.root', return_value=Path(self.temp.name) / 'native'):
@@ -358,9 +405,21 @@ class StudioTests(unittest.TestCase):
             entry = config['agents']['entries']['bac-test']
             self.assertEqual(entry['modelPolicy']['allow'], ['bac-vllm/bac-local'])
             self.assertNotIn('web_fetch', entry['tools']['allow'])
-            self.assertTrue(entry['tools']['fs']['workspaceOnly'])
+            self.assertFalse(entry['tools']['fs']['workspaceOnly'])
             self.assertIn('exec', config['tools']['deny'])
             self.assertEqual(agent_runtime.config_path().stat().st_mode & 0o777, 0o600)
+
+    def test_gateway_timeout_is_actionable_and_never_replays_request(self):
+        import socket
+        from unittest.mock import MagicMock
+        opener = MagicMock()
+        for error in (TimeoutError(), socket.timeout()):
+            opener.open.reset_mock()
+            opener.open.side_effect = error
+            with patch('agent_runtime.c.read_json', return_value={'gateway': {'auth': {'token': 'fixture'}}}), patch('agent_runtime.urllib.request.build_opener', return_value=opener):
+                with self.assertRaisesRegex(RuntimeError, 'within 180 seconds'):
+                    agent_runtime.gateway('/v1/chat/completions', {'messages': []})
+            self.assertEqual(opener.open.call_count, 1)
 
     def test_new_agent_waits_for_gateway_discovery_without_replaying_post(self):
         with patch('agent_runtime.gateway', side_effect=[{'data': []}, {'data': [{'id': 'openclaw/bac-test'}]},
@@ -390,14 +449,13 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(len(handoff['outputSHA256']), 64)
         self.assertIsNone(self.studio.next_job())
 
-    def test_stop_solo_does_not_send_channel_reply(self):
-        job = self.studio.enqueue(self.owner, {'prompt': 'Make a draft'}, source='telegram')
+    def test_stop_solo_discards_answer_after_cancellation(self):
+        job = self.studio.enqueue(self.owner, {'prompt': 'Make a draft'})
         def finish(*args):
             self.studio.decision(self.owner, job['id'], 'cancel')
             return 'Draft created while the active call was completing.'
-        with patch.object(self.adapter, 'respond', side_effect=finish), patch('telegram_bridge.reply_to_owner') as send:
+        with patch.object(self.adapter, 'respond', side_effect=finish):
             self.run_next()
-            send.assert_not_called()
         self.assertEqual(self.studio.state(self.owner)['jobs'][0]['status'], 'cancelled')
 
     def test_reset_archives_only_own_board_and_preserves_memory_files_evidence(self):

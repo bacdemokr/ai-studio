@@ -13,7 +13,7 @@ from serve import create_server
 class BrowserAdapter(Adapter):
     def status(self):
         return {'ready': True, 'gateway': True, 'model': True, 'testFixture': True,
-                'version': 'TEST FIXTURE', 'openshell': 'not configured', 'telegram': False}
+                'version': 'TEST FIXTURE', 'openshell': 'not configured'}
 
     def respond(self, agent_id, session, prompt):
         if '[fixture:fail-once]' in prompt and agent_id not in getattr(self, 'failed_agents', set()):
@@ -23,7 +23,7 @@ class BrowserAdapter(Adapter):
         if 'reaction-time game' in prompt:
             prompt += ' app fixture'
         if 'Act as venue scout and marketing writer.' in prompt:
-            return 'TEST FIXTURE — no website was fetched.\n```json\n'+json.dumps({'subject':'Build your next agent with us · Zurich', 'body':'Hello [First name],\n\nJoin our Build a Claw demo event. Explore personal agents, multi-agent teams and CUDA-X ideas.\n\nDate: [TBC]\nVenue: Fixture Hotel — fictional test candidate, not booked.\nRegistration: [TBC]\n\nThis invitation is a test fixture, not a live model response.', 'venue':{'name':'Fixture Hotel · fictional','url':''}})+'\n```'
+            return 'TEST FIXTURE — no website was fetched.\n```json\n'+json.dumps({'subject':'Build your next agent with us · Zurich', 'body':'Hello [First name],\n\nJoin our Build-a-Claw demo event. Explore personal agents, multi-agent teams and CUDA-X ideas.\n\nDate: [TBC]\nVenue: Fixture Hotel — fictional test candidate, not booked.\nRegistration: [TBC]\n\nThis invitation is a test fixture, not a live model response.', 'venue':{'name':'Fixture Hotel · fictional','url':''}})+'\n```'
         if 'Act as audience host and independent reviewer.' in prompt:
             return 'TEST FIXTURE review.\n```json\n'+json.dumps({'survey':{'title':'Help shape your BaC demos','intro':'Test fixture questions. No name or email is collected.','topicQuestion':'Which topic would you try first?','experienceQuestion':'Have you worked with agents before?','ratingQuestion':'How useful does this event sound?'}})+'\n```'
         return super().respond(agent_id, session, prompt)

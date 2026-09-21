@@ -3,6 +3,7 @@
 import argparse
 import base64
 import functools
+import hashlib
 from http.cookies import SimpleCookie
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import ipaddress
@@ -15,7 +16,6 @@ import threading
 from urllib.parse import urlparse, parse_qs
 
 from studio import Studio, Problem, safe_file
-from telegram_bridge import poll
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -27,14 +27,23 @@ class Handler(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def log_message(self, format, *args):
-        # API paths may carry file names; never log request bodies, cookies or pair codes.
+        # API paths may carry file names; never log request bodies or cookies.
         if not self.path.startswith(('/api/', '/survey/')):
             super().log_message(format, *args)
 
-    def json_response(self, value, status=200, cookie=None):
+    def json_response(self, value, status=200, cookie=None, conditional=False):
         body = json.dumps(value).encode()
+        etag = '"' + hashlib.sha256(body).hexdigest() + '"' if conditional else None
+        if etag and self.headers.get('If-None-Match') == etag:
+            self.send_response(304)
+            self.send_header('ETag', etag)
+            self.end_headers()
+            return
         self.send_response(status)
+        if etag:
+            self.send_header('ETag', etag)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Cache-Control','no-store')
         self.send_header('Content-Length', str(len(body)))
         if cookie:
             self.send_header('Set-Cookie', 'bac_session=' + cookie + '; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000')
@@ -49,6 +58,17 @@ class Handler(SimpleHTTPRequestHandler):
             return ipaddress.ip_address(host).is_private or ipaddress.ip_address(host).is_loopback
         except (ValueError, TypeError):
             return False
+
+    def is_operator(self):
+        host=urlparse('http://'+self.headers.get('Host','')).hostname
+        try:
+            return ipaddress.ip_address(self.client_address[0]).is_loopback and (host=='localhost' or ipaddress.ip_address(host).is_loopback)
+        except ValueError:
+            return False
+
+    def require_operator(self):
+        if not self.is_operator():
+            raise Problem('Open settings on localhost, or through your private SSH tunnel.',403)
 
     def participant(self, create=False):
         cookie = SimpleCookie()
@@ -95,14 +115,21 @@ class Handler(SimpleHTTPRequestHandler):
             row, new = self.participant(create=parsed.path == '/api/session')
             owner = studio.resolve_agent(row['id'], self.headers.get('X-BaC-Agent'))
             if parsed.path == '/api/session':
-                return self.json_response({'csrf': row['csrf'], 'runtime': studio.runtime_status(), **studio.state(owner)}, cookie=row['token'] if new else None)
+                return self.json_response({'csrf': row['csrf'], 'canConfigure': self.is_operator(), 'runtime': studio.runtime_status(), **studio.state(owner)}, cookie=row['token'] if new else None)
             if parsed.path == '/api/state':
-                return self.json_response(studio.state(owner))
+                return self.json_response(studio.state(owner), conditional=True)
+            if parsed.path == '/api/settings':
+                self.require_operator()
+                import runtime_settings
+                return self.json_response(runtime_settings.public(row['id']+':'+self.headers.get('X-BaC-Key-Session','missing')))
             if parsed.path == '/api/event-catalog':
                 import event_planner
                 return self.json_response({'templates':event_planner.TEMPLATES,'topics':event_planner.TOPICS,'harnesses':event_planner.HARNESS})
             if parsed.path == '/api/survey-report':
                 return self.json_response(studio.survey_report(owner, parse_qs(parsed.query).get('id',[''])[0]))
+            if parsed.path == '/api/telemetry':
+                import telemetry
+                return self.json_response(telemetry.report(studio, owner))
             if parsed.path == '/api/runtime':
                 return self.json_response(studio.runtime_status())
             if parsed.path == '/api/security':
@@ -112,11 +139,29 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.json_response(studio.policy_report(owner))
             if parsed.path == '/api/evidence':
                 return self.json_response(studio.evidence(owner, parse_qs(parsed.query).get('id', [''])[0]))
+            if parsed.path == '/api/agent-documents':
+                from agent_documents import read_documents
+                query=parse_qs(parsed.query,keep_blank_values=True)
+                if set(query)-{'role'} or len(query.get('role',[]))>1:
+                    raise Problem('Choose one agent to inspect.')
+                role=None
+                if 'role' in query:
+                    value=query['role'][0]
+                    if not value.isascii() or not value.isdecimal():raise Problem('Choose a valid crew member.')
+                    role=int(value)
+                return self.json_response(read_documents(studio,owner,role))
             if parsed.path == '/api/file':
                 name = parse_qs(parsed.query).get('path', [''])[0]
                 if not (name.startswith(('inbox/', 'artifacts/')) or name in ('MEMORY.md', 'IDENTITY.md', 'SOUL.md', 'AGENTS.md')):
                     raise Problem('File is not available.', 404)
                 path = safe_file(studio.workspace(owner), name, True)
+                if path.suffix.lower() in ('.png','.jpg','.webp'):
+                    mime={'.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp'}[path.suffix.lower()]
+                    return self.json_response({'path':name,'encoding':'base64','content':base64.b64encode(path.read_bytes()).decode(),'mime':mime})
+                if path.suffix.lower()=='.pdf':
+                    return self.json_response({'path':name,'encoding':'base64','content':base64.b64encode(path.read_bytes()).decode(), 'mime':'application/pdf'})
+                if path.suffix.lower()=='.pptx':
+                    return self.json_response({'path':name,'encoding':'base64','content':base64.b64encode(path.read_bytes()).decode(),'mime':'application/vnd.openxmlformats-officedocument.presentationml.presentation'})
                 if path.suffix in ('.xlsx','.eml'):
                     return self.json_response({'path':name,'encoding':'base64','content':base64.b64encode(path.read_bytes()).decode(), 'mime':'message/rfc822' if path.suffix=='.eml' else 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})
                 return self.json_response({'path': name, 'content': path.read_text(encoding='utf-8')})
@@ -145,13 +190,28 @@ class Handler(SimpleHTTPRequestHandler):
             if not secrets.compare_digest(self.headers.get('X-BaC-CSRF', ''), row['csrf']):
                 raise Problem('Refresh the page to renew your session.', 403)
             size = int(self.headers.get('Content-Length', '0'))
-            if not 0 < size <= 512000:
+            if not 0 < size <= (15 * 1024 * 1024 if self.path in ('/api/upload','/api/jobs') else 512000):
                 raise Problem('Request is too large or empty.', 413)
             data = json.loads(self.rfile.read(size))
             if not isinstance(data, dict):
                 raise Problem('Expected a JSON object.')
             studio = self.server.studio
             owner = studio.resolve_agent(row['id'], self.headers.get('X-BaC-Agent'))
+            lease = self.headers.get('X-BaC-Key-Session','')
+            if not lease or len(lease)>100:lease='missing'
+            data['_credentialSession']=row['id']+':'+lease
+            if self.path == '/api/credential-session':
+                import session_secrets
+                if data.get('end'):session_secrets.release(data['_credentialSession'])
+                else:session_secrets.renew(data['_credentialSession'])
+                studio.status_cache=(0,{})
+                return self.json_response({'ok':True})
+            if self.path in ('/api/settings','/api/settings/models','/api/settings/start'):
+                self.require_operator()
+                import runtime_settings
+                if self.path == '/api/settings/models':return self.json_response(runtime_settings.models(data))
+                if self.path == '/api/settings/start':return self.json_response(runtime_settings.start_gateway())
+                return self.json_response(runtime_settings.save(studio,data))
             routes = {
                 '/api/agents': lambda: studio.add_agent(row['id'], data),
                 '/api/onboard': lambda: studio.onboard(owner, data),
@@ -163,8 +223,12 @@ class Handler(SimpleHTTPRequestHandler):
                 '/api/survey-replan': lambda: studio.survey_replan(owner, data),
                 '/api/upload': lambda: studio.upload(owner, data),
                 '/api/decision': lambda: studio.decision(owner, data.get('id'), data.get('action')),
-                '/api/pair': lambda: studio.pair(owner),
+                '/api/prepare-demo': lambda: studio.prepare_demo(owner, data),
+                '/api/retry-reaction': lambda: studio.retry_reaction(owner, data),
+                '/api/event-reset': lambda: studio.reset_event_board(owner),
                 '/api/reset': lambda: studio.reset_board(owner),
+                '/api/crew-chat-reset': lambda: studio.reset_crew_chats(owner),
+                '/api/bac-reset': lambda: studio.reset_crew_chats(owner, reset_event=True),
             }
             if self.path not in routes:
                 raise Problem('Not found.', 404)
@@ -178,6 +242,8 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 def create_server(host='127.0.0.1', port=8080, studio=None):
+    import session_secrets, ops_common
+    if studio is None:session_secrets.purge_legacy(ops_common.home())
     root = Path(__file__).resolve().parents[1] / 'app'
     server = ThreadingHTTPServer((host, port), functools.partial(Handler, directory=str(root)))
     server.studio = studio or Studio()
@@ -193,9 +259,8 @@ def main():
         server = create_server(args.host, args.port)
     except OSError as error:
         parser.exit(1, f'Cannot start server: {error}. Try --port 8081.\n')
-    threading.Thread(target=poll, args=(server.studio,), daemon=True, name='bac-telegram').start()
     print(f'BaC Agent Studio: http://{args.host}:{server.server_port}', flush=True)
-    print('OpenClaw runs tasks when configured. Visual rehearsal remains available separately.', flush=True)
+    print('Connect a model in Settings to run OpenClaw tasks.', flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

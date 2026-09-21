@@ -1,0 +1,22 @@
+const assert=require('node:assert/strict'),{chromium}=require('playwright');
+(async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH,args:['--enable-unsafe-swiftshader']});try{
+ const page=await browser.newPage({viewport:{width:1500,height:960}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:8082');await page.waitForFunction(()=>window.BacStudio&&BacCampus.inspect().navigation.overview);
+ const travel=async room=>{await page.locator('.world-room-map [data-world-room='+room+']').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);};
+ const stillFull=async()=>assert(await page.locator('#agent-campus').evaluate(n=>n.classList.contains('studio-world-open')));
+ await travel('workshop');await page.locator('#studio-focus').click();
+ await page.locator('#studio-name').fill('Fullscreen Cat');await page.locator('#studio-purpose').fill('Plan practical trips.');await page.locator('[data-body=cat]').click();await page.locator('#studio-create').click();
+ await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Fullscreen Cat'&&BacStudio.inspect().room==='lounge');await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
+ await stillFull();assert(await page.locator('#studio-passport').isVisible());
+ await page.locator('[data-surface=missions]').click();await page.locator('[data-studio-mission=weather]').click();assert(!(await page.locator('#studio-surface').isVisible()));
+ await page.locator('#studio-send').click();await page.waitForSelector('#studio-surface[open]');assert(await page.locator('#studio-workspace').isVisible());await stillFull();
+ await page.locator('#studio-surface-close').click();await page.locator('#studio-agent-policy').click();await page.waitForSelector('#studio-policy-content .studio-policy-hero');await stillFull();
+ await page.locator('#studio-surface-close').click();await page.locator('#studio-memory').click();assert(await page.locator('#studio-dialog').isVisible());await page.locator('#studio-dialog-close').click();
+ await travel('workshop');await page.locator('#studio-name').fill('Fullscreen Fox');await page.locator('[data-body=fox]').click();await page.locator('#studio-create').click();
+ await page.waitForFunction(()=>BacStudio.inspect().agents.length===2&&BacStudio.inspect().room==='lounge');await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
+ await page.locator('#studio-prompt').fill('Describe your personality.');await page.locator('#studio-send-all').click();await page.waitForSelector('#studio-surface[open] #studio-compare');
+ assert.equal(await page.locator('[data-compare-row]').count(),2);await stillFull();await page.locator('#studio-surface-close').click();
+ await page.locator('#studio-passport').evaluate(n=>n.scrollTop=0);await page.screenshot({path:'../../work/fullscreen-lounge.png'});
+ await page.locator('#studio-config').click();await page.waitForSelector('#studio-config-form');assert(await page.locator('#studio-config-form').isVisible());await page.locator('#studio-dialog-close').click();await stillFull();
+ assert.deepEqual(errors,[]);console.log('PASS: fullscreen hiring saves, lounge missions/results, policies, memory, multiple agents, comparison, settings. Temporary fixture only.');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

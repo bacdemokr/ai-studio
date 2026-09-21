@@ -1,0 +1,16 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const escape=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+const context=vm.createContext({escape});
+const source=fs.readFileSync('src/studio-chat.js','utf8');
+vm.runInContext(source.slice(source.indexOf('function messageMarkup('),source.indexOf('let conversationSignature=')),context);
+const render=context.messageMarkup;
+const expected='<ol><li>First</li><li>Second</li><li>Third</li></ol>';
+assert.equal(render('1. First\n\n2. Second\n\n3. Third'),expected);
+assert.equal(render('1. First\n2. Second\n3. Third'),expected);
+assert.equal(render('1. First\n\n1. Second\n\n1. Third'),expected);
+assert.equal(render('2. Second\n\n3. Third'),'<ol start="2"><li>Second</li><li>Third</li></ol>');
+assert.equal(render('1. First\n\nNew list:\n\n1. Another'),'<ol><li>First</li></ol><p>New list:</p><ol><li>Another</li></ol>');
+assert.equal(render('1. First\n\n- Bullet'),'<ol><li>First</li></ol><ul><li>Bullet</li></ul>');
+assert.equal(render('- First\n\n- Second'),'<ul><li>First</li><li>Second</li></ul>');
+assert.equal(render('1. **First**\n\n2. <script>alert(1)</script>'),'<ol><li><strong>First</strong></li><li>&lt;script&gt;alert(1)&lt;/script&gt;</li></ol>');
+console.log('PASS: loose and compact lists, Markdown auto-numbering, starting numbers, separate lists, and escaped content.');

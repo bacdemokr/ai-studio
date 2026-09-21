@@ -60,6 +60,11 @@ def stage():
                     if relative.is_absolute() or '..' in relative.parts or stat.S_ISLNK(member.external_attr >> 16):
                         raise RuntimeError('Release archive contains an unsafe path.')
                 source.extractall(destination)
+                # ZipFile drops Git executable bits. Keep entry points runnable in
+                # deployed snapshots without restoring setuid/group-write flags.
+                for member in source.infolist():
+                    if not member.is_dir():
+                        (destination / member.filename).chmod(0o755 if member.external_attr >> 16 & 0o111 else 0o644)
         c.run([sys.executable, destination / 'scripts/build.py'],
               env={**os.environ, 'BAC_DEMO_VERSION': revision}, cwd=destination)
         page = destination / 'app/index.html'
@@ -118,6 +123,7 @@ def activate(target, restart=False):
 
 def update():
     clean_checkout()
+    c.require_idle()
     if git('branch', '--show-current') != 'main':
         raise RuntimeError('Switch to main before updating this demo checkout.')
     git('fetch', 'origin', 'main')
@@ -138,22 +144,38 @@ def update():
     print('Refresh the browser to load the new UI. Agent identities, files, memory and jobs are preserved outside the release.')
 
 
-def start(host=None, port=None):
+def validate_start(host=None, port=None):
     c.require_systemd()
     current = release_target('current')
-    if not current:
-        current = stage()
-        activate(current)
     new_settings = settings()
     if host is not None:
         new_settings['host'] = host
     if port is not None:
         new_settings['port'] = port
-    if not c.active('bac-demo') and not c.port_free(new_settings['port']):
-        raise RuntimeError('Application port is already used. Stop ./start.sh or choose --port 8081.')
+    running = c.active('bac-demo')
+    if running and not c.is_owned_unit('bac-demo'):
+        raise RuntimeError('Existing bac-demo service is not managed by this tool.')
+    if (not running or new_settings['port'] != settings()['port']) and not c.port_free(new_settings['port']):
+        raise RuntimeError('Application port is already used. Stop ./bac dev preview or choose --port 8081.')
+    if not current:
+        clean_checkout()
+    return current, new_settings, running
+
+
+def start(host=None, port=None):
+    current, new_settings, running = validate_start(host, port)
+    if running and current and new_settings == settings():
+        wait_ready(current)
+        print('Application already ready at http://127.0.0.1:' + str(new_settings['port']) + '. Existing connections kept.')
+        return
+    if running:
+        c.require_idle()
+    if not current:
+        current = stage()
+        activate(current)
     c.install_unit('bac-demo', [sys.executable, c.home() / 'demo/current/scripts/serve.py',
                               '--host', new_settings['host'], '--port', str(new_settings['port'])],
-                   {'BAC_DATA_DIR': str(c.home())})
+                   c.service_environment())
     c.write_json(c.home() / 'demo/settings.json', new_settings)
     c.service('bac-demo', 'enable')
     c.service('bac-demo', 'restart')
@@ -165,6 +187,7 @@ def rollback():
     previous = release_target('previous')
     if not previous:
         raise RuntimeError('There is no previous successful application release to restore.')
+    c.require_idle()
     activate(previous, restart=c.active('bac-demo'))
     print('Application rolled back. The Git checkout remains on its current commit. Refresh the browser.')
 

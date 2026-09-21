@@ -2,22 +2,20 @@
   const worldViewport=document.getElementById('campus-viewport');
   const worldButton=document.createElement('button');
   worldButton.id='studio-focus';worldButton.type='button';
-  worldButton.textContent='Full screen ↗';worldButton.title='Full screen · Enter after selecting the 3D view';
+  worldButton.textContent='Full screen';worldButton.title='Full screen · Enter after selecting the 3D view';
   worldButton.setAttribute('aria-controls','campus-viewport');worldButton.setAttribute('aria-expanded','false');
   document.querySelector('.campus-scene-bottom .row').prepend(worldButton);
   worldViewport.tabIndex=0;worldViewport.setAttribute('role','region');
   worldViewport.setAttribute('aria-keyshortcuts','Enter');
   worldViewport.setAttribute('aria-label','Interactive 3D workshop. Click then press Enter for full screen, or double-click an empty area. Drag to orbit and scroll to zoom. Escape returns to the studio.');
-  const worldHint=root.querySelector('.campus-camera-hint');
-  worldHint.textContent='Drag to orbit · scroll to zoom · Enter for full screen';
   let worldOpen=false,worldEpoch=0,worldPreviousFocus=null,worldScroll=[0,0],worldOverflow='',worldInert=[];
 
   function restoreWorld(){
     if(!worldOpen)return;
     worldOpen=false;++worldEpoch;
+    document.querySelector('#bac-planner .topbar').append(document.getElementById('studio-config'));
     root.classList.remove('studio-world-open');layout.classList.remove('world-expanded');
-    worldButton.textContent='Full screen ↗';worldButton.setAttribute('aria-expanded','false');
-    worldHint.textContent='Drag to orbit · scroll to zoom · Enter for full screen';
+    worldButton.textContent='Full screen';worldButton.setAttribute('aria-expanded','false');
     document.body.style.overflow=worldOverflow;
     worldInert.forEach(([node,value])=>node.inert=value);worldInert=[];
     if(worldPreviousFocus?.isConnected)worldPreviousFocus.focus({preventScroll:true});
@@ -30,7 +28,7 @@
   async function enterWorld(){
     if(worldOpen||el('dialog').open)return;
     worldOpen=true;const epoch=++worldEpoch;
-    root.dataset.crewDetails='false';
+    root.querySelector('.campus-scene-bottom .row').append(document.getElementById('studio-config'));
     worldPreviousFocus=document.activeElement;worldScroll=[window.scrollX,window.scrollY];worldOverflow=document.body.style.overflow;
     // The window-filling fallback has the same keyboard boundary as native fullscreen.
     for(let node=root;node.parentElement&&node!==document.body;node=node.parentElement){
@@ -38,7 +36,6 @@
     }
     root.classList.add('studio-world-open');layout.classList.add('world-expanded');document.body.style.overflow='hidden';
     worldButton.textContent='Exit full screen · Esc';worldButton.setAttribute('aria-expanded','true');
-    worldHint.textContent='Drag to orbit · scroll to zoom · Esc to return';
     worldViewport.focus({preventScroll:true});
     if(root.requestFullscreen&&!document.fullscreenElement){
       try{
@@ -57,6 +54,5 @@
   worldViewport.addEventListener('keydown',e=>{
     if(e.target===worldViewport&&e.key==='Enter'&&!e.repeat){e.preventDefault();worldOpen?leaveWorld():enterWorld();}
   });
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&worldOpen&&!el('dialog').open){e.preventDefault();leaveWorld();}});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&worldOpen&&!root.querySelector('dialog[open]')){e.preventDefault();leaveWorld();}});
   document.addEventListener('fullscreenchange',()=>{if(document.fullscreenElement!==root)restoreWorld();});
-  document.getElementById('bac-planner').addEventListener('bac:mode',e=>{if(e.detail!=='campus')leaveWorld();});

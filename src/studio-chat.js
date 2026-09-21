@@ -1,0 +1,145 @@
+const chatImageDrafts=new Map();
+const imageKey=crew=>agentId+(crew?':crew:'+selectedCrewRole:':personal');
+function pendingImages(crew=false){return chatImageDrafts.get(imageKey(crew))||[];}
+function clearChatImages(crew=false){chatImageDrafts.delete(imageKey(crew));renderImageDrafts(crew);}
+// Acknowledgement clears only the submitted draft, not later typing or attachments.
+function captureChatDraft(crew=false){return {crew,key:imageKey(crew),roleKey:agentId+':'+selectedCrewRole,prompt:el((crew?'crew-':'')+'prompt').value,images:pendingImages(crew).slice()};}
+function acknowledgeChatDraft(draft){
+ const current=imageKey(draft.crew)===draft.key;
+ if(current){const input=el((draft.crew?'crew-':'')+'prompt');if(input.value===draft.prompt)input.value='';if(draft.crew)crewDrafts.set(draft.roleKey,input.value);}
+ else if(draft.crew&&crewDrafts.get(draft.roleKey)===draft.prompt)crewDrafts.set(draft.roleKey,'');
+ const remaining=(chatImageDrafts.get(draft.key)||[]).filter(image=>!draft.images.includes(image));
+ if(remaining.length)chatImageDrafts.set(draft.key,remaining);else chatImageDrafts.delete(draft.key);
+ if(current)renderImageDrafts(draft.crew);
+}
+function renderImageDrafts(crew=false){
+ const id=crew?'crew-':'',node=el(id+'image-drafts');if(!node)return;
+ node.replaceChildren();
+ pendingImages(crew).forEach((item,index)=>{const card=document.createElement('span'),image=document.createElement('img'),remove=document.createElement('button');image.src=item.dataUrl;image.alt=item.name;remove.type='button';remove.textContent='×';remove.setAttribute('aria-label','Remove '+item.name);remove.onclick=()=>{const items=pendingImages(crew).slice();items.splice(index,1);chatImageDrafts.set(imageKey(crew),items);renderImageDrafts(crew)};card.append(image,remove);node.append(card)});
+ node.hidden=!pendingImages(crew).length;
+ el(id+'prompt').required=!pendingImages(crew).length;
+}
+async function addChatImages(files,crew=false){
+ const key=imageKey(crew),input=el((crew?'crew-':'')+'prompt');if(input.disabled)return;
+ for(const file of files){
+  if((chatImageDrafts.get(key)||[]).length>=4){alert('Attach up to four images per message.');break;}
+  if(!['image/png','image/jpeg','image/webp'].includes(file.type)){alert('Use PNG, JPEG or WebP images.');continue;}
+  if(file.size>20*1024*1024){alert('Choose an image smaller than 20 MB.');continue;}
+  try{const bitmap=await createImageBitmap(file),scale=Math.min(1,1600/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();const dataUrl=canvas.toDataURL('image/jpeg',.88);if(dataUrl.length>2800000)throw new Error('Image is too large after resizing. Try a smaller image.');const items=chatImageDrafts.get(key)||[];if(items.length<4)chatImageDrafts.set(key,[...items,{name:file.name||'Pasted image',dataUrl}]);if(imageKey(crew)===key)renderImageDrafts(crew);}catch(error){alert(error.message||'This image could not be read.');}
+ }
+}
+function imageHistoryMarkup(images){return (images||[]).map(image=>'<img class="chat-image" data-chat-image="'+escape(image.path)+'" alt="Attached image">').join('');}
+function loadChatImages(container,owner){
+ container.querySelectorAll('[data-chat-image]').forEach(async image=>{try{const file=await api('file?path='+encodeURIComponent(image.dataset.chatImage),undefined,owner);if(image.isConnected&&file.encoding==='base64'&&['image/png','image/jpeg','image/webp'].includes(file.mime))image.src='data:'+file.mime+';base64,'+file.content;}catch{image.alt='Image unavailable';}});
+}
+for(const crew of [false,true]){
+ const id=crew?'crew-':'',form=el(id+'chat'),input=el(id+'prompt'),previews=document.createElement('div'),picker=document.createElement('input'),button=document.createElement('button');
+ previews.id='studio-'+id+'image-drafts';previews.className='chat-image-drafts';previews.hidden=true;form.insertBefore(previews,input);
+ picker.type='file';picker.accept='image/png,image/jpeg,image/webp';picker.multiple=true;picker.hidden=true;form.append(picker);
+ button.type='button';button.className='studio-secondary';button.textContent='＋ Image';button.onclick=()=>{if(!input.disabled)picker.click()};form.querySelector('.studio-compose-actions').prepend(button);
+ picker.onchange=()=>{addChatImages([...picker.files],crew);picker.value=''};
+ input.addEventListener('paste',event=>{const images=[...event.clipboardData.items].filter(item=>item.kind==='file'&&item.type.startsWith('image/')).map(item=>item.getAsFile()).filter(Boolean);if(images.length){event.preventDefault();addChatImages(images,crew)}});
+}
+let chatSending=false;
+function syncComposer(){
+  if(!connected)return;
+  const unavailable=!runtime.ready,blocked=unavailable||!!data.deleting;
+  el('prompt').disabled=blocked;
+  el('send').disabled=blocked||chatSending||comparisonSending;
+  el('send-all').disabled=blocked||chatSending||comparisonSending||(data.agents||[]).length<2;
+  el('run-options').disabled=el('send-all').disabled;
+  if(el('run-options').disabled)setRunOptions(false);
+  el('attach').disabled=blocked;
+  el('chat-connection').hidden=!blocked;
+  el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':!runtime.model?'Model not connected. Connect a model to start chatting.':'Agent runtime disconnected. Reconnect in Settings to start chatting.';
+  el('chat-connect').hidden=!unavailable||settingsButton.hidden;
+  el('prompt').placeholder=blocked?'Connect a model to message your agent…':'Message your agent…';
+  el('equipped').querySelectorAll('button').forEach(button=>button.disabled=blocked);
+}
+el('chat-connect').onclick=openModelSettings;
+// Model text is escaped before formatting; raw HTML is never inserted into the app.
+function messageMarkup(value){
+  const saved=[];
+  const token=html=>'\u0000'+(saved.push(html)-1)+'\u0000';
+  function inline(text){
+    return escape(text).replace(/`([^`]+)`/g,(_,s)=>token('<code>'+s+'</code>'))
+      .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g,(_,label,url)=>token('<a href="'+url+'" target="_blank" rel="noopener noreferrer">'+label+'</a>'))
+      .replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*\n]+)\*/g,'<em>$1</em>');
+  }
+  const lines=String(value||'').replace(/\u0000/g,'').split('\n'),out=[];let i=0;
+  while(i<lines.length){
+    const line=lines[i];
+    if(/^```/.test(line)){const code=[];i++;while(i<lines.length&&!/^```/.test(lines[i]))code.push(lines[i++]);i++;out.push('<pre><code>'+escape(code.join('\n'))+'</code></pre>');continue;}
+    if(!line.trim()){i++;continue;}
+    if(i+1<lines.length&&line.includes('|')&&/^\s*\|?\s*:?-{3,}/.test(lines[i+1])){
+      const cells=s=>s.trim().replace(/^\||\|$/g,'').split('|').map(v=>inline(v.trim()));
+      out.push('<div class="chat-table"><table><thead><tr>'+cells(line).map(c=>'<th>'+c+'</th>').join('')+'</tr></thead><tbody>');i+=2;
+      while(i<lines.length&&lines[i].includes('|'))out.push('<tr>'+cells(lines[i++]).map(c=>'<td>'+c+'</td>').join('')+'</tr>');out.push('</tbody></table></div>');continue;
+    }
+    if(/^\s*(?:[-*+] |\d+\. )/.test(line)){
+      const ordered=/^\s*\d+\./.test(line),tag=ordered?'ol':'ul';
+      const item=ordered?/^\s*\d+\. /:/^\s*[-*+] /;
+      const start=ordered?Number(line.match(/^\s*(\d+)\./)[1]):1;
+      out.push('<'+tag+(ordered&&start!==1?' start="'+start+'"':'')+'>');
+      while(i<lines.length&&item.test(lines[i])){
+        out.push('<li>'+inline(lines[i++].replace(item,''))+'</li>');
+        // Blank lines separate loose list items, not independent lists.
+        let next=i;while(next<lines.length&&!lines[next].trim())next++;
+        if(next>i&&next<lines.length&&item.test(lines[next]))i=next;
+      }
+      out.push('</'+tag+'>');continue;
+    }
+    if(/^#{1,6} /.test(line))out.push('<h4>'+inline(line.replace(/^#{1,6} /,''))+'</h4>');
+    else if(/^> /.test(line))out.push('<blockquote>'+inline(line.slice(2))+'</blockquote>');
+    else out.push('<p>'+inline(line)+'</p>');i++;
+  }
+  return out.join('').replace(/\u0000(\d+)\u0000/g,(_,n)=>saved[Number(n)]||'');
+}
+let conversationSignature='',conversationOwner=null;
+function renderConversation(){
+  renderImageDrafts();syncComposer();const log=el('conversation');if(!log)return;
+  const jobs=[...data.jobs.filter(j=>j.kind!=='crew'),...(data.roundtableTurns||[])].sort((a,b)=>a.created-b.created);
+  const signature=JSON.stringify([agentId,data.profile?.name,jobs.map(j=>[j.id,j.status,j.result,j.events?.at(-1)])]);
+  if(conversationOwner!==agentId)el('chat-error').hidden=true;
+  if(signature===conversationSignature)return;
+  const follow=conversationOwner!==agentId||log.scrollHeight-log.scrollTop-log.clientHeight<70,top=log.scrollTop;
+  conversationSignature=signature;conversationOwner=agentId;
+  log.innerHTML=(data.jobs.length>=30?'<small class="chat-history-note">Recent conversations · up to 30 missions</small>':'')+(jobs.length?jobs.map(j=>{
+    const result=j.result||{},pending=['queued','running','waiting','stopping'].includes(j.status);
+    const status={queued:'Waiting to start…',running:j.events?.at(-1)?.title==='Preparing OpenShell'?'Preparing your protected runtime…':'Working on your request…',waiting:'Waiting for a decision.',stopping:'Stopping after the current model call…',cancelled:'Stopped.'}[j.status];
+    return '<article class="chat-turn" data-chat-turn="'+escape(j.id)+'"><div class="chat-message chat-user"><small>'+escape(j.payload.sender||'You')+'</small><div>'+escape(j.payload.prompt||'').replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images)+'</div></div><div class="chat-message chat-agent"><small>'+escape(data.profile?.name||'Agent')+' · '+escape(new Date(j.created*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))+'</small>'+customSkillMarkup(result.activity)+'<div class="chat-prose">'+messageMarkup(result.answer||result.error||(pending?'':status||'No text reply was returned.'))+'</div>'+(pending?'<div class="chat-progress" role="status">'+escape(status)+(j.status!=='stopping'?'<button type="button" data-chat-stop="'+escape(j.id)+'">Stop</button>':'')+'</div>':'')+(result.files||[]).filter(f=>!f.endsWith('.md')||!result.answer).map(f=>'<details class="chat-file"><summary data-chat-file="'+escape(f)+'">'+escape(f.split('/').pop())+'</summary><div class="chat-file-body"></div></details>').join('')+'</div></article>';
+  }).join(''):'<p class="chat-empty">Start a conversation. Your questions and replies will stay here.</p>');
+  loadChatImages(log,agentId);
+  if(follow)log.scrollTop=log.scrollHeight;else log.scrollTop=top;
+}
+el('conversation').addEventListener('click',async event=>{
+  const stop=event.target.closest('[data-chat-stop]');
+  if(stop){stop.disabled=true;try{await api('decision',{id:stop.dataset.chatStop,action:'cancel'});await refresh();}catch(error){stop.disabled=false;alert(error.message);}return;}
+  const item=event.target.closest('[data-chat-file]');if(!item||item.dataset.loaded)return;
+  const owner=agentId,body=item.nextElementSibling;item.dataset.loaded='true';body.textContent='Loading…';
+  try{
+    const path=item.dataset.chatFile,file=await api('file?path='+encodeURIComponent(path));if(owner!==agentId||!item.isConnected)return;
+    body.replaceChildren();
+    if(file.encoding!=='base64'){
+      if(/\.html?$/i.test(path)){
+        const frame=document.createElement('iframe');frame.title='Generated page preview';frame.setAttribute('sandbox','');frame.srcdoc='<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src data:; form-action \'none\'; base-uri \'none\'">'+file.content;body.append(frame);
+      }else{const prose=document.createElement('div');prose.className='chat-prose';prose.innerHTML=messageMarkup(file.content);body.append(prose);}
+    }
+    const download=document.createElement('button');download.type='button';download.textContent='Download file';download.onclick=()=>{const bytes=file.encoding==='base64'?Uint8Array.from(atob(file.content),c=>c.charCodeAt(0)):file.content;const url=URL.createObjectURL(new Blob([bytes],{type:file.mime||'text/plain'})),a=document.createElement('a');a.href=url;a.download=path.split('/').pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};body.append(download);
+  }catch(error){body.textContent=error.message;delete item.dataset.loaded;}
+});
+el('prompt').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();if(el('send').disabled)return;el('chat').requestSubmit(el('send'));}});
+
+// Keep Enter scoped to this agent; the alternative is an explicit action only.
+function setRunOptions(open){
+  const expanded=!!open&&!el('run-options').disabled;
+  el('run-menu').hidden=!expanded;el('run-options').setAttribute('aria-expanded',String(expanded));
+}
+el('run-options').onclick=()=>setRunOptions(el('run-menu').hidden);
+el('run-control').addEventListener('focusout',e=>{if(!el('run-control').contains(e.relatedTarget))setRunOptions(false);});
+el('run-control').addEventListener('keydown',e=>{
+  if(e.key==='Escape'){e.preventDefault();e.stopPropagation();setRunOptions(false);el('run-options').focus();}
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();setRunOptions(true);if(!el('run-menu').hidden)el('send-all').focus();}
+});
+document.addEventListener('pointerdown',e=>{if(!el('run-control').contains(e.target))setRunOptions(false);});
+el('chat').addEventListener('submit',()=>setRunOptions(false));

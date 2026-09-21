@@ -37,7 +37,7 @@ def env():
 
 def require_spark():
     if sys.platform != 'linux' or platform.machine() not in ('aarch64', 'arm64'):
-        raise RuntimeError('The supplied runtime targets Linux ARM64 DGX Spark. Use ./bac llm plan MODEL to inspect it on another host.')
+        raise RuntimeError('The supplied runtime targets Linux ARM64 DGX Spark. Use ./bac dev llm plan MODEL to inspect it on another host.')
     if not shutil.which('nvidia-smi'):
         raise RuntimeError('NVIDIA driver tools are missing; complete the Spark OS/driver setup first.')
 
@@ -101,7 +101,7 @@ def setup(name):
             raise RuntimeError('Gemma chat template checksum mismatch; model was not marked ready.')
         (folder / 'tool_chat_template_gemma4.jinja').write_bytes(template)
     c.write_json(folder / 'installed.json', wanted)
-    print(name + ' is installed. Start it with: ./bac llm start ' + name)
+    print(name + ' is installed. Start it with: ./bac dev llm start ' + name)
 
 
 def command(name, installed=False):
@@ -109,7 +109,7 @@ def command(name, installed=False):
     folder = c.owned_directory(root / 'models' / name) if installed else root / 'models' / name
     spec = c.read_json(folder / 'installed.json') if installed else profile(name)
     if not spec or (installed and not (folder / 'weights/config.json').exists()):
-        raise RuntimeError('Model not installed. Run ./bac llm setup ' + name)
+        raise RuntimeError('Model not installed. Run ./bac dev llm setup ' + name)
     args = [root / 'runtime/vllm-env/bin/vllm', 'serve', folder / 'weights', *spec['args'],
             '--host', '127.0.0.1', '--port', '8000', '--served-model-name', 'bac-local']
     if 'template_url' in spec:
@@ -122,14 +122,15 @@ def start(name):
     c.require_systemd()
     args, spec = command(name, installed=True)
     if not (c.home() / 'runtime/vllm-env/bin/vllm').exists():
-        raise RuntimeError('Runtime missing. Run ./bac llm setup ' + name)
+        raise RuntimeError('Runtime missing. Run ./bac dev llm setup ' + name)
     current = c.read_json(c.home() / 'llm.json', {})
     if c.active('bac-llm'):
         if not c.is_owned_unit('bac-llm'):
             raise RuntimeError('Existing bac-llm service is not managed by this tool.')
         if current.get('profile') == name:
-            print(name + ' is already starting/running. Use ./bac llm check for readiness.')
+            print(name + ' is already starting/running. Use ./bac dev llm check for readiness.')
             return
+        c.require_idle()
         c.service('bac-llm', 'stop')
     if not c.port_free(8000):
         raise RuntimeError('Port 8000 is already used. No unrelated process was stopped.')
@@ -141,14 +142,16 @@ def start(name):
     c.service('bac-llm', 'enable')
     c.service('bac-llm', 'start')
     print(name + ' is starting on http://127.0.0.1:8000/v1 (all agents: bac-local).')
-    print('First startup compiles kernels. Check: ./bac llm check | Logs: ./bac llm logs')
+    print('First startup compiles kernels. Check: ./bac dev llm check | Logs: ./bac dev llm logs')
 
 
-def check():
-    data = c.get_json('http://127.0.0.1:8000/v1/models', timeout=5)
-    if 'bac-local' not in [m.get('id') for m in data.get('data', [])]:
-        raise RuntimeError('A server replied, but it does not expose the expected bac-local model.')
-    print('Model endpoint ready: http://127.0.0.1:8000/v1 | model: bac-local')
+def check(wait=0):
+    def probe():
+        data = c.get_json('http://127.0.0.1:8000/v1/models', timeout=5)
+        rows = data.get('data') if isinstance(data,dict) else None
+        if not isinstance(rows,list) or 'bac-local' not in [m.get('id') for m in rows if isinstance(m,dict)]:
+            raise RuntimeError('The endpoint does not expose bac-local.')
+    c.wait_ready(probe, 'Model endpoint http://127.0.0.1:8000/v1 (bac-local)', wait, 'bac-llm')
 
 
 def remove(name, yes=False):
@@ -160,6 +163,7 @@ def remove(name, yes=False):
         return
     current = c.read_json(c.home() / 'llm.json', {})
     if current.get('profile') == name:
+        c.require_idle()
         if c.is_owned_unit('bac-llm'):
             c.service('bac-llm', 'stop')
             c.service('bac-llm', 'disable')
@@ -175,6 +179,7 @@ def remove_runtime(yes=False):
     if not yes:
         print('Preview only. Add --yes to remove the environment.')
         return
+    c.require_idle()
     if c.is_owned_unit('bac-llm'):
         c.service('bac-llm', 'stop')
         c.service('bac-llm', 'disable')

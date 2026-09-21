@@ -1,53 +1,66 @@
-> Historical guide for the original offline rehearsal. The current main Agent Studio is documented in [live-studio.md](live-studio.md) and the repository README.
+# Agent Studio architecture
 
-# Current prototype and next integration
 
-## What runs today
+## Runtime path
 
-One browser session holds the event brief, its revision, agent profiles, selected view, current handoff, calculated capacity and policy choice. A and C read the same state. Buttons or campus autoplay advance a scripted workflow; autoplay pauses for human decisions. Artifact text comes from templates and planning rules, not an LLM. Data is not persisted between refreshes or shared across browsers.
+```text
+Browser → Python API + SQLite queue → OpenClaw gateway → shared model endpoint
+                                   ↳ host tools, or OpenShell for protected personal agents
+```
 
-The onboarding screen lets attendees customize a role and try a sample response. Joining the crew replaces that role's agent. The permission text and approval controls are illustrative; no sandbox or email provider is running.
+The app owns accounts/agent selection, durable jobs, the fixed workflow graph, validation and rendering. OpenClaw owns native agent execution, file/tool calls and conversation sessions. A shared model serves distinct agent contexts; the scene visualizes observed app events rather than deciding task execution.
 
-The skill playground offers six independent missions: weather fixtures, prepared search examples, a simulated Telegram phone, a real browser-session note, local CSV analysis with a downloadable report, and a Canvas poster renderer with a downloadable PNG. The passport's name, persona and equipped skill labels transfer into team-role onboarding. The latest event brief is available to the simulated phone reply. A browser event bridge connects the playground to the planner; there is still no backend or model inference. Joining a role does not make its scripted planner tasks autonomously invoke these skills.
+## Main code boundaries
 
-A Three.js r180 WebGL scene renders the initial campus. Robot paths, state labels, evidence and decision stops consume the planner snapshot through `bac:crew-state`; this is a visualization of scripted execution, not a separate orchestrator. Solo tool results are added to its evidence feed.
+| Area | Files |
+| --- | --- |
+| Single operator entry point | `bac`, `scripts/manage.py` |
+| Service/model lifecycle | `ops_common.py`, `ops_deploy.py`, `ops_runtime.py`, `ops_llm.py` |
+| HTTP and ownership checks | `serve.py` |
+| Jobs, profiles, persistence | `studio.py` |
+| Native runtime, activity and files | `agent_runtime.py`, `agent_activity.py`, `agent_documents.py` |
+| Event workflow | `agent_workflow.py`, `event_agent_tools.py`, `morgan_page.py`, `crew_roundtable.py` |
+| Scheduling/exports | `event_planner.py`, `event_rotation.py`, `event_timetable.py` |
+| Model settings and ephemeral keys | `runtime_settings.py`, `session_secrets.py` |
+| Protection and host-file grants | `agent_policy.py`, `studio_policy.py`, `file_access.py` |
+| UI / 3D scene | `src/studio*`, `src/world-*`, `src/campus*`, `src/agent-character.js` |
 
-The UI makes no network calls. Python only serves static files. `app/index.html` is an offline standalone adaptation of the inline visualization; `src/bac-planner.html` retains its editable source.
+## Event execution and attribution
 
-## Intended live design — not implemented
+Casey briefs → Dylan researches while Alex schedules booth IDs → the app binds final theme labels → Morgan writes HTML/social copy → the app validates and assembles mounts → personal agents react.
 
-Use one model-serving endpoint on the demo host. Every agent uses that same endpoint with a different role, persona, tool/skill set and scoped state. Select Qwen or Gemma for the whole crew, rather than loading one model per agent. The preferred Qwen3.6 NVFP4/vLLM configuration and a Gemma4 alternative still need verification on the target Spark and have separate `./bac llm` installation/start commands. They are not connected to this UI yet.
+Dylan must leave observed research-tool calls and sourced files. Alex chooses staffing and explicit slots; the helper validates and exports those choices. Morgan edits a compact scaffold instead of reading a large repeated timetable. The app inserts the validated timetable into the authored page. The authored HTML and its hash remain available separately. One bounded repair is allowed; a text-only “done” cannot replace missing files. See [live-studio](live-studio.md) for the full contract.
 
-Keep authoritative brief revisions, tasks and artifacts in a backend. Emit real task events to the UI so agent movement, handoffs, blocked states and recovery correspond to actual execution. The 3D village and progress board should remain two views of the same event stream.
+## Results presentation
 
-| Role | Input | Output / dependency |
-|---|---|---|
-| Event lead | Attendee's brief and constraints | Shared brief, tasks and decisions |
-| Demo producer | Audience, topics and session time | Runbooks, device needs, fallback examples |
-| Operations | Runbooks, demand and available equipment | Stations, staffing and schedule |
-| Marketing | Approved brief and operations plan | Localized invitation and promotional drafts |
-| Reviewer | Brief revision and artifacts | Consistency findings and unresolved items |
+Results contains separate in-page sections for Dylan’s saved demo proposal, Alex’s schedule, Morgan’s webpage and Morgan’s social post. A role shortcut no longer jumps into Morgan’s HTML and attributes its layout to that role. Research rationale and scheduling criteria are expandable beside the relevant work; the duplicate overview is removed. Completed specialist results are available before the webpage finishes. Dylan’s View proposal / View sources and Alex’s View plan open the saved JSON in a read-only modal, with expandable fields, raw JSON and copying. JSON content is rendered as text; only HTTP(S) values become external links. Alex’s Download Excel retains the original workbook bytes. The modal has one scroll area and closing it preserves the Results position.
 
-Visible collaboration should focus on consequential dependencies: changing the session format changes required stations; resolving a device shortage changes the schedule; marketing then updates its draft against that new brief version. Separate roles are useful for focused context, tool access and review. This design does not imply that several agents make a single model execute faster.
+Dylan’s proposal fields are displayed verbatim from the validated artifact (with source IDs resolved against its research). The app assigns numbered booth labels and renders those fields. Alex’s chosen slots and rotations are expanded by the schedule tool; the displayed table and Excel use the validated assignments, with final theme labels bound by stable IDs. Each section distinguishes agent content from app rendering and offers the corresponding saved source/export.
 
-Integrate OpenShell around actual tool execution, with role-scoped access and policy decisions surfaced in the UI. An approval, denial or recovery animation should be backed by a real execution result. Do not label the current simulation as enforcement.
+The Results panel owns vertical scrolling. Morgan’s preview is a same-origin, **script-disabled** sandbox so the parent can measure its body with `ResizeObserver`; restrictive CSP and removal of active content also apply to old saved pages. Never add `allow-scripts` to this sandbox. Internal webpage anchors scroll the parent panel. Tables may scroll horizontally but have no capped vertical viewport. Preview-only safety/layout changes do not modify saved authored HTML or its download. Roundtable updates do not recreate the webpage or reset the reader’s position.
 
-## Sizing assumptions
+## Persistence and compatibility
 
-1. Allocate attendees to topics by percentages, using largest remainder rounding so counts sum exactly to the total.
-2. Groups per topic = ceil(topic attendees / people per group).
-3. Usable minutes = event duration minus welcome and breaks.
-4. Slots per station = floor(usable minutes / (session minutes + turnaround minutes)).
-5. Dedicated stations per topic = ceil(groups / slots).
-6. Sum stations by their assigned device type.
-7. Staff = one presenter per station + ceil(attendees / helper ratio) + one event lead.
+SQLite and workspaces live outside the checkout. The session cookie authenticates the participant; `X-BaC-Agent` selects only an agent they own. Model credentials are memory-only and excluded from saved state. Native files are separate per personal agent and crew role.
 
-The model assumes a dedicated station for each active topic, one device per station, and one topic per attendee. It does not model travel between rooms, presenter breaks, power, venue limits or inference contention. These are event planning estimates and should remain distinct from measurements of the host Spark's model-serving performance.
+The Lounge shows only Ready or Busy, derived from the individual agent’s unfinished requests and event participation. Background demo preparation never sets Lounge Busy; its identity reservation still protects cleanup and configuration. Readiness details stay in the BaC preparation panel; internal activity metadata distinguishes user requests, preparation and roundtable participation. A reservation used to protect an agent during work is not evidence of a personal mission. Delete agent cancels queued work and requests a safe stop for active work; cleanup runs between worker jobs after all calls and post-result writes finish. Pending deletion persists across restart; native cleanup failures stay fenced and require a retry. OpenShell deletion reads only the target agent’s entries through the pinned native registry API, removes those exact sandboxes, verifies their absence, then retires the records through the native locked writer. It never runs the all-sandbox health scan or recreate command. A timed-out sandbox deletion is accepted only if a fresh gateway inventory confirms that the sandbox is absent; gateway errors never count as successful cleanup. Agent cleanup calls the running OpenClaw gateway’s native `agents.delete` method first, avoiding a full deletion-command import per agent. The gateway keeps its lifecycle, shared-storage and database safeguards. The pinned native command remains the offline/deletion-journal fallback. Unknown or timed-out mutation results are never retried through the local path; retained workspace paths still block success. A sandbox already confirmed absent after a delete timeout does not trigger a duplicate inventory lookup. Partial storage cleanup failures still prevent success. Preparation provisions only the required BaC crew and sends no model request. Personal reactions are optional selections; busy or unavailable agents are excluded again at launch, and their runtimes and protection are checked just before a reaction, never as a prerequisite for starting the crew. Completed guest reactions stop showing as active even while the shared event finishes. BaC jobs do not replace the personal agent's latest reply.
 
-## Suggested next implementation order
+The crew catalog retains six stable IDs for old jobs and cleanup; the current UI uses Casey, Dylan, Alex and Morgan. Old job schemas, exports and policy records remain readable. Removing those readers would risk existing data, so they are compatibility code rather than candidates for blind deletion.
 
-1. Backend run state, durable artifact revisions and a shared model client.
-2. Real role execution with bounded concurrency on a measured Spark serving configuration.
-3. OpenShell tool boundaries and observable approval/denial/recovery.
-4. Connect the existing 3D scene to backend execution events instead of the scripted browser state.
-5. Add restart/reset, prepared fallback artifacts and multi-attendee session isolation.
+## Polling and performance
+
+State is checked every 1.5 seconds while the page is visible. `/api/state` authenticates and builds the current snapshot, then returns an ETag. An unchanged conditional request returns 304 with no history body. The tab caches snapshots per agent; unchanged responses do not rebuild the UI. Agent switching and stale-response guards still apply. The server still performs its state query and hash; this is a network/render optimization, not an assertion that polling costs nothing.
+
+SQLite indexes serve per-owner history and per-role crew chats. Runtime readiness and host metrics have short caches. The scene limits rendering to roughly 30 FPS and pauses expensive work while hidden. Large model inference remains the dominant task latency; these changes do not claim higher model tokens/second.
+
+## Build and development
+
+`scripts/build.py` assembles explicit UI modules, bundled Three.js and local art into `app/index.html`. No old playground code is included and no remote UI dependency is needed. Frontend rebuilds need a browser refresh; backend changes need a restart. `./bac start` manages the Docker distribution. `./bac dev preview` serves a source checkout in the foreground (`start.sh` is its compatibility alias); advanced Linux `./bac dev start` uses committed release snapshots and user services.
+
+Python tests use temporary stores/adapters. Browser fixtures test rendering and interactions. Neither proves a real model’s quality, sandbox enforcement or Spark performance; those need host rehearsal.
+
+## Event response latency
+
+Casey returns the actual brief directly from the supplied organizer data; the app saves that response verbatim for the specialist handoffs. It does not ask Casey to reread the same JSON or write an extra receipt file. Native identity verification uses the pinned gateway RPC rather than loading the complete CLI. A failed event keeps the specific per-role error and any observed tool calls. Model calls are never silently replayed after a timeout.
+
+Agent-invoked research tools fetch independent queries/articles with at most three concurrent requests. Full retrieved text stays in the research artifact; long tool responses use explicitly marked excerpts so all selected sources fit in the model-visible output. Alex must use the exact unassigned presenter label format and can finish after successful validation/export without rereading the generated timetable. Agents still choose queries, themes and schedules themselves.

@@ -6,8 +6,10 @@ import os
 from pathlib import Path
 import shutil
 import socket
+import sqlite3
 import subprocess
 import sys
+import time
 import urllib.request
 
 REPO = Path(__file__).resolve().parents[1]
@@ -90,7 +92,7 @@ def systemd_available():
 
 def require_systemd():
     if not systemd_available():
-        raise RuntimeError('A Linux systemd user session is required. SSH into Spark as your normal user; do not run ./bac with sudo.')
+        raise RuntimeError('A Linux systemd user session is required. SSH into Spark as your normal user; do not run ./bac dev with sudo.')
 
 
 def unit_path(name):
@@ -122,6 +124,14 @@ def quote_unit(value):
     return json.dumps(str(value)).replace('%', '%%')
 
 
+def service_environment():
+    # A user service does not inherit the launching shell's tool locations.
+    # Copy only non-secret paths, never API keys or the full shell environment.
+    return {'BAC_DATA_DIR': str(home()), **{key: os.environ[key] for key in (
+        'PATH', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_CACHE_HOME', 'BAC_OPENCLAW_PORT'
+    ) if key in os.environ}}
+
+
 def install_unit(name, args, environment=None):
     require_systemd()
     path = unit_path(name)
@@ -151,3 +161,40 @@ def get_json(url, timeout=3):
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     with opener.open(url, timeout=timeout) as response:
         return json.load(response)
+
+
+def require_idle():
+    """Do not interrupt saved missions or a policy update during service changes."""
+    database = home() / 'studio/studio.sqlite'
+    if not database.exists():
+        return
+    with contextlib.closing(sqlite3.connect(database.as_uri() + '?mode=ro', uri=True)) as db:
+        jobs = db.execute("SELECT count(*) FROM jobs WHERE status IN ('queued','running','waiting','stopping')").fetchone()[0]
+        policies = db.execute('SELECT count(*) FROM agent_policies WHERE updating=1').fetchone()[0]
+    if jobs or policies:
+        raise RuntimeError('Finish or stop pending missions and policy updates in the app before changing services. Nothing was restarted.')
+
+
+def wait_ready(probe, label, wait=0, unit=None):
+    """Bounded readiness checks, with useful progress and early service-failure exit."""
+    deadline = time.monotonic() + wait
+    next_notice = 0
+    while True:
+        try:
+            probe()
+            print(label + ' ready.', flush=True)
+            return
+        except (OSError, ValueError, RuntimeError):
+            pass
+        if unit and is_owned_unit(unit) and systemd_available():
+            state = subprocess.run(['systemctl', '--user', 'show', unit, '--property=ActiveState', '--value'],
+                                   capture_output=True, text=True, timeout=5).stdout.strip()
+            if state in ('failed', 'inactive'):
+                raise RuntimeError(label + ' service stopped. Inspect ./bac dev ' + ('llm' if unit == 'bac-llm' else 'runtime') + ' logs.')
+        now = time.monotonic()
+        if now >= deadline:
+            raise RuntimeError(label + ' is not ready. Check ./bac dev ' + ('llm' if unit == 'bac-llm' else 'runtime') + ' logs, then retry the check. The service was not stopped.')
+        if now >= next_notice:
+            print('Waiting for ' + label + ' (' + str(round(deadline-now)) + 's remaining)…', flush=True)
+            next_notice = now + 15
+        time.sleep(min(2, deadline-now))

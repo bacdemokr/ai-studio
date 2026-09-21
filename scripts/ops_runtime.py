@@ -7,7 +7,9 @@ from pathlib import Path
 import platform
 import re
 import shutil
+import subprocess
 import tarfile
+import time
 import urllib.request
 
 import agent_runtime as r
@@ -67,90 +69,64 @@ def setup():
             r.save_config(r.initial_config())
     r.register('bac-host', r.root() / 'host-workspace', {'name': 'BaC host', 'persona': 'guide', 'skills': ['documents']})
     print(r.cli('config', 'validate'))
-    print('OpenClaw is installed. Run ./bac runtime start after starting your LLM.')
+    print('OpenClaw is installed. Choose a model in the app settings, then start the agent runtime.')
+
+
+def require_installed():
+    if not r.config_path().is_file() or not (r.root() / 'package/node_modules/.bin/openclaw').exists():
+        raise RuntimeError('Install the agent runtime first: ./bac dev setup')
 
 
 def start():
+    require_installed()
+    try:
+        r.gateway('/v1/models', timeout=2)
+    except RuntimeError:
+        pass
+    else:
+        print('OpenClaw is already reachable; its running sessions were left in place.')
+        return
+    if platform.system() == 'Darwin':
+        from runtime_settings import start_gateway
+        print(start_gateway().get('message', 'Agent runtime connected.'))
+        return
     c.require_systemd()
     if not r.config_path().exists():
-        raise RuntimeError('Run ./bac runtime setup first.')
+        raise RuntimeError('Run ./bac dev runtime setup first.')
+    if c.active('bac-openclaw') and c.is_owned_unit('bac-openclaw'):
+        print('OpenClaw is starting. Waiting for its existing service avoids interrupting sessions.')
+        return
+    if not c.port_free(r.gateway_port()):
+        raise RuntimeError(f'Port {r.gateway_port()} is already used by another or still-starting runtime. Inspect ./bac dev runtime check before retrying.')
     print(r.cli('config', 'validate'))
     c.install_unit('bac-openclaw', [r.root() / 'package/node_modules/.bin/openclaw', 'gateway', 'run'],
-                   {k: r.environment()[k] for k in ('PATH', 'OPENCLAW_STATE_DIR', 'OPENCLAW_CONFIG_PATH')})
+                   {**c.service_environment(), **{k: r.environment()[k] for k in ('PATH', 'OPENCLAW_STATE_DIR', 'OPENCLAW_CONFIG_PATH')}})
     c.service('bac-openclaw', 'enable')
-    c.service('bac-openclaw', 'restart')
-    print('OpenClaw starting on loopback port 18789. ./bac runtime check shows readiness.')
+    c.service('bac-openclaw', 'start')
+    print(f'OpenClaw starting on loopback port {r.gateway_port()}. ./bac dev runtime check shows readiness.')
 
 
-def check():
-    print(json.dumps(r.status(), indent=2))
-    if r.config_path().exists():
-        c.run([r.root() / 'package/node_modules/.bin/openclaw', 'config', 'validate'], env=r.environment())
+def check(wait=0):
+    require_installed()
+    r.cli('config', 'validate', timeout=30)
+    c.wait_ready(lambda: r.gateway('/v1/models', timeout=3), 'OpenClaw gateway', wait, 'bac-openclaw')
 
 
-def configure_telegram():
-    from studio import Studio
-    from telegram_bridge import telegram
-    token = getpass.getpass('Dedicated BaC Telegram bot token (hidden): ').strip()
-    if not re.fullmatch(r'[0-9]{5,20}:[A-Za-z0-9_-]{25,80}', token):
-        raise RuntimeError('That does not look like a Telegram bot token.')
-    studio = Studio(start_worker=False)
-    path = studio.directory / 'telegram.json'
-    previous = path.read_bytes() if path.exists() else None
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, 'w') as handle:
-        json.dump({'token': token}, handle)
-    os.chmod(path, 0o600)
-    try:
-        result = telegram(studio, 'getMe', {})
-        webhook = telegram(studio, 'getWebhookInfo', {})
-        if webhook.get('url'):
-            raise RuntimeError('This bot has an existing webhook. Use a separate BaC bot; no webhook was changed.')
-    except Exception:
-        if previous is None:
-            path.unlink()
-        else:
-            path.write_bytes(previous)
-        raise
-    print('Connected @' + result['username'] + '. Each participant pairs explicitly from their web workspace.')
-    print('Use a dedicated bot; do not run another getUpdates consumer for it.')
-
-
-def configure_search():
-    key = getpass.getpass('Brave Search API key (hidden): ').strip()
-    if not key or len(key) > 500 or '\n' in key:
-        raise RuntimeError('Enter a valid API key.')
-    with r.config_lock():
-        config = c.read_json(r.config_path())
-        if not config:
-            raise RuntimeError('Run ./bac runtime setup first.')
-        previous = json.loads(json.dumps(config))
-        config.setdefault('plugins', {}).setdefault('entries', {})['brave'] = {
-            'enabled': True, 'config': {'webSearch': {'apiKey': key, 'mode': 'web'}}}
-        config['tools'].setdefault('web', {})['search'] = {'provider': 'brave', 'maxResults': 5}
-        for agent in config['agents']['entries'].values():
-            if 'bac-web' in agent.get('skills', []) and agent.get('sandbox', {}).get('mode') != 'all':
-                allow = agent.setdefault('tools', {}).setdefault('allow', [])
-                if 'web_search' not in allow:
-                    allow.append('web_search')
-        r.save_config(config)
-        try:
-            print(r.cli('config', 'validate'))
-        except Exception:
-            r.save_config(previous)
-            raise
-        (r.root() / 'search-enabled').touch(mode=0o600)
-    c.service('bac-openclaw', 'restart')
-    print('Brave Search is configured for agents with the Web explorer skill. Website reading and weather do not require this key.')
-
-
-def openshell(action):
+def openshell(action, automatic=False):
     if action == 'prove':
         from security_lab import prove
         return prove()
+    if os.environ.get('BAC_CONTAINER') == '1':
+        from agent_policy import configured, shell
+        if not configured():
+            raise RuntimeError('The bundled OpenShell configuration is unavailable. Check docker compose logs studio.')
+        shell('sandbox', 'list')
+        return
     if not shutil.which('openshell'):
-        raise RuntimeError('Install the official OpenShell CLI and create a gateway first. See docs/live-studio.md. No sandbox was enabled.')
-    c.run(['openshell', 'gateway', 'list'])
+        raise RuntimeError('Install the official OpenShell CLI and gateway first. See docs/ubuntu-setup.md#optional-openshell. No sandbox was enabled.')
+    command = shutil.which('openshell')
+    # Listing registrations is not proof that the selected gateway is reachable.
+    subprocess.run([command, 'sandbox', 'list'], check=True, capture_output=True, timeout=35)
     if action == 'check':
         print(r.cli('sandbox', 'explain'))
         print(r.cli('sandbox', 'list'))
@@ -170,12 +146,35 @@ def openshell(action):
         entry = config.setdefault('plugins', {}).setdefault('entries', {}).setdefault('openshell', {})
         entry['enabled'] = True
         entry.setdefault('config', {}).update({
-            'from': 'openclaw', 'mode': 'mirror', 'autoProviders': False, 'providers': [], 'policy': str(default_path())})
+            'command': command, 'from': 'openclaw', 'mode': 'mirror', 'autoProviders': False, 'providers': [], 'policy': str(default_path())})
+        config.setdefault('gateway', {}).setdefault('reload', {})['mode'] = 'hybrid'
         r.save_config(config)
         try:
             print(r.cli('config', 'validate'))
         except Exception:
             r.save_config(previous)
             raise
-    c.service('bac-openclaw', 'restart')
-    print('OpenShell is ready for per-agent opt-in. The preset crew stays outside OpenShell. New protected agents start with no outbound network permissions. Inspect their actual policies in the Policies tab.')
+    # Plugin hot reload can report success while its sandbox backend is absent.
+    # Ask the running gateway to drain active work and reload its plugin registry.
+    # Merely listing models does not prove the OpenShell backend was registered.
+    try:
+        r.gateway('/v1/models', timeout=2)
+    except RuntimeError:
+        pass  # start_gateway below loads plugins on a fresh process.
+    else:
+        print(r.cli('gateway', 'restart', '--safe', timeout=45))
+    time.sleep(2)
+    settings_started = False
+    from runtime_settings import start_gateway
+    for attempt in range(30):
+        try:
+            r.gateway('/v1/models', timeout=2)
+            break
+        except RuntimeError:
+            if not settings_started:
+                start_gateway()
+                settings_started = True
+            time.sleep(1)
+    else:
+        raise RuntimeError('OpenShell is configured, but the agent runtime has not finished reconnecting.')
+    print('OpenShell setup is saved and the agent gateway is reachable. The first protected run verifies sandbox startup. The preset crew stays outside OpenShell. New protected agents start with no outbound network permissions. Inspect their actual policies in the Policies tab.')

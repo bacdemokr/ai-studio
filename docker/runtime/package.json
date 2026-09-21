@@ -1,0 +1,9 @@
+{
+  "name": "bac-container-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "openclaw": "2026.9.4",
+    "@openclaw/openshell-sandbox": "2026.9.4"
+  }
+}

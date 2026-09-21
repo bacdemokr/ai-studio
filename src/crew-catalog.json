@@ -1,0 +1,65 @@
+[
+  {
+    "name": "Casey",
+    "role": "BaC Captain",
+    "persona": "guide",
+    "description": "Briefs the specialists and sets priorities for their shared event plan.",
+    "id": "event-lead",
+    "skills": [
+      "nvidia-webpage"
+    ]
+  },
+  {
+    "name": "Dylan",
+    "role": "Demo producer",
+    "persona": "maker",
+    "description": "Researches NVIDIA themes and turns them into lightweight, source-backed demos.",
+    "id": "demo-producer",
+    "skills": [
+      "nvidia-research",
+      "event-tools"
+    ]
+  },
+  {
+    "name": "Alex",
+    "role": "Operations planner",
+    "persona": "analyst",
+    "description": "Decides topic-specialist staffing, visit times and presenter breaks, then exports the timetable.",
+    "id": "operations-planner",
+    "skills": [
+      "event-scheduling",
+      "event-tools"
+    ]
+  },
+  {
+    "name": "Morgan",
+    "role": "Marketing producer",
+    "persona": "guide",
+    "description": "Builds the event webpage and writes its LinkedIn post from the crew’s results.",
+    "id": "marketing-producer",
+    "skills": [
+      "web",
+      "nvidia-social",
+      "nvidia-webpage"
+    ]
+  },
+  {
+    "name": "Riley",
+    "role": "Audience & review",
+    "persona": "analyst",
+    "description": "Creates the interest survey and checks the complete plan.",
+    "id": "audience-host",
+    "skills": []
+  },
+  {
+    "name": "Wade",
+    "role": "Event web developer",
+    "persona": "maker",
+    "description": "Turns the shared event plan into a polished landing page you can open and download.",
+    "id": "event-web-developer",
+    "skills": [
+      "event-page",
+      "nvidia-webpage"
+    ]
+  }
+]

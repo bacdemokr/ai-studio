@@ -1,0 +1,49 @@
+name: Ubuntu container verification
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    env:
+      BAC_IMAGE: bac-studio:ci
+      BAC_VERSION: git-check
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests in Linux image
+        run: docker build --target test -t bac-container-tests .
+      - name: Build and start candidate
+        env:
+          BAC_IMAGE: bac-studio:ci
+          BAC_VERSION: git-check
+        run: |
+          ./bac start
+          ./bac status
+          docker compose exec -T studio python3 scripts/container_runtime.py health
+          docker compose exec -T studio openshell --gateway bac-demo --workspace default sandbox list
+      - name: Native protected-agent lifecycle (no model needed)
+        timeout-minutes: 15
+        run: |
+          docker compose cp tests studio:/opt/bac/app/tests
+          docker compose exec -T -e BAC_LIVE_POLICY_TEST=1 studio python3 tests/live_policy_flow.py
+      - name: Local model API and native tool calling (deterministic fixture)
+        timeout-minutes: 5
+        run: docker compose exec -T -e BAC_CONTAINER_TEST=1 studio python3 tests/container_model_smoke.py
+      - name: Data survives recreation
+        env:
+          BAC_IMAGE: bac-studio:ci
+        run: |
+          docker compose exec -T -e BAC_CONTAINER_TEST=1 studio python3 tests/container_persistence_smoke.py create
+          ./bac restart
+          docker compose up -d --force-recreate --wait --wait-timeout 180
+          docker compose cp tests studio:/opt/bac/app/tests
+          docker compose exec -T -e BAC_CONTAINER_TEST=1 studio python3 tests/container_persistence_smoke.py verify
+      - name: Logs
+        if: always()
+        run: docker compose logs --tail=100
+      - name: Stop disposable services
+        if: always()
+        run: docker compose down

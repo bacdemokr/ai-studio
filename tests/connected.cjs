@@ -12,13 +12,13 @@ const {chromium}=require('playwright');
   const go=async room=>{await page.locator('.world-room-map [data-world-room='+room+']').click();await settled();};
   await settled();
   assert.deepEqual((await nav()).visibleRooms,['workshop','lounge','mission']);
-  assert.equal((await nav()).doorways.length,6);
+  assert.equal((await nav()).doorways.length,4);
   await page.locator('#studio-name').fill('Connected Scout');await page.locator('[data-avatar-color=cyan]').click();
   const layout=await nav();
   assert.deepEqual(layout.rooms,{workshop:[0,0,18],lounge:[0,0,0],mission:[24,0,0]});
-  assert.equal(layout.corridors.length,3);
+  assert.equal(layout.corridors.length,2);
   const pairs=new Set(layout.doorways.map(d=>d.from+'>'+d.to));
-  for(const from of Object.keys(layout.rooms))for(const to of Object.keys(layout.rooms))if(from!==to)assert(pairs.has(from+'>'+to),'missing direct door '+from+'>'+to);
+  assert.deepEqual([...pairs].sort(),['lounge>mission','mission>lounge','lounge>workshop','workshop>lounge'].sort());
   const start=layout.focus[2];
   await page.locator('.world-doorway[data-doorway-from=workshop][data-world-room=lounge]').click();
   assert.equal(await page.evaluate(()=>BacStudio.inspect().room),'lounge');
@@ -36,8 +36,8 @@ const {chromium}=require('playwright');
   assert.equal(await page.evaluate(()=>document.fullscreenElement?.id),'agent-campus');assert.equal(await page.evaluate(()=>BacStudio.inspect().room),'mission');
   await page.locator('.world-doorway[data-doorway-from=mission][data-world-room=lounge]').click();await settled();
   assert.equal(await page.evaluate(()=>document.fullscreenElement?.id),'agent-campus');assert.equal(await page.evaluate(()=>BacStudio.inspect().agentId),identity);
-  // Visit every directed doorway, including the new direct Onboarding–BaC route.
-  for(const next of ['workshop','mission','workshop','lounge','mission','lounge']){
+  // Visit each remaining physical doorway.
+  for(const next of ['workshop','lounge','mission','lounge']){
    const from=await page.evaluate(()=>BacStudio.inspect().room);
    await page.locator('.world-doorway[data-doorway-from='+from+'][data-world-room='+next+']').click();
    assert.equal(await page.evaluate(()=>BacStudio.inspect().room),next);
@@ -54,9 +54,9 @@ const {chromium}=require('playwright');
    await page.setViewportSize({width,height:950});
    for(const room of ['lounge','mission','workshop']){
     await go(room);assert(!(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)),'overflow '+width+' '+room);
-    const doors=await page.locator('.world-doorway:visible').all();assert.equal(doors.length,2);
+    const doors=await page.locator('.world-doorway:visible').all();assert.equal(doors.length,room==='lounge'?2:1);
     const boxes=await Promise.all(doors.map(d=>d.boundingBox()));
-    const [a,b]=boxes;assert(a.x+a.width<=b.x||b.x+b.width<=a.x||a.y+a.height<=b.y||b.y+b.height<=a.y,'overlapping doors '+width+' '+room+' '+JSON.stringify(boxes));
+    const [a,b]=boxes;if(b)assert(a.x+a.width<=b.x||b.x+b.width<=a.x||a.y+a.height<=b.y||b.y+b.height<=a.y,'overlapping doors '+width+' '+room+' '+JSON.stringify(boxes));
    }
    await page.locator('button[data-world-overview]').click();await settled();
    const viewport=await page.locator('#campus-viewport').boundingBox();
@@ -68,8 +68,8 @@ const {chromium}=require('playwright');
    await go('lounge');
   }
   await page.emulateMedia({reducedMotion:'reduce'});await go('mission');assert(!(await nav()).travelling);assert.equal((await nav()).focus[0],24);
-  await page.locator('button[data-room=policies]').click();assert(await page.locator('#studio-policies').isVisible());await page.locator('button[data-room=lounge]').click();assert.equal(await page.evaluate(()=>BacStudio.inspect().agentId),identity);
+  await go('lounge');await page.locator('#studio-policy-panel summary').click();assert(await page.locator('#studio-policies').isVisible());assert.equal(await page.evaluate(()=>BacStudio.inspect().agentId),identity);
   assert.deepEqual(errors,[]);
-  console.log('PASS: L-shaped rooms, all six direct doorways, three physical corridors, interpolated camera travel, persistent drafts/identity, overview selection, doorway navigation in fullscreen, rapid navigation, pause/reduced motion, responsive room labels and Policies return.');
+  console.log('PASS: L-shaped rooms, four direct doorways, two physical corridors, interpolated camera travel, persistent drafts/identity, overview selection, doorway navigation in fullscreen, rapid navigation, pause/reduced motion, responsive room labels and Policies return.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

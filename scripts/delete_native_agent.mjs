@@ -1,0 +1,54 @@
+// Read identities through the running gateway; load full local cleanup only for offline deletion.
+// The gateway owns the same lifecycle, shared-storage, cron and database cleanup safeguards.
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {pathToFileURL} from 'node:url';
+const [root, agentId] = process.argv.slice(2);
+if (agentId !== '--list' && !/^bac-[a-f0-9]{24}(?:-r(?:0|[1-9][0-9]*))?$/.test(agentId || '')) throw Error('Invalid cleanup identity');
+const pkg = path.join(root, 'package/node_modules/openclaw');
+if (JSON.parse(await fs.readFile(path.join(pkg, 'package.json'), 'utf8')).version !== '2026.9.4') throw Error('Unsupported native runtime version');
+const dist = path.join(pkg, 'dist'), files = await fs.readdir(dist);
+async function nativeExport(prefix, symbol) {
+  for (const name of files.filter(name => name.startsWith(prefix) && name.endsWith('.mjs'))) {
+    const file = path.join(dist, name), source = await fs.readFile(file, 'utf8');
+    const alias = source.match(new RegExp('\\b'+symbol+' as (\\w+)\\b'))?.[1];
+    if (alias) return (await import(pathToFileURL(file)))[alias];
+  }
+  throw Error('Pinned native API unavailable: '+symbol);
+}
+async function deleteThroughGateway() {
+  const config = JSON.parse(await fs.readFile(process.env.OPENCLAW_CONFIG_PATH, 'utf8'));
+  const workspace = config.agents?.entries?.[agentId]?.workspace;
+  // A partial deletion may have removed the config entry; the full command resumes its journal.
+  if (typeof workspace !== 'string' || !path.isAbsolute(workspace)) return false;
+  const callGateway = await nativeExport('call-', 'callGateway');
+  const credentialsRequired = await nativeExport('call-', 'isGatewayCredentialsRequiredError');
+  const transportError = await nativeExport('transport-error-', 'isGatewayTransportError');
+  let result;
+  try {
+    result = await callGateway({method:'agents.delete', params:{agentId,deleteFiles:true},
+      mode:'cli', clientName:'cli', requiredMethods:['agents.delete']});
+  } catch (error) {
+    // Match the native CLI's pre-request fallback conditions. Never retry an uncertain timeout.
+    if (transportError(error) && error.kind === 'closed' && error.code === undefined) return false;
+    if (credentialsRequired(error)) return false;
+    throw error;
+  }
+  if (!result || result.ok !== true || result.agentId !== agentId || !Array.isArray(result.failed)) throw Error('Invalid native deletion response');
+  // The RPC deliberately retains shared/replaced paths. They are not a successful app deletion.
+  let workspaceRetained = true;
+  try { await fs.lstat(workspace); } catch (error) { if (error.code === 'ENOENT') workspaceRetained = false; else throw error; }
+  console.log(JSON.stringify({...result,workspaceRetained:workspaceRetained||undefined,transport:'gateway'}));
+  return true;
+}
+if (agentId === '--list') {
+  const callGateway = await nativeExport('call-', 'callGateway');
+  console.log(JSON.stringify(await callGateway({method:'agents.list', params:{}, mode:'cli', clientName:'cli', requiredMethods:['agents.list'], timeoutMs:5000})));
+} else if (!await deleteThroughGateway()) {
+  const matches = files.filter(name => /^agents\.commands\.delete-.*\.mjs$/.test(name));
+  if (matches.length !== 1) throw Error('Pinned native deletion command unavailable');
+  const {agentsDeleteCommand} = await import(pathToFileURL(path.join(dist, matches[0])));
+  await agentsDeleteCommand({id:agentId,force:true,json:true});
+}
+await new Promise(resolve => process.stdout.write('', resolve));
+process.exit(0);

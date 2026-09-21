@@ -1,0 +1,26 @@
+---
+name: bac-nvidia-webpage
+description: Author a complete BaC event HTML file from specialist handoffs using the local starter informed by NVIDIA public event pages.
+---
+When the task provides `inbox/morgan-page.json`, read it for exact output paths and the brief, themes and schedule summary. The HTML output file contains a small starter. Agent-led tasks supply only base CSS, logistics and a timetable mount: build the demo cards, source links, page structure and original narrative yourself from the contract themes. The app inserts Alex’s large, validated timetable into the mount after your writing is validated. Do not read or rewrite the full timetable. Legacy tasks may include prefilled cards. Read and edit the starter with native file tools; a JSON reply or HTML pasted into chat is not a deliverable. Make small targeted edits rather than rewriting all CSS and HTML. Verify your actual writes before reporting completion.
+
+Replace every MORGAN_* placeholder. Write the headline, introduction, section headings, call to action and social post in the event language. You may refine the page's typography, spacing and section presentation. Preserve the entire `BAC:LOGISTICS` and `BAC:SCHEDULE` comment-delimited blocks exactly, including their markers. Preserve Dylan's demo titles and source links. Do not recalculate staffing or the schedule. Keep the supplied content-security metadata and program, schedule and promotion section IDs. Keep the page self-contained with inline CSS and no scripts, external assets or forms. Maintain responsive desktop and phone layouts.
+
+Write the LinkedIn post once to the requested text file. When the HTML contains `<!-- BAC:SOCIAL_POST -->`, preserve that marker: the app inserts your text verbatim there. Do not duplicate it in HTML. For legacy starters without that marker, include the same post in the HTML promotion section. Read both saved files before handing over; no MORGAN_* placeholder may remain. If validation returns errors, edit these same files once to fix those specific errors. The original starter is available at `inbox/morgan-page-starter.html` for restoring protected fragments. Do not claim a browser check unless you actually performed one. Finish with a short human-readable summary of what you saved, not JSON or source code.
+
+For older tasks explicitly requesting copy-only JSON and providing no output file contract, follow their requested format.
+
+Use the provided event brief and completed specialist deliverables. Lead with a short, benefit-led event headline, location and confirmed logistics. Distinguish the full event duration from the per-visitor demo length; do not imply every visitor attends the whole event or every booth. Keep the introduction visitor-facing; do not put internal assignments in the hero.
+
+The supplied starter incorporates assets/event.css: a full-width dark hero with centered headline, a compact date/location line, a short introduction and one rectangular green call to action, followed by anchor navigation and generous white content sections. Keep the heading at a readable event-page scale (34–56 px) with balanced line breaks, not an oversized slogan squeezed into half the page. With no suitable event key visual, use this clean typography-only hero. Do not fill the other half with a tilted panel, numbered theme list, dashboard card, decorative grid, or “Your next chapter” widget. Themes belong in the program section below, not repeated as hero decoration. Present themes before operational details. Each theme needs a participant action, visible outcome, source and lightweight demo limitation. The planning view includes the booth rota and presenter breaks; these are not attendee registration claims.
+
+Do not fabricate official sponsorship, speakers, dates, hardware benchmarks or registration URLs. Keep missing logistics as TBC. Never add NVIDIA logos, trademarks as a fabricated endorsement, or publish the page. Supply original copy, not copied headlines.
+
+Public design references inspected 2026-09-20:
+- https://www.nvidia.com/en-us/events/microsoft-build/ — visually rechecked: centered, unboxed heading and date/location on a dark full-width hero, centered introduction, overview/session/resource anchors, hands-on session cards.
+- https://www.nvidia.com/en-us/events/automate-conference/ — date/location and clear action, topic-led sections.
+- https://www.nvidia.com/en-us/events/siggraph/ — themed program and technical-session hierarchy.
+- https://www.nvidia.com/en-sg/ai/build-a-claw/ — direct builder invitation and practical resource links.
+This is a project-authored skill based on public references, not an official NVIDIA template.
+
+Keep one main headline, at most 100 characters and 16 words. Use the introduction to add information instead of repeating the headline. Do not repeat long promotional paragraphs across sections. Preserve responsive media rules and horizontal timetable scrolling. On narrow screens, cards stack and text wraps; headings should not push the page wider than the viewport. The studio can request one repair for duplicated prose, an overlong headline, or missing responsive CSS.

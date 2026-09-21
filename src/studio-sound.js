@@ -6,17 +6,16 @@ function createStudioSound(){
   let knownJobs=new Map();const voices=new Set(),history=[];
   try{const saved=JSON.parse(localStorage.getItem(storageKey)||'null');if(saved){enabled=saved.enabled===true;volume=Number.isFinite(saved.volume)?Math.max(0,Math.min(100,saved.volume)):25;}}catch{}
   const controls=document.createElement('div');controls.className='studio-sound';
-  controls.innerHTML='<button type="button" id="campus-sound-toggle" aria-pressed="false"></button><details class="studio-sound-level"><summary aria-label="Adjust sound volume" title="Adjust sound volume">▾</summary><div class="studio-sound-panel"><label for="campus-sound-volume">Sound level <output id="campus-sound-value"></output></label><input id="campus-sound-volume" type="range" min="0" max="100" step="5"><small>Soft sounds for greetings and mission updates.</small></div></details>';
+  controls.innerHTML='<button type="button" id="campus-sound-toggle" aria-pressed="false"></button>';
   const footer=root.querySelector('.campus-scene-bottom .row'),layout=root.querySelector('.campus-layout');
   footer.prepend(controls);
-  const toggle=el('sound-toggle'),slider=el('sound-volume'),value=el('sound-value'),level=controls.querySelector('details');
+  const toggle=el('sound-toggle');
   function save(){try{localStorage.setItem(storageKey,JSON.stringify({enabled,volume}));}catch{}}
   function render(){
     const ready=enabled&&context?.state==='running';
-    toggle.textContent=!AudioEngine?'Sound unavailable':ready?'♪ Sound on':enabled?'♪ Enable sound':'♪ Sound off';
+    toggle.textContent=ready?'♫':'♪';
     toggle.setAttribute('aria-pressed',String(ready));toggle.setAttribute('aria-label',ready?'Turn sound off':'Turn sound on');
     toggle.title=!AudioEngine?'This browser does not support interface sounds':ready?'Mute greetings and mission sounds':'Enable quiet greetings and mission sounds';toggle.disabled=!AudioEngine;
-    slider.value=volume;slider.setAttribute('aria-valuetext',volume+' percent');value.value=volume+'%';level.hidden=!AudioEngine;
   }
   function stop(){
     for(const voice of voices){try{voice.osc.stop();}catch{}voice.gain.disconnect();voice.pan?.disconnect();}voices.clear();
@@ -72,25 +71,14 @@ function createStudioSound(){
     if(enabled&&context?.state==='running'){enabled=false;stop();save();render();return;}
     enabled=true;save();if(await activate()){lastAt=-Infinity;cue('enable');}render();
   };
-  slider.oninput=()=>{volume=Number(slider.value);setVolume();if(!volume)stop();save();render();};
-  function positionVolume(){
-    if(!level.open)return;
-    const panel=controls.querySelector('.studio-sound-panel');panel.style.transform='';
-    const box=panel.getBoundingClientRect(),stage=controls.closest('.campus-stage')?.getBoundingClientRect();
-    const left=Math.max(8,(stage?.left||0)+8),right=Math.min(innerWidth-8,stage?stage.right-8:innerWidth-8);
-    panel.style.transform='translateX('+Math.max(left-box.left,Math.min(0,right-box.right))+'px)';
-  }
-  level.addEventListener('toggle',positionVolume);window.addEventListener('resize',positionVolume);document.addEventListener('fullscreenchange',()=>requestAnimationFrame(positionVolume));
   // A saved preference resumes only on a real gesture; missed cues are never queued.
   function unlock(e){if(e.isTrusted&&enabled&&!controls.contains(e.target)&&context?.state!=='running')void activate();}
   root.addEventListener('pointerdown',unlock);root.addEventListener('keydown',unlock);
-  document.addEventListener('pointerdown',e=>{if(!controls.contains(e.target))level.open=false;});
-  controls.addEventListener('keydown',e=>{if(e.key==='Escape'&&level.open){e.stopPropagation();level.open=false;controls.querySelector('summary').focus();}});
   document.addEventListener('visibilitychange',()=>{baseline=true;if(document.hidden)stop();});
   app.addEventListener('bac:mode',()=>{baseline=true;stop();});
   function syncControls(){
-    const destination=layout.hidden&&currentView()==='mission'?root.querySelector('.studio-viewbar'):footer;
-    if(controls.parentElement!==destination){level.open=false;if(destination===footer)footer.insertBefore(controls,footer.querySelector('.campus-camera-hint'));else destination.append(controls);}
+    const destination=footer;
+    if(controls.parentElement!==destination){if(destination===footer)footer.insertBefore(controls,footer.querySelector('#campus-motion'));else destination.append(controls);}
   }
   let lastRootView=root.hidden+'|'+currentView(),lastLayoutHidden=layout.hidden;
   new MutationObserver(()=>{const next=root.hidden+'|'+currentView();if(next!==lastRootView){lastRootView=next;stop();syncControls();}}).observe(root,{attributes:true,attributeFilter:['hidden','data-room']});

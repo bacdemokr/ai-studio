@@ -1,61 +1,39 @@
-# A useful agent you can see — presenter runbook
+# Presenter runbook
 
-## Before attendees arrive
+## Before the demo
 
-Start the chosen model, OpenClaw and app. Check `./bac llm check` and `./bac runtime check`. Keep one model active across all agents. Connect optional Telegram/search credentials yourself; never bake them into an image. If using OpenShell, run a real mission and inspect the actual sandbox before describing it as enforced.
+On Spark, run `./bac start`, open the localhost SSH tunnel and connect the model in Settings. Do one real personal task and one complete event before the audience arrives. If demonstrating OpenShell, rehearse a protected file read and the approval flow on that host. Keep previous real Results available; do not present a sample or a stale result as a new successful run.
 
-Open Agent Studio in a fresh browser profile. Confirm WebGL movement, no horizontal overflow, and a green runtime indicator. Inference latency depends on the selected model and hardware; do a timed rehearsal on the actual Spark. Keep the separate, visibly labeled Workflow rehearsal available for a service outage.
+Use Settings → Reset → BaC to clear the event board and team conversations between demonstrations. Lounge Agent Reset removes hired agents; Reset all combines both. Agents and saved files otherwise survive refreshes and server restarts.
 
-## 0–2 minutes: a teammate with a personality
+## Hiring and Lounge
 
-Open **Hiring**. Ask the attendee to choose Classic, Orbit or Rover, pick a color and accessory, name their agent and choose Helper, Creator or Researcher. Choose a tone and answer length separately. Compare Kind with Cynical, then Brief with Detailed in the sample reply. Under **What should your agent help you with?**, choose concrete abilities such as reading documents or building small apps. These are reusable skills; the working style itself does not grant tools. Creating the agent opens **Agent lounge**, where one robot appears per saved agent. Its appearance and identity survive refreshes. Create another teammate to show the room growing; click either robot to open its own conversation and workspace. Explain that a persona changes how the agent approaches work; a skill supplies reusable instructions, and tool access is checked separately.
+Let the audience choose a character, interests, tone and skills. Create contrasting agents and try a short weather, document or research task. Compare how each persona approaches the same question. A weather specialist may care about arrival conditions; a skeptical agent may focus on weak evidence.
 
-## 2–5 minutes: a visible, useful result
+Show the actual reply and any written artifact. Click the name or portrait to inspect `SOUL.md` and equipped custom `SKILL.md` files. A Custom skill badge means the runtime actually read that file for the reply. Equipped skill chips alone do not prove execution.
 
-In **Agent lounge**, choose **Make something playable**. Request a tiny reaction-time game, wait for the real agent response, and open the saved HTML. Play it. The result is a file, not an animation of an imagined task. If generation fails, show the actual error and a local tool or a labeled rehearsal; do not claim a fallback is a live success.
+If using OpenShell, start with a destination or supported file request that needs permission, approve the request, then retry. The approval UI reflects actual host checks. Unavailable paths are not solved by granting access. DNS failures also need a network fix, not another approval. See the [OpenShell verification guide](openshell-verification.md) for repeatable checks.
 
-Alternative: choose **Ask your documents**, add the sample brief or your own .txt/.md/.csv, and ask for an answer with filename evidence. Or choose **Plan around the weather** for a current observation and source.
+## Multi-Agent demo
 
-## 5–7 minutes: memory and continuity
+Choose an event template, check its date/venue, set 3–6 themes, and launch. Casey is required. Preset event specialists run without OpenShell; personal guests keep their own setting.
 
-Ask the agent to remember a preference. Open Memory to inspect the actual file, refresh, and ask what it remembers. If Telegram was configured, pair the participant’s private chat and ask the same question there. Web and phone use the same OpenClaw session, not two bots pretending to remember.
+Prepare the selected production crew before launch; this does not send a model request. Choose available personal guests for closing reactions, or proceed with none. Busy guests are excluded. Guest runtime and protection checks happen when their reaction runs; a failed guest check skips that reaction without blocking the event package. Errors preparing a selected production role block launch and remain visible. Preparation uses the shared queue, so a running Lounge request is not interrupted.
 
-## 7–13 minutes: why several agents?
+- Casey writes the shared brief and priorities.
+- Dylan chooses research queries and proposes sourced, clearly named booth demos.
+- Alex works in parallel using Booth-1, Booth-2, etc. He writes the presenter schedule and breaks, favoring topic continuity. The app binds Dylan’s final names to those IDs.
+- Morgan receives their outputs and writes the actual event HTML plus a LinkedIn-style draft using the project skills.
+- Hired agents briefly react in their saved tone/interests, show a small completion bubble, and return to the lounge. Read the full reactions in chat/Results.
 
-Open **BaC mission room** and launch a crew mission. Three starting briefs are available: **Zurich · Meet your agents** (120 attendees, 180 minutes, one day), **Austin · Applied AI lab** (240 attendees, 120 minutes, one day), and **Singapore · AI showcase** (360 attendees, 180 minutes per day, two days). City, region, total attendance, days, event window, language, harnesses and topics are editable. Demo timing defaults to five people for fifteen minutes; booth count is capped at six. Open **Demo timing & booth limits** to change the preferred visit length, group size and local start time. Austin visibly changes the visit length to ten minutes to fit its booth limit. These are planning calculations, not measured GPU throughput.
+Open Mission Control to show task order and handoffs. Open Results to show each saved contribution: Dylan’s demo proposal, Alex’s timetable, Morgan’s webpage and social post. The contributor links scroll through one page. Expand the proposal’s research details or scheduling decisions when explaining the choices; source and export JSON previews and downloads sit beside each contribution. Expand Activity to inspect observed searches, file reads and writes.
 
-The preset Milo-led crew is ready without personal onboarding or OpenShell. Optionally open **Meet the crew / choose your own agents** and assign your personal agents. Milo delegates the brief, Nova designs topic-specific demos and presenter expertise, Atlas reviews the calculated rota and exports it, Momo researches a hotel candidate and drafts the invitation, and Pico reviews the plan and creates the audience survey. Real task events animate the 3D crew; specialist calls use one shared model sequentially. The selected harnesses are what the planned event should showcase; the planning crew itself still uses OpenClaw.
+Explain the boundary plainly: agents research, choose, schedule and write; the app dispatches the known graph, checks files and renders validated data. This is a bounded demonstration, not an autonomous event organizer or a claim that multiple agents speed up one GPU.
 
-In **Shared deliverables**, inspect **Booth plan & rota**. Download the `.xlsx` workbook or CSV: booth IDs, relative days, local time slots, topic, presenter slot and group attendance are included. All presenter names are unassigned placeholders. The Excel file is an application-calculated snapshot; use the app to recalculate. In **Venue & invitations**, inspect the source link and candidate status. Save an `.eml` draft or readable HTML. There is no mail account or send operation. Confirm venue capacity, dates, recipients and registration before using the invitation.
+## If something fails
 
-Open **Audience feedback**, try the survey, choose an interest and submit. Return and refresh the results. Repeated submissions from that browser update one response. Select **Give these interests to the crew** to launch a fresh plan weighted by the real responses; the original package remains in history. Explain that a tiny demo sample is directional, not confirmed attendance. For attendee phones, open the app through the Spark's LAN IP before copying the survey link; localhost links only work on the host. Keep the server on. No Google account is needed. The anonymous survey collects topic, experience and usefulness rating; no names or email addresses.
+Keep completed contributions and the actual failure visible. Inspect Activity, saved files and Download evidence. Check the relevant service logs. A deliberate retry may repeat file writes, so inspect existing output first. Never mask a failed real run with a generated success message.
 
-Explain the value in concrete terms: each role has a clear responsibility, its own context, and an output another role can inspect. The reviewer can catch inconsistencies. A single short task does not need a crew; a coordinated plan benefits from explicit dependencies. This implementation runs sequentially on one LLM, so it does not promise faster execution from concurrency.
+Stop waits for the active model call boundary; it does not instantly cancel GPU work. After an app/gateway interruption, verify whether the previous call is still finishing before retrying. API keys may need reconnecting after a restart.
 
-## 13–15 minutes: make it their own
-
-Edit persona/skills after the mission finishes. Schedule a one-minute follow-up; the queue survives refresh. Download the final plan, mini app or report. No invitation email is sent from the demo. Optional browser voice playback reads the answer; this is browser speech, not a separate voice model.
-
-## Presentation boundaries
-
-Keep the dark NVIDIA-inspired shell and familiar panel layout. Hiring contains a large character preview and OpenClaw connection details; Agent lounge contains only the attendee’s saved agents; Mission room contains the five specialist stations and Mission control. Personal agents keep their appearance when assigned to crew roles. For the spatial experience, click the 3D view and press Enter, double-click an empty area, or use Full screen. The side panel hides and the 3D room fills the display. Esc or Exit full screen restores the studio; the camera and running work are preserved. Hotspot dialogs remain usable in fullscreen, and selecting a personal skill returns to the mission composer. Character wandering is ambient when idle; movement toward a station represents an observed task state. The evidence panel contains app events and actual files, not a fine-grained tool trace or hidden reasoning.
-
-OpenClaw owns agent execution, identity, skills, tool use and conversation state. The BaC app owns onboarding, the shared brief, role orchestration, scheduling and UI. OpenShell is an opt-in execution sandbox for personal agents, while the preset crew stays outside it. Open **Policies** to demonstrate a denied weather request, approval of only the weather API, successful retry, and revocation. Check the actual loaded policy and access logs, separately from approval history; an application approval is not proof of an OpenShell policy boundary.
-
-## Add a security and recovery segment
-
-Open **Inspect shared state** during a crew mission. Show the actual received brief, completed prior-role outputs, timestamps and files. This is the concrete reason for several roles: Momo drafts from a plan resolved by other specialists, and Pico sees the complete package.
-
-For a five-minute security segment, click **Access gate**. In **Try the concept**, let the attendee attempt the request, propose a narrow operator permission, retry and test a different destination. Keep the illustrative label visible. Switch to **Inspect host evidence** and show a capture from `./bac openshell prove`, if the operator has run it. Explain that the timestamped result belongs to a dedicated proof sandbox. Then inspect a real agent sandbox on the host before making claims about its enforcement. Do not claim host-side web tools automatically run inside that sandbox.
-
-Demonstrate **Stop after active call**: the pending model request may finish, but the next role does not start. Reset while running must visibly refuse; after completion, **Reset mission board** preserves the selected agent’s memory and files; the other agents’ boards stay unchanged. Use **Help & fallback** to show an error, download its evidence, enter a labeled fallback or retry deliberately.
-
-Before the event, complete the [requirements and fault checks](cohort-requirements.md), especially real Spark inference and OpenShell enforcement.
-
-If the event includes NeMoReef, the facilitator can explain the two experiences: this Studio focuses on personal onboarding, useful skills and visible crew handoffs; the supplied NeMoReef brief emphasizes persistent assignments, orchestration and policy/failure recovery. Confirm the event’s available demos before directing attendees to another station. This guidance is part of the presenter runbook.
-
-## Show the connected studio
-
-In Hiring, point out the two lit doorways: one into Agent lounge and one directly into BaC mission room. Use **See the whole studio** to show the L-shaped floor plan: lounge at upper left, BaC at upper right, onboarding below the lounge. The third corridor bends around the open courtyard, completing a loop. Visit all three rooms through their doorways; no intermediate room is required. The small studio map uses the same layout. Enter fullscreen and use the doorways or the small map to move without leaving it. Draft names, appearance, selected agents and their work stay intact as you travel. Policies remains a separate control panel. For motion-sensitive attendees, the browser’s reduced-motion preference makes the camera changes immediate.
-
-In BaC mission room, click Atlas or another robot to inspect it in the right-hand panel. Selection does not open a modal or scroll the page. Show the role, persona, equipped skills and the previous/next handoff partners; after a role delivers, expand its actual saved output in the panel. In fullscreen, selecting a robot docks the same panel beside the world. Close the panel to return to the full-width scene.
+The [Docker guide](docker-setup.md) contains installation and recovery commands. The [runtime guide](live-studio.md) explains persisted state and access boundaries.

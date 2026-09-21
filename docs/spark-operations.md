@@ -1,168 +1,122 @@
-> The main UI now connects to OpenClaw. After starting the LLM, run `./bac runtime setup`, `./bac runtime start`, and `./bac runtime check`. See [the live runtime guide](live-studio.md). Agent state is preserved across app updates.
+# DGX Spark: install once, start with one command
 
-# Set up once, review many application updates
+For a new Spark with an existing model endpoint, use the [Docker release](docker-setup.md). The model stays on the host; this guide is the optional host-managed model workflow.
 
-Use one checkout of `bacdemokr/tmp` on Spark. Keep large model files and the Python serving environment outside that checkout. Application updates never run model setup or restart the LLM service.
+Already have Ollama or another OpenAI-compatible server? Use the [Ubuntu existing-model guide](ubuntu-setup.md); these managed NVFP4 profiles are optional and target Spark ARM64.
 
-**Scope:** these commands manage vLLM independently from the app. The main Agent Studio connects through the separately installed OpenClaw runtime. Model startup, quality and performance still require validation on your Spark.
+The normal path uses the existing `bac` entry point. You do not need separate shell scripts, manual virtualenv activation or one model server per agent.
 
-## 1. First-time prerequisites
+## 1. Prepare the host
 
-Use your normal Linux user on DGX Spark with its NVIDIA driver installed. Do not run `./bac` with sudo. The managed services require a working systemd user session.
+Use a normal Linux account with the Spark driver installed and a working systemd user session. Do not run `./bac` with sudo.
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y git python3 python3-venv ffmpeg
+sudo apt-get install -y git python3 python3-venv curl ca-certificates openssh-client poppler-utils
 
 git clone https://github.com/bacdemokr/tmp.git
 cd tmp
-./bac doctor
+./bac dev doctor
 ```
 
-The repository is private, so Git on Spark must be authenticated. If you already cloned it for the earlier preview, run `git pull --ff-only` once to obtain the new `bac` command.
-
-If the foreground `./start.sh` server is still running on port 8080, stop it with Ctrl+C before starting the managed app.
-
-For services to keep running after your last SSH session closes and start after a reboot, enable lingering once:
+The repository is private; authenticate Git before cloning. `doctor` reports available tools and the next setup step. `poppler-utils` supports PDF uploads. For services to survive logout and start after reboot, enable lingering once, subject to your host’s policy:
 
 ```bash
-loginctl enable-linger "$USER"
+sudo loginctl enable-linger "$USER"
 ```
 
-Depending on Spark's local policy, this command may require administrator help. Without lingering, keep a logged-in user session while reviewing the demo. Service units are installed under `~/.config/systemd/user/` and enabled for that user; no system-wide service is installed.
+Choose `BAC_DATA_DIR` before setup if you need another disk. The default is `~/.local/share/bac-demo`; use a dedicated directory outside the checkout and the same setting for all commands. Do not copy the Mac’s native runtime, sandbox state or absolute workspace paths onto Spark.
 
-## 2. Install a shared model server
+## 2. Install and start
 
-### Qwen (default choice)
+With a managed local model:
 
 ```bash
-./bac llm plan qwen       # inspect packages, pinned model revision and launch options
-./bac llm setup qwen      # install the environment and download this model once
-./bac llm start qwen      # start the background model service
-./bac llm check           # succeeds after the endpoint becomes ready
-./bac llm logs            # recent startup output, including failures
+./bac dev setup --model qwen
+./bac dev start --model qwen
 ```
 
-Setup reuses `uv` if available; otherwise it installs `uv` in a private bootstrap environment. `uv` supplies Python 3.13 for the serving environment. The runtime uses `vllm==0.28.0`, `flashinfer-python==0.6.16.post3` and `nvidia-cutlass-dsl>=4.6.2`, following the supplied [Build-a-Claw guide](https://hackmd.io/@anushapant/BJDdpPHNzl). The full resolved package list is saved on Spark in `runtime/resolved-requirements.txt`; the CUTLASS lower bound and transitive dependencies are not a complete cross-machine lockfile.
+Use `gemma` in both commands for the alternative profile. Setup installs the pinned private Node/OpenClaw runtime, creates the private vLLM environment, checks the NVFP4 kernels and downloads pinned weights. Repeating setup reuses matching installations. It does not modify system Python or install Docker/drivers.
 
-Before downloading weights, setup checks CUDA capability and the b12x GEMM/MoE kernels. If that check fails, setup stops instead of treating a fallback as a successful NVFP4 setup. Initial downloads and first-start kernel compilation can take time. `llm start` reports that startup was requested; `llm check` separately verifies readiness.
+Start verifies the checkout/app port, starts the model, waits for its endpoint, starts OpenClaw and then starts the app. Healthy running services are reused. The model wait is bounded to 10 minutes and reports progress; use `--wait 1200` for a longer cold compile. A failed model service exits early with the log command. A timeout leaves the service running, so inspect logs and rerun start when ready. Start never downloads weights.
 
-### Optional Gemma
+If a compatible model server already exists, or you use a hosted API:
 
 ```bash
-./bac llm setup gemma
-./bac llm start gemma
-./bac llm check
+./bac dev setup
+./bac dev start --model external
 ```
 
-Starting Gemma stops the managed Qwen service first, and vice versa. Both sets of weights may stay on disk, but only one managed LLM runs at a time. An unrelated server occupying port 8000 is never killed; stop or reconfigure it yourself before using the managed service.
+No managed model is downloaded. If a model was previously started with `bac`, plain `start` reuses that selection. `--model external` skips that selection without stopping existing servers. If no longer needed, stop the managed model explicitly with `./bac dev llm stop`. Continue using `--model external` for subsequent external-endpoint starts.
 
-Both profiles expose the same endpoint and model alias:
+## 3. Open and connect
+
+From a laptop:
+
+```bash
+ssh -N -L 8080:127.0.0.1:8080 USER@SPARK
+```
+
+Open **http://localhost:8080 → Settings → Model**. For the managed model choose Local / on-prem, endpoint `http://127.0.0.1:8000/v1`, model `bac-local`, then connect. There is no per-agent endpoint configuration.
+
+`./bac dev preview` is the foreground development/preview alternative, not another required setup step. Stop it before starting a managed app on the same port. `./bac dev start --port 8081` uses another app port; adjust the tunnel. `--host 0.0.0.0` enables trusted workshop LAN access, while Settings still requires localhost/tunnel access. Model and agent gateways bind to loopback.
+
+## Daily use
+
+| Task | Command |
+| --- | --- |
+| Start/reuse installed services | `./bac dev start` |
+| Inspect services and data location | `./bac dev status` |
+| Update the app, keep the model installation | `./bac dev update` |
+| Restore the previous app release | `./bac dev rollback` |
+| Diagnose model startup | `./bac dev llm logs` / `./bac dev llm check --wait 120` |
+| Diagnose OpenClaw | `./bac dev runtime logs` / `./bac dev runtime check --wait 30` |
+| Diagnose the app | `./bac dev app logs` |
+| Stop one service | `./bac dev app stop`, `./bac dev runtime stop`, `./bac dev llm stop` |
+
+Finish or stop pending missions and policy updates before updates, rollback or service changes. A repeated healthy start preserves current connections. An actual app restart expires in-memory API credentials; reconnect keyed providers in Settings. Update does not install packages or warm/restart the model. A dirty or diverged checkout is rejected without discarding changes. Release snapshots include only committed source, so commit intended changes before deploying.
+
+## Optional OpenShell protection
+
+For the pinned installer command and first-run steps, see [Ubuntu OpenShell setup](ubuntu-setup.md#optional-openshell). Install the host prerequisites from [OpenShell installation](https://docs.nvidia.com/openshell/latest/about/installation) and the [Spark OpenShell playbook](https://build.nvidia.com/spark/openshell). For this app’s Ubuntu Docker path, Docker Engine 28+ must be reachable by the normal account; OpenShell’s CLI/gateway and SSH must work from that same account. Docker group changes may require a new login.
+
+```bash
+./bac dev openshell enable
+./bac dev runtime preflight --protected
+```
+
+These are infrastructure checks. They do not prove a protected LLM task completed. The app never silently switches a protected agent to unprotected mode.
+
+### Protected-demo deployment gate
+
+On the actual Spark, rehearse these once before attendees arrive:
+
+1. Get a real reply from an OpenShell-off personal agent.
+2. Ask an OpenShell-on agent to read `IDENTITY.md`. Inspect its actual sandbox and loaded policy.
+3. Run `./bac dev openshell prove` for independent deny → allow → deny network evidence.
+4. Run a complete event and inspect Dylan’s sources, Alex’s rota, Morgan’s written HTML and guest reactions.
+5. Restart/reboot, reconnect as needed, and repeat the protected file read.
+
+## What is pinned, and what remains unverified
+
+[runtime/profiles.json](../runtime/profiles.json) is the model configuration source of truth. It records Python 3.13, vLLM 0.28.0, FlashInfer 0.6.16.post3, a CUTLASS lower bound, model revisions, launch arguments and the Gemma template checksum. The installation follows the supplied [Build-a-Claw model guide](https://hackmd.io/@anushapant/BJDdpPHNzl). The [vLLM kernel checks](https://github.com/vllm-project/vllm/blob/v0.28.0/vllm/utils/flashinfer.py) and [Gemma template](https://github.com/vllm-project/vllm/blob/v0.28.0/examples/tool_chat_template_gemma4.jinja) are checked against the pinned upstream tag.
+
+The full resolved dependency list is recorded in `runtime/resolved-requirements.txt` on the host. This is not a complete cross-machine lockfile. Both profiles use the `bac-local` alias on port 8000; only one managed model runs at once. Existing unrelated servers are never killed to free that port.
+
+Lifecycle tests cover reuse, failure handling, scoped removal, update and rollback. Actual clean-host ARM64 package resolution, weight loading, kernel compilation time, memory pressure and protected model quality still need the Spark rehearsal. The current development host is macOS; do not treat its fixture results as a Spark benchmark.
+
+## Data and removal
 
 ```text
-base_url = http://127.0.0.1:8000/v1
-model    = bac-local
-```
-
-The selected original model ID and revision are recorded in `~/.local/share/bac-demo/llm.json`. A future agent backend can use that one endpoint for every role. Gemma's tool template is fetched from vLLM `v0.28.0` and checked against a committed SHA-256.
-
-### Changes relative to the reference guide
-
-- Only Qwen/Gemma are included; no second vision model is launched.
-- The endpoint binds to loopback, uses the stable `bac-local` alias and reads a dedicated local weights directory.
-- Model revisions are pinned in `runtime/profiles.json` rather than following the Hugging Face repository's moving default branch.
-- Gemma's context length is explicitly set to 262144, matching the guide's model table.
-- `CUTE_DSL_ARCH=sm_121a` and `MAX_JOBS=8` are set for the managed runtime.
-- The scripts do not change drivers, drop Linux filesystem caches, install OpenClaw/Hermes, or modify their existing configuration.
-
-The Qwen profile retains the reference's 0.6 memory utilization and 4 maximum sequences; Gemma retains 0.7 and 8. These are source-based starting configurations, not a benchmark from this repository. Adjustments should be validated on the target Spark.
-
-If you already have the guide's model server running, the app can be reviewed without installing another one. The managed setup intentionally uses its own weight directories and may download a separate first copy; it does not take ownership of your global Hugging Face cache or existing environments.
-
-## 3. Start the application
-
-```bash
-./bac app start
-./bac status
-```
-
-Open `http://localhost:8080` on Spark. From a laptop, keep this tunnel open:
-
-```bash
-ssh -N -L 8080:127.0.0.1:8080 YOUR_SPARK_USER@YOUR_SPARK_HOST
-```
-
-Then open `http://localhost:8080` on the laptop. A direct trusted-LAN preview is also available:
-
-```bash
-./bac app start --host 0.0.0.0 --port 8080
-```
-
-Open `http://SPARK_IP:8080`. This workshop server uses browser-session isolation, not user-account authentication. LLM serving remains on loopback regardless of the app's host setting.
-
-## 4. The everyday review loop
-
-After a new version has been pushed to GitHub, run this from the existing checkout:
-
-```bash
-./bac update
-```
-
-The command fetches `origin/main`, accepts a fast-forward update, builds an immutable application snapshot, switches the current release, and restarts the app if it was running. It then checks that the app reports the expected commit. The LLM stays loaded; its environment, weights and selected profile are not changed. If the app was stopped, the new release is prepared but remains stopped until `./bac app start`.
-
-Refresh the browser to see the new UI. The header's **Build** label shows the deployed commit prefix. Agent Studio saves participants, memory, files and jobs outside application releases. The separate historical rehearsal tabs retain browser-only state. Wait for active missions to finish before updating; interrupted tasks are marked for attention.
-
-No model downloads, Python package installs or GPU warmup happen as part of `./bac update`. A checkout with local edits or diverged commits is rejected; the command does not stash, reset or overwrite those edits.
-
-Running update again on the same version leaves the current and rollback releases unchanged.
-
-### If a version does not look right
-
-```bash
-./bac rollback
-```
-
-This restores the previous successful application release, leaving the model server and Git checkout alone. Refresh the browser again. A build failure keeps the old release; a failed health check attempts to restore and restart it automatically. Logs are available through `./bac app logs`.
-
-Release snapshots are retained under `demo/releases/`. They are small application copies, not model copies. There is no automatic release pruning yet.
-
-## 5. Stop or delete only what you intend
-
-```bash
-./bac llm stop                 # release GPU memory, retain downloaded model files
-./bac llm remove qwen          # preview the exact managed directory to delete
-./bac llm remove qwen --yes     # remove Qwen weights; retain Gemma and shared runtime
-./bac llm remove gemma --yes    # remove Gemma weights
-./bac llm remove-runtime --yes # remove the private vLLM environment; retain models
-./bac app stop                 # stop only the web demo
-```
-
-Deleting the selected model also stops and disables its managed LLM service. Deletion does not touch global Hugging Face caches, unrelated models, driver packages, OpenClaw/Hermes, the Git checkout or the app. `remove-runtime` preserves the recorded dependency list, bootstrap tools, Python installation and download/kernel caches. No deletion command recursively removes your home directory or the whole data root.
-
-To recover after deleting only a runtime, run `./bac llm setup qwen` (or `gemma`) again. Already installed, unchanged model files are reused. If runtime pins or an installed model profile change in a later repository version, setup asks for an explicit remove/setup cycle; regular app updates do not migrate them silently.
-
-## Files that change independently
-
-```text
-~/tmp/                                  Git checkout: UI, agents, scripts, docs
 ~/.local/share/bac-demo/
-  runtime/vllm-env/                      Slow-changing shared Python environment
-  runtime/resolved-requirements.txt      Record of the installed versions
-  models/qwen/                          Pinned Qwen weights and installed profile
-  models/gemma/                         Pinned Gemma weights and tool template
-  cache/                                Private download / compilation caches
-  llm.json                              Shared endpoint and selected model
-  demo/releases/<commit>-<id>/           Small application snapshots
-  demo/current -> releases/...          Active review version
-  demo/previous -> releases/...         Rollback target
+  openclaw/                   Private Node, OpenClaw and native agent state
+  runtime/vllm-env/           Shared serving environment
+  models/qwen/, models/gemma/ Pinned weights and installed profiles
+  cache/                     Download/kernel caches
+  llm.json                   Last managed model and endpoint
+  studio/                    SQLite, agent workspaces and saved files
+  demo/releases/             Immutable app snapshots
+  demo/current, demo/previous Release links
 ```
 
-Set `BAC_DATA_DIR` before your first setup if you need another disk, and keep using the same value for every command. The path must be a dedicated directory outside the checkout. No personal tokens are stored in Git; an optional `HF_TOKEN` may be supplied through your shell during setup.
-
-## Validation performed here
-
-Host-side tests cover model-scoped deletion, symlink protection, single-service model switching, immutable installed profiles, clean Git updates, application rollback, build failure recovery, health failure recovery and refusal to overwrite unrelated service units. The web workflow tests also pass.
-
-The generation machine is macOS. Actual Linux systemd execution, ARM64 package resolution, weight loading and NVFP4 kernel performance have not been run on Spark yet. Use `doctor`, `llm logs`, `llm check`, `app logs` and the Build label during the first Spark review.
-
-Implementation references: [vLLM 0.28.0 argument handling](https://github.com/vllm-project/vllm/blob/v0.28.0/vllm/engine/arg_utils.py), [b12x availability checks](https://github.com/vllm-project/vllm/blob/v0.28.0/vllm/utils/flashinfer.py), [Gemma tool template](https://github.com/vllm-project/vllm/blob/v0.28.0/examples/tool_chat_template_gemma4.jinja), [uv CLI](https://docs.astral.sh/uv/reference/cli/), [Hugging Face CLI](https://huggingface.co/docs/huggingface_hub/guides/cli).
+`./bac dev llm remove qwen` previews a model-scoped removal; add `--yes` to apply it. `./bac dev llm remove-runtime --yes` removes the private vLLM environment while preserving weights. No command removes the global Hugging Face cache or host drivers. App rollback changes code, not the database. Release snapshots are retained; there is no automatic pruning.
