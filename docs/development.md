@@ -1,5 +1,15 @@
 # Development and verification
 
+## Branches and versions
+
+- `main`: the stable demo used by normal installations.
+- `v0.1`: a fixed tag for the baseline before Stage 3 OpenShell work. Keep released tags unchanged.
+- `dev`: development and testing, including Stage 3 OpenShell protection and connection visualization.
+
+For development, switch once with `git switch dev`, then use `git pull --ff-only` and `./bac start`. Normal users stay on `main`.
+
+Merge `dev` into `main` through a reviewed GitLab merge request after relevant tests and a live demo rehearsal pass. Create a new version tag on `main` for each release. A tag preserves code, not a backup of application data.
+
 The normal installation path is the [Git + Docker setup](docker-setup.md). Host development is separate:
 
 ```bash
