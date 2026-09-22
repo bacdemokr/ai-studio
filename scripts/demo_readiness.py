@@ -68,10 +68,9 @@ class DemoReadiness:
             payload['checks'].append(check)
             self.event(job_id, 'Preparing '+member['name'], 'Preparing runtime and checking saved access. No model request is sent.', payload=json.dumps(payload))
             try:
-                if member['id'] not in self.provisioned:
-                    self.initialize_workspace(owner)
-                    self.adapter.register(member['id'], self.workspace(owner, role), member, member['role'])
-                    self.provisioned.add(member['id'])
+                report = self.prepare_builtin_crew(owner, role, member)
+                if report:
+                    check['protection'] = report
                 check.update(status='ready')
             except Exception as error:
                 import logging

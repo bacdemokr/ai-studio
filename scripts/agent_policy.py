@@ -218,8 +218,8 @@ def public_logs(name):
     for line in re.sub(r'\x1b\[[0-9;]*m', '', logs).splitlines():
         action = re.search(r'(?:action[=:]\s*"?(allow|deny)\b|\b(ALLOWED|DENIED)\b)', line, re.I)
         host = re.search(r'(?:host|dst_host|destination)[=:]\s*"?([a-zA-Z0-9.-]+)', line) or re.search(r'->\s*([a-zA-Z0-9.-]+):[0-9]+', line)
-        # HTTP OCSF events use "-> GET http://host/path", unlike NET events.
-        http_target = re.search(r'->\s+[A-Z]+\s+(https?://[^\s]+)', line)
+        # L7 OCSF logs may omit the arrow: "HTTP:POST [MED] DENIED POST http://...".
+        http_target = re.search(r'\b(?:GET|HEAD|OPTIONS|POST|PUT|PATCH|DELETE|CONNECT|TRACE)\s+(https?://[^\s]+)', line)
         hostname = host.group(1) if host else None
         if not hostname and http_target:
             try:

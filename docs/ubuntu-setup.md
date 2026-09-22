@@ -77,9 +77,9 @@ ssh -N -L 8080:127.0.0.1:8080 USER@UBUNTU_HOST
 
 Open **http://localhost:8080** on the laptop. Keep the model URL pointing to the Ubuntu host's loopback address. Only port 8080 needs forwarding: the app contacts the model internally. Settings requires this localhost/tunnel access.
 
-## Optional OpenShell
+## OpenShell for Dylan and protected personal agents
 
-Skip this section if personal agents will use OpenShell off. The BaC crew works without it.
+The Docker installation includes OpenShell. For this host-development setup, configure it before running Dylan or a protected personal agent. Other crew members use standard runtimes.
 
 For protected agents, Docker Engine **28+** must work under the same normal account (`docker version` and `docker info`). Docker being installed alone does not guarantee account access. A group change requires logging in again. Follow the [official installation prerequisites](https://docs.nvidia.com/openshell/latest/about/installation).
 

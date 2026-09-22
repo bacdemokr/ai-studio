@@ -16,7 +16,7 @@ If using OpenShell, start with a destination or supported file request that need
 
 ## Multi-Agent demo
 
-Choose an event template, check its date/venue, set 3–6 themes, and launch. Casey is required. Preset event specialists run without OpenShell; personal guests keep their own setting.
+Choose an event template, check its date/venue, set 3–6 themes, and launch. Casey is required. Dylan runs in OpenShell with NVIDIA Blog reads pre-approved; the other crew members use standard runtimes. Personal guests keep their own setting.
 
 Prepare the selected production crew before launch; this does not send a model request. Choose available personal guests for closing reactions, or proceed with none. Busy guests are excluded. Guest runtime and protection checks happen when their reaction runs; a failed guest check skips that reaction without blocking the event package. Errors preparing a selected production role block launch and remain visible. Preparation uses the shared queue, so a running Lounge request is not interrupted.
 

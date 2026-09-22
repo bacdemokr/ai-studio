@@ -28,6 +28,7 @@ Point `BAC_DATA_DIR` at the host’s configured data directory:
 ```sh
 BAC_LIVE_POLICY_TEST=1 BAC_DATA_DIR=/path/to/data python3 -u -B tests/live_policy_flow.py
 BAC_LIVE_POLICY_TEST=1 BAC_DATA_DIR=/path/to/data python3 -u -B tests/live_file_access.py
+BAC_LIVE_POLICY_TEST=1 BAC_DATA_DIR=/path/to/data python3 -u -B tests/live_crew_research.py
 ```
 
 The network test verifies default deny, approval persistence, a successful public GET, Zurich geocoding and a live Open-Meteo forecast, denial of an unrelated destination, revocation and native cleanup. It also verifies that geocoding approval does not grant forecast access, and revoking the weather bundle preserves a separately approved geocoding host. It exits unsuccessfully if an approved GET fails, even when activation succeeded. The file test checks host-path isolation, protected copies, write-back boundaries and revoke cleanup using a temporary file.
@@ -45,7 +46,18 @@ Do not infer a missing permission from HTTP 403 or `CONNECT tunnel failed` alone
 
 `openshell gateway info` checks the gateway, but a healthy gateway does not verify outbound DNS. After repairing the host network, rerun the real network test before demonstrating weather or research.
 
-## Local verification record — 2026-09-21
+## Protected Demo Producer - 2026-09-22
+
+On the development Mac with OpenClaw 2026.9.4 and OpenShell 0.0.116:
+
+- Two independent sandbox runs each completed three research missions: six search queries and six article reads per run, with JSON saved inside the sandbox. Only `blogs.nvidia.com:443` needed approval.
+- Native policy logs confirmed an unrelated destination was denied. The loaded policy remained read-only. A captured L7 write-denial log exposed a parser bug (HTTP logs without an arrow), now covered by regression tests.
+- A deterministic local protocol fixture exercised the actual OpenClaw skill read, sandbox exec, search, article read, native write/read and mirror synchronization. Every tool completed and the resulting files were checked. This fixture is not an LLM.
+- 365 Python tests, the policy-activity JavaScript check and the UI build passed.
+
+Real-model generation could not be verified: the existing model proxy endpoint refused connections. Reconnect the model and rehearse a complete event before presenting. These Mac results do not establish Ubuntu/DGX Spark acceptance; run `live_crew_research.py` on the target host too.
+
+## Local verification record - 2026-09-21
 
 The final Python regression run passed 256 tests. Browser checks cover recovery, pending approval, bulk approval and failure states.
 

@@ -60,4 +60,6 @@ The model runs outside BaC's Docker stack. Use a model with tool calling; a keyl
 
 Agents research, schedule and write. The app coordinates the workflow, validates artifacts and renders data such as timetables. Failed runs remain visible.
 
+Dylan researches inside OpenShell with NVIDIA Blog reads pre-approved. **Prepare demo** verifies his sandbox and policy before launch.
+
 [Setup & troubleshooting](docs/docker-setup.md) · [Presenter guide](docs/demo-runbook.md) · [Development & tests](docs/development.md)

@@ -8,7 +8,7 @@ from html.parser import HTMLParser
 import json
 from pathlib import Path
 import re
-import urllib.request
+from research_http import fetch
 from urllib.parse import urlsplit
 
 
@@ -114,13 +114,7 @@ class ArticleText(HTMLParser):
 
 def read_article(url):
     if urlsplit(url).scheme!='https' or urlsplit(url).hostname!='blogs.nvidia.com': raise ValueError('Use a retrieved NVIDIA Blog source URL.')
-    class Redirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self,req,fp,code,msg,headers,newurl):
-            if urlsplit(newurl).scheme!='https' or urlsplit(newurl).hostname!='blogs.nvidia.com': raise ValueError('Unexpected research redirect.')
-            return super().redirect_request(req,fp,code,msg,headers,newurl)
-    request=urllib.request.Request(url,headers={'User-Agent':'BaC-Agent-Research/1.0'})
-    with urllib.request.build_opener(Redirect()).open(request,timeout=12) as response:
-        raw=response.read(2_000_001)
+    raw=fetch(url)
     if len(raw)>2_000_000: raise ValueError('Article exceeds the read limit.')
     parser=ArticleText();parser.feed(raw.decode('utf-8',errors='replace'))
     return re.sub(r'\s+',' ',' '.join(parser.parts)).strip()[:16000]

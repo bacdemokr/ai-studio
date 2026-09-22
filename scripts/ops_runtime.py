@@ -177,4 +177,4 @@ def openshell(action, automatic=False):
             time.sleep(1)
     else:
         raise RuntimeError('OpenShell is configured, but the agent runtime has not finished reconnecting.')
-    print('OpenShell setup is saved and the agent gateway is reachable. The first protected run verifies sandbox startup. The preset crew stays outside OpenShell. New protected agents start with no outbound network permissions. Inspect their actual policies in the Policies tab.')
+    print('OpenShell setup is saved and the agent gateway is reachable. Dylan uses OpenShell with pre-approved NVIDIA Blog reads. Other preset crew members use their standard runtimes. New protected personal agents start with no outbound network permissions. Inspect their actual policies in the Policies tab.')

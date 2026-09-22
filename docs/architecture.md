@@ -47,6 +47,14 @@ The Lounge shows only Ready or Busy, derived from the individual agent’s unfin
 
 The crew catalog retains six stable IDs for old jobs and cleanup; the current UI uses Casey, Dylan, Alex and Morgan. Old job schemas, exports and policy records remain readable. Removing those readers would risk existing data, so they are compatibility code rather than candidates for blind deletion.
 
+## Demo Producer protection
+
+Dylan's native tools run inside an agent-scoped OpenShell sandbox. Preparation, direct chat and event execution verify a loaded policy with exactly `blogs.nvidia.com:443` approved for read-only requests by `/usr/bin/curl`. Python handles research parsing and JSON files inside the sandbox; it invokes curl for network reads. Redirects must stay on that HTTPS origin. Other crew members retain their standard runtimes, and personal-agent approvals are independent.
+
+The model still chooses search queries, reads sources and authors the demo proposals. Pre-approval does not precompute or cache model answers. Workspace files use the native mirror bridge. Model inference remains outside the tool sandbox. Verification failure stops the task; there is no host-side research fallback. Old workflows that prefetch research on the host must be started again through the current Multi-Agent demo form.
+
+`tests/live_crew_research.py` repeats real search/read/save operations and checks unrelated-host denial in native logs. It does not call an LLM or prove complete event generation.
+
 ## Polling and performance
 
 State is checked every 1.5 seconds while the page is visible. `/api/state` authenticates and builds the current snapshot, then returns an ETag. An unchanged conditional request returns 304 with no history body. The tab caches snapshots per agent; unchanged responses do not rebuild the UI. Agent switching and stale-response guards still apply. The server still performs its state query and hash; this is a network/render optimization, not an assertion that polling costs nothing.

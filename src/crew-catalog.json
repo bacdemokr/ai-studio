@@ -15,6 +15,7 @@
     "persona": "maker",
     "description": "Researches NVIDIA themes and turns them into lightweight, source-backed demos.",
     "id": "demo-producer",
+    "protection": "openshell",
     "skills": [
       "nvidia-research",
       "event-tools"

@@ -72,9 +72,10 @@ class CrewDefinitionTests(unittest.TestCase):
         for role,member in enumerate(CREW_CATALOG[:4]):
             workspace=self.studio.workspace(self.owner,role)
             before={name:(workspace/name).read_text() for name in ('SOUL.md','IDENTITY.md','AGENTS.md')}
-            profile={**member,'skills':ROLE_SKILLS[role],'protection':'standard'}
+            profile={**member,'skills':ROLE_SKILLS[role],'protection':member.get('protection','standard')}
             agent_id='bac-'+self.owner+'-r'+str(role)
-            runtime.register(agent_id,workspace,profile,member['role'])
+            with patch.object(runtime,'ensure_openshell'):
+                runtime.register(agent_id,workspace,profile,member['role'])
             for name,content in before.items():self.assertEqual((workspace/name).read_text(),content)
             entry=json.loads(runtime.config_path().read_text())['agents']['entries'][agent_id]
             self.assertEqual(entry['workspace'],str(workspace))

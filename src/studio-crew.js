@@ -66,7 +66,8 @@ function renderCrewPassport(){
  const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';portrait.style.setProperty('--avatar-accent',appearanceColors[avatar.color]||appearanceColors.green);
  const skills=window.BacCrewCatalog[i].skills;
  const skillLabels={...titles,'event-tools':'Event tools','event-scheduling':'Presenter scheduling'};
- const markup=skills.map(s=>'<span>'+escape(skillLabels[s]||s)+'</span>').join('');if(el('crew-skills').innerHTML!==markup)el('crew-skills').innerHTML=markup;
+ const protection=window.BacCrewCatalog[i].protection==='openshell'?'<span title="Required for tool execution. NVIDIA Blog reads are pre-approved and verified before each task.">◇ OpenShell</span>':'';
+ const markup=skills.map(s=>'<span>'+escape(skillLabels[s]||s)+'</span>').join('')+protection;if(el('crew-skills').innerHTML!==markup)el('crew-skills').innerHTML=markup;
  const key=agentId+':'+i,switched=key!==crewChatKey;
  if(switched){if(crewChatKey)crewDrafts.set(crewChatKey,el('crew-prompt').value);crewChatKey=key;el('crew-prompt').value=crewDrafts.get(key)||'';el('crew-chat-error').hidden=true;}
  renderImageDrafts(true);

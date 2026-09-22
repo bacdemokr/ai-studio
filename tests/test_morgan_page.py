@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 from test_researched_event import EventAdapter, SOURCES, author_page
-from studio import Studio
+from studio import Studio, CREW_CATALOG
 import morgan_page
 
 class FileAdapter(EventAdapter):
@@ -38,7 +38,8 @@ class MorganPageTests(unittest.TestCase):
         temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup)
         self.adapter=FileAdapter(faults);self.studio=Studio(temp.name,self.adapter,start_worker=False);self.owner=self.studio.session()[0]['id']
         self.studio.enqueue(self.owner,{'kind':'crew','preset':True,'workflow':'showcase','brief':{'schema':2,'themeCount':3,'city':'Zurich','startDate':'2026-10-01','endDate':'2026-10-01','venue':'StageOne Event & Convention Hall'}})
-        with patch('nvidia_research.discover',return_value=SOURCES):
+        # Exercise historical host-research assembly only; current protected runs are tested separately.
+        with patch.dict(CREW_CATALOG[1], {'protection':'standard'}), patch('nvidia_research.discover',return_value=SOURCES):
             self.studio.execute(self.studio.next_job())
         return self.studio.state(self.owner)['jobs'][0]
 

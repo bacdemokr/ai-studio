@@ -4,6 +4,8 @@ description: Execute bounded public research and export an agent-authored BaC pr
 ---
 Read `inbox/agent-task.json` for this mission's brief, capacity and exact output paths. Invoke tools with exec from the workspace:
 
+The built-in Demo Producer runs these commands with `host=sandbox` inside OpenShell. Its NVIDIA Blog HTTPS reads are pre-approved before the turn. The tools use `/usr/bin/curl` for network access; Python parses and saves the responses locally. Do not use host exec or host web tools. Stop and report an unexpected denial without bypassing it. Alex uses his own configured runtime for schedule exports.
+
 ```
 python3 skills/bac-event-tools/scripts/event_agent_tools.py search "your query" "another query"
 python3 skills/bac-event-tools/scripts/event_agent_tools.py read S1 S3 S7

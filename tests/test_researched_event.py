@@ -12,7 +12,7 @@ from event_planner import plan,workbook
 from event_rotation import duty_grids
 from event_theme_content import apply_themes
 from fixture_studio import BrowserAdapter
-from studio import Studio
+from studio import Studio, CREW_CATALOG
 
 SOURCES={'retrieved':'2026-09-20T00:00:00Z','status':'available','queries':['fixture'], 'sources':[{'id':'S'+str(i+1),'title':'Fixture NVIDIA source '+str(i+1),'url':'https://blogs.nvidia.com/blog/fixture-'+str(i+1)+'/', 'published':'2026-09-18','excerpt':'Explicit test evidence, not a live article.'} for i in range(6)]}
 NAMES=['Safer personal agents','Reasoning with sources','Video understanding','Physical AI workflows','Efficient inference','Multimodal assistants']
@@ -53,7 +53,8 @@ class ResearchedEventTests(unittest.TestCase):
         temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup)
         self.adapter=EventAdapter();self.studio=Studio(temp.name,self.adapter,start_worker=False);self.owner=self.studio.session()[0]['id']
         self.studio.enqueue(self.owner,{'kind':'crew','preset':True,'workflow':'showcase','brief':{'schema':2,'themeCount':count}})
-        with patch('nvidia_research.discover',return_value=SOURCES):self.studio.execute(self.studio.next_job())
+        # Exercise historical host-research assembly only; current protected runs are tested separately.
+        with patch.dict(CREW_CATALOG[1], {'protection':'standard'}), patch('nvidia_research.discover',return_value=SOURCES):self.studio.execute(self.studio.next_job())
         return self.studio.state(self.owner)['jobs'][0]
 
     def test_rotation_matches_booths_and_breaks_at_every_scale(self):
@@ -142,10 +143,10 @@ class ResearchTransportTests(unittest.TestCase):
         future=format_datetime(datetime.now(timezone.utc)+timedelta(days=2))
         item=lambda url,date,title:'<item><title>'+title+'</title><link>'+url+'</link><pubDate>'+date+'</pubDate><description>Agents with sources</description></item>'
         raw=('<rss><channel>'+item('https://blogs.nvidia.com/blog/good/',recent,'AI agents')+item('https://evil.example/',recent,'AI agents')+item('https://blogs.nvidia.com/blog/future/',future,'AI agents')+'</channel></rss>').encode()
-        with patch('nvidia_research.urllib.request.urlopen',return_value=io.BytesIO(raw)) as call:
+        with patch('nvidia_research.fetch',return_value=raw) as call:
             rows=search_one('agent')
         self.assertEqual(len(rows),1);self.assertIn('/good/',rows[0]['url'])
-        self.assertIn('feed=rss2',call.call_args[0][0].full_url)
+        self.assertIn('feed=rss2',call.call_args[0][0])
 
     def test_failed_search_never_becomes_fake_evidence(self):
         from nvidia_research import discover

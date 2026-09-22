@@ -337,7 +337,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
 
     def initialize_crew_workspaces(self, owner):
         for role, member in enumerate(CREW_CATALOG[:4]):
-            profile = {**member, 'skills':list(ROLE_SKILLS[role]), 'protection':'standard'}
+            profile = {**member, 'skills':list(ROLE_SKILLS[role]), 'protection':member.get('protection','standard')}
             runtime.write_workspace(self.workspace(owner, role), profile, member['role'], overwrite=False)
 
     def initialize_workspace(self, owner):
@@ -586,7 +586,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 profile = json.loads(row['profile'])
                 used.add(key)
             else:
-                profile = {'name': name, 'persona': persona, 'skills': list(ROLE_SKILLS[i]), 'id': 'bac-' + owner + '-r' + str(i), 'avatar': ROLE_AVATARS[i], 'protection': 'standard'}
+                profile = {'name': name, 'persona': persona, 'skills': list(ROLE_SKILLS[i]), 'id': 'bac-' + owner + '-r' + str(i), 'avatar': ROLE_AVATARS[i], 'protection': CREW_CATALOG[i].get('protection','standard')}
             profile['avatar'] = avatar_for(key or profile['id'], profile.get('avatar'))
             profile.setdefault('tone', 'kind')
             profile.setdefault('verbosity', 'balanced')
@@ -838,10 +838,36 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                             'events': 'App-observed lifecycle and handoffs; not native tool traces'},
                 'mission': self.public_job(row)}
 
+    def prepare_builtin_crew(self, owner, role, member):
+        """Verify built-in protection before preparation, direct chat, and event work."""
+        from research_http import RESEARCH_APPROVALS
+        from studio_policy import ProtectionNotVerified
+        # Saved jobs from an older build must not restore an unprotected Dylan.
+        member['protection'] = CREW_CATALOG[role].get('protection', 'standard')
+        agent_id = member['id']
+        if agent_id not in self.provisioned:
+            self.initialize_workspace(owner)
+            self.adapter.register(agent_id, self.workspace(owner, role), member, member['role'])
+            self.provisioned.add(agent_id)
+        if member['protection'] != 'openshell':
+            return None
+        approvals = list(RESEARCH_APPROVALS)
+        report = self.adapter.policy_status(agent_id, 'openshell', approvals)
+        if report['status'] == 'awaiting-first-mission':
+            self.adapter.policy_prepare(agent_id)
+        if report['status'] != 'applied':
+            report = self.adapter.policy_apply(agent_id, approvals)
+        if report['status'] != 'applied':
+            raise ProtectionNotVerified(report['status'])
+        return {key:report[key] for key in ('mode','status','checkedAt','rules','sandboxes') if key in report}
+
     def ensure_agent(self, owner, profile, role=None):
         role = None if role == 0 else role
         agent_id = profile['id'] if role is None else profile['id'] + '-r' + str(role)
-        if agent_id not in self.provisioned:
+        if role is not None:
+            member = {'name':ROLES[role][0], 'persona':ROLES[role][2], 'skills':list(ROLE_SKILLS[role]), 'id':agent_id, 'role':ROLES[role][1]}
+            self.prepare_builtin_crew(owner, role, member)
+        elif agent_id not in self.provisioned:
             native = profile if role is None else {'name': ROLES[role][0], 'persona': ROLES[role][2], 'skills': list(ROLE_SKILLS[role])}
             self.adapter.register(agent_id, self.workspace(owner, role), native, ROLES[role][1] if role is not None else None)
             self.provisioned.add(agent_id)
@@ -951,11 +977,10 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
             current_event = db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind='crew' AND created>=?", (owner, reset['at'])).fetchone()
         member['purpose'] = CREW_CATALOG[role]['description']
         agent_id = member['id']
-        self.initialize_workspace(owner)
-        workspace = self.workspace(owner, role)
-        if agent_id not in self.provisioned:
-            self.adapter.register(agent_id, workspace, member, member['role'])
-            self.provisioned.add(agent_id)
+        report = self.prepare_builtin_crew(owner, role, member)
+        if report:
+            payload['protection'] = report
+            self.event(job_id, 'OpenShell verified', 'NVIDIA Blog HTTPS reads pre-approved. Other destinations remain blocked.', role, payload=json.dumps(payload))
         self.event(job_id, member['name'] + ' is working', member['role'], role)
         if self.stop_checkpoint(job_id):
             return
@@ -1038,14 +1063,17 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 self.check_protected_run(assigned, member)
             elif member:
                 agent_id = member['id']
-                if agent_id not in self.provisioned:
-                    self.initialize_workspace(owner)
-                    self.adapter.register(agent_id, self.workspace(owner, stage), member, member['role'])
-                    self.provisioned.add(agent_id)
+                report = self.prepare_builtin_crew(owner, stage, member)
+                if report:
+                    payload.setdefault('protection', {})[str(stage)] = report
+                    self.event(job_id, member['name'] + ' · OpenShell verified',
+                               'NVIDIA Blog HTTPS reads pre-approved. Other destinations remain blocked.', stage, payload=json.dumps(payload))
             else:
                 agent_id = self.ensure_agent(owner, profile, stage)
             name = member['name'] if member else profile['name'] if stage == 0 else ROLES[stage][0]
             if stage == 1 and b.get('themeCount') and 'research' not in payload and not agent_led:
+                if member and member.get('protection') == 'openshell':
+                    raise RuntimeError('This older workflow fetches research on the host. Start a new Multi-Agent demo to use Dylan’s protected research tools. No host research was performed.')
                 import nvidia_research
                 self.event(job_id, name+' is researching NVIDIA themes', 'Searching current public NVIDIA blog articles.', stage)
                 payload['research'] = nvidia_research.discover()

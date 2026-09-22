@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 const [root,agentId]=process.argv.slice(2);
-if(!/^bac-[a-f0-9]{24}$/.test(agentId||''))throw Error('Invalid personal agent');
+if(!/^bac-[a-f0-9]{24}(?:-r(?:0|[1-9][0-9]*))?$/.test(agentId||''))throw Error('Invalid BaC agent');
 const config=JSON.parse(await fs.readFile(process.env.OPENCLAW_CONFIG_PATH,'utf8'));
 const agent=config.agents?.entries?.[agentId];
 if(agent?.sandbox?.backend!=='openshell'||agent.sandbox.mode!=='all')throw Error('Protected agent required');

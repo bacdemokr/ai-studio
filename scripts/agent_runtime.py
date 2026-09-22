@@ -172,7 +172,7 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
             if key not in equipped:
                 if retired.is_symlink():retired.unlink()
                 elif retired.is_dir():shutil.rmtree(retired)
-    event_exec = bool(role and not protected and 'event-tools' in equipped)
+    event_exec = bool(role and 'event-tools' in equipped)
     # User-authored fields are literal. Legacy profiles use the same visible UI defaults.
     persona = profile.get('purpose') or role or {
         'guide': 'Explains ideas and turns them into practical plans.',
@@ -241,6 +241,14 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
             'Do not change policies, install software or attempt another transport after a denial. '
             'Ask the participant to approve the exact destination in the Policies tab, then retry. '
             'Inference uses the configured provider, separately from tool network access.\n')
+        if event_exec:
+            files['AGENTS.md'] += ('\n# Protected event research\n'
+                'Run the shipped Python event-tool commands with exec host=sandbox, never host=gateway. '
+                'Their network transport is /usr/bin/curl inside this sandbox. '
+                'NVIDIA Blog HTTPS reads (blogs.nvidia.com:443) are pre-approved and verified before this turn. '
+                'No extra approval is needed for normal search/read operations. '
+                'Use native write/edit tools to save artifacts in your workspace. '
+                'On a failure report the actual error; do not try a host tool or another destination.\n')
     if role:
         files['AGENTS.md'] += ('\n# Reading supplied documents\n'
                               'Read supplied files with native file tools. For PDF/PPTX, use the companion extracted .txt file '
@@ -291,7 +299,7 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
         if skill == 'event-tools':
             import shutil
             scripts=directory/'scripts';scripts.mkdir(exist_ok=True)
-            for module in ('event_agent_tools','event_planner','event_rotation','event_dates','event_timetable','nvidia_research','event_theme_content'):
+            for module in ('event_agent_tools','event_planner','event_rotation','event_dates','event_timetable','nvidia_research','event_theme_content','research_http'):
                 target=scripts/(module+'.py')
                 if overwrite or not target.exists():shutil.copyfile(Path(__file__).with_name(module+'.py'),target)
 
@@ -308,7 +316,7 @@ def register(agent_id, workspace, profile, role=None):
     equipped = list(profile['skills'])
     event_exec = bool(role and not protected and 'event-tools' in equipped)
     allow = ['read'] if protected else ['read', 'write', 'edit']
-    if protected and any(s in equipped for s in ('memory', 'builder', 'writer', 'event-page', 'nvidia-webpage')):
+    if protected and any(s in equipped for s in ('memory', 'builder', 'writer', 'event-page', 'nvidia-webpage', 'event-tools')):
         allow += ['write', 'edit']
     if any(s in equipped for s in ('weather', 'web')) and not protected:
         allow += ['web_fetch']

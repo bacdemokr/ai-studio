@@ -5,16 +5,14 @@ from email.utils import parsedate_to_datetime
 from html import unescape
 import re
 import urllib.parse
-import urllib.request
+from research_http import fetch
 import xml.etree.ElementTree as ET
 
 QUERIES = ('agent', 'physical AI', 'inference', 'Nemotron')
 
 def search_one(query):
     url = 'https://blogs.nvidia.com/?' + urllib.parse.urlencode({'s': query, 'feed':'rss2'})
-    request = urllib.request.Request(url, headers={'User-Agent':'BaC-Event-Research/1.0'})
-    with urllib.request.urlopen(request, timeout=8) as response:
-        raw = response.read(1000001)
+    raw = fetch(url, limit=1000000, timeout=8)
     if len(raw)>1000000:raise ValueError('Research response exceeds size limit')
     root=ET.fromstring(raw)
     rows=[]
