@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from test_studio import Adapter
-from studio import Studio
+from studio import Studio, Problem
 from studio_policy import ProtectionNotVerified
 import research_http as http
 import agent_runtime as runtime
@@ -45,6 +45,109 @@ class CrewProtectionTests(unittest.TestCase):
         self.studio.prepare_builtin_crew(self.owner, 1, member)
         with patch.object(self.adapter, 'policy_apply', side_effect=AssertionError('Unnecessary mutation')):
             self.assertEqual(self.studio.prepare_builtin_crew(self.owner, 1, member)['status'], 'applied')
+
+    def test_policy_view_before_first_task_is_read_only_and_not_verified(self):
+        with patch.object(self.adapter, 'register', side_effect=AssertionError('Read must not provision')):
+            report = self.studio.crew_policy_report(self.owner, 1)
+        self.assertEqual(report['status'], 'awaiting-first-mission')
+        self.assertEqual(report['agentId'], self.members[1]['id'])
+        self.assertEqual(report['agentName'], 'Dylan')
+        self.assertEqual(report['catalog']['host:blogs.nvidia.com']['hosts'], ['blogs.nvidia.com'])
+        self.assertEqual(report['requested'][0], 'host:blogs.nvidia.com')
+        self.assertEqual(self.adapter.calls, [])
+
+    def test_policy_view_uses_selected_crew_sandbox_and_keeps_drift_visible(self):
+        self.studio.prepare_builtin_crew(self.owner, 1, self.members[1])
+        report = self.studio.crew_policy_report(self.owner, 1)
+        self.assertEqual(report['status'], 'applied')
+        self.assertEqual(report['rules'][0]['host'], 'blogs.nvidia.com')
+        other = self.studio.session()[0]['id']
+        self.assertEqual(self.studio.crew_policy_report(other, 1)['status'], 'awaiting-first-mission')
+        self.adapter.permissions[self.members[1]['id']] = ['host:example.com']
+        with patch.object(self.adapter, 'policy_apply', side_effect=AssertionError('Read must not repair')):
+            report = self.studio.crew_policy_report(self.owner, 1)
+        self.assertEqual(report['status'], 'needs-review')
+        self.assertEqual(report['rules'][0]['host'], 'example.com')
+        self.assertEqual(report['requested'][0], 'host:blogs.nvidia.com')
+
+    def test_policy_view_rejects_invalid_roles_and_missing_owners(self):
+        for role in (True, -1, '1', 999, 0, 2):
+            with self.subTest(role=role), self.assertRaises(Problem):
+                self.studio.crew_policy_report(self.owner, role)
+        with self.assertRaises(Problem):
+            self.studio.crew_policy_report('missing', 1)
+
+    def test_revoke_before_first_task_persists_through_restart_and_preparation(self):
+        key = 'host:blogs.nvidia.com'
+        self.assertTrue(self.studio.crew_policy_change(self.owner, {'role':1, 'permission':key, 'allow':False})['applied'])
+        self.assertEqual(self.adapter.permissions[self.members[1]['id']], [])
+        restarted = Studio(self.studio.directory, self.adapter, start_worker=False)
+        restarted.prepare_builtin_crew(self.owner, 1, self.members[1])
+        self.assertEqual(restarted.crew_policy_report(self.owner, 1)['requested'], [])
+        self.assertEqual(self.adapter.permissions[self.members[1]['id']], [])
+        restarted.crew_policy_change(self.owner, {'role':1, 'permission':key, 'allow':True})
+        self.assertEqual(self.adapter.permissions[self.members[1]['id']], [key])
+
+    def test_crew_policy_is_isolated_from_personal_and_other_owner(self):
+        with self.studio.db() as db:
+            db.execute('INSERT INTO agent_policies(owner,approved) VALUES (?,?)',
+                       (self.owner, json.dumps(['host:wttr.in'])))
+        other = self.studio.session()[0]['id']
+        self.studio.crew_policy_change(self.owner, {'role':1, 'permission':'host:blogs.nvidia.com', 'allow':False})
+        self.assertEqual(self.studio.saved_policy(self.owner)[1], ['host:wttr.in'])
+        self.assertEqual(self.studio.saved_policy(other, 1)[1], list(http.RESEARCH_APPROVALS))
+        self.assertEqual(self.studio.saved_policy(self.owner, 1)[1], [])
+        self.assertEqual(self.studio.crew_policy_report(self.owner, 1)['history'][-1]['title'], 'Permission revoked')
+
+    def test_failed_revoke_does_not_claim_success_or_restore_defaults(self):
+        self.studio.prepare_builtin_crew(self.owner, 1, self.members[1])
+        with patch.object(self.adapter, 'policy_apply', side_effect=RuntimeError('offline')):
+            with self.assertRaises(Problem):
+                self.studio.crew_policy_change(self.owner, {'role':1, 'permission':'host:blogs.nvidia.com', 'allow':False})
+        report = self.studio.crew_policy_report(self.owner, 1)
+        self.assertEqual(report['status'], 'needs-review')
+        self.assertEqual(report['requested'], [])
+        self.assertFalse(report['updating'])
+        self.studio.crew_policy_change(self.owner, {'role':1, 'retry':True})
+        self.assertEqual(self.adapter.permissions[self.members[1]['id']], [])
+
+    def test_policy_change_fences_new_work_and_rejects_active_crew(self):
+        def during_apply(agent_id, approved):
+            with self.assertRaises(Problem):
+                self.studio.prepare_demo(self.owner, {})
+            with self.assertRaises(Problem):
+                self.studio.enqueue(self.owner, {'kind':'crew-chat', 'crewRole':1, 'prompt':'Hello'})
+            return {'status':'applied'}
+        with patch.object(self.adapter, 'policy_apply', side_effect=during_apply):
+            self.studio.crew_policy_change(self.owner, {'role':1, 'permission':'host:blogs.nvidia.com', 'allow':False})
+        self.studio.enqueue(self.owner, {'kind':'crew-chat', 'crewRole':1, 'prompt':'Hello'})
+        with patch.object(self.adapter, 'policy_status', side_effect=AssertionError('Must reject before native query')):
+            with self.assertRaises(Problem):
+                self.studio.crew_policy_change(self.owner, {'role':1, 'retry':True})
+
+    def test_pending_hosts_are_scoped_to_selected_crew(self):
+        import time
+        self.studio.prepare_builtin_crew(self.owner, 1, self.members[1])
+        self.studio.enqueue(self.owner, {'kind':'crew-chat', 'crewRole':1, 'prompt':'Read https://developer.nvidia.com'})
+        self.adapter.policy_logs[self.members[1]['id']] = [{'host':'developer.nvidia.com', 'action':'deny', 'time':time.time()}]
+        report = self.studio.crew_policy_report(self.owner, 1)
+        self.assertEqual(report['pendingAccess'], [{'host':'developer.nvidia.com', 'reason':'blocked'}])
+        self.assertTrue(report['busy'])
+        for role in (None, True, -1, 0, '1'):
+            with self.assertRaises(Problem):
+                self.studio.crew_policy_change(self.owner, {'role':role, 'retry':True})
+
+    def test_legacy_personal_policy_migration_keeps_permissions_and_history(self):
+        import sqlite3
+        with self.studio.db() as db:
+            db.executescript("DROP TABLE agent_policies; CREATE TABLE agent_policies(owner TEXT PRIMARY KEY, approved TEXT NOT NULL DEFAULT '[]', events TEXT NOT NULL DEFAULT '[]', updating INTEGER NOT NULL DEFAULT 0);")
+            db.execute('INSERT INTO agent_policies(owner,approved,events) VALUES (?,?,?)',
+                       (self.owner, '["host:wttr.in"]', '[{"title":"existing approval"}]'))
+        restored = Studio(self.studio.directory, self.adapter, start_worker=False)
+        row, approved = restored.saved_policy(self.owner)
+        self.assertEqual(approved, ['host:wttr.in'])
+        self.assertEqual(json.loads(row['events'])[0]['title'], 'existing approval')
+        self.assertEqual(restored.saved_policy(self.owner, 1)[1], list(http.RESEARCH_APPROVALS))
 
     def test_unverified_policy_stops_chat_without_model_or_host_fallback(self):
         with patch.object(self.adapter, 'policy_apply', return_value={'status':'unavailable'}):

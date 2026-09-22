@@ -234,7 +234,7 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
             'Use exec to run the shipped skills/bac-event-tools/scripts/event_agent_tools.py commands for this event. Do not install software, change policies, send messages or publish. Read and edit your workspace files using native file tools. Tool results are evidence; execute the tool rather than inventing its output.')
     if protected:
         files['AGENTS.md'] = files['AGENTS.md'].replace('Never send messages, install software, change policy, or run shell commands.',
-            'Never send messages, install software or change policy. Use sandbox exec for public read-only requests with /usr/bin/curl and approved workspace file operations. Host files require explicit per-file grants; use only the provided workspace copies. Host folder creation and directory access are not supported by those grants. Never ask for a file approval to create a host folder. Explain this limitation and offer to create it inside the writable agent workspace instead.')
+            'Never send messages, install software or change policy. Use sandbox exec for public read-only requests with /usr/bin/curl and workspace file operations. Work with uploaded files in inbox/ and save results in artifacts/. External host paths are not available; ask the user to upload a file instead. Website approvals do not grant file access.')
         files['AGENTS.md'] += ('\nOpenShell is required for this agent. Internet starts closed. '
             'Use exec with host=sandbox for public GET requests through /usr/bin/curl only. '
             'Do not use host-side web_fetch or web_search; they are disabled. '
@@ -245,8 +245,9 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
             files['AGENTS.md'] += ('\n# Protected event research\n'
                 'Run the shipped Python event-tool commands with exec host=sandbox, never host=gateway. '
                 'Their network transport is /usr/bin/curl inside this sandbox. '
-                'NVIDIA Blog HTTPS reads (blogs.nvidia.com:443) are pre-approved and verified before this turn. '
-                'No extra approval is needed for normal search/read operations. '
+                'NVIDIA Blog HTTPS reads (blogs.nvidia.com:443) have default approval, but the user may revoke it. '
+                'The current policy always wins. Research tool access failures allow only one retry of the same command. '
+                'When retryAllowed is false, end this turn immediately with a short failure report. Do not diagnose, validate missing artifacts or execute other commands. '
                 'Use native write/edit tools to save artifacts in your workspace. '
                 'On a failure report the actual error; do not try a host tool or another destination.\n')
     if role:
@@ -544,6 +545,13 @@ def policy_status(agent_id, mode, approved):
 def policy_apply(agent_id, approved):
     from agent_policy import apply
     return apply(agent_id, approved)
+
+
+def policy_events(agent_id):
+    """Read only this agent's native network decisions; never apply or probe policies."""
+    from agent_policy import runtimes, public_logs
+    return [event for sandbox in runtimes(agent_id, probe=False)
+            for event in public_logs(sandbox['containerName'])]
 
 
 def policy_prepare(agent_id):

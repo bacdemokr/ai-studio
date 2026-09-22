@@ -1,5 +1,5 @@
 // Actual opinions live in the results and Captain's history. The scene only
-// acknowledges submission once, then sends each guest home in turn.
+// acknowledges submission once, then sends each guest home in turn on success.
 const meetingFurniture=new THREE.Group();missionRoom.add(meetingFurniture);meetingFurniture.visible=false;
 let meetingWidth=0,meetingCenter=0;
 const meetingSeatX=Array.from({length:12},(_,i)=>(i%2?1:-1)*(Math.floor(i/2)*1.75+.875));
@@ -110,6 +110,13 @@ function animateRoundtable(dt){
  meetingLayer.hidden=!meetingId||room!=='mission'||overview||!!journey;
  if(!meetingId)return;
  const onScreen=!meetingLayer.hidden;
+ const aborted=job?.failed||['error','cancelled'].includes(job?.status);
+ if(aborted){
+  meetingSpeaker='';meetingSpeechUntil=0;
+  for(const guest of meetingGuests){
+   if(!['returning','returned'].includes(guest.phase))returnMeetingGuest(guest);
+  }
+ }
  meetingElapsed+=dt;
  for(const guest of meetingGuests){
   if(guest.phase==='returned')continue;
@@ -135,7 +142,7 @@ function animateRoundtable(dt){
   meetingSpeaker='';
  }
  // One short acknowledgement and one departure at a time; never repeat opinions.
- if(onScreen&&!meetingSpeaker&&!meetingGuests.some(g=>['entering','returning'].includes(g.phase))){
+ if(!aborted&&onScreen&&!meetingSpeaker&&!meetingGuests.some(g=>['entering','returning'].includes(g.phase))){
   const next=meetingGuests.find(g=>g.phase==='seated'&&meeting?.replies?.[g.key]?.status==='done');
   if(next){next.phase='submitted';meetingSpeaker=next.key;meetingSpoken.add(next.key);meetingSpeechUntil=meetingElapsed+2;}
   else if(['done','cancelled','error'].includes(job?.status)){

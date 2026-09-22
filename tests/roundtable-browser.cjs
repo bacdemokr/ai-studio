@@ -20,6 +20,20 @@ const {execFileSync}=require('node:child_process');
   assert.ok(info.guests.every(g=>g.facing===Math.PI));assert.equal(new Set(info.guests.map(g=>g.position[2].toFixed(4))).size,1);
   assert.ok((await page.evaluate(()=>BacCampus.inspect().residents)).every(r=>r.atRoundtable&&!r.visible));
   await page.waitForTimeout(6500);assert.equal(await page.locator('.roundtable-bubble:visible').count(),0,'No idle chatter');
+  // A specialist failure releases everyone together, even while another specialist finishes.
+  job.payload.stageErrors={'1':'Research access failed'};
+  await page.evaluate(()=>BacStudio.refresh());
+  await page.waitForFunction(()=>BacCampus.inspect().roundtable.guests.every(g=>g.phase==='returning'));
+  assert.equal((await inspect()).speaker,'');
+  await page.waitForFunction(()=>BacCampus.inspect().roundtable.guests.every(g=>g.phase==='returned'),null,{timeout:8000});
+  assert.deepEqual((await inspect()).spoken,[]);
+  assert.ok((await page.evaluate(()=>BacCampus.inspect().residents)).every(r=>!r.atRoundtable&&r.visible));
+  await page.evaluate(()=>BacStudio.refresh());
+  assert.ok((await inspect()).guests.every(g=>g.phase==='returned'),'Polling must not restart departures');
+  delete job.payload.stageErrors;job.id='after-failed-demo';
+  await page.evaluate(()=>BacStudio.refresh());
+  await page.waitForFunction(()=>BacCampus.inspect().roundtable.guests.every(g=>g.seated),null,{timeout:10000});
+  info=await inspect();
   // A rerun while still seated must not recreate an entrance.
   const seats=info.guests.map(g=>[g.key,g.position,g.seat]);
   job.id='second-roundtable';job.status='queued';await page.evaluate(()=>BacStudio.refresh());
@@ -78,6 +92,6 @@ const {execFileSync}=require('node:child_process');
   const artifact=await browser.newPage({viewport:{width:1280,height:1000}});await artifact.setContent(fixture.page);
   assert.equal(await artifact.locator('.reflection').count(),4);await artifact.setViewportSize({width:390,height:844});
   assert.equal(await artifact.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-  console.log('PASS: no idle speeches; twelve screen-facing seats; compact acknowledgements; sequential return; history preserved; reruns, reload, cancellation and reduced motion.');
+  console.log('PASS: no idle speeches; twelve screen-facing seats; compact acknowledgements; sequential success return; simultaneous failure return; history preserved; reruns, reload, cancellation and reduced motion.');
  }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});

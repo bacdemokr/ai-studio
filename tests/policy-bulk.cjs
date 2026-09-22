@@ -5,15 +5,13 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   const page=await browser.newPage({viewport:{width:1450,height:1050}}),errors=[],posts=[];
   page.on('pageerror',error=>errors.push(error.message));
   let owner='',requested=[],finish,status='applied',pending=0,hold=true;
-  let pendingAccess=[{host:'api.open-meteo.com'},{host:'wttr.in'}],pendingFiles=[];
+  let pendingAccess=[{host:'api.open-meteo.com'},{host:'wttr.in'}];
   const catalog={
    'host:api.open-meteo.com':{title:'api.open-meteo.com',hosts:['api.open-meteo.com']},
    'host:wttr.in':{title:'wttr.in',hosts:['wttr.in']},
    'host:geocoding-api.open-meteo.com':{title:'geocoding-api.open-meteo.com',hosts:['geocoding-api.open-meteo.com']},
    weather:{title:'Weather & city lookup',hosts:['api.open-meteo.com','geocoding-api.open-meteo.com','wttr.in'],description:'Read live weather and look up a city.'},
    papers:{title:'arXiv papers',hosts:['export.arxiv.org','arxiv.org'],description:'Research preset'},
-   'file:read:/fixture/notes.txt':{kind:'file',access:'read',title:'/fixture/notes.txt',path:'/fixture/notes.txt'},
-   'file:write:/fixture/notes.txt':{kind:'file',access:'write',title:'/fixture/notes.txt',path:'/fixture/notes.txt'}
   };
   await page.route(/\/api\/(session|state)$/,async route=>{
    const response=await route.fetch({headers:{...route.request().headers(),'if-none-match':''}}),json=await response.json();owner=json.agentId;
@@ -23,11 +21,11 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.route('**/api/agent-policy',async route=>{
    if(route.request().method()==='POST'){
     const body=route.request().postDataJSON();posts.push(body);if(hold)await new Promise(resolve=>finish=resolve);
-    const keys=(body.permissions||[body.permission]).flatMap(key=>key.startsWith('file:')?[key]:catalog[key].hosts.map(host=>'host:'+host));
+    const keys=(body.permissions||[body.permission]).flatMap(key=>catalog[key].hosts.map(host=>'host:'+host));
     requested=body.allow?[...new Set([...requested,...keys])]:requested.filter(key=>!keys.includes(key));
-    pendingAccess=[];pendingFiles=[];return route.fulfill({json:{applied:true}});
+    pendingAccess=[];return route.fulfill({json:{applied:true}});
    }
-   return route.fulfill({json:{agentId:owner,mode:'openshell',status,requested,sandboxes:[{}],catalog,pendingAccess,pendingFiles}});
+   return route.fulfill({json:{agentId:owner,mode:'openshell',status,requested,sandboxes:[{}],catalog,pendingAccess}});
   });
   await page.goto(process.env.BAC_TEST_URL||'http://127.0.0.1:8083');
   await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.name==='Shield');
@@ -48,9 +46,8 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.equal(await page.locator('[data-policy-permission="papers"]').isDisabled(),true);
   await bulk.evaluate(button=>button.click());assert.equal(posts.length,1,'disabled action cannot submit twice');
   finish();await page.waitForFunction(()=>!document.querySelector('[data-policy-approve-all]'));
-  await page.locator('[data-policy-access-tab=webpage]').click();
   assert.equal(await page.locator('[data-policy-section=approved] [data-policy-allow=false]').count(),2);
-  assert.ok((await page.locator('[data-policy-section=approved] h3').innerText()).startsWith('Approved access'));
+  assert.ok((await page.locator('[data-policy-section=approved] h3').innerText()).startsWith('Approved websites'));
   hold=false;requested=['host:api.open-meteo.com'];await reload();
   await page.locator('[data-policy-section=preset] [data-policy-permission=weather]').click();
   await page.waitForFunction(()=>document.querySelectorAll('[data-policy-section=approved] [data-policy-allow=false]').length===3);
@@ -67,17 +64,13 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.waitForFunction(()=>BacStudio.inspect().agents?.some(agent=>agent.pending===1));
   await reload();assert.equal(await bulk.isDisabled(),true,'busy agent cannot be changed');
   pending=0;await page.waitForFunction(()=>BacStudio.inspect().agents?.every(agent=>!agent.pending));
-  pendingAccess=[{host:'wttr.in'}];pendingFiles=['file:read:/fixture/notes.txt','file:write:/fixture/notes.txt'];
-  await reload();assert.equal(await bulk.innerText(),'Approve all (2)');
-  assert.deepEqual(JSON.parse(await bulk.getAttribute('data-policy-permissions')),['host:wttr.in','file:write:/fixture/notes.txt']);
-  assert.equal(await page.getByText('Includes read/write access to 1 file',{exact:true}).count(),1);
-  catalog['file:write:/fixture/notes.txt'].unavailableReason='Fixture unavailable';
-  await reload();assert.equal(await bulk.isDisabled(),true,'no silent partial approval for an unavailable file');
-  delete catalog['file:write:/fixture/notes.txt'].unavailableReason;
-  catalog['file:write:/fixture/notes.txt'].suggested=true;await reload();assert.equal(await bulk.innerText(),'Confirm & approve all (2)');
+  pendingAccess=[{host:'wttr.in'},{host:'api.open-meteo.com'}];await reload();
+  assert.equal(await bulk.innerText(),'Approve all (2)');
+  assert.equal(await page.locator('[data-policy-access-tab]').count(),0,'no File/Webpage tabs');
+  assert.equal(await page.locator('#studio-surface-title').innerText(),'Approved websites');
   await page.setViewportSize({width:390,height:844});
   const mobile=await bulk.boundingBox();assert.ok(mobile.x>=0&&mobile.x+mobile.width<=390,'mobile action stays inside viewport');
   assert.deepEqual(errors,[]);
-  console.log('PASS: bulk approval, per-host approved cards/counts, overlapping preset deduplication, individual revoke, busy/file guards and mobile layout. Mock policy only.');
+  console.log('PASS: bulk approval, per-host approved cards/counts, overlapping preset deduplication, individual revoke, busy guards and mobile layout. Mock policy only.');
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

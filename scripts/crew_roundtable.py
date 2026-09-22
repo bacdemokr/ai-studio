@@ -175,7 +175,7 @@ class RoundtableControls:
             self.event(job_id, member['name']+' is considering the event', 'Personal roundtable reaction', 0, payload=json.dumps(payload))
             try:
                 prompt = reaction_prompt(member, b['language'], evidence, prior_reactions)
-                answer = self.adapter.respond(agent, 'bac-roundtable-'+job_id+'-'+key+'-'+str(attempt), prompt)
+                answer = self.protected_response(agent, 'bac-roundtable-'+job_id+'-'+key+'-'+str(attempt), prompt, key)
                 if not isinstance(answer, str) or not answer.strip() or len(answer) > 2500:
                     raise RuntimeError('No concise reaction was returned.')
                 reply.update(status='done', answer=str(answer).strip(), activity=getattr(answer,'activity',None), completed=time.time())

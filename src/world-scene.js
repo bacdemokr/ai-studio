@@ -62,8 +62,8 @@ function createScene() {
   const artwork=new THREE.Mesh(new THREE.PlaneGeometry(artworkWidth,artworkHeight),new THREE.MeshBasicMaterial({map:artworkTexture,toneMapped:false}));
   artwork.position.set(-.6,2.175,-7.049);missionRoom.add(artwork);
   box(missionRoom,-.6,.60,-7.06,5.22,.026,.02,0x76b900,true);
-  // Keep historical role IDs in stored jobs; the floor now has four production roles.
-  const positions=[[0,.4],[0,-4.5],[6.2,-4.5],[-6.2,-4.5]];
+  // Preserve role IDs; arrange Dylan, Alex and Morgan from left to right.
+  const positions=[[0,.4],[-6.2,-4.5],[0,-4.5],[6.2,-4.5]];
   const homes=positions.map(([x,z],i)=>new THREE.Vector3(i?x:-1.65,.05,i?z+1:1.65));
   const titles=['CAPTAIN','DEMO STUDIO','OPERATIONS','MARKETING','REVIEW','WEB STUDIO'];
   const deskLights=[],deskScreens=[],routes=[];
@@ -238,6 +238,8 @@ function createScene() {
   function renderCrewLabels(){labels.forEach((b,i)=>{const working=crewWorking(i);b.innerHTML=escape(state.agents[i].name)+'<small>'+escape(state.agents[i].included===false?'Not in this mission':working?'Working · '+state.agents[i].role:state.agents[i].lane===2?'Waiting for you':state.agents[i].role)+'</small>'+(working?'<span class="crew-work-bubble"><i></i>'+escape(state.crewMission?workLines[i]:'Working on your request…')+'</span>':'');b.setAttribute('aria-pressed',String(activeSelection===i));b.setAttribute('aria-label','Select '+state.agents[i].name);b.classList.toggle('selected',activeSelection===i);b.classList.toggle('excluded',state.agents[i].included===false);b.classList.toggle('waiting',state.agents[i].lane===2);});}
   function update(next,index){state=next;syncCaptain();syncRoundtable();activeSelection=index;phase=state.phase;dressCrew();const key=[state.jobId,state.phase,state.missionSkill,state.agents.map(a=>a.lane).join('')].join(':');if(key!==lastKey){lastKey=key;movement();}renderCrewLabels();}
 
+  /* WORLD_PROTECTION */
+
   function motionButton(){el('motion').textContent=motion?'Ⅱ':'▶';el('motion').setAttribute('aria-label',motion?'Pause scene motion':'Resume scene motion');}
   el('motion').onclick=()=>{motion=!motion;if(!motion)studioSound.stop();motionButton();};reduced.addEventListener('change',()=>{motion=!reduced.matches;if(!motion)studioSound.stop();motionButton();});
   el('camera').onclick=resetNavigation;
@@ -259,8 +261,9 @@ function createScene() {
     deskScreens.forEach((screen,i)=>{const busy=crewWorking(i);screen.material.emissive.setHex(busy?colors[i]:0);screen.material.emissiveIntensity=busy ? .3+Math.sin(clock*3+i)*.12 : 0;});
     packets.forEach((p,i)=>{const t=(clock-packetTime-i*.13)/2.8;p.visible=!state.crewMission&&t>=0&&t<=1&&state.phase>=0;if(p.visible){p.position.lerpVectors(packetStart,packetEnd,t);p.position.y=.65+Math.sin(t*Math.PI)*1.15;}});
     animateCaptain(dt);
+    animateProtection(now);
     renderer.render(scene,camera);
   }
   motionButton();resize();update(snapshot,0);requestAnimationFrame(animate);root.dataset.renderer='webgl';
-  return {resize,update,setRoom,setCollection,setDraft,welcomeAgent,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',roundtable:roundtableInfo(),arrival:arrival?{key:arrival.key,avatar:{...arrival.rig.appearance},phase:arrival.time<1.8?'loading':'walking',position:arrival.rig.group.position.toArray()}:null,room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,draftShield:!!draftRig?.body.getObjectByName('openshell-shield'),crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,captain:{position:robots[0].robot.position.toArray(),job:captainJob,received:[...receivedDocuments],assigned:[...assignedDocuments],pending:documentQueue.map(d=>({...d})),inFlight:documentFlight?{...documentFlight}:null},robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
+  return {resize,update,setRoom,setCollection,observeProtection,protectionReplyDelay,setDraft,welcomeAgent,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',protectionHits:[...protectionHits.values()].map(h=>({id:h.event.id,owner:h.event.owner,role:h.event.role,visible:h.group.visible,animated:motion&&h.phase!=='blocked',phase:h.phase})),roundtable:roundtableInfo(),arrival:arrival?{key:arrival.key,avatar:{...arrival.rig.appearance},phase:arrival.time<1.8?'loading':'walking',position:arrival.rig.group.position.toArray()}:null,room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,draftShield:!!draftRig?.body.getObjectByName('openshell-shield'),crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,captain:{position:robots[0].robot.position.toArray(),job:captainJob,received:[...receivedDocuments],assigned:[...assignedDocuments],pending:documentQueue.map(d=>({...d})),inFlight:documentFlight?{...documentFlight}:null},robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
 }

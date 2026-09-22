@@ -142,21 +142,27 @@ def run(workspace, action, values):
     contract=json.loads((workspace/'inbox/agent-task.json').read_text())
     out=workspace/'artifacts';out.mkdir(exist_ok=True)
     files=contract['files'];stamp=datetime.now(timezone.utc).isoformat()
+    saved=workspace/files['research']
+    previous=json.loads(saved.read_text()) if saved.exists() else {}
+    if action in ('search','read','validate-themes') and previous.get('networkFailures',0)>=2:
+        return {'status':'stopped','retryAllowed':False,'host':'blogs.nvidia.com',
+                'message':'Research access failed twice. Stop this turn now. Check OpenShell Policy or the connection, then run the demo again. Do not try other commands or create placeholder themes.'}
     if action=='search':
         from nvidia_research import search_one
         if not 1<=len(values)<=4 or any(not 1<=len(q)<=100 for q in values): raise ValueError('Supply 1–4 concise search queries.')
-        saved=workspace/files['research']
-        previous=json.loads(saved.read_text()) if saved.exists() else {}
         queries=list(dict.fromkeys(previous.get('queries',[])+values))
         if len(queries)>4:raise ValueError('Use at most four distinct queries per mission.')
         sources={row['url']:row for row in previous.get('sources',[])};failures=list(previous.get('failedQueries',[]));found={}
         def search(query):
             try:return query, search_one(query), None
-            except Exception as error:return query, [], type(error).__name__
+            except Exception as error:return query, [], str(error)[:400] or type(error).__name__
+        batch_failed=False
         with ThreadPoolExecutor(max_workers=min(3, len(values))) as pool:
             for query, matches, error in pool.map(search, values):
                 for row in matches:found[row['url']]=row
-                if error:failures.append({'query':query,'error':error})
+                if error:
+                    batch_failed=True
+                    failures.append({'query':query,'error':error})
         for row in sorted(found.values(),key=lambda r:(r['published'],r['url']),reverse=True):
             if row['url'] in sources:
                 sources[row['url']].update({k:v for k,v in row.items() if k!='id'})
@@ -164,6 +170,7 @@ def run(workspace, action, values):
                 sources[row['url']]={**row,'id':'S'+str(len(sources)+1)}
         rows=list(sources.values())
         research={'retrieved':stamp,'queries':queries,'sources':rows,'failedQueries':failures,'status':'available' if rows else 'unavailable','method':'Agent-selected NVIDIA Blog search queries'}
+        research['networkFailures']=previous.get('networkFailures',0)+int(batch_failed)
         saved.write_text(json.dumps(research,ensure_ascii=False,indent=2))
         result={**research,'sources':[source_view(s,files['research']) for s in rows]}
     elif action=='read':
@@ -174,11 +181,15 @@ def run(workspace, action, values):
             if source.get('article') and source.get('readAt') and not source.get('readError'):
                 return source['article'], None
             try:return read_article(source['url']), None
-            except Exception as error:return None, type(error).__name__
+            except Exception as error:return None, str(error)[:400] or type(error).__name__
+        batch_failed=False
         with ThreadPoolExecutor(max_workers=min(3, len(chosen))) as pool:
             for source, (article, error) in zip(chosen, pool.map(read, chosen)):
-                if error:source['readError']=error
+                if error:
+                    batch_failed=True
+                    source['readError']=error
                 else:source.update(article=article,readAt=source.get('readAt') if source.get('article') and not source.get('readError') else stamp);source.pop('readError',None)
+        research['networkFailures']=research.get('networkFailures',0)+int(batch_failed)
         (workspace/files['research']).write_text(json.dumps(research,ensure_ascii=False,indent=2))
         # Keep each selected source visible within the native tool output limit.
         # Full retrieved text stays in the saved research file; excerpts are explicit.
@@ -199,6 +210,12 @@ def run(workspace, action, values):
         (workspace/files['scheduleHtml']).write_text(schedule_html(contract['brief'],calc))
         result={'status':'validated','visits':len(calc['schedule']),'presenters':calc['presenterCount'],'files':[files['schedule'],files['xlsx']]}
     else:raise ValueError('Unknown event tool action.')
+    if action in ('search','read') and batch_failed:
+        stopped=research['networkFailures']>=2
+        result.update(status='stopped' if stopped else 'access-failed',retryAllowed=not stopped,
+                      host='blogs.nvidia.com',message=(
+                          'Research access failed twice. Stop this turn now. Check OpenShell Policy or the connection, then run the demo again. Do not create placeholder themes.' if stopped else
+                          'Research access failed. Retry this same command once only. If it fails again, stop and report the error; do not switch queries, transports or fabricate results.'))
     with (out/'agent-tool-log.jsonl').open('a') as log:
         log.write(json.dumps({'time':stamp,'action':action,'arguments':values,'job':contract['job']})+'\n')
     return result

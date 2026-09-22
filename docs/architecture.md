@@ -22,7 +22,7 @@ The app owns accounts/agent selection, durable jobs, the fixed workflow graph, v
 | Event workflow | `agent_workflow.py`, `event_agent_tools.py`, `morgan_page.py`, `crew_roundtable.py` |
 | Scheduling/exports | `event_planner.py`, `event_rotation.py`, `event_timetable.py` |
 | Model settings and ephemeral keys | `runtime_settings.py`, `session_secrets.py` |
-| Protection and host-file grants | `agent_policy.py`, `studio_policy.py`, `file_access.py` |
+| OpenShell website approvals | `agent_policy.py`, `studio_policy.py` |
 | UI / 3D scene | `src/studio*`, `src/world-*`, `src/campus*`, `src/agent-character.js` |
 
 ## Event execution and attribution
@@ -49,7 +49,7 @@ The crew catalog retains six stable IDs for old jobs and cleanup; the current UI
 
 ## Demo Producer protection
 
-Dylan's native tools run inside an agent-scoped OpenShell sandbox. Preparation, direct chat and event execution verify a loaded policy with exactly `blogs.nvidia.com:443` approved for read-only requests by `/usr/bin/curl`. Python handles research parsing and JSON files inside the sandbox; it invokes curl for network reads. Redirects must stay on that HTTPS origin. Other crew members retain their standard runtimes, and personal-agent approvals are independent.
+Dylan's native tools run inside an agent-scoped OpenShell sandbox. Preparation, direct chat and event execution verify his saved policy. Its initial default grants read-only requests to `blogs.nvidia.com:443` by `/usr/bin/curl`; users can revoke or approve access through the same controls as personal agents. Revoked defaults are never silently restored. Approvals are stored by owner and crew role, with existing personal policies preserved. Python handles research parsing and JSON files inside the sandbox; it invokes curl for network reads. Redirects must stay on that HTTPS origin. Other crew members retain their standard runtimes, and personal-agent approvals are independent. Research tools retain transport error details and allow one retry after an access failure. After two failed request batches in a mission, subsequent research/validation commands return a stopped result without more network calls, and the app skips deliverable repair. A new demo gets a fresh retry budget. HTTP errors alone are not labeled OpenShell denials; shield evidence still comes from native policy logs.
 
 The model still chooses search queries, reads sources and authors the demo proposals. Pre-approval does not precompute or cache model answers. Workspace files use the native mirror bridge. Model inference remains outside the tool sandbox. Verification failure stops the task; there is no host-side research fallback. Old workflows that prefetch research on the host must be started again through the current Multi-Agent demo form.
 

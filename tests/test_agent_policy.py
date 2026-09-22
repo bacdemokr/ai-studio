@@ -66,12 +66,15 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(self.studio.policy_report(other)['logs'], [])
 
     def test_preset_crew_is_separate_from_protected_personal_agent_and_needs_no_onboarding(self):
+        # Hiring now prepares the personal runtime independently of event work.
+        self.studio.execute(self.studio.next_job())
         result = self.run_job({'kind': 'crew', 'preset': True, 'brief': {}})
         self.assertEqual(result['status'], 'done')
         self.assertEqual([m['name'] for m in result['payload']['roster']], [role['name'] for role in json.loads((Path(__file__).resolve().parents[1]/'src/crew-catalog.json').read_text())])
         self.assertTrue(all(m['protection'] == ('openshell' if i == 1 else 'standard') and m['key'] is None for i,m in enumerate(result['payload']['roster'])))
-        self.assertNotIn('bac-' + self.owner, self.adapter.agents)
-        self.assertTrue(all(p['protection'] == ('openshell' if key.endswith('-r1') else 'standard') for key,p in self.adapter.profiles.items()))
+        self.assertFalse(any(call[0] == 'bac-' + self.owner for call in self.adapter.calls))
+        self.assertEqual(self.studio.policy_report(self.owner)['requested'], [])
+        self.assertTrue(all(p['protection'] == ('openshell' if key.endswith('-r1') else 'standard') for key,p in self.adapter.profiles.items() if key != 'bac-' + self.owner))
         account, _ = self.studio.session()
         job = self.studio.enqueue(account['id'], {'kind': 'crew', 'preset': True, 'brief': {}})
         self.studio.execute(self.studio.next_job())

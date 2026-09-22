@@ -8,7 +8,7 @@ const surfaceDefinitions={
   missions:{title:'Try a mission',ids:['experiences']},
   results:{title:'Results & files',ids:['workspace']},
   compare:{title:'Agent comparison',ids:['compare']},
-  policies:{title:'OpenShell policies',ids:['policy-panel']},
+  policies:{title:'Approved websites',ids:['policy-panel']},
   control:{title:'Mission Control',ids:['board']},
   deliverables:{title:'Results',ids:['event-package','workspace']}
 };

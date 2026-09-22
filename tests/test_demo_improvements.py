@@ -206,7 +206,7 @@ class DemoImprovements(unittest.TestCase):
         self.run_next()
         self.studio.configure(self.guest,dict(name='Different voice',persona='analyst',skills=['documents']))
         with self.studio.db() as db:
-            db.execute('INSERT INTO agent_policies(owner,updating) VALUES (?,1) ON CONFLICT(owner) DO UPDATE SET updating=1',(self.owner,))
+            db.execute('INSERT INTO agent_policies(owner,updating) VALUES (?,1) ON CONFLICT(owner,role) DO UPDATE SET updating=1',(self.owner,))
         self.studio.enqueue(self.owner,{'kind':'crew','preset':True,'workflow':'showcase','brief':{'schema':2},'preparationId':prep['id']})
         meeting=self.studio.state(self.owner)['jobs'][0]['payload']['roundtable']
         self.assertEqual(meeting['members'],[])

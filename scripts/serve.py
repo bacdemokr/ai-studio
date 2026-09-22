@@ -137,6 +137,12 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.json_response(public_report(studio.directory))
             if parsed.path == '/api/agent-policy':
                 return self.json_response(studio.policy_report(owner))
+            if parsed.path == '/api/crew-policy':
+                query = parse_qs(parsed.query, keep_blank_values=True)
+                values = query.get('role', [])
+                if set(query) != {'role'} or len(values) != 1 or not values[0].isascii() or not values[0].isdecimal():
+                    raise Problem('Choose one valid crew member.')
+                return self.json_response(studio.crew_policy_report(owner, int(values[0])))
             if parsed.path == '/api/evidence':
                 return self.json_response(studio.evidence(owner, parse_qs(parsed.query).get('id', [''])[0]))
             if parsed.path == '/api/agent-documents':
@@ -218,6 +224,7 @@ class Handler(SimpleHTTPRequestHandler):
                 '/api/profile': lambda: studio.configure(owner, data),
                 '/api/delete-agent': lambda: studio.delete_agent(owner, data),
                 '/api/agent-policy': lambda: studio.policy_change(owner, data),
+                '/api/crew-policy': lambda: studio.crew_policy_change(owner, data),
                 '/api/jobs': lambda: studio.enqueue(owner, data),
                 '/api/event-plan': lambda: studio.event_plan(data),
                 '/api/survey-replan': lambda: studio.survey_replan(owner, data),

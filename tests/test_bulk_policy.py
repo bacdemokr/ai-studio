@@ -136,23 +136,14 @@ class BulkPolicyTests(unittest.TestCase):
             self.studio.policy_change(self.owner,{'retry':True});self.assertEqual(apply.call_count,1)
         self.assertEqual(self.studio.policy_report(self.owner)['status'],'applied')
 
-    def test_files_use_exact_paths_and_collapse_read_write_alternatives(self):
-        path=Path(self.temp.name).resolve()/'notes.txt';path.write_text('unchanged')
-        read='file:read:'+str(path);write='file:write:'+str(path)
-        self.request('Read '+str(path)+' and https://wttr.in')
-        with patch.object(self.adapter,'policy_apply',wraps=self.adapter.policy_apply) as apply:
-            self.studio.policy_change(self.owner,{'permissions':[read,write,'host:wttr.in'],'allow':True})
-            self.assertEqual(apply.call_count,1)
-        self.assertEqual(set(self.saved()[0]),{write,'host:wttr.in'})
-        self.assertEqual(path.read_text(),'unchanged')
-
-    def test_invalid_file_rejects_whole_batch_before_saving_valid_host(self):
-        missing=Path(self.temp.name).resolve()/'missing.txt'
-        self.request('Read '+str(missing)+' and https://wttr.in')
-        with patch.object(self.adapter,'policy_apply') as apply:
-            with self.assertRaisesRegex(Problem,'does not exist'):
-                self.studio.policy_change(self.owner,{'permissions':['host:wttr.in','file:read:'+str(missing)],'allow':True})
-            apply.assert_not_called()
-        self.assertEqual(self.saved(),([],0))
+    def test_retired_file_grants_reject_whole_batch_before_native_io(self):
+        for path in [Path(self.temp.name)/'missing.txt', Path(self.temp.name)/'notes.txt']:
+            if path.name=='notes.txt':path.write_text('unchanged')
+            self.request('Read '+str(path)+' and https://wttr.in')
+            with patch.object(self.adapter,'policy_apply') as apply:
+                with self.assertRaisesRegex(Problem,'permission'):
+                    self.studio.policy_change(self.owner,{'permissions':['host:wttr.in','file:read:'+str(path)],'allow':True})
+                apply.assert_not_called()
+            self.assertEqual(self.saved(),([],0))
 
 if __name__=='__main__':unittest.main()

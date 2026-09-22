@@ -33,6 +33,7 @@ vendor = (ROOT / 'src/vendor/three-r180.cjs').read_text(encoding='utf-8')
 workshop_art = 'data:image/png;base64,' + base64.b64encode((ROOT / 'src/assets/build-a-claw-workshop.png').read_bytes()).decode('ascii')
 world_scene = (ROOT / 'src/world-scene.js').read_text(encoding='utf-8').replace('__WORKSHOP_ART_DATA_URL__', workshop_art)
 world_scene = world_scene.replace('/* AGENT_CHARACTER */', (ROOT / 'src/agent-character.js').read_text(encoding='utf-8')).replace('/* WORLD_ROOMS */', (ROOT / 'src/world-rooms.js').read_text(encoding='utf-8').replace('/* LOUNGE_LIFE */', (ROOT / 'src/world-lounge.js').read_text(encoding='utf-8'))).replace('/* WORLD_NAVIGATION */', (ROOT / 'src/world-navigation.js').read_text(encoding='utf-8'))
+world_scene = world_scene.replace('/* WORLD_PROTECTION */', (ROOT / 'src/world-protection.js').read_text(encoding='utf-8'))
 world_scene = world_scene.replace('/* WORLD_ROUNDTABLE */', (ROOT / 'src/world-roundtable.js').read_text(encoding='utf-8'))
 campus_js = '(function(){const exports={};\n' + vendor + '\nconst THREE=exports;\n' + (ROOT / 'src/campus.js').read_text(encoding='utf-8').replace('/* STUDIO_SOUND */', (ROOT / 'src/studio-sound.js').read_text(encoding='utf-8')).replace('/* WORLD_SCENE */', world_scene) + '\n})();'
 fragment = fragment.replace('<!-- CAMPUS_SCRIPT -->', '<script>' + campus_js.replace('</script', '<\\/script') + '</script>')

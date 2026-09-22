@@ -1,6 +1,6 @@
 # OpenShell verification
 
-Use temporary agents for infrastructure testing. Never grant test destinations to a participant’s agent. The opt-in tests below delete only the synthetic agents they create. They use real OpenShell sandboxes and file transfers, but replace the model-readiness gate; they do not establish LLM quality or end-to-end Spark acceptance.
+Use temporary agents for infrastructure testing. Never grant test destinations to a participant’s agent. The opt-in tests below delete only the synthetic agents they create. They use real OpenShell sandboxes, but replace the model-readiness gate; they do not establish LLM quality or end-to-end Spark acceptance.
 
 ## Regression checks
 
@@ -13,12 +13,14 @@ With Playwright and Chrome installed and the app running, run `tests/policy-reco
 
 Coverage includes:
 
-- Creation before the first model turn; retries preserve the saved approval set.
+- OpenShell-on hiring queues model-free workspace preparation immediately. The hiring response does not wait for provisioning. An immediate chat reuses or takes over that preparation; it adds no approvals.
+- Preparation stays out of personal missions and Busy labels. The Policies panel updates automatically; No manual preparation button is shown during automatic setup or after it succeeds; Retry is available when the workspace is still unavailable.
+- Chat, policy changes and deletion remain fenced during native preparation; a failed warmup leaves the agent available for a protected retry.
 - Exact-host approval, revoke, bulk approval, per-agent isolation and app-state reload.
 - Busy/deleting agents, concurrent policy updates and queued work fencing.
 - Timeout before activation, lost acknowledgement after activation, stale revisions and partial application across multiple owned sandboxes.
 - Filesystem-policy drift, malformed native responses, unavailable logs and scoped native lookup.
-- Unsupported paths, symbolic links, protected file copies, read-only versus read/write, and revoked copies.
+- Removed host-file approvals are rejected; upgrades retire old grants and managed transfer copies without touching original files or uploads.
 - Interrupted deletion, idempotent cleanup, preparation and optional BaC guests.
 
 ## Real host checks
@@ -27,11 +29,10 @@ Point `BAC_DATA_DIR` at the host’s configured data directory:
 
 ```sh
 BAC_LIVE_POLICY_TEST=1 BAC_DATA_DIR=/path/to/data python3 -u -B tests/live_policy_flow.py
-BAC_LIVE_POLICY_TEST=1 BAC_DATA_DIR=/path/to/data python3 -u -B tests/live_file_access.py
 BAC_LIVE_POLICY_TEST=1 BAC_DATA_DIR=/path/to/data python3 -u -B tests/live_crew_research.py
 ```
 
-The network test verifies default deny, approval persistence, a successful public GET, Zurich geocoding and a live Open-Meteo forecast, denial of an unrelated destination, revocation and native cleanup. It also verifies that geocoding approval does not grant forecast access, and revoking the weather bundle preserves a separately approved geocoding host. It exits unsuccessfully if an approved GET fails, even when activation succeeded. The file test checks host-path isolation, protected copies, write-back boundaries and revoke cleanup using a temporary file.
+The network test verifies default deny, approval persistence, a successful public GET, Zurich geocoding and a live Open-Meteo forecast, denial of an unrelated destination, revocation and native cleanup. It also verifies that geocoding approval does not grant forecast access, and revoking the weather bundle preserves a separately approved geocoding host. It exits unsuccessfully if an approved GET fails, even when activation succeeded.
 
 ## Interpreting failures
 
@@ -89,3 +90,20 @@ After the repair, Scout's existing exact-host approval returned HTTP 200 for Zur
 Using a disposable OpenClaw 2026.9.4 gateway on this macOS host, deleting three synthetic **standard** agents took 5.26 seconds with the previous helper and 3.15 seconds with the gateway-first helper. This measures native cleanup, excluding active model calls and OpenShell sandbox teardown; it is not a latency guarantee. A second gateway run confirmed that a shared workspace remains intact and is not reported as a successful app deletion. With the gateway stopped, the native local fallback removed all three test workspaces and preserved the unrelated agent.
 
 `node tests/native-deletion.cjs` checks gateway routing, offline/journal fallback, retained storage, malformed results, and that timeouts or ambiguous disconnects do not trigger another deletion attempt. `python3 -B -m unittest discover -s tests -p 'test_agent_deletion.py'` also checks active-job fences, retries, and a single authoritative absence check after a committed OpenShell delete timeout.
+
+### Inspect Dylan in the app
+
+Select Dylan in Multi-Agent demo, then **OpenShell Policy**. Lounge agents and Dylan use the same policy panel and approval/revocation implementation. Dylan starts with NVIDIA Blog read access as a default; edits are saved for his identity separately from personal-agent approvals. Revoking access stays revoked across preparation, subsequent tasks, and server restarts. **Approve** restores access explicitly. Before a sandbox exists, saved access is shown as unverified. Opening the panel never provisions or changes permissions. OpenShell is an execution protection setting, not a custom skill.
+
+A disposable native Dylan sandbox verified the shared controls: the default NVIDIA Blog request returned HTTP 200; revocation removed access, and another preparation kept it blocked (curl exit 56 with an OpenShell deny record); explicit approval restored HTTP 200. The test sandbox was removed afterward. Browser fixtures also cover revocation before the first task, re-approval, and separation from personal-agent policies.
+
+### Live shield feedback
+
+Protected tool runs sample their own native OpenShell network logs in the background. A confirmed policy denial shows the matching agent’s outbound request striking the inside of a translucent hex-pattern shield, spreading a surface ripple and sparks, and returning inward. The packet never crosses the shield. A short Request blocked label names the destination. Upstream HTTP errors and bare model claims do not trigger it. Repeated log entries are deduplicated, old events expire, and paused/reduced motion shows a steady shield and label. Native log timestamps tolerate one second of host/sandbox clock skew. No model call or policy change is made by the animation observer. When the shield is shown, the matching agent’s chat reply and Lounge completion bubble wait until three seconds after the effect starts. Model execution continues normally; a reply arriving later appears immediately. Repeated polling does not restart this display delay.
+
+
+## Website-only controls
+
+The Approved websites panel manages HTTPS network destinations only. File-grant APIs, path preflight, protected-copy import, host write-back and file-approval shield events have been removed. Native OpenShell workspace isolation remains. Use uploads for input documents and workspace artifacts for results.
+
+On upgrade, the app removes old `file:` approvals and only its managed `inbox/approved-<hash>.txt` transfer copies (including quarantined directory copies). Original host files, ordinary uploads and event artifacts are preserved. OpenClaw mirror mode replaces the remote workspace from the cleaned local workspace before the next protected run. Existing chat history remains historical data; runtime instructions explicitly state that file grants are no longer available.

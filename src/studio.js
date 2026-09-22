@@ -17,11 +17,12 @@
   const roles = window.BacCrewCatalog.map(({name,role,description})=>[name,role,description]);
   const defaultNames=roles.map(r=>r[0]);
   const personaLabels={guide:'Helper',maker:'Creator',analyst:'Researcher'};
-  function agentSummary(profile){
-    const purpose=(profile.purpose||'').trim();
-    const template=roleTemplates.find(t=>t.purpose===purpose);
-    // Templates have authored summaries; custom roles retain their first sentence.
-    return template?.summary||purpose.match(/^[\s\S]*?[.!?。！？](?=\s|$)/)?.[0]||purpose||personas[profile.persona]||'Your personal agent.';
+  function toneSummary(profile){
+    const custom=(profile.tonePrompt||'').trim().replace(/\s+/g,' ');
+    const preset=custom?Object.keys(tones).find(key=>matchesTonePrompt(key,custom)):(profile.tone||'kind');
+    if(tones[preset])return tones[preset].join(' · ');
+    // Keep custom tone wording faithful; its full text remains available on hover.
+    return custom.match(/^[\s\S]*?[.!?。！？](?=\s|$)/)?.[0]||custom||tones.kind.join(' · ');
   }
   function voiceSummary(p){return (p.tonePrompt||tones[p.tone]?.[0]||'Kind')+' · '+(verbosityLabels[p.verbosity]||'Balanced')+' answers';}
   const missions = [
@@ -49,7 +50,7 @@
   el('experiences').after(el('workspace'));
   el('collection').after(layout);layout.after(el('safety-bar'));el('safety-bar').after(el('connections'));layout.after(el('collection'));
   el('collection').after(el('policies'));
-  const policyPanel=document.createElement('details');policyPanel.id='studio-policy-panel';policyPanel.className='studio-inline-panel';policyPanel.innerHTML='<summary>OpenShell policies</summary>';el('policies').before(policyPanel);policyPanel.append(el('policies'));policyPanel.ontoggle=()=>{if(policyPanel.open)loadPolicy();};
+  const policyPanel=document.createElement('details');policyPanel.id='studio-policy-panel';policyPanel.className='studio-inline-panel';policyPanel.innerHTML='<summary>Approved websites</summary>';el('policies').before(policyPanel);policyPanel.append(el('policies'));policyPanel.ontoggle=()=>{if(policyPanel.open)loadPolicy();};
   el('workspace').append(el('reset'));el('reset').className='studio-secondary';
 
   const demoSkills=['weather','web','documents','writer'],extraSkills=['builder','memory'];
@@ -146,10 +147,11 @@
   function crewMission(){return current()?.kind==='crew'?current():data.jobs.find(j=>j.kind==='crew');}
   function render() {
     const profile=data.profile, job=current();
+    window.BacCampus?.observeProtection(data.protectionEvents||[]);
     if(profile)roles[0][0]=profile.name;
     renderCollection();syncDemoPreparation();
     el('onboarding').hidden=false;el('companion').hidden=!profile;el('lounge-empty').hidden=!!profile;
-    if(profile){el('agent-name').textContent=profile.name;el('personality').textContent=agentSummary(profile);el('agent-skills').innerHTML=profile.skills.map(s=>'<span class="studio-skill-badge" title="'+escape(capabilities[s]?.[1]||titles[s]||s)+'"><i aria-hidden="true">'+escape(missions.find(m=>m.id===s)?.icon||'◇')+'</i>'+escape(titles[s]||capabilities[s]?.[0]||s)+'</span>').join('');el('agent-skills').hidden=!profile.skills.length;el('equipped').innerHTML=profile.skills.map(s=>{const c=capabilities[s];return c?'<button type="button" data-try-skill="'+s+'"><strong>'+escape(c[0])+'</strong><small>'+escape(c[1])+'</small></button>':'<span>'+escape(titles[s])+'</span>';}).join('');el('memory').hidden=!profile.skills.includes('memory');}
+    if(profile){el('agent-name').textContent=profile.name;el('personality').textContent=toneSummary(profile);el('personality').title=profile.tonePrompt||toneSummary(profile);el('agent-skills').innerHTML=profile.skills.map(s=>'<span class="studio-skill-badge" title="'+escape(capabilities[s]?.[1]||titles[s]||s)+'"><i aria-hidden="true">'+escape(missions.find(m=>m.id===s)?.icon||'◇')+'</i>'+escape(titles[s]||capabilities[s]?.[0]||s)+'</span>').join('');el('agent-skills').hidden=!profile.skills.length;el('equipped').innerHTML=profile.skills.map(s=>{const c=capabilities[s];return c?'<button type="button" data-try-skill="'+s+'"><strong>'+escape(c[0])+'</strong><small>'+escape(c[1])+'</small></button>':'<span>'+escape(titles[s])+'</span>';}).join('');el('memory').hidden=!profile.skills.includes('memory');}
     const personalJobs=data.jobs.filter(j=>!['crew','crew-chat','prepare'].includes(j.kind));
     const active=personalJobs.find(j=>['running','stopping'].includes(j.status))||personalJobs.find(j=>['queued','waiting'].includes(j.status));
     el('task-state').textContent=active?'Busy':'Ready';
@@ -214,7 +216,7 @@
     if(data.profile&&!crew&&room!=='mission')a[0].avatar=data.profile.avatar;
     if(active?.payload.roundtable?.status==='reviewing')flow=['Your agents’ roundtable','The package is ready. Your agents are sharing their personal takes.','Open mission'];
     const b=crew?.payload.brief;
-    window.BacCampus?.setLive({...s,live:true,crewMission:crew?{id:crew.id,status:crew.status,activeStages:['running','stopping'].includes(crew.status)?(crew.payload.activeStages||[crew.payload.stage]):[],count:crew.payload.roster?.length||5,enabledRoles:crew.payload.enabledRoles||roles.map((_,i)=>i),roundtable:crew.payload.roundtable,completed:Object.keys(crew.payload.outputs||{}).map(Number)}:null,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected:room==='mission'?selectedCrewRole:selected,flow,gap:active?.status==='waiting',brief:b?{...b,location:b.city}:null,calc:crew?.payload.capacity||null,policy:null});
+    window.BacCampus?.setLive({...s,live:true,crewMission:crew?{id:crew.id,status:crew.status,failed:Object.keys(crew.payload.stageErrors||{}).length>0,activeStages:['running','stopping'].includes(crew.status)?(crew.payload.activeStages||[crew.payload.stage]):[],count:crew.payload.roster?.length||5,enabledRoles:crew.payload.enabledRoles||roles.map((_,i)=>i),roundtable:crew.payload.roundtable,completed:Object.keys(crew.payload.outputs||{}).map(Number)}:null,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected:room==='mission'?selectedCrewRole:selected,flow,gap:active?.status==='waiting',brief:b?{...b,location:b.city}:null,calc:crew?.payload.capacity||null,policy:null});
     document.getElementById('campus-motion-status').textContent=active?flow[0]:'Meet your specialists · give the lead an event brief';
     renderCrewPassport();
   }

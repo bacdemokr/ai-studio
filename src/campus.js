@@ -22,5 +22,5 @@ el('roster').addEventListener('click',event=>{
 /* STUDIO_SOUND */
 /* WORLD_SCENE */
 try {sceneView=createScene();}catch(error){el('fallback').hidden=false;root.dataset.renderer='fallback';console.warn('3D unavailable; accessible workflow controls remain available.',error.message);}
-window.BacCampus={welcomeAgent:key=>sceneView?.welcomeAgent(key),setRoom:(room,options)=>sceneView?.setRoom(room,options),overview:options=>sceneView?.overview(options),setCollection:(agents,key)=>sceneView?.setCollection(agents,key),setDraft:profile=>sceneView?.setDraft(profile),inspect:()=>sceneView?.inspect()||{fallback:true},setLive:next=>{snapshot=next;selected=next.selected;render();}};
+window.BacCampus={protectionReplyDelay:(owner,role)=>sceneView?.protectionReplyDelay(owner,role),observeProtection:events=>sceneView?.observeProtection(events),welcomeAgent:key=>sceneView?.welcomeAgent(key),setRoom:(room,options)=>sceneView?.setRoom(room,options),overview:options=>sceneView?.overview(options),setCollection:(agents,key)=>sceneView?.setCollection(agents,key),setDraft:profile=>sceneView?.setDraft(profile),inspect:()=>sceneView?.inspect()||{fallback:true},setLive:next=>{snapshot=next;selected=next.selected;render();}};
 render();

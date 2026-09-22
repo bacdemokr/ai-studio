@@ -33,7 +33,7 @@
 <article><span>02 / INFERENCE</span><h4>Model</h4><b id="studio-model-state">Checking model…</b><p></p></article>
 <article><span>03 / ACCESS</span><h4>OpenShell</h4><b id="studio-shell-state">Checking configuration…</b><p>Choose protection per personal agent. Approve its internet access in Policies.</p><button class="studio-secondary" id="studio-connection-security">Open Policies</button></article>
 </div></section>
-<section id="studio-policies" class="studio-policies" hidden aria-label="Personal agent policies"><div class="studio-policy-toolbar"><label for="studio-policy-agent">PERSONAL AGENT (OpenShell)<select id="studio-policy-agent"></select></label></div><div id="studio-policy-content"></div></section>
+<section id="studio-policies" class="studio-policies" hidden aria-label="Agent policies"><div class="studio-policy-toolbar"><label for="studio-policy-agent">AGENT (OpenShell)<select id="studio-policy-agent"></select></label></div><div id="studio-policy-content"></div></section>
 <aside id="studio-passport">
   <div class="studio-passport-head"><span class="studio-kicker">YOUR AGENT / YOUR RULES</span><span class="studio-spark">✦</span></div>
   <div id="studio-lounge-empty"><div class="studio-avatar"><i></i><i></i></div><h3>Room for your first agent.</h3><p class="studio-muted">Everyone you create gets a place here, with their own look, memory and skills.</p></div>
@@ -52,6 +52,7 @@
   <div class="studio-crew-passport-content">
     <div class="studio-passport-head"><span class="studio-kicker">YOUR CREW</span><span id="studio-crew-number" class="studio-muted"></span></div>
     <div class="studio-companion-name"><button type="button" id="studio-crew-portrait" class="studio-avatar small studio-identity-open" aria-label="View agent files" title="View agent files"><i aria-hidden="true"></i><i aria-hidden="true"></i></button><div><h3><button type="button" id="studio-crew-name" class="studio-identity-name" title="View agent files" aria-haspopup="dialog"></button></h3><div class="studio-crew-identity"><span id="studio-crew-role" class="studio-muted"></span><div id="studio-crew-skills" class="studio-equipped" aria-label="Equipped skills"></div></div></div></div>
+    <button type="button" id="studio-crew-policy" class="studio-secondary studio-policy-link" aria-haspopup="dialog" hidden>◇ OpenShell Policy</button>
     <section id="studio-crew-conversation" role="log" aria-live="polite" aria-label="Crew member conversation"></section>
     <form id="studio-crew-chat"><p id="studio-crew-chat-connection" role="status" hidden></p><p id="studio-crew-chat-error" role="alert" hidden></p><label for="studio-crew-prompt">Message this crew member</label><textarea id="studio-crew-prompt" rows="3" maxlength="6000" required></textarea><div class="studio-compose-actions"><button type="submit" id="studio-crew-send" class="studio-primary">Send message</button></div></form>
   </div>

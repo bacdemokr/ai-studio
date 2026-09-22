@@ -159,15 +159,15 @@ function setCollection(agents,key){
     }
     const tone=loungeVoices[a.tone]?a.tone:'kind';
     if(r.persona!==a.persona||r.name!==a.name||r.tone!==tone||r.purpose!==(a.purpose||'')){if(loungeSpeaker===r)endLoungeSpeech();r.saidIntro=false;r.line=0;}
-    const latest=a.latestMission,signature=latest?latest.id+':'+latest.status:'';
-    r.replyExcerpt=latest?.status==='done'?loungeReplyExcerpt(latest.answerPreview):'';
+    const latest=a.latestMission,signature=latest?latest.id+':'+latest.status:'',replyHeld=!!protectionReplyDelay(a.key,null);
+    r.replyExcerpt=!replyHeld&&latest?.status==='done'?loungeReplyExcerpt(latest.answerPreview):'';
     if(r.missionSignature!==undefined&&signature!==r.missionSignature&&r.replyExcerpt){
       // A fresh answer takes precedence over an unrelated idle vignette.
       if(loungeSpeaker&&!loungeSpeaker.completionSpeech)endLoungeSpeech();
       else if(loungeSpeaker===r)endLoungeSpeech();
       r.completionCue=true;nextLoungeSpeech=loungeTime;
     }
-    r.missionSignature=signature;
+    if(!replyHeld)r.missionSignature=signature;
     // Once assigned, stay quiet except for an observed successful completion.
     r.hasMission=!!latest||a.activity?.kind==='mission'||r.hasMission;
     // Shared-event reservations protect identity; only unfinished activity makes the resident busy.

@@ -33,11 +33,8 @@ function loadChatImages(container,owner){
  container.querySelectorAll('[data-chat-image]').forEach(async image=>{try{const file=await api('file?path='+encodeURIComponent(image.dataset.chatImage),undefined,owner);if(image.isConnected&&file.encoding==='base64'&&['image/png','image/jpeg','image/webp'].includes(file.mime))image.src='data:'+file.mime+';base64,'+file.content;}catch{image.alt='Image unavailable';}});
 }
 for(const crew of [false,true]){
- const id=crew?'crew-':'',form=el(id+'chat'),input=el(id+'prompt'),previews=document.createElement('div'),picker=document.createElement('input'),button=document.createElement('button');
+ const id=crew?'crew-':'',form=el(id+'chat'),input=el(id+'prompt'),previews=document.createElement('div');
  previews.id='studio-'+id+'image-drafts';previews.className='chat-image-drafts';previews.hidden=true;form.insertBefore(previews,input);
- picker.type='file';picker.accept='image/png,image/jpeg,image/webp';picker.multiple=true;picker.hidden=true;form.append(picker);
- button.type='button';button.className='studio-secondary';button.textContent='＋ Image';button.onclick=()=>{if(!input.disabled)picker.click()};form.querySelector('.studio-compose-actions').prepend(button);
- picker.onchange=()=>{addChatImages([...picker.files],crew);picker.value=''};
  input.addEventListener('paste',event=>{const images=[...event.clipboardData.items].filter(item=>item.kind==='file'&&item.type.startsWith('image/')).map(item=>item.getAsFile()).filter(Boolean);if(images.length){event.preventDefault();addChatImages(images,crew)}});
 }
 let chatSending=false;
@@ -95,19 +92,29 @@ function messageMarkup(value){
   }
   return out.join('').replace(/\u0000(\d+)\u0000/g,(_,n)=>saved[Number(n)]||'');
 }
+function shieldReplyHeld(job,role=null){
+  const hold=window.BacCampus?.protectionReplyDelay(agentId,role);
+  if(!hold)return false;
+  // Do not hide earlier replies when a later request hits the shield.
+  const lastEvent=job.events?.at(-1)?.time||job.created;
+  return job.kind==='roundtable'?job.created>=hold.time-1:
+    job.created<=hold.time+1&&(lastEvent>=hold.time-1||['queued','running','waiting','stopping'].includes(job.status));
+}
+const shieldReplyWait='<div class="chat-progress shield-reply-wait" role="status" aria-label="Access blocked. Reply will appear shortly.">···</div>';
+root.addEventListener('bac:protection-reveal',()=>{if(connected)render();});
 let conversationSignature='',conversationOwner=null;
 function renderConversation(){
   renderImageDrafts();syncComposer();const log=el('conversation');if(!log)return;
   const jobs=[...data.jobs.filter(j=>j.kind!=='crew'),...(data.roundtableTurns||[])].sort((a,b)=>a.created-b.created);
-  const signature=JSON.stringify([agentId,data.profile?.name,jobs.map(j=>[j.id,j.status,j.result,j.events?.at(-1)])]);
+  const signature=JSON.stringify([agentId,data.profile?.name,jobs.map(j=>[j.id,j.status,j.result,j.events?.at(-1),shieldReplyHeld(j)])]);
   if(conversationOwner!==agentId)el('chat-error').hidden=true;
   if(signature===conversationSignature)return;
   const follow=conversationOwner!==agentId||log.scrollHeight-log.scrollTop-log.clientHeight<70,top=log.scrollTop;
   conversationSignature=signature;conversationOwner=agentId;
   log.innerHTML=(data.jobs.length>=30?'<small class="chat-history-note">Recent conversations · up to 30 missions</small>':'')+(jobs.length?jobs.map(j=>{
-    const result=j.result||{},pending=['queued','running','waiting','stopping'].includes(j.status);
+    const held=shieldReplyHeld(j),result=held?{}:j.result||{},pending=['queued','running','waiting','stopping'].includes(j.status);
     const status={queued:'Waiting to start…',running:j.events?.at(-1)?.title==='Preparing OpenShell'?'Preparing your protected runtime…':'Working on your request…',waiting:'Waiting for a decision.',stopping:'Stopping after the current model call…',cancelled:'Stopped.'}[j.status];
-    return '<article class="chat-turn" data-chat-turn="'+escape(j.id)+'"><div class="chat-message chat-user"><small>'+escape(j.payload.sender||'You')+'</small><div>'+escape(j.payload.prompt||'').replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images)+'</div></div><div class="chat-message chat-agent"><small>'+escape(data.profile?.name||'Agent')+' · '+escape(new Date(j.created*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))+'</small>'+customSkillMarkup(result.activity)+'<div class="chat-prose">'+messageMarkup(result.answer||result.error||(pending?'':status||'No text reply was returned.'))+'</div>'+(pending?'<div class="chat-progress" role="status">'+escape(status)+(j.status!=='stopping'?'<button type="button" data-chat-stop="'+escape(j.id)+'">Stop</button>':'')+'</div>':'')+(result.files||[]).filter(f=>!f.endsWith('.md')||!result.answer).map(f=>'<details class="chat-file"><summary data-chat-file="'+escape(f)+'">'+escape(f.split('/').pop())+'</summary><div class="chat-file-body"></div></details>').join('')+'</div></article>';
+    return '<article class="chat-turn" data-chat-turn="'+escape(j.id)+'"><div class="chat-message chat-user"><small>'+escape(j.payload.sender||'You')+'</small><div>'+escape(j.payload.prompt||'').replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images)+'</div></div><div class="chat-message chat-agent"><small>'+escape(data.profile?.name||'Agent')+' · '+escape(new Date(j.created*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))+'</small>'+customSkillMarkup(result.activity)+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(result.answer||result.error||(pending?'':status||'No text reply was returned.'))+'</div>')+(!held&&pending?'<div class="chat-progress" role="status">'+escape(status)+(j.status!=='stopping'?'<button type="button" data-chat-stop="'+escape(j.id)+'">Stop</button>':'')+'</div>':'')+(result.files||[]).filter(f=>!f.endsWith('.md')||!result.answer).map(f=>'<details class="chat-file"><summary data-chat-file="'+escape(f)+'">'+escape(f.split('/').pop())+'</summary><div class="chat-file-body"></div></details>').join('')+'</div></article>';
   }).join(''):'<p class="chat-empty">Start a conversation. Your questions and replies will stay here.</p>');
   loadChatImages(log,agentId);
   if(follow)log.scrollTop=log.scrollHeight;else log.scrollTop=top;

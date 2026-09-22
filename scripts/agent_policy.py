@@ -42,9 +42,6 @@ def destination_permission(host):
 
 
 def permission_rule(key):
-    if isinstance(key, str) and key.startswith('file:'):
-        from file_access import file_rule
-        return file_rule(key)
     if key in CATALOG:
         return CATALOG[key]
     if not isinstance(key, str) or not key.startswith('host:') or destination_permission(key[5:]) != key:
@@ -57,10 +54,7 @@ def individual_permissions(permissions):
     keys = set()
     for key in permissions:
         rule = permission_rule(key)
-        if key.startswith('file:'):
-            keys.add(key)
-        else:
-            keys.update(destination_permission(host) for host in rule['hosts'])
+        keys.update(destination_permission(host) for host in rule['hosts'])
     return sorted(keys)
 
 

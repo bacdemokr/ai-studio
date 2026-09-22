@@ -70,6 +70,13 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 @media(max-width:1080px){#agent-campus .campus-layout{grid-template-columns:minmax(0,1fr) 245px}#campus-viewport{height:440px}#agent-campus .campus-sim{font-size:14px}}
 @media(max-width:800px){#agent-campus .campus-layout{grid-template-columns:1fr}}
 @media(max-width:560px){#agent-campus .campus-layout{margin:0 12px}#agent-campus .campus-stage-top{top:14px;left:12px;right:12px;display:block}#agent-campus .campus-location{font-size:14px}#agent-campus .campus-sim{display:block;border:0;padding:6px 0;background:none;letter-spacing:.5px}#campus-viewport{height:350px}#agent-campus .campus-agent-label{font-size:14px;padding:3px 5px}#agent-campus .campus-agent-label small{font-size:14px}#agent-campus .campus-roster button{font-size:15px;padding:12px 5px}#agent-campus .campus-roster small{font-size:14px}}
+
+.world-protection-layer{position:absolute;inset:0;pointer-events:none;z-index:8;overflow:hidden}
+.world-protection-hit{position:absolute;transform:translate(-50%,-100%);padding:10px 16px;border:1px solid #78ddec;border-top:2px solid #ffbe78;border-radius:10px;background:linear-gradient(135deg,rgba(15,35,46,.97),rgba(10,24,34,.97));color:#e1fbff;box-shadow:0 0 0 4px #70dfff0a,0 8px 28px #0008,0 0 24px #54caff29;max-width:260px;text-align:center;line-height:1.45}
+.world-protection-hit b{display:block;font-size:14px;color:#ffd19e;white-space:nowrap}
+.world-protection-hit span{display:block;margin-top:3px;font-size:10px;letter-spacing:.04em;color:#8fc5d2}
+.world-protection-hit[data-phase=impact]{border-color:#ffc185;box-shadow:0 0 0 4px #ffc18510,0 8px 28px #0008,0 0 28px #ffa95e40}
+.world-protection-hit small{display:block;font-size:11px;color:#b6dacf;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 <style>/* Carbon surfaces, neutral text and white light; NVIDIA green marks actions and state. */
 #agent-campus.studio-enabled{background:#0b0d11;--studio-line:#252d36;--studio-muted:#b2bdca;--studio-green:#96d52b}
@@ -526,7 +533,7 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 #studio-companion:not([hidden]){display:flex;flex-direction:column;flex:1;min-height:0;gap:8px}
 #studio-companion .studio-companion-name{margin:0;flex:none}
 #studio-companion .studio-companion-name h3{font-size:23px!important}
-#studio-companion #studio-personality{display:block;overflow-wrap:anywhere;font-size:13px!important;line-height:1.5!important}
+#studio-companion #studio-personality{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px!important;line-height:1.5!important}
 #studio-companion .studio-agent-actions{margin:0;gap:8px}
 #studio-companion .studio-agent-actions button{font-size:12px;padding:5px 8px}
 #studio-companion #studio-equipped{margin:0;gap:5px;flex:none}
@@ -622,7 +629,6 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 .policy-access-card button{flex:none;padding:9px 14px;font-size:14px}.policy-access-note{font-size:14px!important;color:#aebfcd}
 @media(max-width:800px){.policy-access-list{grid-template-columns:1fr}}
 
-.policy-access-tabs{margin:12px 0 18px;gap:24px}.policy-access-tabs span{font-size:13px;color:#aebfcd;margin-left:5px}.policy-file-group{margin:0 0 20px}.policy-file-group>h4{font-size:15px;color:#bccbd7;margin:0 0 10px}.policy-access-section [role=tabpanel][hidden]{display:none!important}
 .world-roundtable{position:absolute;inset:0;pointer-events:none;z-index:7}
 .world-roundtable[hidden]{display:none!important}
 .roundtable-guest{position:absolute;transform:translate(-50%,-100%);pointer-events:auto;background:#15232de8;color:#eff5f8;border:1px solid #607e8e;border-radius:9px;padding:5px 9px;font:12px/1.3 system-ui;max-width:150px;cursor:pointer;box-shadow:0 4px 14px #0006}
@@ -969,7 +975,7 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 <article><span>02 / INFERENCE</span><h4>Model</h4><b id="studio-model-state">Checking model…</b><p></p></article>
 <article><span>03 / ACCESS</span><h4>OpenShell</h4><b id="studio-shell-state">Checking configuration…</b><p>Choose protection per personal agent. Approve its internet access in Policies.</p><button class="studio-secondary" id="studio-connection-security">Open Policies</button></article>
 </div></section>
-<section id="studio-policies" class="studio-policies" hidden aria-label="Personal agent policies"><div class="studio-policy-toolbar"><label for="studio-policy-agent">PERSONAL AGENT (OpenShell)<select id="studio-policy-agent"></select></label></div><div id="studio-policy-content"></div></section>
+<section id="studio-policies" class="studio-policies" hidden aria-label="Agent policies"><div class="studio-policy-toolbar"><label for="studio-policy-agent">AGENT (OpenShell)<select id="studio-policy-agent"></select></label></div><div id="studio-policy-content"></div></section>
 <aside id="studio-passport">
   <div class="studio-passport-head"><span class="studio-kicker">YOUR AGENT / YOUR RULES</span><span class="studio-spark">✦</span></div>
   <div id="studio-lounge-empty"><div class="studio-avatar"><i></i><i></i></div><h3>Room for your first agent.</h3><p class="studio-muted">Everyone you create gets a place here, with their own look, memory and skills.</p></div>
@@ -988,6 +994,7 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
   <div class="studio-crew-passport-content">
     <div class="studio-passport-head"><span class="studio-kicker">YOUR CREW</span><span id="studio-crew-number" class="studio-muted"></span></div>
     <div class="studio-companion-name"><button type="button" id="studio-crew-portrait" class="studio-avatar small studio-identity-open" aria-label="View agent files" title="View agent files"><i aria-hidden="true"></i><i aria-hidden="true"></i></button><div><h3><button type="button" id="studio-crew-name" class="studio-identity-name" title="View agent files" aria-haspopup="dialog"></button></h3><div class="studio-crew-identity"><span id="studio-crew-role" class="studio-muted"></span><div id="studio-crew-skills" class="studio-equipped" aria-label="Equipped skills"></div></div></div></div>
+    <button type="button" id="studio-crew-policy" class="studio-secondary studio-policy-link" aria-haspopup="dialog" hidden>◇ OpenShell Policy</button>
     <section id="studio-crew-conversation" role="log" aria-live="polite" aria-label="Crew member conversation"></section>
     <form id="studio-crew-chat"><p id="studio-crew-chat-connection" role="status" hidden></p><p id="studio-crew-chat-error" role="alert" hidden></p><label for="studio-crew-prompt">Message this crew member</label><textarea id="studio-crew-prompt" rows="3" maxlength="6000" required></textarea><div class="studio-compose-actions"><button type="submit" id="studio-crew-send" class="studio-primary">Send message</button></div></form>
   </div>
@@ -78829,8 +78836,8 @@ function createClaw(appearance,color,group,body){
   const artwork=new THREE.Mesh(new THREE.PlaneGeometry(artworkWidth,artworkHeight),new THREE.MeshBasicMaterial({map:artworkTexture,toneMapped:false}));
   artwork.position.set(-.6,2.175,-7.049);missionRoom.add(artwork);
   box(missionRoom,-.6,.60,-7.06,5.22,.026,.02,0x76b900,true);
-  // Keep historical role IDs in stored jobs; the floor now has four production roles.
-  const positions=[[0,.4],[0,-4.5],[6.2,-4.5],[-6.2,-4.5]];
+  // Preserve role IDs; arrange Dylan, Alex and Morgan from left to right.
+  const positions=[[0,.4],[-6.2,-4.5],[0,-4.5],[6.2,-4.5]];
   const homes=positions.map(([x,z],i)=>new THREE.Vector3(i?x:-1.65,.05,i?z+1:1.65));
   const titles=['CAPTAIN','DEMO STUDIO','OPERATIONS','MARKETING','REVIEW','WEB STUDIO'];
   const deskLights=[],deskScreens=[],routes=[];
@@ -79144,15 +79151,15 @@ function setCollection(agents,key){
     }
     const tone=loungeVoices[a.tone]?a.tone:'kind';
     if(r.persona!==a.persona||r.name!==a.name||r.tone!==tone||r.purpose!==(a.purpose||'')){if(loungeSpeaker===r)endLoungeSpeech();r.saidIntro=false;r.line=0;}
-    const latest=a.latestMission,signature=latest?latest.id+':'+latest.status:'';
-    r.replyExcerpt=latest?.status==='done'?loungeReplyExcerpt(latest.answerPreview):'';
+    const latest=a.latestMission,signature=latest?latest.id+':'+latest.status:'',replyHeld=!!protectionReplyDelay(a.key,null);
+    r.replyExcerpt=!replyHeld&&latest?.status==='done'?loungeReplyExcerpt(latest.answerPreview):'';
     if(r.missionSignature!==undefined&&signature!==r.missionSignature&&r.replyExcerpt){
       // A fresh answer takes precedence over an unrelated idle vignette.
       if(loungeSpeaker&&!loungeSpeaker.completionSpeech)endLoungeSpeech();
       else if(loungeSpeaker===r)endLoungeSpeech();
       r.completionCue=true;nextLoungeSpeech=loungeTime;
     }
-    r.missionSignature=signature;
+    if(!replyHeld)r.missionSignature=signature;
     // Once assigned, stay quiet except for an observed successful completion.
     r.hasMission=!!latest||a.activity?.kind==='mission'||r.hasMission;
     // Shared-event reservations protect identity; only unfinished activity makes the resident busy.
@@ -79526,7 +79533,7 @@ reduced.addEventListener('change',()=>{if(reduced.matches)finishJourney(true);})
 focus.copy(roomFocus(room));viewHalfHeight=roomHeight(room);refreshNavigation();
 
   // Actual opinions live in the results and Captain's history. The scene only
-// acknowledges submission once, then sends each guest home in turn.
+// acknowledges submission once, then sends each guest home in turn on success.
 const meetingFurniture=new THREE.Group();missionRoom.add(meetingFurniture);meetingFurniture.visible=false;
 let meetingWidth=0,meetingCenter=0;
 const meetingSeatX=Array.from({length:12},(_,i)=>(i%2?1:-1)*(Math.floor(i/2)*1.75+.875));
@@ -79637,6 +79644,13 @@ function animateRoundtable(dt){
  meetingLayer.hidden=!meetingId||room!=='mission'||overview||!!journey;
  if(!meetingId)return;
  const onScreen=!meetingLayer.hidden;
+ const aborted=job?.failed||['error','cancelled'].includes(job?.status);
+ if(aborted){
+  meetingSpeaker='';meetingSpeechUntil=0;
+  for(const guest of meetingGuests){
+   if(!['returning','returned'].includes(guest.phase))returnMeetingGuest(guest);
+  }
+ }
  meetingElapsed+=dt;
  for(const guest of meetingGuests){
   if(guest.phase==='returned')continue;
@@ -79662,7 +79676,7 @@ function animateRoundtable(dt){
   meetingSpeaker='';
  }
  // One short acknowledgement and one departure at a time; never repeat opinions.
- if(onScreen&&!meetingSpeaker&&!meetingGuests.some(g=>['entering','returning'].includes(g.phase))){
+ if(!aborted&&onScreen&&!meetingSpeaker&&!meetingGuests.some(g=>['entering','returning'].includes(g.phase))){
   const next=meetingGuests.find(g=>g.phase==='seated'&&meeting?.replies?.[g.key]?.status==='done');
   if(next){next.phase='submitted';meetingSpeaker=next.key;meetingSpoken.add(next.key);meetingSpeechUntil=meetingElapsed+2;}
   else if(['done','cancelled','error'].includes(job?.status)){
@@ -79720,6 +79734,132 @@ function roundtableInfo(){return {job:meetingId,tableWidth:meetingWidth,speaker:
   function renderCrewLabels(){labels.forEach((b,i)=>{const working=crewWorking(i);b.innerHTML=escape(state.agents[i].name)+'<small>'+escape(state.agents[i].included===false?'Not in this mission':working?'Working · '+state.agents[i].role:state.agents[i].lane===2?'Waiting for you':state.agents[i].role)+'</small>'+(working?'<span class="crew-work-bubble"><i></i>'+escape(state.crewMission?workLines[i]:'Working on your request…')+'</span>':'');b.setAttribute('aria-pressed',String(activeSelection===i));b.setAttribute('aria-label','Select '+state.agents[i].name);b.classList.toggle('selected',activeSelection===i);b.classList.toggle('excluded',state.agents[i].included===false);b.classList.toggle('waiting',state.agents[i].lane===2);});}
   function update(next,index){state=next;syncCaptain();syncRoundtable();activeSelection=index;phase=state.phase;dressCrew();const key=[state.jobId,state.phase,state.missionSkill,state.agents.map(a=>a.lane).join('')].join(':');if(key!==lastKey){lastKey=key;movement();}renderCrewLabels();}
 
+  // Shield effects require native OpenShell network denial evidence.
+const protectionSeen=new Set(),protectionHits=new Map(),protectionCooldown=new Map();
+const protectionReplies=new Map();
+function protectionReplyDelay(owner,role=null){
+  const key=owner+':'+(role===null?'personal':role),hold=protectionReplies.get(key);
+  if(hold&&performance.now()<hold.until)return hold;
+  return null;
+}
+let protectionPrimed=false;
+const protectionLayer=document.createElement('div');protectionLayer.className='world-protection-layer';viewport.append(protectionLayer);
+function protectionTarget(event){return event.role===null?residents.find(r=>r.key===event.owner)?.group:robots[event.role]?.robot;}
+function disposeProtection(hit){
+  scene.remove(hit.group);hit.label.remove();
+  hit.group.traverse(o=>{o.geometry?.dispose();if(o.material)o.material.dispose();});
+}
+function protectionMaterial(color,opacity=1){return new THREE.MeshBasicMaterial({color,transparent:true,opacity,side:THREE.DoubleSide,depthWrite:false,toneMapped:false,blending:THREE.AdditiveBlending});}
+function createProtectionShell(){
+  return new THREE.Mesh(new THREE.SphereGeometry(1.8,48,24,0,Math.PI*2,0,Math.PI/2),new THREE.ShaderMaterial({
+    transparent:true,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,
+    uniforms:{elapsed:{value:-1},fade:{value:1},impactPoint:{value:new THREE.Vector3(1.35,1/1.08,.75)}},
+    vertexShader:`varying vec3 localPoint;varying vec3 viewNormal;varying vec3 viewDirection;varying vec2 surfaceUV;
+      void main(){localPoint=position;surfaceUV=uv;viewNormal=normalize(normalMatrix*normal);vec4 p=modelViewMatrix*vec4(position,1.);viewDirection=-p.xyz;gl_Position=projectionMatrix*p;}`,
+    fragmentShader:`uniform float elapsed;uniform float fade;uniform vec3 impactPoint;
+      varying vec3 localPoint;varying vec3 viewNormal;varying vec3 viewDirection;varying vec2 surfaceUV;
+      void main(){
+        float edge=pow(1.-abs(dot(normalize(viewNormal),normalize(viewDirection))),2.);
+        vec2 p=surfaceUV*vec2(32.,20.),r=vec2(1.,1.732);
+        vec2 a=mod(p,r)-r*.5,b=mod(p-r*.5,r)-r*.5;
+        vec2 cell=abs(dot(a,a)<dot(b,b)?a:b);
+        float hex=max(cell.x,dot(cell,vec2(.5,.866)));
+        float grid=smoothstep(.43,.485,hex);
+        float distanceToHit=distance(localPoint,impactPoint);
+        float hitEnabled=step(0.,elapsed),t=max(0.,elapsed);
+        float wave=(1.-smoothstep(.025,.12,abs(distanceToHit-t*2.2)))*exp(-t*.95)*hitEnabled;
+        float echo=(1.-smoothstep(.02,.08,abs(distanceToHit-max(0.,t-.2)*1.6)))*exp(-t*1.7)*hitEnabled;
+        float flash=exp(-distanceToHit*4.)*exp(-t*5.)*hitEnabled;
+        vec3 color=mix(vec3(.16,.72,1.),vec3(.65,1.,.76),edge*.7+wave*.3);
+        color=mix(color,vec3(1.,.62,.22),flash*.85);
+        float alpha=(.035+edge*.44+grid*(.06+wave*.34)+wave*.48+echo*.18+flash*.6)*fade;
+        gl_FragColor=vec4(color,alpha);
+      }`
+  }));
+}
+function observeProtection(events=[]){
+  const now=Date.now()/1000;
+  for(const event of events){
+    if(!event.id||event.source!=='OpenShell policy log'||event.action!=='deny'||protectionSeen.has(event.id))continue;
+    protectionSeen.add(event.id);
+    if(!protectionPrimed||now-event.observedAt>12||now-event.time>30||event.time>now+2)continue;
+    const key=event.owner+':'+(event.role===null?'personal':event.role),target=protectionTarget(event);
+    if(!target||performance.now()-(protectionCooldown.get(key)||-Infinity)<4500)continue;
+    protectionCooldown.set(key,performance.now());
+    if(!overview&&!journey&&room===(event.role===null?'lounge':'mission')){
+      const hold={time:event.time,until:performance.now()+3000};protectionReplies.set(key,hold);
+      setTimeout(()=>{if(protectionReplies.get(key)===hold){protectionReplies.delete(key);root.dispatchEvent(new Event('bac:protection-reveal'));}},3000);
+    }
+    if(protectionHits.size>=3){const [oldKey,old]=protectionHits.entries().next().value;disposeProtection(old);protectionHits.delete(oldKey);}
+    const group=new THREE.Group();group.name='openshell-impact';group.visible=false;scene.add(group);
+    const shell=createProtectionShell();shell.scale.y=1.08;group.add(shell);
+    const rim=new THREE.Mesh(new THREE.TorusGeometry(1.8,.035,8,80),protectionMaterial(0x7fe9ff,.85));rim.rotation.x=-Math.PI/2;rim.position.y=.045;group.add(rim);
+    const impact=new THREE.Group();impact.visible=false;impact.position.set(1.35,1,.75);impact.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),new THREE.Vector3(1.35,1/(1.08*1.08),.75).normalize());group.add(impact);
+    const wave=new THREE.Mesh(new THREE.RingGeometry(.23,.26,48),protectionMaterial(0xb6ffe3));impact.add(wave);
+    const seal=new THREE.Group();impact.add(seal);
+    // A small amber stop cross makes the collision legible even at a distance.
+    for(const angle of [-Math.PI/4,Math.PI/4]){const bar=new THREE.Mesh(new THREE.BoxGeometry(.075,.48,.025),protectionMaterial(0xffb86b));bar.rotation.z=angle;seal.add(bar);}
+    const points=[];
+    for(let i=0;i<10;i++){
+      const angle=i*Math.PI/5;let previous=new THREE.Vector3();
+      for(let j=1;j<=5;j++){
+        const radius=j*.16,a=angle+(j%2?.2:-.13),next=new THREE.Vector3(Math.cos(a)*radius,Math.sin(a)*radius,.025);
+        points.push(previous,next);previous=next;
+      }
+    }
+    const sparks=new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:0xc5faff,transparent:true,opacity:1,depthWrite:false,toneMapped:false,blending:THREE.AdditiveBlending}));impact.add(sparks);
+    // The request originates INSIDE the boundary and never crosses it. On denial
+    // the amber packet reverses back toward its agent, then dissolves.
+    const request=new THREE.Group();request.visible=motion;group.add(request);
+    const packet=new THREE.Mesh(new THREE.SphereGeometry(.1,12,8),protectionMaterial(0xffce83));request.add(packet);
+    const glow=new THREE.Mesh(new THREE.SphereGeometry(.2,12,8),protectionMaterial(0xffb66b,.25));packet.add(glow);
+    const trail=new THREE.Mesh(new THREE.CylinderGeometry(.018,.035,1,8),protectionMaterial(0xffb66b,.8));request.add(trail);
+    const origin=new THREE.Vector3(0,.95,.05),destination=impact.position.clone();
+    const label=document.createElement('div');label.className='world-protection-hit';label.setAttribute('role','status');
+    const title=document.createElement('b');title.textContent='⛨ Request blocked';const host=document.createElement('small');host.textContent=String(event.host||'').slice(0,120);
+    const caption=document.createElement('span');caption.textContent='OpenShell · connection stopped';label.append(title,host,caption);protectionLayer.append(label);
+    protectionHits.set(key,{event,group,shell,rim,impact,wave,seal,sparks,request,packet,glow,trail,origin,destination,label,began:performance.now(),phase:'request'});
+  }
+  protectionPrimed=true;
+  while(protectionSeen.size>256)protectionSeen.delete(protectionSeen.values().next().value);
+  for(const [key,stamp] of protectionCooldown)if(performance.now()-stamp>30000)protectionCooldown.delete(key);
+}
+function animateProtection(now){
+  for(const [key,hit] of protectionHits){
+    const age=(now-hit.began)/1000,target=protectionTarget(hit.event),duration=motion?3.8:3;
+    if(!target||age>duration){disposeProtection(hit);protectionHits.delete(key);continue;}
+    const shown=!overview&&!journey&&room===(hit.event.role===null?'lounge':'mission');
+    hit.group.visible=shown;hit.label.hidden=!shown;
+    if(!shown)continue;
+    target.getWorldPosition(hit.group.position);hit.group.position.y+=.025;hit.group.rotation.y=azimuth;
+    const collision=.6,t=age-collision,fade=motion?Math.min(1,(duration-age)/.9):1;
+    hit.phase=!motion?'blocked':t<0?'request':t<.85?'impact':'blocked';
+    hit.shell.material.uniforms.elapsed.value=motion?t:10;hit.shell.material.uniforms.fade.value=fade;
+    hit.rim.material.opacity=(.6+(t>=0?.35*Math.exp(-t*3):0))*fade;
+    hit.impact.visible=!motion||t>=0;
+    hit.wave.visible=motion;hit.sparks.visible=motion;
+    hit.wave.scale.setScalar(.6+Math.max(0,t)*3.2);hit.wave.material.opacity=Math.max(0,1-t/1.05)*fade;
+    // A single local impact, not repeated flashes across the screen.
+    hit.sparks.scale.setScalar(.45+Math.min(1,Math.max(0,t))*1.1);
+    hit.sparks.material.opacity=Math.max(0,1-t/.8)*(.72+.28*Math.sin(t*28));
+    hit.sparks.rotation.z=Math.max(0,t)*.28;hit.seal.scale.setScalar(motion?.7+.3*Math.min(1,Math.max(0,t)*7):1);
+    hit.seal.children.forEach(o=>o.material.opacity=fade);
+    hit.request.visible=motion&&age<collision+.7;
+    if(hit.request.visible){
+      const progress=t<0?age/collision:Math.max(0,1-t/.66);
+      hit.packet.position.lerpVectors(hit.origin,hit.destination,progress);
+      const tailProgress=t<0?Math.max(0,progress-.27):Math.min(1,progress+.23);
+      const tail=hit.origin.clone().lerp(hit.destination,tailProgress),delta=hit.packet.position.clone().sub(tail);
+      hit.trail.position.copy(tail).add(hit.packet.position).multiplyScalar(.5);
+      hit.trail.scale.y=Math.max(.001,delta.length());hit.trail.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize());
+      hit.packet.material.opacity=t<0?1:Math.max(0,1-t/.7);hit.glow.material.opacity=.25*hit.packet.material.opacity;hit.trail.material.opacity=.8*hit.packet.material.opacity;
+    }
+    hit.label.dataset.phase=hit.phase;hit.label.style.opacity=String(motion?(t<0?.5:fade):1);
+    positionLabel(hit.label,hit.group.position.clone().add(new THREE.Vector3(0,2.65,0)));
+  }
+}
+
+
   function motionButton(){el('motion').textContent=motion?'Ⅱ':'▶';el('motion').setAttribute('aria-label',motion?'Pause scene motion':'Resume scene motion');}
   el('motion').onclick=()=>{motion=!motion;if(!motion)studioSound.stop();motionButton();};reduced.addEventListener('change',()=>{motion=!reduced.matches;if(!motion)studioSound.stop();motionButton();});
   el('camera').onclick=resetNavigation;
@@ -79741,14 +79881,15 @@ function roundtableInfo(){return {job:meetingId,tableWidth:meetingWidth,speaker:
     deskScreens.forEach((screen,i)=>{const busy=crewWorking(i);screen.material.emissive.setHex(busy?colors[i]:0);screen.material.emissiveIntensity=busy ? .3+Math.sin(clock*3+i)*.12 : 0;});
     packets.forEach((p,i)=>{const t=(clock-packetTime-i*.13)/2.8;p.visible=!state.crewMission&&t>=0&&t<=1&&state.phase>=0;if(p.visible){p.position.lerpVectors(packetStart,packetEnd,t);p.position.y=.65+Math.sin(t*Math.PI)*1.15;}});
     animateCaptain(dt);
+    animateProtection(now);
     renderer.render(scene,camera);
   }
   motionButton();resize();update(snapshot,0);requestAnimationFrame(animate);root.dataset.renderer='webgl';
-  return {resize,update,setRoom,setCollection,setDraft,welcomeAgent,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',roundtable:roundtableInfo(),arrival:arrival?{key:arrival.key,avatar:{...arrival.rig.appearance},phase:arrival.time<1.8?'loading':'walking',position:arrival.rig.group.position.toArray()}:null,room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,draftShield:!!draftRig?.body.getObjectByName('openshell-shield'),crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,captain:{position:robots[0].robot.position.toArray(),job:captainJob,received:[...receivedDocuments],assigned:[...assignedDocuments],pending:documentQueue.map(d=>({...d})),inFlight:documentFlight?{...documentFlight}:null},robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
+  return {resize,update,setRoom,setCollection,observeProtection,protectionReplyDelay,setDraft,welcomeAgent,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',protectionHits:[...protectionHits.values()].map(h=>({id:h.event.id,owner:h.event.owner,role:h.event.role,visible:h.group.visible,animated:motion&&h.phase!=='blocked',phase:h.phase})),roundtable:roundtableInfo(),arrival:arrival?{key:arrival.key,avatar:{...arrival.rig.appearance},phase:arrival.time<1.8?'loading':'walking',position:arrival.rig.group.position.toArray()}:null,room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,draftShield:!!draftRig?.body.getObjectByName('openshell-shield'),crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,captain:{position:robots[0].robot.position.toArray(),job:captainJob,received:[...receivedDocuments],assigned:[...assignedDocuments],pending:documentQueue.map(d=>({...d})),inFlight:documentFlight?{...documentFlight}:null},robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
 }
 
 try {sceneView=createScene();}catch(error){el('fallback').hidden=false;root.dataset.renderer='fallback';console.warn('3D unavailable; accessible workflow controls remain available.',error.message);}
-window.BacCampus={welcomeAgent:key=>sceneView?.welcomeAgent(key),setRoom:(room,options)=>sceneView?.setRoom(room,options),overview:options=>sceneView?.overview(options),setCollection:(agents,key)=>sceneView?.setCollection(agents,key),setDraft:profile=>sceneView?.setDraft(profile),inspect:()=>sceneView?.inspect()||{fallback:true},setLive:next=>{snapshot=next;selected=next.selected;render();}};
+window.BacCampus={protectionReplyDelay:(owner,role)=>sceneView?.protectionReplyDelay(owner,role),observeProtection:events=>sceneView?.observeProtection(events),welcomeAgent:key=>sceneView?.welcomeAgent(key),setRoom:(room,options)=>sceneView?.setRoom(room,options),overview:options=>sceneView?.overview(options),setCollection:(agents,key)=>sceneView?.setCollection(agents,key),setDraft:profile=>sceneView?.setDraft(profile),inspect:()=>sceneView?.inspect()||{fallback:true},setLive:next=>{snapshot=next;selected=next.selected;render();}};
 render();
 
 })();</script>
@@ -79771,11 +79912,12 @@ render();
   const roles = window.BacCrewCatalog.map(({name,role,description})=>[name,role,description]);
   const defaultNames=roles.map(r=>r[0]);
   const personaLabels={guide:'Helper',maker:'Creator',analyst:'Researcher'};
-  function agentSummary(profile){
-    const purpose=(profile.purpose||'').trim();
-    const template=roleTemplates.find(t=>t.purpose===purpose);
-    // Templates have authored summaries; custom roles retain their first sentence.
-    return template?.summary||purpose.match(/^[\s\S]*?[.!?。！？](?=\s|$)/)?.[0]||purpose||personas[profile.persona]||'Your personal agent.';
+  function toneSummary(profile){
+    const custom=(profile.tonePrompt||'').trim().replace(/\s+/g,' ');
+    const preset=custom?Object.keys(tones).find(key=>matchesTonePrompt(key,custom)):(profile.tone||'kind');
+    if(tones[preset])return tones[preset].join(' · ');
+    // Keep custom tone wording faithful; its full text remains available on hover.
+    return custom.match(/^[\s\S]*?[.!?。！？](?=\s|$)/)?.[0]||custom||tones.kind.join(' · ');
   }
   function voiceSummary(p){return (p.tonePrompt||tones[p.tone]?.[0]||'Kind')+' · '+(verbosityLabels[p.verbosity]||'Balanced')+' answers';}
   const missions = [
@@ -79803,7 +79945,7 @@ render();
   el('experiences').after(el('workspace'));
   el('collection').after(layout);layout.after(el('safety-bar'));el('safety-bar').after(el('connections'));layout.after(el('collection'));
   el('collection').after(el('policies'));
-  const policyPanel=document.createElement('details');policyPanel.id='studio-policy-panel';policyPanel.className='studio-inline-panel';policyPanel.innerHTML='<summary>OpenShell policies</summary>';el('policies').before(policyPanel);policyPanel.append(el('policies'));policyPanel.ontoggle=()=>{if(policyPanel.open)loadPolicy();};
+  const policyPanel=document.createElement('details');policyPanel.id='studio-policy-panel';policyPanel.className='studio-inline-panel';policyPanel.innerHTML='<summary>Approved websites</summary>';el('policies').before(policyPanel);policyPanel.append(el('policies'));policyPanel.ontoggle=()=>{if(policyPanel.open)loadPolicy();};
   el('workspace').append(el('reset'));el('reset').className='studio-secondary';
 
   const demoSkills=['weather','web','documents','writer'],extraSkills=['builder','memory'];
@@ -79900,10 +80042,11 @@ render();
   function crewMission(){return current()?.kind==='crew'?current():data.jobs.find(j=>j.kind==='crew');}
   function render() {
     const profile=data.profile, job=current();
+    window.BacCampus?.observeProtection(data.protectionEvents||[]);
     if(profile)roles[0][0]=profile.name;
     renderCollection();syncDemoPreparation();
     el('onboarding').hidden=false;el('companion').hidden=!profile;el('lounge-empty').hidden=!!profile;
-    if(profile){el('agent-name').textContent=profile.name;el('personality').textContent=agentSummary(profile);el('agent-skills').innerHTML=profile.skills.map(s=>'<span class="studio-skill-badge" title="'+escape(capabilities[s]?.[1]||titles[s]||s)+'"><i aria-hidden="true">'+escape(missions.find(m=>m.id===s)?.icon||'◇')+'</i>'+escape(titles[s]||capabilities[s]?.[0]||s)+'</span>').join('');el('agent-skills').hidden=!profile.skills.length;el('equipped').innerHTML=profile.skills.map(s=>{const c=capabilities[s];return c?'<button type="button" data-try-skill="'+s+'"><strong>'+escape(c[0])+'</strong><small>'+escape(c[1])+'</small></button>':'<span>'+escape(titles[s])+'</span>';}).join('');el('memory').hidden=!profile.skills.includes('memory');}
+    if(profile){el('agent-name').textContent=profile.name;el('personality').textContent=toneSummary(profile);el('personality').title=profile.tonePrompt||toneSummary(profile);el('agent-skills').innerHTML=profile.skills.map(s=>'<span class="studio-skill-badge" title="'+escape(capabilities[s]?.[1]||titles[s]||s)+'"><i aria-hidden="true">'+escape(missions.find(m=>m.id===s)?.icon||'◇')+'</i>'+escape(titles[s]||capabilities[s]?.[0]||s)+'</span>').join('');el('agent-skills').hidden=!profile.skills.length;el('equipped').innerHTML=profile.skills.map(s=>{const c=capabilities[s];return c?'<button type="button" data-try-skill="'+s+'"><strong>'+escape(c[0])+'</strong><small>'+escape(c[1])+'</small></button>':'<span>'+escape(titles[s])+'</span>';}).join('');el('memory').hidden=!profile.skills.includes('memory');}
     const personalJobs=data.jobs.filter(j=>!['crew','crew-chat','prepare'].includes(j.kind));
     const active=personalJobs.find(j=>['running','stopping'].includes(j.status))||personalJobs.find(j=>['queued','waiting'].includes(j.status));
     el('task-state').textContent=active?'Busy':'Ready';
@@ -79968,7 +80111,7 @@ render();
     if(data.profile&&!crew&&room!=='mission')a[0].avatar=data.profile.avatar;
     if(active?.payload.roundtable?.status==='reviewing')flow=['Your agents’ roundtable','The package is ready. Your agents are sharing their personal takes.','Open mission'];
     const b=crew?.payload.brief;
-    window.BacCampus?.setLive({...s,live:true,crewMission:crew?{id:crew.id,status:crew.status,activeStages:['running','stopping'].includes(crew.status)?(crew.payload.activeStages||[crew.payload.stage]):[],count:crew.payload.roster?.length||5,enabledRoles:crew.payload.enabledRoles||roles.map((_,i)=>i),roundtable:crew.payload.roundtable,completed:Object.keys(crew.payload.outputs||{}).map(Number)}:null,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected:room==='mission'?selectedCrewRole:selected,flow,gap:active?.status==='waiting',brief:b?{...b,location:b.city}:null,calc:crew?.payload.capacity||null,policy:null});
+    window.BacCampus?.setLive({...s,live:true,crewMission:crew?{id:crew.id,status:crew.status,failed:Object.keys(crew.payload.stageErrors||{}).length>0,activeStages:['running','stopping'].includes(crew.status)?(crew.payload.activeStages||[crew.payload.stage]):[],count:crew.payload.roster?.length||5,enabledRoles:crew.payload.enabledRoles||roles.map((_,i)=>i),roundtable:crew.payload.roundtable,completed:Object.keys(crew.payload.outputs||{}).map(Number)}:null,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected:room==='mission'?selectedCrewRole:selected,flow,gap:active?.status==='waiting',brief:b?{...b,location:b.city}:null,calc:crew?.payload.capacity||null,policy:null});
     document.getElementById('campus-motion-status').textContent=active?flow[0]:'Meet your specialists · give the lead an event brief';
     renderCrewPassport();
   }
@@ -80040,8 +80183,8 @@ function renderCrewPassport(){
  const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';portrait.style.setProperty('--avatar-accent',appearanceColors[avatar.color]||appearanceColors.green);
  const skills=window.BacCrewCatalog[i].skills;
  const skillLabels={...titles,'event-tools':'Event tools','event-scheduling':'Presenter scheduling'};
- const protection=window.BacCrewCatalog[i].protection==='openshell'?'<span title="Required for tool execution. NVIDIA Blog reads are pre-approved and verified before each task.">◇ OpenShell</span>':'';
- const markup=skills.map(s=>'<span>'+escape(skillLabels[s]||s)+'</span>').join('')+protection;if(el('crew-skills').innerHTML!==markup)el('crew-skills').innerHTML=markup;
+ el('crew-policy').hidden=window.BacCrewCatalog[i].protection!=='openshell';
+ const markup=skills.map(s=>'<span>'+escape(skillLabels[s]||s)+'</span>').join('');if(el('crew-skills').innerHTML!==markup)el('crew-skills').innerHTML=markup;
  const key=agentId+':'+i,switched=key!==crewChatKey;
  if(switched){if(crewChatKey)crewDrafts.set(crewChatKey,el('crew-prompt').value);crewChatKey=key;el('crew-prompt').value=crewDrafts.get(key)||'';el('crew-chat-error').hidden=true;}
  renderImageDrafts(true);
@@ -80049,22 +80192,23 @@ function renderCrewPassport(){
  const turns=(data.crewChats||[]).filter(j=>j.payload.crewRole===i).map(j=>({...j,direct:true}));
  for(const j of data.jobs||[])if(j.kind==='crew'&&j.created>=(data.crewChatReset?.at||0)&&(i===0||j.payload.handoffs?.[i]||j.payload.outputs?.[i]))turns.push({...j,direct:false});
  turns.sort((a,b)=>a.created-b.created);
- const signature=JSON.stringify([key,turns.map(j=>[j.id,j.status,j.result,j.direct?null:[j.payload.outputs?.[i],j.payload.website,i===3?j.payload.socialDraft:null,j.payload.activity?.[i],i===0?j.payload.handoffs:j.payload.handoffs?.[i],i===0?[crewBriefMessage(j),j.payload.roundtable]:null]])]);
+ const signature=JSON.stringify([key,turns.map(j=>[j.id,j.status,j.result,shieldReplyHeld(j,i),j.direct?null:[j.payload.outputs?.[i],j.payload.website,i===3?j.payload.socialDraft:null,j.payload.activity?.[i],i===0?j.payload.handoffs:j.payload.handoffs?.[i],i===0?[crewBriefMessage(j),j.payload.roundtable]:null]])]);
  if(signature===crewChatSignature)return;
  crewChatSignature=signature;const log=el('crew-conversation'),follow=switched||log.scrollHeight-log.scrollTop-log.clientHeight<70,top=log.scrollTop;
  log.innerHTML=turns.length?turns.map(j=>{
- const pending=['queued','running','waiting','stopping'].includes(j.status);
+ const held=shieldReplyHeld(j,i),pending=['queued','running','waiting','stopping'].includes(j.status);
  const answer=j.direct?(j.result?.answer||j.result?.error||''):(j.payload.outputs?.[i]||j.payload.stageErrors?.[i]||(j.status==='error'&&Number(j.payload.stage)===i?j.result?.error:''));
  const webpage=!j.direct&&i===3&&j.payload.website?.authored?'<button class="studio-secondary" data-crew-webpage="'+escape(j.id)+'">Open webpage</button>':'';
  const social=!j.direct&&i===3&&j.payload.socialDraft?.status==='ready'?'<div class="chat-message chat-agent"><small>Morgan · LinkedIn draft · not published</small><div class="chat-prose">'+messageMarkup(j.payload.socialDraft.text)+'</div></div>':'';
  const handoffs=j.direct?'':crewHandoffMessages(j,i);
  const request=j.direct?(j.payload.prompt||'Describe the attached image.'):i===0?crewBriefMessage(j):'';
  const status={queued:'Waiting to start…',running:'Working on your message…',waiting:'Waiting for a decision.',stopping:'Stopping…',cancelled:'Stopped.',error:'This message could not finish.'}[j.status];
- return '<article class="chat-turn">'+(i!==0?handoffs:'')+(request?'<div class="chat-message chat-user"><small>You</small><div>'+escape(request).replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images)+'</div></div>':'')+social+'<div class="chat-message chat-agent"><small>'+escape(name)+(j.direct?'':' · Event mission')+'</small>'+customSkillMarkup(j.direct?j.result?.activity:j.payload.activity?.[i])+'<div class="chat-prose">'+messageMarkup(answer||(!j.direct&&pending?(i===0?'Your event brief is with the crew.':(i===3&&j.payload.socialDraft?.status==='ready'?'LinkedIn draft ready. Writing the webpage…':'Working on the assigned task…')):status)||'No text reply was returned.')+'</div>'+crewActivityMarkup(j,i)+webpage+(j.direct&&pending?'<div class="chat-progress"><button type="button" data-crew-chat-stop="'+escape(j.id)+'" '+(j.status==='stopping'?'disabled':'')+'>Stop</button></div>':'')+'</div>'+(i===0?handoffs+roundtableMarkup(j):'')+'</article>';
+ return '<article class="chat-turn">'+(i!==0?handoffs:'')+(request?'<div class="chat-message chat-user"><small>You</small><div>'+escape(request).replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images)+'</div></div>':'')+(held?'':social)+'<div class="chat-message chat-agent"><small>'+escape(name)+(j.direct?'':' · Event mission')+'</small>'+(held?shieldReplyWait:customSkillMarkup(j.direct?j.result?.activity:j.payload.activity?.[i])+'<div class="chat-prose">'+messageMarkup(answer||(!j.direct&&pending?(i===0?'Your event brief is with the crew.':(i===3&&j.payload.socialDraft?.status==='ready'?'LinkedIn draft ready. Writing the webpage…':'Working on the assigned task…')):status)||'No text reply was returned.')+'</div>'+crewActivityMarkup(j,i)+webpage+(j.direct&&pending?'<div class="chat-progress"><button type="button" data-crew-chat-stop="'+escape(j.id)+'" '+(j.status==='stopping'?'disabled':'')+'>Stop</button></div>':''))+'</div>'+(i===0?handoffs+roundtableMarkup(j):'')+'</article>';
  }).join(''):'<p class="chat-empty">'+escape(roles[i][2])+'</p>';
  loadChatImages(log,agentId);
  if(follow)log.scrollTop=log.scrollHeight;else log.scrollTop=top;
 }
+el('crew-policy').onclick=()=>openPolicy(selectedCrewRole);
 el('crew-chat').onsubmit=async e=>{
  e.preventDefault();syncCrewComposer();if(el('crew-send').disabled)return;
  const owner=agentId,index=selectedCrewRole,key=owner+':'+index,draft=captureChatDraft(true);
@@ -80553,89 +80697,84 @@ async function renderShowcasePackage(job){
   setInterval(updateTelemetry,5000);
 
   // Live, account-scoped policies. The separate Security lab remains an illustrative walkthrough.
-let policyActivityKey='',policyAccessTab='file';
+let policyActivityKey='',policyCrewRole=null;
+function policyTarget(){
+  const crew=policyCrewRole===null?null:window.BacCrewCatalog[policyCrewRole];
+  return {owner:agentId,key:agentId+':'+(crew?'crew:'+policyCrewRole:'personal'),
+    name:crew?.name||data.profile?.name,mode:crew?.protection||data.profile?.protection,
+    route:crew?'crew-policy?role='+policyCrewRole:'agent-policy'};
+}
+function openPolicy(role=null){
+  policyCrewRole=role;policySnapshot=null;++policyVersion;policyLoading=false;
+  renderPolicySelector();openSurface('policies');
+}
 function renderPolicySelector(){
   const agents=(data.agents||[]).filter(a=>a.protection==='openshell');
-  const selected=agents.some(a=>a.key===agentId);
-  const options=(!selected?`<option value="" disabled>${agents.length?'Select an agent':'No OpenShell agents'}</option>`:'')+agents.map(a=>`<option value="${a.key}">${escape(a.name)}</option>`).join('');
+  const crew=window.BacCrewCatalog.map((a,i)=>({...a,index:i})).filter(a=>a.protection==='openshell');
+  const selected=policyCrewRole!==null?crew.some(a=>a.index===policyCrewRole):agents.some(a=>a.key===agentId);
+  const options=(!selected?'<option value="" disabled>Select an agent</option>':'')+(agents.length?'<optgroup label="Lounge">'+agents.map(a=>`<option value="${a.key}">${escape(a.name)}</option>`).join('')+'</optgroup>':'')+(crew.length?'<optgroup label="BaC">'+crew.map(a=>`<option value="crew:${a.index}">${escape(a.name)}</option>`).join('')+'</optgroup>':'');
   if(el('policy-agent').innerHTML!==options)el('policy-agent').innerHTML=options;
-  el('policy-agent').value=selected?agentId:'';el('policy-agent').disabled=policySaving||!agents.length;
-  const agent=data.agents?.find(a=>a.key===agentId);
-  const activityKey=JSON.stringify([agentId,agent?.pending||0,agent?.latestMission?.id,agent?.latestMission?.status]);
+  el('policy-agent').value=selected?(policyCrewRole===null?agentId:'crew:'+policyCrewRole):'';
+  el('policy-agent').disabled=policySaving;
+  const target=policyTarget(),agent=data.agents?.find(a=>a.key===agentId);
+  const activityKey=JSON.stringify(policyCrewRole===null?[target.key,agent?.pending||0,agent?.workspacePreparation,agent?.latestMission?.id,agent?.latestMission?.status]:[target.key,data.preparation,(data.crewChats||[]).filter(j=>j.payload.crewRole===policyCrewRole).map(j=>[j.id,j.status]),(data.jobs||[]).filter(j=>j.kind==='crew').map(j=>[j.id,j.status,j.payload.stage])]);
   const activityChanged=activityKey!==policyActivityKey;
   policyActivityKey=activityKey;
   if(el('policy-panel').open){
     if(activityChanged)renderPolicy();
-    // Completion releases the controls and refreshes destinations from this run.
-    if(!policyLoading&&!policySaving&&(policySnapshot?.agentId!==agentId||activityChanged))loadPolicy();
+    if(!policyLoading&&!policySaving&&(policySnapshot?._targetKey!==target.key||activityChanged))loadPolicy();
   }
 }
 async function loadPolicy(){
-  const version=++policyVersion,target=agentId,activity=policyActivityKey;policyLoading=true;
-  if(data.profile?.protection!=='openshell'){policySnapshot=null;policyLoading=false;renderPolicy();return;}
-  if(policySnapshot?.agentId!==target)policySnapshot=null;
+  if(policyLoading)return;
+  const version=++policyVersion,target=policyTarget(),activity=policyActivityKey;policyLoading=true;
+  const current=()=>version===policyVersion&&target.key===policyTarget().key;
+  if(target.mode!=='openshell'){policySnapshot=null;policyLoading=false;renderPolicy();return;}
+  if(policySnapshot?._targetKey!==target.key)policySnapshot=null;
   renderPolicy();
-  try{const report=await api('agent-policy',undefined,target);if(version===policyVersion&&target===agentId){policySnapshot=report;renderPolicy();}}
-  catch(error){if(version===policyVersion&&target===agentId){policySnapshot={...(policySnapshot?.agentId===target?policySnapshot:{}),agentId:target,status:'unavailable',mode:data.profile?.protection||'standard',error:error.message,fetchFailed:true};renderPolicy();}}
-  finally{if(version===policyVersion){policyLoading=false;renderPolicy();if(el('policy-panel').open&&target===agentId&&activity!==policyActivityKey&&!policySaving)loadPolicy();}}
+  try{const report=await api(target.route,undefined,target.owner);if(current()){policySnapshot={...report,_targetKey:target.key};renderPolicy();}}
+  catch(error){if(current()){policySnapshot={...(policySnapshot?._targetKey===target.key?policySnapshot:{}),_targetKey:target.key,agentId:target.owner,status:'unavailable',mode:target.mode,error:error.message,fetchFailed:true};renderPolicy();}}
+  finally{if(version===policyVersion){policyLoading=false;renderPolicy();if(el('policy-panel').open&&(target.key!==policyTarget().key||activity!==policyActivityKey)&&!policySaving)loadPolicy();}}
 }
 function renderPolicy(){
-  const p=data.profile,r=policySnapshot;
-  if(!p||p.protection!=='openshell'){el('policy-content').innerHTML='<p class="studio-muted">'+((data.agents||[]).some(a=>a.protection==='openshell')?'Select an agent to view its permissions.':'No agents are using OpenShell yet.')+'</p>';return;}
+  const target=policyTarget(),p={name:target.name,protection:target.mode},r=policySnapshot?._targetKey===target.key?policySnapshot:null,crew=policyCrewRole!==null;
+  if(p.protection!=='openshell'){el('policy-content').innerHTML='<p class="studio-muted">'+'Select an agent to view its permissions.'+'</p>';return;}
   if(!r){el('policy-content').innerHTML='<p role="status">Loading permissions…</p>';return;}
   const applying=policySaving||r.updating,applied=r.status==='applied'&&!applying,requested=r.requested||[],catalog=r.catalog||{};
-  const busy=!!data.agents?.find(a=>a.key===agentId)?.pending;
-  const disabled=(!r.sandboxes?.length&&r.status!=='awaiting-first-mission')||busy||applying||policyLoading||data.deleting;
+  const preparing=!crew&&['queued','running','stopping'].includes(data.agents?.find(a=>a.key===agentId)?.workspacePreparation);
+  const busy=crew?!!r.busy:!!data.agents?.find(a=>a.key===agentId)?.pending;
+  el('policy-agent').disabled=policySaving;
+  const disabled=(!r.sandboxes?.length&&r.status!=='awaiting-first-mission')||preparing||busy||applying||policyLoading||data.deleting;
   const covered=new Set(requested.flatMap(key=>catalog[key]?.hosts||[]));
   const denied=[...new Set((r.pendingAccess||r.recentDenied||[]).map(e=>e.host))].filter(host=>!covered.has(host));
-  const blocked=[...denied.map(host=>['host:'+host,catalog['host:'+host]?{...catalog['host:'+host],networkSuggested:r.pendingAccess?.some(e=>e.host===host&&e.reason==='suggested')}:null]),...(r.pendingFiles||[]).map(key=>[key,catalog[key]])].filter(([,rule])=>rule);
-  const bulk=blocked.filter(([key])=>!key.startsWith('file:read:')||!blocked.some(([other])=>other==='file:write:'+key.slice('file:read:'.length)));
-  const bulkWrites=bulk.filter(([,rule])=>rule.kind==='file'&&rule.access==='write').length;
-  const bulkSuggested=bulk.some(([,rule])=>rule.suggested);
-  const bulkDisabled=disabled||bulk.some(([,rule])=>rule.unavailableReason);
-  const approved=requested.map(key=>[key,catalog[key]]).filter(([,rule])=>rule);
-  const presets=Object.entries(catalog).filter(([key,rule])=>!key.startsWith('host:')&&!key.startsWith('file:')&&!requested.includes(key)&&!rule.hosts.every(host=>covered.has(host)));
-  function cards(rows,kind){return rows.map(([key,rule])=>`<article class="policy-access-card"><div><h4>${escape(rule.title)}</h4>${kind==='preset'?'<p>'+escape(rule.description)+'</p>':''}<small>${rule.kind==='file'?(rule.access==='write'?'Read/write · saves back to this file':'Read only · protected copy'):rule.hosts.map(escape).join(' · ')}</small>${rule.networkSuggested?'<small>Requested by the agent · not a confirmed policy block.</small>':''}${rule.suggested?'<small>Agent-suggested path · confirm this is the file you mean.</small>':''}${rule.unavailableReason?'<small role="status">'+escape(rule.unavailableReason)+'</small>':''}${kind==='approved'&&!applied?'<small>'+(applying?'Applying · waiting for verification':'Saved · not active until verified')+'</small>':''}</div><button class="${kind==='approved'?'studio-secondary':'studio-primary'}" data-policy-permission="${escape(key)}" data-policy-allow="${kind!=='approved'}" ${disabled||(kind!=='approved'&&rule.unavailableReason)?'disabled':''}>${kind==='approved'?'Revoke':rule.suggested?(rule.access==='write'?'Confirm path & approve read/write':'Confirm path & approve read'):rule.kind==='file'?(rule.access==='write'?'Approve read/write':'Approve read'):'Approve'}</button></article>`).join('');}
+  const blocked=denied.map(host=>['host:'+host,catalog['host:'+host]?{...catalog['host:'+host],networkSuggested:r.pendingAccess?.some(e=>e.host===host&&e.reason==='suggested')}:null]).filter(([,rule])=>rule);
+  const approved=requested.map(key=>[key,catalog[key]]).filter(([,rule])=>rule?.hosts?.length);
+  const presets=Object.entries(catalog).filter(([key,rule])=>rule.hosts?.length&&(!key.startsWith('host:')||(r.recommended||[]).includes(key))&&!requested.includes(key)&&!rule.hosts.every(host=>covered.has(host)));
+  function cards(rows,kind){return rows.map(([key,rule])=>`<article class="policy-access-card"><div><h4>${escape(rule.title)}</h4>${kind==='preset'?'<p>'+escape(rule.description)+'</p>':''}<small>${rule.hosts.map(escape).join(' · ')}</small>${rule.networkSuggested?'<small>Requested by the agent · not a confirmed policy block.</small>':''}${kind==='approved'&&!applied?'<small>'+(applying?'Applying · waiting for verification':'Saved · not active until verified')+'</small>':''}</div><button class="${kind==='approved'?'studio-secondary':'studio-primary'}" data-policy-permission="${escape(key)}" data-policy-allow="${kind!=='approved'}" ${disabled?'disabled':''}>${kind==='approved'?'Revoke':'Approve'}</button></article>`).join('');}
   function section(title,rows,kind,empty){
-    const batchButton=kind==='blocked'&&bulk.length>1?`<div class="policy-bulk-action">${bulkWrites?`<small>Includes read/write access to ${bulkWrites} file${bulkWrites===1?'':'s'}</small>`:''}<button type="button" class="studio-primary" data-policy-approve-all data-policy-permissions="${escape(JSON.stringify(bulk.map(([key])=>key)))}" ${bulkDisabled?'disabled':''}>${applying?'Applying…':bulkSuggested?'Confirm & approve all':'Approve all'}${applying?'':' ('+bulk.length+')'}</button></div>`:'';
+    const batchButton=kind==='blocked'&&blocked.length>1?`<div class="policy-bulk-action"><button type="button" class="studio-primary" data-policy-approve-all data-policy-permissions="${escape(JSON.stringify(blocked.map(([key])=>key)))}" ${disabled?'disabled':''}>${applying?'Applying…':'Approve all ('+blocked.length+')'}</button></div>`:'';
     return `<section class="policy-access-section" data-policy-section="${kind}"><div class="policy-section-heading"><h3>${title}<span>${rows.length}</span></h3>${batchButton}</div>${rows.length?'<div class="policy-access-list">'+cards(rows,kind)+'</div>':'<p class="studio-muted">'+empty+'</p>'}</section>`;
   }
-  const files=approved.filter(([,rule])=>rule.kind==='file');
-  const webpages=approved.filter(([,rule])=>rule.kind!=='file');
-  function fileGroup(title,access){
-    const rows=files.filter(([,rule])=>rule.access===access);
-    return `<div class="policy-file-group"><h4>${title}</h4>${rows.length?'<div class="policy-access-list">'+cards(rows,'approved')+'</div>':'<p class="studio-muted">No '+title.toLowerCase()+' files approved.</p>'}</div>`;
-  }
-  const approvedSection=`<section class="policy-access-section" data-policy-section="approved">
-    <h3>${applying?'Applying saved approvals':applied?'Approved access':'Saved approvals · not verified'}<span>${approved.length}</span></h3>
-    <div class="studio-settings-tabs policy-access-tabs" role="tablist" aria-label="Approved access type">
-      ${[['file','File',files.length],['webpage','Webpage',webpages.length]].map(([key,label,count])=>`<button type="button" role="tab" id="policy-access-tab-${key}" aria-controls="policy-access-panel-${key}" aria-selected="${policyAccessTab===key}" tabindex="${policyAccessTab===key?0:-1}" data-policy-access-tab="${key}">${label} <span>${count}</span></button>`).join('')}
-    </div>
-    <div role="tabpanel" id="policy-access-panel-file" aria-labelledby="policy-access-tab-file" ${policyAccessTab==='file'?'':'hidden'}>${fileGroup('Read','read')}${fileGroup('Read/write','write')}</div>
-    <div role="tabpanel" id="policy-access-panel-webpage" aria-labelledby="policy-access-tab-webpage" ${policyAccessTab==='webpage'?'':'hidden'}>${webpages.length?'<div class="policy-access-list">'+cards(webpages,'approved')+'</div>':'<p class="studio-muted">No webpages approved.</p>'}</div>
-  </section>`;
+  const approvedSection=section(applying?'Applying websites':applied?'Approved websites':'Saved websites · not verified',approved,'approved','No websites approved.');
   const unavailable=r.status==='unavailable',setupRequired=r.status==='setup-required';
-  const notice=applying?'Applying access and checking OpenShell. Approval is effective after verification.':policyLoading?'Checking OpenShell':busy?'Wait for this agent to finish before changing access.':r.status==='awaiting-first-mission'?'This agent’s protected workspace has not been created yet.':setupRequired?'OpenShell needs setup on the host computer.':r.status==='needs-review'?'Saved approvals are not active. Apply them again.':unavailable?(r.checkFailure==='timeout'?'OpenShell did not respond in time. Your saved approvals are unchanged.':r.error||'Could not connect to OpenShell. Your saved approvals are unchanged.'):'';
-  const recoveryDisabled=busy||applying||policyLoading||data.deleting;
-  const recovery=['awaiting-first-mission','needs-review'].includes(r.status)?'<button type="button" class="studio-secondary" data-policy-retry '+(recoveryDisabled?'disabled':'')+'>'+(applying?'Preparing workspace':r.status==='awaiting-first-mission'?'Prepare workspace':'Apply saved approvals')+'</button>':'';
+  const notice=preparing?'Preparing protected workspace automatically. You can send a message while it finishes.':applying?'Applying access and checking OpenShell. Approval is effective after verification.':policyLoading?'Checking OpenShell':busy?'Wait for this agent to finish before changing access.':r.status==='awaiting-first-mission'?'Protected workspace is not ready. Retry setup.':setupRequired?'OpenShell needs setup on the host computer.':r.status==='needs-review'?'Saved approvals are not active. Apply them again.':unavailable?(r.checkFailure==='timeout'?'OpenShell did not respond in time. Your saved approvals are unchanged.':r.error||'Could not connect to OpenShell. Your saved approvals are unchanged.'):'';
+  const recoveryDisabled=preparing||busy||applying||policyLoading||data.deleting;
+  const recovery=!preparing&&['awaiting-first-mission','needs-review'].includes(r.status)?'<button type="button" class="studio-secondary" data-policy-retry '+(recoveryDisabled?'disabled':'')+'>'+(applying?'Retrying':r.status==='awaiting-first-mission'?'Retry':'Apply saved approvals')+'</button>':'';
   const recheck=unavailable||setupRequired||r.logsUnavailable?'<button type="button" class="studio-secondary" data-policy-check '+(applying||policyLoading?'disabled':'')+'>'+(policyLoading?'Checking':'Check again')+'</button>':'';
   const hostHelp=unavailable||setupRequired?'<details class="policy-host-help"><summary>Host troubleshooting</summary><p>On the computer running this studio, open the project folder in a terminal and run:</p><pre><code>./bac dev runtime check --wait 30</code></pre>'+(setupRequired?'<p>To set up OpenShell:</p><pre><code>./bac dev openshell enable</code></pre>':'<p>If the connection remains unavailable, check the OpenShell service on that computer. Check again here after restoring it.</p>')+'</details>':'';
-  const recoveryMarkup=(notice?'<p class="studio-policy-error" role="status">'+escape(notice)+'</p>':'')+'<div class="policy-recovery-actions">'+recovery+recheck+'</div>'+hostHelp;
+  const recoveryMarkup=(notice?'<p class="'+(preparing?'studio-muted':'studio-policy-error')+'" role="status">'+escape(notice)+'</p>':'')+'<div class="policy-recovery-actions">'+recovery+recheck+'</div>'+hostHelp;
   if(r.fetchFailed&&!r.catalog){el('policy-content').innerHTML=recoveryMarkup;return;}
   el('policy-content').innerHTML=`${recoveryMarkup}
     ${[...new Map((r.connectionIssues||[]).map(e=>[e.host,e])).values()].slice(0,3).map(e=>'<p class="studio-policy-error">'+escape(e.host)+': '+(e.reason==='dns-failed'?'DNS lookup failed inside OpenShell. Check the host network or VPN, then retry the request.':'OpenShell blocked the destination address. Review the destination on the host.')+'</p>').join('')}
-    ${(r.unsupportedFolders||[]).map(path=>'<p class="studio-policy-error">'+escape(path)+': Host folder access is not supported here. Ask the agent to create the folder inside its workspace.</p>').join('')}
-    ${(r.fileIssues||[]).length?'<section class="policy-access-section"><h3>File path needs correction</h3>'+r.fileIssues.map(issue=>'<p class="studio-policy-error"><strong>'+escape(issue.path)+'</strong><br>'+escape(issue.reason)+'</p>').join('')+'<p class="studio-muted">These are file-path issues, not OpenShell approval requests. Correct the path in chat and retry.</p></section>':''}
-    ${section('Needs approval from the latest conversation',blocked,'blocked',r.logsUnavailable?'Recent access requests could not be checked. Use Check again above.':'No access requests waiting for approval.')}
+    ${section('Needs approval from the latest conversation',blocked,'blocked',r.logsUnavailable?'Recent access requests could not be checked. Use Check again above.':'No websites waiting for approval.')}
     ${approvedSection}
     ${section('Pre-approve common tasks',presets,'preset','All available tasks are already covered.')}
-    <p class="policy-access-note">Access applies only to ${escape(p.name)}. After approval, resend your request. File grants cover individual files, not folders.</p>`;
+    <p class="policy-access-note">${'Access applies only to '+escape(p.name)+'. After approval, resend your request.'}</p>${crew?'<details><summary>Policy details &amp; network activity</summary><pre>'+escape(JSON.stringify({status:r.status,checkedAt:r.checkedAt,sandboxes:r.sandboxes,rules:r.rules,filesystem:r.filesystem,logs:r.logs},null,2))+'</pre></details>':''}`;
 }
-el('policy-agent').onchange=async e=>{await switchAgent(e.target.value);loadPolicy();};
-el('agent-policy').onclick=()=>setRoom('policies');
+el('policy-agent').onchange=async e=>{if(policySaving)return;const value=e.target.value;++policyVersion;policyLoading=false;policySnapshot=null;if(value.startsWith('crew:')){policyCrewRole=Number(value.slice(5));}else{policyCrewRole=null;await switchAgent(value);}renderPolicySelector();loadPolicy();};
+el('agent-policy').onclick=()=>openPolicy();
 el('policies').onclick=async e=>{
   const b=e.target.closest('button');if(!b)return;
-  if(b.dataset.policyAccessTab){policyAccessTab=b.dataset.policyAccessTab;renderPolicy();document.getElementById('policy-access-tab-'+policyAccessTab)?.focus();return;}
   if(b.hasAttribute('data-policy-check')){if(!policyLoading&&!policySaving)loadPolicy();return;}
   if(b.hasAttribute('data-policy-setup'))return setup();
   const permission=b.dataset.policyPermission,retry=b.hasAttribute('data-policy-retry'),all=b.hasAttribute('data-policy-approve-all');
@@ -80643,20 +80782,14 @@ el('policies').onclick=async e=>{
   if(b.disabled)return;
   const request=all?{permissions:JSON.parse(b.dataset.policyPermissions),allow:true}:retry?{retry:true}:{permission,allow:b.dataset.policyAllow==='true'};
   if(policySaving||pendingWrites||changingAgent)return;
-  const target=agentId;
+  const target=policyTarget(),role=policyCrewRole;
+  if(role!==null)request.role=role;
   policySaving=true;renderPolicy();
   let failure='';
-  try{await api('agent-policy',request,target);await refresh();await loadPolicy();}
+  try{await api(role===null?'agent-policy':'crew-policy',request,target.owner);await refresh();await loadPolicy();}
   catch(error){failure=error.message;await loadPolicy();}
   finally{policySaving=false;renderPolicy();if(failure)el('policy-content').insertAdjacentHTML('afterbegin','<p class="policy-warning" role="alert">'+escape(failure)+'</p>');}
 };
-
-el('policies').addEventListener('keydown',e=>{
-  if(!e.target.matches('[data-policy-access-tab]')||!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;
-  e.preventDefault();
-  policyAccessTab=e.key==='Home'?'file':e.key==='End'?'webpage':policyAccessTab==='file'?'webpage':'file';
-  renderPolicy();document.getElementById('policy-access-tab-'+policyAccessTab)?.focus();
-});
 
   // Keep live panels (and their event handlers) inside the fullscreen root.
 const surfaceStore=document.createElement('div');surfaceStore.id='studio-surface-store';surfaceStore.hidden=true;root.append(surfaceStore);
@@ -80668,7 +80801,7 @@ const surfaceDefinitions={
   missions:{title:'Try a mission',ids:['experiences']},
   results:{title:'Results & files',ids:['workspace']},
   compare:{title:'Agent comparison',ids:['compare']},
-  policies:{title:'OpenShell policies',ids:['policy-panel']},
+  policies:{title:'Approved websites',ids:['policy-panel']},
   control:{title:'Mission Control',ids:['board']},
   deliverables:{title:'Results',ids:['event-package','workspace']}
 };
@@ -80750,11 +80883,8 @@ function loadChatImages(container,owner){
  container.querySelectorAll('[data-chat-image]').forEach(async image=>{try{const file=await api('file?path='+encodeURIComponent(image.dataset.chatImage),undefined,owner);if(image.isConnected&&file.encoding==='base64'&&['image/png','image/jpeg','image/webp'].includes(file.mime))image.src='data:'+file.mime+';base64,'+file.content;}catch{image.alt='Image unavailable';}});
 }
 for(const crew of [false,true]){
- const id=crew?'crew-':'',form=el(id+'chat'),input=el(id+'prompt'),previews=document.createElement('div'),picker=document.createElement('input'),button=document.createElement('button');
+ const id=crew?'crew-':'',form=el(id+'chat'),input=el(id+'prompt'),previews=document.createElement('div');
  previews.id='studio-'+id+'image-drafts';previews.className='chat-image-drafts';previews.hidden=true;form.insertBefore(previews,input);
- picker.type='file';picker.accept='image/png,image/jpeg,image/webp';picker.multiple=true;picker.hidden=true;form.append(picker);
- button.type='button';button.className='studio-secondary';button.textContent='＋ Image';button.onclick=()=>{if(!input.disabled)picker.click()};form.querySelector('.studio-compose-actions').prepend(button);
- picker.onchange=()=>{addChatImages([...picker.files],crew);picker.value=''};
  input.addEventListener('paste',event=>{const images=[...event.clipboardData.items].filter(item=>item.kind==='file'&&item.type.startsWith('image/')).map(item=>item.getAsFile()).filter(Boolean);if(images.length){event.preventDefault();addChatImages(images,crew)}});
 }
 let chatSending=false;
@@ -80812,19 +80942,29 @@ function messageMarkup(value){
   }
   return out.join('').replace(/\u0000(\d+)\u0000/g,(_,n)=>saved[Number(n)]||'');
 }
+function shieldReplyHeld(job,role=null){
+  const hold=window.BacCampus?.protectionReplyDelay(agentId,role);
+  if(!hold)return false;
+  // Do not hide earlier replies when a later request hits the shield.
+  const lastEvent=job.events?.at(-1)?.time||job.created;
+  return job.kind==='roundtable'?job.created>=hold.time-1:
+    job.created<=hold.time+1&&(lastEvent>=hold.time-1||['queued','running','waiting','stopping'].includes(job.status));
+}
+const shieldReplyWait='<div class="chat-progress shield-reply-wait" role="status" aria-label="Access blocked. Reply will appear shortly.">···</div>';
+root.addEventListener('bac:protection-reveal',()=>{if(connected)render();});
 let conversationSignature='',conversationOwner=null;
 function renderConversation(){
   renderImageDrafts();syncComposer();const log=el('conversation');if(!log)return;
   const jobs=[...data.jobs.filter(j=>j.kind!=='crew'),...(data.roundtableTurns||[])].sort((a,b)=>a.created-b.created);
-  const signature=JSON.stringify([agentId,data.profile?.name,jobs.map(j=>[j.id,j.status,j.result,j.events?.at(-1)])]);
+  const signature=JSON.stringify([agentId,data.profile?.name,jobs.map(j=>[j.id,j.status,j.result,j.events?.at(-1),shieldReplyHeld(j)])]);
   if(conversationOwner!==agentId)el('chat-error').hidden=true;
   if(signature===conversationSignature)return;
   const follow=conversationOwner!==agentId||log.scrollHeight-log.scrollTop-log.clientHeight<70,top=log.scrollTop;
   conversationSignature=signature;conversationOwner=agentId;
   log.innerHTML=(data.jobs.length>=30?'<small class="chat-history-note">Recent conversations · up to 30 missions</small>':'')+(jobs.length?jobs.map(j=>{
-    const result=j.result||{},pending=['queued','running','waiting','stopping'].includes(j.status);
+    const held=shieldReplyHeld(j),result=held?{}:j.result||{},pending=['queued','running','waiting','stopping'].includes(j.status);
     const status={queued:'Waiting to start…',running:j.events?.at(-1)?.title==='Preparing OpenShell'?'Preparing your protected runtime…':'Working on your request…',waiting:'Waiting for a decision.',stopping:'Stopping after the current model call…',cancelled:'Stopped.'}[j.status];
-    return '<article class="chat-turn" data-chat-turn="'+escape(j.id)+'"><div class="chat-message chat-user"><small>'+escape(j.payload.sender||'You')+'</small><div>'+escape(j.payload.prompt||'').replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images)+'</div></div><div class="chat-message chat-agent"><small>'+escape(data.profile?.name||'Agent')+' · '+escape(new Date(j.created*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))+'</small>'+customSkillMarkup(result.activity)+'<div class="chat-prose">'+messageMarkup(result.answer||result.error||(pending?'':status||'No text reply was returned.'))+'</div>'+(pending?'<div class="chat-progress" role="status">'+escape(status)+(j.status!=='stopping'?'<button type="button" data-chat-stop="'+escape(j.id)+'">Stop</button>':'')+'</div>':'')+(result.files||[]).filter(f=>!f.endsWith('.md')||!result.answer).map(f=>'<details class="chat-file"><summary data-chat-file="'+escape(f)+'">'+escape(f.split('/').pop())+'</summary><div class="chat-file-body"></div></details>').join('')+'</div></article>';
+    return '<article class="chat-turn" data-chat-turn="'+escape(j.id)+'"><div class="chat-message chat-user"><small>'+escape(j.payload.sender||'You')+'</small><div>'+escape(j.payload.prompt||'').replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images)+'</div></div><div class="chat-message chat-agent"><small>'+escape(data.profile?.name||'Agent')+' · '+escape(new Date(j.created*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))+'</small>'+customSkillMarkup(result.activity)+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(result.answer||result.error||(pending?'':status||'No text reply was returned.'))+'</div>')+(!held&&pending?'<div class="chat-progress" role="status">'+escape(status)+(j.status!=='stopping'?'<button type="button" data-chat-stop="'+escape(j.id)+'">Stop</button>':'')+'</div>':'')+(result.files||[]).filter(f=>!f.endsWith('.md')||!result.answer).map(f=>'<details class="chat-file"><summary data-chat-file="'+escape(f)+'">'+escape(f.split('/').pop())+'</summary><div class="chat-file-body"></div></details>').join('')+'</div></article>';
   }).join(''):'<p class="chat-empty">Start a conversation. Your questions and replies will stay here.</p>');
   loadChatImages(log,agentId);
   if(follow)log.scrollTop=log.scrollHeight;else log.scrollTop=top;
@@ -81206,7 +81346,7 @@ settingsButton.onclick=async()=>{
   dialog('Settings',`<form id="studio-config-form" novalidate><nav class="studio-settings-tabs" role="tablist" aria-label="Settings"><button type="button" role="tab" id="studio-settings-model-tab" data-settings-tab="model" aria-controls="studio-settings-model-panel" aria-selected="true">Model</button><button type="button" role="tab" id="studio-settings-location-tab" data-settings-tab="location" aria-controls="studio-settings-location-panel" aria-selected="false" tabindex="-1">Location</button><button type="button" role="tab" id="studio-settings-reset-tab" data-settings-tab="reset" aria-controls="studio-settings-reset-panel" aria-selected="false" tabindex="-1">Reset</button></nav>
   <section id="studio-settings-model-panel" role="tabpanel" aria-labelledby="studio-settings-model-tab"><label for="studio-provider">Provider</label><select id="studio-provider">${Object.entries(settings.providers).map(([id,p])=>`<option value="${id}">${escape(p.label)}</option>`).join('')}</select><label for="studio-api-key">API key</label><input id="studio-api-key" type="password" autocomplete="off" spellcheck="false"><small id="studio-key-note"></small><div class="studio-settings-model"><label for="studio-model">Model</label><button type="button" id="studio-load-models" class="studio-secondary">Load models ↻</button></div><button type="button" id="studio-change-model" class="studio-secondary" aria-expanded="false" aria-controls="studio-model-options" hidden>Change model</button><p id="studio-model-status" role="status" aria-live="polite"></p><input id="studio-model-search" type="search" aria-label="Search models" placeholder="Search models…" autocomplete="off" spellcheck="false" hidden><select id="studio-model-options" size="6" aria-label="Available models" hidden></select><input id="studio-model" autocomplete="off" placeholder="Load models to choose, or enter a model ID" required><small>Choose a text model with tool calling.</small><details id="studio-connection-options"><summary>Connection options</summary><label for="studio-endpoint">API endpoint</label><input id="studio-endpoint" type="url" required><label for="studio-model-context">Context limit · tokens</label><input id="studio-model-context" type="number" min="8192" max="2000000" step="1" required></details><small>Keys stay in memory for this tab only. Closing or refreshing clears them.</small></section>
 
-  <section id="studio-settings-location-panel" role="tabpanel" aria-labelledby="studio-settings-location-tab" hidden><label for="studio-location-city">City</label><input id="studio-location-city" autocomplete="address-level2" maxlength="80" required aria-describedby="studio-location-note"><small id="studio-location-note">Default city for all agents’ weather and local requests.</small></section>
+  <section id="studio-settings-location-panel" role="tabpanel" aria-labelledby="studio-settings-location-tab" hidden><label for="studio-location-city">City</label><input id="studio-location-city" autocomplete="address-level2" maxlength="80" required aria-describedby="studio-location-note"><small id="studio-location-note">Default city in every agent’s USER.md for weather and local requests.</small></section>
   <section id="studio-settings-reset-panel" role="tabpanel" aria-labelledby="studio-settings-reset-tab" class="studio-agent-reset" hidden><div class="studio-reset-row"><div><h3>Lounge agents</h3><p>Remove hired agents and their data.</p></div><button type="button" id="studio-agent-reset" class="studio-secondary" aria-label="Reset Lounge agents" ${(data.agents||[]).length?'':'disabled'}>Reset</button></div><div class="studio-reset-row"><div><h3>BaC (Multi-Agent Demo)</h3><p>Clear the event board and team chats.</p></div><button type="button" id="studio-bac-reset" class="studio-secondary" aria-label="Reset BaC">Reset</button></div><div class="studio-reset-footer"><button type="button" id="studio-reset-all" class="studio-danger">Reset all</button></div></section>
   <p id="studio-settings-status" role="status"></p><div class="studio-dialog-actions"><button type="button" id="studio-start-agents" class="studio-secondary" ${runtime.gateway?'hidden':''}>Start agents</button><button type="submit" class="studio-primary" id="studio-save-settings">Connect model</button></div></form>`);
   const form=el('config-form'),modelList=el('model-options'),modelStatus=el('model-status'),loadButton=el('load-models');

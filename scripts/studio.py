@@ -45,7 +45,7 @@ def personal_agent_activity(jobs, owner):
     for job in jobs:
         payload, kind = job['payload'], job['kind']
         # Background readiness keeps its reservation but is not personal work.
-        if kind in ('crew-chat', 'prepare'):
+        if kind in ('crew-chat', 'prepare', 'prepare-agent'):
             continue
         roster_member = any(m.get('key') == owner for m in payload.get('roster', []))
         guest = any(m.get('key') == owner for m in payload.get('roundtable', {}).get('members', []))
@@ -183,6 +183,8 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
         self.boot_id = secrets.token_hex(8)
         self.delete_lock = threading.Lock()
         self.executing_owners = set()
+        from protection_activity import ProtectionActivity
+        self.protection_activity = ProtectionActivity()
         with self.db() as db:
             db.executescript('''
                 CREATE TABLE IF NOT EXISTS participants (
@@ -197,12 +199,24 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 DROP TABLE IF EXISTS phones;
                 CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT);
                 DELETE FROM metadata WHERE key='telegram-offset';
-                CREATE TABLE IF NOT EXISTS agent_policies (owner TEXT PRIMARY KEY,
+                CREATE TABLE IF NOT EXISTS agent_policies (owner TEXT NOT NULL, role INTEGER NOT NULL DEFAULT -1,
                     approved TEXT NOT NULL DEFAULT '[]', events TEXT NOT NULL DEFAULT '[]',
-                    updating INTEGER NOT NULL DEFAULT 0);
+                    updating INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(owner,role));
                 CREATE TABLE IF NOT EXISTS event_surveys (token TEXT PRIMARY KEY, owner TEXT, job TEXT UNIQUE, definition TEXT, created REAL);
                 CREATE TABLE IF NOT EXISTS survey_responses (token TEXT, visitor TEXT, topic TEXT, experience TEXT, rating INTEGER, created REAL, PRIMARY KEY(token,visitor));
             ''')
+            if 'role' not in {r['name'] for r in db.execute('PRAGMA table_info(agent_policies)')}:
+                db.executescript("""
+                    BEGIN IMMEDIATE;
+                    ALTER TABLE agent_policies RENAME TO agent_policies_legacy;
+                    CREATE TABLE agent_policies (owner TEXT NOT NULL, role INTEGER NOT NULL DEFAULT -1,
+                        approved TEXT NOT NULL DEFAULT '[]', events TEXT NOT NULL DEFAULT '[]',
+                        updating INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(owner,role));
+                    INSERT INTO agent_policies(owner,approved,events,updating)
+                        SELECT owner,approved,events,updating FROM agent_policies_legacy;
+                    DROP TABLE agent_policies_legacy;
+                    COMMIT;
+                """)
             if 'reset_at' not in {r['name'] for r in db.execute('PRAGMA table_info(participants)')}:
                 db.execute('ALTER TABLE participants ADD COLUMN reset_at REAL NOT NULL DEFAULT 0')
             db.execute('''CREATE TABLE IF NOT EXISTS agents (
@@ -221,6 +235,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 db.execute('UPDATE agent_policies SET updating=0')
                 db.execute("UPDATE jobs SET status='error',result=?,updated=? WHERE status IN ('running','stopping')",
                            (json.dumps({'error': 'The app restarted during this task. Inspect saved files before retrying.'}), time.time()))
+        self.retire_host_file_grants()
         os.chmod(self.db_path, 0o600)
         with self.db() as db:
             owners = [row['id'] for row in db.execute('SELECT id FROM agents WHERE deleting=0')]
@@ -240,6 +255,35 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
         if start_worker:
             self.worker = threading.Thread(target=self.work, daemon=True, name='bac-agent-queue')
             self.worker.start()
+
+    def retire_host_file_grants(self):
+        """Retire the removed file bridge without touching original host files.
+
+        OpenClaw mirror mode replaces remote workspace contents before the next
+        protected run, so removed transfer copies are not reintroduced remotely.
+        """
+        with self.db() as db:
+            if db.execute("SELECT 1 FROM metadata WHERE key='host-file-grants-retired'").fetchone():
+                return
+            for row in db.execute('SELECT owner,role,approved FROM agent_policies').fetchall():
+                approved = json.loads(row['approved'])
+                websites = [key for key in approved if not key.startswith('file:')]
+                if websites != approved:
+                    db.execute('UPDATE agent_policies SET approved=? WHERE owner=? AND role=?',
+                               (json.dumps(websites), row['owner'], row['role']))
+            workspaces = self.directory / 'workspaces'
+            if workspaces.is_dir() and not workspaces.is_symlink():
+                for workspace in workspaces.iterdir():
+                    inbox = workspace / 'inbox'
+                    if workspace.is_symlink() or inbox.is_symlink() or not inbox.is_dir():
+                        continue
+                    for path in inbox.iterdir():
+                        if re.fullmatch(r'approved-[0-9a-f]{64}\.txt(?:\.invalid-directory-[^/]+)?', path.name):
+                            if path.is_dir() and not path.is_symlink():
+                                shutil.rmtree(path)
+                            else:
+                                path.unlink()
+            db.execute("INSERT INTO metadata VALUES ('host-file-grants-retired','1')")
 
     @contextlib.contextmanager
     def db(self):
@@ -286,7 +330,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
         return row
 
     def require_idle(self, db, owner):
-        if owner in self.executing_owners or db.execute("SELECT 1 FROM jobs WHERE owner=? AND status IN ('queued','running','waiting','stopping')", (owner,)).fetchone():
+        if owner in self.executing_owners or db.execute("SELECT 1 FROM jobs WHERE owner=? AND status IN ('queued','running','waiting','stopping') AND NOT (kind='prepare-agent' AND status='queued')", (owner,)).fetchone():
             raise Problem('Finish or cancel this agent’s pending missions before changing it.', 409)
         crews = db.execute("SELECT payload FROM jobs WHERE kind IN ('crew','prepare') AND status IN ('queued','running','waiting','stopping') AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?))", (owner,)).fetchall()
         if any(any(m.get('key') == owner for m in job_participants(json.loads(j['payload']))) for j in crews):
@@ -365,6 +409,8 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
             self.initialize_crew_workspaces(owner)
             db.execute('INSERT INTO agents (id,participant,profile,created) VALUES (?,?,?,?)',
                        (owner, participant, json.dumps(profile), time.time()))
+            self.queue_agent_preparation(db, owner, profile)
+        self.signal.set()
         return {'agentId': owner, 'profile': profile}
 
     def workspace(self, owner, role=None):
@@ -393,9 +439,20 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
             if changed:
                 db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
                 self.initialize_workspace(owner)
+                self.queue_agent_preparation(db, owner, profile)
         if not changed:
             raise Problem('Your agent was already created in another tab.', 409)
+        self.signal.set()
         return profile
+
+    @staticmethod
+    def queue_agent_preparation(db, owner, profile):
+        # Durable, model-free warmup shares the worker and deletion fence with chat.
+        if profile.get('protection') != 'openshell':
+            return
+        now = time.time()
+        db.execute('INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?,?)',
+                   (secrets.token_hex(12), owner, 'prepare-agent', 'queued', '{}', '{}', '[]', now, now, now))
 
     def configure(self, owner, data):
         profile = self.profile(owner)
@@ -534,7 +591,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
 
     def state(self, owner):
         with self.db() as db:
-            jobs = [self.public_job(r) for r in db.execute("SELECT * FROM jobs WHERE owner=? AND kind NOT IN ('crew-chat','prepare') AND created >= (SELECT reset_at FROM agents WHERE id=?) ORDER BY created DESC LIMIT 30", (owner, owner))]
+            jobs = [self.public_job(r) for r in db.execute("SELECT * FROM jobs WHERE owner=? AND kind NOT IN ('crew-chat','prepare','prepare-agent') AND created >= (SELECT reset_at FROM agents WHERE id=?) ORDER BY created DESC LIMIT 30", (owner, owner))]
             reset_event = db.execute("SELECT value FROM metadata WHERE key='event-board-reset:'||(SELECT participant FROM agents WHERE id=?)", (owner,)).fetchone()
             if reset_event:
                 jobs = [j for j in jobs if j['kind'] != 'crew' or j['created'] >= float(reset_event['value'])]
@@ -542,10 +599,12 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
             collection = db.execute('SELECT id,profile,deleting FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?) AND profile IS NOT NULL ORDER BY created,id', (owner,)).fetchall()
             active = [dict(j, payload=json.loads(j['payload'])) for j in db.execute("SELECT id,owner,status,payload,kind,due FROM jobs WHERE status IN ('queued','running','waiting','stopping') AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) ORDER BY created", (owner,))]
             agents = [{'key': r['id'], **json.loads(r['profile']), 'deleting': bool(r['deleting']), 'deletionWaiting': r['deleting'] == 2,
-                       'pending': sum((j['owner'] == r['id'] and j['kind'] not in ('crew','prepare')) or any(m.get('key') == r['id'] for m in job_participants(j['payload'])) for j in active if j['kind'] != 'crew-chat'),
+                       'pending': sum((j['owner'] == r['id'] and j['kind'] not in ('crew','prepare','prepare-agent')) or any(m.get('key') == r['id'] for m in job_participants(j['payload'])) for j in active if j['kind'] != 'crew-chat'),
                        'activity': personal_agent_activity(active, r['id'])} for r in collection]
             for agent in agents:
-                latest = db.execute("SELECT id,status,CASE WHEN status='done' THEN substr(json_extract(result,'$.answer'),1,1200) ELSE NULL END AS answerPreview FROM jobs WHERE owner=? AND kind NOT IN ('crew','crew-chat','prepare') AND created >= (SELECT reset_at FROM agents WHERE id=?) ORDER BY created DESC,rowid DESC LIMIT 1", (agent['key'], agent['key'])).fetchone()
+                latest = db.execute("SELECT id,status,CASE WHEN status='done' THEN substr(json_extract(result,'$.answer'),1,1200) ELSE NULL END AS answerPreview FROM jobs WHERE owner=? AND kind NOT IN ('crew','crew-chat','prepare','prepare-agent') AND created >= (SELECT reset_at FROM agents WHERE id=?) ORDER BY created DESC,rowid DESC LIMIT 1", (agent['key'], agent['key'])).fetchone()
+                warmup = db.execute("SELECT status FROM jobs WHERE owner=? AND kind='prepare-agent' ORDER BY created DESC LIMIT 1", (agent['key'],)).fetchone()
+                agent['workspacePreparation'] = warmup['status'] if warmup else None
                 agent['latestMission'] = dict(latest) if latest else None
                 agent['avatar'] = avatar_for(agent['key'], agent.get('avatar'))
                 agent.setdefault('tone', 'kind')
@@ -566,7 +625,8 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 'memory': memory_text, 'agentId': owner, 'roundtableTurns': roundtable_turns,
                 'agents': agents, 'agentLimit': MAX_AGENTS, 'assignments': assignments,
                 'deleting': any(a['key'] == owner and a['deleting'] for a in agents),
-                'preparation': self.demo_preparation(owner)}
+                'preparation': self.demo_preparation(owner),
+                'protectionEvents': self.protection_activity.snapshot({a['key'] for a in agents}, owner)}
 
     def crew_roster(self, db, owner, members, preset=False):
         """Freeze names/skills and assignments; no extra permissions for a crew role."""
@@ -693,7 +753,12 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 self.require_available(db, owner)
             elif not db.execute('SELECT 1 FROM agents WHERE id=? AND deleting=0', (owner,)).fetchone():
                 raise Problem('Open a new studio session.', 404)
-            pending = db.execute("SELECT count(*) FROM jobs WHERE owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) AND status IN ('queued','running','waiting','stopping')", (owner,)).fetchone()[0]
+            if db.execute('SELECT 1 FROM agent_policies WHERE owner=? AND (CASE WHEN ? THEN role>=0 ELSE role=-1 END) AND updating=1', (owner, preset)).fetchone():
+                raise Problem('This agent’s policy is being updated. Please wait.', 409)
+            # An immediate personal request can do the same preparation itself.
+            if kind == 'chat':
+                db.execute("UPDATE jobs SET status='cancelled',updated=? WHERE owner=? AND kind='prepare-agent' AND status='queued'", (time.time(), owner))
+            pending = db.execute("SELECT count(*) FROM jobs WHERE kind!='prepare-agent' AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) AND status IN ('queued','running','waiting','stopping')", (owner,)).fetchone()[0]
             if pending >= 3:
                 raise Problem('Your collection has three pending missions. Finish or cancel one before adding another.', 429)
             if kind == 'crew':
@@ -840,7 +905,6 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
 
     def prepare_builtin_crew(self, owner, role, member):
         """Verify built-in protection before preparation, direct chat, and event work."""
-        from research_http import RESEARCH_APPROVALS
         from studio_policy import ProtectionNotVerified
         # Saved jobs from an older build must not restore an unprotected Dylan.
         member['protection'] = CREW_CATALOG[role].get('protection', 'standard')
@@ -851,7 +915,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
             self.provisioned.add(agent_id)
         if member['protection'] != 'openshell':
             return None
-        approvals = list(RESEARCH_APPROVALS)
+        _, approvals = self.saved_policy(owner, role)
         report = self.adapter.policy_status(agent_id, 'openshell', approvals)
         if report['status'] == 'awaiting-first-mission':
             self.adapter.policy_prepare(agent_id)
@@ -894,6 +958,13 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
             return
         payload = json.loads(row['payload'])
         profile = self.profile(owner)
+        if row['kind'] == 'prepare-agent':
+            self.ensure_agent(owner, profile)
+            if self.stop_checkpoint(job_id):
+                return
+            self.check_protected_run(owner, profile)
+            self.event(job_id, 'Protected workspace ready', 'Prepared without a model request or additional access.', status='done')
+            return
         if row['kind'] == 'crew-chat':
             return self.crew_chat(row, payload)
         if row['kind'] == 'prepare':
@@ -907,25 +978,9 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 return
             return self.crew(row, profile, payload)
         if profile.get('protection') == 'openshell':
-            from file_access import requested_files, requested_directories, request_issue
-            folders = requested_directories(payload['prompt'])
-            issues = [issue for path in requested_files(payload['prompt']) if path not in folders
-                      for issue in [request_issue(path, payload['prompt'])] if issue]
-            if issues:
-                answer = 'Host-file validation failed before OpenShell access was requested:\n\n' + '\n'.join(
-                    '- `' + issue['path'] + '`: ' + issue['reason'] for issue in issues)
-                answer += '\n\nApproval cannot fix these file-path issues. Please correct the host path and retry. To create a new file, explicitly ask to create it in an existing folder.'
-                self.event(job_id, 'File path needs correction', 'No permission request or model run was started.',
-                           result=json.dumps({'answer': answer, 'files': []}), status='done')
-                return
             self.event(job_id, 'Preparing OpenShell', 'Checking the protected runtime and agent sandbox configuration.')
         agent_id = self.ensure_agent(owner, profile)
         protection_report = self.check_protected_run(owner, profile)
-        from file_access import prepare as prepare_files, instructions as file_instructions, finish as finish_files
-        try:
-            file_records = prepare_files(self.workspace(owner), protection_report.get('requested', [])) if protection_report else []
-        except (ValueError, OSError) as error:
-            raise Problem('Approved file access could not be prepared: ' + str(error)) from None
         self.event(job_id, profile['name'] + ' is working', 'OpenClaw agent run · shared model · ' + payload['source'])
         inbox = [x['path'] for x in self.files(owner)]
         from personal_voice import contract
@@ -933,22 +988,12 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
         if protection_report:
             hosts = sorted({rule['host'] for rule in protection_report.get('rules', [])})
             prompt += '\n\nCurrent verified OpenShell access: ' + (', '.join(hosts) or 'no approved destinations') + '. Use sandbox tools to test permitted hosts when requested. Do not repeat earlier approval requests for these hosts; report actual tool results. HTTP 403 alone is not proof of an OpenShell denial.'
-        if protection_report:
-            prompt += '\n\n' + file_instructions(file_records)
-            from file_access import requested_directories
-            folders = requested_directories(payload['prompt'])
-            if folders:
-                prompt += '\nHost folder requests cannot be fulfilled through file approvals: ' + ', '.join(folders) + '. Do not request read/write approval for them. Explain that host folder creation is currently unsupported, and offer a folder inside your writable workspace. Do not claim the host folder was created.'
         before = {x['path']: x['updated'] for x in self.files(owner)}
         if self.stop_checkpoint(job_id):
             return
         answer = self.respond_chat(agent_id, 'bac-' + owner, prompt, owner, payload)
         if self.stop_checkpoint(job_id):
             return
-        try:
-            finish_files(self.workspace(owner), file_records)
-        except (ValueError, OSError) as error:
-            raise Problem('The protected file could not be saved: ' + str(error)) from None
         self.record_usage(job_id, payload, answer, agent_id, profile['name'])
         # Displayed files are real workspace writes, never synthetic tool-call animations.
         html = re.search(r'```html\s*\n([\s\S]+?)```', answer, re.I)
@@ -964,10 +1009,10 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
 
     def respond_chat(self, agent_id, session, prompt, owner, payload):
         if not payload.get('images'):
-            return self.adapter.respond(agent_id, session, prompt)
+            return self.protected_response(agent_id, session, prompt, owner, payload.get('crewRole'))
         import base64
         images = [{'mime': image['mime'], 'data': base64.b64encode(safe_file(self.workspace(owner), image['path'], True).read_bytes()).decode()} for image in payload['images']]
-        return self.adapter.respond(agent_id, session, prompt, images=images)
+        return self.protected_response(agent_id, session, prompt, owner, payload.get('crewRole'), images=images)
 
     def crew_chat(self, row, payload):
         owner, job_id, role = row['owner'], row['id'], payload['crewRole']
@@ -980,7 +1025,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
         report = self.prepare_builtin_crew(owner, role, member)
         if report:
             payload['protection'] = report
-            self.event(job_id, 'OpenShell verified', 'NVIDIA Blog HTTPS reads pre-approved. Other destinations remain blocked.', role, payload=json.dumps(payload))
+            self.event(job_id, 'OpenShell verified', 'Saved OpenShell access verified. Unapproved destinations remain blocked.', role, payload=json.dumps(payload))
         self.event(job_id, member['name'] + ' is working', member['role'], role)
         if self.stop_checkpoint(job_id):
             return
@@ -1067,7 +1112,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 if report:
                     payload.setdefault('protection', {})[str(stage)] = report
                     self.event(job_id, member['name'] + ' · OpenShell verified',
-                               'NVIDIA Blog HTTPS reads pre-approved. Other destinations remain blocked.', stage, payload=json.dumps(payload))
+                               'Saved OpenShell access verified. Unapproved destinations remain blocked.', stage, payload=json.dumps(payload))
             else:
                 agent_id = self.ensure_agent(owner, profile, stage)
             name = member['name'] if member else profile['name'] if stage == 0 else ROLES[stage][0]
@@ -1110,6 +1155,8 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
             return agent_id, name, shared, prior
 
         def invoke(stage, prepared):
+            member = payload.get('roster', [None] * len(steps))[stage]
+            assigned = member and member.get('key')
             agent_id, name, shared, prior = prepared
             session = ('bac-' + owner) if stage == 0 and not payload.get('preset') else 'bac-crew-' + job_id + '-' + str(stage)
             prompt = ('Your role for this mission: ' + ROLES[stage][1] + '.\n' + steps[stage] + '\nOnly the selectedCrew members participate. Assign work only to selected specialists. Omitted roles will not run: do not claim their research, review or deliverables exist. Use the organizer brief and available handoffs, mark missing contributions as unreviewed or TBC, and complete only your own role. The supplied capacity numbers are application calculations, not specialist review.\n\nRead inbox/shared-brief.json and inbox/handoffs.md. '
@@ -1131,7 +1178,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                                    'brief':b,'themes':[{k:t.get(k) for k in ('topic','demo','action','outcome','risk')} for t in calc['topics']]},ensure_ascii=False))
                 for post_attempt in range(2):
                     if self.stop_checkpoint(job_id):raise RuntimeError('Social draft stopped.')
-                    post_reply=self.adapter.respond(agent_id,session+'-social',post_prompt)
+                    post_reply=self.protected_response(agent_id,session+'-social',post_prompt,assigned or owner,None if assigned or (stage == 0 and not member) else stage)
                     self.record_usage(job_id,payload,post_reply,agent_id,name,'3-social')
                     post=str(post_reply).strip()
                     if 40 <= len(post) <= 4000 and not any(t in post for t in morgan_page.TOKENS) and 'Reply truncated' not in post:
@@ -1146,12 +1193,17 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
             for attempt in range(2):
                 if self.stop_checkpoint(job_id):
                     raise RuntimeError('Event page authoring stopped.')
-                answer = self.adapter.respond(agent_id, session, prompt)
+                answer = self.protected_response(agent_id, session, prompt, assigned or owner, None if assigned or (stage == 0 and not member) else stage)
                 activity=getattr(answer,'activity',{'available':False,'source':'OpenClaw transcript','calls':[]})
                 existing=payload.setdefault('activity',{}).setdefault(str(stage),{'available':False,'source':'OpenClaw transcript','calls':[]})
                 existing.update(available=existing['available'] or activity.get('available',False))
                 known={c['id'] for c in existing['calls']}
                 existing['calls'].extend(c for c in activity.get('calls',[]) if c['id'] not in known)
+                if agent_led and stage == 1 and agent_workflow.research_stopped(self.workspace(owner,stage),job_id):
+                    self.record_usage(job_id,payload,answer,agent_id,name,stage)
+                    detail='Dylan could not reach blogs.nvidia.com after one retry. Check OpenShell Policy or the connection, then run the demo again.'
+                    self.event(job_id,'Dylan · Research stopped',detail,stage,payload=json.dumps(payload))
+                    raise RuntimeError(detail)
                 if agent_led and stage in (1,2):
                     try:
                         result=agent_workflow.validate(self.workspace(owner,stage),job_id,payload,stage,existing)
@@ -1161,6 +1213,9 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                         self.event(job_id,name+' is checking the deliverable',str(error)[:2000],stage,payload=json.dumps(payload))
                         if attempt:raise RuntimeError(name+' could not validate the saved deliverable after one repair. No app-generated replacement was used. Validation: '+str(error)[:2000]) from error
                         self.record_usage(job_id,payload,answer,agent_id,name,stage)
+                        if stage == 1 and agent_workflow.research_failure_count(self.workspace(owner,stage),job_id):
+                            prompt='Research access failed once. Retry the failed research command once only. If retryAllowed is false, stop immediately and report the failure in one sentence. Do not diagnose the sandbox, validate missing files or create placeholders. If access succeeds, finish the original research task.'
+                            continue
                         prompt='Repair your actual tool execution or saved files once: '+str(error)[:3000]+'. Read inbox/agent-task.json and the relevant skill. Execute missing tools and save corrected files; do not merely claim completion.'
                         if stage == 1:
                             prompt += '\nPreserve successful research and reads. Edit '+agent_workflow.paths(job_id)['demos']+' with native file tools. Run python3 skills/bac-event-tools/scripts/event_agent_tools.py validate-themes; fix the reported fields until it passes before your final summary. Do not repeat searches or rewrite valid fields. Description target: one brief phrase, usually 40–80 characters; shorter is fine; hard limit 600; title 5–100; theme 1–100.'
@@ -1291,7 +1346,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
     def next_job(self):
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
-            row = db.execute("SELECT * FROM jobs WHERE status='queued' AND due<=? ORDER BY due,created LIMIT 1", (time.time(),)).fetchone()
+            row = db.execute("SELECT * FROM jobs WHERE status='queued' AND due<=? AND NOT (kind='prepare-agent' AND EXISTS (SELECT 1 FROM agent_policies WHERE owner=jobs.owner AND updating=1)) ORDER BY (kind='prepare-agent'),due,created LIMIT 1", (time.time(),)).fetchone()
             if row:
                 db.execute("UPDATE jobs SET status='running',updated=? WHERE id=?", (time.time(), row['id']))
         return row

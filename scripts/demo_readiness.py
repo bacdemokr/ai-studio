@@ -15,6 +15,8 @@ class DemoReadiness:
         from studio import Problem
         if not db.execute('SELECT 1 FROM agents WHERE id=? AND deleting=0', (owner,)).fetchone():
             raise Problem('This workspace is unavailable or being deleted.', 409)
+        if db.execute('SELECT 1 FROM agent_policies WHERE owner=? AND role>=0 AND updating=1', (owner,)).fetchone():
+            raise Problem('This agent’s policy is being updated. Please wait.', 409)
         if db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind IN ('crew','crew-chat','prepare') AND status IN ('queued','running','waiting','stopping')", (owner,)).fetchone():
             raise Problem('The BaC crew is busy. Finish its current work before preparing or starting another event.', 409)
 
@@ -40,7 +42,7 @@ class DemoReadiness:
             self.require_event_crew_idle(db, owner)
             roster = self.crew_roster(db, owner, {}, True)
             guests = self.capture_roundtable(db, owner)
-            policies = [dict(row) for row in db.execute('SELECT owner,approved,events,updating FROM agent_policies WHERE owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) ORDER BY owner', (owner,))]
+            policies = [dict(row) for row in db.execute('SELECT owner,role,approved,events,updating FROM agent_policies WHERE owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) ORDER BY owner,role', (owner,))]
             signature = hashlib.sha256(json.dumps([self.boot_id, sorted(selected), roster, guests, policies], sort_keys=True).encode()).hexdigest()
             expected = {roster[i]['id'] for i in selected}
             previous = db.execute("SELECT * FROM jobs WHERE owner=? AND kind='prepare' ORDER BY created DESC LIMIT 1", (owner,)).fetchone()
