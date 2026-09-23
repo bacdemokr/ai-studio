@@ -15,9 +15,16 @@ With **OpenShell on**, approve `developer.nvidia.com` and `huggingface.co` in th
 
 ## Optional Telegram
 
-In **Settings → Telegram**, enter a bot token from [@BotFather](https://t.me/BotFather) and your numeric chat ID. Send `/start` to that bot first. For a group, add the bot with permission to post and use the group's numeric chat ID. Use an existing chat ID from your Telegram setup; the bot token and chat ID are different values.
+In **Settings → Telegram**:
 
-Choose **Connect Telegram**, then **Send test**. Connecting verifies the bot; the test checks actual delivery to the chosen chat. A single connection receives new Tech Radar summaries from your own hired agents. It does not forward ordinary chats, earlier summaries, or another participant's updates.
+1. Create your bot with [@BotFather](https://t.me/BotFather). Paste the entire token, including the colon, into **Bot token**.
+2. To receive personal messages, open [@userinfobot](https://t.me/userinfobot), tap **Start**, and copy the **Id** number into **Chat ID**. This third-party helper does not need your bot token.
+3. Open **your own bot** in Telegram and send `/start`.
+4. Choose **Connect Telegram**, then **Send test**.
+
+For a group, add your bot with permission to post and use the group's numeric chat ID instead of your personal ID. Chat ID is separate from the numeric prefix of the bot token.
+
+Connecting verifies the bot; the test checks actual delivery to the chosen chat. A single connection receives new Tech Radar summaries from your own hired agents. It does not forward ordinary chats, earlier summaries, or another participant's updates.
 
 The bot token stays in server process memory, scoped to the connected browser tab, just like the model key. It is never written to app configuration, workspace files or model prompts. Closing/refreshing the tab or restarting the app requires reconnecting. If the close notification is lost, the session expires after 90 seconds. An already submitted message can still arrive. Telegram itself retains messages according to its service behavior.
 
