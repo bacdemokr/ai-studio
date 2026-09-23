@@ -55,7 +55,7 @@
   const policyPanel=document.createElement('details');policyPanel.id='studio-policy-panel';policyPanel.className='studio-inline-panel';policyPanel.innerHTML='<summary>Approved websites</summary>';el('policies').before(policyPanel);policyPanel.append(el('policies'));policyPanel.ontoggle=()=>{if(policyPanel.open)loadPolicy();};
   el('workspace').append(el('reset'));el('reset').className='studio-secondary';
 
-  const demoSkills=['weather','radar','documents','writer'],extraSkills=['web','builder','memory'];
+  const demoSkills=['weather','radar','web','writer'],extraSkills=['documents','builder','memory'];
   const skillCards=keys=>keys.map(key=>{const [title,detail,example]=capabilities[key];return `<label><input type="checkbox" value="${key}"><span><strong>${title}</strong><small>${detail}</small><em>${example}</em></span></label>`;}).join('');
   el('skill-picker').innerHTML=skillCards(demoSkills)+'<div hidden>'+skillCards(extraSkills)+'</div>';
   el('tone-picker').innerHTML=Object.entries(tones).map(([key,[title,detail]])=>`<button type="button" data-tone="${key}" aria-pressed="${key==='kind'}"><strong>${title}</strong><small>${detail}</small></button>`).join('');

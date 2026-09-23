@@ -13,6 +13,10 @@ Shared URLs and skipped items are remembered in the agent workspace across resta
 
 With **OpenShell on**, approve `developer.nvidia.com` and `huggingface.co` in the agent's **OpenShell Policy** panel. The fixed feed requests run inside the sandbox; blocked requests are not retried through a host connection.
 
+## Arxivbot is a chat assistant
+
+Hiring also offers **Arxivbot**: give it a topic and it searches for three relevant arXiv papers, summarizes the abstracts and compares the papers with titles, authors, dates and links. It uses the existing **Research & papers** skill. It has no periodic heartbeat or automatic Telegram delivery. Tech Radar remains the recurring discovery preset. Arxivbot replaces Three Takeaways in the default Hiring choices; existing agents keep their skills.
+
 ## Optional Telegram
 
 In **Settings → Telegram**:

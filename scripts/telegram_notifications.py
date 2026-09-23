@@ -1,12 +1,38 @@
 """Opt-in, participant-scoped Telegram relay. Bot credentials only live in session memory."""
 import json
 import re
+import socket
+import ssl
 import time
+import urllib.error
 import urllib.request
 import session_secrets
 
 
 def key(participant):return 'telegram:'+participant
+
+
+def response_error(method,status,result=None):
+    # Never echo a server body/description: a proxy may include the token URL.
+    if not isinstance(result,dict) or result.get('ok') is not False:
+        return 'Telegram API returned an unexpected response (HTTP %s). Check whether your network, VPN or web filter blocks api.telegram.org.' % status
+    code=result.get('error_code',status)
+    description=str(result.get('description','')).lower()
+    if code==401 or (method=='getMe' and code==404):
+        return 'Telegram rejected the bot token. Copy the full current token from @BotFather, including the number and colon.'
+    if code==429:return 'Telegram is receiving too many requests. Wait a moment, then try again.'
+    if isinstance(code,int) and code>=500:return 'Telegram is temporarily unavailable. Try again shortly.'
+    if method=='sendMessage':
+        if code==400 and 'chat not found' in description:
+            return 'Telegram could not find this chat. Check the Chat ID and send /start to your own bot before trying again.'
+        if code==403 and 'blocked' in description:
+            return 'This bot is blocked in Telegram. Unblock your bot, send /start, then try again.'
+        if code==403:
+            return 'This bot cannot post to the selected chat. Start the bot in a personal chat, or check its group permissions.'
+    return 'Telegram rejected the %s request (error %s). %s' % (
+        'bot verification' if method=='getMe' else 'message delivery',
+        code if isinstance(code,int) else status,
+        'Check the bot token in @BotFather.' if method=='getMe' else 'Check the Chat ID and the bot’s permission to post there.')
 
 
 def request(token,method,payload=None):
@@ -18,11 +44,30 @@ def request(token,method,payload=None):
         data=json.dumps(payload or {}).encode(),headers={'Content-Type':'application/json'},method='POST')
     try:
         with urllib.request.build_opener(NoRedirect).open(req,timeout=8) as response:
-            result=json.loads(response.read(100000))
-        if result.get('ok') is not True:raise ValueError()
-        return result['result']
+            raw=response.read(100000)
+            status=response.status
+    except urllib.error.HTTPError as error:
+        status=error.code
+        try:raw=error.read(100000)
+        except Exception:raw=b''
+        finally:error.close()
+    except (OSError,urllib.error.URLError) as error:
+        reason=error.reason if isinstance(error,urllib.error.URLError) else error
+        if isinstance(reason,ssl.SSLCertVerificationError):
+            message='Telegram TLS certificate could not be verified. Check the server trust store or network proxy certificate.'
+        elif isinstance(reason,TimeoutError):
+            message='Telegram did not respond within 8 seconds. Check network access to api.telegram.org, then try again.'
+        elif isinstance(reason,socket.gaierror):
+            message='The server could not resolve api.telegram.org. Check its DNS or network connection.'
+        else:message='The server could not connect to api.telegram.org. Check network, VPN or proxy access.'
+        raise RuntimeError(message) from None
     except Exception:
-        raise RuntimeError('Telegram could not confirm the request. Check the bot token, chat ID and whether you started the bot.') from None
+        raise RuntimeError('Telegram connection could not be completed. Try again or check the server’s network connection.') from None
+    try:result=json.loads(raw)
+    except (ValueError,UnicodeError):result=None
+    if 200<=status<300 and isinstance(result,dict) and result.get('ok') is True and 'result' in result:
+        return result['result']
+    raise RuntimeError(response_error(method,status,result)) from None
 
 
 def public(participant,lease=None):
