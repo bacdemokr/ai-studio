@@ -123,7 +123,9 @@
     el('collection-note').textContent=`${data.agents?.length||0} / ${data.agentLimit||12} agents · Each keeps its own conversation, memory and files. Assign them to roles when launching a crew.`;
   }
   el('agent-list').onclick=e=>{const b=e.target.closest('[data-agent-key]');if(b)switchAgent(b.dataset.agentKey);};
-  function dialog(kicker, html) {el('dialog').classList.remove('studio-agent-documents');el('dialog').classList.toggle('studio-page-preview',kicker==='EVENT PAGE');el('dialog-kicker').textContent=kicker;el('dialog-body').innerHTML=html;if(!el('dialog').open)el('dialog').showModal();}
+  let dialogRevision=0;
+  function dialog(kicker, html) {dialogRevision++;el('dialog').classList.remove('studio-agent-documents');el('dialog').classList.toggle('studio-page-preview',kicker==='EVENT PAGE');el('dialog-kicker').textContent=kicker;el('dialog-body').innerHTML=html;if(!el('dialog').open)el('dialog').showModal();}
+  el('dialog').addEventListener('close',()=>{dialogRevision++;});
   el('dialog-close').onclick=()=>el('dialog').close();
   el('dialog').addEventListener('click',e=>{if(e.target===el('dialog')&&!removingAgent){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
   function setup() {

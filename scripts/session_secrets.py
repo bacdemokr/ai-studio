@@ -47,8 +47,11 @@ def release(lease):
             if owner == lease:_values.pop(key,None)
 
 
-def remove(key):
-    with _lock:_values.pop(str(key),None)
+def remove(key, lease=None):
+    with _lock:
+        item = _values.get(str(key))
+        if item and (lease is None or item[1] == lease):
+            _values.pop(str(key), None)
 
 
 def _reap():

@@ -8,6 +8,7 @@ const assert=require('node:assert/strict'),{execFileSync}=require('node:child_pr
  try{
   const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));let attempts=0,ready=false;
   for(const endpoint of ['session','state'])await page.route('**/api/'+endpoint,r=>r.fulfill({json:fixture.state}));
+  await page.route('**/api/telegram',r=>r.fulfill({json:{connected:false}}));
   await page.route('**/api/runtime',r=>r.fulfill({json:{installed:true,gateway:true,model:ready,ready}}));
   await page.route('**/api/settings',async r=>{
    if(r.request().method()==='GET')return r.fulfill({json:settings});

@@ -104,6 +104,18 @@ class CrewStartupTests(unittest.TestCase):
             guests = self.studio.capture_roundtable(db, self.owner, prepared, [guest])
         self.assertEqual([m['key'] for m in guests['members']], [guest])
 
+    def test_hidden_preparation_does_not_consume_user_mission_quota(self):
+        profile = dict(name='Scout', persona='guide', skills=['weather'])
+        self.studio.onboard(self.owner, profile)
+        owners = [self.owner] + [self.studio.add_agent(self.owner, {**profile, 'name': name})['agentId'] for name in ('Pixel', 'Orbit')]
+        for owner in owners:
+            self.studio.prepare_demo(owner, {'background': True})
+        for owner in owners:
+            self.studio.enqueue(owner, {'prompt': 'Hello'})
+        with self.assertRaisesRegex(Problem, 'three pending missions'):
+            self.studio.enqueue(self.owner, {'prompt': 'Fourth message'})
+        self.assertEqual(self.studio.next_job()['kind'], 'chat')
+
 
 if __name__ == '__main__':
     unittest.main()

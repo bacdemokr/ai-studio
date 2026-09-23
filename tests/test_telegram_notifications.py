@@ -70,5 +70,24 @@ class TransportTests(unittest.TestCase):
                 telegram.configure('fixture',{'token':self.token,'chatId':'12345','_credentialSession':'fixture:tab'})
             save.assert_not_called()
 
+    def test_disconnect_cannot_remove_a_replacement_tabs_connection(self):
+        import session_secrets as vault
+        key = telegram.key('disconnect-race-fixture')
+        self.addCleanup(vault.remove, key)
+        vault.put(key, {'bot': 'old_bot'}, 'old-tab')
+        original_get, original_remove = vault.get, vault.remove
+
+        def replace_before_remove(*args, **kwargs):
+            # A new tab connects just before the old disconnect mutates storage.
+            vault.put(key, {'bot': 'new_bot'}, 'new-tab')
+            return original_remove(*args, **kwargs)
+
+        with patch.object(vault, 'remove', side_effect=replace_before_remove):
+            result = telegram.configure('disconnect-race-fixture', {'_credentialSession': 'old-tab', 'disconnect': True})
+        self.assertFalse(result['connected'])
+        self.assertEqual(original_get(key, 'new-tab').get('bot'), 'new_bot')
+        telegram.configure('disconnect-race-fixture', {'_credentialSession': 'new-tab', 'disconnect': True})
+        self.assertFalse(original_get(key))
+
 
 if __name__=='__main__':unittest.main()

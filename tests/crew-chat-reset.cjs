@@ -17,6 +17,7 @@ with tempfile.TemporaryDirectory() as d:
   const page=await browser.newPage({viewport:{width:1500,height:1100}}),errors=[];let current=fixture.before,calls=0,busy=true;
   page.on('pageerror',e=>errors.push(e.message));
   await page.route(/\/api\/(session|state)$/,r=>r.fulfill({json:current}));
+  await page.route('**/api/telegram',r=>r.fulfill({json:{connected:false}}));
   await page.route('**/api/runtime',r=>r.fulfill({json:current.runtime}));
   await page.route('**/api/settings',r=>r.fulfill({json:{provider:'local',providers:{local:{label:'Local',baseUrl:'http://localhost:8000/v1'}},profiles:{},event:{city:'Zurich',language:'English',venue:''}}}));
   await page.route('**/api/bac-reset',r=>{calls++;if(busy)return r.fulfill({status:409,json:{error:'Finish or stop the crew’s pending work before resetting its chats. Nothing was reset.'}});current=fixture.after;return r.fulfill({json:fixture.result});});

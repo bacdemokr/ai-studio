@@ -20,6 +20,7 @@ with tempfile.TemporaryDirectory() as d:
   const page=await browser.newPage({viewport:{width:1500,height:1100}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.route(/\/api\/(session|state)$/,r=>r.fulfill({json:state}));
+  await page.route('**/api/telegram',r=>r.fulfill({json:{connected:false}}));
   await page.route('**/api/runtime',r=>r.fulfill({json:state.runtime}));
   await page.route('**/api/settings',r=>r.fulfill({json:{provider:'local',providers:{local:{label:'Local',baseUrl:'http://localhost:8000/v1'}},profiles:{local:{model:'original',contextWindow:32768}}}}));
   try{

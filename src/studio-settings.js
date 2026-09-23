@@ -9,10 +9,17 @@ async function waitForAgentRuntime(requireModel=false){
   throw new Error(requireModel?'The model was verified, but the agent runtime has not applied the connection. Retry Connect model.':'Model settings are saved, but the agent runtime is not ready. Try Start agents again.');
 }
 const settingsButton=document.createElement('button');settingsButton.id='studio-config';settingsButton.className='studio-config';settingsButton.type='button';settingsButton.textContent='⚙';settingsButton.title='Settings';settingsButton.setAttribute('aria-label','Settings');settingsButton.hidden=true;document.querySelector('#bac-planner .topbar').append(settingsButton);
+let settingsOpenRequest=0;
 settingsButton.onclick=async()=>{
+ const request=++settingsOpenRequest,revision=dialogRevision;
+ const currentOpen=()=>request===settingsOpenRequest&&revision===dialogRevision;
  try{
   const settings=await api('settings');
-  let telegram=await api('telegram');
+  if(!currentOpen())return;
+  let telegram;
+  try{telegram=await api('telegram');}
+  catch(error){telegram={connected:false,error:error.message};}
+  if(!currentOpen())return;
   dialog('Settings',`<form id="studio-config-form" novalidate><nav class="studio-settings-tabs" role="tablist" aria-label="Settings"><button type="button" role="tab" id="studio-settings-model-tab" data-settings-tab="model" aria-controls="studio-settings-model-panel" aria-selected="true">Model</button><button type="button" role="tab" id="studio-settings-location-tab" data-settings-tab="location" aria-controls="studio-settings-location-panel" aria-selected="false" tabindex="-1">Location</button><button type="button" role="tab" id="studio-settings-telegram-tab" data-settings-tab="telegram" aria-controls="studio-settings-telegram-panel" aria-selected="false" tabindex="-1">Telegram</button><button type="button" role="tab" id="studio-settings-reset-tab" data-settings-tab="reset" aria-controls="studio-settings-reset-panel" aria-selected="false" tabindex="-1">Reset</button></nav>
   <section id="studio-settings-model-panel" role="tabpanel" aria-labelledby="studio-settings-model-tab"><label for="studio-provider">Provider</label><select id="studio-provider">${Object.entries(settings.providers).map(([id,p])=>`<option value="${id}">${escape(p.label)}</option>`).join('')}</select><label for="studio-api-key">API key</label><input id="studio-api-key" type="password" autocomplete="off" spellcheck="false"><small id="studio-key-note"></small><div class="studio-settings-model"><label for="studio-model">Model</label><button type="button" id="studio-load-models" class="studio-secondary">Load models ↻</button></div><button type="button" id="studio-change-model" class="studio-secondary" aria-expanded="false" aria-controls="studio-model-options" hidden>Change model</button><p id="studio-model-status" role="status" aria-live="polite"></p><input id="studio-model-search" type="search" aria-label="Search models" placeholder="Search models…" autocomplete="off" spellcheck="false" hidden><select id="studio-model-options" size="6" aria-label="Available models" hidden></select><input id="studio-model" autocomplete="off" placeholder="Load models to choose, or enter a model ID" required><small>Choose a text model with tool calling.</small><details id="studio-connection-options"><summary>Connection options</summary><label for="studio-endpoint">API endpoint</label><input id="studio-endpoint" type="url" required><label for="studio-model-context">Context limit · tokens</label><input id="studio-model-context" type="number" min="8192" max="2000000" step="1" required></details><small>Keys stay in memory for this tab only. Closing or refreshing clears them.</small></section>
 
@@ -25,7 +32,7 @@ settingsButton.onclick=async()=>{
   <section id="studio-settings-reset-panel" role="tabpanel" aria-labelledby="studio-settings-reset-tab" class="studio-agent-reset" hidden><div class="studio-reset-row"><div><h3>Lounge agents</h3><p>Remove hired agents and their data.</p></div><button type="button" id="studio-agent-reset" class="studio-secondary" aria-label="Reset Lounge agents" ${(data.agents||[]).length?'':'disabled'}>Reset</button></div><div class="studio-reset-row"><div><h3>BaC (Multi-Agent Demo)</h3><p>Clear the event board and team chats.</p></div><button type="button" id="studio-bac-reset" class="studio-secondary" aria-label="Reset BaC">Reset</button></div><div class="studio-reset-footer"><button type="button" id="studio-reset-all" class="studio-danger">Reset all</button></div></section>
   <p id="studio-settings-status" role="status"></p><div class="studio-dialog-actions"><button type="button" id="studio-start-agents" class="studio-secondary" ${runtime.gateway?'hidden':''}>Start agents</button><button type="submit" class="studio-primary" id="studio-save-settings">Connect model</button></div></form>`);
   const form=el('config-form'),modelList=el('model-options'),modelStatus=el('model-status'),loadButton=el('load-models');
-  function showTelegram(){el('telegram-status').textContent=telegram.connected?'Connected to @'+telegram.bot+' · chat '+telegram.chatId:'';el('telegram-status').hidden=!telegram.connected;el('telegram-controls').hidden=!telegram.connected;el('telegram-test').disabled=!telegram.connected;el('telegram-disconnect').disabled=!telegram.connected;el('telegram-chat').value=telegram.chatId||'';}
+  function showTelegram(){el('telegram-status').textContent=telegram.connected?'Connected to @'+telegram.bot+' · chat '+telegram.chatId:telegram.error||'';el('telegram-status').hidden=!telegram.connected&&!telegram.error;el('telegram-controls').hidden=!telegram.connected;el('telegram-test').disabled=!telegram.connected;el('telegram-disconnect').disabled=!telegram.connected;el('telegram-chat').value=telegram.chatId||'';}
   showTelegram();
   async function telegramAction(action){if(connecting)return;connecting=true;el('settings-status').textContent='Connecting';try{const result=await api(action==='test'?'telegram/test':'telegram',action==='test'?{}:{disconnect:true});if(!currentForm())return;if(action==='test')el('settings-status').textContent='Test message sent.';else{telegram=result;showTelegram();el('settings-status').textContent='';}}catch(error){if(currentForm())el('settings-status').textContent=error.message;}finally{connecting=false;}}
   el('telegram-test').onclick=()=>telegramAction('test');el('telegram-disconnect').onclick=()=>telegramAction('disconnect');
@@ -96,7 +103,7 @@ settingsButton.onclick=async()=>{
     }catch(error){if(currentForm()){status.dataset.state='error';status.textContent=error.message;}}
     finally{connecting=false;if(currentForm()){button.disabled=false;button.textContent='Connect model';controls.forEach(([node,disabled])=>node.disabled=disabled);}}
   };
- }catch(error){alert(error.message);}
+ }catch(error){if(request===settingsOpenRequest)alert(error.message);}
 };
 el('dialog').addEventListener('close',()=>{if(el('api-key'))el('api-key').value='';if(el('telegram-token'))el('telegram-token').value='';});
 

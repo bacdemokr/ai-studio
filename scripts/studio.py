@@ -785,7 +785,9 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
             # An immediate personal request can do the same preparation itself.
             if kind == 'chat':
                 db.execute("UPDATE jobs SET status='cancelled',updated=? WHERE owner=? AND kind='prepare-agent' AND status='queued'", (time.time(), owner))
-            pending = db.execute("SELECT count(*) FROM jobs WHERE kind!='prepare-agent' AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) AND status IN ('queued','running','waiting','stopping')", (owner,)).fetchone()[0]
+            # Internal warmups retain deletion/policy fences, but do not spend the
+            # attendee's three user-request slots while they open agent workspaces.
+            pending = db.execute("SELECT count(*) FROM jobs WHERE kind NOT IN ('prepare-agent','prepare') AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) AND status IN ('queued','running','waiting','stopping')", (owner,)).fetchone()[0]
             if pending >= 3:
                 raise Problem('Your collection has three pending missions. Finish or cancel one before adding another.', 429)
             if kind == 'crew':

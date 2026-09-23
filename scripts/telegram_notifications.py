@@ -79,7 +79,7 @@ def configure(participant,data):
     from studio import Problem
     lease=data['_credentialSession']
     if data.get('disconnect') is True:
-        if session_secrets.get(key(participant),lease):session_secrets.remove(key(participant))
+        session_secrets.remove(key(participant), lease)
         return public(participant,lease)
     token=data.get('token','');chat=str(data.get('chatId','')).strip()
     if not isinstance(token,str) or not re.fullmatch(r'[0-9]{5,15}:[A-Za-z0-9_-]{20,100}',token.strip()):raise Problem('Enter the bot token from BotFather.')
