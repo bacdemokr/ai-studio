@@ -118,6 +118,9 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.json_response({'csrf': row['csrf'], 'canConfigure': self.is_operator(), 'runtime': studio.runtime_status(), **studio.state(owner)}, cookie=row['token'] if new else None)
             if parsed.path == '/api/state':
                 return self.json_response(studio.state(owner), conditional=True)
+            if parsed.path == '/api/telegram':
+                import telegram_notifications
+                return self.json_response(telegram_notifications.public(row['id'], row['id']+':'+self.headers.get('X-BaC-Key-Session','missing')))
             if parsed.path == '/api/settings':
                 self.require_operator()
                 import runtime_settings
@@ -212,6 +215,12 @@ class Handler(SimpleHTTPRequestHandler):
                 else:session_secrets.renew(data['_credentialSession'])
                 studio.status_cache=(0,{})
                 return self.json_response({'ok':True})
+            if self.path == '/api/telegram':
+                import telegram_notifications
+                return self.json_response(telegram_notifications.configure(row['id'], data))
+            if self.path == '/api/telegram/test':
+                import telegram_notifications
+                return self.json_response(telegram_notifications.test(row['id'], data['_credentialSession']))
             if self.path in ('/api/settings','/api/settings/models','/api/settings/start'):
                 self.require_operator()
                 import runtime_settings
@@ -219,6 +228,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if self.path == '/api/settings/start':return self.json_response(runtime_settings.start_gateway())
                 return self.json_response(runtime_settings.save(studio,data))
             routes = {
+                '/api/heartbeat': lambda: studio.notes.control(owner, data),
                 '/api/agents': lambda: studio.add_agent(row['id'], data),
                 '/api/onboard': lambda: studio.onboard(owner, data),
                 '/api/profile': lambda: studio.configure(owner, data),
@@ -274,6 +284,7 @@ def main():
         pass
     finally:
         server.studio.stop.set()
+        if hasattr(server.studio, 'notes_worker'):server.studio.notes_worker.join(timeout=15)
         server.server_close()
 
 

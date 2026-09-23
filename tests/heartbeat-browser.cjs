@@ -1,0 +1,24 @@
+const assert=require('node:assert/strict'),{chromium}=require('playwright');
+(async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH,args:['--enable-unsafe-swiftshader']});try{
+const page=await browser.newPage({viewport:{width:1440,height:1100}}),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(process.env.BASE_URL||'http://127.0.0.1:8087');await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.testFixture);
+await page.getByRole('button',{name:'Settings',exact:true}).click();await page.locator('#studio-settings-telegram-tab').click();
+assert.deepEqual(await page.locator('[data-settings-tab]').allTextContents(),['Model','Location','Telegram','Reset']);
+assert(await page.locator('#studio-settings-model-panel').isHidden());
+await page.locator('#studio-telegram-token').fill('123456789:'+'z'.repeat(30));await page.locator('#studio-telegram-chat').fill('12345');await page.locator('#studio-save-settings').click();await page.waitForFunction(()=>document.querySelector('#studio-settings-status').textContent.includes('could not confirm'));
+await page.locator('#studio-telegram-token').fill('123456789:'+'x'.repeat(30));await page.locator('#studio-save-settings').click();await page.waitForFunction(()=>document.querySelector('#studio-telegram-status').textContent.includes('Connected to'));
+assert.equal(await page.locator('#studio-telegram-token').inputValue(),'');await page.locator('#studio-telegram-test').click();await page.waitForFunction(()=>document.querySelector('#studio-settings-status').textContent==='Test message sent.');
+assert(!await page.evaluate(()=>JSON.stringify({...localStorage,...sessionStorage}).includes('123456789:')));
+await page.screenshot({path:'/tmp/bac-heartbeat-telegram.png'});
+await page.locator('#studio-dialog').evaluate(node=>node.close());
+await page.locator('.world-room-map [data-world-room=workshop]').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
+await page.locator('#studio-name').fill('Echo');await page.getByRole('button',{name:'Notes Watcher',exact:true}).click();await page.locator('#studio-create').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Echo');await page.waitForFunction(()=>BacStudio.inspect().room==='lounge');
+await page.locator('#studio-notes-monitor button').click();await page.waitForFunction(()=>document.querySelector('#studio-notes-monitor').textContent.includes('Paused'));
+await page.locator('#studio-upload').setInputFiles({name:'meeting.txt',mimeType:'text/plain',buffer:Buffer.from('Review design tomorrow. Pat owns the follow-up.')});
+await page.waitForTimeout(3500);assert.equal(await page.locator('.chat-turn').count(),0);
+await page.locator('#studio-notes-monitor button').click();await page.waitForFunction(()=>document.querySelector('#studio-conversation').textContent.includes('TEST FIXTURE:'));
+assert.equal(await page.locator('.chat-turn .chat-user').count(),0);assert.match(await page.locator('.chat-turn').innerText(),/Heartbeat/);assert.match(await page.locator('.chat-turn').innerText(),/Sent to Telegram/);
+await page.screenshot({path:'/tmp/bac-heartbeat-chat.png'});
+await page.waitForTimeout(3500);assert.equal(await page.locator('.chat-turn').count(),1);
+await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.name==='Echo');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.locator('#studio-settings-telegram-tab').click();assert.equal(await page.locator('#studio-telegram-status').innerText(),'Not connected');
+assert.deepEqual(errors,[]);console.log('PASS: Telegram tab, invalid token feedback, session-only token, explicit test, Notes Watcher hire, pause/resume, native-summary chat rendering, one relay and reload disconnection.');
+}finally{await browser.close();}})().catch(error=>{console.error(error);process.exitCode=1;});

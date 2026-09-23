@@ -50,13 +50,15 @@ Choose **Local / on-prem** in Settings → Model. Enter your existing endpoint, 
 
 The model runs outside BaC's Docker stack. Use a model with tool calling; a keyless local server needs no API key. Keyed providers need reconnecting after refreshing/closing the tab or restarting the app.
 
-**Settings → Location** sets the default city for all agents. Default: Zurich. **Settings → Reset** clears demo data.
+**Settings → Location** sets the default city for all agents. Default: Zurich. **Settings → Reset** clears demo data. **Settings → Telegram** optionally relays new Heartbeat summaries while the connected tab stays open.
 
 ## Try it
 
 1. **Hiring:** choose a character, role, tone and skills.
 2. **Agent lounge:** chat, inspect files, or approve OpenShell access.
 3. **Multi-Agent demo (BaC Planning):** prepare the crew and run an event. View each agent's work in Results and Activity.
+
+**Heartbeat:** hire **Notes Watcher**, then upload meeting notes. OpenClaw checks every 30 seconds and posts a summary only when notes change. Pause or resume in the agent panel. [Telegram setup and details](docs/heartbeat.md).
 
 Agents research, schedule and write. The app coordinates the workflow, validates artifacts and renders data such as timetables. Failed runs remain visible.
 
