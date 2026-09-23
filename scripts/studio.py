@@ -34,9 +34,12 @@ MAX_AGENTS = 12
 ROLE_AVATARS = [dict(body=b, color=c, accessory=a) for b, c, a in (
     ('classic', 'green', 'antenna'), ('round', 'cyan', 'headset'), ('rover', 'amber', 'cap'),
     ('round', 'coral', 'antenna'), ('classic', 'violet', 'glasses'), ('claw', 'ice', 'headset'))]
-AVATAR_OPTIONS = {'body': ('classic', 'round', 'rover', 'cat', 'claw', 'crab'),
+AVATAR_OPTIONS = {'body': ('classic', 'round', 'rover', 'cat', 'operative', 'claw', 'crab'),
                   'color': ('green', 'cyan', 'amber', 'coral', 'violet', 'ice'),
-                  'accessory': ('antenna', 'headset', 'glasses', 'cap')}
+                  'accessory': ('none', 'antenna', 'headset', 'glasses', 'cap')}
+LEGACY_AVATAR_DEFAULTS = {'body': ('classic', 'round', 'rover', 'cat', 'claw', 'crab'),
+                          'color': AVATAR_OPTIONS['color'],
+                          'accessory': ('antenna', 'headset', 'glasses', 'cap')}
 
 
 def personal_agent_activity(jobs, owner):
@@ -70,7 +73,7 @@ def avatar_for(owner, avatar=None):
     """Stable defaults also give legacy agents a persistent visual identity."""
     seed = int(hashlib.sha256(owner.encode()).hexdigest()[:8], 16)
     defaults = {key: values[(seed // (7 ** i)) % len(values)]
-                for i, (key, values) in enumerate(AVATAR_OPTIONS.items())}
+                for i, (key, values) in enumerate(LEGACY_AVATAR_DEFAULTS.items())}
     if avatar is None:
         return defaults
     if not isinstance(avatar, dict) or set(avatar) != set(AVATAR_OPTIONS):

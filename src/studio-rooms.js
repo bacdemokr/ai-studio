@@ -1,6 +1,7 @@
 // Three places in one studio: creation, a growing personal collection, and crew work.
 let editingInPlace=false,hiringArrival=false;
 const appearanceColors={green:'#76b900',cyan:'#55bfff',amber:'#f4b34f',coral:'#ff8873',violet:'#b49aff',ice:'#cbddea'};
+const appearanceNames={classic:'Jinny',round:'Orbit',rover:'Scout',operative:'Smith',claw:'Pixel',crab:'Sage'};
 const roomCopy={
   workshop:'Hiring',
   lounge:'Agent lounge',
@@ -22,6 +23,11 @@ function syncCreatorTone(){
   const tone=creatorPrompt().tonePrompt.toLowerCase();
   draftTone=Object.keys(tones).find(key=>matchesTonePrompt(key,tone))||'kind';
 }
+function availableAgentName(body){
+  const baseName=appearanceNames[body]||'Agent';let name=baseName,number=2;
+  while(data.agents?.some(a=>a.name.toLowerCase()===name.toLowerCase()))name=baseName+'_'+number++;
+  return name;
+}
 function updateDraft(){
   root.querySelectorAll('[data-body]').forEach(b=>{if(b.tagName==='BUTTON')b.setAttribute('aria-pressed',b.dataset.body===draftAvatar.body);});
   root.querySelectorAll('[data-avatar-color]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.avatarColor===draftAvatar.color));
@@ -35,8 +41,8 @@ function fillCreator(creating){
   const n=data.agents?.length||0;
   const used=new Set((data.agents||[]).map(a=>[a.avatar?.body,a.avatar?.color,a.avatar?.accessory].join(':')));
   let defaults;
-  for(let offset=0;offset<12;offset++){const index=n+offset;defaults={body:['classic','round','rover','cat','claw','crab'][index%6],color:Object.keys(appearanceColors)[index%6],accessory:['antenna','headset','glasses','cap'][index%4]};if(!used.has([defaults.body,defaults.color,defaults.accessory].join(':')))break;}
-  const baseName=['Jinny','Orbit','Scout','Echo','Pixel','Sage'][n%6];let name=baseName,number=2;while(data.agents?.some(a=>a.name.toLowerCase()===name.toLowerCase()))name=baseName+'_'+number++;
+  for(let offset=0;offset<12;offset++){const index=n+offset,body=['classic','round','rover','operative','claw','crab'][index%6];defaults={body,color:Object.keys(appearanceColors)[index%6],accessory:'none'};if(!used.has([defaults.body,defaults.color,defaults.accessory].join(':')))break;}
+  const name=availableAgentName(defaults.body);
   const p=creating?{name,persona:'guide',purpose:roleTemplates[0].purpose,skills:[...roleTemplates[0].skills],avatar:defaults}:data.profile;
   if(!p)return fillCreator(true);
   el('name').value=p.name;writeCreatorPrompt(savedTonePrompt(p),p.purpose||(creating?'':personas[p.persona]));persona=p.persona;draftAvatar={...(p.avatar||defaults)};el('accessory').value=draftAvatar.accessory;
@@ -92,7 +98,7 @@ function renderRooms(){
 }
 function agentForm(creating=false){if(creating&&(data.agents?.length||0)>=(data.agentLimit||12)){alert('Your lounge is full. You can edit any of your existing agents.');return;}fillCreator(creating);if(creating)setRoom('workshop');else{editingInPlace=true;renderRoomVisibility();}el('workshop').scrollTop=0;}
 el('color-picker').innerHTML=Object.entries(appearanceColors).map(([name,color])=>`<button type="button" data-avatar-color="${name}" style="--swatch:${color}" aria-label="${name[0].toUpperCase()+name.slice(1)}" aria-pressed="false"></button>`).join('');
-el('body-picker').onclick=e=>{const b=e.target.closest('[data-body]');if(b){draftAvatar.body=b.dataset.body;updateDraft();}};
+el('body-picker').onclick=e=>{const b=e.target.closest('[data-body]');if(b){draftAvatar.body=b.dataset.body;if(draftMode==='new')el('name').value=availableAgentName(draftAvatar.body);updateDraft();}};
 el('color-picker').onclick=e=>{const b=e.target.closest('[data-avatar-color]');if(b){draftAvatar.color=b.dataset.avatarColor;updateDraft();}};
 el('accessory').onchange=updateDraft;el('name').addEventListener('input',updateDraft);
 const roleTemplates=[

@@ -10,8 +10,8 @@ const {chromium}=require('playwright');
  const looks=[{body:'classic',color:'green',accessory:'antenna'},{body:'round',color:'cyan',accessory:'headset'},{body:'rover',color:'coral',accessory:'glasses'}],keys=[];
  for(let i=0;i<looks.length;i++){
    if(i)await page.locator('#studio-add-agent').click();
-   const avatar=looks[i];await page.locator('#studio-name').fill(['Jinny','Orbit','Rover'][i]);
-   await page.locator('#studio-body-picker [data-body='+avatar.body+']').click();await page.locator('[data-avatar-color='+avatar.color+']').click();await page.locator('#studio-accessory').selectOption(avatar.accessory);
+   const avatar=looks[i];await page.locator('#studio-body-picker [data-body='+avatar.body+']').click();await page.locator('#studio-name').fill(['Jinny','Orbit','Rover'][i]);
+   await page.locator('[data-avatar-color='+avatar.color+']').click();await page.locator('#studio-accessory').selectOption(avatar.accessory);
    assert.deepEqual(await page.evaluate(()=>BacCampus.inspect().draft.avatar),avatar);
    await page.locator('#studio-create').click();await page.waitForFunction(n=>BacStudio.inspect().agents.length===n,i+1);
    await page.waitForFunction(()=>BacStudio.inspect().room==='lounge');assert.deepEqual(await page.evaluate(()=>BacStudio.inspect().profile.avatar),avatar);

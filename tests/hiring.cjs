@@ -9,12 +9,16 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.locator('.world-room-map [data-world-room=workshop]').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
   assert.match(await page.locator('#studio-purpose').inputValue(),/Tone:.*Kind[\s\S]*Role:.*weather/);
   assert.deepEqual(await page.locator('#studio-skill-picker input:checked').evaluateAll(xs=>xs.map(x=>x.value)),['weather']);
-  await page.locator('#studio-name').fill('Sage');await page.locator('[data-tone=cynical]').click();await page.locator('[data-role-template="2"]').click();
+  assert.equal(await page.locator('#studio-accessory').inputValue(),'none');
+  for(const [body,name] of [['classic','Jinny'],['round','Orbit'],['rover','Scout'],['operative','Smith'],['claw','Pixel'],['crab','Sage']]){
+   await page.locator('#studio-body-picker [data-body='+body+']').click();assert.equal(await page.locator('#studio-name').inputValue(),name);
+  }
+  await page.locator('#studio-body-picker [data-body=claw]').click();await page.locator('#studio-name').fill('Sage');await page.locator('[data-tone=cynical]').click();await page.locator('[data-role-template="2"]').click();
   assert.match(await page.locator('#studio-purpose').inputValue(),/Tone: Cynical[\s\S]*Role: Summarize/);
   await page.locator('#studio-purpose').fill('Tone: Dry, curious and concise.\nRole: Compare papers and summarize documents with evidence.');
   await page.locator('#studio-apply-prompt').click();
   assert.deepEqual(await page.locator('#studio-skill-picker input:checked').evaluateAll(xs=>xs.map(x=>x.value).sort()),['documents','web']);
-  await page.locator('#studio-body-picker [data-body=claw]').click();await page.locator('#studio-create').click();
+  await page.locator('#studio-create').click();
   await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Sage'&&BacStudio.inspect().room==='lounge'&&!BacCampus.inspect().arrival,{},{timeout:20000});
   const original=await page.evaluate(()=>BacStudio.inspect().profile);
   assert.equal(original.tonePrompt,'Dry, curious and concise.');assert.equal(original.avatar.body,'claw');

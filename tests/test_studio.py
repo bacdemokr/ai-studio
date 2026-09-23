@@ -230,6 +230,12 @@ class StudioTests(unittest.TestCase):
                 restarted.configure(self.owner, {**profile, 'avatar': avatar})
         self.assertEqual(restarted.profile(self.owner)['avatar'], expected)
 
+    def test_operative_body_accepts_no_accessory(self):
+        profile = self.studio.profile(self.owner)
+        avatar = {'body': 'operative', 'color': 'ice', 'accessory': 'none'}
+        self.studio.configure(self.owner, {**profile, 'avatar': avatar})
+        self.assertEqual(self.studio.profile(self.owner)['avatar'], avatar)
+
     def test_agent_collection_keeps_native_identity_memory_files_and_jobs_separate(self):
         scout = self.add_agent()
         self.studio.enqueue(self.owner, {'prompt': 'remember my preferences'})

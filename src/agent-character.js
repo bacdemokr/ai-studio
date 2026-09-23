@@ -8,6 +8,7 @@ function createCharacter(avatar=avatarDefaults[0]){
   const appearance={...avatarDefaults[0],...avatar},color=avatarColors[appearance.color]||avatarColors.green;
   const group=new THREE.Group(),body=new THREE.Group();group.add(body);
   if(appearance.body==='fox')appearance.body='claw';
+  if(appearance.body==='operative')return createOperative(appearance,color,group,body);
   if(appearance.body==='claw')return createClaw(appearance,color,group,body);
   if(['cat','crab'].includes(appearance.body))return createCompanion(appearance,color,group,body);
   const arms=[],legs=[];
@@ -50,7 +51,40 @@ function equipCharacter(body,face,appearance,color){
     cylinder(body,.28,1.33,0,.022,.14,0x72859a,8);
   }else if(appearance.accessory==='cap'){
     const cap=new THREE.Mesh(robotSphereGeometry,mat(color));cap.scale.set(.39,.14,.32);cap.position.set(0,1.29,0);body.add(cap);box(body,0,1.24,.13,.79,.045,.55,color);
-  }else{cylinder(body,0,1.36,0,.024,.22,0x72859a,8);cylinder(body,0,1.49,0,.065,.07,color,12);}
+  }else if(appearance.accessory==='antenna'){cylinder(body,0,1.36,0,.024,.22,0x72859a,8);cylinder(body,0,1.49,0,.065,.07,color,12);}
+}
+
+// Original digital operative: dark suit and permanent sunglasses, with
+// articulated pincers instead of human hands. The cat renderer remains below
+// so previously saved cat agents continue to load.
+function createOperative(appearance,color,group,body){
+  const arms=[],legs=[];
+  function oval(parent,x,y,z,sx,sy,sz,tint){const mesh=new THREE.Mesh(robotSphereGeometry,mat(tint));mesh.position.set(x,y,z);mesh.scale.set(sx,sy,sz);mesh.castShadow=true;parent.add(mesh);return mesh;}
+  box(body,0,.67,0,.46,.55,.27,0x121820);
+  box(body,0,.68,.151,.16,.43,.025,0xf1f3f4);
+  const lapel=new THREE.Shape();lapel.moveTo(-.17,.2);lapel.lineTo(0,-.02);lapel.lineTo(.17,.2);lapel.lineTo(.11,-.18);lapel.lineTo(-.11,-.18);lapel.closePath();
+  const jacket=new THREE.Mesh(new THREE.ExtrudeGeometry(lapel,{depth:.025,bevelEnabled:false}),mat(0x080b0f));jacket.position.set(0,.72,.165);body.add(jacket);
+  const tie=box(body,0,.70,.205,.045,.30,.025,0x050607);tie.rotation.z=0;
+  oval(body,0,1.12,0,.27,.30,.24,0xd4ad92);
+  box(body,0,1.34,-.055,.51,.12,.34,0x171b1f);
+  // A single dark visor reads as sunglasses from every camera distance.
+  for(const side of [-1,1])box(body,side*.115,1.16,.226,.205,.095,.035,0x06090c);
+  box(body,0,1.16,.229,.055,.025,.038,0x06090c);
+  for(const side of [-1,1]){
+    const arm=new THREE.Group();arm.position.set(side*.34,.78,0);body.add(arm);arms.push(arm);
+    box(arm,0,-.16,0,.14,.38,.17,0x11171e);
+    const wrist=oval(arm,0,-.39,.035,.09,.10,.09,color);
+    wrist.rotation.z=side*.18;
+    for(const tip of [-1,1]){
+      const claw=oval(arm,side*tip*.075,-.50,.07,.075,.18,.065,color);
+      claw.rotation.z=side*tip*.48;
+    }
+    const leg=new THREE.Group();leg.position.set(side*.13,.39,0);body.add(leg);legs.push(leg);
+    box(leg,0,-.17,0,.18,.34,.20,0x0d1218);
+    box(leg,0,-.36,.07,.20,.09,.31,0x080b0f);
+  }
+  equipCharacter(body,{position:{z:.22}},{...appearance,accessory:appearance.accessory==='glasses'?'none':appearance.accessory},color);
+  return {group,body,arms,legs,appearance,color};
 }
 
 function createCompanion(appearance,color,group,body){
