@@ -1373,7 +1373,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
     def next_job(self):
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
-            row = db.execute("SELECT * FROM jobs WHERE status='queued' AND due<=? AND NOT (kind='prepare-agent' AND EXISTS (SELECT 1 FROM agent_policies WHERE owner=jobs.owner AND updating=1)) ORDER BY (kind='prepare-agent'),due,created LIMIT 1", (time.time(),)).fetchone()
+            row = db.execute("SELECT * FROM jobs WHERE status='queued' AND due<=? AND NOT (kind IN ('prepare-agent','prepare') AND EXISTS (SELECT 1 FROM agent_policies WHERE owner=jobs.owner AND updating=1)) ORDER BY (kind='prepare-agent' OR (kind='prepare' AND coalesce(json_extract(payload,'$.background'),0)=1)),due,created LIMIT 1", (time.time(),)).fetchone()
             if row:
                 db.execute("UPDATE jobs SET status='running',updated=? WHERE id=?", (time.time(), row['id']))
         return row

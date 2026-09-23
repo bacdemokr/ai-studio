@@ -13,7 +13,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert(await page.locator('#studio-crew-policy').isVisible());
   await page.locator('#studio-crew-policy').click();
   await page.locator('[data-policy-section=approved]').waitFor();
-  assert.match(await page.locator('#studio-policy-content').innerText(),/Saved websites · not verified/);
+  assert.match(await page.locator('#studio-policy-content').innerText(),/Approved websites/);
   assert.match(await page.locator('#studio-policy-content').innerText(),/blogs\.nvidia\.com/);
   assert(await page.locator('[data-policy-permission="host:blogs.nvidia.com"][data-policy-allow=false]').isEnabled());
   const invalid=await page.evaluate(async()=>{
@@ -65,6 +65,6 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.locator('[data-crew-member="2"]').click();
   assert(await page.locator('#studio-crew-policy').isHidden());
   assert.deepEqual(errors,[]);
-  console.log('PASS: Dylan policy entry, unprepared vs verified rules, revoke before preparation, revoked across next task, explicit re-approval, target isolation, failure feedback.');
+  console.log('PASS: Dylan policy entry, startup-verified rules, revoke after preparation, revoked across next task, explicit re-approval, target isolation, failure feedback.');
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

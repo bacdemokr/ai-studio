@@ -113,7 +113,7 @@
     try{
       const state=await api('state',undefined,next);
       openAgentState(state);
-    }catch(error){alert(error.message);}finally{changingAgent=false;busy=false;}
+    }catch(error){alert(error.message);}finally{changingAgent=false;busy=false;warmCrewOnOpen();}
   }
   function renderCollection(){
     el('collection').hidden=!data.profile;
@@ -227,7 +227,7 @@
     renderCrewPassport();
   }
   /* STUDIO_CREW */
-  async function refresh(){if(changingAgent||removingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion&&target===agentId&&!changingAgent&&state!==data){data=state;render();}}catch(error){if(version===refreshVersion){if(error.status===404){try{const state=await api('state',undefined,'');if(version===refreshVersion&&!changingAgent){el('dialog').close();openAgentState(state);alert('This agent was deleted in another tab. Your collection is up to date.');}}catch(recovery){alert(recovery.message);}}else if(!document.hidden)alert(error.message);}}finally{if(version===refreshVersion)busy=false;}}
+  async function refresh(){if(changingAgent||removingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion&&target===agentId&&!changingAgent&&state!==data){data=state;render();}}catch(error){if(version===refreshVersion){if(error.status===404){try{const state=await api('state',undefined,'');if(version===refreshVersion&&!changingAgent){el('dialog').close();openAgentState(state);alert('This agent was deleted in another tab. Your collection is up to date.');}}catch(recovery){alert(recovery.message);}}else if(!document.hidden)alert(error.message);}}finally{if(version===refreshVersion)busy=false;warmCrewOnOpen();}}
   el('equipped').onclick=e=>{const button=e.target.closest('[data-try-skill]');if(button)el('missions').querySelector('[data-studio-mission="'+button.dataset.trySkill+'"]')?.click();};
   el('missions').onclick=e=>{const button=e.target.closest('[data-studio-mission]');if(!button)return;const mission=missions.find(m=>m.id===button.dataset.studioMission);if(!data.profile){alert('Hire an agent first.');agentForm(true);el('name').focus();return;}if(!data.profile.skills.includes(mission.id)){
       let notice=el('mission-skill-notice');if(!notice){notice=document.createElement('div');notice.id='studio-mission-skill-notice';notice.className='studio-mission-skill-notice';el('missions').before(notice);}
@@ -279,7 +279,7 @@
     board=false;layout.hidden=false;window.BacCampus?.overview();
     window.scrollTo({top:0,left:0,behavior:'smooth'});
   };
-  async function boot(){try{const session=await api('session');csrf=session.csrf;settingsButton.hidden=!session.canConfigure;runtime=session.runtime;data=session;agentId=session.agentId;connected=true;runtimeBadge();render();let saved;try{saved=sessionStorage.getItem('bac-selected-agent');}catch{}if(saved&&saved!==agentId&&session.agents.some(a=>a.key===saved))await switchAgent(saved);else rememberSelection();}catch(error){runtimeBadge();alert(error.message);el('create').disabled=true;}}
+  async function boot(){try{const session=await api('session');csrf=session.csrf;settingsButton.hidden=!session.canConfigure;runtime=session.runtime;data=session;agentId=session.agentId;connected=true;runtimeBadge();render();let saved;try{saved=sessionStorage.getItem('bac-selected-agent');}catch{}if(saved&&saved!==agentId&&session.agents.some(a=>a.key===saved))await switchAgent(saved);else rememberSelection();crewStartupReady=true;warmCrewOnOpen();}catch(error){runtimeBadge();alert(error.message);el('create').disabled=true;}}
   boot();setInterval(()=>{if(!document.hidden&&!busy)refresh();},1500);setInterval(async()=>{if(connected&&!document.hidden){try{const nextRuntime=await api('runtime');if(runtime.instance&&nextRuntime.instance!==runtime.instance){demoPreparationId=null;if(!nextRuntime.ready)alert('Server restarted. Your agents and results are saved; reconnect the model to continue.');}runtime=nextRuntime;runtimeBadge();}catch{}}},10000);
   window.BacStudio={refresh,inspect:()=>({profile:data.profile,agentId,agents:data.agents,jobs:data.jobs,runtime,board,room}),showBoard,setRoom};
 })();

@@ -32,24 +32,35 @@ class DemoReadiness:
 
     def prepare_demo(self, owner, data):
         from studio import Problem
+        background = data.get('background') is True
         selected = data.get('enabledRoles', [0, 1, 2, 3])
         if not isinstance(selected, list) or not selected or 0 not in selected or any(type(i) is not int or not 0 <= i <= 3 for i in selected) or len(set(selected)) != len(selected):
             raise Problem('Choose the BaC crew, including Casey.')
-        if not self.runtime_status().get('ready'):
-            raise Problem('Connect a model before preparing the demo.', 503)
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
+            previous = db.execute("SELECT * FROM jobs WHERE owner=? AND kind='prepare' ORDER BY created DESC LIMIT 1", (owner,)).fetchone()
+            # Multiple tabs and polling share one attempt per server boot. A failed
+            # warmup stays visible for an explicit retry instead of looping.
+            if background and previous:
+                prior = json.loads(previous['payload'])
+                if prior.get('bootId') == self.boot_id and set(selected).issubset(prior.get('enabledRoles', [])):
+                    return {'id': previous['id'], 'cached': True}
+            if previous and previous['status'] in ('queued', 'running'):
+                pending = json.loads(previous['payload'])
+                if pending.get('background') and pending.get('bootId') == self.boot_id and set(selected).issubset(pending['enabledRoles']):
+                    return {'id': previous['id'], 'cached': True}
             self.require_event_crew_idle(db, owner)
             roster = self.crew_roster(db, owner, {}, True)
-            guests = self.capture_roundtable(db, owner)
+            # Startup warms the built-in crew only. Capture personal guests later,
+            # when the user opens the event form and chooses the current roster.
+            guests = {} if background else self.capture_roundtable(db, owner)
             policies = [dict(row) for row in db.execute('SELECT owner,role,approved,events,updating FROM agent_policies WHERE owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) ORDER BY owner,role', (owner,))]
             signature = hashlib.sha256(json.dumps([self.boot_id, sorted(selected), roster, guests, policies], sort_keys=True).encode()).hexdigest()
             expected = {roster[i]['id'] for i in selected}
-            previous = db.execute("SELECT * FROM jobs WHERE owner=? AND kind='prepare' ORDER BY created DESC LIMIT 1", (owner,)).fetchone()
             if expected.issubset(self.provisioned) and previous and previous['status'] == 'done' and time.time()-previous['updated'] < 180 and json.loads(previous['payload']).get('signature') == signature:
                 return {'id': previous['id'], 'cached': True}
             payload = {'roster': roster, 'roundtable': guests, 'enabledRoles': selected, 'signature': signature, 'bootId':self.boot_id,
-                       'checks':[]}
+                       'background':background, 'checks':[]}
             job_id = secrets.token_hex(12)
             now = time.time()
             db.execute('INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?,?)', (job_id, owner, 'prepare', 'queued', json.dumps(payload), '{}', '[]', now, now, now))
@@ -58,8 +69,6 @@ class DemoReadiness:
 
     def prepare_demo_run(self, row, payload):
         owner, job_id = row['owner'], row['id']
-        if not self.runtime_status().get('ready'):
-            raise RuntimeError('Model disconnected. Reconnect before preparing the demo.')
         targets = [(i, payload['roster'][i]) for i in payload['enabledRoles']]
         # Optional reactions never provision or probe personal runtimes here.
         # Their protection is verified immediately before the actual reaction.

@@ -43,7 +43,7 @@ function renderPolicy(){
   if(p.protection!=='openshell'){el('policy-content').innerHTML='<p class="studio-muted">'+'Select an agent to view its permissions.'+'</p>';return;}
   if(!r){el('policy-content').innerHTML='<p role="status">Loading permissions…</p>';return;}
   const applying=policySaving||r.updating,applied=r.status==='applied'&&!applying,requested=r.requested||[],catalog=r.catalog||{};
-  const preparing=!crew&&['queued','running','stopping'].includes(data.agents?.find(a=>a.key===agentId)?.workspacePreparation);
+  const preparing=crew?!!r.preparing:['queued','running','stopping'].includes(data.agents?.find(a=>a.key===agentId)?.workspacePreparation);
   const busy=crew?!!r.busy:!!data.agents?.find(a=>a.key===agentId)?.pending;
   el('policy-agent').disabled=policySaving;
   const disabled=(!r.sandboxes?.length&&r.status!=='awaiting-first-mission')||preparing||busy||applying||policyLoading||data.deleting;

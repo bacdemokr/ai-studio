@@ -31,7 +31,7 @@ const assert=require('node:assert/strict'),{execFileSync}=require('node:child_pr
   await reactions.goto(process.env.BAC_TEST_URL||'http://127.0.0.1:8083');await reactions.waitForFunction(()=>window.BacStudio);
   await reactions.locator('.world-room-map [data-world-room=mission]').click();await reactions.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
   const retry=reactions.locator('#studio-crew-conversation [data-retry-reaction]');await retry.waitFor();assert.equal(await retry.count(),1);await retry.click();
-  await reactions.getByText('My own short reaction after recovery.',{exact:true}).waitFor();assert.equal(retries,1);assert.equal(await retry.count(),0);assert.equal(JSON.stringify(job.payload.outputs),unchanged);
+  await reactions.locator('#studio-crew-conversation').getByText('My own short reaction after recovery.',{exact:true}).waitFor();assert.equal(retries,1);assert.equal(await retry.count(),0);assert.equal(JSON.stringify(job.payload.outputs),unchanged);
   assert.deepEqual(errors,[]);console.log('PASS: actual preparation API, no inference during preparation, required Captain, readiness-gated launch, one failed reaction retry, other outputs preserved. Explicit fixture model.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

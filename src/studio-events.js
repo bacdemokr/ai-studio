@@ -89,6 +89,19 @@ function presenterTimetable(b,c){
  return Array.from({length:b.days},(_,d)=>`<h4>Day ${d+1}</h4><div class="event-table-wrap"><table class="event-rota-grid"><thead><tr><th>Booth / local time</th>${times.map(t=>'<th>'+t+'</th>').join('')}</tr></thead><tbody>${c.booths.map((booth,i)=>`<tr style="--rota-color:${['#263c20','#203747','#433b20','#402c37','#322c43','#203c37'][i%6]}"><th>${escape(booth.booth)}<small>${escape(booth.topic)}</small></th>${times.map(t=>{const r=visits.get([d+1,booth.booth,t].join(':'));return '<td'+(r?' class="is-assigned"':'')+'>'+(r?escape(r.presenter):'—')+'</td>';}).join('')}</tr>`).join('')}</tbody></table></div>`).join('')+'<p class="event-note">Presenter numbers are unassigned staffing slots. Blank slots have no scheduled visit.</p>';
 }
 let demoPreparationId=null,demoPreparing=false,demoPreparationError='',demoAutoPrepare=false;
+const crewWarmups=new Map();
+let crewStartupReady=false;
+function warmCrewOnOpen(){
+ if(!crewStartupReady||!connected||!agentId||changingAgent||removingAgent||!runtime.gateway||data.deleting)return;
+ const key=runtime.instance+':'+agentId,now=Date.now();
+ if((crewWarmups.get(key)||0)>now)return;
+ const target=agentId;crewWarmups.set(key,Infinity);
+ api('prepare-demo',{background:true},target).catch(()=>{
+  // A policy edit or current mission can briefly hold the preparation fence.
+  // The server deduplicates attempts, including terminal preparation failures.
+  crewWarmups.set(key,Date.now()+30000);
+ });
+}
 const excludedDemoGuests=new Set();
 function demoGuestChoices(){
  const skipped=new Map((matchingPreparation()?.payload.roundtable?.skipped||[]).map(m=>[m.key,m.detail]));
@@ -104,14 +117,14 @@ function syncDemoPreparation(){
  const prep=matchingPreparation(),status=prep?.status|| (demoPreparing?'queued':'idle');
  const error=demoPreparationError||prep?.result?.error||(status==='cancelled'?'Preparation stopped. Check again when ready.':'');
  const guests=demoGuestChoices();
- box.innerHTML='<div class="demo-ready-heading"><b>BaC crew</b><span>'+escape(!runtime.ready?'Connect model':error?'Needs attention':status==='done'?'Ready':status==='idle'?'Not checked':status==='queued'?'Queued':'Preparing')+'</span></div>'+(error?'<p class="event-plan-error" role="alert">'+escape(error)+'</p>':'')+(prep?.payload.checks||[]).filter(c=>c.required).map(c=>'<div class="demo-ready-row" data-status="'+escape(c.status)+'"><span>'+escape(c.name)+'</span><small>'+escape(c.detail||(c.status==='ready'?'Ready':c.status==='preparing'?'Preparing':'Needs attention'))+'</small></div>').join('')+'<button type="button" class="studio-secondary" id="studio-prepare-demo" '+(!runtime.ready||demoPreparing||['queued','running'].includes(status)?'disabled':'')+'>'+(status==='done'?'Check again':error?'Retry preparation':'Prepare demo')+'</button>'+(guests.length?'<div class="demo-guests"><b>Personal reactions · optional</b><div class="demo-guest-list">'+guests.map(g=>'<label class="demo-guest" data-available="'+String(!g.reason)+'"><input type="checkbox" data-demo-guest="'+escape(g.key)+'" '+(!g.reason&&!excludedDemoGuests.has(g.key)?'checked ':'')+(g.reason?'disabled ':'')+'><span>'+escape(g.name)+'</span>'+(g.reason?'<small>'+escape(g.reason)+'</small>':'')+'</label>').join('')+'</div></div>':'');
+ box.innerHTML='<div class="demo-ready-heading"><b>BaC crew</b><span>'+escape(error?'Needs attention':status==='done'?'Ready':status==='idle'?'Not checked':status==='queued'?'Queued':'Preparing')+'</span></div>'+(error?'<p class="event-plan-error" role="alert">'+escape(error)+'</p>':'')+(prep?.payload.checks||[]).filter(c=>c.required).map(c=>'<div class="demo-ready-row" data-status="'+escape(c.status)+'"><span>'+escape(c.name)+'</span><small>'+escape(c.detail||(c.status==='ready'?'Ready':c.status==='preparing'?'Preparing':'Needs attention'))+'</small></div>').join('')+'<button type="button" class="studio-secondary" id="studio-prepare-demo" '+(!runtime.gateway||demoPreparing||['queued','running'].includes(status)?'disabled':'')+'>'+(status==='done'?'Check again':error?'Retry preparation':'Prepare demo')+'</button>'+(guests.length?'<div class="demo-guests"><b>Personal reactions · optional</b><div class="demo-guest-list">'+guests.map(g=>'<label class="demo-guest" data-available="'+String(!g.reason)+'"><input type="checkbox" data-demo-guest="'+escape(g.key)+'" '+(!g.reason&&!excludedDemoGuests.has(g.key)?'checked ':'')+(g.reason?'disabled ':'')+'><span>'+escape(g.name)+'</span>'+(g.reason?'<small>'+escape(g.reason)+'</small>':'')+'</label>').join('')+'</div></div>':'');
  box.querySelectorAll('[data-demo-guest]').forEach(input=>input.onchange=()=>{if(input.checked)excludedDemoGuests.delete(input.dataset.demoGuest);else excludedDemoGuests.add(input.dataset.demoGuest);});
  el('prepare-demo').onclick=prepareDemo;
  syncEventLaunch();
- if(demoAutoPrepare&&runtime.ready&&!demoPreparing){demoAutoPrepare=false;queueMicrotask(prepareDemo);}
+ if(demoAutoPrepare&&runtime.gateway&&!demoPreparing){demoAutoPrepare=false;queueMicrotask(prepareDemo);}
 }
 async function prepareDemo(){
- if(demoPreparing||!el('demo-preparation')||!el('dialog').open||!runtime.ready)return;
+ if(demoPreparing||!el('demo-preparation')||!el('dialog').open||!runtime.gateway)return;
  const form=el('crew-form');demoAutoPrepare=false;demoPreparing=true;demoPreparationError='';demoPreparationId=null;syncDemoPreparation();
  try{const prepared=await api('prepare-demo',{enabledRoles:selectedDemoRoles()});if(el('crew-form')!==form)return;demoPreparationId=prepared.id;await refresh();}
  catch(error){if(el('crew-form')===form)demoPreparationError=error.message;}
@@ -165,7 +178,7 @@ async function crewForm(){
  form.onsubmit=async event=>{event.preventDefault();syncEventLaunch();if(el('launch-event').disabled)return;eventSubmitting=true;syncEventLaunch();const enabledRoles=selectedDemoRoles();try{const job=await api('jobs',{kind:'crew',workflow:'showcase',executionMode:'agent-led-v1',brief:eventBrief(form),enabledRoles,preparationId:demoPreparationId,guestKeys:demoGuestChoices().filter(g=>!g.reason&&!excludedDemoGuests.has(g.key)).map(g=>g.key),preset:true});selectedJob=job.id;selectedCrewRole=0;eventPackageTab='plan';el('dialog').close();await refresh();showBoard(false);}catch(error){demoPreparationError=error.message;syncDemoPreparation();}finally{eventSubmitting=false;syncEventLaunch();}};
  applyTemplate('zurich');
  const previous=data.preparation;
- demoPreparationId=previous?.valid&&['queued','running'].includes(previous.status)&&selectedDemoRoles().every(r=>previous.payload.enabledRoles.includes(r))?previous.id:null;
+ demoPreparationId=previous?.valid&&(previous.payload.background||['queued','running','error','cancelled'].includes(previous.status))&&selectedDemoRoles().every(r=>previous.payload.enabledRoles.includes(r))?previous.id:null;
  demoPreparationError='';demoAutoPrepare=!demoPreparationId;syncDemoPreparation();
 }
 function renderEventPackage(force=false){

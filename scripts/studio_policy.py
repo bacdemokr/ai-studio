@@ -77,7 +77,7 @@ class PolicyControls:
         report.update(agentId=profile['id'] if role is not None else owner, agentName=profile['name'], crewRole=role, history=json.loads(row['events']) if row else [],
                       updating=bool(row and row['updating']), requested=approved)
         with self.db() as db:
-            report['preparing'] = role is None and bool(db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind='prepare-agent' AND status IN ('queued','running','stopping')", (owner,)).fetchone())
+            report['preparing'] = bool(db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind=? AND status IN ('queued','running','stopping')", (owner, 'prepare-agent' if role is None else 'prepare')).fetchone())
             report['busy'] = role is not None and bool(db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind IN ('crew','crew-chat','prepare') AND status IN ('queued','running','waiting','stopping')", (owner,)).fetchone())
         # Candidates never grant access; assistant suggestions require explicit approval too.
         catalog = dict(report.get('catalog', CATALOG))

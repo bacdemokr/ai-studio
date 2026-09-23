@@ -67,6 +67,10 @@ def participants(payload):
 
 class RoundtableControls:
     def capture_roundtable(self, db, owner, prepared=None, selected=None):
+        # Startup only prepared built-in workspaces. Select and validate today's
+        # guests at launch, including agents hired after that warmup finished.
+        if prepared and prepared.get('background'):
+            prepared = None
         rows = db.execute('SELECT id,profile FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?) AND profile IS NOT NULL AND deleting=0 ORDER BY created,id', (owner,)).fetchall()
         from studio import avatar_for
         members = [dict(json.loads(r['profile']), key=r['id'], role='Event roundtable') for r in rows]
