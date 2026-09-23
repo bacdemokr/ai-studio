@@ -941,10 +941,12 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 
 .policy-recovery-actions{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.policy-recovery-actions:empty{display:none}.policy-host-help{margin:14px 0 22px;color:#aebfc9;font-size:14px}.policy-host-help summary{cursor:pointer}.policy-host-help pre{padding:12px 16px;background:#111b23;border:1px solid #304653;border-radius:5px;overflow:auto}
 
-.studio-notes-monitor { display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 0;border-bottom:1px solid #334650; }
-.studio-notes-monitor[hidden] { display:none; }
-.studio-notes-monitor small { display:block;color:#aebdc5;margin-top:.4rem; }
+.studio-radar-monitor { display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 0;border-bottom:1px solid #334650; }
+.studio-radar-monitor[hidden] { display:none; }
+.studio-radar-monitor small { display:block;color:#aebdc5;margin-top:.4rem; }
 .heartbeat-delivery { display:block; }
+
+.heartbeat-source { display:block;margin-top:.8rem;line-height:1.5;overflow-wrap:anywhere; }
 </style>
 <button class="studio-secondary" id="studio-room-action" hidden></button>
 <nav hidden class="studio-safety-bar" id="studio-safety-bar" aria-label="Studio controls"><span>YOU STAY IN CONTROL</span><button id="studio-security">◇ Security lab</button><button id="studio-help">Help &amp; fallback</button><button id="studio-reset">Reset mission board</button></nav>
@@ -79902,12 +79904,12 @@ render();
   const root = document.getElementById('agent-campus');
   const el = name => document.getElementById('studio-' + name);
   const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const titles = {'nvidia-webpage':'NVIDIA event page','nvidia-social':'NVIDIA social copy','nvidia-research':'NVIDIA theme research','event-page':'Event page studio',notes:'Notes Watcher',weather:'Live weather',web:'Research & papers',documents:'Three Takeaways',builder:'App builder',writer:'Slack announcements',memory:'Personal memory'};
+  const titles = {'nvidia-webpage':'NVIDIA event page','nvidia-social':'NVIDIA social copy','nvidia-research':'NVIDIA theme research','event-page':'Event page studio',radar:'Tech Radar',weather:'Live weather',web:'Research & papers',documents:'Three Takeaways',builder:'App builder',writer:'Slack announcements',memory:'Personal memory'};
   const personas = {guide:'Explains ideas and turns them into practical plans.',maker:'Turns ideas into drafts, prototypes and small apps.',analyst:'Researches questions and compares the evidence.'};
   const tones={kind:['Kind','Warm & encouraging'],direct:['Direct','Clear & candid'],playful:['Playful','Light & witty'],cynical:['Cynical','Dry humor & skepticism']};
   const verbosityLabels={brief:'Brief',balanced:'Balanced',verbose:'Detailed'};
   const capabilities={
-    notes:['Notes Watcher','New uploads → an automatic summary','Heartbeat every 30 seconds · quiet when unchanged'],
+    radar:['Tech Radar','Technical articles and announcements → a short summary','Every 30 seconds · never repeats a shared article'],
     builder:['Build an interactive app','An idea → a playable HTML app','Try: a reaction-time game'],
     documents:['Three Takeaways','Any question or document → three clear points','Always: 1. · 2. · 3. — including event reactions'],
     web:['Research & papers','Recent papers → dated sources and a comparison','Try: find 3 recent arXiv papers on RAG'],
@@ -79927,7 +79929,7 @@ render();
   }
   function voiceSummary(p){return (p.tonePrompt||tones[p.tone]?.[0]||'Kind')+' · '+(verbosityLabels[p.verbosity]||'Balanced')+' answers';}
   const missions = [
-    {id:'notes',icon:'◷',title:'Watch new meeting notes',sub:'Upload once → receive an automatic summary',tag:'HEARTBEAT',color:'#99c8e3',prompt:''},
+    {id:'radar',icon:'◷',title:'Discover something new',sub:'One unread technical article at a time',tag:'HEARTBEAT',color:'#99c8e3',prompt:''},
     {id:'builder',icon:'⌘',title:'Make something playable',sub:'An idea → a tiny working app',tag:'CREATE',color:'#b4dc83',prompt:'Build a polished reaction-time game as a single self-contained HTML file. Use a dark NVIDIA-inspired style, green action buttons, keyboard and touch controls, and a personal best score. Explain how to play. Save it in artifacts/.'},
     {id:'weather',icon:'☀',title:'Do I need an umbrella?',sub:'Live weather → one practical decision',tag:'EXPLORE',color:'#e8cd80',prompt:'Check the current weather in Zurich. For a short walk now, do I need an umbrella or a jacket? Give the observation time, temperature and precipitation, then one practical recommendation. Keep it to 4 short bullets and cite your sources. Do not generate a file.'},
     {id:'documents',icon:'▤',title:'Find three takeaways',sub:'PDF or PPTX → 3 key points with sources',tag:'UNDERSTAND',color:'#99c8e3',prompt:'Read the most recently uploaded document in inbox/. For PDF or PPTX use its .txt companion. Give exactly 3 numbered takeaways, under 150 words. Include any next step within point 3. Cite the filename and page or slide number for each takeaway, or quote the source if it has no page markers. Do not infer missing images, charts or numbers. No generated file.'},
@@ -79955,7 +79957,7 @@ render();
   const policyPanel=document.createElement('details');policyPanel.id='studio-policy-panel';policyPanel.className='studio-inline-panel';policyPanel.innerHTML='<summary>Approved websites</summary>';el('policies').before(policyPanel);policyPanel.append(el('policies'));policyPanel.ontoggle=()=>{if(policyPanel.open)loadPolicy();};
   el('workspace').append(el('reset'));el('reset').className='studio-secondary';
 
-  const demoSkills=['weather','notes','documents','writer'],extraSkills=['web','builder','memory'];
+  const demoSkills=['weather','radar','documents','writer'],extraSkills=['web','builder','memory'];
   const skillCards=keys=>keys.map(key=>{const [title,detail,example]=capabilities[key];return `<label><input type="checkbox" value="${key}"><span><strong>${title}</strong><small>${detail}</small><em>${example}</em></span></label>`;}).join('');
   el('skill-picker').innerHTML=skillCards(demoSkills)+'<div hidden>'+skillCards(extraSkills)+'</div>';
   el('tone-picker').innerHTML=Object.entries(tones).map(([key,[title,detail]])=>`<button type="button" data-tone="${key}" aria-pressed="${key==='kind'}"><strong>${title}</strong><small>${detail}</small></button>`).join('');
@@ -80063,9 +80065,9 @@ render();
     el('delete-agent').textContent=data.deleting?'Retry deletion':'Delete agent';
     el('agent-policy').hidden=profile?.protection!=='openshell';
     el('agent-policy').disabled=!!data.deleting;
-    let monitor=el('notes-monitor');if(!monitor){monitor=document.createElement('div');monitor.id='studio-notes-monitor';monitor.className='studio-notes-monitor';el('agent-policy').after(monitor);}
-    const watch=data.notesWatch;monitor.hidden=!watch;
-    if(watch){monitor.innerHTML='<span><b>Heartbeat</b> · '+escape(watch.paused?'Paused':watch.state)+'<small>Checks new uploads every 30 seconds'+(watch.lastChecked?' · Last checked '+new Date(watch.lastChecked*1000).toLocaleTimeString(): '')+'</small></span><button type="button" class="studio-secondary">'+(watch.paused?'Resume':'Pause')+'</button>';const button=monitor.querySelector('button');button.disabled=!!data.deleting;button.onclick=async()=>{button.disabled=true;try{await api('heartbeat',{paused:!watch.paused});await refresh();}catch(error){alert(error.message);button.disabled=false;}};}
+    let monitor=el('radar-monitor');if(!monitor){monitor=document.createElement('div');monitor.id='studio-radar-monitor';monitor.className='studio-radar-monitor';el('agent-policy').after(monitor);}
+    const watch=data.techRadar;monitor.hidden=!watch;
+    if(watch){monitor.innerHTML='<span><b>Heartbeat</b> · '+escape(watch.paused?'Paused':watch.state)+'<small>One unread article every 30 seconds'+(watch.lastChecked?' · Last checked '+new Date(watch.lastChecked*1000).toLocaleTimeString(): '')+'</small></span><button type="button" class="studio-secondary">'+(watch.paused?'Resume':'Pause')+'</button>';const button=monitor.querySelector('button');button.disabled=!!data.deleting;button.onclick=async()=>{button.disabled=true;try{await api('heartbeat',{paused:!watch.paused});await refresh();}catch(error){alert(error.message);button.disabled=false;}};}
 
     el('agent-policy').setAttribute('aria-label','OpenShell Policy for '+(profile?.name||'this agent'));
     el('edit-agent').disabled=!!data.deleting;el('send').disabled=!!data.deleting;
@@ -80251,7 +80253,7 @@ root.addEventListener('click',async event=>{
       const target=agentId;notice.innerHTML='<p>'+escape(data.profile.name)+' needs '+escape(titles[mission.id])+' for this mission.</p><button type="button" class="studio-primary">Add skill &amp; use mission</button><small>OpenShell permissions stay unchanged.</small>';
       notice.querySelector('button').onclick=async()=>{const action=notice.querySelector('button');action.disabled=true;try{if(agentId!==target)throw new Error('The selected agent changed. Choose a mission again.');await api('profile',{...data.profile,skills:[...new Set([...data.profile.skills,mission.id])]},target);await refresh();notice.remove();if(agentId===target)button.click();}catch(error){notice.querySelector('p').textContent=error.message;action.disabled=false;}};
       notice.scrollIntoView({block:'nearest'});return;
-    }el('mission-skill-notice')?.remove();closeSurface();setRoom('lounge');if(mission.id==='notes'){sampleDocument();return;}skill=mission.id;const city=runtime.location?.city||'Zurich';el('prompt').value=['weather','writer'].includes(mission.id)?mission.prompt.replaceAll('Zurich',city):mission.prompt;el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===button));if(mission.id==='documents'&&!data.files.some(f=>f.kind==='inbox')){sampleDocument();}el('prompt').focus({preventScroll:true});};
+    }el('mission-skill-notice')?.remove();closeSurface();setRoom('lounge');if(mission.id==='radar'){el('radar-monitor')?.scrollIntoView({block:'nearest'});return;}skill=mission.id;const city=runtime.location?.city||'Zurich';el('prompt').value=['weather','writer'].includes(mission.id)?mission.prompt.replaceAll('Zurich',city):mission.prompt;el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===button));if(mission.id==='documents'&&!data.files.some(f=>f.kind==='inbox')){sampleDocument();}el('prompt').focus({preventScroll:true});};
   el('chat').onsubmit=async e=>{e.preventDefault();if(!runtime.ready||data.deleting||chatSending||comparisonSending){syncComposer();return;}el('chat-error').hidden=true;if(e.submitter?.id==='studio-send-all')return askAllAgents();const draft=captureChatDraft();chatSending=true;syncComposer();try{const result=await api('jobs',{kind:'chat',prompt:draft.prompt,skill,images:draft.images});selectedJob=result.id;acknowledgeChatDraft(draft);await refresh();el('conversation').scrollTop=el('conversation').scrollHeight;}catch(error){el('chat-error').textContent=error.message;el('chat-error').hidden=false;}finally{chatSending=false;syncComposer();}};
   el('prompt').addEventListener('input',()=>{skill=null;});
   function sampleDocument(){dialog('Upload notes','<h3>Give your agent something to read.</h3><p>Use your own PDF, PPTX, CSV, Markdown or text file, or try a clearly labeled sample meeting note.</p><div class="studio-dialog-actions"><button class="studio-secondary" id="studio-own-document">Upload my file</button><button class="studio-primary" id="studio-sample-document">Use sample notes</button></div>');el('own-document').onclick=()=>{el('dialog').close();el('upload').click();};el('sample-document').onclick=async()=>{try{await api('upload',{name:'sample-meeting-notes.md',content:'# Sample meeting notes — fictional demo data\n\nWe agreed to keep the agent demo to 10 minutes.\nDylan will check the weather-demo endpoint by Thursday.\nMorgan will draft a short invitation; no deadline was agreed.\nWe still need someone to confirm the venue.\nDo not send invitations until the venue is confirmed.\n'});el('dialog').close();await refresh();}catch(e){alert(e.message);}};}
@@ -80975,7 +80977,7 @@ function renderConversation(){
   log.innerHTML=(data.jobs.length>=30?'<small class="chat-history-note">Recent conversations · up to 30 missions</small>':'')+(jobs.length?jobs.map(j=>{
     const held=shieldReplyHeld(j),result=held?{}:j.result||{},pending=['queued','running','waiting','stopping'].includes(j.status);
     const status={queued:'Waiting to start…',running:j.events?.at(-1)?.title==='Preparing OpenShell'?'Preparing your protected runtime…':'Working on your request…',waiting:'Waiting for a decision.',stopping:'Stopping after the current model call…',cancelled:'Stopped.'}[j.status];
-    return '<article class="chat-turn" data-chat-turn="'+escape(j.id)+'">'+(j.kind==='heartbeat'?'':'<div class="chat-message chat-user"><small>'+escape(j.payload.sender||'You')+'</small><div>'+escape(j.payload.prompt||'').replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images)+'</div></div>')+'<div class="chat-message chat-agent"><small>'+escape(data.profile?.name||'Agent')+(j.kind==='heartbeat'?' · Heartbeat':'')+' · '+escape(new Date(j.created*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))+'</small>'+(j.kind==='heartbeat'?'<small class="heartbeat-delivery">'+escape(result.telegram==='sent'?'Sent to Telegram':result.telegram==='failed'?'Telegram delivery failed. Your summary is saved here.':result.telegram==='pending'?'Telegram delivery unconfirmed':'')+'</small>':'')+customSkillMarkup(result.activity)+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(result.answer||result.error||(pending?'':status||'No text reply was returned.'))+'</div>')+(!held&&pending?'<div class="chat-progress" role="status">'+escape(status)+(j.status!=='stopping'?'<button type="button" data-chat-stop="'+escape(j.id)+'">Stop</button>':'')+'</div>':'')+(result.files||[]).filter(f=>!f.endsWith('.md')||!result.answer).map(f=>'<details class="chat-file"><summary data-chat-file="'+escape(f)+'">'+escape(f.split('/').pop())+'</summary><div class="chat-file-body"></div></details>').join('')+'</div></article>';
+    return '<article class="chat-turn" data-chat-turn="'+escape(j.id)+'">'+(j.kind==='heartbeat'?'':'<div class="chat-message chat-user"><small>'+escape(j.payload.sender||'You')+'</small><div>'+escape(j.payload.prompt||'').replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images)+'</div></div>')+'<div class="chat-message chat-agent"><small>'+escape(data.profile?.name||'Agent')+(j.kind==='heartbeat'?' · Heartbeat':'')+' · '+escape(new Date(j.created*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))+'</small>'+(j.kind==='heartbeat'?'<small class="heartbeat-delivery">'+escape(result.telegram==='sent'?'Sent to Telegram':result.telegram==='failed'?'Telegram delivery failed. Your summary is saved here.':result.telegram==='pending'?'Telegram delivery unconfirmed':'')+'</small>':'')+customSkillMarkup(result.activity)+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(result.answer||result.error||(pending?'':status||'No text reply was returned.'))+'</div>')+(!held&&pending?'<div class="chat-progress" role="status">'+escape(status)+(j.status!=='stopping'?'<button type="button" data-chat-stop="'+escape(j.id)+'">Stop</button>':'')+'</div>':'')+(!held&&result.source?'<small class="heartbeat-source">'+'Technical discovery · '+'Published '+escape(result.source.published)+' · Feed excerpt<br><a href="'+escape(result.source.url)+'" target="_blank" rel="noopener noreferrer">'+escape(result.source.title)+'</a></small>':'')+(result.files||[]).filter(f=>!f.endsWith('.md')||!result.answer).map(f=>'<details class="chat-file"><summary data-chat-file="'+escape(f)+'">'+escape(f.split('/').pop())+'</summary><div class="chat-file-body"></div></details>').join('')+'</div></article>';
   }).join(''):'<p class="chat-empty">Start a conversation. Your questions and replies will stay here.</p>');
   loadChatImages(log,agentId);
   if(follow)log.scrollTop=log.scrollHeight;else log.scrollTop=top;
@@ -81111,7 +81113,7 @@ el('color-picker').onclick=e=>{const b=e.target.closest('[data-avatar-color]');i
 el('accessory').onchange=updateDraft;el('name').addEventListener('input',updateDraft);
 const roleTemplates=[
   {label:'Weather buddy',summary:'Current weather and practical outdoor advice.',purpose:'Check current weather and help me decide what to wear or whether to go outside. Keep advice short and practical.',skills:['weather']},
-  {label:'Notes Watcher',summary:'New uploads, summarized automatically.',purpose:'Watch my uploaded meeting notes every 30 seconds. When new notes appear, summarize key points, actions and open questions in my chosen tone. Stay quiet when nothing changes.',skills:['notes']},
+  {label:'Tech Radar',summary:'One technical discovery every 30 seconds.',purpose:'Every 30 seconds, share one unread technical article or announcement from NVIDIA or Hugging Face blogs in my chosen tone. Include older articles; never repeat. Skip politics, stocks and earnings.',skills:['radar']},
   {label:'Three Takeaways',summary:'Every answer in three clear points.',purpose:'Turn any question, document or event into exactly three concise takeaways, numbered 1, 2 and 3. Keep my chosen tone. Cite sources when supplied, and include any next step within the three points.',skills:['documents']},
   {label:'Slack Announcer',summary:'Emoji-led updates in your chosen voice.',purpose:'Answer in the style of a concise Slack announcement: an emoji-led headline and short, useful lines. Keep my chosen tone and the supplied facts. Draft only; never send or publish.',skills:['writer']},
 ];
@@ -81126,7 +81128,7 @@ el('purpose').addEventListener('input',()=>{el('role-templates').querySelectorAl
 el('apply-prompt').onclick=()=>{
   syncCreatorTone();
   const role=creatorPrompt().purpose.toLowerCase();
-  const rules={notes:/heartbeat|watch.*notes|monitor.*upload|하트비트|메모.*감시/,weather:/weather|forecast|travel|trip|날씨|여행/,web:/research|paper|arxiv|논문|search|online|web|travel|trip|cafe|restaurant|리서치|조사|검색|웹|여행|맛집|카페/,documents:/takeaway|three points|meeting|notes|회의|메모|document|report|pdf|ppt|slides|deck|summar|요약|슬라이드|csv|spreadsheet|문서|보고서|자료|엑셀/,builder:/app|game|prototype|code|website|앱|게임|코딩|개발|웹사이트/,writer:/slack|announcement|공지|message|email|메시지|메일|writ|draft|content|invitation|social|campaign|marketing|copy|작성|글쓰기|초대|마케팅|콘텐츠/,memory:/remember|memor|preference|기억|선호/};
+  const rules={radar:/heartbeat|tech radar|technical feeds|하트비트|기술.*소식/,weather:/weather|forecast|travel|trip|날씨|여행/,web:/research|paper|arxiv|논문|search|online|web|travel|trip|cafe|restaurant|리서치|조사|검색|웹|여행|맛집|카페/,documents:/takeaway|three points|meeting|notes|회의|메모|document|report|pdf|ppt|slides|deck|summar|요약|슬라이드|csv|spreadsheet|문서|보고서|자료|엑셀/,builder:/app|game|prototype|code|website|앱|게임|코딩|개발|웹사이트/,writer:/slack|announcement|공지|message|email|메시지|메일|writ|draft|content|invitation|social|campaign|marketing|copy|작성|글쓰기|초대|마케팅|콘텐츠/,memory:/remember|memor|preference|기억|선호/};
   selectRoleSkills(Object.entries(rules).filter(([skill,rule])=>rule.test(role)).map(([skill])=>skill));
 };
 el('onboarding').querySelectorAll('[name=protection]').forEach(input=>input.onchange=updateDraft);

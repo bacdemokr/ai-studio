@@ -4,7 +4,7 @@
 
 - `main`: the stable demo used by normal installations.
 - `v0.1`: a fixed tag for the baseline before Stage 3 OpenShell work. Keep released tags unchanged.
-- `heartbeat`: isolated Notes Watcher and optional Telegram delivery, based on `dev`.
+- `heartbeat`: isolated Tech Radar and optional Telegram delivery, based on `dev`.
 - `dev`: development and testing, including Stage 3 OpenShell protection and connection visualization.
 
 For development, switch once with `git switch dev`, then use `git pull --ff-only` and `./bac start`. Normal users stay on `main`.
@@ -44,7 +44,7 @@ Test URL variables differ in older browser scripts; inspect each before running 
 
 ## Heartbeat tests
 
-`tests/test_notes_heartbeat.py` covers deduplication, pause/resume, tenant isolation, failed delivery and session credentials. For UI testing, run `python3 -B tests/fixture_heartbeat.py`, then `BASE_URL=http://127.0.0.1:8087 node tests/heartbeat-browser.cjs` with Playwright. This fixture sends no external messages.
+`tests/test_tech_radar.py` covers unread article selection, feed caching/failures, deduplication, pause/resume, tenant isolation, failed delivery and session credentials. For UI testing, run `python3 -B tests/fixture_heartbeat.py`, then `BASE_URL=http://127.0.0.1:8087 node tests/heartbeat-browser.cjs` with Playwright. This fixture sends no external messages.
 
 `python3 -B tests/heartbeat_protocol.py /path/to/bac-data/openclaw` uses the installed pinned runtime read-only with temporary configuration and random ports. It waits for a real 30-second native heartbeat and tests exec/read/write flow using a deterministic protocol fixture, not a real model. It does not touch the live gateway. Real-model summary quality and delivery to a real Telegram chat require a separate rehearsal.
 

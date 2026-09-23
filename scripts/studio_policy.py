@@ -96,7 +96,9 @@ class PolicyControls:
             except ValueError:
                 pass
         from research_http import RESEARCH_APPROVALS
-        report['recommended'] = list(RESEARCH_APPROVALS) if role is not None else []
+        from tech_radar import SOURCES
+        radar_hosts=[source['host'] for source in SOURCES] if role is None and 'radar' in profile.get('skills',[]) else []
+        report['recommended'] = list(RESEARCH_APPROVALS) if role is not None else ['host:'+host for host in radar_hosts]
         for key in approved + report['recommended']:
             catalog[key] = permission_rule(key)
         with self.db() as db:
@@ -139,6 +141,8 @@ class PolicyControls:
                             pending.setdefault(host, 'suggested')
                     except ValueError:
                         pass
+        for host in radar_hosts:
+            if host not in covered:pending.setdefault(host,'suggested')
         report['pendingAccess'] = [{'host': host, 'reason': reason} for host, reason in pending.items()]
         report['catalog'] = catalog
         return report

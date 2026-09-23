@@ -77,7 +77,7 @@ class StudioTests(unittest.TestCase):
         self.person, _ = self.studio.session()
         self.owner = self.person['id']
         # General chat fixtures exclude the independent background monitor.
-        self.studio.onboard(self.owner, {'name': 'Jinny', 'persona': 'maker', 'skills': [s for s in agent_runtime.SKILLS if s != 'notes']})
+        self.studio.onboard(self.owner, {'name': 'Jinny', 'persona': 'maker', 'skills': [s for s in agent_runtime.SKILLS if s != 'radar']})
 
     def tearDown(self):
         self.temp.cleanup()

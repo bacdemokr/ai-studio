@@ -58,7 +58,7 @@ The model runs outside BaC's Docker stack. Use a model with tool calling; a keyl
 2. **Agent lounge:** chat, inspect files, or approve OpenShell access.
 3. **Multi-Agent demo (BaC Planning):** prepare the crew and run an event. View each agent's work in Results and Activity.
 
-**Heartbeat:** hire **Notes Watcher**, then upload meeting notes. OpenClaw checks every 30 seconds and posts a summary only when notes change. Pause or resume in the agent panel. [Telegram setup and details](docs/heartbeat.md).
+**Heartbeat:** hire **Tech Radar**. Every 30 seconds, it summarizes one technical article it has not shared before, with a source link. Pause or resume in the agent panel. [Telegram setup and details](docs/heartbeat.md).
 
 Agents research, schedule and write. The app coordinates the workflow, validates artifacts and renders data such as timetables. Failed runs remain visible.
 

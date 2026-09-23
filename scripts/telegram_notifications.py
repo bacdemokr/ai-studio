@@ -60,6 +60,6 @@ def test(participant, lease):
     from studio import Problem
     value=session_secrets.get(key(participant),lease)
     if not value:raise Problem('Connect Telegram in this tab first.',409)
-    try:request(value['token'],'sendMessage',{'chat_id':value['chatId'],'text':'BaC Telegram connected. New Notes Watcher updates will appear here.'})
+    try:request(value['token'],'sendMessage',{'chat_id':value['chatId'],'text':'BaC Telegram connected. New Tech Radar updates will appear here.'})
     except RuntimeError as error:raise Problem(str(error),502) from None
     return {'sent':True}

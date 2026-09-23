@@ -228,7 +228,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if self.path == '/api/settings/start':return self.json_response(runtime_settings.start_gateway())
                 return self.json_response(runtime_settings.save(studio,data))
             routes = {
-                '/api/heartbeat': lambda: studio.notes.control(owner, data),
+                '/api/heartbeat': lambda: studio.heartbeat.control(owner, data),
                 '/api/agents': lambda: studio.add_agent(row['id'], data),
                 '/api/onboard': lambda: studio.onboard(owner, data),
                 '/api/profile': lambda: studio.configure(owner, data),
@@ -284,7 +284,7 @@ def main():
         pass
     finally:
         server.studio.stop.set()
-        if hasattr(server.studio, 'notes_worker'):server.studio.notes_worker.join(timeout=15)
+        if hasattr(server.studio, 'heartbeat_worker'):server.studio.heartbeat_worker.join(timeout=15)
         server.server_close()
 
 
