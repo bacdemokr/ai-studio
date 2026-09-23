@@ -76,7 +76,8 @@ class StudioTests(unittest.TestCase):
         self.studio = Studio(self.temp.name, self.adapter, start_worker=False)
         self.person, _ = self.studio.session()
         self.owner = self.person['id']
-        self.studio.onboard(self.owner, {'name': 'Jinny', 'persona': 'maker', 'skills': list(agent_runtime.SKILLS)})
+        # General chat fixtures exclude the independent background monitor.
+        self.studio.onboard(self.owner, {'name': 'Jinny', 'persona': 'maker', 'skills': [s for s in agent_runtime.SKILLS if s != 'radar']})
 
     def tearDown(self):
         self.temp.cleanup()
@@ -414,6 +415,32 @@ class StudioTests(unittest.TestCase):
             self.assertFalse(entry['tools']['fs']['workspaceOnly'])
             self.assertIn('exec', config['tools']['deny'])
             self.assertEqual(agent_runtime.config_path().stat().st_mode & 0o777, 0o600)
+
+    def test_three_takeaways_can_read_supplied_links_without_research_skill(self):
+        with patch('agent_runtime.root', return_value=Path(self.temp.name)/'native'):
+            agent_runtime.save_config(agent_runtime.initial_config())
+            workspace=Path(self.temp.name)/'documents'
+            agent_runtime.register('bac-test',workspace,{'name':'Scout','persona':'guide','skills':['documents']})
+            entry=json.loads(agent_runtime.config_path().read_text())['agents']['entries']['bac-test']
+            self.assertIn('web_fetch',entry['tools']['allow'])
+            self.assertNotIn('web_search',entry['tools']['allow'])
+            self.assertIn('exec',entry['tools']['deny'])
+            skill=(workspace/'skills/bac-documents/SKILL.md').read_text()
+            self.assertIn('Use web_fetch to read a public HTTP(S) link',skill)
+            self.assertIn('exactly three top-level numbered points',skill)
+
+    def test_protected_takeaways_keep_supplied_link_reads_inside_openshell(self):
+        with patch('agent_runtime.root', return_value=Path(self.temp.name)/'native'), patch('agent_runtime.ensure_openshell'):
+            agent_runtime.save_config(agent_runtime.initial_config())
+            workspace=Path(self.temp.name)/'protected-documents'
+            agent_runtime.register('bac-test',workspace,{'name':'Scout','persona':'guide','skills':['documents'],'protection':'openshell'})
+            entry=json.loads(agent_runtime.config_path().read_text())['agents']['entries']['bac-test']
+            self.assertNotIn('web_fetch',entry['tools']['allow'])
+            self.assertIn('web_fetch',entry['tools']['deny'])
+            self.assertEqual(entry['tools']['exec']['host'],'sandbox')
+            skill=(workspace/'skills/bac-documents/SKILL.md').read_text()
+            self.assertIn('request approval for the exact host',skill)
+            self.assertNotIn('Use web_fetch to read',skill)
 
     def test_gateway_timeout_is_actionable_and_never_replays_request(self):
         import socket

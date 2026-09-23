@@ -1,9 +1,10 @@
 # Personal-agent skill demo
 
-These are six BaC-authored workspace skills registered in OpenClaw as `bac-web`, `bac-weather`, `bac-documents`, `bac-builder`, `bac-writer` and `bac-memory`. They are not downloaded marketplace packages or six independent tool engines. OpenClaw discovers the selected SKILL.md files; the adapter separately grants the tools they need. Skill instructions guide behavior, while tool permissions and optional OpenShell policies enforce access boundaries. Ordinary model conversation remains possible without those tools.
+These are seven BaC-authored workspace skills registered in OpenClaw as `bac-web`, `bac-weather`, `bac-documents`, `bac-builder`, `bac-writer`, `bac-memory` and `bac-radar`. They are not downloaded marketplace packages or independent tool engines. OpenClaw discovers the selected SKILL.md files; the adapter separately grants the tools they need. Skill instructions guide behavior, while tool permissions and optional OpenShell policies enforce access boundaries. Ordinary model conversation remains possible without those tools.
 
 | Skill | Short demonstration | Evidence to inspect |
 | --- | --- | --- |
+| Tech Radar | Hire, connect the model, and wait for the native 30-second heartbeat. | One unread technical article per check; persona-based summary in chat and optionally Telegram. [Setup](heartbeat.md). |
 | Research & papers | Find three recent arXiv RAG preprints and choose one to read first. | Submission dates, authors, abstract links, query and retrieval date; abstract-based comparison, not a claimed full-paper review. |
 | Live weather | Ask whether an outdoor break is a good idea in the chosen city. | Resolved city, observation time, units, real current conditions and separate hourly forecast. |
 | Three Takeaways | Ask any question or upload a document; get exactly 1., 2., 3. | Filename and short supporting quotations; absent dates/owners marked missing. TXT, Markdown, CSV, PDF and PPTX; PDF text extraction needs Poppler. Scanned-page OCR is not provided. |
@@ -25,7 +26,7 @@ The September 20, 2026 direct endpoint check received HTTP 429, so no live paper
 
 ## Registration
 
-Profiles and selected skill IDs persist at Hiring; personal-agent native files are written on the next Run. The four permanent crew members receive their role definitions and skills at studio creation, so they can also chat before an event. Source of truth: `scripts/agent_runtime.py::SKILLS` and `register()`. `src/studio.js` provides the matching capability cards and example requests. Existing IDs are preserved so saved agents do not lose their loadouts. Restarting the app refreshes the in-process registration cache; the next run rewrites the equipped skill instructions. Restart also invalidates session-only credentials.
+Profiles and selected skill IDs persist at Hiring; workspace definitions are written at Hiring. Protected agents and Tech Radar warm their native runtime in the background; other agents register on the next Run. The four permanent crew members receive their role definitions and skills at studio creation, so they can also chat before an event. Source of truth: `scripts/agent_runtime.py::SKILLS` and `register()`. `src/studio.js` provides the matching capability cards and example requests. Existing IDs are preserved so saved agents do not lose their loadouts. Restarting the app refreshes the in-process registration cache; the next run rewrites the equipped skill instructions. Restart also invalidates session-only credentials.
 
 ## Persona transparency
 
@@ -59,3 +60,5 @@ Possible cynical reaction: “Apparently I’m the weather desk now. Unfortunate
 Three Takeaways uses exactly three numbered points for personal chat, clarifying questions, capability limitations and BaC reactions. Any next step belongs inside those three points. Slack announcements uses a relevant emoji headline and short lines, preserving the chosen tone rather than making every agent cheerful. With both skills, the response has three numbered, emoji-led points and no separate heading. Crew artifact contracts retain their required formats.
 
 The same signature rules are read from the project SKILL.md into personal SOUL.md and included in both chat and reaction prompts. The app displays the model's answer; it does not manufacture three points or insert emoji after generation. These remain model instructions, not a guarantee that every model will comply. Existing preset roles are migrated by exact text match; custom role/tone text and memory are preserved. The independent brief idle bubbles are authored UI flavor, not model responses or a skill execution trace.
+
+Three Takeaways can also read user-supplied public links. Standard agents use native `web_fetch`; protected agents use sandboxed curl and require approval for the destination. The three-point response format remains the same.

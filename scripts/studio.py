@@ -238,6 +238,8 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 db.execute('UPDATE agent_policies SET updating=0')
                 db.execute("UPDATE jobs SET status='error',result=?,updated=? WHERE status IN ('running','stopping')",
                            (json.dumps({'error': 'The app restarted during this task. Inspect saved files before retrying.'}), time.time()))
+        from studio_heartbeat import RadarHeartbeat
+        self.heartbeat = RadarHeartbeat(self)
         self.retire_host_file_grants()
         os.chmod(self.db_path, 0o600)
         with self.db() as db:
@@ -247,6 +249,13 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
         for owner in owners:
             profile = self.profile(owner)
             if profile:
+                if 'notes' in profile.get('skills', []):
+                    profile['skills'] = list(dict.fromkeys('radar' if key=='notes' else key for key in profile['skills']))
+                    if profile.get('purpose','').startswith('Watch my uploaded meeting notes every 30 seconds.'):
+                        profile['purpose'] = 'Every 30 seconds, summarize one technical article or announcement not yet shared. Share useful discoveries in my chosen tone; skip politics, stocks and company earnings.'
+                    with self.db() as db:
+                        db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(profile), owner))
+                        db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
                 if profile.get('purpose') in PRESET_UPDATES:
                     profile['purpose'] = PRESET_UPDATES[profile['purpose']]
                     with self.db() as db:
@@ -256,8 +265,17 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
             self.initialize_crew_workspaces(owner)
             user_location.sync(self.workspace(owner))
         if start_worker:
+            with self.db() as db:
+                for owner in owners:
+                    profile=self.profile(owner)
+                    if profile and 'radar' in profile.get('skills',[]):
+                        self.heartbeat.disable(profile['id'])
+                        if not db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind='prepare-agent' AND status='queued'", (owner,)).fetchone():
+                            self.queue_agent_preparation(db, owner, profile)
             self.worker = threading.Thread(target=self.work, daemon=True, name='bac-agent-queue')
             self.worker.start()
+            self.heartbeat_worker = threading.Thread(target=self.heartbeat.work, daemon=True, name='radar-heartbeat-relay')
+            self.heartbeat_worker.start()
 
     def retire_host_file_grants(self):
         """Retire the removed file bridge without touching original host files.
@@ -451,7 +469,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
     @staticmethod
     def queue_agent_preparation(db, owner, profile):
         # Durable, model-free warmup shares the worker and deletion fence with chat.
-        if profile.get('protection') != 'openshell':
+        if profile.get('protection') != 'openshell' and 'radar' not in profile.get('skills', []):
             return
         now = time.time()
         db.execute('INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?,?)',
@@ -476,7 +494,10 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
             profile['name'] = self.unique_agent_name(db, participant, profile['name'], owner)
             db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(profile), owner))
             db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
+        self.heartbeat.disable(profile['id'])
         self.provisioned.discard(profile['id'])
+        with self.db() as db:self.queue_agent_preparation(db, owner, profile)
+        self.signal.set()
         return profile
 
     def delete_agent(self, owner, data):
@@ -509,6 +530,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                                (status, json.dumps(events[-40:]), time.time(), job['id']))
                 # 2 waits for the worker to release all calls; 1 is native cleanup (retryable on failure).
                 db.execute('UPDATE agents SET deleting=? WHERE id=?', (2 if waiting or row['deleting'] == 2 else 1, owner))
+            if 'radar' in profile.get('skills',[]):self.heartbeat.disable(profile['id'])
             if waiting:
                 self.signal.set()
                 return {'deleting': owner, 'agentId': owner}
@@ -543,7 +565,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 db.execute('BEGIN IMMEDIATE')
                 db.execute('DELETE FROM survey_responses WHERE token IN (SELECT token FROM event_surveys WHERE owner=?)', (owner,))
                 db.execute('DELETE FROM event_surveys WHERE owner=?', (owner,))
-                for table in ('jobs', 'agent_policies'):
+                for table in ('jobs', 'agent_policies', 'heartbeat_controls', 'heartbeat_receipts'):
                     db.execute('DELETE FROM ' + table + ' WHERE owner=?', (owner,))
                 db.execute('DELETE FROM agents WHERE id=?', (owner,))
                 db.execute('UPDATE participants SET profile=NULL WHERE id=?', (owner,))
@@ -607,6 +629,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
             for agent in agents:
                 latest = db.execute("SELECT id,status,CASE WHEN status='done' THEN substr(json_extract(result,'$.answer'),1,1200) ELSE NULL END AS answerPreview FROM jobs WHERE owner=? AND kind NOT IN ('crew','crew-chat','prepare','prepare-agent') AND created >= (SELECT reset_at FROM agents WHERE id=?) ORDER BY created DESC,rowid DESC LIMIT 1", (agent['key'], agent['key'])).fetchone()
                 warmup = db.execute("SELECT status FROM jobs WHERE owner=? AND kind='prepare-agent' ORDER BY created DESC LIMIT 1", (agent['key'],)).fetchone()
+                agent['techRadar'] = self.heartbeat.status(agent['key'], agent)
                 agent['workspacePreparation'] = warmup['status'] if warmup else None
                 agent['latestMission'] = dict(latest) if latest else None
                 agent['avatar'] = avatar_for(agent['key'], agent.get('avatar'))
@@ -625,6 +648,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
         except (Problem, UnicodeError):
             pass
         return {'profile': self.profile(owner), 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': self.files(owner),
+                'techRadar': self.heartbeat.status(owner, self.profile(owner) or {}),
                 'memory': memory_text, 'agentId': owner, 'roundtableTurns': roundtable_turns,
                 'agents': agents, 'agentLimit': MAX_AGENTS, 'assignments': assignments,
                 'deleting': any(a['key'] == owner and a['deleting'] for a in agents),
@@ -966,7 +990,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
             if self.stop_checkpoint(job_id):
                 return
             self.check_protected_run(owner, profile)
-            self.event(job_id, 'Protected workspace ready', 'Prepared without a model request or additional access.', status='done')
+            self.event(job_id, 'Agent workspace ready', 'Prepared without a model request or additional access.', status='done')
             return
         if row['kind'] == 'crew-chat':
             return self.crew_chat(row, payload)

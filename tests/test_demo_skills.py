@@ -15,7 +15,7 @@ class DemoSkillsTests(unittest.TestCase):
                 entry=json.loads(runtime.config_path().read_text())['agents']['entries']['test-'+skill]
                 self.assertEqual(entry['skills'],['bac-'+skill])
                 self.assertTrue((workspace/'skills'/('bac-'+skill)/'SKILL.md').exists())
-                self.assertEqual('web_fetch' in entry['tools']['allow'],skill in ('web','weather'))
+                self.assertEqual('web_fetch' in entry['tools']['allow'],skill in ('web','weather','documents'))
                 self.assertIn('write',entry['tools']['allow'])
                 self.assertIn('edit',entry['tools']['allow'])
             self.assertIn('sortBy=submittedDate', (Path(tmp)/'web/skills/bac-web/SKILL.md').read_text())

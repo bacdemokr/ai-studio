@@ -41,6 +41,7 @@ def project_skill(name):
     return (Path(__file__).resolve().parents[1] / ('skills/bac-'+name+'/SKILL.md')).read_text(encoding='utf-8').split('---',2)[2].strip()
 
 SKILLS = {
+    'radar': ('Tech Radar', project_skill('radar')),
     'event-tools': ('Event execution tools', project_skill('event-tools')),
     'event-scheduling': ('Presenter scheduling', project_skill('event-scheduling')),
     'nvidia-webpage': ('NVIDIA event page', project_skill('nvidia-webpage')),
@@ -163,6 +164,10 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
     for directory in ('inbox', 'artifacts', 'skills'):
         (workspace / directory).mkdir(exist_ok=True)
     equipped = list(profile['skills'])
+    import shutil
+    legacy = workspace/'skills/bac-notes'
+    if legacy.is_symlink():legacy.unlink()
+    elif legacy.is_dir():shutil.rmtree(legacy)
     if role:
         # These formerly generic skills now impose personal-agent reply formats.
         # Remove their managed copies when upgrading an existing crew workspace.
@@ -172,6 +177,14 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
             if key not in equipped:
                 if retired.is_symlink():retired.unlink()
                 elif retired.is_dir():shutil.rmtree(retired)
+    if not role and 'radar' not in equipped:
+        import shutil
+        retired = workspace/'skills/bac-radar'
+        if retired.is_symlink():retired.unlink()
+        elif retired.is_dir():shutil.rmtree(retired)
+        heartbeat_file = workspace/'HEARTBEAT.md'
+        if heartbeat_file.is_file() and not heartbeat_file.is_symlink() and heartbeat_file.read_text().startswith(('# Tech Radar\n','# Notes Watcher\n')):
+            heartbeat_file.unlink()
     event_exec = bool(role and 'event-tools' in equipped)
     # User-authored fields are literal. Legacy profiles use the same visible UI defaults.
     persona = profile.get('purpose') or role or {
@@ -250,6 +263,10 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
                 'When retryAllowed is false, end this turn immediately with a short failure report. Do not diagnose, validate missing artifacts or execute other commands. '
                 'Use native write/edit tools to save artifacts in your workspace. '
                 'On a failure report the actual error; do not try a host tool or another destination.\n')
+    if not role and 'radar' in equipped:
+        files['AGENTS.md'] = files['AGENTS.md'].replace('Never send messages, install software, change policy, or run shell commands.', 'Never send messages, install software or change policy. Use exec only for the shipped Tech Radar tool.')
+        files['AGENTS.md'] += '\nUse exec to run python3 skills/bac-radar/scripts/tech_radar.py poll or publish for your heartbeat. Use host=sandbox when protected. Read skills/bac-radar/SKILL.md first. Never contact Telegram directly.\n'
+        files['HEARTBEAT.md'] = '# Tech Radar\nEvery 30 seconds, follow skills/bac-radar/SKILL.md. Share one technical article or announcement you have not shared before, including older articles in the feeds. Never repeat a shared article or call an older article breaking news. Otherwise HEARTBEAT_OK. Skip politics, stocks and earnings.\n'
     if role:
         files['AGENTS.md'] += ('\n# Reading supplied documents\n'
                               'Read supplied files with native file tools. For PDF/PPTX, use the companion extracted .txt file '
@@ -281,6 +298,9 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
         (workspace / 'MEMORY.md').write_text('# Saved preferences\n', encoding='utf-8')
     for skill in equipped:
         title, instruction = SKILLS[skill]
+        if protected and skill == 'documents':
+            instruction = instruction.replace('Use web_fetch to read a public HTTP(S) link supplied by the user before summarizing it.',
+                'Use exec with host=sandbox and /usr/bin/curl -fsS --max-time 15 to read a public HTTP(S) link supplied by the user. Quote the URL. If blocked, stop and request approval for the exact host in OpenShell Policy; never use host-side web tools or bypass the denial.')
         if protected and skill in ('web', 'weather'):
             instruction = instruction.replace('web_fetch', 'exec with host=sandbox and /usr/bin/curl -fsS --max-time 15')
             if skill == 'web':
@@ -297,6 +317,10 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
             assets=directory/'assets'
             assets.mkdir(exist_ok=True)
             write(assets/'event.css', (Path(__file__).resolve().parents[1]/'skills/bac-nvidia-webpage/assets/event.css').read_text())
+        if skill == 'radar':
+            import shutil
+            scripts=directory/'scripts';scripts.mkdir(exist_ok=True)
+            shutil.copyfile(Path(__file__).with_name('tech_radar.py'),scripts/'tech_radar.py')
         if skill == 'event-tools':
             import shutil
             scripts=directory/'scripts';scripts.mkdir(exist_ok=True)
@@ -316,15 +340,16 @@ def register(agent_id, workspace, profile, role=None):
     write_workspace(workspace, profile, role)
     equipped = list(profile['skills'])
     event_exec = bool(role and not protected and 'event-tools' in equipped)
+    radar_exec = not role and 'radar' in equipped
     allow = ['read'] if protected else ['read', 'write', 'edit']
-    if protected and any(s in equipped for s in ('memory', 'builder', 'writer', 'event-page', 'nvidia-webpage', 'event-tools')):
+    if protected and any(s in equipped for s in ('memory', 'builder', 'writer', 'event-page', 'nvidia-webpage', 'event-tools', 'radar')):
         allow += ['write', 'edit']
-    if any(s in equipped for s in ('weather', 'web')) and not protected:
+    if any(s in equipped for s in ('weather', 'web', 'documents')) and not protected:
         allow += ['web_fetch']
     # No cloud search account is assumed. Operators can opt in after configuring a provider.
     if 'web' in equipped and (root() / 'search-enabled').exists() and not protected:
         allow += ['web_search']
-    if protected or event_exec:
+    if protected or event_exec or radar_exec:
         allow += ['exec']
     with config_lock():
         config = c.read_json(config_path())
@@ -336,15 +361,18 @@ def register(agent_id, workspace, profile, role=None):
             'name': profile['name'], 'workspace': str(workspace), 'model': model,
             'modelPolicy': {'allow': [model]}, 'skills': ['bac-' + x for x in equipped],
             'sandbox': {'mode': 'all', 'backend': 'openshell', 'scope': 'agent', 'workspaceAccess': 'rw'} if protected else {'mode': 'off'},
-            'tools': {'allow': allow, 'deny': ['web_fetch', 'web_search'] if protected else [] if event_exec else ['exec'],
+            'tools': {'allow': allow, 'deny': ['web_fetch', 'web_search'] if protected else [] if event_exec or radar_exec else ['exec'],
                       'fs': {'workspaceOnly': protected}},
         }
         if protected:
             entry['tools']['exec'] = {'host': 'sandbox', 'security': 'full', 'ask': 'off'}
             config['tools']['deny'] = [x for x in config['tools'].get('deny', []) if x != 'exec']
-        elif event_exec:
+        elif event_exec or radar_exec:
             entry['tools']['exec'] = {'host':'gateway','security':'full','ask':'off'}
             config['tools']['deny'] = [x for x in config['tools'].get('deny', []) if x != 'exec']
+        if radar_exec:
+            entry['heartbeat'] = {'every':'0m', 'target':'none', 'session':'agent:'+agent_id+':heartbeat-radar', 'isolatedSession':True, 'timeoutSeconds':60,
+                'prompt':'Read HEARTBEAT.md and skills/bac-radar/SKILL.md in your workspace. Execute the Tech Radar poll. Publish a concise in-character summary about one relevant technical article not previously shared, including older feed entries. Otherwise return HEARTBEAT_OK.'}
         stamp = 'bac-config-' + hashlib.sha256(json.dumps(entry, sort_keys=True).encode()).hexdigest()[:20]
         entry['identity'] = {'theme': stamp}
         config['agents']['entries'][agent_id] = entry
@@ -578,3 +606,20 @@ def policy_prepare(agent_id):
         agent_policy.shell('sandbox', 'create', '--name', name, '--from', config.get('from', 'openclaw'),
             '--policy', str(agent_policy.default_path()), '--no-auto-providers',
             '--detach', '--', 'sleep', 'infinity', timeout=300)
+
+
+def set_radar_heartbeat(agent_id, enabled):
+    """Toggle only an owned Tech Radar. OpenClaw performs the periodic runs."""
+    from agent_identity import valid_agent_id
+    if not valid_agent_id(agent_id):return False
+    with config_lock():
+        config = c.read_json(config_path(), {})
+        entry = config.get('agents', {}).get('entries', {}).get(agent_id)
+        if not entry or not ('bac-radar' in entry.get('skills', []) or not enabled and 'bac-notes' in entry.get('skills', [])):return False
+        heartbeat = entry.get('heartbeat', {})
+        every = '30s' if enabled else '0m'
+        if heartbeat.get('every') != every:
+            heartbeat['every'] = every
+            entry['heartbeat'] = heartbeat
+            save_config(config)
+        return True

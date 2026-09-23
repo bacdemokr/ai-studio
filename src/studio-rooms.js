@@ -103,8 +103,8 @@ el('color-picker').onclick=e=>{const b=e.target.closest('[data-avatar-color]');i
 el('accessory').onchange=updateDraft;el('name').addEventListener('input',updateDraft);
 const roleTemplates=[
   {label:'Weather buddy',summary:'Current weather and practical outdoor advice.',purpose:'Check current weather and help me decide what to wear or whether to go outside. Keep advice short and practical.',skills:['weather']},
-  {label:'Paper scout',summary:'Find and compare recent papers with source links.',purpose:'Find three recent research papers on my topic. Compare their main ideas briefly, cite dates and links, and suggest one to read first.',skills:['web']},
-  {label:'Three Takeaways',summary:'Every answer in three clear points.',purpose:'Turn any question, document or event into exactly three concise takeaways, numbered 1, 2 and 3. Keep my chosen tone. Cite sources when supplied, and include any next step within the three points.',skills:['documents']},
+  {label:'Tech Radar',summary:'One technical discovery every 30 seconds.',purpose:'Every 30 seconds, share one unread technical article or announcement from NVIDIA or Hugging Face blogs in my chosen tone. Include older articles; never repeat. Skip politics, stocks and earnings.',skills:['radar']},
+  {label:'Arxivbot',summary:'Three relevant papers on a topic you choose.',purpose:'When I give you a research topic, find three relevant arXiv papers. Summarize each paper’s main idea, include its title, authors, date and link, and briefly compare them in my chosen tone. Ask for a topic if none is given.',skills:['web']},
   {label:'Slack Announcer',summary:'Emoji-led updates in your chosen voice.',purpose:'Answer in the style of a concise Slack announcement: an emoji-led headline and short, useful lines. Keep my chosen tone and the supplied facts. Draft only; never send or publish.',skills:['writer']},
 ];
 el('role-templates').innerHTML=roleTemplates.map((t,i)=>`<button type="button" data-role-template="${i}" aria-pressed="false">${t.label}</button>`).join('');
@@ -118,7 +118,7 @@ el('purpose').addEventListener('input',()=>{el('role-templates').querySelectorAl
 el('apply-prompt').onclick=()=>{
   syncCreatorTone();
   const role=creatorPrompt().purpose.toLowerCase();
-  const rules={weather:/weather|forecast|travel|trip|날씨|여행/,web:/research|paper|arxiv|논문|search|online|web|travel|trip|cafe|restaurant|리서치|조사|검색|웹|여행|맛집|카페/,documents:/takeaway|three points|meeting|notes|회의|메모|document|report|pdf|ppt|slides|deck|summar|요약|슬라이드|csv|spreadsheet|문서|보고서|자료|엑셀/,builder:/app|game|prototype|code|website|앱|게임|코딩|개발|웹사이트/,writer:/slack|announcement|공지|message|email|메시지|메일|writ|draft|content|invitation|social|campaign|marketing|copy|작성|글쓰기|초대|마케팅|콘텐츠/,memory:/remember|memor|preference|기억|선호/};
+  const rules={radar:/heartbeat|tech radar|technical feeds|하트비트|기술.*소식/,weather:/weather|forecast|travel|trip|날씨|여행/,web:/research|paper|arxiv|논문|search|online|web|travel|trip|cafe|restaurant|리서치|조사|검색|웹|여행|맛집|카페/,documents:/takeaway|three points|meeting|notes|회의|메모|document|report|pdf|ppt|slides|deck|summar|요약|슬라이드|csv|spreadsheet|문서|보고서|자료|엑셀/,builder:/app|game|prototype|code|website|앱|게임|코딩|개발|웹사이트/,writer:/slack|announcement|공지|message|email|메시지|메일|writ|draft|content|invitation|social|campaign|marketing|copy|작성|글쓰기|초대|마케팅|콘텐츠/,memory:/remember|memor|preference|기억|선호/};
   selectRoleSkills(Object.entries(rules).filter(([skill,rule])=>rule.test(role)).map(([skill])=>skill));
 };
 el('onboarding').querySelectorAll('[name=protection]').forEach(input=>input.onchange=updateDraft);

@@ -14,7 +14,8 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
    await page.locator('#studio-body-picker [data-body='+body+']').click();assert.equal(await page.locator('#studio-name').inputValue(),name);
   }
   await page.locator('#studio-body-picker [data-body=claw]').click();await page.locator('#studio-name').fill('Sage');await page.locator('[data-tone=cynical]').click();await page.locator('[data-role-template="2"]').click();
-  assert.match(await page.locator('#studio-purpose').inputValue(),/Tone: Cynical[\s\S]*Role: .*three concise takeaways/);
+  assert.match(await page.locator('#studio-purpose').inputValue(),/Tone: Cynical[\s\S]*Role: .*three relevant arXiv papers/);
+  assert.deepEqual(await page.locator('#studio-skill-picker input:checked').evaluateAll(xs=>xs.map(x=>x.value)),['web']);
   await page.locator('#studio-purpose').fill('Tone: Dry, curious and concise.\nRole: Compare papers and summarize documents with evidence.');
   await page.locator('#studio-apply-prompt').click();
   assert.deepEqual(await page.locator('#studio-skill-picker input:checked').evaluateAll(xs=>xs.map(x=>x.value).sort()),['documents','web']);
