@@ -42,6 +42,27 @@ BAC_TEST_URL=http://127.0.0.1:8094 node tests/agent-reset.cjs
 
 Test URL variables differ in older browser scripts; inspect each before running it. Infrastructure checks and deterministic fixtures do not establish real model quality or Spark performance. Rehearse a personal task and a complete event on the target PC/model. [OpenShell verification](openshell-verification.md) covers real sandbox scenarios.
 
+## Twelve-agent scenarios
+
+`tests/test_twelve_agents.py` exercises a full collection: concurrent hiring and chat,
+policy isolation, location changes across 60 workspaces, restart recovery, deletion,
+Heartbeat delivery and slow Telegram. Native services, model responses and Telegram
+are simulated; application logic, SQLite and workspace files are real.
+
+```bash
+python3 -B -m unittest discover -s tests -p test_twelve_agents.py
+node tests/comparison-capacity.cjs
+# Separate terminal; disposable HTTP server, no live demo data:
+python3 -B tests/fixture_twelve_agents.py
+# Requires Playwright. Set CHROME_PATH to your Chrome/Chromium executable:
+BASE_URL=http://127.0.0.1:8092 node tests/twelve-agents-browser.cjs
+```
+
+The browser test creates 12 agents, checks the 3D lounge and selection, then sends
+one question to all 12 through the real HTTP queue. Requests wait for one of the
+three collection slots; rejected quota requests are retried, uncertain network
+failures are not. This is a functional capacity test, not a real-model load benchmark.
+
 ## Heartbeat tests
 
 `tests/test_tech_radar.py` covers unread article selection, feed caching/failures, deduplication, pause/resume, tenant isolation, failed delivery and session credentials. For UI testing, run `python3 -B tests/fixture_heartbeat.py`, then `BASE_URL=http://127.0.0.1:8087 node tests/heartbeat-browser.cjs` with Playwright. This fixture sends no external messages.

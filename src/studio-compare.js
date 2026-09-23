@@ -36,10 +36,23 @@ async function askAllAgents(){
     const prompt=el('prompt').value.trim(),agents=(data.agents||[]).map(a=>({...a}));if((!prompt&&!pendingImages().length)||agents.length<2)return;
     const draft=captureChatDraft(),images=draft.images;
     clearTimeout(comparisonTimer);
-    comparison={id:String(Date.now()),prompt,rows:agents.map(a=>({...a,status:'Sending',answer:'',job:null}))};drawComparison();
-    for(const row of comparison.rows){
-      try{if(row.deleting)throw new Error('This agent is being deleted.');const job=await api('jobs',{kind:'chat',prompt,images},row.key);row.job=job.id;row.status=job.status||'queued';}
-      catch(error){row.status='error';row.answer=error.message;}drawComparison();
+    const batch=comparison={id:String(Date.now()),prompt,rows:agents.map(a=>({...a,status:'Waiting for queue',answer:'',job:null}))};drawComparison();
+    for(const row of batch.rows){
+      while(comparison===batch){
+        try{if(row.deleting)throw new Error('This agent is being deleted.');const job=await api('jobs',{kind:'chat',prompt,images},row.key);row.job=job.id;row.status=job.status||'queued';break;}
+        catch(error){
+          // A rejected quota request has not created a job. Wait for this batch's
+          // accepted work to free a slot; never retry an uncertain network failure.
+          if(error.status===429&&batch.rows.some(comparisonPending)){
+            row.status='Waiting for queue';drawComparison();
+            await new Promise(resolve=>setTimeout(resolve,750));
+            if(comparison!==batch)return;
+            await pollComparison(false);
+          }else{row.status='error';row.answer=error.message;break;}
+        }
+      }
+      if(comparison!==batch)return;
+      drawComparison();
     }
     if(comparison.rows.some(row=>row.job))acknowledgeChatDraft(draft);
     await refresh();drawComparison();pollComparison();

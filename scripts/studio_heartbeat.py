@@ -48,7 +48,7 @@ class RadarHeartbeat:
             self.statuses[owner]={**self.statuses.get(owner,{}),'state':'paused' if data['paused'] else 'resuming'}
         return self.status(owner, profile)
 
-    def import_events(self, owner, participant, profile):
+    def import_events(self, owner, participant, profile, deliveries):
         root = self.studio.workspace(owner).resolve()
         box = tech_radar.read(root, tech_radar.OUTBOX, {})
         if not isinstance(box, dict):raise ValueError('Invalid heartbeat output.')
@@ -87,9 +87,21 @@ class RadarHeartbeat:
                 db.execute('INSERT INTO heartbeat_receipts VALUES (?,?,?)', (owner,token,job))
                 db.execute('INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?,?)',
                     (job,owner,'heartbeat','done',json.dumps({'source':'OpenClaw heartbeat'}),json.dumps(result),'[]',created,time.time(),created))
-            # The durable receipt is committed before sending. An uncertain network result
-            # is not retried automatically; the app's summary remains available.
-            try:delivery=telegram_notifications.send(participant, profile['name']+' · Tech Radar\n\n'+answer+'\n\n'+title+'\nPublished '+source['published']+' · Feed excerpt\n'+url, created)
+            # Publish every agent's chat before external delivery. Never hold the
+            # Pause/Resume lock during Telegram I/O, which can take many seconds.
+            message = profile['name']+' · Tech Radar\n\n'+answer+'\n\n'+title+'\nPublished '+source['published']+' · Feed excerpt\n'+url
+            deliveries.append((owner, participant, job, result, message, created))
+
+    def deliver_events(self, deliveries):
+        for owner, participant, job, result, message, created in deliveries:
+            with self.studio.db() as db:
+                # Deletion/reset can happen while an earlier send is waiting.
+                active = db.execute('''SELECT 1 FROM jobs JOIN agents ON agents.id=jobs.owner
+                    WHERE jobs.id=? AND jobs.owner=? AND agents.deleting=0
+                    AND jobs.created>=agents.reset_at''', (job, owner)).fetchone()
+            if not active:continue
+            # The durable receipt precedes sending. Never retry an uncertain send.
+            try:delivery=telegram_notifications.send(participant, message, created)
             except RuntimeError:delivery='failed'
             result['telegram']=delivery
             with self.studio.db() as db:db.execute('UPDATE jobs SET result=? WHERE id=?', (json.dumps(result),job))
@@ -102,6 +114,7 @@ class RadarHeartbeat:
         with studio.db() as db:
             agents = [dict(r) for r in db.execute('SELECT id,participant,profile,deleting FROM agents WHERE profile IS NOT NULL')]
         ready = runtime_settings.model_available() if any('radar' in json.loads(r['profile']).get('skills',[]) for r in agents) else False
+        deliveries = []
         for row in agents:
             owner=row['id']; profile=json.loads(row['profile'])
             if 'radar' not in profile.get('skills',[]):continue
@@ -122,7 +135,7 @@ class RadarHeartbeat:
                     since=previous.get('watchingSince',time.time()) if enabled else time.time()
                     self.statuses[owner] = {**previous, 'state':state, 'watchingSince':since}
                     if not current['deleting'] and not paused:
-                        self.import_events(owner,row['participant'],profile)
+                        self.import_events(owner,row['participant'],profile,deliveries)
                     last_check=max(since,self.statuses[owner].get('lastChecked',0))
                     if state=='watching' and time.time()-last_check>100:
                         self.statuses[owner]['state']='check delayed - verify the model connection'
@@ -130,6 +143,7 @@ class RadarHeartbeat:
                 self.statuses[owner]={'state':'check failed'}
                 try:self.disable(profile['id'])
                 except Exception:pass
+        self.deliver_events(deliveries)
 
     def work(self):
         try:
