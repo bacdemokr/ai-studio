@@ -16,11 +16,27 @@ async function nativeExport(prefix, symbol) {
   }
   throw Error('Pinned native API unavailable: '+symbol);
 }
+async function confirmCompletedDeletion() {
+  // A gateway can commit deletion before its reply/connection is lost. Only the
+  // durable native journal plus absent owned paths proves that retry is complete.
+  const config = JSON.parse(await fs.readFile(process.env.OPENCLAW_CONFIG_PATH, 'utf8'));
+  if (config.agents?.entries?.[agentId]) return false;
+  const readJournal = await nativeExport('agent-deletion-journal-', 'readAgentDeletionJournal');
+  const journal = readJournal(agentId);
+  if (journal?.agentId !== agentId || journal.cleanupCompleted !== true || journal.deleteFiles !== true) return false;
+  for (const pathname of [journal.workspaceDir, journal.agentDir, journal.sessionsDir]) {
+    if (typeof pathname !== 'string' || !path.isAbsolute(pathname)) return false;
+    try { await fs.lstat(pathname); return false; }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+  }
+  console.log(JSON.stringify({ok:true, agentId, failed:[], alreadyDeleted:true, transport:'completed-journal'}));
+  return true;
+}
 async function deleteThroughGateway() {
   const config = JSON.parse(await fs.readFile(process.env.OPENCLAW_CONFIG_PATH, 'utf8'));
   const workspace = config.agents?.entries?.[agentId]?.workspace;
   // A partial deletion may have removed the config entry; the full command resumes its journal.
-  if (typeof workspace !== 'string' || !path.isAbsolute(workspace)) return false;
+  if (typeof workspace !== 'string' || !path.isAbsolute(workspace)) return await confirmCompletedDeletion();
   const callGateway = await nativeExport('call-', 'callGateway');
   const credentialsRequired = await nativeExport('call-', 'isGatewayCredentialsRequiredError');
   const transportError = await nativeExport('transport-error-', 'isGatewayTransportError');
@@ -29,6 +45,7 @@ async function deleteThroughGateway() {
     result = await callGateway({method:'agents.delete', params:{agentId,deleteFiles:true},
       mode:'cli', clientName:'cli', requiredMethods:['agents.delete']});
   } catch (error) {
+    if (await confirmCompletedDeletion()) return true;
     // Match the native CLI's pre-request fallback conditions. Never retry an uncertain timeout.
     if (transportError(error) && error.kind === 'closed' && error.code === undefined) return false;
     if (credentialsRequired(error)) return false;
@@ -48,7 +65,25 @@ if (agentId === '--list') {
   const matches = files.filter(name => /^agents\.commands\.delete-.*\.mjs$/.test(name));
   if (matches.length !== 1) throw Error('Pinned native deletion command unavailable');
   const {agentsDeleteCommand} = await import(pathToFileURL(path.join(dist, matches[0])));
-  await agentsDeleteCommand({id:agentId,force:true,json:true});
+  // Loading the offline command can take seconds. A gateway cleanup may have
+  // finished during that interval; do not turn its success into "not found".
+  if (!await confirmCompletedDeletion()) {
+    const createRuntime = await nativeExport('runtime-', 'createNonExitingRuntime');
+    let report, reconciled=false;
+    try {
+      // Buffer CLI output so a late "not found" can be reconciled without
+      // emitting a failure JSON followed by a second, successful JSON document.
+      await agentsDeleteCommand({id:agentId,force:true,json:true}, {...createRuntime(),
+        log:()=>{}, error:()=>{}, writeStdout:()=>{}, writeJson:value=>{report=value;}});
+    } catch (error) {
+      reconciled=await confirmCompletedDeletion();
+      if (!reconciled) throw error;
+    }
+    if (!reconciled) {
+      if (report?.agentId === agentId) console.log(JSON.stringify(report));
+      else if (!await confirmCompletedDeletion()) throw Error('Invalid native deletion response');
+    }
+  }
 }
 await new Promise(resolve => process.stdout.write('', resolve));
 process.exit(0);
