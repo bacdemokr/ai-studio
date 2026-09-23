@@ -400,10 +400,37 @@ def delete_native(agent_id):
     from agent_identity import valid_agent_id
     if not valid_agent_id(agent_id):
         raise RuntimeError('Only personal BaC agents can be removed here.')
-    result = subprocess.run([str(root() / 'node/bin/node'),
-        str(Path(__file__).with_name('delete_native_agent.mjs')), str(root()), agent_id],
-        env=environment(), capture_output=True, text=True, timeout=90)
-    if result.returncode:
+    command = [str(root() / 'node/bin/node'),
+        str(Path(__file__).with_name('delete_native_agent.mjs')), str(root()), agent_id]
+    uncertain = None
+    try:
+        result = subprocess.run(command, env=environment(), capture_output=True, text=True, timeout=90)
+    except subprocess.TimeoutExpired as error:
+        uncertain = error
+        result = None
+    if result is None or result.returncode:
+        # The child can exit before a committed gateway deletion has finished.
+        # Reconcile outside that failed process; never replay the delete RPC.
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            try:
+                check = subprocess.run(command + ['--confirm-deleted'], env=environment(),
+                    capture_output=True, text=True, timeout=max(.1, deadline-time.monotonic()))
+                report = json.loads(check.stdout) if check.returncode == 0 else {}
+                if (isinstance(report, dict) and report.get('ok') is True and report.get('agentId') == agent_id
+                        and report.get('alreadyDeleted') is True and report.get('transport') == 'completed-journal'
+                        and report.get('failed') == [] and not report.get('purgeFailed') and not report.get('workspaceRetained')):
+                    return json.dumps(report)
+            except (subprocess.TimeoutExpired, ValueError):
+                pass
+            if time.monotonic() < deadline:
+                time.sleep(max(0, min(.25, deadline-time.monotonic())))
+        # Fixed diagnostic values only; native stdout/stderr may contain secrets.
+        import logging
+        logging.warning('Native deletion unconfirmed for %s (%s)', agent_id,
+                        'timeout' if uncertain else 'exit ' + str(result.returncode))
+        if uncertain:
+            raise RuntimeError('OpenClaw cleanup timed out and completion could not be verified.') from None
         raise RuntimeError('OpenClaw could not finish native agent cleanup.')
     return result.stdout
 

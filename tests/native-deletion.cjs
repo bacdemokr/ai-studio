@@ -77,6 +77,15 @@ try{
    assert.equal(fs.existsSync(path.join(workspace,'memory.txt')),['retained','partial'].includes(mode));
   }
  }
+ for(const mode of ['already-completed','incomplete-journal','retained-completed']){
+  fs.rmSync(workspace,{recursive:true,force:true});
+  if(mode==='retained-completed')fs.mkdirSync(workspace,{recursive:true});
+  fs.writeFileSync(config,JSON.stringify({agents:{entries:{}}}));fs.writeFileSync(trace,'');
+  const check=spawnSync(process.execPath,[helper,root,id,'--confirm-deleted'],{encoding:'utf8',env:{...process.env,OPENCLAW_CONFIG_PATH:config,TEST_MODE:mode,TEST_TRACE:trace,TEST_WORKSPACE:workspace}});
+  assert.equal(check.status,mode==='already-completed'?0:2,check.stderr);
+  assert.equal(fs.readFileSync(trace,'utf8'),'','Confirmation must never call either deletion path');
+  if(check.status===0)assert.equal(JSON.parse(check.stdout).alreadyDeleted,true);
+ }
  fs.mkdirSync(workspace,{recursive:true});fs.writeFileSync(path.join(workspace,'memory.txt'),'keep');fs.writeFileSync(trace,'');
  const listed=spawnSync(process.execPath,[helper,root,'--list'],{encoding:'utf8',env:{...process.env,OPENCLAW_CONFIG_PATH:config,TEST_TRACE:trace,TEST_WORKSPACE:workspace}});
  assert.equal(listed.status,0,listed.stderr);assert.deepEqual(JSON.parse(listed.stdout),{agents:[]});

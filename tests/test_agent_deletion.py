@@ -5,6 +5,7 @@ import sys
 import tempfile
 import time
 import threading
+import subprocess
 import unittest
 from unittest.mock import patch
 
@@ -207,6 +208,28 @@ class DeletionTests(unittest.TestCase):
             with patch('agent_runtime.delete_native') as command, self.assertRaises(RuntimeError):
                 runtime.remove(native_id, workspace)
             command.assert_not_called()
+
+    def test_failed_native_process_reconciles_without_replaying_deletion(self):
+        agent_id='bac-'+self.owner
+        completed=json.dumps({'ok':True,'agentId':agent_id,'alreadyDeleted':True,'transport':'completed-journal','failed':[]})
+        for failure in (subprocess.CompletedProcess([],1,'','private native error'), subprocess.TimeoutExpired([],90)):
+            with self.subTest(failure=type(failure).__name__), patch('agent_runtime.subprocess.run',side_effect=[
+                    failure,subprocess.CompletedProcess([],2,'',''),subprocess.CompletedProcess([],0,completed,'')]) as run, patch('agent_runtime.time.sleep'):
+                self.assertEqual(json.loads(runtime.delete_native(agent_id))['agentId'],agent_id)
+                self.assertEqual(len(run.call_args_list),3)
+                self.assertNotIn('--confirm-deleted',run.call_args_list[0].args[0])
+                self.assertTrue(all(call.args[0][-1]=='--confirm-deleted' for call in run.call_args_list[1:]))
+
+    def test_unverified_native_exit_stays_failed_and_never_replays_delete(self):
+        agent_id='bac-'+self.owner
+        for report in ({'ok':True,'agentId':agent_id},
+                       {'ok':True,'agentId':'bac-'+'f'*24,'alreadyDeleted':True,'transport':'completed-journal','failed':[]}):
+            with self.subTest(report=report), patch('agent_runtime.subprocess.run',side_effect=[
+                    subprocess.CompletedProcess([],1,'',''),subprocess.CompletedProcess([],0,json.dumps(report),'')]) as run, \
+                    patch('agent_runtime.time.monotonic',side_effect=[0,0,0,6,6]), self.assertRaises(RuntimeError):
+                runtime.delete_native(agent_id)
+            self.assertEqual(run.call_count,2)
+            self.assertEqual(run.call_args_list[1].args[0][-1],'--confirm-deleted')
 
     def test_cleanup_accepts_every_catalog_role_but_rejects_unknown_ids(self):
         catalog = json.loads((Path(runtime.__file__).resolve().parents[1] / 'src/crew-catalog.json').read_text())

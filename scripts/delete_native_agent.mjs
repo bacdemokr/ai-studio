@@ -3,7 +3,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
-const [root, agentId] = process.argv.slice(2);
+const [root, agentId, operation] = process.argv.slice(2);
+if (operation !== undefined && operation !== '--confirm-deleted') throw Error('Invalid cleanup operation');
 if (agentId !== '--list' && !/^bac-[a-f0-9]{24}(?:-r(?:0|[1-9][0-9]*))?$/.test(agentId || '')) throw Error('Invalid cleanup identity');
 const pkg = path.join(root, 'package/node_modules/openclaw');
 if (JSON.parse(await fs.readFile(path.join(pkg, 'package.json'), 'utf8')).version !== '2026.9.4') throw Error('Unsupported native runtime version');
@@ -58,7 +59,10 @@ async function deleteThroughGateway() {
   console.log(JSON.stringify({...result,workspaceRetained:workspaceRetained||undefined,transport:'gateway'}));
   return true;
 }
-if (agentId === '--list') {
+if (operation === '--confirm-deleted') {
+  // Reconciliation from the parent process must never issue another delete.
+  if (!await confirmCompletedDeletion()) process.exit(2);
+} else if (agentId === '--list') {
   const callGateway = await nativeExport('call-', 'callGateway');
   console.log(JSON.stringify(await callGateway({method:'agents.list', params:{}, mode:'cli', clientName:'cli', requiredMethods:['agents.list'], timeoutMs:5000})));
 } else if (!await deleteThroughGateway()) {
