@@ -1,4 +1,4 @@
-// Shield effects require native OpenShell network denial evidence.
+// Both directions require native OpenShell policy evidence, never an approval click.
 const protectionSeen=new Set(),protectionHits=new Map(),protectionCooldown=new Map();
 const protectionReplies=new Map();
 function protectionReplyDelay(owner,role=null){
@@ -41,20 +41,76 @@ function createProtectionShell(){
       }`
   }));
 }
+function createExternalConnection(event){
+  const group=new THREE.Group();group.name='openshell-outbound';group.visible=false;scene.add(group);
+  const shell=createProtectionShell();shell.scale.y=1.08;group.add(shell);
+  const screen=protectionTarget(event).getWorldPosition(new THREE.Vector3()).project(camera),direction=screen.x>0?-1:1;
+  const origin=new THREE.Vector3(0,.95,.05),destination=new THREE.Vector3(direction*8.8,1.9,1);
+  const curve=new THREE.QuadraticBezierCurve3(origin,new THREE.Vector3(direction*4,4.2,.8),destination);
+  const route=new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(64)),new THREE.LineDashedMaterial({color:0x97ffd4,dashSize:.16,gapSize:.11,transparent:true,opacity:.85,depthWrite:false,toneMapped:false}));
+  route.computeLineDistances();group.add(route);
+  const globe=new THREE.Group();globe.position.copy(destination);globe.scale.setScalar(1.3);group.add(globe);
+  const earth=new THREE.Group();globe.add(earth);
+  earth.add(new THREE.Mesh(new THREE.SphereGeometry(.66,32,20),new THREE.MeshBasicMaterial({color:0x123a54,transparent:true,opacity:.94,depthWrite:false})));
+  const spherePoint=(lon,lat,r=.675)=>{const a=lon*Math.PI/180,b=lat*Math.PI/180;return new THREE.Vector3(r*Math.cos(b)*Math.sin(a),r*Math.sin(b),r*Math.cos(b)*Math.cos(a));};
+  function outline(points,color,opacity){const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color,transparent:true,opacity,depthWrite:false,toneMapped:false}));earth.add(line);}
+  for(const latitude of [-60,-30,0,30,60])outline(Array.from({length:73},(_,i)=>spherePoint(i*5,latitude)),0x65b9db,.4);
+  for(let longitude=0;longitude<180;longitude+=30)outline(Array.from({length:73},(_,i)=>{const a=i*Math.PI/36;return new THREE.Vector3(.675*Math.cos(a)*Math.sin(longitude*Math.PI/180),.675*Math.sin(a),.675*Math.cos(a)*Math.cos(longitude*Math.PI/180));}),0x65b9db,.4);
+  // Lightweight geographic silhouettes, bundled geometry with no map downloads.
+  const continents=[
+    [[-168,66],[-135,70],[-110,73],[-60,52],[-82,25],[-97,16],[-117,32],[-130,53],[-168,66]],
+    [[-80,10],[-51,3],[-35,-8],[-49,-28],[-69,-55],[-76,-20],[-80,10]],
+    [[-17,35],[10,37],[34,29],[51,12],[42,-13],[20,-35],[10,-18],[-5,4],[-17,15],[-17,35]],
+    [[-10,36],[-9,58],[27,71],[65,72],[110,74],[170,60],[141,39],[122,22],[106,1],[79,8],[65,25],[43,12],[35,40],[16,42],[-10,36]],
+    [[113,-22],[130,-12],[145,-16],[153,-28],[137,-39],[115,-34],[113,-22]],
+    [[-52,60],[-22,70],[-40,82],[-65,76],[-52,60]]
+  ];
+  for(const coast of continents)outline(coast.map(([lon,lat])=>spherePoint(lon,lat,.692)),0xb5ffbb,.95);
+  earth.children.forEach(part=>part.userData.opacity=part.material.opacity);
+  const halo=new THREE.Mesh(new THREE.SphereGeometry(.73,24,16),protectionMaterial(0x67dbff,.07));globe.add(halo);
+  const packets=[];
+  for(let i=0;i<2;i++){const packet=new THREE.Mesh(new THREE.SphereGeometry(.085,12,8),protectionMaterial(0xd4ffe7));packet.add(new THREE.Mesh(new THREE.SphereGeometry(.17,12,8),protectionMaterial(0x7dffc3,.2)));group.add(packet);packets.push(packet);}
+  const arrow=new THREE.Mesh(new THREE.ConeGeometry(.12,.32,12),protectionMaterial(0xb4ffdb));arrow.position.copy(curve.getPoint(.72));arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),curve.getTangent(.72).normalize());group.add(arrow);
+  const label=document.createElement('div');label.className='world-protection-hit world-protection-allow';label.setAttribute('role','status');
+  const title=document.createElement('b');title.textContent='↗ Request allowed';
+  const host=document.createElement('small');host.textContent=String(event.host||'').slice(0,120);
+  const caption=document.createElement('span');caption.textContent='OpenShell · external website';label.append(title,host,caption);protectionLayer.append(label);
+  return {event,group,shell,route,globe,earth,halo,curve,packets,arrow,label,began:performance.now(),phase:'outbound'};
+}
+function animateExternalConnection(hit,age,duration){
+  const fade=motion?Math.min(1,age/.2,(duration-age)/.7):1;
+  hit.phase=motion?'outbound':'allowed';hit.shell.material.uniforms.fade.value=.28*fade;
+  hit.earth.rotation.y=motion?age*.55:-.35;hit.earth.rotation.z=.18;
+  hit.earth.children.forEach(part=>part.material.opacity=part.userData.opacity*fade);
+  hit.route.material.opacity=.85*fade;hit.arrow.material.opacity=fade;hit.halo.material.opacity=.07*fade;
+  hit.packets.forEach((packet,i)=>{packet.visible=motion;packet.position.copy(hit.curve.getPoint(((age*.6+i*.5)%1)*.88));packet.material.opacity=fade;});
+  hit.label.dataset.phase=hit.phase;hit.label.style.opacity=String(fade);
+  hit.group.updateMatrixWorld(true);
+  positionLabel(hit.label,hit.group.localToWorld(hit.globe.position.clone().add(new THREE.Vector3(0,1.35,0))));
+  // Keep the notice readable when an agent is near a viewport edge or zoomed in.
+  const half=hit.label.offsetWidth/2;
+  hit.label.style.left=Math.max(half+8,Math.min(viewport.clientWidth-half-8,parseFloat(hit.label.style.left)))+'px';
+  hit.label.style.top=Math.max(hit.label.offsetHeight+8,Math.min(viewport.clientHeight-8,parseFloat(hit.label.style.top)))+'px';
+}
 function observeProtection(events=[]){
   const now=Date.now()/1000;
   for(const event of events){
-    if(!event.id||event.source!=='OpenShell policy log'||event.action!=='deny'||protectionSeen.has(event.id))continue;
+    if(!event.id||event.source!=='OpenShell policy log'||!['deny','allow'].includes(event.action)||protectionSeen.has(event.id))continue;
     protectionSeen.add(event.id);
     if(!protectionPrimed||now-event.observedAt>12||now-event.time>30||event.time>now+2)continue;
     const key=event.owner+':'+(event.role===null?'personal':event.role),target=protectionTarget(event);
-    if(!target||performance.now()-(protectionCooldown.get(key)||-Infinity)<4500)continue;
-    protectionCooldown.set(key,performance.now());
-    if(!overview&&!journey&&room===(event.role===null?'lounge':'mission')){
+    const cooldownKey=key+':'+event.action;
+    if(!target||performance.now()-(protectionCooldown.get(cooldownKey)||-Infinity)<4500)continue;
+    // Keep a denial visible when other concurrent destinations are allowed.
+    if(event.action==='allow'&&protectionHits.get(key)?.event.action==='deny')continue;
+    protectionCooldown.set(cooldownKey,performance.now());
+    if(event.action==='deny'&&!overview&&!journey&&room===(event.role===null?'lounge':'mission')){
       const hold={time:event.time,until:performance.now()+3000};protectionReplies.set(key,hold);
       setTimeout(()=>{if(protectionReplies.get(key)===hold){protectionReplies.delete(key);root.dispatchEvent(new Event('bac:protection-reveal'));}},3000);
     }
+    if(protectionHits.has(key)){disposeProtection(protectionHits.get(key));protectionHits.delete(key);}
     if(protectionHits.size>=3){const [oldKey,old]=protectionHits.entries().next().value;disposeProtection(old);protectionHits.delete(oldKey);}
+    if(event.action==='allow'){protectionHits.set(key,createExternalConnection(event));continue;}
     const group=new THREE.Group();group.name='openshell-impact';group.visible=false;scene.add(group);
     const shell=createProtectionShell();shell.scale.y=1.08;group.add(shell);
     const rim=new THREE.Mesh(new THREE.TorusGeometry(1.8,.035,8,80),protectionMaterial(0x7fe9ff,.85));rim.rotation.x=-Math.PI/2;rim.position.y=.045;group.add(rim);
@@ -90,12 +146,13 @@ function observeProtection(events=[]){
 }
 function animateProtection(now){
   for(const [key,hit] of protectionHits){
-    const age=(now-hit.began)/1000,target=protectionTarget(hit.event),duration=motion?3.8:3;
+    const age=(now-hit.began)/1000,target=protectionTarget(hit.event),duration=motion?(hit.event.action==='allow'?4.8:3.8):3;
     if(!target||age>duration){disposeProtection(hit);protectionHits.delete(key);continue;}
     const shown=!overview&&!journey&&room===(hit.event.role===null?'lounge':'mission');
     hit.group.visible=shown;hit.label.hidden=!shown;
     if(!shown)continue;
     target.getWorldPosition(hit.group.position);hit.group.position.y+=.025;hit.group.rotation.y=azimuth;
+    if(hit.event.action==='allow'){animateExternalConnection(hit,age,duration);continue;}
     const collision=.6,t=age-collision,fade=motion?Math.min(1,(duration-age)/.9):1;
     hit.phase=!motion?'blocked':t<0?'request':t<.85?'impact':'blocked';
     hit.shell.material.uniforms.elapsed.value=motion?t:10;hit.shell.material.uniforms.fade.value=fade;

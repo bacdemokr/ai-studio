@@ -26,6 +26,23 @@ class ProtectionActivityTests(unittest.TestCase):
         tracker.observe('owner',1,'crew',[{'action':'deny','reason':'policy-denied','host':'example.com','time':now-.15,'fingerprint':'skew'}],now)
         self.assertEqual(len(tracker.snapshot(set(),'owner')),1)
 
+    def test_allowed_requests_are_real_fresh_scoped_policy_events(self):
+        tracker=ProtectionActivity();now=time.time()
+        allowed={'action':'allow','reason':None,'host':'blogs.nvidia.com','time':now,'fingerprint':'allow'}
+        tracker.observe('owner',1,'crew',[allowed,allowed,
+                        {**allowed,'reason':'dns-failed','fingerprint':'dns'},
+                        {**allowed,'time':None,'fingerprint':'no-time'},
+                        {**allowed,'host':'','fingerprint':'no-host'},
+                        {**allowed,'host':'127.0.0.1','fingerprint':'loopback'},
+                        {**allowed,'host':'inference.local','fingerprint':'runtime'},
+                        {**allowed,'time':now-10,'fingerprint':'old'}],now-1)
+        events=tracker.snapshot(set(),'owner')
+        self.assertEqual(len(events),1)
+        self.assertEqual(events[0]['action'],'allow')
+        self.assertEqual(events[0]['source'],'OpenShell policy log')
+        self.assertEqual(events[0]['host'],'blogs.nvidia.com')
+        self.assertEqual(tracker.snapshot({'owner'},'other'),[])
+
     def test_final_read_catches_fast_call_without_blocking_response(self):
         tracker=ProtectionActivity();done=threading.Event()
         def reader(agent):

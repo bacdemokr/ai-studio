@@ -18,16 +18,27 @@ class ProtectionActivity:
             for log in logs:
                 stamp = log.get('time')
                 # Allow subsecond host/sandbox clock skew; fingerprints still deduplicate reads.
-                # HTTP 403 answers, DNS failures, and missing timestamps aren't evidence of policy denial.
-                if (log.get('action') != 'deny' or log.get('reason') not in ('policy-denied', 'destination-blocked')
+                # Native policy decisions only. An allow is permission to connect,
+                # not proof that the remote service returned a successful response.
+                decision = ((log.get('action') == 'deny' and log.get('reason') in ('policy-denied', 'destination-blocked'))
+                            or (log.get('action') == 'allow' and log.get('reason') is None))
+                if (not decision or not log.get('host')
                         or not isinstance(stamp, (int, float)) or not started - 1 <= stamp <= now + 2):
                     continue
+                if log['action'] == 'allow':
+                    # Only website destinations belong in the external-world visual.
+                    # Local runtime/health connections must not appear as web access.
+                    from agent_policy import destination_permission
+                    try:
+                        destination_permission(log['host'])
+                    except ValueError:
+                        continue
                 identity = hashlib.sha256((agent_id + ':' + str(log.get('fingerprint') or (stamp, log.get('host')))).encode()).hexdigest()[:24]
                 if identity in known:
                     continue
                 known.add(identity)
                 self.events.append({'id':identity, 'owner':owner, 'role':role, 'host':log.get('host', ''),
-                                    'time':stamp, 'observedAt':now, 'source':'OpenShell policy log', 'action':'deny'})
+                                    'time':stamp, 'observedAt':now, 'source':'OpenShell policy log', 'action':log['action']})
 
     def snapshot(self, owners, crew_owner):
         now = time.time()

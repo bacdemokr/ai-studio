@@ -42,3 +42,6 @@
 .world-protection-hit span{display:block;margin-top:3px;font-size:10px;letter-spacing:.04em;color:#8fc5d2}
 .world-protection-hit[data-phase=impact]{border-color:#ffc185;box-shadow:0 0 0 4px #ffc18510,0 8px 28px #0008,0 0 28px #ffa95e40}
 .world-protection-hit small{display:block;font-size:11px;color:#b6dacf;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.world-protection-allow{border-color:#7ae1b7;border-top-color:#a9f9c9;box-shadow:0 0 0 4px #70ffc00a,0 8px 28px #0008,0 0 24px #54ffb529}
+.world-protection-allow b{color:#baffd8}
