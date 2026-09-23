@@ -298,6 +298,9 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
         (workspace / 'MEMORY.md').write_text('# Saved preferences\n', encoding='utf-8')
     for skill in equipped:
         title, instruction = SKILLS[skill]
+        if protected and skill == 'documents':
+            instruction = instruction.replace('Use web_fetch to read a public HTTP(S) link supplied by the user before summarizing it.',
+                'Use exec with host=sandbox and /usr/bin/curl -fsS --max-time 15 to read a public HTTP(S) link supplied by the user. Quote the URL. If blocked, stop and request approval for the exact host in OpenShell Policy; never use host-side web tools or bypass the denial.')
         if protected and skill in ('web', 'weather'):
             instruction = instruction.replace('web_fetch', 'exec with host=sandbox and /usr/bin/curl -fsS --max-time 15')
             if skill == 'web':
@@ -341,7 +344,7 @@ def register(agent_id, workspace, profile, role=None):
     allow = ['read'] if protected else ['read', 'write', 'edit']
     if protected and any(s in equipped for s in ('memory', 'builder', 'writer', 'event-page', 'nvidia-webpage', 'event-tools', 'radar')):
         allow += ['write', 'edit']
-    if any(s in equipped for s in ('weather', 'web')) and not protected:
+    if any(s in equipped for s in ('weather', 'web', 'documents')) and not protected:
         allow += ['web_fetch']
     # No cloud search account is assumed. Operators can opt in after configuring a provider.
     if 'web' in equipped and (root() / 'search-enabled').exists() and not protected:
