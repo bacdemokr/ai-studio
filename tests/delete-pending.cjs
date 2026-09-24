@@ -35,7 +35,7 @@ finally:c.tearDown()
   assert(await page.locator('#studio-delete-confirm').isVisible());
   await page.locator('#studio-delete-cancel').click();assert.equal(deletes,0);
   await page.locator('#studio-delete-agent').click();await page.locator('#studio-delete-confirm').click();
-  await page.waitForFunction(()=>document.querySelector('.studio-delete-progress')?.textContent.includes('current call'));
+  await page.waitForFunction(()=>document.querySelector('.studio-delete-progress')?.textContent.includes('current work'));
   await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Jinny');
   assert.equal(deletes,1);assert.equal(polls,3);assert.equal(await page.locator('[data-resident="'+fixture.result.agentId+'"]').count(),0);
   assert.deepEqual(errors,[]);console.log('PASS: pending agent can be deleted; cancel preserves it; one confirmation waits automatically for safe cleanup then opens the surviving agent.');

@@ -8,18 +8,27 @@ try{
  import fs from 'node:fs/promises';
  async function callGateway(options){
   await fs.appendFile(process.env.TEST_TRACE,'rpc\\n');
+  if(options.method==='sessions.list'){
+   if(options.params.agentId!=='${id}'||!options.params.activeOnly)throw Error('Unscoped session query');
+   const trace=await fs.readFile(process.env.TEST_TRACE,'utf8');
+   return {sessions:trace.includes('abort\\n')?[]:[{key:'agent:${id}:heartbeat-radar:heartbeat'}]};
+  }
+  if(options.method==='sessions.abort'){
+   if(options.params.agentId!=='${id}'||options.params.key!=='agent:${id}:heartbeat-radar:heartbeat'||!options.params.clearQueued)throw Error('Unscoped abort');
+   await fs.appendFile(process.env.TEST_TRACE,'abort\\n');return {ok:true};
+  }
   if(options.method==='agents.list'){if(options.requiredMethods[0]!=='agents.list')throw Error('Missing list requirement'); return {agents:[]};}
   if(options.method!=='agents.delete'||options.params.deleteFiles!==true||options.clientName!=='cli'||options.requiredMethods[0]!=='agents.delete')throw Error('Unexpected request');
   if(options.timeoutMs!==60000)throw Error('Deletion must explicitly outwait native cleanup');
   const mode=process.env.TEST_MODE;
   if(mode==='slow-success')await new Promise(resolve=>setTimeout(resolve,11000));
   if(['lost-reply-completed','fallback-completed','late-completed'].includes(mode)){
-   if(mode==='lost-reply-completed')await fs.rm(process.env.TEST_WORKSPACE,{recursive:true});
+   if(mode==='lost-reply-completed')await fs.rm(process.env.TEST_WORKSPACE,{recursive:true,force:true});
    if(mode==='lost-reply-completed')await fs.writeFile(process.env.OPENCLAW_CONFIG_PATH,JSON.stringify({agents:{entries:{}}}));
    throw Object.assign(Error('closed'),{transport:true,kind:'closed'});
   }
   if(['timeout','closed','closed-after-connect','auth','denied'].includes(mode))throw Object.assign(Error(mode),{transport:mode!=='auth'&&mode!=='denied',kind:mode==='timeout'?'timeout':'closed',code:mode==='closed-after-connect'?1006:undefined,auth:mode==='auth'});
-  if(!['retained','partial'].includes(mode))await fs.rm(process.env.TEST_WORKSPACE,{recursive:true});
+  if(!['retained','partial'].includes(mode))await fs.rm(process.env.TEST_WORKSPACE,{recursive:true,force:true});
   if(mode==='malformed')return {ok:true,agentId:options.params.agentId};
   return {ok:true,agentId:mode==='wrong-id'?'another-agent':options.params.agentId,failed:mode==='partial'?[{reason:'storage error'}]:[]};
  }
@@ -39,14 +48,14 @@ try{
  import fs from 'node:fs/promises';
  await fs.appendFile(process.env.TEST_TRACE,'load-local\\n');
  if(process.env.TEST_MODE==='fallback-completed'){
-  await fs.rm(process.env.TEST_WORKSPACE,{recursive:true});
+  await fs.rm(process.env.TEST_WORKSPACE,{recursive:true,force:true});
   await fs.writeFile(process.env.OPENCLAW_CONFIG_PATH,JSON.stringify({agents:{entries:{}}}));
  }
 
  export async function agentsDeleteCommand(options,runtime){
   await fs.appendFile(process.env.TEST_TRACE,'local\\n');
   if(process.env.TEST_MODE==='late-completed'){
-   await fs.rm(process.env.TEST_WORKSPACE,{recursive:true});
+   await fs.rm(process.env.TEST_WORKSPACE,{recursive:true,force:true});
    await fs.writeFile(process.env.OPENCLAW_CONFIG_PATH,JSON.stringify({agents:{entries:{}}}));
    runtime.writeJson({ok:false,error:{type:'cli_error',message:'Already deleted'}});runtime.exit(1);
   }
@@ -68,7 +77,7 @@ try{
    assert.notEqual(result.status,0,mode);assert.deepEqual(calls,['rpc'],'Uncertain or denied deletion must not run a second cleanup');
   }else{
    assert.equal(result.status,0,result.stderr);const report=JSON.parse(result.stdout);assert.equal(report.agentId,id);
-   if(['closed','auth','journal','incomplete-journal','retained-completed','metadata-only'].includes(mode))assert.deepEqual(calls,['journal','incomplete-journal','retained-completed','metadata-only'].includes(mode)?['load-local','local']:['rpc','load-local','local']);
+   if(['closed','auth','journal','retained-completed','metadata-only'].includes(mode))assert.deepEqual(calls,['journal','incomplete-journal','retained-completed','metadata-only'].includes(mode)?['load-local','local']:['rpc','load-local','local']);
    else if(mode==='fallback-completed')assert.deepEqual(calls,['rpc','load-local'],'Recheck completion after loading the fallback');
    else if(mode==='late-completed')assert.deepEqual(calls,['rpc','load-local','local'],'Late CLI exit must reconcile one JSON result');
    else if(mode==='already-completed')assert.deepEqual(calls,[''],'Completed deletion must not run again');
@@ -92,6 +101,11 @@ try{
  const listed=spawnSync(process.execPath,[helper,root,'--list'],{encoding:'utf8',env:{...process.env,OPENCLAW_CONFIG_PATH:config,TEST_TRACE:trace,TEST_WORKSPACE:workspace}});
  assert.equal(listed.status,0,listed.stderr);assert.deepEqual(JSON.parse(listed.stdout),{agents:[]});
  assert.equal(fs.readFileSync(path.join(workspace,'memory.txt'),'utf8'),'keep');assert.equal(fs.readFileSync(trace,'utf8'),'rpc\n');
+ fs.writeFileSync(trace,'');
+ const quiet=spawnSync(process.execPath,[helper,root,id,'--quiesce'],{encoding:'utf8',env:{...process.env,OPENCLAW_CONFIG_PATH:config,TEST_TRACE:trace,TEST_WORKSPACE:workspace}});
+ assert.equal(quiet.status,0,quiet.stderr);assert.equal(JSON.parse(quiet.stdout).quiescent,true);
+ assert.deepEqual(fs.readFileSync(trace,'utf8').trim().split('\n'),['rpc','rpc','abort','rpc']);
+ assert.equal(fs.readFileSync(path.join(workspace,'memory.txt'),'utf8'),'keep','Draining must not delete files');
  fs.writeFileSync(path.join(pkg,'package.json'),JSON.stringify({version:'unexpected'}));fs.writeFileSync(trace,'');
  const rejected=spawnSync(process.execPath,[helper,root,id],{encoding:'utf8',env:{...process.env,OPENCLAW_CONFIG_PATH:config,TEST_TRACE:trace}});
  assert.notEqual(rejected.status,0);assert.equal(fs.readFileSync(trace,'utf8'),'');

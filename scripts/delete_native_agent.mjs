@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 const [root, agentId, operation] = process.argv.slice(2);
-if (operation !== undefined && operation !== '--confirm-deleted') throw Error('Invalid cleanup operation');
+if (operation !== undefined && !['--confirm-deleted','--quiesce'].includes(operation)) throw Error('Invalid cleanup operation');
 if (agentId !== '--list' && !/^bac-[a-f0-9]{24}(?:-r(?:0|[1-9][0-9]*))?$/.test(agentId || '')) throw Error('Invalid cleanup identity');
 const pkg = path.join(root, 'package/node_modules/openclaw');
 if (JSON.parse(await fs.readFile(path.join(pkg, 'package.json'), 'utf8')).version !== '2026.9.4') throw Error('Unsupported native runtime version');
@@ -35,9 +35,17 @@ async function confirmCompletedDeletion() {
 }
 async function deleteThroughGateway() {
   const config = JSON.parse(await fs.readFile(process.env.OPENCLAW_CONFIG_PATH, 'utf8'));
-  const workspace = config.agents?.entries?.[agentId]?.workspace;
-  // A partial deletion may have removed the config entry; the full command resumes its journal.
-  if (typeof workspace !== 'string' || !path.isAbsolute(workspace)) return await confirmCompletedDeletion();
+  let workspace = config.agents?.entries?.[agentId]?.workspace;
+  // An acknowledged partial deletion removes the roster entry first. Resume
+  // through the same live gateway and its lifecycle journal, not the offline CLI.
+  if (typeof workspace !== 'string' || !path.isAbsolute(workspace)) {
+    if (await confirmCompletedDeletion()) return true;
+    const readJournal = await nativeExport('agent-deletion-journal-', 'readAgentDeletionJournal');
+    const journal = readJournal(agentId);
+    if (!journal || journal.agentId !== agentId || journal.cleanupCompleted || !journal.deleteFiles) return false;
+    workspace = journal.workspaceDir;
+    if (typeof workspace !== 'string' || !path.isAbsolute(workspace)) throw Error('Invalid deletion journal workspace');
+  }
   const callGateway = await nativeExport('call-', 'callGateway');
   const credentialsRequired = await nativeExport('call-', 'isGatewayCredentialsRequiredError');
   const transportError = await nativeExport('transport-error-', 'isGatewayTransportError');
@@ -59,7 +67,29 @@ async function deleteThroughGateway() {
   console.log(JSON.stringify({...result,workspaceRetained:workspaceRetained||undefined,transport:'gateway'}));
   return true;
 }
-if (operation === '--confirm-deleted') {
+async function quiesceAgent() {
+  const callGateway = await nativeExport('call-', 'callGateway');
+  const deadline = Date.now()+30000;
+  const aborted = new Set();
+  while (true) {
+    const result = await callGateway({method:'sessions.list',params:{agentId,activeOnly:true},
+      mode:'cli',clientName:'cli',requiredMethods:['sessions.list'],timeoutMs:10000});
+    if (!Array.isArray(result?.sessions)) throw Error('Invalid active session response');
+    if (!result.sessions.length) return {agentId,quiescent:true};
+    for (const session of result.sessions) {
+      if (typeof session.key!=='string' || !session.key.startsWith('agent:'+agentId+':')) throw Error('Unexpected session owner');
+      if (aborted.has(session.key)) continue;
+      await callGateway({method:'sessions.abort',params:{agentId,key:session.key,clearQueued:true},
+        mode:'cli',clientName:'cli',requiredMethods:['sessions.abort'],timeoutMs:10000});
+      aborted.add(session.key);
+    }
+    if (Date.now()>=deadline) return {agentId,quiescent:false};
+    await new Promise(resolve=>setTimeout(resolve,250));
+  }
+}
+if (operation === '--quiesce') {
+  console.log(JSON.stringify(await quiesceAgent()));
+} else if (operation === '--confirm-deleted') {
   // Reconciliation from the parent process must never issue another delete.
   if (!await confirmCompletedDeletion()) process.exit(2);
 } else if (agentId === '--list') {

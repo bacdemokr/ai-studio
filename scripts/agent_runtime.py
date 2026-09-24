@@ -395,6 +395,21 @@ def deletion_roles(agent_id):
                    if value.startswith(prefix) and valid_agent_id(value)})
 
 
+class NativeCleanupPending(RuntimeError):
+    """Acknowledged, recoverable cleanup - keep the identity fenced while resuming."""
+
+
+def quiesce_native(agent_id):
+    command=[str(root()/'node/bin/node'),str(Path(__file__).with_name('delete_native_agent.mjs')),
+             str(root()),agent_id,'--quiesce']
+    result=subprocess.run(command,env=environment(),capture_output=True,text=True,timeout=50)
+    if result.returncode:raise RuntimeError('Could not verify that the native agent stopped. Its files were not removed.')
+    report=json.loads(result.stdout)
+    if report.get('agentId')!=agent_id:raise RuntimeError('Invalid native stop confirmation.')
+    if report.get('quiescent') is not True:
+        raise NativeCleanupPending('Waiting for the agent’s current background work to stop.')
+
+
 def delete_native(agent_id):
     """Use the running gateway, with the pinned native command as an offline fallback."""
     from agent_identity import valid_agent_id
@@ -455,6 +470,7 @@ def remove(agent_id, workspace):
             return  # Created offline, never provisioned; or native cleanup already completed.
         if entry and Path(entry.get('workspace', '')).resolve() != workspace.resolve():
             raise RuntimeError('The native workspace changed. The host must review it before deletion.')
+        if entry and entry.get('heartbeat'):quiesce_native(agent_id)
         if config.get('plugins', {}).get('entries', {}).get('openshell', {}).get('enabled'):
             from agent_policy import runtimes, sandbox_names, sandbox_registry, shell
             registered = runtimes(agent_id, probe=False)
@@ -484,6 +500,8 @@ def remove(agent_id, workspace):
         # Native command uses the running gateway or its supported local fallback.
         # It retains shared storage and reports partial failures even with a zero exit code.
         result = json.loads(delete_native(agent_id))
+        if result.get('agentId') == agent_id and result.get('purgeFailed') and not result.get('failed'):
+            raise NativeCleanupPending('Native session cleanup is still pending; resuming from its deletion journal.')
         if (result.get('agentId') != agent_id or result.get('purgeFailed')
                 or result.get('failed') or result.get('workspaceRetained')):
             raise RuntimeError('OpenClaw cleanup is incomplete. Resolve host storage errors and retry deletion.')

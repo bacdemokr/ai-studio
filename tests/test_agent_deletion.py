@@ -175,6 +175,48 @@ class DeletionTests(unittest.TestCase):
         self.studio.delete_agent(self.scout, {'name': 'Scout'})
         self.assertEqual(len(self.studio.state(self.owner)['agents']), 1)
 
+    def test_transient_native_cleanup_is_durable_bounded_and_resumes(self):
+        with patch.object(self.adapter,'remove',side_effect=runtime.NativeCleanupPending('purge pending')) as remove:
+            result=self.studio.delete_agent(self.scout,{'name':'Scout'})
+            self.assertEqual(result['deleting'],self.scout)
+            self.studio.finish_pending_deletions()
+            self.assertEqual(remove.call_count,1,'No busy retry before the persisted deadline')
+        restarted=Studio(self.temp.name,self.adapter,start_worker=False)
+        with restarted.db() as db:
+            self.assertEqual(db.execute('SELECT attempts FROM agent_deletions WHERE owner=?',(self.scout,)).fetchone()[0],1)
+            db.execute('UPDATE agent_deletions SET next_attempt=0 WHERE owner=?',(self.scout,))
+        restarted.finish_pending_deletions()
+        self.assertIsNone(restarted.profile(self.scout))
+        self.assertIsNotNone(restarted.profile(self.owner))
+
+    def test_repeated_purge_failure_stops_and_manual_retry_resets_budget(self):
+        with patch.object(self.adapter,'remove',side_effect=runtime.NativeCleanupPending('purge pending')) as remove:
+            self.studio.delete_agent(self.scout,{'name':'Scout'})
+            for _ in range(7):
+                with self.studio.db() as db:db.execute('UPDATE agent_deletions SET next_attempt=0 WHERE owner=?',(self.scout,))
+                self.studio.finish_pending_deletions()
+            self.assertEqual(remove.call_count,5)
+            self.assertFalse(next(a for a in self.studio.state(self.owner)['agents'] if a['key']==self.scout)['deletionWaiting'])
+            result=self.studio.delete_agent(self.scout,{'name':'Scout'})
+            self.assertEqual(result['deleting'],self.scout)
+        self.studio.delete_agent(self.scout,{'name':'Scout'})
+        self.assertIsNone(self.studio.profile(self.scout))
+
+    def test_heartbeat_stops_before_sandbox_or_database_cleanup(self):
+        with patch('agent_runtime.root',return_value=Path(self.temp.name)/'native'):
+            workspace=self.studio.workspace(self.owner);native_id='bac-'+self.owner
+            config=runtime.initial_config();config['agents']['entries'][native_id]={'workspace':str(workspace),'heartbeat':{'every':'0m'}}
+            runtime.save_config(config)
+            calls=[]
+            with patch('agent_runtime.quiesce_native',side_effect=lambda _:calls.append('quiesce')), \
+                 patch('agent_runtime.delete_native',side_effect=lambda _:calls.append('delete') or json.dumps({'agentId':native_id,'failed':[]})):
+                runtime.remove(native_id,workspace)
+            self.assertEqual(calls,['quiesce','delete'])
+            with patch('agent_runtime.quiesce_native',side_effect=runtime.NativeCleanupPending('still running')), \
+                 patch('agent_runtime.delete_native') as delete:
+                with self.assertRaises(runtime.NativeCleanupPending):runtime.remove(native_id,workspace)
+                delete.assert_not_called()
+
     def test_stale_confirmation_and_other_participant_are_rejected(self):
         with self.assertRaises(Problem):
             self.studio.delete_agent(self.scout, {'name': 'Jinny'})

@@ -152,7 +152,7 @@ el('delete-agent').onclick=()=>{
     progress.textContent='Deleting '+name+' · cleaning up its workspace and runtime…';
     el('companion').prepend(progress);el('delete-agent').disabled=true;
     try{
-      const result=await deleteAgentAndWait(target,name,()=>{progress.textContent='Deleting '+name+' · waiting for its current call to end…';});
+      const result=await deleteAgentAndWait(target,name,()=>{progress.textContent='Deleting '+name+' · finishing its current work and cleaning up…';});
       const state=await api('state',undefined,result.agentId);
       const viewingRoom=room;openAgentState(state);fillCreator(true);setRoom(viewingRoom==='lounge'?(data.profile?'lounge':'workshop'):viewingRoom);
       alert(name+' was deleted.');root.querySelector('.world-room-map [data-world-room="'+room+'"]')?.focus({preventScroll:true});

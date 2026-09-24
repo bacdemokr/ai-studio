@@ -195,6 +195,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 CREATE TABLE IF NOT EXISTS jobs (
                   id TEXT PRIMARY KEY, owner TEXT, kind TEXT, status TEXT, payload TEXT,
                   result TEXT, events TEXT, created REAL, updated REAL, due REAL);
+                CREATE TABLE IF NOT EXISTS agent_deletions (owner TEXT PRIMARY KEY, attempts INTEGER NOT NULL DEFAULT 0, next_attempt REAL NOT NULL DEFAULT 0);
                 CREATE INDEX IF NOT EXISTS job_queue ON jobs(status,due,created);
                 CREATE INDEX IF NOT EXISTS job_owner_created ON jobs(owner,created DESC);
                 CREATE INDEX IF NOT EXISTS job_crew_chat ON jobs(owner,json_extract(payload,'$.crewRole'),created DESC) WHERE kind='crew-chat';
@@ -529,7 +530,9 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                     db.execute('UPDATE jobs SET status=?,events=?,updated=? WHERE id=?',
                                (status, json.dumps(events[-40:]), time.time(), job['id']))
                 # 2 waits for the worker to release all calls; 1 is native cleanup (retryable on failure).
-                db.execute('UPDATE agents SET deleting=? WHERE id=?', (2 if waiting or row['deleting'] == 2 else 1, owner))
+                db.execute('UPDATE agents SET deleting=2 WHERE id=?', (owner,))
+                db.execute('INSERT OR IGNORE INTO agent_deletions(owner) VALUES (?)',(owner,))
+                if row['deleting']!=2:db.execute('UPDATE agent_deletions SET attempts=0,next_attempt=0 WHERE owner=?',(owner,))
             if 'radar' in profile.get('skills',[]):self.heartbeat.disable(profile['id'])
             if waiting:
                 self.signal.set()
@@ -554,6 +557,17 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                         path.unlink()
                     elif path.exists():
                         shutil.rmtree(path)
+            except runtime.NativeCleanupPending as error:
+                # Only an acknowledged partial cleanup/confirmed draining run is
+                # resumable. Never blindly replay unknown transport failures.
+                with self.db() as db:
+                    attempt=db.execute('SELECT attempts FROM agent_deletions WHERE owner=?',(owner,)).fetchone()['attempts']+1
+                    db.execute('UPDATE agent_deletions SET attempts=?,next_attempt=? WHERE owner=?',
+                               (attempt,time.time()+min(30,2**attempt),owner))
+                    if attempt>=5:db.execute('UPDATE agents SET deleting=1 WHERE id=?',(owner,))
+                if attempt>=5:raise Problem('Cleanup could not finish after recovery attempts. The agent remains paused; retry deletion after checking the runtime.',503) from None
+                self.signal.set()
+                return {'deleting':owner,'agentId':owner}
             except Exception as error:
                 import logging
                 logging.exception('Native cleanup failed for %s', native_id)
@@ -565,7 +579,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 db.execute('BEGIN IMMEDIATE')
                 db.execute('DELETE FROM survey_responses WHERE token IN (SELECT token FROM event_surveys WHERE owner=?)', (owner,))
                 db.execute('DELETE FROM event_surveys WHERE owner=?', (owner,))
-                for table in ('jobs', 'agent_policies', 'heartbeat_controls', 'heartbeat_receipts'):
+                for table in ('jobs', 'agent_policies', 'heartbeat_controls', 'heartbeat_receipts', 'agent_deletions'):
                     db.execute('DELETE FROM ' + table + ' WHERE owner=?', (owner,))
                 db.execute('DELETE FROM agents WHERE id=?', (owner,))
                 db.execute('UPDATE participants SET profile=NULL WHERE id=?', (owner,))
@@ -582,7 +596,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
     def finish_pending_deletions(self):
         """Run between jobs, after every in-flight call and post-result write has returned."""
         with self.db() as db:
-            requests = db.execute('SELECT id,profile FROM agents WHERE deleting=2').fetchall()
+            requests = db.execute('SELECT id,profile FROM agents LEFT JOIN agent_deletions ON owner=id WHERE deleting=2 AND coalesce(next_attempt,0)<=?',(time.time(),)).fetchall()
         for request in requests:
             try:
                 self.delete_agent(request['id'], {'name': json.loads(request['profile'])['name']})
