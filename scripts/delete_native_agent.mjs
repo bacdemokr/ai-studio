@@ -42,6 +42,19 @@ async function deleteThroughGateway() {
     if (await confirmCompletedDeletion()) return true;
     const readJournal = await nativeExport('agent-deletion-journal-', 'readAgentDeletionJournal');
     const journal = readJournal(agentId);
+    if (!journal) {
+      // Older app versions wrote IDENTITY.md before native registration, without
+      // a prepared-only marker. Definitions are not evidence of a native agent.
+      // A missing roster entry alone is insufficient: reject orphan native data,
+      // and never skip a pending deletion journal. The app owns its workspace.
+      try { await fs.lstat(path.join(root, 'state/agents', agentId)); }
+      catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+        console.log(JSON.stringify({ok:true,agentId,failed:[],transport:'unregistered'}));
+        return true;
+      }
+      throw Error('Native agent data exists without registration or a deletion journal');
+    }
     if (!journal || journal.agentId !== agentId || journal.cleanupCompleted || !journal.deleteFiles) return false;
     workspace = journal.workspaceDir;
     if (typeof workspace !== 'string' || !path.isAbsolute(workspace)) throw Error('Invalid deletion journal workspace');

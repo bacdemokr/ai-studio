@@ -81,7 +81,8 @@ try{
    assert.notEqual(result.status,0,mode);assert.deepEqual(calls,['rpc'],'Uncertain or denied deletion must not run a second cleanup');
   }else{
    assert.equal(result.status,0,result.stderr);const report=JSON.parse(result.stdout);assert.equal(report.agentId,id);
-   if(['closed','auth','journal','retained-completed','metadata-only'].includes(mode))assert.deepEqual(calls,['journal','incomplete-journal','retained-completed','metadata-only'].includes(mode)?['load-local','local']:['rpc','load-local','local']);
+   if(mode==='journal')assert.deepEqual(calls,[''],'Legacy definitions without a native identity need no deletion RPC');
+   else if(['closed','auth','retained-completed','metadata-only'].includes(mode))assert.deepEqual(calls,['journal','incomplete-journal','retained-completed','metadata-only'].includes(mode)?['load-local','local']:['rpc','load-local','local']);
    else if(mode==='fallback-completed')assert.deepEqual(calls,['rpc','load-local'],'Recheck completion after loading the fallback');
    else if(mode==='late-completed')assert.deepEqual(calls,['rpc','load-local','local'],'Late CLI exit must reconcile one JSON result');
    else if(mode==='already-completed')assert.deepEqual(calls,[''],'Completed deletion must not run again');
@@ -89,8 +90,18 @@ try{
    if(['already-completed','lost-reply-completed','fallback-completed','late-completed'].includes(mode))assert.equal(report.transport,'completed-journal');
    assert.equal(!!report.workspaceRetained,['retained','partial'].includes(mode));
    assert.equal(!!report.failed.length,mode==='partial');
-   assert.equal(fs.existsSync(path.join(workspace,'memory.txt')),['retained','partial'].includes(mode));
+   assert.equal(fs.existsSync(path.join(workspace,'memory.txt')),['retained','partial','journal'].includes(mode));
+   if(mode==='journal')assert.equal(report.transport,'unregistered');
   }
+ }
+ // Missing roster must never hide orphan native state, including a redirected path.
+ for(const redirected of [false,true]){
+  const native=path.join(root,'state/agents',id);fs.mkdirSync(path.dirname(native),{recursive:true});
+  if(redirected)fs.symlinkSync(workspace,native);else fs.mkdirSync(native);
+  fs.writeFileSync(config,JSON.stringify({agents:{entries:{}}}));fs.writeFileSync(trace,'');
+  const check=spawnSync(process.execPath,[helper,root,id],{encoding:'utf8',env:{...process.env,OPENCLAW_CONFIG_PATH:config,TEST_MODE:'journal',TEST_TRACE:trace,TEST_WORKSPACE:workspace}});
+  assert.notEqual(check.status,0);assert.equal(fs.readFileSync(trace,'utf8'),'');
+  fs.rmSync(native,{recursive:true,force:true});
  }
  for(const mode of ['already-completed','incomplete-journal','retained-completed']){
   fs.rmSync(workspace,{recursive:true,force:true});

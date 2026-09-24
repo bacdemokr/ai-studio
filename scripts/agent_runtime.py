@@ -157,9 +157,11 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
     """Materialize definitions and skills without starting a runtime or model request."""
     protected = profile.get('protection', 'standard') == 'openshell'
     workspace = Path(workspace)
-    fresh = not workspace.exists()
+    fresh = not (workspace / 'IDENTITY.md').exists()
     workspace.mkdir(parents=True, exist_ok=True, mode=0o700)
-    if fresh and not overwrite:
+    if fresh:
+        # Definitions can be written at app startup or before registration fails.
+        # Only register() may mark the native identity as published.
         (workspace / '.bac-prepared-only').touch()
     for directory in ('inbox', 'artifacts', 'skills'):
         (workspace / directory).mkdir(exist_ok=True)
@@ -469,8 +471,16 @@ def remove(agent_id, workspace):
         config = c.read_json(config_path(), {})
         entry = config.get('agents', {}).get('entries', {}).get(agent_id)
         native = root() / 'state/agents' / agent_id
-        previous_state = ((native / 'agent').exists() or (native / 'sessions').exists()
+        previous_state = (native.exists() or native.is_symlink()
                           or ((workspace / 'IDENTITY.md').exists() and not (workspace / '.bac-prepared-only').exists()))
+        if not entry:
+            for other in config.get('agents', {}).get('entries', {}).values():
+                if not other.get('workspace'):
+                    continue
+                shared = Path(other['workspace']).resolve()
+                owned = workspace.resolve()
+                if shared == owned or shared in owned.parents or owned in shared.parents:
+                    raise RuntimeError('Another native agent uses this workspace. Its files were not removed.')
         if not entry and not previous_state:
             return  # Created offline, never provisioned; or native cleanup already completed.
         if entry and Path(entry.get('workspace', '')).resolve() != workspace.resolve():

@@ -408,6 +408,38 @@ class DeletionTests(unittest.TestCase):
             runtime.remove('bac-' + self.owner, self.studio.workspace(self.owner))
             command.assert_not_called()
 
+    def test_restart_materializes_personal_files_without_publishing_native_identity(self):
+        with patch.object(runtime, 'root', return_value=Path(self.temp.name)/'offline'):
+            # Exactly the user path: hire, restart, inspect files, then reset
+            # without ever sending a personal chat (crew files already exist).
+            restarted = Studio(self.temp.name, self.adapter, start_worker=False)
+            workspace = restarted.workspace(self.owner)
+            self.assertTrue((workspace/'IDENTITY.md').exists())
+            self.assertTrue((workspace/'.bac-prepared-only').exists())
+            with patch.object(runtime, 'delete_native') as command:
+                runtime.remove('bac-'+self.owner, workspace)
+                command.assert_not_called()
+
+    def test_failed_registration_keeps_prepared_marker(self):
+        with patch.object(runtime, 'root', return_value=Path(self.temp.name)/'offline'):
+            runtime.save_config(runtime.initial_config())
+            workspace=Path(self.temp.name)/'new-workspace'
+            with patch.object(runtime, 'save_config', side_effect=OSError('write failed')):
+                with self.assertRaises(OSError):
+                    runtime.register('bac-'+self.owner, workspace, self.profile)
+            self.assertTrue((workspace/'.bac-prepared-only').exists())
+
+    def test_unregistered_workspace_cannot_remove_another_native_agents_files(self):
+        with patch.object(runtime, 'root', return_value=Path(self.temp.name)/'offline'):
+            workspace=self.studio.workspace(self.owner)
+            config=runtime.initial_config()
+            config['agents']['entries']['bac-'+self.scout]={'workspace':str(workspace)}
+            runtime.save_config(config)
+            with patch.object(runtime, 'delete_native') as command:
+                with self.assertRaisesRegex(RuntimeError, 'Another native agent'):
+                    runtime.remove('bac-'+self.owner, workspace)
+                command.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()
