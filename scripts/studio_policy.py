@@ -103,7 +103,13 @@ class PolicyControls:
             catalog[key] = permission_rule(key)
         with self.db() as db:
             latest = db.execute("SELECT created,payload,result FROM jobs WHERE owner=? AND (CASE WHEN ? IS NULL THEN kind NOT IN ('crew','crew-chat','prepare','prepare-agent') ELSE kind='crew' OR (kind='crew-chat' AND json_extract(payload,'$.crewRole')=?) END) ORDER BY created DESC LIMIT 1", (owner, role, role)).fetchone()
-        recent = [e for e in report.get('logs', []) if e.get('action') == 'deny' and latest and e.get('time') is not None and e['time'] >= latest['created']]
+        # Heartbeats run without a chat job. Their native denials must remain
+        # visible even before the first summary is published, including after chat.
+        since = latest['created'] if latest else None
+        if radar_hosts:
+            with self.db() as db:
+                since = db.execute('SELECT reset_at FROM agents WHERE id=?',(owner,)).fetchone()['reset_at']
+        recent = [e for e in report.get('logs', []) if e.get('action') == 'deny' and since is not None and e.get('time') is not None and e['time'] >= since]
         report['recentDenied'] = [e for e in recent if e.get('reason', 'policy-denied') == 'policy-denied']
         report['connectionIssues'] = [e for e in recent if e.get('reason') in ('dns-failed', 'destination-blocked')]
         covered = {host for key in approved for host in permission_rule(key)['hosts']}
@@ -131,9 +137,9 @@ class PolicyControls:
                 approval_section = asks or (approval_section and bullet)
                 if not approval_section:
                     continue
-                for match in re.finditer(r'https?://[^\s<>"`\[\]()]+|`([a-zA-Z0-9.-]+)`', paragraph, re.I):
+                for match in re.finditer(r'https?://[^\s<>"`\[\]()]+|`([a-zA-Z0-9.-]+)`|\*\*([a-zA-Z0-9.-]+)\*\*', paragraph, re.I):
                     try:
-                        host = match.group(1) or urlsplit(match.group()).hostname or ''
+                        host = match.group(1) or match.group(2) or urlsplit(match.group()).hostname or ''
                         host = host.lower()
                         key = destination_permission(host)
                         catalog[key] = permission_rule(key)

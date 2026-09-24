@@ -74,6 +74,50 @@ class HeartbeatRelayTests(unittest.TestCase):
         with patch('runtime_settings.model_available',return_value=False):self.studio.heartbeat.tick()
         self.assertFalse(self.adapter.cadence[self.profile['id']])
 
+    def test_native_denial_without_outbox_shows_shield_policy_and_system_notice(self):
+        self.profile['protection']='openshell'
+        with self.studio.db() as db:
+            db.execute('UPDATE agents SET profile=? WHERE id=?',(json.dumps(self.profile),self.owner))
+        (self.root/tech_radar.OUTBOX).unlink()
+        now=time.time()
+        deny={'time':now,'action':'deny','reason':'policy-denied','host':'developer.nvidia.com'}
+        self.adapter.policy_events=lambda agent:[deny]
+        with patch.object(telegram,'send') as send:
+            self.tick();self.tick();send.assert_not_called()
+        events=self.studio.protection_activity.snapshot([self.owner],None)
+        self.assertEqual(len(events),1)
+        self.assertEqual(events[0]['host'],'developer.nvidia.com')
+        jobs=self.studio.state(self.owner)['jobs']
+        self.assertEqual(len(jobs),1)
+        self.assertTrue(jobs[0]['result']['systemNotice'])
+        self.assertIn('blocked by OpenShell',jobs[0]['result']['error'])
+        # No conversational turn is required to expose autonomous denials.
+        with self.studio.db() as db:db.execute('DELETE FROM jobs WHERE owner=?',(self.owner,))
+        self.adapter.policy_status=lambda *args:{'logs':[deny],'catalog':{}}
+        report=self.studio.policy_report(self.owner)
+        self.assertEqual(report['recentDenied'],[deny])
+        self.assertIn({'host':'developer.nvidia.com','reason':'blocked'},report['pendingAccess'])
+
+    def test_launch_failure_is_system_notice_not_shield_or_telegram(self):
+        (self.root/tech_radar.OUTBOX).unlink()
+        self.adapter.heartbeat_failure=lambda *args:{'time':time.time(),'code':'execution-failed','message':'Runtime command failed.'}
+        with patch.object(telegram,'send') as send:
+            self.tick()
+            self.studio.heartbeat.statuses[self.owner]['nativeCheckedAt']=0
+            self.tick();send.assert_not_called()
+        self.assertEqual(self.studio.protection_activity.snapshot([self.owner],None),[])
+        jobs=self.studio.state(self.owner)['jobs']
+        self.assertEqual(len(jobs),1)
+        self.assertTrue(jobs[0]['result']['systemNotice'])
+
+    def test_policy_observer_failure_does_not_disable_heartbeat(self):
+        self.profile['protection']='openshell'
+        with self.studio.db() as db:
+            db.execute('UPDATE agents SET profile=? WHERE id=?',(json.dumps(self.profile),self.owner))
+        self.adapter.policy_events=lambda agent:(_ for _ in ()).throw(RuntimeError('log unavailable'))
+        self.tick()
+        self.assertTrue(self.adapter.cadence[self.profile['id']])
+
 
 class TelegramTests(unittest.TestCase):
     def setUp(self):

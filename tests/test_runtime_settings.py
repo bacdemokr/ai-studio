@@ -33,6 +33,19 @@ class SettingsTests(unittest.TestCase):
             self.assertEqual(spawn.call_args.kwargs['cwd'],r.root())
             self.assertTrue(spawn.call_args.kwargs['start_new_session'])
 
+    def test_model_reconnect_requeues_autonomous_agent_preparation(self):
+        owner=self.studio.session()[0]['id']
+        profile=self.studio.onboard(owner,{'name':'Pixel','skills':['radar']})
+        self.studio.execute(self.studio.next_job())
+        self.assertIn(profile['id'],self.studio.provisioned)
+        s.save(self.studio,self.data())
+        self.assertNotIn(profile['id'],self.studio.provisioned)
+        job=self.studio.next_job()
+        self.assertEqual(job['kind'],'prepare-agent')
+        self.assertEqual(job['owner'],owner)
+        self.studio.execute(job)
+        self.assertIn(profile['id'],self.studio.provisioned)
+
     def test_event_can_save_without_model_and_region_is_optional(self):
         result=s.save(self.studio,{'section':'event','event':{'city':'Boston','language':'English','region':'','venue':''}})
         self.assertEqual(result['event']['region'],'')

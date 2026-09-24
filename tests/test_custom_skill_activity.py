@@ -36,6 +36,23 @@ class CustomSkillActivityTests(unittest.TestCase):
         paths=agent_activity.custom_skill_paths(self.config,'ours',self.catalog)
         return agent_activity.collect(self.root,'ours','current',1,skill_paths=paths)
 
+    def test_heartbeat_launch_failure_is_scoped_redacted_and_cleared_on_success(self):
+        with sqlite3.connect(self.dbpath) as db:
+            db.execute('insert into session_windows values(?,?)',('hb','agent:ours:heartbeat-radar:heartbeat'))
+            event={'message':{'role':'toolResult','toolName':'exec','content':[{'text':'Command failed during launch (ENOENT) private-token'}]}}
+            db.execute('insert into transcript_events values(?,?,?,?)',('other',1,json.dumps(event),2000))
+        self.assertIsNone(agent_activity.heartbeat_failure(self.root,'ours',1))
+        with sqlite3.connect(self.dbpath) as db:
+            db.execute('insert into transcript_events values(?,?,?,?)',('hb',2,json.dumps(event),2000))
+        result=agent_activity.heartbeat_failure(self.root,'ours',1)
+        self.assertEqual(result['code'],'execution-failed')
+        self.assertNotIn('private-token',json.dumps(result))
+        self.assertIsNone(agent_activity.heartbeat_failure(self.root,'ours',3))
+        with sqlite3.connect(self.dbpath) as db:
+            success={'message':{'role':'toolResult','toolName':'exec','content':[{'text':'ok'}]}}
+            db.execute('insert into transcript_events values(?,?,?,?)',('hb',3,json.dumps(success),3000))
+        self.assertIsNone(agent_activity.heartbeat_failure(self.root,'ours',1))
+
     def test_only_successful_equipped_custom_skill_reads_in_this_turn_are_marked(self):
         self.call('relative','./skills/bac-documents/SKILL.md')
         self.call('absolute',str(self.workspace/'skills/bac-nvidia-webpage/SKILL.md'))

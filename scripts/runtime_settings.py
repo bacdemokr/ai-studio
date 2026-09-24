@@ -296,6 +296,13 @@ def save(studio, data):
             global _availability
             _availability=(availability_signature(provider,profile),time.monotonic(),True)
         studio.provisioned.clear();studio.status_cache=(0,{})
+        # Model reconnect invalidates native registration. Autonomous agents have
+        # no next chat to trigger lazy provisioning, so durably warm them again.
+        for row in db.execute('SELECT id,profile FROM agents WHERE deleting=0 AND profile IS NOT NULL').fetchall():
+            saved_profile=json.loads(row['profile'])
+            if 'radar' in saved_profile.get('skills',[]):
+                studio.queue_agent_preparation(db,row['id'],saved_profile)
+    studio.signal.set()
     return public()
 
 

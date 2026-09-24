@@ -77,3 +77,26 @@ def collect(state, agent, session, started=0, skill_paths=None):
 def require_action(activity, action):
     if not any(c.get('tool')=='exec' and action in c.get('actions',[c.get('action')]) and c.get('status')=='completed' for c in activity.get('calls',[])):
         raise ValueError('No completed '+action+' tool call was observed in the native agent transcript.')
+
+
+def heartbeat_failure(state, agent, started):
+    """Return only a fixed operational diagnosis, never raw transcript contents."""
+    path=Path(state)/'agents'/agent/'agent/openclaw-agent.sqlite'
+    if not path.is_file():return None
+    try:
+        with sqlite3.connect('file:'+str(path)+'?mode=ro',uri=True,timeout=2) as db:
+            rows=db.execute("""SELECT t.event_json,t.created_at FROM transcript_events t
+                JOIN session_windows s USING(session_id) WHERE s.session_key=? AND t.created_at>=?
+                ORDER BY t.created_at DESC,t.seq DESC LIMIT 100""",
+                ('agent:'+agent+':heartbeat-radar:heartbeat',int(started*1000))).fetchall()
+        for raw,stamp in rows:
+            message=json.loads(raw).get('message',{})
+            if message.get('role')!='toolResult' or message.get('toolName')!='exec':continue
+            content=message.get('content',[])
+            text=' '.join(str(item.get('text','')) for item in content if isinstance(item,dict)) if isinstance(content,list) else ''
+            if 'ENOENT' in text and 'launch' in text:
+                return {'time':stamp/1000,'code':'execution-failed','message':'Heartbeat could not launch its command. Check the agent runtime; no website-policy denial was confirmed.'}
+            # A later successful exec supersedes an earlier launch failure.
+            return None
+    except (OSError,ValueError,TypeError,sqlite3.Error):pass
+    return None

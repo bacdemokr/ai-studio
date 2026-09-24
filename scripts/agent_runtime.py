@@ -520,7 +520,13 @@ def respond(agent_id, session, prompt, images=None):
     if expected:
         deadline = time.monotonic() + 20
         while True:
-            live = live_agents()
+            try:live = live_agents()
+            except (RuntimeError, subprocess.TimeoutExpired):
+                # Native sandbox preparation can briefly stall gateway discovery.
+                # Retry this read within the existing barrier, never the model POST.
+                if time.monotonic() >= deadline:raise
+                time.sleep(.3)
+                continue
             if any(a.get('id') == agent_id and a.get('identity', {}).get('theme') == expected for a in live.get('agents', [])):
                 break
             if time.monotonic() >= deadline:
@@ -600,6 +606,11 @@ def policy_status(agent_id, mode, approved):
 def policy_apply(agent_id, approved):
     from agent_policy import apply
     return apply(agent_id, approved)
+
+
+def heartbeat_failure(agent_id, started):
+    from agent_activity import heartbeat_failure as read_failure
+    return read_failure(root()/'state', agent_id, started)
 
 
 def policy_events(agent_id):

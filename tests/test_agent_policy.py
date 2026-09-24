@@ -179,9 +179,9 @@ class PolicyTests(unittest.TestCase):
             self.assertNotIn('web_fetch', entry['tools']['allow'])
             self.assertIn('/usr/bin/curl', (self.studio.workspace(self.owner) / 'skills/bac-weather/SKILL.md').read_text())
             expected = entry['identity']['theme']
-            with patch('agent_runtime.live_agents', side_effect=[{'agents':[{'id':native_id,'identity':{'theme':'old'}}]}, {'agents':[{'id':native_id,'identity':{'theme':expected}}]}]) as cli, patch('agent_runtime.gateway', side_effect=[{'data':[{'id':'openclaw/'+native_id}]},{'choices':[{'message':{'content':'done'}}]}]) as gateway, patch('agent_runtime.time.sleep'):
+            with patch('agent_runtime.live_agents', side_effect=[RuntimeError('transient gateway read timeout'), {'agents':[{'id':native_id,'identity':{'theme':'old'}}]}, {'agents':[{'id':native_id,'identity':{'theme':expected}}]}]) as cli, patch('agent_runtime.gateway', side_effect=[{'data':[{'id':'openclaw/'+native_id}]},{'choices':[{'message':{'content':'done'}}]}]) as gateway, patch('agent_runtime.time.sleep'):
                 self.assertEqual(runtime.respond(native_id, 'session', 'hello'), 'done')
-                self.assertEqual(cli.call_count, 2)
+                self.assertEqual(cli.call_count, 3)
                 self.assertEqual(gateway.call_count, 2)
             runtime.register(native_id, self.studio.workspace(self.owner), {**self.profile, 'protection':'standard'})
             entry = json.loads(runtime.config_path().read_text())['agents']['entries'][native_id]
@@ -405,6 +405,7 @@ class PolicyTests(unittest.TestCase):
              "`wttr.in` in the OpenShell Policies tab, and I'll be right on it.",
              [{'host': 'wttr.in', 'reason': 'suggested'}]),
             ('Weather reference: `wttr.in`.', []),
+            ('Please approve **api.open-meteo.com**.', [{'host':'api.open-meteo.com','reason':'suggested'}]),
             ('Please approve `127.0.0.1`, `metadata.internal`, and `*.example.com`.', []),
         ]
         for answer, expected in answers:

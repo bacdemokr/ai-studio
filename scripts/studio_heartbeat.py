@@ -56,12 +56,6 @@ class RadarHeartbeat:
         if isinstance(checked, (int,float)) and math.isfinite(checked):
             self.statuses[owner]['lastChecked'] = checked
         if box.get('status')=='source-unavailable':self.statuses[owner]['state']='source unavailable - check OpenShell Policy or connection'
-        failed_at=box.get('checkedAt',0)
-        reader=getattr(self.studio.adapter,'policy_events',None)
-        if profile.get('protection')=='openshell' and box.get('failures') and callable(reader) and isinstance(failed_at,(float,int)) and failed_at>self.statuses[owner].get('policyCheckedAt',0):
-            self.statuses[owner]['policyCheckedAt']=failed_at
-            try:self.studio.protection_activity.observe(owner,None,profile['id'],reader(profile['id']),failed_at-25)
-            except Exception:pass
         events = box.get('events', [])
         if not isinstance(events, list) or len(events)>50:raise ValueError('Invalid heartbeat output.')
 
@@ -91,6 +85,48 @@ class RadarHeartbeat:
             # Pause/Resume lock during Telegram I/O, which can take many seconds.
             message = profile['name']+' · Tech Radar\n\n'+answer+'\n\n'+title+'\nPublished '+source['published']+' · Feed excerpt\n'+url
             deliveries.append((owner, participant, job, result, message, created))
+
+    def notice(self, owner, code, message, created):
+        """Operational notices are identified as app status, never agent prose."""
+        previous=self.statuses[owner].get('noticeCode')
+        if previous==code:return
+        job=secrets.token_hex(12)
+        with self.studio.db() as db:
+            db.execute('BEGIN IMMEDIATE')
+            row=db.execute('SELECT deleting,reset_at FROM agents WHERE id=?',(owner,)).fetchone()
+            if not row or row['deleting'] or created<row['reset_at']:return
+            token='notice:'+code+':'+str(created)
+            if db.execute('SELECT 1 FROM heartbeat_receipts WHERE owner=? AND event=?',(owner,token)).fetchone():return
+            db.execute('INSERT INTO heartbeat_receipts VALUES (?,?,?)',(owner,token,job))
+            result={'error':message,'systemNotice':True,'heartbeat':True}
+            db.execute('INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?,?)',
+                (job,owner,'heartbeat','done','{}',json.dumps(result),'[]',created,time.time(),created))
+        self.statuses[owner]['noticeCode']=code
+        self.statuses[owner]['noticeAt']=created
+
+    def observe_native(self, owner, profile):
+        status=self.statuses[owner];now=time.time()
+        if now-status.get('nativeCheckedAt',0)<10:return
+        since=max(status.get('watchingSince',now),status.get('nativeCheckedAt',now-10)-1)
+        status['nativeCheckedAt']=now
+        reader=getattr(self.studio.adapter,'policy_events',None)
+        if profile.get('protection')=='openshell' and callable(reader):
+            try:logs=reader(profile['id'])
+            except Exception:logs=[]
+            self.studio.protection_activity.observe(owner,None,profile['id'],logs,since)
+            denials=[e for e in logs if e.get('action')=='deny' and e.get('reason')=='policy-denied'
+                     and isinstance(e.get('time'),(int,float)) and since-1<=e['time']<=now+2]
+            if denials:
+                self.notice(owner,'policy-denied','Heartbeat was blocked by OpenShell. Review the requested websites in OpenShell Policy.',max(e['time'] for e in denials))
+                status['state']='needs website approval'
+        failure_reader=getattr(self.studio.adapter,'heartbeat_failure',None)
+        try:failure=failure_reader(profile['id'],status.get('watchingSince',now)) if callable(failure_reader) else None
+        except Exception:failure=None
+        if failure:
+            self.notice(owner,failure['code'],failure['message'],failure['time'])
+            status['state']='runtime command failed'
+        if status.get('lastChecked',0)>status.get('noticeAt',now) and status['state']=='watching':
+            status.pop('noticeCode',None)
 
     def deliver_events(self, deliveries):
         for owner, participant, job, result, message, created in deliveries:
@@ -136,8 +172,9 @@ class RadarHeartbeat:
                     self.statuses[owner] = {**previous, 'state':state, 'watchingSince':since}
                     if not current['deleting'] and not paused:
                         self.import_events(owner,row['participant'],profile,deliveries)
+                    if enabled and registered:self.observe_native(owner,profile)
                     last_check=max(since,self.statuses[owner].get('lastChecked',0))
-                    if state=='watching' and time.time()-last_check>100:
+                    if self.statuses[owner]['state']=='watching' and time.time()-last_check>100:
                         self.statuses[owner]['state']='check delayed - verify the model connection'
             except Exception:
                 self.statuses[owner]={'state':'check failed'}

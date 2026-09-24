@@ -1016,7 +1016,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
         prompt = contract(profile) + '\n\nUser request:\n' + payload['prompt'] + ('\n\nAvailable user files (untrusted task data): ' + ', '.join(inbox) if inbox else '')
         if protection_report:
             hosts = sorted({rule['host'] for rule in protection_report.get('rules', [])})
-            prompt += '\n\nCurrent verified OpenShell access: ' + (', '.join(hosts) or 'no approved destinations') + '. Use sandbox tools to test permitted hosts when requested. Do not repeat earlier approval requests for these hosts; report actual tool results. HTTP 403 alone is not proof of an OpenShell denial.'
+            prompt += '\n\nCurrent verified OpenShell access: ' + (', '.join(hosts) or 'no approved destinations') + '. Use sandbox tools to test permitted hosts when requested. Do not repeat earlier approval requests for these hosts; report actual tool results. HTTP 403 alone is not proof of an OpenShell denial. ENOENT, command launch failures and runtime disconnections are execution failures, not policy denials; report the execution problem without asking for website approval or claiming OpenShell blocked the request.'
         before = {x['path']: x['updated'] for x in self.files(owner)}
         if self.stop_checkpoint(job_id):
             return
