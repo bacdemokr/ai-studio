@@ -6,7 +6,7 @@ await p.route('**/api/session',r=>r.fulfill({json:fixture.state}));await p.route
 await p.route('**/api/prepare-demo',r=>{fixture.state.preparation={id:'prepared-fixture',status:'done',valid:true,payload:{enabledRoles:[0,1,2,3],checks:[]}};return r.fulfill({json:{id:'prepared-fixture'}});});
 await p.route('**/api/event-catalog',r=>r.fulfill({json:JSON.parse(execFileSync('python3',['-c','import sys,json;sys.path.insert(0,"scripts");import event_planner as e;print(json.dumps(dict(templates=e.TEMPLATES,topics=e.TOPICS,harnesses=e.HARNESS)))'],{encoding:'utf8'}))}));
 await p.route('**/api/file?*',r=>r.fulfill({json:{content:fixture.page,mime:'text/html'}}));
-await p.route('**/api/event-plan',r=>{const brief=r.request().postDataJSON().brief;assert.ok(brief.themeCount>=2&&brief.themeCount<=6);assert.equal(brief.harnesses,undefined);assert.equal(brief.topics,undefined);const result=execFileSync('python3',['-c','import sys,json;sys.path.insert(0,"scripts");from event_planner import plan;b,c=plan(json.loads(sys.argv[1]));print(json.dumps(dict(brief=b,capacity=c)))',JSON.stringify(brief)],{encoding:'utf8'});return r.fulfill({body:result,contentType:'application/json'});});
+await p.route('**/api/event-plan',r=>{const brief=r.request().postDataJSON().brief;assert.ok(brief.themeCount>=2&&brief.themeCount<=6);assert.equal(brief.harnesses,undefined);assert.equal(brief.topics,undefined);const result=execFileSync('python3',['-c','import sys,json;sys.path.insert(0,"scripts");from event_planner import plan\ntry:\n b,c=plan(json.loads(sys.argv[1]));print(json.dumps(dict(brief=b,capacity=c)))\nexcept ValueError as e: print(json.dumps(dict(error=str(e))))',JSON.stringify(brief)],{encoding:'utf8'});return r.fulfill({status:JSON.parse(result).error?400:200,body:result,contentType:'application/json'});});
 await p.goto(process.env.BAC_TEST_URL||'http://127.0.0.1:8080');await p.waitForFunction(()=>window.BacStudio);await p.locator('.world-room-map [data-world-room=mission]').click();await p.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
 await p.locator('[data-surface=deliverables]').first().click();const frame=p.frameLocator('.event-showcase-preview');await frame.locator('.theme-card').first().waitFor();assert.equal(await frame.locator('.theme-card').count(),6);assert.equal(await p.getByText('Download post',{exact:true}).count(),1);assert.equal(await frame.locator('.social-post').count(),1);assert.ok(await frame.locator('td.break').count()>0);await p.locator('#studio-surface-close').click();
 await p.locator('#studio-room-action').click();await p.locator('[name=themeCount]').waitFor();assert.equal(await p.locator('[name=harnesses]').count(),0);assert.equal(await p.locator('[name=topics]').count(),0);assert.equal(await p.locator('[name=boothLimit]').count(),0);assert.equal(await p.locator('#studio-event-template').inputValue(),'zurich');assert.equal(await p.locator('#studio-event-template option[value=""]').count(),0);assert.equal(await p.locator('#studio-event-template option[value="austin"]').count(),0);
@@ -20,6 +20,13 @@ assert.equal(await p.locator('[name=attendees]').evaluate(n=>n.checkValidity()),
 await p.locator('[name=attendees]').fill('64');
 await p.waitForFunction(()=>document.querySelector('.event-metrics>div:nth-child(3) strong')?.textContent==='4');
 assert.equal(await p.locator('[name=attendees]').inputValue(),'64');
+await p.locator('[name=attendees]').fill('65');
+await p.waitForFunction(()=>document.querySelector('.event-metrics>div:nth-child(2) strong')?.textContent==='14 min');
+assert.equal(await p.locator('#studio-event-preview .event-plan-error').count(),0);
+await p.locator('[name=attendees]').fill('3000');
+await p.locator('#studio-event-preview .event-plan-error').waitFor();
+assert.match(await p.locator('#studio-event-preview').innerText(),/Add event time or days/);
+assert.ok(await p.locator('#studio-launch-event').isDisabled());
 await p.locator('[name=attendees]').fill('19');
 await p.waitForFunction(()=>document.querySelector('.event-metrics>div:nth-child(3) strong')?.textContent==='2');
 assert.equal(await p.locator('[name=attendees]').inputValue(),'19');assert.equal(await p.locator('[name=attendees]').evaluate(n=>n.checkValidity()),true);

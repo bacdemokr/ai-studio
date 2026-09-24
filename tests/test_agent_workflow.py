@@ -48,7 +48,7 @@ class AgentToolsAdapter(EventAdapter):
                 run(work,'search',['Agent-selected fixture query']);run(work,'read',['S'+str(i+1) for i in range(contract['brief']['themeCount'])])
                 (work/files['demos']).write_text(json.dumps({'demos':demos(contract['brief'])}));actions=['search','read']
             else:
-                (work/files['plan']).write_text(json.dumps(schedule_spec(contract)));run(work,'schedule',[]);actions=['schedule']
+                run(work,'draft-schedule',[]);run(work,'schedule',[]);actions=['draft-schedule','schedule']
             text='I executed '+', '.join(actions)+' and saved the deliverable.'
         elif stage==3:
             post_path=work/json.loads((work/'inbox/morgan-page.json').read_text())['files']['post']
@@ -79,8 +79,8 @@ class AgentWorkflowTests(unittest.TestCase):
 
     def test_agents_execute_research_and_schedule_then_morgan_authors_page(self):
         job=self.event();p=job['payload'];self.assertEqual(job['status'],'done')
-        self.assertCountEqual(self.adapter.tool_calls,['search','read','schedule'])
-        self.assertTrue(p['website']['authored']);self.assertEqual(p['capacity']['staffingPolicy'],'agent-authored')
+        self.assertCountEqual(self.adapter.tool_calls,['search','read','draft-schedule','schedule'])
+        self.assertTrue(p['website']['authored']);self.assertEqual(p['capacity']['staffingPolicy'],'tool-calculated')
         self.assertEqual(p['research']['queries'],['Agent-selected fixture query'])
         self.assertTrue(all(t['researchStatus']=='sourced' for t in p['capacity']['topics']))
         self.assertEqual(p['handoffs']['1']['receivedFrom'],['0']);self.assertEqual(p['handoffs']['2']['receivedFrom'],['0'])
@@ -155,8 +155,10 @@ class AgentWorkflowTests(unittest.TestCase):
             b,c=plan({'themeCount':6,'days':2,'attendees':180})
             payload={'brief':b,'capacity':c};agent_workflow.prepare(workspace,'cli-test',payload,2)
             contract=json.loads((workspace/'inbox/agent-task.json').read_text())
-            (workspace/contract['files']['plan']).write_text(json.dumps(schedule_spec(contract)))
             script='skills/bac-event-tools/scripts/event_agent_tools.py'
+            drafted=subprocess.run([__import__('sys').executable,script,'draft-schedule'],cwd=workspace,capture_output=True,text=True)
+            self.assertEqual(drafted.returncode,0,drafted.stderr)
+            self.assertEqual(json.loads(drafted.stdout)['status'],'drafted')
             result=subprocess.run([__import__('sys').executable,script,'schedule'],cwd=workspace,capture_output=True,text=True)
             self.assertEqual(result.returncode,0,result.stderr)
             self.assertEqual(json.loads(result.stdout)['status'],'validated')

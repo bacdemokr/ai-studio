@@ -39,7 +39,7 @@ class PlanningTests(unittest.TestCase):
         _,busy=planner.plan({'attendees':240,'duration':120,'days':1,'topics':['physical','vision','cudax','agents']});self.assertTrue(busy['adjusted']);self.assertEqual(busy['session'],10)
 
     def test_weights_boundaries_and_invalid_briefs(self):
-        b,c=planner.plan({'attendees':101,'topicWeights':[8,1,1]})
+        b,c=planner.plan({'attendees':101,'topics':['agents','multiagent','cudax'],'topicWeights':[8,1,1]})
         self.assertEqual([t['attendees'] for t in c['topics']],[81,10,10])
         for data in ({'attendees':True},{'duration':3.5},{'topics':['physical','physical']},{'topics':[]},{'harnesses':['bogus']},{'topicWeights':[0,0,0]}, {'boothLimit':7},{'startTime':'23:30','duration':60},{'attendees':3000,'duration':30,'groupSize':1},{'city':'bad\nheader'}):
             with self.subTest(data=data),self.assertRaises(ValueError):planner.plan(data)
@@ -128,7 +128,7 @@ class EventPackageTests(unittest.TestCase):
         self.assertEqual(before,[(r['booth'],r['start'],r['attendees']) for r in p['capacity']['schedule']])
         self.assertEqual(p['capacity']['topics'][0]['demo'],'Build a travel companion')
         self.assertEqual(p['capacity']['booths'][0]['presenterExpertise'],'Agent memory and tools')
-        self.assertIn('1 of 3',p['capacity']['demoSource'])
+        self.assertIn('1 of 2',p['capacity']['demoSource'])
         artifact=next(f for f in p['packageFiles'] if f.endswith('.xlsx'))
         with ZipFile(self.studio.workspace(self.owner)/artifact) as z:
             self.assertIn('Build a travel companion',z.read('xl/worksheets/sheet%d.xml' % (p['brief']['days']+2)).decode())
@@ -139,13 +139,13 @@ class EventPackageTests(unittest.TestCase):
         self.studio.survey_answer(token,{'visitor':'a'*32,'topic':'multiagent','experience':'new','rating':4})
         restarted=Studio(self.temp.name,self.adapter,start_worker=False)
         report=restarted.survey_report(restarted.job_owner(self.owner,self.job),self.job);self.assertEqual(report['total'],1);self.assertEqual(report['rating'],4)
-        self.assertEqual([t['count'] for t in report['topics']],[0,1,0])
+        self.assertEqual([t['count'] for t in report['topics']],[0,1])
         other=restarted.session()[0]['id']
         with self.assertRaises(Problem):restarted.survey_report(other,self.job)
         with self.assertRaises(Problem):restarted.survey_replan(other,{'id':self.job})
         with self.assertRaises(Problem):restarted.survey_answer(token,{'visitor':'b'*32,'topic':'bad','experience':'new','rating':5})
         new=restarted.survey_replan(restarted.job_owner(self.owner,self.job),{'id':self.job});self.assertNotEqual(new['id'],self.job)
-        state=restarted.state(self.owner)['jobs'][0];self.assertEqual(state['payload']['brief']['topicWeights'],[0,1,0]);self.assertEqual(state['payload']['brief']['attendees'],120)
+        state=restarted.state(self.owner)['jobs'][0];self.assertEqual(state['payload']['brief']['topicWeights'],[0,1]);self.assertEqual(state['payload']['brief']['attendees'],120)
         self.assertEqual(state['payload']['source'],'survey:'+self.job)
         page=survey_page(token,{**restarted.survey_definition(token),'title':'<script>bad()</script>'})
         self.assertIn('&lt;script&gt;',page);self.assertNotIn('<script>bad()',page)
