@@ -8,7 +8,7 @@
     "qwen": {
       "id": "nvidia/Qwen3.6-35B-A3B-NVFP4",
       "revision": "1355db6a052410cfd62085d94b58866fd0f2c3c5",
-      "args": ["--moe-backend", "flashinfer_b12x", "--enable-auto-tool-choice", "--tool-call-parser", "qwen3_coder", "--reasoning-parser", "qwen3", "--tensor-parallel-size", "1", "--trust-remote-code", "--kv-cache-dtype", "fp8", "--attention-backend", "flashinfer", "--gpu-memory-utilization", "0.6", "--max-model-len", "262144", "--max-num-seqs", "4", "--max-num-batched-tokens", "8192", "--enable-chunked-prefill", "--async-scheduling", "--enable-prefix-caching", "--load-format", "fastsafetensors"]
+      "args": ["--moe-backend", "flashinfer_b12x", "--enable-auto-tool-choice", "--tool-call-parser", "qwen3_coder", "--reasoning-parser", "qwen3", "--default-chat-template-kwargs", "{\"enable_thinking\":false}", "--tensor-parallel-size", "1", "--trust-remote-code", "--kv-cache-dtype", "fp8", "--attention-backend", "flashinfer", "--gpu-memory-utilization", "0.6", "--max-model-len", "262144", "--max-num-seqs", "4", "--max-num-batched-tokens", "8192", "--enable-chunked-prefill", "--async-scheduling", "--enable-prefix-caching", "--load-format", "fastsafetensors"]
     },
     "gemma": {
       "id": "unsloth/gemma-4-26B-A4B-it-NVFP4",

@@ -51,6 +51,8 @@ This applies to the app's user services, not the lifecycle of an independently i
 
 ## 3. Connect the existing model
 
+For the project's Qwen3.6 NVFP4 vLLM launch example and the recommended `enable_thinking` setting, see [Qwen3.6 with vLLM](qwen3-vllm.md).
+
 Open **http://localhost:8080 → Settings → Model → Local / on-prem**. The endpoint fields open automatically for this provider.
 
 | Server on the Ubuntu host | API endpoint | Model ID | API key |
