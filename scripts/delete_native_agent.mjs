@@ -69,19 +69,36 @@ async function deleteThroughGateway() {
 }
 async function quiesceAgent() {
   const callGateway = await nativeExport('call-', 'callGateway');
+  const transportError = await nativeExport('transport-error-', 'isGatewayTransportError');
   const deadline = Date.now()+30000;
   const aborted = new Set();
   while (true) {
-    const result = await callGateway({method:'sessions.list',params:{agentId,activeOnly:true},
-      mode:'cli',clientName:'cli',requiredMethods:['sessions.list'],timeoutMs:10000});
+    if (Date.now()>=deadline) return {agentId,quiescent:false};
+    let result;
+    try {
+      result = await callGateway({method:'sessions.list',params:{agentId,activeOnly:true},
+        mode:'cli',clientName:'cli',requiredMethods:['sessions.list'],timeoutMs:Math.max(1,Math.min(10000,deadline-Date.now()))});
+    } catch (error) {
+      // A restarting/unreachable gateway proves neither activity nor absence.
+      // Persist a pending deletion; never proceed to sandbox/file cleanup.
+      if (transportError(error)) return {agentId,quiescent:false};
+      throw error;
+    }
     if (!Array.isArray(result?.sessions)) throw Error('Invalid active session response');
     if (!result.sessions.length) return {agentId,quiescent:true};
     for (const session of result.sessions) {
       if (typeof session.key!=='string' || !session.key.startsWith('agent:'+agentId+':')) throw Error('Unexpected session owner');
       if (aborted.has(session.key)) continue;
-      await callGateway({method:'sessions.abort',params:{agentId,key:session.key,clearQueued:true},
-        mode:'cli',clientName:'cli',requiredMethods:['sessions.abort'],timeoutMs:10000});
+      if (Date.now()>=deadline) return {agentId,quiescent:false};
       aborted.add(session.key);
+      try {
+        await callGateway({method:'sessions.abort',params:{agentId,key:session.key,clearQueued:true},
+          mode:'cli',clientName:'cli',requiredMethods:['sessions.abort'],timeoutMs:Math.max(1,Math.min(10000,deadline-Date.now()))});
+      } catch (error) {
+        // Abort can commit before its reply is lost. Recheck live activity,
+        // rather than declaring failure or repeating the same abort blindly.
+        if (!transportError(error)) throw error;
+      }
     }
     if (Date.now()>=deadline) return {agentId,quiescent:false};
     await new Promise(resolve=>setTimeout(resolve,250));

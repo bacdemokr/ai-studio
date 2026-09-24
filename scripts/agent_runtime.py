@@ -402,7 +402,12 @@ class NativeCleanupPending(RuntimeError):
 def quiesce_native(agent_id):
     command=[str(root()/'node/bin/node'),str(Path(__file__).with_name('delete_native_agent.mjs')),
              str(root()),agent_id,'--quiesce']
-    result=subprocess.run(command,env=environment(),capture_output=True,text=True,timeout=50)
+    try:
+        result=subprocess.run(command,env=environment(),capture_output=True,text=True,timeout=50)
+    except subprocess.TimeoutExpired:
+        # The stop helper never deletes files. An expired reply means that we
+        # must recheck activity later, not that stopping failed or completed.
+        raise NativeCleanupPending('Waiting to verify that the native agent stopped.') from None
     if result.returncode:raise RuntimeError('Could not verify that the native agent stopped. Its files were not removed.')
     report=json.loads(result.stdout)
     if report.get('agentId')!=agent_id:raise RuntimeError('Invalid native stop confirmation.')

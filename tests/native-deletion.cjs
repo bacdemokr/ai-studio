@@ -11,11 +11,15 @@ try{
   if(options.method==='sessions.list'){
    if(options.params.agentId!=='${id}'||!options.params.activeOnly)throw Error('Unscoped session query');
    const trace=await fs.readFile(process.env.TEST_TRACE,'utf8');
+   if(process.env.TEST_MODE==='drain-list-timeout'||process.env.TEST_MODE==='drain-disconnected'&&trace.includes('abort\\n'))throw Object.assign(Error('temporary disconnect'),{transport:true,kind:'timeout'});
+   if(process.env.TEST_MODE==='drain-denied')throw Error('Permission denied');
    return {sessions:trace.includes('abort\\n')?[]:[{key:'agent:${id}:heartbeat-radar:heartbeat'}]};
   }
   if(options.method==='sessions.abort'){
    if(options.params.agentId!=='${id}'||options.params.key!=='agent:${id}:heartbeat-radar:heartbeat'||!options.params.clearQueued)throw Error('Unscoped abort');
-   await fs.appendFile(process.env.TEST_TRACE,'abort\\n');return {ok:true};
+   await fs.appendFile(process.env.TEST_TRACE,'abort\\n');
+   if(['drain-abort-timeout','drain-disconnected'].includes(process.env.TEST_MODE))throw Object.assign(Error('abort reply lost'),{transport:true,kind:'timeout'});
+   return {ok:true};
   }
   if(options.method==='agents.list'){if(options.requiredMethods[0]!=='agents.list')throw Error('Missing list requirement'); return {agents:[]};}
   if(options.method!=='agents.delete'||options.params.deleteFiles!==true||options.clientName!=='cli'||options.requiredMethods[0]!=='agents.delete')throw Error('Unexpected request');
@@ -106,6 +110,15 @@ try{
  assert.equal(quiet.status,0,quiet.stderr);assert.equal(JSON.parse(quiet.stdout).quiescent,true);
  assert.deepEqual(fs.readFileSync(trace,'utf8').trim().split('\n'),['rpc','rpc','abort','rpc']);
  assert.equal(fs.readFileSync(path.join(workspace,'memory.txt'),'utf8'),'keep','Draining must not delete files');
+ for(const mode of ['drain-list-timeout','drain-abort-timeout','drain-disconnected','drain-denied']){
+  fs.writeFileSync(trace,'');
+  const check=spawnSync(process.execPath,[helper,root,id,'--quiesce'],{encoding:'utf8',timeout:8000,env:{...process.env,OPENCLAW_CONFIG_PATH:config,TEST_MODE:mode,TEST_TRACE:trace,TEST_WORKSPACE:workspace}});
+  if(mode==='drain-denied')assert.notEqual(check.status,0,'Authorization errors must remain errors');
+  else {assert.equal(check.status,0,check.stderr);assert.equal(JSON.parse(check.stdout).quiescent,mode==='drain-abort-timeout');}
+  const calls=fs.readFileSync(trace,'utf8').trim().split('\n');
+  assert.deepEqual(calls,mode==='drain-denied'||mode==='drain-list-timeout'?['rpc']:['rpc','rpc','abort','rpc']);
+  assert.equal(fs.readFileSync(path.join(workspace,'memory.txt'),'utf8'),'keep','Uncertain stop must preserve files');
+ }
  fs.writeFileSync(path.join(pkg,'package.json'),JSON.stringify({version:'unexpected'}));fs.writeFileSync(trace,'');
  const rejected=spawnSync(process.execPath,[helper,root,id],{encoding:'utf8',env:{...process.env,OPENCLAW_CONFIG_PATH:config,TEST_TRACE:trace}});
  assert.notEqual(rejected.status,0);assert.equal(fs.readFileSync(trace,'utf8'),'');

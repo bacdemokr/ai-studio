@@ -217,6 +217,18 @@ class DeletionTests(unittest.TestCase):
                 with self.assertRaises(runtime.NativeCleanupPending):runtime.remove(native_id,workspace)
                 delete.assert_not_called()
 
+    def test_stop_helper_timeout_waits_without_deleting_or_masking_invalid_reports(self):
+        native_id='bac-'+self.owner
+        with patch('agent_runtime.subprocess.run',side_effect=subprocess.TimeoutExpired(['stop-helper'],50)), \
+             patch('agent_runtime.delete_native') as delete:
+            with self.assertRaises(runtime.NativeCleanupPending):runtime.quiesce_native(native_id)
+            delete.assert_not_called()
+        for result in (subprocess.CompletedProcess([],1,'','Permission denied'),
+                       subprocess.CompletedProcess([],0,json.dumps({'agentId':'someone-else','quiescent':True}),'')):
+            with patch('agent_runtime.subprocess.run',return_value=result):
+                with self.assertRaises(RuntimeError) as error:runtime.quiesce_native(native_id)
+                self.assertNotIsInstance(error.exception,runtime.NativeCleanupPending)
+
     def test_stale_confirmation_and_other_participant_are_rejected(self):
         with self.assertRaises(Problem):
             self.studio.delete_agent(self.scout, {'name': 'Jinny'})
