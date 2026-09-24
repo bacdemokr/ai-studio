@@ -152,13 +152,16 @@ try:
      for line in result.stderr.splitlines():
       try:details=json.loads(line)
       except ValueError:continue
-     emit('probe_failed',action=action,**{k:details[k] for k in ('errorName','kind','code') if k in details})
+     emit('probe_failed',action=action,**{k:details[k] for k in ('errorName','kind','code','message') if k in details})
+     if action=='active' and details.get('message')!='Invalid scoped sessions':return None
      raise RuntimeError('Native lifecycle '+action+' probe failed')
     return json.loads(result.stdout)
-   time.sleep(2);probe('wake');deadline=time.monotonic()+60
+   time.sleep(2);probe('wake');deadline=time.monotonic()+120
    while True:
     active=probe('active')
-    if active['heartbeat']:break
+    # Read-only observation may race gateway hot reload. Record each failed
+    # read, never repeat the wake or accept an unobserved heartbeat as active.
+    if active and active['heartbeat']:break
     if time.monotonic()>deadline:raise TimeoutError('Native heartbeat never became active')
     time.sleep(1)
    emit('native_heartbeat_active',name=item['name'],count=active['active'])
