@@ -97,6 +97,105 @@ def compile_schedule(brief, capacity, spec):
     return c
 
 
+def draft_schedule(brief, capacity):
+    """Create and validate a deterministic first draft for Alex to review."""
+    from event_staffing import single_presenter_slots, work_slots, rest_slots
+
+    session = capacity.get('session', brief['session'])
+    daily_slots = brief['duration'] // session
+    total_slots = daily_slots * brief['days']
+    if daily_slots < 1 or total_slots < 1:
+        raise ValueError('The event window has no complete visit slots.')
+    consecutive = work_slots(session)
+    rest = rest_slots(session)
+    used_names = 0
+    booth_plans = []
+
+    def choose_evenly(candidates, count, max_idle):
+        """Choose count candidate positions across the full event window."""
+        if count < 0 or count > len(candidates):
+            return None
+        if count == 0:
+            return []
+        if count == 1:
+            target = (total_slots - 1) / 2
+            return [min(candidates, key=lambda value: abs(value - target))]
+        selected = []
+        previous_index = -1
+        previous_slot = None
+        for index in range(count):
+            target = ((index + 0.5) * total_slots / count) - 0.5
+            first = previous_index + 1
+            last = len(candidates) - (count - index)
+            viable = []
+            for candidate_index in range(first, last + 1):
+                slot = candidates[candidate_index]
+                if index == 0 and slot > max_idle:
+                    continue
+                if previous_slot is not None and slot - previous_slot - 1 > max_idle:
+                    continue
+                if index == count - 1 and total_slots - 1 - slot > max_idle:
+                    continue
+                viable.append(candidate_index)
+            if not viable:
+                return None
+            previous_index = min(viable, key=lambda i: (abs(candidates[i] - target), i))
+            previous_slot = candidates[previous_index]
+            selected.append(previous_slot)
+        return selected
+
+    topics = capacity.get('topics', [])
+    for topic_index, topic in enumerate(topics):
+        groups = topic['groups']
+        topic_id = topic['id']
+        max_idle = (total_slots + max(1, groups) - 1) // max(1, groups) + rest - 1
+        phase = topic_index % (consecutive + rest)
+        one_person_slots = [day * daily_slots + slot
+                            for day in range(brief['days'])
+                            for slot in single_presenter_slots(daily_slots, session, phase)]
+        one_person_selection = choose_evenly(one_person_slots, groups, max_idle)
+
+        if one_person_selection is not None:
+            presenter_count = 1
+            selected = one_person_selection
+        else:
+            # A two-person alternating rota permits a visit every slot while
+            # preserving presenter rest. It is only used when one-person slots
+            # cannot meet both visit count and spacing constraints.
+            if groups > total_slots:
+                raise ValueError(f'{topic_id} requires {groups} visits but only {total_slots} visit slots exist.')
+            selected = choose_evenly(list(range(total_slots)), groups, max_idle)
+            if selected is None:
+                raise ValueError(f'Could not draft a spread schedule for {topic_id}; review staffing and event capacity.')
+            presenter_count = 2
+
+        names = [f'Presenter {used_names + i + 1:02d} (unassigned)' for i in range(presenter_count)]
+        used_names += presenter_count
+        days = []
+        for day in range(brief['days']):
+            day_visits = [slot for slot in selected if slot // daily_slots == day]
+            if not day_visits:
+                continue
+            slots = [slot % daily_slots for slot in day_visits]
+            rotation = ([0] * len(slots) if presenter_count == 1 else
+                        [((sum(1 for prior in selected if prior < day * daily_slots) + i) % 2)
+                         for i in range(len(slots))])
+            days.append({'day': day + 1, 'slots': slots, 'rotation': rotation})
+        booth_plans.append({'topicId': topic_id, 'presenters': names, 'days': days})
+
+    spec = {
+        'sessionMinutes': session,
+        'maxConsecutiveSessions': consecutive,
+        'criteria': ['Spread visits across the event', 'Give each topic a dedicated presenter rota'],
+        'tradeoff': 'The draft uses one presenter per topic where breaks and visit spacing allow; otherwise it alternates two presenters.',
+        'check': 'Confirm presenter availability and topic expertise before the event.',
+        'booths': booth_plans,
+    }
+    # Return only a candidate that passes the exact same checks as the export.
+    compile_schedule(brief, capacity, spec)
+    return spec
+
+
 class ArticleText(HTMLParser):
     def __init__(self): super().__init__(); self.parts=[]; self.skip=0
     def handle_starttag(self,tag,attrs):
@@ -197,6 +296,14 @@ def run(workspace, action, values):
         output=json.loads((workspace/files['demos']).read_text())
         validate_saved_themes(contract['brief'],output,research)
         result={'status':'validated','themes':len(output['demos']),'file':files['demos']}
+    elif action=='draft-schedule':
+        spec=draft_schedule(contract['brief'],contract['capacity'])
+        plan_path=workspace/files['plan'];plan_path.parent.mkdir(parents=True,exist_ok=True)
+        plan_path.write_text(json.dumps(spec,ensure_ascii=False,indent=2))
+        result={'status':'drafted','plan':files['plan'],
+                'topics':[{'topicId':p['topicId'],'visits':sum(len(d['slots']) for d in p['days']),
+                           'presenters':len(p['presenters'])} for p in spec['booths']],
+                'note':'The draft passed schedule validation. Run the schedule action once to export it.'}
     elif action=='schedule':
         from event_planner import workbook
         spec=json.loads((workspace/files['plan']).read_text());calc=compile_schedule(contract['brief'],contract['capacity'],spec)
@@ -217,7 +324,7 @@ def run(workspace, action, values):
 
 
 if __name__=='__main__':
-    parser=argparse.ArgumentParser();parser.add_argument('action',choices=['search','read','validate-themes','schedule']);parser.add_argument('values',nargs='*')
+    parser=argparse.ArgumentParser();parser.add_argument('action',choices=['search','read','validate-themes','draft-schedule','schedule']);parser.add_argument('values',nargs='*')
     args=parser.parse_args()
     try:print(json.dumps(run(Path.cwd(),args.action,args.values),ensure_ascii=False))
     except Exception as error:parser.exit(1,str(error)+'\n')

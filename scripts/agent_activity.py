@@ -51,7 +51,7 @@ def collect(state, agent, session, started=0, skill_paths=None):
                         try:
                             lexer=shlex.shlex(command,posix=True,punctuation_chars=';&|<>');lexer.whitespace_split=True
                             parts=list(lexer)
-                            indexes=[i for i,x in enumerate(parts) if x.endswith('/event_agent_tools.py') and i>0 and re.fullmatch(r'python(?:3(?:\.\d+)?)?',Path(parts[i-1]).name) and i+1<len(parts) and parts[i+1] in ('search','read','schedule')]
+                            indexes=[i for i,x in enumerate(parts) if x.endswith('/event_agent_tools.py') and i>0 and re.fullmatch(r'python(?:3(?:\.\d+)?)?',Path(parts[i-1]).name) and i+1<len(parts) and parts[i+1] in ('search','read','draft-schedule','schedule')]
                             if indexes:
                                 action=parts[indexes[0]+1];target=' '.join(parts[indexes[0]:])[:500]
                                 # Only a single command or an && chain proves every action

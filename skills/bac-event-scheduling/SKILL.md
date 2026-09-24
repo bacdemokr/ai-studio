@@ -2,7 +2,7 @@
 name: bac-event-scheduling
 description: Decide BaC booth visit times, topic-specialist staffing and breaks, then validate and export the chosen timetable.
 ---
-Read the event-tools contract. Dylan researches themes in parallel; use stable topic IDs as placeholders. Keep each presenter dedicated to one topic ID across all days. Actual expertise is confirmed after Dylan’s theme handoff; do not guess it. Write the plan to `files.plan`. Capacity counts are arithmetic inputs, not an existing assignment. Choose the actual slots, number of specialists and rotation based on attendance, event hours, handover and rest needs.
+Read `inbox/agent-task.json` and use stable topic IDs as placeholders. Dylan researches themes in parallel. Keep each presenter dedicated to one topic ID across all days. Actual expertise is confirmed after Dylan’s theme handoff; do not guess it. Start by running the `draft-schedule` action from `bac-event-tools`; it writes a deterministic candidate to the exact plan path in the contract and checks it with the same validator used for export. Check the returned visit and presenter counts, then run the export action. Do not read, hand-count, or rewrite the generated slot arrays unless the validator reports a specific error. Do not invent slot-generation code or repeatedly rewrite the plan. Capacity counts are arithmetic inputs, not an existing assignment.
 
 Use this schema (illustrative values, not an event plan):
 
@@ -24,7 +24,7 @@ The structured brief/capacity in inbox/agent-task.json takes precedence over Cas
 
 When the schedule tool reports distribution or rotation errors, it reports all of them together. Fix all affected booths in one pass. Prefer a small JSON-aware edit (load JSON, change the named booth's slots/rotation, write with json.dump) rather than rewriting the whole plan or using ambiguous text replacements. Preserve valid booths and metadata. Rerun the tool once; after success, finish without rereading the exports.
 
-Consider staggered booth starts rather than forcing all presenters to break together. Sparse visits do not need an oversized team; dense visits need relief. Staff availability is an assumption to confirm. Explain your concrete choices, then execute the schedule tool from bac-event-tools. Fix its validation errors once if needed. The tool expands your chosen slots and exports them; it never silently substitutes an app-generated plan.
+Consider staggered booth starts rather than forcing all presenters to break together. Sparse visits do not need an oversized team; dense visits need relief. Staff availability is an assumption to confirm. Execute the schedule tool after drafting the candidate. Fix its validation errors once if needed. The candidate is deterministic; your final summary should report its staffing assumptions and visit counts.
 
 After the schedule tool returns status validated, give a brief final summary (at most 100 words). It already checks and writes the exports; do not reread schedule.json or list the output files again unless an error needs investigation.
 
