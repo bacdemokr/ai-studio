@@ -220,13 +220,25 @@ class DeletionTests(unittest.TestCase):
                 self.assertNotIn('--confirm-deleted',run.call_args_list[0].args[0])
                 self.assertTrue(all(call.args[0][-1]=='--confirm-deleted' for call in run.call_args_list[1:]))
 
+    def test_delayed_native_completion_survives_old_five_second_window(self):
+        agent_id='bac-'+self.owner
+        completed=json.dumps({'ok':True,'agentId':agent_id,'alreadyDeleted':True,'transport':'completed-journal','failed':[]})
+        with patch('agent_runtime.subprocess.run',side_effect=[
+                subprocess.CompletedProcess([],1,'',''),
+                subprocess.CompletedProcess([],2,'',''),
+                subprocess.CompletedProcess([],0,completed,'')]) as run, \
+             patch('agent_runtime.time.monotonic',side_effect=[0,0,0,6,6,6,6]), patch('agent_runtime.time.sleep'):
+            self.assertEqual(json.loads(runtime.delete_native(agent_id))['agentId'],agent_id)
+        self.assertEqual(run.call_count,3)
+        self.assertTrue(all(c.args[0][-1]=='--confirm-deleted' for c in run.call_args_list[1:]))
+
     def test_unverified_native_exit_stays_failed_and_never_replays_delete(self):
         agent_id='bac-'+self.owner
         for report in ({'ok':True,'agentId':agent_id},
                        {'ok':True,'agentId':'bac-'+'f'*24,'alreadyDeleted':True,'transport':'completed-journal','failed':[]}):
             with self.subTest(report=report), patch('agent_runtime.subprocess.run',side_effect=[
                     subprocess.CompletedProcess([],1,'',''),subprocess.CompletedProcess([],0,json.dumps(report),'')]) as run, \
-                    patch('agent_runtime.time.monotonic',side_effect=[0,0,0,6,6]), self.assertRaises(RuntimeError):
+                    patch('agent_runtime.time.monotonic',side_effect=[0,0,0,31,31]), self.assertRaises(RuntimeError):
                 runtime.delete_native(agent_id)
             self.assertEqual(run.call_count,2)
             self.assertEqual(run.call_args_list[1].args[0][-1],'--confirm-deleted')

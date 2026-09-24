@@ -10,7 +10,9 @@ try{
   await fs.appendFile(process.env.TEST_TRACE,'rpc\\n');
   if(options.method==='agents.list'){if(options.requiredMethods[0]!=='agents.list')throw Error('Missing list requirement'); return {agents:[]};}
   if(options.method!=='agents.delete'||options.params.deleteFiles!==true||options.clientName!=='cli'||options.requiredMethods[0]!=='agents.delete')throw Error('Unexpected request');
+  if(options.timeoutMs!==60000)throw Error('Deletion must explicitly outwait native cleanup');
   const mode=process.env.TEST_MODE;
+  if(mode==='slow-success')await new Promise(resolve=>setTimeout(resolve,11000));
   if(['lost-reply-completed','fallback-completed','late-completed'].includes(mode)){
    if(mode==='lost-reply-completed')await fs.rm(process.env.TEST_WORKSPACE,{recursive:true});
    if(mode==='lost-reply-completed')await fs.writeFile(process.env.OPENCLAW_CONFIG_PATH,JSON.stringify({agents:{entries:{}}}));
@@ -53,11 +55,11 @@ try{
   runtime.writeJson({agentId:options.id,failed:[]});
  }
  `);
- for(const mode of ['success','closed','auth','journal','timeout','closed-after-connect','denied','wrong-id','malformed','retained','partial','lost-reply-completed','fallback-completed','late-completed','already-completed','incomplete-journal','retained-completed','metadata-only']){
+ for(const mode of ['success','slow-success','closed','auth','journal','timeout','closed-after-connect','denied','wrong-id','malformed','retained','partial','lost-reply-completed','fallback-completed','late-completed','already-completed','incomplete-journal','retained-completed','metadata-only']){
   fs.mkdirSync(workspace,{recursive:true});fs.writeFileSync(path.join(workspace,'memory.txt'),'synthetic');fs.writeFileSync(trace,'');
   fs.writeFileSync(config,JSON.stringify({agents:{entries:['journal','already-completed','incomplete-journal','retained-completed','metadata-only'].includes(mode)?{}:{[id]:{workspace}}}}));
   if(['already-completed','incomplete-journal','metadata-only'].includes(mode))fs.rmSync(workspace,{recursive:true});
-  const result=spawnSync(process.execPath,[helper,root,id],{encoding:'utf8',timeout:8000,env:{...process.env,OPENCLAW_CONFIG_PATH:config,TEST_MODE:mode,TEST_TRACE:trace,TEST_WORKSPACE:workspace}});
+  const result=spawnSync(process.execPath,[helper,root,id],{encoding:'utf8',timeout:mode==='slow-success'?15000:8000,env:{...process.env,OPENCLAW_CONFIG_PATH:config,TEST_MODE:mode,TEST_TRACE:trace,TEST_WORKSPACE:workspace}});
   const calls=fs.readFileSync(trace,'utf8').trim().split('\n');
   if(['retained-completed','metadata-only'].includes(mode)){
    assert.notEqual(result.status,0);assert.deepEqual(calls,['load-local','local']);

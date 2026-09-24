@@ -44,7 +44,7 @@ async function deleteThroughGateway() {
   let result;
   try {
     result = await callGateway({method:'agents.delete', params:{agentId,deleteFiles:true},
-      mode:'cli', clientName:'cli', requiredMethods:['agents.delete']});
+      mode:'cli', clientName:'cli', requiredMethods:['agents.delete'], timeoutMs:60000});
   } catch (error) {
     if (await confirmCompletedDeletion()) return true;
     // Match the native CLI's pre-request fallback conditions. Never retry an uncertain timeout.

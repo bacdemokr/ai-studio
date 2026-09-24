@@ -411,7 +411,9 @@ def delete_native(agent_id):
     if result is None or result.returncode:
         # The child can exit before a committed gateway deletion has finished.
         # Reconcile outside that failed process; never replay the delete RPC.
-        deadline = time.monotonic() + 5
+        # The gateway can still be retiring databases after the transport closes.
+        # Read its durable completion journal; do not issue another deletion.
+        deadline = time.monotonic() + 30
         while time.monotonic() < deadline:
             try:
                 check = subprocess.run(command + ['--confirm-deleted'], env=environment(),
