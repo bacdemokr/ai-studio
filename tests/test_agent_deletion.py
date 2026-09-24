@@ -203,7 +203,7 @@ class DeletionTests(unittest.TestCase):
         self.assertIsNone(self.studio.profile(self.scout))
 
     def test_heartbeat_stops_before_sandbox_or_database_cleanup(self):
-        with patch('agent_runtime.root',return_value=Path(self.temp.name)/'native'):
+        with patch('agent_runtime.root',return_value=Path(self.temp.name)/'native'), patch('agent_runtime.quiesce_native'), patch('agent_policy.runtimes', return_value=[]):
             workspace=self.studio.workspace(self.owner);native_id='bac-'+self.owner
             config=runtime.initial_config();config['agents']['entries'][native_id]={'workspace':str(workspace),'heartbeat':{'every':'0m'}}
             runtime.save_config(config)
@@ -243,7 +243,7 @@ class DeletionTests(unittest.TestCase):
         native_root = Path(self.temp.name) / 'native'
         workspace = self.studio.workspace(self.owner)
         native_id = 'bac-' + self.owner
-        with patch('agent_runtime.root', return_value=native_root):
+        with patch('agent_runtime.root', return_value=native_root), patch('agent_runtime.quiesce_native'), patch('agent_policy.runtimes', return_value=[]):
             runtime.save_config(runtime.initial_config())
             runtime.register(native_id, workspace, self.profile)
             for report in ({'purgeFailed': True}, {'failed': [{'path': 'private', 'reason': 'storage'}]},
@@ -299,7 +299,7 @@ class DeletionTests(unittest.TestCase):
 
     def test_cleanup_accepts_every_catalog_role_but_rejects_unknown_ids(self):
         catalog = json.loads((Path(runtime.__file__).resolve().parents[1] / 'src/crew-catalog.json').read_text())
-        with patch('agent_runtime.root', return_value=Path(self.temp.name) / 'offline'), patch('agent_runtime.delete_native') as command:
+        with patch('agent_runtime.root', return_value=Path(self.temp.name) / 'offline'), patch('agent_runtime.delete_native') as command, patch('agent_policy.runtimes', return_value=[]):
             for role in range(len(catalog)):
                 runtime.remove('bac-' + self.owner + '-r' + str(role), Path(self.temp.name) / ('absent-' + str(role)))
             for suffix in ['-r01', '-r-1', '/../other']:
@@ -319,12 +319,12 @@ class DeletionTests(unittest.TestCase):
 
     def test_missing_openshell_records_are_retired_only_after_live_inventory(self):
         native_id='bac-'+self.owner;workspace=self.studio.workspace(self.owner)
-        with patch('agent_runtime.root',return_value=Path(self.temp.name)/'native'):
+        with patch('agent_runtime.root',return_value=Path(self.temp.name)/'native'), patch('agent_runtime.quiesce_native'), patch('agent_policy.runtimes', return_value=[]):
             config=runtime.initial_config()
             config['agents']['entries'][native_id]={'workspace':str(workspace)}
             config.setdefault('plugins',{}).setdefault('entries',{})['openshell']={'enabled':True}
             runtime.save_config(config)
-            with patch('agent_policy.runtimes',return_value=[{'containerName':'oc-missing'}]), patch('agent_policy.sandbox_names',return_value=set()), patch('agent_policy.sandbox_registry') as retire, patch('agent_runtime.delete_native',return_value=json.dumps({'agentId':native_id})) as cli:
+            with patch('agent_policy.runtimes',return_value=[{'containerName':'oc-missing'}]), patch('agent_policy.sandbox_names',return_value=set()), patch('agent_policy.sandbox_registry') as retire, patch('agent_runtime.delete_native',return_value=json.dumps({'agentId':native_id,'failed':[]})) as cli:
                 runtime.remove(native_id,workspace)
                 retire.assert_called_once_with(native_id,['oc-missing'])
                 cli.assert_called_once_with(native_id)
@@ -345,13 +345,13 @@ class DeletionTests(unittest.TestCase):
         import subprocess
         native_id = 'bac-' + self.owner
         workspace = self.studio.workspace(self.owner)
-        with patch('agent_runtime.root', return_value=Path(self.temp.name) / 'native'):
+        with patch('agent_runtime.root', return_value=Path(self.temp.name) / 'native'), patch('agent_runtime.quiesce_native'), patch('agent_policy.runtimes', return_value=[]):
             config = runtime.initial_config()
             config['agents']['entries'][native_id] = {'workspace': str(workspace)}
             config.setdefault('plugins', {}).setdefault('entries', {})['openshell'] = {'enabled': True}
             runtime.save_config(config)
             for mode in ('normal', 'committed-timeout', 'still-present', 'no-sandbox', 'registry-failed'):
-                with self.subTest(mode=mode), patch('agent_policy.runtimes', return_value=[] if mode == 'no-sandbox' else [{'containerName': 'oc-owned'}]) as lookup, patch('agent_policy.sandbox_names') as inventory, patch('agent_policy.shell') as remove, patch('agent_policy.sandbox_registry') as retire, patch('agent_runtime.delete_native', return_value=json.dumps({'agentId': native_id})) as cli:
+                with self.subTest(mode=mode), patch('agent_policy.runtimes', return_value=[] if mode == 'no-sandbox' else [{'containerName': 'oc-owned'}]) as lookup, patch('agent_policy.sandbox_names') as inventory, patch('agent_policy.shell') as remove, patch('agent_policy.sandbox_registry') as retire, patch('agent_runtime.delete_native', return_value=json.dumps({'agentId': native_id, 'failed': []})) as cli:
                     inventory.return_value = {'oc-owned', 'oc-unrelated'}
                     if mode in ('normal', 'committed-timeout'):
                         inventory.side_effect = [{'oc-owned', 'oc-unrelated'}, {'oc-unrelated'}]
@@ -387,7 +387,7 @@ class DeletionTests(unittest.TestCase):
         self.assertIsNotNone(self.studio.profile(self.scout))
 
     def test_native_discovery_ignores_other_owners_and_catalog_size(self):
-        with patch('agent_runtime.root',return_value=Path(self.temp.name)/'discovery'):
+        with patch('agent_runtime.root',return_value=Path(self.temp.name)/'discovery'), patch('agent_policy.runtimes', return_value=[]):
             native_id='bac-'+self.owner
             config=runtime.initial_config()
             config['agents']['entries'].update({native_id+'-r'+str(i):{} for i in (2,17)})
@@ -404,7 +404,7 @@ class DeletionTests(unittest.TestCase):
         self.assertEqual(len(remove.call_args_list),1)
 
     def test_never_provisioned_agent_needs_no_native_runtime(self):
-        with patch('agent_runtime.root', return_value=Path(self.temp.name) / 'offline'), patch('agent_runtime.delete_native') as command:
+        with patch('agent_runtime.root', return_value=Path(self.temp.name) / 'offline'), patch('agent_runtime.delete_native') as command, patch('agent_policy.runtimes', return_value=[]):
             runtime.remove('bac-' + self.owner, self.studio.workspace(self.owner))
             command.assert_not_called()
 

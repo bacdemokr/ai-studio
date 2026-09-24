@@ -39,6 +39,7 @@ async function deleteThroughGateway() {
   // An acknowledged partial deletion removes the roster entry first. Resume
   // through the same live gateway and its lifecycle journal, not the offline CLI.
   if (typeof workspace !== 'string' || !path.isAbsolute(workspace)) {
+    if (Object.hasOwn(config.agents?.entries || {}, agentId)) throw Error('Registered native agent has no explicit workspace');
     if (await confirmCompletedDeletion()) return true;
     const readJournal = await nativeExport('agent-deletion-journal-', 'readAgentDeletionJournal');
     const journal = readJournal(agentId);

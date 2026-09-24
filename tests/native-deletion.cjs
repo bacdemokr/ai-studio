@@ -94,6 +94,10 @@ try{
    if(mode==='journal')assert.equal(report.transport,'unregistered');
   }
  }
+ // A registered entry with an implicit/missing workspace is not an absent agent.
+ fs.writeFileSync(config,JSON.stringify({agents:{entries:{[id]:{}}}}));fs.writeFileSync(trace,'');
+ const implicit=spawnSync(process.execPath,[helper,root,id],{encoding:'utf8',env:{...process.env,OPENCLAW_CONFIG_PATH:config,TEST_MODE:'journal',TEST_TRACE:trace,TEST_WORKSPACE:workspace}});
+ assert.notEqual(implicit.status,0);assert.equal(fs.readFileSync(trace,'utf8'),'');
  // Missing roster must never hide orphan native state, including a redirected path.
  for(const redirected of [false,true]){
   const native=path.join(root,'state/agents',id);fs.mkdirSync(path.dirname(native),{recursive:true});

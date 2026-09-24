@@ -388,7 +388,7 @@ def deletion_roles(agent_id):
     from agent_identity import valid_agent_id
     if not valid_agent_id(agent_id) or '-r' in agent_id:
         raise RuntimeError('Choose a personal BaC identity for cleanup.')
-    ids = set(c.read_json(config_path(), {}).get('agents', {}).get('entries', {}))
+    ids = set((cleanup_config() or {}).get('agents', {}).get('entries', {}))
     folder = root() / 'state/agents'
     if folder.exists():
         ids.update(p.name for p in folder.iterdir())
@@ -399,6 +399,23 @@ def deletion_roles(agent_id):
 
 class NativeCleanupPending(RuntimeError):
     """Acknowledged, recoverable cleanup - keep the identity fenced while resuming."""
+
+
+def cleanup_config():
+    """Destructive operations must distinguish uninstalled from unreadable state."""
+    try:
+        config = json.loads(config_path().read_text())
+    except FileNotFoundError:
+        if (root() / 'state').exists():
+            raise RuntimeError('Native configuration is missing but runtime state remains. Cleanup was paused.') from None
+        return None
+    except (OSError, ValueError):
+        raise RuntimeError('Native configuration could not be verified. Cleanup was paused.') from None
+    if (not isinstance(config, dict) or not isinstance(config.get('agents'), dict)
+            or not isinstance(config['agents'].get('entries'), dict)
+            or any(not isinstance(entry, dict) for entry in config['agents']['entries'].values())):
+        raise RuntimeError('Native agent registration is invalid. Cleanup was paused.')
+    return config
 
 
 def quiesce_native(agent_id):
@@ -468,12 +485,12 @@ def remove(agent_id, workspace):
     if workspace.is_symlink() or workspace.parent.is_symlink():
         raise RuntimeError('The host must check the redirected workspace before deletion.')
     with config_lock():
-        config = c.read_json(config_path(), {})
+        config = cleanup_config()
+        if config is None:
+            return  # No native installation exists; only app-owned definitions.
         entry = config.get('agents', {}).get('entries', {}).get(agent_id)
         native = root() / 'state/agents' / agent_id
-        previous_state = (native.exists() or native.is_symlink()
-                          or ((workspace / 'IDENTITY.md').exists() and not (workspace / '.bac-prepared-only').exists()))
-        if not entry:
+        if entry is None:
             for other in config.get('agents', {}).get('entries', {}).values():
                 if not other.get('workspace'):
                     continue
@@ -481,12 +498,14 @@ def remove(agent_id, workspace):
                 owned = workspace.resolve()
                 if shared == owned or shared in owned.parents or owned in shared.parents:
                     raise RuntimeError('Another native agent uses this workspace. Its files were not removed.')
-        if not entry and not previous_state:
-            return  # Created offline, never provisioned; or native cleanup already completed.
-        if entry and Path(entry.get('workspace', '')).resolve() != workspace.resolve():
+        if entry is not None and Path(entry.get('workspace', '')).resolve() != workspace.resolve():
             raise RuntimeError('The native workspace changed. The host must review it before deletion.')
-        if entry and entry.get('heartbeat'):quiesce_native(agent_id)
-        if config.get('plugins', {}).get('entries', {}).get('openshell', {}).get('enabled'):
+        # A server restart may lose the app's in-flight accounting. Check native
+        # activity for ordinary agents too, before touching their sandbox/files.
+        if entry is not None or native.exists() or native.is_symlink():quiesce_native(agent_id)
+        # Registry entries can outlive the roster and the plugin's enabled flag.
+        # Inspect them even for definition-only/already partially deleted agents.
+        if config is not None:
             from agent_policy import runtimes, sandbox_names, sandbox_registry, shell
             registered = runtimes(agent_id, probe=False)
             if registered:
@@ -497,7 +516,10 @@ def remove(agent_id, workspace):
                         continue
                     try:
                         shell('sandbox', 'delete', name)
-                    except (subprocess.TimeoutExpired, RuntimeError):
+                    except subprocess.TimeoutExpired:
+                        if name in sandbox_names():
+                            raise NativeCleanupPending('Waiting for the agent sandbox to finish deletion.') from None
+                    except RuntimeError:
                         # A timeout may occur after deletion committed. Verify before retrying or failing.
                         if name in sandbox_names():
                             raise
@@ -509,12 +531,15 @@ def remove(agent_id, workspace):
                             if attempt < 3:
                                 time.sleep(.25)
                         else:
-                            raise RuntimeError('The agent sandbox is still being removed.')
+                            raise NativeCleanupPending('The agent sandbox is still being removed.')
                 # Native, lock-aware registry update after verifying absence; no global health scans.
                 sandbox_registry(agent_id, [row['containerName'] for row in registered])
         # Native command uses the running gateway or its supported local fallback.
         # It retains shared storage and reports partial failures even with a zero exit code.
         result = json.loads(delete_native(agent_id))
+        if (not isinstance(result, dict) or result.get('agentId') != agent_id
+                or result.get('ok') is False or not isinstance(result.get('failed'), list)):
+            raise RuntimeError('Native cleanup returned an invalid confirmation. Cleanup was paused.')
         if result.get('agentId') == agent_id and result.get('purgeFailed') and not result.get('failed'):
             raise NativeCleanupPending('Native session cleanup is still pending; resuming from its deletion journal.')
         if (result.get('agentId') != agent_id or result.get('purgeFailed')

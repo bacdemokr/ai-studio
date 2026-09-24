@@ -72,16 +72,15 @@ def enqueue_chat(owner,prompt):
 def remove(item,duplicate=False):
  owner=item['owner'];begin=time.monotonic()
  code,result=call('delete-agent',{'name':item['name']},owner)
- if code not in (200,409,404):emit('delete_rejected',name=item['name'],status=code,error=result.get('error'));return False
+ if code not in (200,404):emit('delete_rejected',name=item['name'],status=code,error=result.get('error'));return False
  if duplicate:
   code2,_=call('delete-agent',{'name':item['name']},owner);emit('duplicate_request',name=item['name'],status=code2)
+  if code2 not in (200,404):raise AssertionError('Duplicate deletion was not joined')
  deadline=time.monotonic()+240
  while time.monotonic()<deadline:
   state=rows('select deleting from agents where id=?',(owner,))
   if not state:emit('deleted',name=item['name'],seconds=round(time.monotonic()-begin,1));return True
   if state[0]['deleting']==1:emit('paused',name=item['name']);return False
-  if code==409 and not state[0]['deleting']:
-   time.sleep(1);code,result=call('delete-agent',{'name':item['name']},owner);continue
   time.sleep(1)
  emit('delete_timeout',name=item['name']);return False
 def verify(item,known_sandboxes):
@@ -146,8 +145,15 @@ try:
    with rt.config_lock():
     config=json.loads(rt.config_path().read_text());config['agents']['entries'][native]['heartbeat']['prompt']=prompt;rt.save_config(config)
    def probe(action):
-    result=subprocess.run([str(rt.root()/'node/bin/node'),str(ROOT/'tests/native-lifecycle-probe.mjs'),str(rt.root()),native,action],env=rt.environment(),capture_output=True,text=True,timeout=20)
-    if result.returncode:raise RuntimeError('Native lifecycle probe failed')
+    result=subprocess.run([str(rt.root()/'node/bin/node'),str(ROOT/'tests/native-lifecycle-probe.mjs'),str(rt.root()),native,action],env=rt.environment(),capture_output=True,text=True,timeout=40)
+    if result.returncode:
+     # Preserve typed diagnostics without exposing native config or session text.
+     details={}
+     for line in result.stderr.splitlines():
+      try:details=json.loads(line)
+      except ValueError:continue
+     emit('probe_failed',action=action,**{k:details[k] for k in ('errorName','kind','code') if k in details})
+     raise RuntimeError('Native lifecycle '+action+' probe failed')
     return json.loads(result.stdout)
    time.sleep(2);probe('wake');deadline=time.monotonic()+60
    while True:

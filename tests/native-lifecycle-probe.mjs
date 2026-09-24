@@ -16,7 +16,9 @@ try {
  if(!callGateway)throw Error('Missing pinned RPC');
  const method=action==='wake'?'wake':'sessions.list';
  const params=action==='wake'?{agentId,sessionKey:'agent:'+agentId+':heartbeat-radar',mode:'now',text:'Perform the local deletion test in HEARTBEAT.md now. Do not access websites or send messages.'}:{agentId,activeOnly:true};
- const result=await callGateway({method,params,mode:'cli',clientName:'cli',requiredMethods:[method],timeoutMs:10000});
+ // Protected workspace startup can occupy the gateway for more than 10 seconds.
+ // This observes the fixture, not the deletion deadline or its success criterion.
+ const result=await callGateway({method,params,mode:'cli',clientName:'cli',requiredMethods:[method],timeoutMs:30000});
  if(action==='active'){
   if(!Array.isArray(result.sessions)||result.sessions.some(s=>!s.key.startsWith('agent:'+agentId+':')))throw Error('Invalid scoped sessions');
   console.log(JSON.stringify({active:result.sessions.length,heartbeat:result.sessions.some(s=>s.key.includes('heartbeat'))}));

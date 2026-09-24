@@ -233,6 +233,8 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 db.execute("INSERT INTO metadata VALUES ('agent-collection-migrated','1')")
             if 'deleting' not in {r['name'] for r in db.execute('PRAGMA table_info(agents)')}:
                 db.execute('ALTER TABLE agents ADD COLUMN deleting INTEGER NOT NULL DEFAULT 0')
+            if 'targets' not in {r['name'] for r in db.execute('PRAGMA table_info(agent_deletions)')}:
+                db.execute('ALTER TABLE agent_deletions ADD COLUMN targets TEXT')
             db.execute('CREATE INDEX IF NOT EXISTS agents_participant ON agents(participant)')
             # Never silently replay a potentially completed side effect after a crash.
             if start_worker or recover:
@@ -503,8 +505,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
 
     def delete_agent(self, owner, data):
         """Fence the identity first; retryable native cleanup precedes collection removal."""
-        if not self.delete_lock.acquire(blocking=False):
-            raise Problem('Another agent is being deleted. Please try again shortly.', 409)
+        acquired = self.delete_lock.acquire(blocking=False)
         try:
             with self.db() as db:
                 db.execute('BEGIN IMMEDIATE')
@@ -533,19 +534,34 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 db.execute('UPDATE agents SET deleting=2 WHERE id=?', (owner,))
                 db.execute('INSERT OR IGNORE INTO agent_deletions(owner) VALUES (?)',(owner,))
                 if row['deleting']!=2:db.execute('UPDATE agent_deletions SET attempts=0,next_attempt=0 WHERE owner=?',(owner,))
-            if 'radar' in profile.get('skills',[]):self.heartbeat.disable(profile['id'])
-            if waiting:
-                self.signal.set()
+            if not acquired:
+                # Persist intent even when another agent owns the cleanup slot.
+                # The worker drains this queue; callers only poll, never replay.
+                if row['deleting'] != 2:self.signal.set()
                 return {'deleting': owner, 'agentId': owner}
             native_id = profile['id']
             role = None
             try:
+                if 'radar' in profile.get('skills',[]):self.heartbeat.disable(profile['id'])
+                if waiting:
+                    self.signal.set()
+                    return {'deleting': owner, 'agentId': owner}
                 # Discover actual persisted children, not a fixed role count or today's catalog.
                 roles = set(self.adapter.deletion_roles(profile['id'])) if hasattr(self.adapter, 'deletion_roles') else set()
                 for candidate in self.workspace(owner).parent.glob(owner + '-*'):
                     suffix = candidate.name[len(owner)+1:]
                     if re.fullmatch(r'0|[1-9][0-9]*', suffix):
                         roles.add(int(suffix))
+                with self.db() as db:
+                    saved = db.execute('SELECT targets FROM agent_deletions WHERE owner=?', (owner,)).fetchone()['targets']
+                    if saved is not None:
+                        saved = json.loads(saved)
+                        if not isinstance(saved, list) or any(type(r) is not int or r < 0 for r in saved):
+                            raise RuntimeError('Saved cleanup targets are invalid.')
+                        roles.update(saved)
+                    # A partial native deletion can remove both config and paths.
+                    # Keep its role in the plan so restart/retry still reconciles it.
+                    db.execute('UPDATE agent_deletions SET targets=? WHERE owner=?', (json.dumps(sorted(roles)), owner))
                 targets = (None, *sorted(roles))
                 for role in targets:
                     native_id = profile['id'] + ('-r' + str(role) if role is not None else '')
@@ -591,10 +607,12 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
             if not next_agent:self.initialize_crew_workspaces(next_id)
             return {'deleted': owner, 'agentId': next_id}
         finally:
-            self.delete_lock.release()
+            if acquired:self.delete_lock.release()
 
     def finish_pending_deletions(self):
         """Run between jobs, after every in-flight call and post-result write has returned."""
+        if self.delete_lock.locked():
+            return
         with self.db() as db:
             requests = db.execute('SELECT id,profile FROM agents LEFT JOIN agent_deletions ON owner=id WHERE deleting=2 AND coalesce(next_attempt,0)<=?',(time.time(),)).fetchall()
         for request in requests:
