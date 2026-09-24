@@ -702,6 +702,8 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 .world-room-map [data-world-room=mission] i{flex-shrink:0}
 #agent-campus .world-campus-room[data-world-room=mission]{max-width:260px;white-space:normal}
 
+#agent-campus .campus-stage-top .campus-sim[data-slow=true]{color:#f0cf88;background:#332c1d;border:1px solid #9a7c3e;font-weight:500}
+
 .studio-sound{display:flex;align-items:center;gap:3px;flex-shrink:0}
 #agent-campus #campus-sound-toggle{width:auto;min-height:35px;height:auto;padding:4px 9px;font-size:15px;white-space:nowrap;color:#b8c9d7;border:1px solid #526071;background:#191e25;border-radius:3px}
 #agent-campus #campus-sound-toggle[aria-pressed=true]{color:#d3edb5;border-color:#5f843c;background:#1d2a22}
@@ -79200,8 +79202,13 @@ function setCollection(agents,key){
     }
     const tone=loungeVoices[a.tone]?a.tone:'kind';
     if(r.persona!==a.persona||r.name!==a.name||r.tone!==tone||r.purpose!==(a.purpose||'')){if(loungeSpeaker===r)endLoungeSpeech();r.saidIntro=false;r.line=0;}
+    r.deleting=!!a.deleting;
+    if(r.deleting){
+      if(loungeSpeaker===r)endLoungeSpeech();
+      r.completionCue=false;r.target=null;
+    }
     const latest=a.latestMission,signature=latest?latest.id+':'+latest.status:'',replyHeld=!!protectionReplyDelay(a.key,null);
-    r.replyExcerpt=!replyHeld&&latest?.status==='done'?loungeReplyExcerpt(latest.answerPreview):'';
+    r.replyExcerpt=!r.deleting&&!replyHeld&&latest?.status==='done'?loungeReplyExcerpt(latest.answerPreview):'';
     if(r.missionSignature!==undefined&&signature!==r.missionSignature&&r.replyExcerpt){
       // A fresh answer takes precedence over an unrelated idle vignette.
       if(loungeSpeaker&&!loungeSpeaker.completionSpeech)endLoungeSpeech();
@@ -79216,10 +79223,11 @@ function setCollection(agents,key){
     if(occupied)r.completionCue=false;
     r.name=a.name;r.purpose=a.purpose||'';r.persona=loungePersonalities[a.persona]?a.persona:'guide';r.tone=tone;r.verbosity=a.verbosity||'balanced';r.pending=occupied;
     if(loungeSpeaker===r&&(r.pending||(r.hasMission&&!r.completionSpeech)))endLoungeSpeech();
-    if(r.pending)r.activity='assigned';
+    if(r.deleting)r.activity='deleting';
+    else if(r.pending)r.activity='assigned';
     else if(r.activity==='assigned')r.activity='resting';
     r.node.setAttribute('aria-label','Open '+a.name+'’s workspace');r.node.setAttribute('aria-pressed',r.key===key);r.node.style.setProperty('--resident-color','#'+r.color.toString(16).padStart(6,'0'));r.node.querySelector('b').textContent=a.name;
-    r.node.querySelector('small').textContent=r.pending?'Busy':'Ready';
+    r.node.querySelector('small').textContent=r.deleting?(a.deletionWaiting?'Deleting…':'Cleanup paused'):r.pending?'Busy':'Ready';
     r.halo.visible=r.key===key||r.pending||loungeSpeaker===r;
   });
   residentMeshes.length=0;residents.forEach(r=>r.group.traverse(o=>{if(o.isMesh){o.userData.resident=r.key;residentMeshes.push(o);}}));
@@ -79238,6 +79246,7 @@ function chooseLoungeTarget(r){
 function turnResident(r,angle,dt){const delta=Math.atan2(Math.sin(angle-r.group.rotation.y),Math.cos(angle-r.group.rotation.y));r.group.rotation.y+=delta*Math.min(1,dt*5);}
 function moveResident(r,dt){
   const mood=loungePersonalities[r.persona],p=r.group.position;
+  if(r.deleting){r.activity='deleting';return false;}
   r.activity=r.pending?'assigned':loungeSpeaker===r?'speaking':'resting';
   if(r.placed||r.dragging||r.pending||r.hovered||r.focused||loungeSpeaker===r)return false;
   if(!r.target&&loungeTime>=r.waitUntil)chooseLoungeTarget(r);
@@ -79263,10 +79272,10 @@ function moveResident(r,dt){
 }
 function startLoungeSpeech(){
   if(loungeSpeaker||loungeTime<nextLoungeSpeech||overview||journey||arrival||room!=='lounge'||drag)return;
-  while(welcomeSpeakers.length&&!residents.some(r=>r.key===welcomeSpeakers[0]&&!r.pending))welcomeSpeakers.shift();
+  while(welcomeSpeakers.length&&!residents.some(r=>r.key===welcomeSpeakers[0]&&!r.pending&&!r.deleting))welcomeSpeakers.shift();
   const newcomer=residents.find(r=>r.key===welcomeSpeakers[0]);
   if(!motion&&!newcomer&&!residents.some(r=>r.completionCue))return;
-  const eligible=residents.filter(r=>!r.atRoundtable&&!r.pending&&(!r.hasMission||r.completionCue)&&(r.completionCue||(!r.hovered&&!r.focused)));if(!eligible.length&&!newcomer)return;
+  const eligible=residents.filter(r=>!r.deleting&&!r.atRoundtable&&!r.pending&&(!r.hasMission||r.completionCue)&&(r.completionCue||(!r.hovered&&!r.focused)));if(!eligible.length&&!newcomer)return;
   const start=(residents.findIndex(r=>r.key===lastLoungeSpeaker)+1)%Math.max(1,residents.length);
   const ordered=[...residents.slice(start),...residents.slice(0,start)].filter(r=>eligible.includes(r));
   const r=newcomer||ordered.find(r=>r.completionCue)||ordered.find(r=>!r.saidIntro)||ordered[0];
@@ -79704,6 +79713,10 @@ function animateRoundtable(dt){
  for(const guest of meetingGuests){
   if(guest.phase==='returned')continue;
   const resident=residents.find(r=>r.key===guest.key);
+  if(resident?.deleting){
+   if(meetingSpeaker===guest.key)meetingSpeaker='';
+   if(!['returning','returned'].includes(guest.phase))returnMeetingGuest(guest);
+  }
   if(resident){resident.atRoundtable=true;resident.mount.visible=false;resident.node.hidden=true;}
   guest.travel+=dt;
   if(['entering','returning'].includes(guest.phase)){
@@ -80133,21 +80146,34 @@ render();
   el('dialog-close').onclick=()=>el('dialog').close();
   el('dialog').addEventListener('click',e=>{if(e.target===el('dialog')&&!removingAgent){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
   function setup() {
-    dialog('CONNECTIONS',`<h3>Connections</h3><div class="studio-runtime-grid"><div><b>Model</b><small>${runtime.model?'Connected':'Not connected'}</small></div><div><b>OpenClaw</b><small>${runtime.gateway?'Connected':'Not connected'}</small></div><div><b>OpenShell</b><small>${escape(runtime.openshell||'Not configured')}</small></div></div>`);
+    dialog('CONNECTIONS',`<h3>Connections</h3><div class="studio-runtime-grid"><div><b>Model</b><small>${runtime.model?'Connected':'Not connected'}</small></div><div><b>OpenClaw</b><small>${gatewayLabel()}</small></div><div><b>OpenShell</b><small>${escape(runtime.openshell||'Not configured')}</small></div></div>`);
   }
   const modelBadge=root.querySelector('.campus-sim');
-  function openModelSettings(){if(!runtime.ready&&!runtime.testFixture&&!settingsButton.hidden)settingsButton.click();}
-  modelBadge.onclick=e=>{e.stopPropagation();openModelSettings();};
-  modelBadge.onkeydown=e=>{if(modelBadge.dataset.actionable==='true'&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();openModelSettings();}};
+  function gatewayState(){return runtime.gatewayState||(runtime.gateway?'ready':'unavailable');}
+  function gatewayLabel(){return gatewayState()==='slow'?'Agent runtime responding slowly':gatewayState()==='ready'?'Ready':'Agent runtime unavailable';}
+  function openModelSettings(){if(!runtime.model&&!runtime.testFixture&&!settingsButton.hidden)settingsButton.click();}
+  let runtimeRetrying=false;
+  async function retryRuntime(){
+    if(runtimeRetrying)return;
+    runtimeRetrying=true;runtimeBadge();
+    try{runtime=await api('runtime?retry=1');}
+    catch{alert('Could not reach the app server. Check that it is running, then retry.');}
+    finally{runtimeRetrying=false;runtimeBadge();}
+  }
+  function connectionAction(){if(!runtime.gateway)retryRuntime();else openModelSettings();}
+  modelBadge.onclick=e=>{e.stopPropagation();if(modelBadge.dataset.actionable==='true')connectionAction();};
+  modelBadge.onkeydown=e=>{if(modelBadge.dataset.actionable==='true'&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();connectionAction();}};
   function runtimeBadge(){
     syncDemoPreparation();syncEventLaunch();syncCrewComposer();
-    const ready=!!runtime.ready&&!runtime.testFixture;
-    const actionable=!runtime.ready&&!runtime.testFixture&&!settingsButton.hidden;
-    modelBadge.textContent=runtime.testFixture?'TEST FIXTURE · NO REAL MODEL':ready?'✓ Model connected':!runtime.gateway?'⚠︎ Agent runtime disconnected':'⚠︎ Model not connected';
-    modelBadge.dataset.warning=String(!runtime.testFixture&&!runtime.ready);
-    modelBadge.dataset.ready=String(ready);modelBadge.dataset.actionable=String(actionable);
+    const state=gatewayState(),slow=state==='slow',ready=!!runtime.ready&&!runtime.testFixture;
+    const actionable=!runtime.testFixture&&!runtimeRetrying&&(!runtime.gateway||(!runtime.model&&!settingsButton.hidden));
+    modelBadge.textContent=runtime.testFixture?'TEST FIXTURE · NO REAL MODEL':runtimeRetrying?'Checking connection…':slow?'◷ '+gatewayLabel():!runtime.gateway?'⚠ Agent runtime unavailable · Retry connection':!runtime.model?'○ Model not connected':'● Ready';
+    modelBadge.dataset.warning=String(!runtime.testFixture&&!slow&&!runtime.ready);
+    modelBadge.dataset.slow=String(!runtime.testFixture&&slow);
+    modelBadge.dataset.ready=String(ready&&!slow);modelBadge.dataset.actionable=String(actionable);
     modelBadge.setAttribute('role',actionable?'button':'status');modelBadge.tabIndex=actionable?0:-1;
-    modelBadge.title=actionable?'Open model settings':'';
+    modelBadge.setAttribute('aria-live','polite');
+    modelBadge.title=runtimeRetrying?'Checking the local agent runtime':!runtime.gateway?'Retry connection':slow?'Checking automatically. Tasks already running are not cancelled.':actionable?'Open model settings':'Agent runtime ready';
     if(roomsReady)renderRooms();syncComposer();syncDemoPreparation();
   }
 
@@ -80166,7 +80192,14 @@ render();
     el('task-summary').textContent=active?(active.kind==='crew'?'Your specialists are building the event plan.':active.payload.prompt.slice(0,135)):'Give your agent a task.';
     const assignment=data.assignments?.find(a=>a.role!=='Event roundtable');el('assigned-crew').hidden=!assignment;
     if(assignment){el('assigned-crew').textContent='Open '+assignment.name+'’s crew';if(!active){el('task-state').textContent='Busy';el('task-summary').textContent=assignment.role+' for '+assignment.name+' · '+assignment.status+'. Follow the handoffs in the lead’s workspace.';}}
-    el('delete-agent').textContent=data.deleting?'Retry deletion':'Delete agent';
+    const cleanup=data.agents.find(a=>a.key===agentId);
+    el('delete-agent').textContent=cleanup?.deletionWaiting?'Deleting…':data.deleting?'Retry deletion':'Delete agent';
+    el('delete-agent').disabled=!!cleanup?.deletionWaiting;
+    let cleanupNotice=el('cleanup-notice');if(!cleanupNotice){cleanupNotice=document.createElement('p');cleanupNotice.id='studio-cleanup-notice';cleanupNotice.className='studio-delete-progress';cleanupNotice.setAttribute('role','status');el('companion').prepend(cleanupNotice);}
+    cleanupNotice.hidden=!data.deleting;
+    const cleanupLabel=cleanup?.deletionWaiting?'Deleting '+(profile?.name||'agent'):'Cleanup paused. Retry deletion.';
+    cleanupNotice.textContent=data.deleting?cleanupLabel+' · You can use another agent while cleanup continues.':'';
+    if(data.deleting){el('task-state').textContent=cleanup?.deletionWaiting?'Deleting':'Cleanup paused';el('task-summary').textContent=cleanupLabel;}
     el('agent-policy').hidden=profile?.protection!=='openshell';
     el('agent-policy').disabled=!!data.deleting;
     let monitor=el('radar-monitor');if(!monitor){monitor=document.createElement('div');monitor.id='studio-radar-monitor';monitor.className='studio-radar-monitor';el('agent-policy').after(monitor);}
@@ -80320,7 +80353,7 @@ function renderCrewPassport(){
  const handoffs=j.direct?'':crewHandoffMessages(j,i);
  const request=j.direct?(j.payload.prompt||'Describe the attached image.'):i===0?crewBriefMessage(j):'';
  const status={queued:'Waiting to start…',running:'Working on your message…',waiting:'Waiting for a decision.',stopping:'Stopping…',cancelled:'Stopped.',error:'This message could not finish.'}[j.status];
- return '<article class="chat-turn">'+(i!==0?handoffs:'')+(request?'<div class="chat-message chat-user"><small>You</small><div>'+escape(request).replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images)+'</div></div>':'')+(held?'':social)+'<div class="chat-message chat-agent"><small>'+escape(name)+(j.direct?'':' · Event mission')+'</small>'+(held?shieldReplyWait:customSkillMarkup(j.direct?j.result?.activity:j.payload.activity?.[i])+'<div class="chat-prose">'+messageMarkup(answer||(!j.direct&&pending?(i===0?'Your event brief is with the crew.':(i===3&&j.payload.socialDraft?.status==='ready'?'LinkedIn draft ready. Writing the webpage…':'Working on the assigned task…')):status)||'No text reply was returned.')+'</div>'+crewActivityMarkup(j,i)+webpage+(j.direct&&pending?'<div class="chat-progress"><button type="button" data-crew-chat-stop="'+escape(j.id)+'" '+(j.status==='stopping'?'disabled':'')+'>Stop</button></div>':''))+'</div>'+(i===0?handoffs+roundtableMarkup(j):'')+'</article>';
+ return '<article class="chat-turn">'+(i!==0?handoffs:'')+(request?'<div class="chat-message chat-user"><small>You</small><div>'+escape(request).replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images,j.id)+'</div></div>':'')+(held?'':social)+'<div class="chat-message chat-agent"><small>'+escape(name)+(j.direct?'':' · Event mission')+'</small>'+(held?shieldReplyWait:customSkillMarkup(j.direct?j.result?.activity:j.payload.activity?.[i])+'<div class="chat-prose">'+messageMarkup(answer||(!j.direct&&pending?(i===0?'Your event brief is with the crew.':(i===3&&j.payload.socialDraft?.status==='ready'?'LinkedIn draft ready. Writing the webpage…':'Working on the assigned task…')):status)||'No text reply was returned.')+'</div>'+crewActivityMarkup(j,i)+webpage+(j.direct&&pending?'<div class="chat-progress"><button type="button" data-crew-chat-stop="'+escape(j.id)+'" '+(j.status==='stopping'?'disabled':'')+'>Stop</button></div>':''))+'</div>'+(i===0?handoffs+roundtableMarkup(j):'')+'</article>';
  }).join(''):'<p class="chat-empty">'+escape(roles[i][2])+'</p>';
  loadChatImages(log,agentId);
  if(follow)log.scrollTop=log.scrollHeight;else log.scrollTop=top;
@@ -80405,12 +80438,12 @@ function renderJsonEntries(value,container,depth=0){
   }
  }
 }
-async function openResultJson(path,title){
+async function openResultJson(path,title,jobId){
  const owner=agentId;
  dialog(title,'<section id="studio-json-viewer"><p role="status">Loading file</p></section>');
  const viewer=el('json-viewer'),current=()=>el('dialog').open&&el('json-viewer')===viewer&&agentId===owner;
  try{
-  const file=await api('file?path='+encodeURIComponent(path),undefined,owner);if(!current())return;
+  const file=await api('file?path='+encodeURIComponent(path)+(jobId?'&job='+encodeURIComponent(jobId):''),undefined,owner);if(!current())return;
   if(file.encoding==='base64'||typeof file.content!=='string')throw new Error('This file is not readable JSON.');
   let value;try{value=JSON.parse(file.content);}catch{throw new Error('This saved file contains invalid JSON.');}
   const formatted=JSON.stringify(value,null,2);
@@ -80420,7 +80453,7 @@ async function openResultJson(path,title){
   const select=next=>{tabs.forEach(tab=>{const active=tab.dataset.jsonView===next;tab.setAttribute('aria-selected',active);tab.tabIndex=active?0:-1;});el('json-browse').hidden=next!=='browse';el('json-raw').hidden=next!=='raw';viewer.querySelector('.result-json-scroll').scrollTop=0;};
   tabs.forEach((tab,i)=>{tab.onclick=()=>select(tab.dataset.jsonView);tab.onkeydown=event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const next=event.key==='Home'?tabs[0]:event.key==='End'?tabs[1]:tabs[1-i];select(next.dataset.jsonView);next.focus();};});
   const copy=el('json-copy');copy.onclick=async()=>{try{await navigator.clipboard.writeText(formatted);if(current()){copy.textContent='Copied';el('json-copy-status').textContent='JSON copied';setTimeout(()=>{if(current())copy.textContent='Copy JSON';},1800);}}catch{if(current()){select('raw');el('json-copy-status').textContent='Select the JSON text to copy it.';copy.textContent='Select JSON to copy';}}};
- }catch(error){if(current()){viewer.replaceChildren();const message=document.createElement('p');message.setAttribute('role','alert');message.textContent=error.message;const retry=document.createElement('button');retry.className='studio-secondary';retry.textContent='Retry';retry.onclick=()=>openResultJson(path,title);viewer.append(message,retry);}}
+ }catch(error){if(current()){viewer.replaceChildren();const message=document.createElement('p');message.setAttribute('role','alert');message.textContent=error.message;const retry=document.createElement('button');retry.className='studio-secondary';retry.textContent='Retry';retry.onclick=()=>openResultJson(path,title,jobId);viewer.append(message,retry);}}
 }
 
   // Event briefs, deterministic planning, and the deliverables handed over by the crew.
@@ -80500,10 +80533,10 @@ function mountResultPreview(frame,html,authored){
  frame.src=eventPreviewUrl;
 }
 function downloadBytes(content,mime,name){const url=URL.createObjectURL(new Blob([content],{type:mime})),link=document.createElement('a');link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-async function downloadPackageFile(path){try{const file=await api('file?path='+encodeURIComponent(path));if(!(data.jobs||[]).some(j=>j.payload.website?.authored&&j.payload.website.path===path)&&path.endsWith('event-page.html')&&typeof file.content==='string'&&file.encoding!=='base64')file.content='<!doctype html>'+eventPageDocument(file.content).documentElement.outerHTML;downloadBytes(file.encoding==='base64'?Uint8Array.from(atob(file.content),c=>c.charCodeAt(0)):file.content,file.mime||'text/plain',path.split('/').pop());}catch(error){alert(error.message);}}
+async function downloadPackageFile(path){try{const file=await api('file?path='+encodeURIComponent(path)+'&job='+encodeURIComponent(crewMission().id));if(!(data.jobs||[]).some(j=>j.payload.website?.authored&&j.payload.website.path===path)&&path.endsWith('event-page.html')&&typeof file.content==='string'&&file.encoding!=='base64')file.content='<!doctype html>'+eventPageDocument(file.content).documentElement.outerHTML;downloadBytes(file.encoding==='base64'?Uint8Array.from(atob(file.content),c=>c.charCodeAt(0)):file.content,file.mime||'text/plain',path.split('/').pop());}catch(error){alert(error.message);}}
 function eventBrief(form){
  const values=new FormData(form),brief={schema:2,region:'',language:'English'};
- for(const key of ['city','startTime','venue','startDate','endDate'])brief[key]=values.get(key);
+ for(const key of ['city','startTime','teardownTime','venue','startDate','endDate'])brief[key]=values.get(key);
  for(const key of ['attendees','duration','days','groupSize','session','themeCount'])brief[key]=Number(values.get(key));
  return brief;
 }
@@ -80518,7 +80551,7 @@ const crewWarmups=new Map();
 let crewStartupReady=false;
 function warmCrewOnOpen(){
  if(!crewStartupReady||!connected||!agentId||changingAgent||removingAgent||!runtime.gateway||data.deleting)return;
- const key=runtime.instance+':'+agentId,now=Date.now();
+ const key=runtime.instance+':'+(data.crewOwner||agentId),now=Date.now();
  if((crewWarmups.get(key)||0)>now)return;
  const target=agentId;crewWarmups.set(key,Infinity);
  api('prepare-demo',{background:true},target).catch(()=>{
@@ -80559,21 +80592,21 @@ function syncEventLaunch(){
  const form=el('crew-form'),button=el('launch-event');if(!form||!button)return;
  const prepared=matchingPreparation()?.status==='done'&&!demoPreparationError;
  button.disabled=!runtime.ready||eventSubmitting||!eventPreviewValid||!prepared||!form.querySelector('[name=crewRole]:checked');
- button.textContent=!runtime.model?'Model not connected':!runtime.ready?'Agent runtime disconnected':eventSubmitting?'Assigning your brief…':!prepared?'Prepare demo':'Start the event plan';
- const note=el('event-connection');if(note){note.hidden=!!runtime.ready;note.textContent=!runtime.model?'Connect a model in Settings to run your crew.':'Reconnect the agent runtime in Settings to run your crew.';}
+ button.textContent=!runtime.gateway?gatewayLabel():!runtime.model?'Model not connected':eventSubmitting?'Assigning your brief…':!prepared?'Prepare demo':'Start the event plan';
+ const note=el('event-connection');if(note){note.hidden=!!runtime.ready;note.textContent=runtime.gateway?'Connect a model in Settings to run your crew.':gatewayState()==='slow'?'Waiting for the agent runtime. Checking automatically.':'Agent runtime unavailable. Use Retry connection in the status indicator.';}
 }
 async function updateEventPreview(){
  const form=el('crew-form');if(!form)return;const version=++eventPreviewVersion;eventPreviewValid=false;syncEventLaunch();
  try{
   const {brief:b,capacity:c}=await api('event-plan',{brief:eventBrief(form)});
   if(version!==eventPreviewVersion||!el('crew-form'))return;
-  el('event-preview').innerHTML=`<div class="event-preview-head"><b>Your booth plan</b><span>Calculated from this brief</span></div><div class="event-metrics"><div><strong>${c.boothCount} / ${b.boothLimit}</strong><span>demo booths</span></div><div><strong>${c.session} min</strong><span>per group</span></div><div><strong>${c.presenterCount}</strong><span>presenters / day</span></div><div><strong>${c.staff}</strong><span>total staff / day</span></div></div>${c.adjusted?`<p class="event-adjustment">The crew will use ${c.session}-minute visits instead of ${b.session} minutes to stay within ${b.boothLimit} booths.</p>`:''}<div class="event-topic-summary">${c.topics.map(t=>`<span><b>${escape(t.topic)}</b>${t.attendees} attendees · ${t.stations} booth${t.stations===1?'':'s'}</span>`).join('')}</div><small>One interest-based demo per attendee across the event. Equal topic split. Includes ${c.floorHosts} floor host${c.floorHosts===1?'':'s'} and 1 lead. Two dedicated presenters per theme alternate visits. Includes scheduled breaks. Names are unassigned.</small>`;
+  el('event-preview').innerHTML=`<div class="event-preview-head"><b>Your booth plan</b><span>Calculated from this brief</span></div><p class="event-note">${escape(b.startTime)}-${escape(b.endTime)} local time${b.teardownTime?` · Take down by ${escape(b.teardownTime)}`:''}</p><div class="event-metrics"><div><strong>${c.boothCount} / ${b.boothLimit}</strong><span>demo booths</span></div><div><strong>${c.session} min</strong><span>per group</span></div><div><strong>${c.presenterCount}</strong><span>presenters / day</span></div><div><strong>${c.staff}</strong><span>total staff / day</span></div></div>${c.adjusted?`<p class="event-adjustment">The crew will use ${c.session}-minute visits instead of ${b.session} minutes to stay within ${b.boothLimit} booths.</p>`:''}<div class="event-topic-summary">${c.topics.map(t=>`<span><b>${escape(t.topic)}</b>${t.attendees} attendees · ${t.groups} visits · ${t.presenters} presenter${t.presenters===1?'':'s'}</span>`).join('')}</div><small>One interest-based demo per attendee across the event. Equal topic split. Includes ${c.floorHosts} floor host${c.floorHosts===1?'':'s'} and 1 lead. Presenters are sized to the visit load. Normally 45 minutes presenting, then at least 15 minutes of rest. Unused time is marked No visit. Names are unassigned.</small>`;
   eventPreviewValid=true;syncEventLaunch();
  }catch(error){if(version===eventPreviewVersion&&el('event-preview'))el('event-preview').innerHTML='<p class="event-plan-error">'+escape(error.message)+'</p>';}
 }
 async function crewForm(){
  try{eventCatalog=eventCatalog||await api('event-catalog');}catch(error){alert(error.message);return;}
- dialog('Plan a BaC',`<label class="event-template-picker">Template<select id="studio-event-template">${eventCatalog.templates.map(t=>`<option value="${t.id}">${escape(t.title)} (Template)</option>`).join('')}</select></label><form id="studio-crew-form"><div class="studio-form-grid"><label>City<input name="city" maxlength="80" required></label><label>Event date · start<input type="date" name="startDate"></label><label>Event date · end<input type="date" name="endDate"></label><label>Venue<input name="venue" maxlength="120" placeholder="To be confirmed"></label><label>Total attendees<input type="number" name="attendees" min="10" max="3000" step="10" required></label><label>Event duration · minutes per day<input type="number" name="duration" min="30" max="720" step="30" required></label><label>Event days<input type="number" name="days" min="1" max="5" required></label><label>People per group<input type="number" name="groupSize" value="5" min="1" max="30" required></label><label>Preferred demo length · minutes<input type="number" name="session" value="15" min="5" max="60" step="5" required></label><label>Themes (one booth each)<select name="themeCount"><option value="3">3 themes</option><option value="4">4 themes</option><option value="5">5 themes</option><option value="6">6 themes</option></select></label><div class="event-time-field"><span id="studio-event-time-label">Daily start · local time</span><div class="event-start-time" role="group" aria-labelledby="studio-event-time-label"><select name="startHour" aria-label="Start hour (24-hour)">${Array.from({length:24},(_,i)=>`<option value="${String(i).padStart(2,'0')}">${String(i).padStart(2,'0')}</option>`).join('')}</select><span aria-hidden="true">:</span><select name="startMinute" aria-label="Start minute"><option value="00">00</option><option value="30">30</option></select></div><input type="hidden" name="startTime" value="10:00"></div></div><div id="studio-event-preview" class="event-plan-preview" aria-live="polite"></div>${crewAssignments()}<section id="studio-demo-preparation" class="demo-preparation" aria-live="polite"></section><p id="studio-event-connection" class="event-note" role="status" hidden></p><div class="studio-dialog-actions"><button id="studio-launch-event" type="submit" class="studio-primary" disabled>Give the brief to my crew</button></div></form>`);
+ dialog('Plan a BaC',`<label class="event-template-picker">Template<select id="studio-event-template">${eventCatalog.templates.map(t=>`<option value="${t.id}">${escape(t.title)} (Template)</option>`).join('')}</select></label><form id="studio-crew-form"><div class="studio-form-grid"><label>City<input name="city" maxlength="80" required></label><label>Event date · start<input type="date" name="startDate"></label><label>Event date · end<input type="date" name="endDate"></label><label>Venue<input name="venue" maxlength="120" placeholder="To be confirmed"></label><label>Total attendees<input type="number" name="attendees" min="1" max="3000" step="1" required></label><label>Event duration · minutes per day<input type="number" name="duration" min="30" max="720" step="30" required></label><label>Event days<input type="number" name="days" min="1" max="5" required></label><label>People per group<input type="number" name="groupSize" value="5" min="1" max="30" required></label><label>Preferred demo length · minutes<input type="number" name="session" value="15" min="5" max="60" step="5" required></label><label>Themes (one booth each)<select name="themeCount"><option value="2">2 themes</option><option value="3">3 themes</option><option value="4">4 themes</option><option value="5">5 themes</option><option value="6">6 themes</option></select></label><div class="event-time-field"><span id="studio-event-time-label">Daily start · local time</span><div class="event-start-time" role="group" aria-labelledby="studio-event-time-label"><select name="startHour" aria-label="Start hour (24-hour)">${Array.from({length:24},(_,i)=>`<option value="${String(i).padStart(2,'0')}">${String(i).padStart(2,'0')}</option>`).join('')}</select><span aria-hidden="true">:</span><select name="startMinute" aria-label="Start minute"><option value="00">00</option><option value="30">30</option></select></div><input type="hidden" name="startTime" value="10:00"></div><label>Take down by · local time (optional)<input type="time" name="teardownTime"></label></div><div id="studio-event-preview" class="event-plan-preview" aria-live="polite"></div>${crewAssignments()}<section id="studio-demo-preparation" class="demo-preparation" aria-live="polite"></section><p id="studio-event-connection" class="event-note" role="status" hidden></p><div class="studio-dialog-actions"><button id="studio-launch-event" type="submit" class="studio-primary" disabled>Give the brief to my crew</button></div></form>`);
  const form=el('crew-form');eventSubmitting=false;eventPreviewValid=false;syncEventLaunch();
  function syncDates(){
   const start=form.elements.startDate,end=form.elements.endDate,days=form.elements.days;
@@ -80588,8 +80621,9 @@ async function crewForm(){
  function applyTemplate(id){
   const template=eventCatalog.templates.find(t=>t.id===id);if(!template)return;
   el('event-template').value=id;
-  for(const k of ['city','attendees','duration','days','venue','startDate','endDate'])form.elements[k].value=template[k]??'';
-  for(const [key,value] of Object.entries({groupSize:5,session:15,themeCount:template.topics.length,startTime:'10:00',startHour:'10',startMinute:'00'}))form.elements[key].value=value;
+  for(const k of ['city','attendees','duration','days','venue','startDate','endDate','teardownTime'])form.elements[k].value=template[k]??'';
+  const startTime=template.startTime||'10:00';
+  for(const [key,value] of Object.entries({groupSize:template.groupSize??5,session:15,themeCount:template.topics.length,startTime,startHour:startTime.slice(0,2),startMinute:startTime.slice(3)}))form.elements[key].value=value;
   syncDates();updateEventPreview();
  }
  el('event-template').onchange=e=>applyTemplate(e.target.value);
@@ -80633,7 +80667,7 @@ function renderEventPackage(force=false){
 eventPackage.onclick=async e=>{
  const contribution=e.target.closest('[data-contribution]');if(contribution){selectEventContribution(contribution.dataset.contribution);if(crewMission()?.payload.workflow==='showcase')navigateShowcaseContribution();else renderEventPackage();return;}
  const tab=e.target.closest('[data-package-tab]');if(tab){eventPackageTab=tab.dataset.packageTab;renderEventPackage();return;}
- const json=e.target.closest('[data-result-json]');if(json){openResultJson(json.dataset.resultJson,json.dataset.resultTitle);return;}
+ const json=e.target.closest('[data-result-json]');if(json){openResultJson(json.dataset.resultJson,json.dataset.resultTitle,crewMission().id);return;}
  const download=e.target.closest('[data-package-download]');if(download){downloadPackageFile(download.dataset.packageDownload);return;}
  const action=e.target.closest('[data-survey-action]');if(!action)return;const job=crewMission();
  try{
@@ -80705,7 +80739,7 @@ async function renderShowcasePackage(job){
  else navigateShowcaseContribution('instant');
  const frame=eventPackage.querySelector('iframe');if(!frame)return;
  try{
-  const file=await api('file?path='+encodeURIComponent(p.website.path));
+  const file=await api('file?path='+encodeURIComponent(p.website.path)+'&job='+encodeURIComponent(job.id));
   if(key!==eventPackageKey||!frame.isConnected)return;
   mountResultPreview(frame,file.content,p.website.authored);
  }catch(error){if(key===eventPackageKey&&frame.isConnected)frame.replaceWith(Object.assign(document.createElement('p'),{textContent:error.message}));}
@@ -81008,9 +81042,9 @@ async function addChatImages(files,crew=false){
   try{const bitmap=await createImageBitmap(file),scale=Math.min(1,1600/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();const dataUrl=canvas.toDataURL('image/jpeg',.88);if(dataUrl.length>2800000)throw new Error('Image is too large after resizing. Try a smaller image.');const items=chatImageDrafts.get(key)||[];if(items.length<4)chatImageDrafts.set(key,[...items,{name:file.name||'Pasted image',dataUrl}]);if(imageKey(crew)===key)renderImageDrafts(crew);}catch(error){alert(error.message||'This image could not be read.');}
  }
 }
-function imageHistoryMarkup(images){return (images||[]).map(image=>'<img class="chat-image" data-chat-image="'+escape(image.path)+'" alt="Attached image">').join('');}
+function imageHistoryMarkup(images,jobId){return (images||[]).map(image=>'<img class="chat-image" data-chat-image="'+escape(image.path)+'" data-image-job="'+escape(jobId||'')+'" alt="Attached image">').join('');}
 function loadChatImages(container,owner){
- container.querySelectorAll('[data-chat-image]').forEach(async image=>{try{const file=await api('file?path='+encodeURIComponent(image.dataset.chatImage),undefined,owner);if(image.isConnected&&file.encoding==='base64'&&['image/png','image/jpeg','image/webp'].includes(file.mime))image.src='data:'+file.mime+';base64,'+file.content;}catch{image.alt='Image unavailable';}});
+ container.querySelectorAll('[data-chat-image]').forEach(async image=>{try{const file=await api('file?path='+encodeURIComponent(image.dataset.chatImage)+(image.dataset.imageJob?'&job='+encodeURIComponent(image.dataset.imageJob):''),undefined,owner);if(image.isConnected&&file.encoding==='base64'&&['image/png','image/jpeg','image/webp'].includes(file.mime))image.src='data:'+file.mime+';base64,'+file.content;}catch{image.alt='Image unavailable';}});
 }
 for(const crew of [false,true]){
  const id=crew?'crew-':'',form=el(id+'chat'),input=el(id+'prompt'),previews=document.createElement('div');
@@ -81028,12 +81062,14 @@ function syncComposer(){
   if(el('run-options').disabled)setRunOptions(false);
   el('attach').disabled=blocked;
   el('chat-connection').hidden=!blocked;
-  el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':!runtime.model?'Model not connected. Connect a model to start chatting.':'Agent runtime disconnected. Reconnect in Settings to start chatting.';
-  el('chat-connect').hidden=!unavailable||settingsButton.hidden;
-  el('prompt').placeholder=blocked?'Connect a model to message your agent…':'Message your agent…';
+  el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':!runtime.gateway?(gatewayState()==='slow'?'Waiting for the agent runtime to respond. Checking automatically.':'Agent runtime unavailable. Retry the connection to continue.'):'Model not connected. Connect a model to start chatting.';
+  el('chat-connect').hidden=!unavailable||(runtime.gateway&&settingsButton.hidden);
+  el('chat-connect').textContent=!runtime.gateway?'Retry connection':'Connect model';
+  el('chat-connect').disabled=runtimeRetrying;
+  el('prompt').placeholder=data.deleting?'This agent is paused for deletion…':!runtime.gateway?'Waiting for the agent runtime…':!runtime.model?'Connect a model to message your agent…':'Message your agent…';
   el('equipped').querySelectorAll('button').forEach(button=>button.disabled=blocked);
 }
-el('chat-connect').onclick=openModelSettings;
+el('chat-connect').onclick=connectionAction;
 // Model text is escaped before formatting; raw HTML is never inserted into the app.
 function messageMarkup(value){
   const saved=[];
@@ -81094,7 +81130,7 @@ function renderConversation(){
   log.innerHTML=(data.jobs.length>=30?'<small class="chat-history-note">Recent conversations · up to 30 missions</small>':'')+(jobs.length?jobs.map(j=>{
     const held=shieldReplyHeld(j),result=held?{}:j.result||{},pending=['queued','running','waiting','stopping'].includes(j.status);
     const status={queued:'Waiting to start…',running:j.events?.at(-1)?.title==='Preparing OpenShell'?'Preparing your protected runtime…':'Working on your request…',waiting:'Waiting for a decision.',stopping:'Stopping after the current model call…',cancelled:'Stopped.'}[j.status];
-    return '<article class="chat-turn" data-chat-turn="'+escape(j.id)+'">'+(j.kind==='heartbeat'?'':'<div class="chat-message chat-user"><small>'+escape(j.payload.sender||'You')+'</small><div>'+escape(j.payload.prompt||'').replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images)+'</div></div>')+'<div class="chat-message chat-agent"><small>'+escape(j.result?.systemNotice?'System':data.profile?.name||'Agent')+(j.kind==='heartbeat'?' · Heartbeat':'')+' · '+escape(new Date(j.created*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))+'</small>'+(j.kind==='heartbeat'?'<small class="heartbeat-delivery">'+escape(result.telegram==='sent'?'Sent to Telegram':result.telegram==='failed'?'Telegram delivery failed. Your summary is saved here.':result.telegram==='pending'?'Telegram delivery unconfirmed':'')+'</small>':'')+customSkillMarkup(result.activity)+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(result.answer||result.error||(pending?'':status||'No text reply was returned.'))+'</div>')+(!held&&pending?'<div class="chat-progress" role="status">'+escape(status)+(j.status!=='stopping'?'<button type="button" data-chat-stop="'+escape(j.id)+'">Stop</button>':'')+'</div>':'')+(!held&&result.source?'<small class="heartbeat-source">'+'Technical discovery · '+'Published '+escape(result.source.published)+' · Feed excerpt<br><a href="'+escape(result.source.url)+'" target="_blank" rel="noopener noreferrer">'+escape(result.source.title)+'</a></small>':'')+(result.files||[]).filter(f=>!f.endsWith('.md')||!result.answer).map(f=>'<details class="chat-file"><summary data-chat-file="'+escape(f)+'">'+escape(f.split('/').pop())+'</summary><div class="chat-file-body"></div></details>').join('')+'</div></article>';
+    return '<article class="chat-turn" data-chat-turn="'+escape(j.id)+'">'+(j.kind==='heartbeat'?'':'<div class="chat-message chat-user"><small>'+escape(j.payload.sender||'You')+'</small><div>'+escape(j.payload.prompt||'').replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images,j.id)+'</div></div>')+'<div class="chat-message chat-agent"><small>'+escape(j.result?.systemNotice?'System':data.profile?.name||'Agent')+(j.kind==='heartbeat'?' · Heartbeat':'')+' · '+escape(new Date(j.created*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))+'</small>'+(j.kind==='heartbeat'?'<small class="heartbeat-delivery">'+escape(result.telegram==='sent'?'Sent to Telegram':result.telegram==='failed'?'Telegram delivery failed. Your summary is saved here.':result.telegram==='pending'?'Telegram delivery unconfirmed':'')+'</small>':'')+customSkillMarkup(result.activity)+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(result.answer||result.error||(pending?'':status||'No text reply was returned.'))+'</div>')+(!held&&pending?'<div class="chat-progress" role="status">'+escape(status)+(j.status!=='stopping'?'<button type="button" data-chat-stop="'+escape(j.id)+'">Stop</button>':'')+'</div>':'')+(!held&&result.source?'<small class="heartbeat-source">'+'Technical discovery · '+'Published '+escape(result.source.published)+' · Feed excerpt<br><a href="'+escape(result.source.url)+'" target="_blank" rel="noopener noreferrer">'+escape(result.source.title)+'</a></small>':'')+(result.files||[]).filter(f=>!f.endsWith('.md')||!result.answer).map(f=>'<details class="chat-file"><summary data-chat-file="'+escape(f)+'">'+escape(f.split('/').pop())+'</summary><div class="chat-file-body"></div></details>').join('')+'</div></article>';
   }).join(''):'<p class="chat-empty">Start a conversation. Your questions and replies will stay here.</p>');
   loadChatImages(log,agentId);
   if(follow)log.scrollTop=log.scrollHeight;else log.scrollTop=top;
@@ -81222,7 +81258,7 @@ function renderRooms(){
   if(!roomsReady){roomsReady=true;fillCreator(true);let saved;try{saved=sessionStorage.getItem('bac-studio-room');}catch{}setRoom(data.profile?(roomCopy[saved]?saved:'lounge'):'workshop');window.BacCampus?.overview({instant:true});}
   renderRoomVisibility();
   const agents=data.agents||[];
-  el('gateway-state').textContent=runtime.testFixture?'Test fixture · no live gateway':runtime.gateway?'Gateway connected':'Not connected';
+  el('gateway-state').textContent=runtime.testFixture?'Test fixture · no live gateway':gatewayLabel();
   el('model-state').textContent=runtime.testFixture?'Test fixture · no live model':runtime.model?'Connected':'Not connected';
   el('shell-state').textContent=runtime.openshell||'Optional · not configured';
   if(data.profile){const a=data.profile.avatar||{};el('portrait').dataset.body=a.body||'classic';el('portrait').dataset.accessory=a.accessory||'antenna';el('portrait').style.setProperty('--avatar-accent',appearanceColors[a.color]||appearanceColors.green);}
@@ -81259,47 +81295,62 @@ el('tone-picker').onclick=e=>{const button=e.target.closest('[data-tone]');if(bu
 root.addEventListener('bac:world-room',e=>setRoom(e.detail.room,{fromWorld:true}));
 el('room-action').onclick=crewForm;
 el('edit-agent').onclick=()=>agentForm(false);el('cancel-create').onclick=()=>{if(editingInPlace){editingInPlace=false;fillCreator(true);renderRoomVisibility();}else setRoom('lounge');};
+function forgetDeletedAgent(target){
+  stateCache.clear();
+  for(const key of chatImageDrafts.keys())if(key.startsWith(target+':'))chatImageDrafts.delete(key);
+  for(const key of crewDrafts.keys())if(key.startsWith(target+':'))crewDrafts.delete(key);
+  try{const layout=JSON.parse(localStorage.getItem('bac-lounge-layout-v1')||'{}');delete layout[target];localStorage.setItem('bac-lounge-layout-v1',JSON.stringify(layout));}catch{}
+}
 async function deleteAgentAndWait(target,name,onWaiting=()=>{}){
   const result=await api('delete-agent',{name},target);
-  if(!result.deleting)return result;
+  if(!result.deleting){forgetDeletedAgent(target);return result;}
+  return waitForAgentDeletion(target,name,onWaiting);
+}
+async function waitForAgentDeletion(target,name,onWaiting=()=>{}){
   onWaiting();
   while(true){
     await new Promise(resolve=>setTimeout(resolve,1000));
     // Query the collection without the removed identity so deletion cannot turn polling into a 404.
     const state=await api('state',undefined,'');
     const agent=state.agents.find(a=>a.key===target);
-    if(!agent)return {deleted:target,agentId:state.agentId};
+    if(!agent){forgetDeletedAgent(target);return {deleted:target,agentId:state.agentId};}
     if(!agent.deletionWaiting)throw new Error('Cleanup could not finish for '+name+'. Retry Delete agent.');
+    onWaiting(agent);
   }
 }
 el('delete-agent').onclick=()=>{
   if(!data.profile||pendingWrites||changingAgent||removingAgent)return;
   const target=agentId,name=data.profile.name;
-  dialog('YOUR COLLECTION',`<div class="studio-delete-identity">${avatarBadge(data.profile.avatar)}<span>REMOVE A TEAMMATE</span></div><h3>Delete ${escape(name)}?</h3><p>Remove this agent, its conversation, saved memory and workspace files from your studio.</p><p>Pending requests and scheduled follow-ups will be cancelled. Any active crew task involving this agent will also stop. Deletion finishes after the current call ends.</p><p class="studio-muted">You cannot undo this in the app. Completed crew packages saved by other agents remain. OpenClaw may move native files to the host’s Trash.</p><p id="studio-delete-error" role="alert" hidden></p><div class="studio-delete-actions"><button class="studio-secondary" id="studio-delete-cancel" autofocus>Keep agent</button><button class="studio-danger" id="studio-delete-confirm">Delete ${escape(name)}</button></div>`);
+  dialog('YOUR COLLECTION',`<div class="studio-delete-identity">${avatarBadge(data.profile.avatar)}<span>REMOVE A TEAMMATE</span></div><h3>Delete ${escape(name)}?</h3><p>Remove this agent, its conversation, saved memory and workspace files from your studio.</p><p>Pending requests and scheduled follow-ups will be cancelled. Any active crew task involving this agent will also stop. Deletion finishes after the current call ends.</p><p class="studio-muted">You cannot undo this in the app. Completed crew packages saved by other agents remain. Agent-owned runtime files and temporary cleanup records are removed when deletion finishes.</p><p id="studio-delete-error" role="alert" hidden></p><div class="studio-delete-actions"><button class="studio-secondary" id="studio-delete-cancel" autofocus>Keep agent</button><button class="studio-danger" id="studio-delete-confirm">Delete ${escape(name)}</button></div>`);
   el('delete-cancel').onclick=()=>el('dialog').close();el('delete-cancel').focus();
   el('delete-confirm').onclick=async()=>{
     if(target!==agentId)return;
     removingAgent=true;++refreshVersion;
     el('dialog').close();
-    const progress=document.createElement('p');progress.className='studio-delete-progress';progress.setAttribute('role','status');
-    progress.textContent='Deleting '+name+' · cleaning up its workspace and runtime…';
-    el('companion').prepend(progress);el('delete-agent').disabled=true;
+    el('delete-agent').disabled=true;
     try{
-      const result=await deleteAgentAndWait(target,name,()=>{progress.textContent='Deleting '+name+' · finishing its current work and cleaning up…';});
-      const state=await api('state',undefined,result.agentId);
-      const viewingRoom=room;openAgentState(state);fillCreator(true);setRoom(viewingRoom==='lounge'?(data.profile?'lounge':'workshop'):viewingRoom);
+      const result=await deleteAgentAndWait(target,name,agent=>{
+        // The durable server fence is in place. Release navigation while native
+        // cleanup continues; never turn an acknowledgement into "deleted".
+        removingAgent=false;
+        if(target===agentId){data.deleting=true;const row=data.agents.find(a=>a.key===target);if(row)Object.assign(row,{deleting:true,deletionWaiting:true,deletionProgress:agent?.deletionProgress||'Queued for cleanup'});render();}
+      });
+      if(target===agentId&&!changingAgent){
+        const state=await api('state',undefined,result.agentId);
+        if(target===agentId&&!changingAgent){const viewingRoom=room;openAgentState(state);fillCreator(true);setRoom(viewingRoom==='lounge'?(data.profile?'lounge':'workshop'):viewingRoom);}
+      }
       alert(name+' was deleted.');root.querySelector('.world-room-map [data-world-room="'+room+'"]')?.focus({preventScroll:true});
     }catch(error){alert(error.message);}
-    finally{removingAgent=false;progress.remove();el('delete-agent').disabled=false;refresh();}
+    finally{removingAgent=false;render();refresh();}
   };
 };
 el('connection-setup').onclick=setup;el('connection-security').onclick=()=>setRoom('policies');
 el('onboarding').onsubmit=async e=>{
-  e.preventDefault();if(hiringArrival)return;syncCreatorTone();const mode=draftMode,target=draftOwner,first=!data.agents?.length;
+  e.preventDefault();if(hiringArrival)return;syncCreatorTone();const mode=draftMode,target=mode==='new'?agentId:draftOwner,first=!data.agents?.length;
   const payload={name:el('name').value,...creatorPrompt(),persona,tone:draftTone,verbosity:'balanced',skills:[...el('skill-picker').querySelectorAll('input:checked')].map(x=>x.value),avatar:{...draftAvatar},protection:el('onboarding').querySelector('[name=protection]:checked').value};
   hiringArrival=true;el('create').disabled=true;el('onboarding').inert=true;
   try{
-    const result=await api(mode==='edit'?'profile':first?'onboard':'agents',payload,target);
+    const result=await api(mode==='edit'?'profile':first?'onboard':'agents',payload,mode==='new'&&!first?'':target);
     // Bind the arrival to this response, never to a changing workspace selection.
     const createdId=mode==='new'&&!first?result.agentId:target;
     if(mode==='new'){++refreshVersion;openAgentState(await api('state',undefined,createdId));}else await refresh();
@@ -81594,16 +81645,25 @@ async function resetStudio(scope){
  const buttons=[...modal.querySelectorAll('button')].map(button=>[button,button.disabled]);
  modal.addEventListener('cancel',blockClose);buttons.forEach(([button])=>button.disabled=true);
  status.textContent='Resetting';
- let completed=0,total=0,next=agentId;
+ let completed=0,total=0,next=agentId,background=false;
+ const originalSelection=agentId;
  try{
   const latest=await api('state',undefined,'');
   const agents=scope==='bac'?[]:latest.agents||[];total=agents.length;
   if(scope!=='lounge'){
    await api('bac-reset',{},latest.agentId);selectedJob=null;demoPreparationId='';
   }
+  // Persist every request first. Closing Settings or reloading must not lose
+  // the remainder of a bulk deletion while the native runtime drains it.
+  for(const agent of agents)await api('delete-agent',{name:agent.name},agent.key);
+  if(agents.length){
+   background=true;removingAgent=false;modal.removeEventListener('cancel',blockClose);modal.close();
+   alert('Removing '+agents.length+' agents in the background. Cleanup progress stays visible in their workspaces.');
+   await refresh();
+  }
   for(const agent of agents){
    status.textContent=`Removing ${completed+1} / ${total} · ${agent.name}`;
-   const result=await deleteAgentAndWait(agent.key,agent.name,()=>{status.textContent=`Waiting for ${agent.name} to finish its current call`;});
+   const result=await waitForAgentDeletion(agent.key,agent.name,row=>{status.textContent=row?.deletionProgress||`Cleaning ${agent.name}`;});
    next=result.agentId;completed++;
    try{const layout=JSON.parse(localStorage.getItem('bac-lounge-layout-v1')||'{}');delete layout[agent.key];localStorage.setItem('bac-lounge-layout-v1',JSON.stringify(layout));}catch{}
   }
@@ -81611,11 +81671,13 @@ async function resetStudio(scope){
   if(scope==='bac'){data=state;render();}
   else{
    clearTimeout(comparisonTimer);comparison=null;comparePanel.replaceChildren();delete comparePanel.dataset.batch;
-   openAgentState(state);fillCreator(true);setRoom('workshop');
+   if(!changingAgent&&(agentId===originalSelection||agents.some(a=>a.key===agentId))){openAgentState(state);fillCreator(true);setRoom('workshop');}
   }
   status.textContent=scope==='all'?'Reset complete.':scope==='bac'?'BaC reset.':'Lounge agents reset.';
+  if(background)alert('Cleanup complete. '+completed+' agents removed.');
  }catch(error){
   status.textContent=(completed?`${completed} / ${total} removed. `:'')+error.message;
+  if(background)alert(status.textContent);
   try{const state=await api('state',undefined,'');if(state.agentId===agentId){data=state;render();}else openAgentState(state);}catch{}
  }finally{
   removingAgent=false;modal.removeEventListener('cancel',blockClose);
@@ -81631,7 +81693,7 @@ async function resetStudio(scope){
     window.scrollTo({top:0,left:0,behavior:'smooth'});
   };
   async function boot(){try{const session=await api('session');csrf=session.csrf;settingsButton.hidden=!session.canConfigure;runtime=session.runtime;data=session;agentId=session.agentId;connected=true;runtimeBadge();render();let saved;try{saved=sessionStorage.getItem('bac-selected-agent');}catch{}if(saved&&saved!==agentId&&session.agents.some(a=>a.key===saved))await switchAgent(saved);else rememberSelection();crewStartupReady=true;warmCrewOnOpen();}catch(error){runtimeBadge();alert(error.message);el('create').disabled=true;}}
-  boot();setInterval(()=>{if(!document.hidden&&!busy)refresh();},1500);setInterval(async()=>{if(connected&&!document.hidden){try{const nextRuntime=await api('runtime');if(runtime.instance&&nextRuntime.instance!==runtime.instance){demoPreparationId=null;if(!nextRuntime.ready)alert('Server restarted. Your agents and results are saved; reconnect the model to continue.');}runtime=nextRuntime;runtimeBadge();}catch{}}},10000);
+  boot();setInterval(()=>{if(!document.hidden&&!busy)refresh();},1500);setInterval(async()=>{if(connected&&!document.hidden){try{const nextRuntime=await api('runtime');if(runtime.instance&&nextRuntime.instance!==runtime.instance){demoPreparationId=null;if(!nextRuntime.model)alert('Server restarted. Your agents and results are saved; reconnect the model to continue.');}runtime=nextRuntime;runtimeBadge();}catch{}}},10000);
   window.BacStudio={refresh,inspect:()=>({profile:data.profile,agentId,agents:data.agents,jobs:data.jobs,runtime,board,room}),showBoard,setRoom};
 })();
 </script>

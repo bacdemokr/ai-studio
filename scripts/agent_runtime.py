@@ -1,4 +1,5 @@
 """OpenClaw 2026.9.4 adapter. Credentials and native workspaces stay on the host."""
+from deletion_residue import CleanupPrerequisiteError
 import contextlib
 import fcntl
 import hashlib
@@ -66,7 +67,10 @@ def config_path():
 
 
 def environment():
-    return {**os.environ, 'OPENCLAW_STATE_DIR': str(root() / 'state'),
+    loader = Path(__file__).with_name('native_cleanup_loader.mjs').resolve().as_uri()
+    options = os.environ.get('NODE_OPTIONS', '')
+    options += '' if loader in options else ' --import=' + loader
+    return {**os.environ, 'NODE_OPTIONS':options.strip(), 'OPENCLAW_STATE_DIR': str(root() / 'state'),
             'OPENCLAW_CONFIG_PATH': str(config_path()),
             'PATH': str(root() / 'node/bin') + os.pathsep + os.environ.get('PATH', '')}
 
@@ -326,7 +330,7 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
         if skill == 'event-tools':
             import shutil
             scripts=directory/'scripts';scripts.mkdir(exist_ok=True)
-            for module in ('event_agent_tools','event_planner','event_rotation','event_dates','event_timetable','nvidia_research','event_theme_content','research_http'):
+            for module in ('event_agent_tools','event_planner','event_rotation','event_staffing','event_dates','event_timetable','nvidia_research','event_theme_content','research_http'):
                 target=scripts/(module+'.py')
                 if overwrite or not target.exists():shutil.copyfile(Path(__file__).with_name(module+'.py'),target)
 
@@ -381,20 +385,6 @@ def register(agent_id, workspace, profile, role=None):
         save_config(config)
         _expected_identity[agent_id] = stamp
     (workspace / '.bac-prepared-only').unlink(missing_ok=True)
-
-
-def deletion_roles(agent_id):
-    """Discover persisted children, including roles removed from the current catalog."""
-    from agent_identity import valid_agent_id
-    if not valid_agent_id(agent_id) or '-r' in agent_id:
-        raise RuntimeError('Choose a personal BaC identity for cleanup.')
-    ids = set((cleanup_config() or {}).get('agents', {}).get('entries', {}))
-    folder = root() / 'state/agents'
-    if folder.exists():
-        ids.update(p.name for p in folder.iterdir())
-    prefix = agent_id + '-r'
-    return sorted({int(value[len(prefix):]) for value in ids
-                   if value.startswith(prefix) and valid_agent_id(value)})
 
 
 class NativeCleanupPending(RuntimeError):
@@ -539,7 +529,10 @@ def remove(agent_id, workspace):
             raise RuntimeError('The native workspace changed. The host must review it before deletion.')
         # A server restart may lose the app's in-flight accounting. Check native
         # activity for ordinary agents too, before touching their sandbox/files.
-        if entry is not None or native.exists() or native.is_symlink():quiesce_native(agent_id)
+        if entry is not None or native.exists() or native.is_symlink():
+            from deletion_residue import require_staging_runtime
+            require_staging_runtime(root())
+            quiesce_native(agent_id)
         # Registry entries can outlive the roster and the plugin's enabled flag.
         # Inspect them even for definition-only/already partially deleted agents.
         if config is not None:
@@ -573,6 +566,8 @@ def remove(agent_id, workspace):
                 sandbox_registry(agent_id, [row['containerName'] for row in registered])
         # Native command uses the running gateway or its supported local fallback.
         # It retains shared storage and reports partial failures even with a zero exit code.
+        from deletion_residue import prepare
+        prepare(root(), agent_id, workspace)
         result = json.loads(delete_native(agent_id))
         if (not isinstance(result, dict) or result.get('agentId') != agent_id
                 or result.get('ok') is False or not isinstance(result.get('failed'), list)):
@@ -582,6 +577,37 @@ def remove(agent_id, workspace):
         if (result.get('agentId') != agent_id or result.get('purgeFailed')
                 or result.get('failed') or result.get('workspaceRetained')):
             raise RuntimeError('OpenClaw cleanup is incomplete. Resolve host storage errors and retry deletion.')
+        # Native cleanup owns the contents. Retire only its empty parent after
+        # confirmed success, so later inventories do not treat it as live state.
+        try:
+            native.rmdir()
+        except OSError:
+            pass  # Missing, redirected or non-empty paths are never traversed.
+
+
+def finalize_removal(agent_id, workspace):
+    """Retire recoverable copies first, then release the completed native fence.
+
+    A crash at any boundary remains retryable: until this finishes the Studio
+    identity stays fenced; afterwards absent native paths prove it unregistered.
+    """
+    from deletion_residue import purge, forget_receipt
+    with config_lock():
+        config = cleanup_config()
+        if config is None:return
+        if agent_id in config['agents']['entries']:
+            raise RuntimeError('Agent is still registered; cleanup was postponed.')
+        if Path(workspace).exists() or Path(workspace).is_symlink():
+            raise RuntimeError('Agent workspace still exists.')
+        purge(root(), agent_id)
+        result = subprocess.run([str(root()/'node/bin/node'),
+            str(Path(__file__).with_name('delete_native_agent.mjs')),str(root()),agent_id,'--forget-deleted'],
+            env=environment(),capture_output=True,text=True,timeout=30)
+        if result.returncode:raise RuntimeError('Could not finalize native cleanup. Retry deletion.')
+        report = json.loads(result.stdout)
+        if report != {'agentId':agent_id,'forgotten':True}:
+            raise RuntimeError('Invalid cleanup finalization response.')
+        forget_receipt(root(), agent_id)
 
 
 def live_agents():
@@ -592,6 +618,12 @@ def live_agents():
     if result.returncode:
         raise RuntimeError('Could not verify the agent configuration with OpenClaw. No mission was sent.')
     return json.loads(result.stdout)
+
+
+class GatewayError(RuntimeError):
+    def __init__(self, message, reason='unavailable'):
+        super().__init__(message)
+        self.reason = reason
 
 
 def gateway(path, payload=None, timeout=settings.AGENT_TIMEOUT_SECONDS):
@@ -607,9 +639,10 @@ def gateway(path, payload=None, timeout=settings.AGENT_TIMEOUT_SECONDS):
         with opener.open(request, timeout=timeout) as response:
             return json.load(response)
     except (TimeoutError, socket.timeout):
-        raise RuntimeError(f'The agent did not finish within {timeout} seconds. The model response may have stalled. Check the model connection before retrying; this request was not automatically repeated.') from None
-    except (urllib.error.URLError, OSError):
-        raise RuntimeError('The OpenClaw gateway did not complete this request. Check ./bac dev runtime check and ./bac dev runtime logs. No sample answer was substituted.') from None
+        raise GatewayError(f'The agent did not finish within {timeout} seconds. The model response may have stalled. Check the model connection before retrying; this request was not automatically repeated.', 'timeout') from None
+    except (urllib.error.URLError, OSError) as error:
+        reason = 'timeout' if isinstance(getattr(error, 'reason', None), (TimeoutError, socket.timeout)) else 'unavailable'
+        raise GatewayError('The OpenClaw gateway did not complete this request. Check ./bac dev runtime check and ./bac dev runtime logs. No sample answer was substituted.', reason) from None
 
 
 def respond(agent_id, session, prompt, images=None):
@@ -679,17 +712,21 @@ def status():
     installed = (root() / 'package/node_modules/.bin/openclaw').exists()
     configured = config_path().exists()
     ready = False
+    probe = 'unavailable'
     if configured:
         try:
             gateway('/v1/models', timeout=2)
             ready = True
-        except RuntimeError:
-            pass
+            probe = 'ok'
+        except GatewayError as error:
+            probe = error.reason
+        except (RuntimeError, ValueError):
+            probe = 'unavailable'
     model = settings.model_available()
     config = c.read_json(config_path(), {})
     from agent_policy import configured as shell_configured
     shell = shell_configured()
-    return {'installed': installed, 'gateway': ready, 'model': model, 'ready': ready and model,
+    return {'installed': installed, 'gateway': ready, 'gatewayProbe': probe, 'model': model, 'ready': ready and model,
             'version': VERSION, 'sharedModel': settings.selected_model(), 'provider': settings.read()['provider'], 'location': settings.location(), 'event': settings.event(), 'concurrency': 2,
             'openshell': 'Ready for personal agents' if shell else 'Host setup required', 'openshellReady': shell,
             'search': (root() / 'search-enabled').exists()}

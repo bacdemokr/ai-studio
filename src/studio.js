@@ -129,21 +129,34 @@
   el('dialog-close').onclick=()=>el('dialog').close();
   el('dialog').addEventListener('click',e=>{if(e.target===el('dialog')&&!removingAgent){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
   function setup() {
-    dialog('CONNECTIONS',`<h3>Connections</h3><div class="studio-runtime-grid"><div><b>Model</b><small>${runtime.model?'Connected':'Not connected'}</small></div><div><b>OpenClaw</b><small>${runtime.gateway?'Connected':'Not connected'}</small></div><div><b>OpenShell</b><small>${escape(runtime.openshell||'Not configured')}</small></div></div>`);
+    dialog('CONNECTIONS',`<h3>Connections</h3><div class="studio-runtime-grid"><div><b>Model</b><small>${runtime.model?'Connected':'Not connected'}</small></div><div><b>OpenClaw</b><small>${gatewayLabel()}</small></div><div><b>OpenShell</b><small>${escape(runtime.openshell||'Not configured')}</small></div></div>`);
   }
   const modelBadge=root.querySelector('.campus-sim');
-  function openModelSettings(){if(!runtime.ready&&!runtime.testFixture&&!settingsButton.hidden)settingsButton.click();}
-  modelBadge.onclick=e=>{e.stopPropagation();openModelSettings();};
-  modelBadge.onkeydown=e=>{if(modelBadge.dataset.actionable==='true'&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();openModelSettings();}};
+  function gatewayState(){return runtime.gatewayState||(runtime.gateway?'ready':'unavailable');}
+  function gatewayLabel(){return gatewayState()==='slow'?'Agent runtime responding slowly':gatewayState()==='ready'?'Ready':'Agent runtime unavailable';}
+  function openModelSettings(){if(!runtime.model&&!runtime.testFixture&&!settingsButton.hidden)settingsButton.click();}
+  let runtimeRetrying=false;
+  async function retryRuntime(){
+    if(runtimeRetrying)return;
+    runtimeRetrying=true;runtimeBadge();
+    try{runtime=await api('runtime?retry=1');}
+    catch{alert('Could not reach the app server. Check that it is running, then retry.');}
+    finally{runtimeRetrying=false;runtimeBadge();}
+  }
+  function connectionAction(){if(!runtime.gateway)retryRuntime();else openModelSettings();}
+  modelBadge.onclick=e=>{e.stopPropagation();if(modelBadge.dataset.actionable==='true')connectionAction();};
+  modelBadge.onkeydown=e=>{if(modelBadge.dataset.actionable==='true'&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();connectionAction();}};
   function runtimeBadge(){
     syncDemoPreparation();syncEventLaunch();syncCrewComposer();
-    const ready=!!runtime.ready&&!runtime.testFixture;
-    const actionable=!runtime.ready&&!runtime.testFixture&&!settingsButton.hidden;
-    modelBadge.textContent=runtime.testFixture?'TEST FIXTURE · NO REAL MODEL':ready?'✓ Model connected':!runtime.gateway?'⚠︎ Agent runtime disconnected':'⚠︎ Model not connected';
-    modelBadge.dataset.warning=String(!runtime.testFixture&&!runtime.ready);
-    modelBadge.dataset.ready=String(ready);modelBadge.dataset.actionable=String(actionable);
+    const state=gatewayState(),slow=state==='slow',ready=!!runtime.ready&&!runtime.testFixture;
+    const actionable=!runtime.testFixture&&!runtimeRetrying&&(!runtime.gateway||(!runtime.model&&!settingsButton.hidden));
+    modelBadge.textContent=runtime.testFixture?'TEST FIXTURE · NO REAL MODEL':runtimeRetrying?'Checking connection…':slow?'◷ '+gatewayLabel():!runtime.gateway?'⚠ Agent runtime unavailable · Retry connection':!runtime.model?'○ Model not connected':'● Ready';
+    modelBadge.dataset.warning=String(!runtime.testFixture&&!slow&&!runtime.ready);
+    modelBadge.dataset.slow=String(!runtime.testFixture&&slow);
+    modelBadge.dataset.ready=String(ready&&!slow);modelBadge.dataset.actionable=String(actionable);
     modelBadge.setAttribute('role',actionable?'button':'status');modelBadge.tabIndex=actionable?0:-1;
-    modelBadge.title=actionable?'Open model settings':'';
+    modelBadge.setAttribute('aria-live','polite');
+    modelBadge.title=runtimeRetrying?'Checking the local agent runtime':!runtime.gateway?'Retry connection':slow?'Checking automatically. Tasks already running are not cancelled.':actionable?'Open model settings':'Agent runtime ready';
     if(roomsReady)renderRooms();syncComposer();syncDemoPreparation();
   }
 
@@ -162,7 +175,14 @@
     el('task-summary').textContent=active?(active.kind==='crew'?'Your specialists are building the event plan.':active.payload.prompt.slice(0,135)):'Give your agent a task.';
     const assignment=data.assignments?.find(a=>a.role!=='Event roundtable');el('assigned-crew').hidden=!assignment;
     if(assignment){el('assigned-crew').textContent='Open '+assignment.name+'’s crew';if(!active){el('task-state').textContent='Busy';el('task-summary').textContent=assignment.role+' for '+assignment.name+' · '+assignment.status+'. Follow the handoffs in the lead’s workspace.';}}
-    el('delete-agent').textContent=data.deleting?'Retry deletion':'Delete agent';
+    const cleanup=data.agents.find(a=>a.key===agentId);
+    el('delete-agent').textContent=cleanup?.deletionWaiting?'Deleting…':data.deleting?'Retry deletion':'Delete agent';
+    el('delete-agent').disabled=!!cleanup?.deletionWaiting;
+    let cleanupNotice=el('cleanup-notice');if(!cleanupNotice){cleanupNotice=document.createElement('p');cleanupNotice.id='studio-cleanup-notice';cleanupNotice.className='studio-delete-progress';cleanupNotice.setAttribute('role','status');el('companion').prepend(cleanupNotice);}
+    cleanupNotice.hidden=!data.deleting;
+    const cleanupLabel=cleanup?.deletionWaiting?'Deleting '+(profile?.name||'agent'):'Cleanup paused. Retry deletion.';
+    cleanupNotice.textContent=data.deleting?cleanupLabel+' · You can use another agent while cleanup continues.':'';
+    if(data.deleting){el('task-state').textContent=cleanup?.deletionWaiting?'Deleting':'Cleanup paused';el('task-summary').textContent=cleanupLabel;}
     el('agent-policy').hidden=profile?.protection!=='openshell';
     el('agent-policy').disabled=!!data.deleting;
     let monitor=el('radar-monitor');if(!monitor){monitor=document.createElement('div');monitor.id='studio-radar-monitor';monitor.className='studio-radar-monitor';el('agent-policy').after(monitor);}
@@ -282,6 +302,6 @@
     window.scrollTo({top:0,left:0,behavior:'smooth'});
   };
   async function boot(){try{const session=await api('session');csrf=session.csrf;settingsButton.hidden=!session.canConfigure;runtime=session.runtime;data=session;agentId=session.agentId;connected=true;runtimeBadge();render();let saved;try{saved=sessionStorage.getItem('bac-selected-agent');}catch{}if(saved&&saved!==agentId&&session.agents.some(a=>a.key===saved))await switchAgent(saved);else rememberSelection();crewStartupReady=true;warmCrewOnOpen();}catch(error){runtimeBadge();alert(error.message);el('create').disabled=true;}}
-  boot();setInterval(()=>{if(!document.hidden&&!busy)refresh();},1500);setInterval(async()=>{if(connected&&!document.hidden){try{const nextRuntime=await api('runtime');if(runtime.instance&&nextRuntime.instance!==runtime.instance){demoPreparationId=null;if(!nextRuntime.ready)alert('Server restarted. Your agents and results are saved; reconnect the model to continue.');}runtime=nextRuntime;runtimeBadge();}catch{}}},10000);
+  boot();setInterval(()=>{if(!document.hidden&&!busy)refresh();},1500);setInterval(async()=>{if(connected&&!document.hidden){try{const nextRuntime=await api('runtime');if(runtime.instance&&nextRuntime.instance!==runtime.instance){demoPreparationId=null;if(!nextRuntime.model)alert('Server restarted. Your agents and results are saved; reconnect the model to continue.');}runtime=nextRuntime;runtimeBadge();}catch{}}},10000);
   window.BacStudio={refresh,inspect:()=>({profile:data.profile,agentId,agents:data.agents,jobs:data.jobs,runtime,board,room}),showBoard,setRoom};
 })();

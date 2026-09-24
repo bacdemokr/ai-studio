@@ -26,7 +26,10 @@ class RadarHeartbeat:
 
     def disable(self, agent_id):
         toggle = getattr(self.studio.adapter, 'set_radar_heartbeat', None)
-        if toggle:toggle(agent_id, False)
+        if toggle:
+            # Earlier ticks finish before the final disable; later ticks see
+            # the committed deletion fence and cannot turn it back on.
+            with self.lock:toggle(agent_id, False)
 
     def status(self, owner, profile):
         if 'radar' not in profile.get('skills', []):return None
@@ -177,7 +180,10 @@ class RadarHeartbeat:
                     if self.statuses[owner]['state']=='watching' and time.time()-last_check>100:
                         self.statuses[owner]['state']='check delayed - verify the model connection'
             except Exception:
-                self.statuses[owner]={'state':'check failed'}
+                with self.lock, studio.db() as db:
+                    current=db.execute('SELECT deleting FROM agents WHERE id=?',(owner,)).fetchone()
+                    if current and not current['deleting']:self.statuses[owner]={'state':'check failed'}
+                    else:self.statuses.pop(owner,None)
                 try:self.disable(profile['id'])
                 except Exception:pass
         self.deliver_events(deliveries)

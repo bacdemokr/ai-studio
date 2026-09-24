@@ -28,12 +28,13 @@ class UserLocationTests(unittest.TestCase):
         workspace = self.studio.workspace(self.owner)
         (workspace/'USER.md').write_text('# Event preferences\n{"city":"Zurich"}\nMy personal note.\n')
         (workspace/'MEMORY.md').write_text('keep memory')
+        team = self.studio.crew_owner(self.owner)
         before_event = settings.event()
         result = settings.save(self.studio, {'section':'location', 'location':{'city':' Seoul '}})
         self.assertEqual(result['location'], {'city':'Seoul'})
         self.assertEqual(settings.event(), before_event)
-        for owner in (self.owner, second):
-            for role in (None, 0, 1, 2, 3):
+        for owner in (self.owner, second, team):
+            for role in ((None, 0, 1, 2, 3) if owner == team else (None,)):
                 content = (self.studio.workspace(owner,role)/'USER.md').read_text()
                 self.assertIn('Seoul', content)
                 self.assertNotIn('Zurich', content)

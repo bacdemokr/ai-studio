@@ -24,6 +24,7 @@ from studio_policy import PolicyControls
 from studio_events import EventControls
 from crew_roundtable import RoundtableControls, participants as job_participants
 from demo_readiness import DemoReadiness
+from crew_ownership import CrewOwnership
 import event_planner
 
 CREW_CATALOG = json.loads((Path(__file__).resolve().parents[1] / 'src/crew-catalog.json').read_text())
@@ -164,7 +165,7 @@ def capacity(brief):
                'assumptions': 'One topic per attendee; one device and presenter per station; one floor assistant per 30 attendees plus one lead. This sizes demo stations, not measured LLM throughput.'}
 
 
-class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
+class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, DemoReadiness):
     def __init__(self, directory=None, adapter=runtime, start_worker=True, recover=False):
         self.directory = Path(directory) if directory else c.initialize() / 'studio'
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -182,9 +183,13 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
         self.signal = threading.Event()
         self.status_cache = (0, {})
         self.status_lock = threading.Lock()
+        from runtime_health import RuntimeHealth
+        self.runtime_health = RuntimeHealth()
         self.provisioned = set()
         self.boot_id = secrets.token_hex(8)
         self.delete_lock = threading.Lock()
+        self.deletion_signal = threading.Event()
+        self.deletion_worker = None
         self.executing_owners = set()
         from protection_activity import ProtectionActivity
         self.protection_activity = ProtectionActivity()
@@ -233,20 +238,21 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 db.execute("INSERT INTO metadata VALUES ('agent-collection-migrated','1')")
             if 'deleting' not in {r['name'] for r in db.execute('PRAGMA table_info(agents)')}:
                 db.execute('ALTER TABLE agents ADD COLUMN deleting INTEGER NOT NULL DEFAULT 0')
-            if 'targets' not in {r['name'] for r in db.execute('PRAGMA table_info(agent_deletions)')}:
-                db.execute('ALTER TABLE agent_deletions ADD COLUMN targets TEXT')
+            if 'progress' not in {r['name'] for r in db.execute('PRAGMA table_info(agent_deletions)')}:
+                db.execute("ALTER TABLE agent_deletions ADD COLUMN progress TEXT NOT NULL DEFAULT 'Queued for cleanup'")
             db.execute('CREATE INDEX IF NOT EXISTS agents_participant ON agents(participant)')
             # Never silently replay a potentially completed side effect after a crash.
             if start_worker or recover:
                 db.execute('UPDATE agent_policies SET updating=0')
                 db.execute("UPDATE jobs SET status='error',result=?,updated=? WHERE status IN ('running','stopping')",
                            (json.dumps({'error': 'The app restarted during this task. Inspect saved files before retrying.'}), time.time()))
+        self.initialize_crew_ownership()
         from studio_heartbeat import RadarHeartbeat
         self.heartbeat = RadarHeartbeat(self)
         self.retire_host_file_grants()
         os.chmod(self.db_path, 0o600)
         with self.db() as db:
-            owners = [row['id'] for row in db.execute('SELECT id FROM agents WHERE deleting=0')]
+            owners = [row['id'] for row in db.execute("SELECT id FROM agents WHERE deleting=0 AND kind='personal'")]
         import user_location
         from personal_voice import PRESET_UPDATES
         for owner in owners:
@@ -265,18 +271,28 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                         db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(profile), owner))
                         db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
                 runtime.write_workspace(self.workspace(owner), profile)
-            self.initialize_crew_workspaces(owner)
             user_location.sync(self.workspace(owner))
+        with self.db() as db:
+            teams = [r['owner'] for r in db.execute('SELECT owner FROM crew_contexts')]
+        for team in teams:
+            self.initialize_workspace(team)
+            self.initialize_crew_workspaces(team)
         if start_worker:
             with self.db() as db:
                 for owner in owners:
                     profile=self.profile(owner)
                     if profile and 'radar' in profile.get('skills',[]):
-                        self.heartbeat.disable(profile['id'])
+                        try:self.heartbeat.disable(profile['id'])
+                        except RuntimeError:
+                            # One unavailable identity must not prevent startup.
+                            # Its queued preparation and tick retry independently.
+                            self.heartbeat.statuses[owner]={'state':'preparing'}
                         if not db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind='prepare-agent' AND status='queued'", (owner,)).fetchone():
                             self.queue_agent_preparation(db, owner, profile)
             self.worker = threading.Thread(target=self.work, daemon=True, name='bac-agent-queue')
+            self.deletion_worker = threading.Thread(target=self.clean_deletions, daemon=True, name='bac-cleanup-queue')
             self.worker.start()
+            self.deletion_worker.start()
             self.heartbeat_worker = threading.Thread(target=self.heartbeat.work, daemon=True, name='radar-heartbeat-relay')
             self.heartbeat_worker.start()
 
@@ -312,6 +328,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
     @contextlib.contextmanager
     def db(self):
         db = sqlite3.connect(self.db_path, timeout=15)
+        db.execute('PRAGMA secure_delete=ON')
         db.row_factory = sqlite3.Row
         try:
             with db:
@@ -330,14 +347,13 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                    'csrf': secrets.token_urlsafe(24), 'profile': None, 'created': time.time()}
             db.execute('INSERT INTO participants (id,token,csrf,profile,created) VALUES (:id,:token,:csrf,:profile,:created)', row)
             db.execute('INSERT INTO agents (id,participant,created) VALUES (?,?,?)', (row['id'], row['id'], row['created']))
-            self.initialize_crew_workspaces(row['id'])
             return row, True
 
     def resolve_agent(self, participant, agent=None):
         """Resolve an explicitly selected agent within the authenticated account."""
         with self.db() as db:
-            row = (db.execute('SELECT id FROM agents WHERE id=? AND participant=?', (agent, participant)).fetchone()
-                   if agent else db.execute('SELECT id FROM agents WHERE participant=? ORDER BY created,id LIMIT 1', (participant,)).fetchone())
+            row = (db.execute("SELECT id FROM agents WHERE id=? AND participant=? AND kind='personal'", (agent, participant)).fetchone()
+                   if agent else db.execute("SELECT id FROM agents WHERE participant=? AND kind='personal' ORDER BY created,id LIMIT 1", (participant,)).fetchone())
         if not row:
             raise Problem('Agent not found in your collection.', 404)
         return row['id']
@@ -422,23 +438,41 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
     def add_agent(self, participant, data):
         owner = secrets.token_hex(12)
         profile = self.agent_profile(owner, data)
-        with self.db() as db:
+        with self.new_agent_workspace(owner), self.db() as db:
             db.execute('BEGIN IMMEDIATE')
             if not db.execute('SELECT id FROM agents WHERE participant=? AND profile IS NOT NULL', (participant,)).fetchone():
                 raise Problem('Create your first agent before adding another.')
-            if db.execute('SELECT count(*) FROM agents WHERE participant=?', (participant,)).fetchone()[0] >= MAX_AGENTS:
+            if db.execute("SELECT count(*) FROM agents WHERE participant=? AND kind='personal'", (participant,)).fetchone()[0] >= MAX_AGENTS:
                 raise Problem('This studio supports up to %d personal agents per attendee.' % MAX_AGENTS, 409)
             profile['name'] = self.unique_agent_name(db, participant, profile['name'])
             self.initialize_workspace(owner)
-            self.initialize_crew_workspaces(owner)
             db.execute('INSERT INTO agents (id,participant,profile,created) VALUES (?,?,?,?)',
                        (owner, participant, json.dumps(profile), time.time()))
             self.queue_agent_preparation(db, owner, profile)
         self.signal.set()
         return {'agentId': owner, 'profile': profile}
 
+    @contextlib.contextmanager
+    def new_agent_workspace(self, owner):
+        """Roll back only the fresh directory allocated by this creation attempt."""
+        path = self.workspace(owner)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.parent.is_symlink():raise RuntimeError('Agent workspace storage is redirected.')
+        path.mkdir(mode=0o700)  # Never adopt or erase a pre-existing identity.
+        identity = path.stat()
+        try:
+            yield
+        except Exception:
+            try:current = path.lstat()
+            except FileNotFoundError:current = None
+            if current and not path.is_symlink() and (current.st_dev,current.st_ino) == (identity.st_dev,identity.st_ino):
+                shutil.rmtree(path)
+            raise
+
     def workspace(self, owner, role=None):
-        return self.directory / 'workspaces' / (owner + ('-' + str(role) if role is not None else ''))
+        resource = self.crew_resources.get((owner,role)) if role is not None else None
+        name = resource['workspace_name'] if resource else owner + ('-' + str(role) if role is not None else '')
+        return self.directory / 'workspaces' / name
 
     def profile(self, owner):
         with self.db() as db:
@@ -457,9 +491,12 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
         profile = self.agent_profile(owner, data)
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
-            participant = db.execute('SELECT participant FROM agents WHERE id=?', (owner,)).fetchone()['participant']
+            selected = db.execute("SELECT participant,deleting FROM agents WHERE id=? AND kind='personal'", (owner,)).fetchone()
+            if not selected:raise Problem('Agent not found. Refresh the studio before hiring.', 404)
+            if selected['deleting']:raise Problem('Agent deletion is pending.', 409)
+            participant = selected['participant']
             profile['name'] = self.unique_agent_name(db, participant, profile['name'], owner)
-            changed = db.execute('UPDATE agents SET profile=? WHERE id=? AND profile IS NULL', (json.dumps(profile), owner)).rowcount
+            changed = db.execute("UPDATE agents SET profile=? WHERE id=? AND profile IS NULL AND kind='personal'", (json.dumps(profile), owner)).rowcount
             if changed:
                 db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
                 self.initialize_workspace(owner)
@@ -489,23 +526,30 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                     'tonePrompt': data.get('tonePrompt', profile.get('tonePrompt', '')),
                     'tone': data.get('tone', profile['tone']), 'verbosity': data.get('verbosity', profile['verbosity']),
                     'protection': profile.get('protection', 'standard')})
-        with self.db() as db:
-            db.execute('BEGIN IMMEDIATE')
-            self.require_available(db, owner)
-            self.require_idle(db, owner)
-            participant = db.execute('SELECT participant FROM agents WHERE id=?', (owner,)).fetchone()['participant']
-            profile['name'] = self.unique_agent_name(db, participant, profile['name'], owner)
-            db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(profile), owner))
-            db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
-        self.heartbeat.disable(profile['id'])
-        self.provisioned.discard(profile['id'])
-        with self.db() as db:self.queue_agent_preparation(db, owner, profile)
+        # Perform native I/O before publishing the edit; then recheck whether
+        # deletion or a new task won meanwhile. Never enqueue a retired identity.
+        with self.heartbeat.lock:
+            with self.db() as db:
+                self.require_available(db, owner)
+                self.require_idle(db, owner)
+            self.heartbeat.disable(profile['id'])
+            with self.db() as db:
+                db.execute('BEGIN IMMEDIATE')
+                self.require_available(db, owner)
+                self.require_idle(db, owner)
+                participant = db.execute('SELECT participant FROM agents WHERE id=?', (owner,)).fetchone()['participant']
+                profile['name'] = self.unique_agent_name(db, participant, profile['name'], owner)
+                db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(profile), owner))
+                db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
+                self.provisioned.discard(profile['id'])
+                db.execute("DELETE FROM jobs WHERE owner=? AND kind='prepare-agent' AND status='queued'", (owner,))
+                self.queue_agent_preparation(db, owner, profile)
         self.signal.set()
         return profile
 
-    def delete_agent(self, owner, data):
+    def delete_agent(self, owner, data, *, enqueue_only=False):
         """Fence the identity first; retryable native cleanup precedes collection removal."""
-        acquired = self.delete_lock.acquire(blocking=False)
+        acquired = not enqueue_only and self.delete_lock.acquire(blocking=False)
         try:
             with self.db() as db:
                 db.execute('BEGIN IMMEDIATE')
@@ -533,51 +577,45 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 # 2 waits for the worker to release all calls; 1 is native cleanup (retryable on failure).
                 db.execute('UPDATE agents SET deleting=2 WHERE id=?', (owner,))
                 db.execute('INSERT OR IGNORE INTO agent_deletions(owner) VALUES (?)',(owner,))
-                if row['deleting']!=2:db.execute('UPDATE agent_deletions SET attempts=0,next_attempt=0 WHERE owner=?',(owner,))
+                if row['deleting']!=2:db.execute("UPDATE agent_deletions SET attempts=0,next_attempt=0,progress='Queued for cleanup' WHERE owner=?",(owner,))
             if not acquired:
                 # Persist intent even when another agent owns the cleanup slot.
                 # The worker drains this queue; callers only poll, never replay.
                 if row['deleting'] != 2:self.signal.set()
+                self.deletion_signal.set()
                 return {'deleting': owner, 'agentId': owner}
             native_id = profile['id']
-            role = None
             try:
                 if 'radar' in profile.get('skills',[]):self.heartbeat.disable(profile['id'])
                 if waiting:
+                    self.deletion_progress(owner, 'Waiting for current work to stop')
                     self.signal.set()
                     return {'deleting': owner, 'agentId': owner}
-                # Discover actual persisted children, not a fixed role count or today's catalog.
-                roles = set(self.adapter.deletion_roles(profile['id'])) if hasattr(self.adapter, 'deletion_roles') else set()
-                for candidate in self.workspace(owner).parent.glob(owner + '-*'):
-                    suffix = candidate.name[len(owner)+1:]
-                    if re.fullmatch(r'0|[1-9][0-9]*', suffix):
-                        roles.add(int(suffix))
-                with self.db() as db:
-                    saved = db.execute('SELECT targets FROM agent_deletions WHERE owner=?', (owner,)).fetchone()['targets']
-                    if saved is not None:
-                        saved = json.loads(saved)
-                        if not isinstance(saved, list) or any(type(r) is not int or r < 0 for r in saved):
-                            raise RuntimeError('Saved cleanup targets are invalid.')
-                        roles.update(saved)
-                    # A partial native deletion can remove both config and paths.
-                    # Keep its role in the plan so restart/retry still reconciles it.
-                    db.execute('UPDATE agent_deletions SET targets=? WHERE owner=?', (json.dumps(sorted(roles)), owner))
-                targets = (None, *sorted(roles))
-                plan = [(profile['id'] + ('-r' + str(r) if r is not None else ''), self.workspace(owner, r)) for r in targets]
+                # A hired identity owns one personal runtime. Shared team
+                # resources have their own owner and never enter this plan.
+                plan = [(profile['id'], self.workspace(owner))]
                 inspect_unused = getattr(self.adapter, 'unregistered_deletion_targets', None)
                 unused = inspect_unused(plan) if callable(inspect_unused) else set()
-                for role in targets:
-                    native_id = profile['id'] + ('-r' + str(role) if role is not None else '')
-                    self.provisioned.discard(native_id)
-                    if native_id not in unused:
-                        self.adapter.remove(native_id, self.workspace(owner, role))
-                for role in targets:
-                    path = self.workspace(owner, role)
-                    if path.is_symlink():
-                        path.unlink()
-                    elif path.exists():
-                        shutil.rmtree(path)
+                self.deletion_progress(owner, 'Cleaning personal workspace')
+                self.provisioned.discard(native_id)
+                if native_id not in unused:
+                    started = time.monotonic()
+                    try:
+                        self.adapter.remove(native_id, self.workspace(owner))
+                    finally:
+                        import logging
+                        logging.info('Agent cleanup target %s took %.3fs', native_id, time.monotonic()-started)
+                path = self.workspace(owner)
+                if path.is_symlink():
+                    path.unlink()
+                elif path.exists():
+                    shutil.rmtree(path)
+                finalize = getattr(self.adapter, 'finalize_removal', None)
+                if callable(finalize):
+                    self.deletion_progress(owner, 'Removing remaining agent data')
+                    finalize(native_id, path)
             except runtime.NativeCleanupPending as error:
+                self.deletion_progress(owner, 'Waiting for runtime cleanup confirmation')
                 # Only an acknowledged partial cleanup/confirmed draining run is
                 # resumable. Never blindly replay unknown transport failures.
                 with self.db() as db:
@@ -588,13 +626,19 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 if attempt>=5:raise Problem('Cleanup could not finish after recovery attempts. The agent remains paused; retry deletion after checking the runtime.',503) from None
                 self.signal.set()
                 return {'deleting':owner,'agentId':owner}
+            except runtime.CleanupPrerequisiteError as error:
+                self.deletion_progress(owner, 'Restart the agent runtime, then retry deletion.')
+                with self.db() as db:
+                    db.execute('UPDATE agents SET deleting=1 WHERE id=?', (owner,))
+                raise Problem(str(error), 503) from None
             except Exception as error:
                 import logging
                 logging.exception('Native cleanup failed for %s', native_id)
+                self.deletion_progress(owner, 'Cleanup paused. Retry deletion.')
                 with self.db() as db:
                     db.execute('UPDATE agents SET deleting=1 WHERE id=?', (owner,))
                 # Keep the fence through errors/restarts; a partially removed identity must not run again.
-                raise Problem('Deletion paused while cleaning ' + profile['name'] + (' (personal workspace)' if role is None else ' (saved crew role ' + str(role) + ')') + '. Native cleanup did not finish (' + type(error).__name__ + '). Retry deletion; completed cleanup is preserved.', 503) from None
+                raise Problem('Deletion paused while cleaning ' + profile['name'] + ' (personal workspace). Native cleanup did not finish (' + type(error).__name__ + '). Retry deletion; completed cleanup is preserved.', 503) from None
             with self.db() as db:
                 db.execute('BEGIN IMMEDIATE')
                 db.execute('DELETE FROM survey_responses WHERE token IN (SELECT token FROM event_surveys WHERE owner=?)', (owner,))
@@ -603,12 +647,14 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                     db.execute('DELETE FROM ' + table + ' WHERE owner=?', (owner,))
                 db.execute('DELETE FROM agents WHERE id=?', (owner,))
                 db.execute('UPDATE participants SET profile=NULL WHERE id=?', (owner,))
-                next_agent = db.execute('SELECT id FROM agents WHERE participant=? ORDER BY created,id LIMIT 1', (row['participant'],)).fetchone()
+                next_agent = db.execute("SELECT id FROM agents WHERE participant=? AND kind='personal' ORDER BY created,id LIMIT 1", (row['participant'],)).fetchone()
                 next_id = next_agent['id'] if next_agent else secrets.token_hex(12)
                 if not next_agent:
                     # A fresh placeholder keeps the account usable without reusing deleted native identity.
                     db.execute('INSERT INTO agents (id,participant,created) VALUES (?,?,?)', (next_id, row['participant'], time.time()))
-            if not next_agent:self.initialize_crew_workspaces(next_id)
+            with self.heartbeat.lock:
+                self.heartbeat.statuses.pop(owner, None)
+            self.protection_activity.forget(owner)
             return {'deleted': owner, 'agentId': next_id}
         finally:
             if acquired:self.delete_lock.release()
@@ -626,11 +672,24 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 # Native failures keep deleting=1 for an explicit retry, not an endless cleanup loop.
                 continue
 
-    def runtime_status(self):
-        if not self.status_cache[1] or time.monotonic() - self.status_cache[0] > 8:
+    def deletion_progress(self, owner, message):
+        with self.db() as db:
+            db.execute('UPDATE agent_deletions SET progress=? WHERE owner=?', (message, owner))
+
+    def clean_deletions(self):
+        """Keep slow native cleanup off the HTTP handler and mission worker."""
+        while not self.stop.is_set():
+            self.deletion_signal.clear()
+            self.finish_pending_deletions()
+            self.deletion_signal.wait(1)
+
+    def runtime_status(self, retry=False):
+        # Manual retries share the probe lock and are rate limited across tabs.
+        ttl = 2 if retry else 8
+        if not self.status_cache[1] or time.monotonic() - self.status_cache[0] > ttl:
             with self.status_lock:
-                if not self.status_cache[1] or time.monotonic() - self.status_cache[0] > 8:
-                    value = self.adapter.status()
+                if not self.status_cache[1] or time.monotonic() - self.status_cache[0] > ttl:
+                    value = self.runtime_health.observe(self.adapter.status(), time.monotonic())
                     self.status_cache = (time.monotonic(), value)
         return {**self.status_cache[1], 'instance': self.boot_id}
 
@@ -651,18 +710,23 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
         return result[:100]
 
     def state(self, owner):
+        team = self.existing_crew_owner(owner)
         with self.db() as db:
             jobs = [self.public_job(r) for r in db.execute("SELECT * FROM jobs WHERE owner=? AND kind NOT IN ('crew-chat','prepare','prepare-agent') AND created >= (SELECT reset_at FROM agents WHERE id=?) ORDER BY created DESC LIMIT 30", (owner, owner))]
+            shared_jobs = [self.public_job(r) for r in db.execute("SELECT * FROM jobs WHERE kind='crew' AND owner IN (SELECT owner FROM crew_contexts WHERE participant=(SELECT participant FROM agents WHERE id=?)) ORDER BY created DESC LIMIT 30", (owner,))]
+            jobs = sorted({j['id']:j for j in jobs+shared_jobs}.values(), key=lambda j:j['created'], reverse=True)[:60]
             reset_event = db.execute("SELECT value FROM metadata WHERE key='event-board-reset:'||(SELECT participant FROM agents WHERE id=?)", (owner,)).fetchone()
             if reset_event:
                 jobs = [j for j in jobs if j['kind'] != 'crew' or j['created'] >= float(reset_event['value'])]
-            crew_chats = [self.public_job(r) for role in range(len(ROLES)) for r in db.execute("SELECT * FROM jobs WHERE owner=? AND kind='crew-chat' AND json_extract(payload,'$.crewRole')=? ORDER BY created DESC LIMIT 30", (owner, role))]
+            crew_chats = [self.public_job(r) for role in range(len(ROLES)) for r in db.execute("SELECT * FROM jobs WHERE (owner=? OR owner IN (SELECT owner FROM crew_contexts WHERE participant=(SELECT participant FROM agents WHERE id=?))) AND kind='crew-chat' AND json_extract(payload,'$.crewRole')=? ORDER BY created DESC LIMIT 30", (owner, owner, role))]
             collection = db.execute('SELECT id,profile,deleting FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?) AND profile IS NOT NULL ORDER BY created,id', (owner,)).fetchall()
             active = [dict(j, payload=json.loads(j['payload'])) for j in db.execute("SELECT id,owner,status,payload,kind,due FROM jobs WHERE status IN ('queued','running','waiting','stopping') AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) ORDER BY created", (owner,))]
             agents = [{'key': r['id'], **json.loads(r['profile']), 'deleting': bool(r['deleting']), 'deletionWaiting': r['deleting'] == 2,
                        'pending': sum((j['owner'] == r['id'] and j['kind'] not in ('crew','prepare','prepare-agent')) or any(m.get('key') == r['id'] for m in job_participants(j['payload'])) for j in active if j['kind'] != 'crew-chat'),
                        'activity': personal_agent_activity(active, r['id'])} for r in collection]
             for agent in agents:
+                deletion = db.execute('SELECT progress FROM agent_deletions WHERE owner=?', (agent['key'],)).fetchone()
+                agent['deletionProgress'] = deletion['progress'] if deletion else None
                 latest = db.execute("SELECT id,status,CASE WHEN status='done' THEN substr(json_extract(result,'$.answer'),1,1200) ELSE NULL END AS answerPreview FROM jobs WHERE owner=? AND kind NOT IN ('crew','crew-chat','prepare','prepare-agent') AND created >= (SELECT reset_at FROM agents WHERE id=?) ORDER BY created DESC,rowid DESC LIMIT 1", (agent['key'], agent['key'])).fetchone()
                 warmup = db.execute("SELECT status FROM jobs WHERE owner=? AND kind='prepare-agent' ORDER BY created DESC LIMIT 1", (agent['key'],)).fetchone()
                 agent['techRadar'] = self.heartbeat.status(agent['key'], agent)
@@ -685,20 +749,20 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
             pass
         return {'profile': self.profile(owner), 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': self.files(owner),
                 'techRadar': self.heartbeat.status(owner, self.profile(owner) or {}),
-                'memory': memory_text, 'agentId': owner, 'roundtableTurns': roundtable_turns,
+                'memory': memory_text, 'agentId': owner, 'crewOwner': team, 'roundtableTurns': roundtable_turns,
                 'agents': agents, 'agentLimit': MAX_AGENTS, 'assignments': assignments,
                 'deleting': any(a['key'] == owner and a['deleting'] for a in agents),
-                'preparation': self.demo_preparation(owner),
-                'protectionEvents': self.protection_activity.snapshot({a['key'] for a in agents}, owner)}
+                'preparation': self.demo_preparation(team) or self.demo_preparation(owner),
+                'protectionEvents': self.protection_activity.snapshot({a['key'] for a in agents}, team)}
 
-    def crew_roster(self, db, owner, members, preset=False):
+    def crew_roster(self, db, owner, members, preset=False, lead=None):
         """Freeze names/skills and assignments; no extra permissions for a crew role."""
         if not isinstance(members, dict) or any(k not in {str(i) for i in range(1, len(ROLES))} for k in members):
             raise Problem('Assign personal agents to the specialist roles.')
         account = db.execute('SELECT participant FROM agents WHERE id=?', (owner,)).fetchone()['participant']
         roster, used = [], {owner}
         for i, (name, role, persona) in enumerate(ROLES):
-            key = None if preset else owner if i == 0 else members.get(str(i))
+            key = None if preset else (lead or owner) if i == 0 else members.get(str(i))
             if key:
                 if not isinstance(key, str) or (i and key in used):
                     raise Problem('Choose a different agent for each crew role.')
@@ -709,7 +773,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 profile = json.loads(row['profile'])
                 used.add(key)
             else:
-                profile = {'name': name, 'persona': persona, 'skills': list(ROLE_SKILLS[i]), 'id': 'bac-' + owner + '-r' + str(i), 'avatar': ROLE_AVATARS[i], 'protection': CREW_CATALOG[i].get('protection','standard')}
+                profile = {'name': name, 'persona': persona, 'skills': list(ROLE_SKILLS[i]), 'id': self.crew_native_id(owner, i), 'avatar': ROLE_AVATARS[i], 'protection': CREW_CATALOG[i].get('protection','standard')}
             profile['avatar'] = avatar_for(key or profile['id'], profile.get('avatar'))
             profile.setdefault('tone', 'kind')
             profile.setdefault('verbosity', 'balanced')
@@ -744,8 +808,8 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 readable.write_text(extracted, encoding='utf-8')
         return {'path': 'inbox/' + name, 'textPath': 'inbox/' + name + '.txt' if extracted is not None else 'inbox/' + name}
 
-    def enqueue(self, owner, data, source='web', due=0):
-        profile = self.profile(owner)
+    def enqueue(self, owner, data, source='web', due=0, lead=None):
+        profile = self.profile(lead or owner)
         preset = (data.get('kind') == 'crew' and data.get('preset') is True) or data.get('kind') == 'crew-chat'
         if not profile and not preset:
             raise Problem('Create your agent first.')
@@ -813,7 +877,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
             if (profile or not preset) and not (kind == 'crew' and preset):
-                self.require_available(db, owner)
+                self.require_available(db, lead or owner)
             elif not db.execute('SELECT 1 FROM agents WHERE id=? AND deleting=0', (owner,)).fetchone():
                 raise Problem('Open a new studio session.', 404)
             if db.execute('SELECT 1 FROM agent_policies WHERE owner=? AND (CASE WHEN ? THEN role>=0 ELSE role=-1 END) AND updating=1', (owner, preset)).fetchone():
@@ -827,7 +891,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
             if pending >= 3:
                 raise Problem('Your collection has three pending missions. Finish or cancel one before adding another.', 429)
             if kind == 'crew':
-                payload['roster'] = self.crew_roster(db, owner, data.get('members', {}), preset)
+                payload['roster'] = self.crew_roster(db, owner, data.get('members', {}), preset, lead)
                 if payload.get('workflow') == 'showcase':
                     self.require_event_crew_idle(db, owner)
                     prepared = self.prepared_event(db, owner, data['preparationId'], payload['enabledRoles']) if data.get('preparationId') else None
@@ -855,7 +919,8 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
             row = db.execute('SELECT events,status FROM jobs WHERE id=?', (job_id,)).fetchone()
-            if row['status'] == 'stopping' and changes.get('status') in ('done', 'waiting'):
+            if not row or row['status'] == 'cancelled':return
+            if row['status'] == 'stopping' and changes.get('status') in ('done', 'waiting', 'error'):
                 changes['status'] = 'cancelled'
                 title = 'Stopped at a safe boundary'
                 detail = 'The active model call finished. Saved work remains; no next role will start.'
@@ -890,7 +955,9 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
 
     def stop_checkpoint(self, job_id):
         with self.db() as db:
-            status = db.execute('SELECT status FROM jobs WHERE id=?', (job_id,)).fetchone()['status']
+            row = db.execute('SELECT status FROM jobs WHERE id=?', (job_id,)).fetchone()
+        if not row:return True
+        status = row['status']
         if status == 'stopping':
             self.event(job_id, 'Stopped at a safe boundary', 'Saved work is preserved. No further model call or channel reply will start.', status='cancelled')
             return True
@@ -1014,6 +1081,11 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
         self.executing_owners = {row['owner']} | {m['key'] for m in job_participants(json.loads(row['payload'])) if m.get('key')}
         try:
             return self._execute(row)
+        except Exception:
+            # A stop can win while native preparation or policy I/O is in
+            # flight. Settle cancellation even when that call then raises.
+            if self.stop_checkpoint(row['id']):return
+            raise
         finally:
             self.executing_owners = set()
 
@@ -1099,7 +1171,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                   + ('The inbox may contain the latest event brief and handoffs; use them when relevant. ' if current_event else 'No event has been submitted in this conversation yet. Do not load earlier event briefs, handoffs or conversation transcripts. ') +
                   'This is a conversation, not a new crew mission. Do not claim other agents ran, '
                   'or send invitations or publish anything on the user’s behalf.\n\n' + payload['prompt'])
-        session = 'bac-crew-chat-' + owner + '-' + str(role) + ('-' + reset['epoch'] if reset['epoch'] else '')
+        session = self.crew_chat_session(owner, role) + ('-' + reset['epoch'] if reset['epoch'] else '')
         answer = self.respond_chat(agent_id, session, prompt, owner, payload)
         self.record_usage(job_id, payload, answer, agent_id, member['name'], role)
         self.event(job_id, 'Reply ready', member['name'], role,
@@ -1136,7 +1208,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
         if showcase and b.get('themeCount'):
             steps[0] = 'Brief the crew in at most 90 words: Dylan researches current NVIDIA themes from public web evidence; Alex checks the rotating presenter timetable in parallel; Morgan combines both into a LinkedIn-style post and event headline. Exactly one booth per theme. Use OpenClaw as the agent harness. No bookings or publishing.'
             steps[1] = ('Use bac-nvidia-research. Read the supplied fresh NVIDIA web search evidence, and choose exactly '+str(b['themeCount'])+' distinct BaC themes using the supplied topic IDs as neutral slots. Return ONLY JSON {"demos":[{"topic":"slot id","theme":"theme name","title":"recognizable technology or subject + concrete action and object","sourceId":"S1","action":"participant action","outcome":"visible result","why":"connection to the cited NVIDIA focus","proof":"observable success","risk":"limitation or lightweight fallback","presenterExpertise":"expertise needed for this theme"}]}. Each field under 160 characters. Cite only supplied source IDs; no invented dates, URLs, results or hardware capabilities. Make each title understandable on its own; follow the skill’s visitor-facing naming examples. Keep the whole response concise. '+runtime.SKILLS['nvidia-research'][1])
-            steps[2] += ' Inspect the supplied rotation sample, presenter total, relief count and break rule. Each theme has exactly one booth and two dedicated topic specialists alternating visits. The same pair stays with that topic across all days; do not suggest rotating presenters across unrelated topics. The plan budgets two presenters per booth because no staffing cap was supplied. Flag confirmation of topic expertise, staffing availability and handover time; never assume universal cross-training.'
+            steps[2] += ' Inspect the supplied rotation sample, presenter total, relief count and break rule. Each theme has one booth. Staff according to actual visit demand: use one topic specialist when hourly breaks fit; a second is only needed above that capacity. Normally plan 45 minutes of work then at least 15 minutes of rest. Keep presenters on the same topic across days; distinguish unused capacity from scheduled breaks. Flag confirmation of topic expertise, staffing availability and handover time; never assume universal cross-training.'
             steps[3] = ('Draft a LinkedIn-style promotion and event landing-page headline using only the completed program and timetable. Use the supplied brief startDate, endDate and venue exactly; use TBC only when absent. Return ONLY JSON {"headline":"benefit-led headline, at most 80 characters","intro":"visitor-facing introduction, at most 240 characters","body":"social post, at most 140 words","hashtags":["#AI","#BuildAClaw"]}. Use the event language. No email greeting or To/Subject formatting. '+runtime.SKILLS['nvidia-social'][1]+'\n'+runtime.SKILLS['nvidia-webpage'][1])
         import morgan_page
         import agent_workflow
@@ -1156,7 +1228,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                 +runtime.SKILLS['nvidia-webpage'][1]+'\n'+runtime.SKILLS['nvidia-social'][1])
             if agent_led:
                 steps[3]=('Use bac-nvidia-webpage and bac-nvidia-social. Read inbox/morgan-page.json as your primary source: it contains the organizer brief, Dylan’s completed themes, Alex’s schedule summary and exact output paths. '
-                    'Read the small HTML starter and EDIT it with native file tools. Author exactly the requested number of program cards with Dylan’s exact titles, source links, actions and takeaways. Write original headline, intro, section headings, CTA and matching LinkedIn post. '
+                    'Read the small HTML starter and EDIT it with native file tools. Follow the contract programLayout with the supplied CSS: text-first session cards, no numbered banners or decorative thumbnails. Author exactly the requested number of program cards with Dylan’s exact titles, source links, actions and takeaways. Write original headline, intro, section headings, CTA and matching LinkedIn post. '
                     'Keep BAC:LOGISTICS, BAC:SCHEDULE and the BAC:SOCIAL_POST marker unchanged. The app inserts Alex’s full timetable and your own post after validation; do not read or rewrite the large timetable or duplicate the post text in HTML. '
                     'Describe your contribution as page content and HTML edits using a supplied starter; the base CSS, timetable visualization and final assembly are supplied by the app. '
                     'Replace every MORGAN_* token and the program-card comment. The app generates and saves the LinkedIn draft first. Preserve it unchanged. Read the HTML output starter once; use small unique replacements for placeholders and insert the program cards. Do not edit the inbox reference, rewrite base CSS, or print/read the entire HTML repeatedly. Verify with a short placeholder/count check instead. Save the HTML, then return at most 20 words. No publishing. Do not claim completion before writing the files.')
@@ -1411,6 +1483,9 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
     def next_job(self):
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
+            # Defense in depth for stale queued work after an interrupted edit.
+            db.execute("DELETE FROM jobs WHERE status='queued' AND NOT EXISTS (SELECT 1 FROM agents WHERE agents.id=jobs.owner)")
+            db.execute("UPDATE jobs SET status='cancelled',updated=? WHERE status='queued' AND owner IN (SELECT id FROM agents WHERE deleting!=0)", (time.time(),))
             row = db.execute("SELECT * FROM jobs WHERE status='queued' AND due<=? AND NOT (kind IN ('prepare-agent','prepare') AND EXISTS (SELECT 1 FROM agent_policies WHERE owner=jobs.owner AND updating=1)) ORDER BY (kind='prepare-agent' OR (kind='prepare' AND coalesce(json_extract(payload,'$.background'),0)=1)),due,created LIMIT 1", (time.time(),)).fetchone()
             if row:
                 db.execute("UPDATE jobs SET status='running',updated=? WHERE id=?", (time.time(), row['id']))
@@ -1418,7 +1493,7 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
 
     def work(self):
         while not self.stop.is_set():
-            self.finish_pending_deletions()
+            if self.deletion_worker is None:self.finish_pending_deletions()
             row = self.next_job()
             if row:
                 try:

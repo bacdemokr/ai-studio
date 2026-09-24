@@ -10,10 +10,12 @@ class ProtectionActivity:
     def __init__(self):
         self.lock = threading.Lock()
         self.events = deque(maxlen=128)
+        self.watchers = {}
 
-    def observe(self, owner, role, agent_id, logs, started):
+    def observe(self, owner, role, agent_id, logs, started, cancelled=None):
         now = time.time()
         with self.lock:
+            if cancelled is not None and cancelled.is_set():return
             known = {e['id'] for e in self.events}
             for log in logs:
                 stamp = log.get('time')
@@ -40,6 +42,11 @@ class ProtectionActivity:
                 self.events.append({'id':identity, 'owner':owner, 'role':role, 'host':log.get('host', ''),
                                     'time':stamp, 'observedAt':now, 'source':'OpenShell policy log', 'action':log['action']})
 
+    def forget(self, owner):
+        with self.lock:
+            self.events = deque((e for e in self.events if e['owner'] != owner), maxlen=128)
+            for cancelled in self.watchers.pop(owner, set()):cancelled.set()
+
     def snapshot(self, owners, crew_owner):
         now = time.time()
         with self.lock:
@@ -51,20 +58,28 @@ class ProtectionActivity:
     def watch(self, owner, role, agent_id, reader):
         started = time.time()
         finished = threading.Event()
+        cancelled = threading.Event()
+        with self.lock:self.watchers.setdefault(owner, set()).add(cancelled)
         def read():
             try:
-                self.observe(owner, role, agent_id, reader(agent_id), started)
+                self.observe(owner, role, agent_id, reader(agent_id), started, cancelled)
             except Exception:
                 pass  # Missing evidence never produces a shield hit or fails the task.
         def sample():
-            while not finished.wait(3):
+            try:
+                while not finished.wait(3):
+                    if cancelled.is_set():return
+                    read()
                 read()
-            # Native log delivery can lag a fast rejected request. Drain briefly in
-            # the background instead of making the model response wait for logs.
-            read()
-            for delay in (.75, 1.5):
-                time.sleep(delay)
-                read()
+                for delay in (.75, 1.5):
+                    if cancelled.wait(delay):return
+                    read()
+            finally:
+                with self.lock:
+                    watchers = self.watchers.get(owner)
+                    if watchers is not None:
+                        watchers.discard(cancelled)
+                        if not watchers:self.watchers.pop(owner, None)
         threading.Thread(target=sample, daemon=True, name='bac-policy-observer').start()
         try:
             yield

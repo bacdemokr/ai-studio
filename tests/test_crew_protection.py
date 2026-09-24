@@ -18,7 +18,8 @@ class CrewProtectionTests(unittest.TestCase):
         self.addCleanup(directory.cleanup)
         self.adapter = Adapter()
         self.studio = Studio(directory.name, self.adapter, start_worker=False)
-        self.owner = self.studio.session()[0]['id']
+        self.personal = self.studio.session()[0]['id']
+        self.owner = self.studio.crew_owner(self.personal)
         with self.studio.db() as db:
             self.members = self.studio.crew_roster(db, self.owner, {}, True)
 

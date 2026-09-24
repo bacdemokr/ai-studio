@@ -47,6 +47,24 @@ const assert=require('node:assert/strict'),{execFileSync}=require('node:child_pr
  await page.evaluate(()=>{agents[0].pending=0;agents[0].activity=null;BacCampus.setCollection(agents,'writer');});
  await page.waitForTimeout(3500);
  assert.equal(await page.locator('[data-resident][data-speaking=true]').count(),0,'Readiness finishing must not replay a previous answer');
- assert.deepEqual(errors,[]);console.log('PASS: real reply excerpt, correct speaker, focused/reduced-motion completion, bounded Markdown, no success on failure, no repeated polling announcements.');
+ // Deletion immediately silences an existing reply, including a focused bubble.
+ await page.evaluate(()=>{agents[1].latestMission={id:'writer-3',status:'done',answerPreview:'A final draft is ready.'};BacCampus.setCollection(agents,'writer');});
+ await page.waitForFunction(()=>BacCampus.inspect().residents.some(r=>r.key==='writer'&&r.speech));
+ await page.locator('[data-resident=writer]').focus();
+ await page.evaluate(()=>{agents[1].deleting=true;agents[1].deletionWaiting=true;BacCampus.setCollection(agents,'writer');});
+ assert.equal(await page.locator('[data-resident=writer]').getAttribute('data-speaking'),'false');
+ assert.equal(await page.locator('[data-resident=writer] small').innerText(),'Deleting…');
+ assert.equal((await page.evaluate(()=>BacCampus.inspect().residents)).find(r=>r.key==='writer').speech,null);
+ // A late success arriving while deleting or paused cannot start speech again.
+ await page.evaluate(()=>{agents[1].latestMission={id:'writer-4',status:'done',answerPreview:'This late answer must stay quiet.'};BacCampus.setCollection(agents,'writer');});
+ await page.waitForTimeout(3500);
+ assert.equal(await page.locator('[data-resident=writer]').getAttribute('data-speaking'),'false');
+ await page.evaluate(()=>{agents[1].deletionWaiting=false;BacCampus.setCollection(agents,'writer');});
+ assert.equal(await page.locator('[data-resident=writer] small').innerText(),'Cleanup paused');
+ assert.equal(await page.locator('[data-resident=writer]').getAttribute('data-speaking'),'false');
+ // Other residents still announce their own successful replies.
+ await page.evaluate(()=>{agents[0].latestMission={id:'weather-2',status:'done',answerPreview:'Other agents can still speak.'};BacCampus.setCollection(agents,'writer');});
+ await page.waitForFunction(()=>BacCampus.inspect().residents.some(r=>r.key==='weather'&&r.speech==='Other agents can still speak.'));
+ assert.deepEqual(errors,[]);console.log('PASS: reply excerpts, quiet deletion/paused cleanup, suppression of late answers, and unaffected surviving speakers.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

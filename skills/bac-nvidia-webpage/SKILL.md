@@ -16,6 +16,12 @@ The supplied starter incorporates assets/event.css: a full-width dark hero with 
 
 Do not fabricate official sponsorship, speakers, dates, hardware benchmarks or registration URLs. Keep missing logistics as TBC. Never add NVIDIA logos, trademarks as a fabricated endorsement, or publish the page. Supply original copy, not copied headlines.
 
+Program cards use the supplied `.cards`, `.theme-card` and `.theme-body` classes. Follow the text-first session layout: one small topic label, the exact demo title in `h3`, a `.demo-meta` line with booth and actual visit length, one participant-action paragraph, and an `.outcome` block with a short label and the visible result. Finish with a `.source` link labelled "Read the research" (localized to the event language), its full source title in `title` and `aria-label`, and a closed `.demo-reason` details block for the limitation. Keep the original research URL. Do not repeat the topic label, show oversized 01/02/03 banners, invent thumbnail graphics, add gradients, or display long article titles as the main card link. Use the supplied CSS unchanged for this structure. The program heading and short introduction are centered; card contents are left-aligned with neutral gray surfaces, black headings and restrained green link accents. Two or four demos use two columns, three or six use three, and phones stack cards. Keep all handoff content intact; do not shorten or rename Dylan's titles to make cards fit.
+
+Program layout references visually checked 2026-09-24:
+- https://www.nvidia.com/en-us/ai-days/ - centered section headings, generous spacing, straightforward event cards.
+- https://www.nvidia.com/en-us/events/cvpr/ - compact text-first on-site event cards, title/metadata/body/action hierarchy. This starter adapts the hierarchy to its light content sections.
+
 Public design references inspected 2026-09-20:
 - https://www.nvidia.com/en-us/events/microsoft-build/ — visually rechecked: centered, unboxed heading and date/location on a dark full-width hero, centered introduction, overview/session/resource anchors, hands-on session cards.
 - https://www.nvidia.com/en-us/events/automate-conference/ — date/location and clear action, topic-led sections.

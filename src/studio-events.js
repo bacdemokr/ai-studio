@@ -75,10 +75,10 @@ function mountResultPreview(frame,html,authored){
  frame.src=eventPreviewUrl;
 }
 function downloadBytes(content,mime,name){const url=URL.createObjectURL(new Blob([content],{type:mime})),link=document.createElement('a');link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-async function downloadPackageFile(path){try{const file=await api('file?path='+encodeURIComponent(path));if(!(data.jobs||[]).some(j=>j.payload.website?.authored&&j.payload.website.path===path)&&path.endsWith('event-page.html')&&typeof file.content==='string'&&file.encoding!=='base64')file.content='<!doctype html>'+eventPageDocument(file.content).documentElement.outerHTML;downloadBytes(file.encoding==='base64'?Uint8Array.from(atob(file.content),c=>c.charCodeAt(0)):file.content,file.mime||'text/plain',path.split('/').pop());}catch(error){alert(error.message);}}
+async function downloadPackageFile(path){try{const file=await api('file?path='+encodeURIComponent(path)+'&job='+encodeURIComponent(crewMission().id));if(!(data.jobs||[]).some(j=>j.payload.website?.authored&&j.payload.website.path===path)&&path.endsWith('event-page.html')&&typeof file.content==='string'&&file.encoding!=='base64')file.content='<!doctype html>'+eventPageDocument(file.content).documentElement.outerHTML;downloadBytes(file.encoding==='base64'?Uint8Array.from(atob(file.content),c=>c.charCodeAt(0)):file.content,file.mime||'text/plain',path.split('/').pop());}catch(error){alert(error.message);}}
 function eventBrief(form){
  const values=new FormData(form),brief={schema:2,region:'',language:'English'};
- for(const key of ['city','startTime','venue','startDate','endDate'])brief[key]=values.get(key);
+ for(const key of ['city','startTime','teardownTime','venue','startDate','endDate'])brief[key]=values.get(key);
  for(const key of ['attendees','duration','days','groupSize','session','themeCount'])brief[key]=Number(values.get(key));
  return brief;
 }
@@ -93,7 +93,7 @@ const crewWarmups=new Map();
 let crewStartupReady=false;
 function warmCrewOnOpen(){
  if(!crewStartupReady||!connected||!agentId||changingAgent||removingAgent||!runtime.gateway||data.deleting)return;
- const key=runtime.instance+':'+agentId,now=Date.now();
+ const key=runtime.instance+':'+(data.crewOwner||agentId),now=Date.now();
  if((crewWarmups.get(key)||0)>now)return;
  const target=agentId;crewWarmups.set(key,Infinity);
  api('prepare-demo',{background:true},target).catch(()=>{
@@ -134,21 +134,21 @@ function syncEventLaunch(){
  const form=el('crew-form'),button=el('launch-event');if(!form||!button)return;
  const prepared=matchingPreparation()?.status==='done'&&!demoPreparationError;
  button.disabled=!runtime.ready||eventSubmitting||!eventPreviewValid||!prepared||!form.querySelector('[name=crewRole]:checked');
- button.textContent=!runtime.model?'Model not connected':!runtime.ready?'Agent runtime disconnected':eventSubmitting?'Assigning your brief…':!prepared?'Prepare demo':'Start the event plan';
- const note=el('event-connection');if(note){note.hidden=!!runtime.ready;note.textContent=!runtime.model?'Connect a model in Settings to run your crew.':'Reconnect the agent runtime in Settings to run your crew.';}
+ button.textContent=!runtime.gateway?gatewayLabel():!runtime.model?'Model not connected':eventSubmitting?'Assigning your brief…':!prepared?'Prepare demo':'Start the event plan';
+ const note=el('event-connection');if(note){note.hidden=!!runtime.ready;note.textContent=runtime.gateway?'Connect a model in Settings to run your crew.':gatewayState()==='slow'?'Waiting for the agent runtime. Checking automatically.':'Agent runtime unavailable. Use Retry connection in the status indicator.';}
 }
 async function updateEventPreview(){
  const form=el('crew-form');if(!form)return;const version=++eventPreviewVersion;eventPreviewValid=false;syncEventLaunch();
  try{
   const {brief:b,capacity:c}=await api('event-plan',{brief:eventBrief(form)});
   if(version!==eventPreviewVersion||!el('crew-form'))return;
-  el('event-preview').innerHTML=`<div class="event-preview-head"><b>Your booth plan</b><span>Calculated from this brief</span></div><div class="event-metrics"><div><strong>${c.boothCount} / ${b.boothLimit}</strong><span>demo booths</span></div><div><strong>${c.session} min</strong><span>per group</span></div><div><strong>${c.presenterCount}</strong><span>presenters / day</span></div><div><strong>${c.staff}</strong><span>total staff / day</span></div></div>${c.adjusted?`<p class="event-adjustment">The crew will use ${c.session}-minute visits instead of ${b.session} minutes to stay within ${b.boothLimit} booths.</p>`:''}<div class="event-topic-summary">${c.topics.map(t=>`<span><b>${escape(t.topic)}</b>${t.attendees} attendees · ${t.stations} booth${t.stations===1?'':'s'}</span>`).join('')}</div><small>One interest-based demo per attendee across the event. Equal topic split. Includes ${c.floorHosts} floor host${c.floorHosts===1?'':'s'} and 1 lead. Two dedicated presenters per theme alternate visits. Includes scheduled breaks. Names are unassigned.</small>`;
+  el('event-preview').innerHTML=`<div class="event-preview-head"><b>Your booth plan</b><span>Calculated from this brief</span></div><p class="event-note">${escape(b.startTime)}-${escape(b.endTime)} local time${b.teardownTime?` · Take down by ${escape(b.teardownTime)}`:''}</p><div class="event-metrics"><div><strong>${c.boothCount} / ${b.boothLimit}</strong><span>demo booths</span></div><div><strong>${c.session} min</strong><span>per group</span></div><div><strong>${c.presenterCount}</strong><span>presenters / day</span></div><div><strong>${c.staff}</strong><span>total staff / day</span></div></div>${c.adjusted?`<p class="event-adjustment">The crew will use ${c.session}-minute visits instead of ${b.session} minutes to stay within ${b.boothLimit} booths.</p>`:''}<div class="event-topic-summary">${c.topics.map(t=>`<span><b>${escape(t.topic)}</b>${t.attendees} attendees · ${t.groups} visits · ${t.presenters} presenter${t.presenters===1?'':'s'}</span>`).join('')}</div><small>One interest-based demo per attendee across the event. Equal topic split. Includes ${c.floorHosts} floor host${c.floorHosts===1?'':'s'} and 1 lead. Presenters are sized to the visit load. Normally 45 minutes presenting, then at least 15 minutes of rest. Unused time is marked No visit. Names are unassigned.</small>`;
   eventPreviewValid=true;syncEventLaunch();
  }catch(error){if(version===eventPreviewVersion&&el('event-preview'))el('event-preview').innerHTML='<p class="event-plan-error">'+escape(error.message)+'</p>';}
 }
 async function crewForm(){
  try{eventCatalog=eventCatalog||await api('event-catalog');}catch(error){alert(error.message);return;}
- dialog('Plan a BaC',`<label class="event-template-picker">Template<select id="studio-event-template">${eventCatalog.templates.map(t=>`<option value="${t.id}">${escape(t.title)} (Template)</option>`).join('')}</select></label><form id="studio-crew-form"><div class="studio-form-grid"><label>City<input name="city" maxlength="80" required></label><label>Event date · start<input type="date" name="startDate"></label><label>Event date · end<input type="date" name="endDate"></label><label>Venue<input name="venue" maxlength="120" placeholder="To be confirmed"></label><label>Total attendees<input type="number" name="attendees" min="10" max="3000" step="10" required></label><label>Event duration · minutes per day<input type="number" name="duration" min="30" max="720" step="30" required></label><label>Event days<input type="number" name="days" min="1" max="5" required></label><label>People per group<input type="number" name="groupSize" value="5" min="1" max="30" required></label><label>Preferred demo length · minutes<input type="number" name="session" value="15" min="5" max="60" step="5" required></label><label>Themes (one booth each)<select name="themeCount"><option value="3">3 themes</option><option value="4">4 themes</option><option value="5">5 themes</option><option value="6">6 themes</option></select></label><div class="event-time-field"><span id="studio-event-time-label">Daily start · local time</span><div class="event-start-time" role="group" aria-labelledby="studio-event-time-label"><select name="startHour" aria-label="Start hour (24-hour)">${Array.from({length:24},(_,i)=>`<option value="${String(i).padStart(2,'0')}">${String(i).padStart(2,'0')}</option>`).join('')}</select><span aria-hidden="true">:</span><select name="startMinute" aria-label="Start minute"><option value="00">00</option><option value="30">30</option></select></div><input type="hidden" name="startTime" value="10:00"></div></div><div id="studio-event-preview" class="event-plan-preview" aria-live="polite"></div>${crewAssignments()}<section id="studio-demo-preparation" class="demo-preparation" aria-live="polite"></section><p id="studio-event-connection" class="event-note" role="status" hidden></p><div class="studio-dialog-actions"><button id="studio-launch-event" type="submit" class="studio-primary" disabled>Give the brief to my crew</button></div></form>`);
+ dialog('Plan a BaC',`<label class="event-template-picker">Template<select id="studio-event-template">${eventCatalog.templates.map(t=>`<option value="${t.id}">${escape(t.title)} (Template)</option>`).join('')}</select></label><form id="studio-crew-form"><div class="studio-form-grid"><label>City<input name="city" maxlength="80" required></label><label>Event date · start<input type="date" name="startDate"></label><label>Event date · end<input type="date" name="endDate"></label><label>Venue<input name="venue" maxlength="120" placeholder="To be confirmed"></label><label>Total attendees<input type="number" name="attendees" min="1" max="3000" step="1" required></label><label>Event duration · minutes per day<input type="number" name="duration" min="30" max="720" step="30" required></label><label>Event days<input type="number" name="days" min="1" max="5" required></label><label>People per group<input type="number" name="groupSize" value="5" min="1" max="30" required></label><label>Preferred demo length · minutes<input type="number" name="session" value="15" min="5" max="60" step="5" required></label><label>Themes (one booth each)<select name="themeCount"><option value="2">2 themes</option><option value="3">3 themes</option><option value="4">4 themes</option><option value="5">5 themes</option><option value="6">6 themes</option></select></label><div class="event-time-field"><span id="studio-event-time-label">Daily start · local time</span><div class="event-start-time" role="group" aria-labelledby="studio-event-time-label"><select name="startHour" aria-label="Start hour (24-hour)">${Array.from({length:24},(_,i)=>`<option value="${String(i).padStart(2,'0')}">${String(i).padStart(2,'0')}</option>`).join('')}</select><span aria-hidden="true">:</span><select name="startMinute" aria-label="Start minute"><option value="00">00</option><option value="30">30</option></select></div><input type="hidden" name="startTime" value="10:00"></div><label>Take down by · local time (optional)<input type="time" name="teardownTime"></label></div><div id="studio-event-preview" class="event-plan-preview" aria-live="polite"></div>${crewAssignments()}<section id="studio-demo-preparation" class="demo-preparation" aria-live="polite"></section><p id="studio-event-connection" class="event-note" role="status" hidden></p><div class="studio-dialog-actions"><button id="studio-launch-event" type="submit" class="studio-primary" disabled>Give the brief to my crew</button></div></form>`);
  const form=el('crew-form');eventSubmitting=false;eventPreviewValid=false;syncEventLaunch();
  function syncDates(){
   const start=form.elements.startDate,end=form.elements.endDate,days=form.elements.days;
@@ -163,8 +163,9 @@ async function crewForm(){
  function applyTemplate(id){
   const template=eventCatalog.templates.find(t=>t.id===id);if(!template)return;
   el('event-template').value=id;
-  for(const k of ['city','attendees','duration','days','venue','startDate','endDate'])form.elements[k].value=template[k]??'';
-  for(const [key,value] of Object.entries({groupSize:5,session:15,themeCount:template.topics.length,startTime:'10:00',startHour:'10',startMinute:'00'}))form.elements[key].value=value;
+  for(const k of ['city','attendees','duration','days','venue','startDate','endDate','teardownTime'])form.elements[k].value=template[k]??'';
+  const startTime=template.startTime||'10:00';
+  for(const [key,value] of Object.entries({groupSize:template.groupSize??5,session:15,themeCount:template.topics.length,startTime,startHour:startTime.slice(0,2),startMinute:startTime.slice(3)}))form.elements[key].value=value;
   syncDates();updateEventPreview();
  }
  el('event-template').onchange=e=>applyTemplate(e.target.value);
@@ -208,7 +209,7 @@ function renderEventPackage(force=false){
 eventPackage.onclick=async e=>{
  const contribution=e.target.closest('[data-contribution]');if(contribution){selectEventContribution(contribution.dataset.contribution);if(crewMission()?.payload.workflow==='showcase')navigateShowcaseContribution();else renderEventPackage();return;}
  const tab=e.target.closest('[data-package-tab]');if(tab){eventPackageTab=tab.dataset.packageTab;renderEventPackage();return;}
- const json=e.target.closest('[data-result-json]');if(json){openResultJson(json.dataset.resultJson,json.dataset.resultTitle);return;}
+ const json=e.target.closest('[data-result-json]');if(json){openResultJson(json.dataset.resultJson,json.dataset.resultTitle,crewMission().id);return;}
  const download=e.target.closest('[data-package-download]');if(download){downloadPackageFile(download.dataset.packageDownload);return;}
  const action=e.target.closest('[data-survey-action]');if(!action)return;const job=crewMission();
  try{
@@ -280,7 +281,7 @@ async function renderShowcasePackage(job){
  else navigateShowcaseContribution('instant');
  const frame=eventPackage.querySelector('iframe');if(!frame)return;
  try{
-  const file=await api('file?path='+encodeURIComponent(p.website.path));
+  const file=await api('file?path='+encodeURIComponent(p.website.path)+'&job='+encodeURIComponent(job.id));
   if(key!==eventPackageKey||!frame.isConnected)return;
   mountResultPreview(frame,file.content,p.website.authored);
  }catch(error){if(key===eventPackageKey&&frame.isConnected)frame.replaceWith(Object.assign(document.createElement('p'),{textContent:error.message}));}

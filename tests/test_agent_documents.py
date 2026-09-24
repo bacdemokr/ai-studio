@@ -59,7 +59,9 @@ class AgentDocumentsTests(unittest.TestCase):
         self.assertNotIn('Do not expose',json.dumps(result))
 
     def test_http_reads_are_account_scoped_and_accept_no_arbitrary_file_paths(self):
-        self.save('SOUL.md','Personal source');self.save('SOUL.md','Casey source',role=0)
+        self.save('SOUL.md','Personal source')
+        team=self.studio.crew_owner(self.owner)
+        (self.studio.workspace(team,0)/'SOUL.md').write_text('Casey source')
         other=self.studio.session()[0]['id'];self.studio.onboard(other,{'name':'Private','skills':['documents']})
         (self.studio.workspace(other)/'SOUL.md').write_text('Private source')
         server=create_server('127.0.0.1',0,self.studio)

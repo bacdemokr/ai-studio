@@ -14,6 +14,7 @@ from urllib.parse import urlsplit
 
 def compile_schedule(brief, capacity, spec):
     """Expand Alex's explicit slot/rotation choices; never choose a schedule for him."""
+    from event_staffing import presenter_limit, presenter_duty, rest_slots, work_slots
     c = copy.deepcopy(capacity)
     issues = []
     session = spec.get('sessionMinutes')
@@ -23,8 +24,8 @@ def compile_schedule(brief, capacity, spec):
     if not isinstance(reasons, list) or not reasons or any(not isinstance(x, str) or not 1 <= len(x) <= 400 for x in reasons):
         raise ValueError('Explain the scheduling criteria and tradeoffs.')
     limit = spec.get('maxConsecutiveSessions')
-    if type(limit) is not int or not 1 <= limit <= 4:
-        raise ValueError('Choose maxConsecutiveSessions from 1 to 4, with breaks between work blocks.')
+    if type(limit) is not int or not 1 <= limit <= max(4,work_slots(session)):
+        raise ValueError('Choose a positive maxConsecutiveSessions compatible with 45-minute work blocks and 15-minute breaks.')
     plans = spec.get('booths', [])
     if not isinstance(plans, list) or len(plans) != len(c['topics']):
         raise ValueError('Supply exactly one booth plan per topic slot.')
@@ -39,6 +40,9 @@ def compile_schedule(brief, capacity, spec):
         seen.add(key); topic = topics[key]; names = plan.get('presenters', [])
         if not isinstance(names, list) or not 1 <= len(names) <= 3 or any(not isinstance(n,str) for n in names) or len(set(names)) != len(names):
             raise ValueError('Assign 1–3 distinct presenter slots per booth.')
+        allowed=presenter_limit(brief,session,topic['groups'])
+        if len(names)>allowed:
+            raise ValueError(f'{key} needs at most {allowed} topic presenter(s) for its visit load with hourly breaks. Remove unnecessary relief slots.')
         for name in names:
             if not isinstance(name, str) or not re.fullmatch(r'Presenter \d{2} \(unassigned\)', name):
                 raise ValueError('Use named slots such as Presenter 01 (unassigned); do not invent confirmed staff.')
@@ -74,24 +78,15 @@ def compile_schedule(brief, capacity, spec):
         total_slots = (brief['duration']//session)*brief['days']
         ordered = sorted(chosen_slots)
         if count > 1:
-            max_idle = (total_slots+count-1)//count
+            max_idle = (total_slots+count-1)//count + rest_slots(session) - 1
             gaps = [ordered[0]] + [right-left-1 for left,right in zip(ordered,ordered[1:])] + [total_slots-1-ordered[-1]]
             if max(gaps) > max_idle:
                 issues.append(f'Spread {key} visits across the full event: longest empty interval '
                               f'is {max(gaps)} slots; allow at most {max_idle} ({max_idle*session} minutes). '
                               f'Keep all {count} visits; adjust only this booth slots, including opening/closing coverage.')
         topic.update(presenters=len(names), stations=1)
-    duty = []
-    lookup = {(r['day'], r['start'], r['presenter']):r for r in rows}
-    for day in range(1, brief['days']+1):
-        runs = dict.fromkeys(people, 0)
-        for slot in range(brief['duration']//session):
-            time = clock(start+slot*session)
-            for person in people:
-                visit = lookup.get((day,time,person)); runs[person] = runs[person]+1 if visit else 0
-                if runs[person] == limit+1: issues.append(person+' exceeds the chosen consecutive-session limit on day '+str(day)+' at '+time+'. Adjust its rotation or spacing.')
-                duty.append(dict(day=day,start=time,end=clock(start+(slot+1)*session),presenter=person,booth=visit['booth'] if visit else '',
-                                 status='Presenting' if visit else 'Break',topic=visit['topic'] if visit else '',topicId=visit['topicId'] if visit else ''))
+    duty, rest_issues = presenter_duty(brief,session,people,rows,limit)
+    issues.extend(rest_issues)
     if issues:
         raise ValueError('Schedule checks failed; fix all listed issues in one edit:\n'+'\n'.join(issues))
     c.update(booths=sorted(booths,key=lambda b:b['booth']), schedule=sorted(rows,key=lambda r:(r['day'],r['start'],r['booth'])),

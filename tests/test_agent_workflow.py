@@ -18,16 +18,22 @@ import agent_activity
 
 
 def schedule_spec(contract):
-    b=contract['brief'];c=contract['capacity'];daily=b['duration']//b['session'];booths=[]
+    from event_staffing import presenter_limit,work_slots,single_presenter_slots
+    b=contract['brief'];c=contract['capacity'];minutes=c.get('session',b['session']);daily=b['duration']//minutes;booths=[];index=1
     for i,t in enumerate(c['topics']):
-        days=[];total=daily*b['days'];groups=t['groups']
-        selected=[j*total//groups+min(i,((j+1)*total//groups-1)-(j*total//groups)) for j in range(groups)]
+        count=presenter_limit(b,minutes,t['groups']);work=work_slots(minutes)
+        allowed=single_presenter_slots(daily,minutes) if count==1 else list(range(daily))
+        available=[(d,slot) for d in range(1,b['days']+1) for slot in allowed]
+        selected=[available[j*len(available)//t['groups']] for j in range(t['groups'])]
+        days=[]
         for d in range(1,b['days']+1):
-            slots=[slot%daily for slot in selected if slot//daily==d-1]
-            if slots:days.append({'day':d,'slots':slots,'rotation':[0,0,1,1]})
-        booths.append({'topicId':t['id'],'presenters':['Presenter %02d (unassigned)'%(2*i+1),'Presenter %02d (unassigned)'%(2*i+2)],'days':days})
-    return {'sessionMinutes':b['session'],'maxConsecutiveSessions':2,'criteria':['Stagger booth starts','Two consecutive visits before a break'],
-            'tradeoff':'Two dedicated specialists per topic provide relief.','check':'Confirm each specialist’s availability.','booths':booths}
+            slots=[slot for day,slot in selected if day==d]
+            if slots:days.append({'day':d,'slots':slots,'rotation':[0] if count==1 else [0]*work+[1]*work})
+        names=['Presenter %02d (unassigned)'%(index+p) for p in range(count)];index+=count
+        booths.append({'topicId':t['id'],'presenters':names,'days':days})
+    return {'sessionMinutes':minutes,'maxConsecutiveSessions':work_slots(minutes),'criteria':['Stagger booth breaks','Work blocks with at least 15 minutes of rest'],
+            'tradeoff':'Staff to the visit load; pause booths for breaks when one specialist is sufficient.','check':'Confirm specialist availability.','booths':booths}
+
 
 
 class AgentToolsAdapter(EventAdapter):
@@ -352,7 +358,7 @@ class AgentWorkflowTests(unittest.TestCase):
         b,c=plan({'themeCount':4,'attendees':100,'duration':270,'session':15,'groupSize':5,'startTime':'10:00'})
         spec=schedule_spec({'brief':b,'capacity':c})
         for booth in spec['booths']:
-            booth['days']=[{'day':1,'slots':[0,4,8,12,17],'rotation':[0,1]}]
+            booth['days']=[{'day':1,'slots':[0,4,8,12,17],'rotation':[0]}]
         result=compile_schedule(b,c,spec)
         self.assertEqual(len(result['schedule']),20)
         self.assertEqual(sum(r['attendees'] for r in result['schedule']),100)
@@ -367,9 +373,9 @@ class AgentWorkflowTests(unittest.TestCase):
         spec=schedule_spec({'brief':b,'capacity':c})
         actual=[[0,1,3,4,5,7,8,9,11,12],
                 [0,2,3,5,6,8,9,10,12,13],
-                [0,2,4,5,6,7,9,10,11,13]]
+                [0,1,2,4,5,6,8,9,10,13]]
         for booth,slots in zip(spec['booths'],actual):
-            booth['days']=[{'day':1,'slots':slots,'rotation':[0,0,1,1]}]
+            booth['days']=[{'day':1,'slots':slots,'rotation':[0]}]
         result=compile_schedule(b,c,spec)
         self.assertEqual(len(result['schedule']),30)
         self.assertEqual(sum(r['attendees'] for r in result['schedule']),140)
@@ -398,7 +404,7 @@ class AgentWorkflowTests(unittest.TestCase):
             if b['attendees']==180:
                 self.assertEqual({r['day'] for r in result['schedule']},{1,2})
                 bad=copy.deepcopy(spec)
-                bad['booths'][0]['days']=[{'day':1,'slots':list(range(c['topics'][0]['groups'])),'rotation':[0,1]}]
+                bad['booths'][0]['days']=[{'day':1,'slots':list(range(c['topics'][0]['groups'])),'rotation':[0]}]
                 with self.assertRaisesRegex(ValueError,'Spread.*full event'):compile_schedule(b,c,bad)
 
     def test_native_trace_is_scoped_and_does_not_include_file_contents(self):

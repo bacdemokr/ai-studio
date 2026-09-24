@@ -29,18 +29,94 @@ class DeletionTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
+    def test_enqueue_ack_is_durable_and_does_not_wait_for_native_cleanup(self):
+        with patch.object(self.adapter, 'remove', wraps=self.adapter.remove) as remove:
+            result = self.studio.delete_agent(self.scout, {'name': 'Scout'}, enqueue_only=True)
+            self.assertEqual(result['deleting'], self.scout)
+            remove.assert_not_called()
+            with self.assertRaises(Problem):
+                self.studio.enqueue(self.scout, {'prompt': 'Must not run'})
+            restarted = Studio(self.temp.name, self.adapter, start_worker=False, recover=True)
+            self.assertTrue(next(a for a in restarted.state(self.owner)['agents'] if a['key']==self.scout)['deletionWaiting'])
+            restarted.finish_pending_deletions()
+            self.assertIsNone(restarted.profile(self.scout))
+
+    def test_background_cleanup_does_not_occupy_mission_worker(self):
+        entered, release = threading.Event(), threading.Event()
+        original = self.adapter.remove
+        def slow_remove(*args):
+            entered.set()
+            if not release.wait(10):raise RuntimeError('test cleanup timed out')
+            return original(*args)
+        self.studio.deletion_worker = threading.Thread(target=self.studio.clean_deletions)
+        worker = threading.Thread(target=self.studio.work)
+        with patch.object(self.adapter, 'remove', side_effect=slow_remove):
+            self.studio.delete_agent(self.scout, {'name':'Scout'}, enqueue_only=True)
+            self.studio.deletion_worker.start()
+            try:
+                self.assertTrue(entered.wait(5))
+                # A duplicate acknowledges the same fenced identity, without a
+                # second cleanup. Other missions still have their own worker.
+                self.studio.delete_agent(self.scout, {'name':'Scout'}, enqueue_only=True)
+                job=self.studio.enqueue(self.owner, {'prompt':'An independent task'})
+                worker.start()
+                deadline=time.monotonic()+5
+                while time.monotonic()<deadline:
+                    state=self.studio.evidence(self.owner,job['id'])['mission']['status']
+                    if state=='done':break
+                    time.sleep(.02)
+                self.assertEqual(state,'done')
+                self.assertIsNotNone(self.studio.profile(self.scout))
+                row=next(a for a in self.studio.state(self.owner)['agents'] if a['key']==self.scout)
+                self.assertEqual('Cleaning personal workspace',row['deletionProgress'])
+                release.set()
+                deadline=time.monotonic()+5
+                while self.studio.profile(self.scout) and time.monotonic()<deadline:time.sleep(.02)
+                self.assertIsNone(self.studio.profile(self.scout))
+            finally:
+                release.set();self.studio.stop.set();self.studio.signal.set();self.studio.deletion_signal.set()
+                self.studio.deletion_worker.join(5)
+                if worker.ident:worker.join(5)
+
+    def test_background_failure_remains_visible_and_retryable(self):
+        self.studio.delete_agent(self.scout, {'name':'Scout'}, enqueue_only=True)
+        with patch.object(self.adapter, 'remove', side_effect=RuntimeError('fixture failure')):
+            self.studio.finish_pending_deletions()
+        row=next(a for a in self.studio.state(self.owner)['agents'] if a['key']==self.scout)
+        self.assertTrue(row['deleting']);self.assertFalse(row['deletionWaiting'])
+        self.assertIn('paused',row['deletionProgress'])
+        self.studio.delete_agent(self.scout, {'name':'Scout'}, enqueue_only=True)
+        self.studio.finish_pending_deletions()
+        self.assertIsNone(self.studio.profile(self.scout))
+
+    def test_bulk_queue_survives_restart_and_one_failure_does_not_lose_other_targets(self):
+        third=self.studio.add_agent(self.owner,{**self.profile,'name':'Third'})['agentId']
+        for owner,name in ((self.scout,'Scout'),(third,'Third')):
+            self.studio.delete_agent(owner,{'name':name},enqueue_only=True)
+        restarted=Studio(self.temp.name,self.adapter,start_worker=False,recover=True)
+        original=self.adapter.remove
+        def one_failure(native,workspace):
+            if native=='bac-'+self.scout:raise RuntimeError('fixture storage unavailable')
+            return original(native,workspace)
+        with patch.object(self.adapter,'remove',side_effect=one_failure):restarted.finish_pending_deletions()
+        self.assertIsNone(restarted.profile(third))
+        self.assertIsNotNone(restarted.profile(self.owner))
+        row=next(a for a in restarted.state(self.owner)['agents'] if a['key']==self.scout)
+        self.assertTrue(row['deleting']);self.assertFalse(row['deletionWaiting'])
+        restarted.delete_agent(self.scout,{'name':'Scout'},enqueue_only=True)
+        restarted.finish_pending_deletions()
+        self.assertEqual([a['key'] for a in restarted.state(self.owner)['agents']],[self.owner])
+
     def test_delete_original_and_last_agent_preserves_account_and_never_resurrects(self):
         for owner, note in ((self.owner, 'Private original memory'), (self.scout, 'Keep Scout memory')):
             (self.studio.workspace(owner) / 'MEMORY.md').write_text(note)
             self.studio.upload(owner, {'name': 'note.md', 'content': note})
         job = self.studio.enqueue(self.owner, {'prompt': 'remember this'})
         self.studio.execute(self.studio.next_job())
-        for role in range(1, 5):
-            self.studio.ensure_agent(self.owner, self.studio.profile(self.owner), role)
         removed = self.studio.delete_agent(self.owner, {'name': 'Jinny'})
         self.assertEqual(removed['agentId'], self.scout)
         self.assertEqual(self.studio.resolve_agent(self.owner), self.scout)
-        for role in (None, 1, 2, 3, 4):
+        for role in (None,):
             self.assertFalse(self.studio.workspace(self.owner, role).exists())
         self.assertEqual(self.adapter.agents, {})
         self.assertEqual((self.studio.workspace(self.scout) / 'MEMORY.md').read_text(), 'Keep Scout memory')
@@ -105,7 +181,7 @@ class DeletionTests(unittest.TestCase):
                     time.sleep(.01)
                 self.assertIsNone(self.studio.profile(self.scout))
                 self.assertFalse(self.studio.workspace(self.scout).exists())
-                self.assertEqual(remove.call_count, 5)  # Personal identity plus four prepared crew workspaces.
+                self.assertEqual(remove.call_count, 1)  # Hiring owns only the personal runtime.
                 self.assertIsNotNone(self.studio.profile(self.owner))
             finally:
                 release.set();self.studio.stop.set();self.studio.signal.set();worker.join(5)
@@ -377,28 +453,17 @@ class DeletionTests(unittest.TestCase):
                             self.assertEqual(inventory.call_count, 2, 'One verified absence is sufficient, including after a committed timeout')
                     lookup.assert_called_once_with(native_id, probe=False)
 
-    def test_cleanup_discovers_sparse_and_retired_roles(self):
+    def test_personal_cleanup_never_traverses_similarly_named_role_directories(self):
         for role in (0,5,17):
             self.studio.workspace(self.owner,role).mkdir(parents=True,exist_ok=True)
         with patch.object(self.adapter,'remove',wraps=self.adapter.remove) as remove:
             self.studio.delete_agent(self.owner,{'name':'Jinny'})
-        self.assertEqual([call.args[0] for call in remove.call_args_list],
-                         ['bac-'+self.owner]+['bac-'+self.owner+'-r'+str(i) for i in (0,1,2,3,5,17)])
+        self.assertEqual([call.args[0] for call in remove.call_args_list],['bac-'+self.owner])
+        for role in (0,5,17):self.assertTrue(self.studio.workspace(self.owner,role).exists())
         self.assertIsNotNone(self.studio.profile(self.scout))
 
-    def test_native_discovery_ignores_other_owners_and_catalog_size(self):
-        with patch('agent_runtime.root',return_value=Path(self.temp.name)/'discovery'), patch('agent_policy.runtimes', return_value=[]):
-            native_id='bac-'+self.owner
-            config=runtime.initial_config()
-            config['agents']['entries'].update({native_id+'-r'+str(i):{} for i in (2,17)})
-            config['agents']['entries']['bac-'+self.scout+'-r9']={}
-            runtime.save_config(config)
-            (runtime.root()/'state/agents'/ (native_id+'-r24')).mkdir(parents=True)
-            self.assertEqual(runtime.deletion_roles(native_id),[2,17,24])
-
-    def test_no_children_only_deletes_the_personal_identity(self):
-        import shutil
-        for role in range(4):shutil.rmtree(self.studio.workspace(self.owner,role))
+    def test_personal_deletion_targets_one_identity(self):
+        for role in range(4):self.assertFalse(self.studio.workspace(self.owner,role).exists())
         with patch.object(self.adapter,'remove',wraps=self.adapter.remove) as remove:
             self.studio.delete_agent(self.owner,{'name':'Jinny'})
         self.assertEqual(len(remove.call_args_list),1)

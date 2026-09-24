@@ -18,7 +18,7 @@ class CrewDefinitionTests(unittest.TestCase):
         self.native.start();self.addCleanup(self.native.stop)
         self.adapter=Adapter()
         self.studio=Studio(Path(self.temp.name)/'studio',self.adapter,start_worker=False)
-        self.person=self.studio.session()[0];self.owner=self.person['id']
+        self.person=self.studio.session()[0];self.owner=self.studio.crew_owner(self.person['id'])
 
     def test_all_visible_crew_have_core_files_and_skills_before_any_mission(self):
         self.assertFalse(runtime.config_path().exists())
@@ -43,7 +43,7 @@ class CrewDefinitionTests(unittest.TestCase):
         for key in ('documents','writer'):
             folder=workspace/'skills'/('bac-'+key);folder.mkdir()
             (folder/'SKILL.md').write_text('Old personal reply format')
-        personal=self.studio.workspace(self.owner)
+        personal=self.studio.workspace(self.person['id'])
         runtime.write_workspace(personal,{'name':'Orbit','persona':'guide','skills':['documents','writer']})
         self.studio.initialize_crew_workspaces(self.owner)
         for key in ('documents','writer'):
@@ -56,7 +56,7 @@ class CrewDefinitionTests(unittest.TestCase):
         (workspace/'SOUL.md').write_text('Operator-edited Dylan persona')
         (workspace/'MEMORY.md').write_text('Keep this preference')
         (workspace/'IDENTITY.md').unlink()
-        personal=self.studio.workspace(self.owner);personal.mkdir()
+        personal=self.studio.workspace(self.person['id']);personal.mkdir()
         (personal/'SOUL.md').write_text('My personal agent')
         modified=(workspace/'SOUL.md').stat().st_mtime_ns
         restored=Studio(self.studio.directory,self.adapter,start_worker=False)

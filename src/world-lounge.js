@@ -159,8 +159,13 @@ function setCollection(agents,key){
     }
     const tone=loungeVoices[a.tone]?a.tone:'kind';
     if(r.persona!==a.persona||r.name!==a.name||r.tone!==tone||r.purpose!==(a.purpose||'')){if(loungeSpeaker===r)endLoungeSpeech();r.saidIntro=false;r.line=0;}
+    r.deleting=!!a.deleting;
+    if(r.deleting){
+      if(loungeSpeaker===r)endLoungeSpeech();
+      r.completionCue=false;r.target=null;
+    }
     const latest=a.latestMission,signature=latest?latest.id+':'+latest.status:'',replyHeld=!!protectionReplyDelay(a.key,null);
-    r.replyExcerpt=!replyHeld&&latest?.status==='done'?loungeReplyExcerpt(latest.answerPreview):'';
+    r.replyExcerpt=!r.deleting&&!replyHeld&&latest?.status==='done'?loungeReplyExcerpt(latest.answerPreview):'';
     if(r.missionSignature!==undefined&&signature!==r.missionSignature&&r.replyExcerpt){
       // A fresh answer takes precedence over an unrelated idle vignette.
       if(loungeSpeaker&&!loungeSpeaker.completionSpeech)endLoungeSpeech();
@@ -175,10 +180,11 @@ function setCollection(agents,key){
     if(occupied)r.completionCue=false;
     r.name=a.name;r.purpose=a.purpose||'';r.persona=loungePersonalities[a.persona]?a.persona:'guide';r.tone=tone;r.verbosity=a.verbosity||'balanced';r.pending=occupied;
     if(loungeSpeaker===r&&(r.pending||(r.hasMission&&!r.completionSpeech)))endLoungeSpeech();
-    if(r.pending)r.activity='assigned';
+    if(r.deleting)r.activity='deleting';
+    else if(r.pending)r.activity='assigned';
     else if(r.activity==='assigned')r.activity='resting';
     r.node.setAttribute('aria-label','Open '+a.name+'’s workspace');r.node.setAttribute('aria-pressed',r.key===key);r.node.style.setProperty('--resident-color','#'+r.color.toString(16).padStart(6,'0'));r.node.querySelector('b').textContent=a.name;
-    r.node.querySelector('small').textContent=r.pending?'Busy':'Ready';
+    r.node.querySelector('small').textContent=r.deleting?(a.deletionWaiting?'Deleting…':'Cleanup paused'):r.pending?'Busy':'Ready';
     r.halo.visible=r.key===key||r.pending||loungeSpeaker===r;
   });
   residentMeshes.length=0;residents.forEach(r=>r.group.traverse(o=>{if(o.isMesh){o.userData.resident=r.key;residentMeshes.push(o);}}));
@@ -197,6 +203,7 @@ function chooseLoungeTarget(r){
 function turnResident(r,angle,dt){const delta=Math.atan2(Math.sin(angle-r.group.rotation.y),Math.cos(angle-r.group.rotation.y));r.group.rotation.y+=delta*Math.min(1,dt*5);}
 function moveResident(r,dt){
   const mood=loungePersonalities[r.persona],p=r.group.position;
+  if(r.deleting){r.activity='deleting';return false;}
   r.activity=r.pending?'assigned':loungeSpeaker===r?'speaking':'resting';
   if(r.placed||r.dragging||r.pending||r.hovered||r.focused||loungeSpeaker===r)return false;
   if(!r.target&&loungeTime>=r.waitUntil)chooseLoungeTarget(r);
@@ -222,10 +229,10 @@ function moveResident(r,dt){
 }
 function startLoungeSpeech(){
   if(loungeSpeaker||loungeTime<nextLoungeSpeech||overview||journey||arrival||room!=='lounge'||drag)return;
-  while(welcomeSpeakers.length&&!residents.some(r=>r.key===welcomeSpeakers[0]&&!r.pending))welcomeSpeakers.shift();
+  while(welcomeSpeakers.length&&!residents.some(r=>r.key===welcomeSpeakers[0]&&!r.pending&&!r.deleting))welcomeSpeakers.shift();
   const newcomer=residents.find(r=>r.key===welcomeSpeakers[0]);
   if(!motion&&!newcomer&&!residents.some(r=>r.completionCue))return;
-  const eligible=residents.filter(r=>!r.atRoundtable&&!r.pending&&(!r.hasMission||r.completionCue)&&(r.completionCue||(!r.hovered&&!r.focused)));if(!eligible.length&&!newcomer)return;
+  const eligible=residents.filter(r=>!r.deleting&&!r.atRoundtable&&!r.pending&&(!r.hasMission||r.completionCue)&&(r.completionCue||(!r.hovered&&!r.focused)));if(!eligible.length&&!newcomer)return;
   const start=(residents.findIndex(r=>r.key===lastLoungeSpeaker)+1)%Math.max(1,residents.length);
   const ordered=[...residents.slice(start),...residents.slice(0,start)].filter(r=>eligible.includes(r));
   const r=newcomer||ordered.find(r=>r.completionCue)||ordered.find(r=>!r.saidIntro)||ordered[0];

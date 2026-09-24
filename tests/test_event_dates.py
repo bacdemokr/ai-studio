@@ -9,21 +9,35 @@ from event_dates import date_label, day_label
 from nvidia_event_page import render
 
 class EventDateTests(unittest.TestCase):
-    def test_templates_use_organizer_dates_and_public_sources(self):
-        self.assertEqual([t['id'] for t in TEMPLATES],['zurich','seoul','singapore'])
-        self.assertEqual(TEMPLATES[0]['startDate'],'2026-10-01')
-        self.assertEqual(TEMPLATES[0]['venue'],'StageOne Event & Convention Hall')
-        self.assertEqual(TEMPLATES[1]['startDate'],'2026-11-09')
-        for template in TEMPLATES:
-            b,c=plan({**template,'themeCount':len(template['topics'])})
-            self.assertEqual(b['days'],2 if template['id']=='singapore' else 1)
-            self.assertEqual(b['days'],template['days'])
-            self.assertEqual(b['venue'],template['venue'])
-            if template['id']!='singapore':
-                self.assertEqual(b['startDate'],b['endDate'])
+    def test_templates_use_organizer_schedule(self):
+        self.assertEqual([t['id'] for t in TEMPLATES],['zurich','paris','london'])
+        expected=[('2026-10-01','08:30','18:00',570,'21:30'),
+                  ('2026-10-13','14:00','18:00',240,''),
+                  ('2026-10-14','09:00','13:00',240,'')]
+        for template,(date,start,end,duration,teardown) in zip(TEMPLATES,expected):
+            for theme in (False,True):
+                b,c=plan({**template,**({'themeCount':len(template['topics'])} if theme else {})})
+                self.assertEqual((b['startDate'],b['endDate']),(date,date))
+                self.assertEqual((b['startTime'],b['endTime'],b['duration'],b['teardownTime']),
+                                 (start,end,duration,teardown))
+                self.assertEqual(b['days'],1)
+                self.assertTrue(all(start<=r['start']<r['end']<=end for r in c['schedule']))
                 self.assertEqual({r['day'] for r in c['schedule']},{1})
-            if template['id']!='zurich':
-                self.assertTrue(template['sourceUrl'].startswith('https://www.nvidia.com/'))
+                self.assertEqual(b['venue'],template['venue'])
+        self.assertEqual(TEMPLATES[0]['venue'],'StageOne Event & Convention Hall')
+        self.assertTrue(all(t['venue']=='' for t in TEMPLATES[1:]))
+        b,c=plan(TEMPLATES[0])
+        with ZipFile(io.BytesIO(workbook(b,c))) as z:
+            xml=''.join(z.read(n).decode() for n in z.namelist() if n.endswith('.xml'))
+        for value in ['08:30','18:00','21:30','Take down by (local)']:self.assertIn(value,xml)
+
+    def test_teardown_does_not_extend_capacity_and_rejects_invalid_deadlines(self):
+        b,c=plan(TEMPLATES[0]);_,without=plan({**TEMPLATES[0],'teardownTime':''})
+        self.assertEqual(c['slots'],without['slots'])
+        self.assertEqual(c['schedule'],without['schedule'])
+        for deadline in ('17:59','24:00','bad',None,2130):
+            with self.subTest(deadline=deadline),self.assertRaises(ValueError):
+                plan({**TEMPLATES[0],'teardownTime':deadline})
 
     def test_dates_drive_days_and_flow_to_html_excel(self):
         b,c=plan({'themeCount':3,'days':5,'startDate':'2026-09-22','endDate':'2026-09-23','venue':'Raffles City Convention Centre'})

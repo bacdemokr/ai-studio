@@ -78,6 +78,7 @@ def prepare(workspace, job, payload):
     safe_file(workspace, files['post']).write_text('MORGAN_SOCIAL_POST\n', encoding='utf-8')
     contract = {'files': files, 'brief': payload['brief'], 'themes': payload['capacity']['topics'],
                 'replaceAll': TOKENS, 'protectedBlocks': ['BAC:LOGISTICS', 'BAC:SCHEDULE'],
+                'programLayout': 'Use .cards > article.theme-card > .theme-body. In each body: small topic label, h3 exact demo title, p.demo-meta for booth and visit minutes, action paragraph, div.outcome for the result, p.source with a short Read the research link (full source title in title and aria-label), and closed details.demo-reason for the limitation. Localize labels. Keep supplied CSS. No theme-art, oversized numbers, decorative banners or repeated topic labels.',
                 'instructions': 'Edit the HTML file itself. Preserve both protected blocks exactly. Write the LinkedIn post file. No publishing. Final reply: a short human-readable summary.'}
     import agent_workflow
     if agent_workflow.enabled(payload):

@@ -29,12 +29,12 @@ function renderJsonEntries(value,container,depth=0){
   }
  }
 }
-async function openResultJson(path,title){
+async function openResultJson(path,title,jobId){
  const owner=agentId;
  dialog(title,'<section id="studio-json-viewer"><p role="status">Loading file</p></section>');
  const viewer=el('json-viewer'),current=()=>el('dialog').open&&el('json-viewer')===viewer&&agentId===owner;
  try{
-  const file=await api('file?path='+encodeURIComponent(path),undefined,owner);if(!current())return;
+  const file=await api('file?path='+encodeURIComponent(path)+(jobId?'&job='+encodeURIComponent(jobId):''),undefined,owner);if(!current())return;
   if(file.encoding==='base64'||typeof file.content!=='string')throw new Error('This file is not readable JSON.');
   let value;try{value=JSON.parse(file.content);}catch{throw new Error('This saved file contains invalid JSON.');}
   const formatted=JSON.stringify(value,null,2);
@@ -44,5 +44,5 @@ async function openResultJson(path,title){
   const select=next=>{tabs.forEach(tab=>{const active=tab.dataset.jsonView===next;tab.setAttribute('aria-selected',active);tab.tabIndex=active?0:-1;});el('json-browse').hidden=next!=='browse';el('json-raw').hidden=next!=='raw';viewer.querySelector('.result-json-scroll').scrollTop=0;};
   tabs.forEach((tab,i)=>{tab.onclick=()=>select(tab.dataset.jsonView);tab.onkeydown=event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const next=event.key==='Home'?tabs[0]:event.key==='End'?tabs[1]:tabs[1-i];select(next.dataset.jsonView);next.focus();};});
   const copy=el('json-copy');copy.onclick=async()=>{try{await navigator.clipboard.writeText(formatted);if(current()){copy.textContent='Copied';el('json-copy-status').textContent='JSON copied';setTimeout(()=>{if(current())copy.textContent='Copy JSON';},1800);}}catch{if(current()){select('raw');el('json-copy-status').textContent='Select the JSON text to copy it.';copy.textContent='Select JSON to copy';}}};
- }catch(error){if(current()){viewer.replaceChildren();const message=document.createElement('p');message.setAttribute('role','alert');message.textContent=error.message;const retry=document.createElement('button');retry.className='studio-secondary';retry.textContent='Retry';retry.onclick=()=>openResultJson(path,title);viewer.append(message,retry);}}
+ }catch(error){if(current()){viewer.replaceChildren();const message=document.createElement('p');message.setAttribute('role','alert');message.textContent=error.message;const retry=document.createElement('button');retry.className='studio-secondary';retry.textContent='Retry';retry.onclick=()=>openResultJson(path,title,jobId);viewer.append(message,retry);}}
 }

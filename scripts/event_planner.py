@@ -14,14 +14,15 @@ TOPICS = {
     'creative': {'title': 'Creative AI', 'demo': 'Create and iterate on a small interactive app', 'source': 'https://build.nvidia.com/blueprints'},
 }
 HARNESS = {'openclaw': 'OpenClaw', 'hermes': 'Hermes'}
-# Public sources checked 2026-09-20; Zurich and Seoul BaC dates corrected by the organizer.
-# Attendance and demo timing are
-# editable planning examples, not the official event's published capacity/agenda.
+# Dates and local operating hours supplied by the organizer on 2026-09-24.
+# Attendance and topics remain editable planning examples. Paris/London venues
+# are not confirmed; teardown is separate from the visitor-facing event window.
 TEMPLATES = [
-    {'id': 'zurich', 'title': 'Zurich · Meet your agents', 'description': 'A welcoming introduction to assistants and teams.', 'city': 'Zurich', 'region': 'Europe / EMEA', 'attendees': 120, 'duration': 180, 'days': 1, 'topics': ['agents', 'multiagent', 'cudax'], 'startDate': '2026-10-01', 'endDate': '2026-10-01', 'venue': 'StageOne Event & Convention Hall', 'sourceUrl': '', 'sourceNote': 'One-day BaC event on October 1, 2026 at StageOne Event & Convention Hall. Date and venue confirmed by the organizer.'},
-    {'id': 'seoul', 'title': 'Seoul · AI Day', 'description': 'An editable demo plan for AI Day Seoul.', 'city': 'Seoul', 'region': 'Asia Pacific', 'attendees': 240, 'duration': 120, 'days': 1, 'topics': ['physical', 'vision', 'cudax', 'agents'], 'startDate': '2026-11-09', 'endDate': '2026-11-09', 'venue': 'COEX', 'sourceUrl': 'https://www.nvidia.com/ko-kr/ai-days/', 'sourceNote': 'One-day BaC event on November 9, 2026 at COEX. This template covers the BaC day, not the full AI Day event.'},
-    {'id': 'singapore', 'title': 'Singapore · AI Day', 'description': 'An editable demo plan for AI Day Singapore.', 'city': 'Singapore', 'region': 'Asia Pacific', 'attendees': 360, 'duration': 180, 'days': 2, 'topics': list(TOPICS), 'startDate': '2026-09-22', 'endDate': '2026-09-23', 'venue': 'Raffles City Convention Centre', 'sourceUrl': 'https://www.nvidia.com/en-sg/ai-days/', 'sourceNote': 'AI Day event dates and venue from NVIDIA. BaC is listed on September 23; adjust the date range for a BaC-only plan.'},
+    {'id': 'zurich', 'title': 'Zurich · BaC', 'description': 'October 1 · 08:30-18:00 · take down by 21:30.', 'city': 'Zurich', 'region': 'Europe / EMEA', 'attendees': 420, 'groupSize': 5, 'duration': 570, 'startTime': '08:30', 'teardownTime': '21:30', 'days': 1, 'topics': ['agents', 'multiagent', 'cudax'], 'startDate': '2026-10-01', 'endDate': '2026-10-01', 'venue': 'StageOne Event & Convention Hall', 'sourceUrl': '', 'sourceNote': 'Organizer schedule: October 1, 2026, 08:30-18:00 local time. Take down by 21:30. Venue previously confirmed by the organizer.'},
+    {'id': 'paris', 'title': 'Paris · BaC', 'description': 'October 13 · 14:00-18:00.', 'city': 'Paris', 'region': 'Europe / EMEA', 'attendees': 48, 'groupSize': 2, 'duration': 240, 'startTime': '14:00', 'teardownTime': '', 'days': 1, 'topics': ['agents', 'multiagent'], 'startDate': '2026-10-13', 'endDate': '2026-10-13', 'venue': '', 'sourceUrl': '', 'sourceNote': 'Organizer schedule: October 13, 2026, 14:00-18:00 local time. Venue to be confirmed.'},
+    {'id': 'london', 'title': 'London · BaC', 'description': 'October 14 · 09:00-13:00.', 'city': 'London', 'region': 'Europe / EMEA', 'attendees': 192, 'groupSize': 4, 'duration': 240, 'startTime': '09:00', 'teardownTime': '', 'days': 1, 'topics': ['agents', 'multiagent', 'physical', 'cudax'], 'startDate': '2026-10-14', 'endDate': '2026-10-14', 'venue': '', 'sourceUrl': '', 'sourceNote': 'Organizer schedule: October 14, 2026, 09:00-13:00 local time. Venue to be confirmed.'},
 ]
+
 VENUE_STARTS = {
     'zurich': {'name': 'Park Hyatt Zurich', 'url': 'https://www.hyatt.com/park-hyatt/en-US/zurph-park-hyatt-zurich/meetings'},
     'austin': {'name': 'Four Seasons Hotel Austin', 'url': 'https://www.fourseasons.com/austin/meetings-and-events/meetings/'},
@@ -63,6 +64,13 @@ def plan(data):
     if start_minute + b['duration'] > 1440:
         raise ValueError('The daily event window must finish before midnight.')
     b['startTime'] = start
+    b['endTime'] = '%02d:%02d' % divmod(start_minute + b['duration'], 60)
+    teardown = data.get('teardownTime', '')
+    if not isinstance(teardown, str) or (teardown and not re.fullmatch(r'(?:[01]\d|2[0-3]):[0-5]\d', teardown)):
+        raise ValueError('Choose a valid local take-down deadline.')
+    if teardown and int(teardown[:2])*60 + int(teardown[3:]) < start_minute + b['duration']:
+        raise ValueError('The take-down deadline must be at or after the event ends.')
+    b['teardownTime'] = teardown
     venue=data.get('venue','')
     if not isinstance(venue,str) or len(venue)>120 or any(ord(x)<32 for x in venue):raise ValueError('Enter a valid venue.')
     b['venue']=venue.strip()
@@ -155,7 +163,7 @@ def worksheet(name, rows):
         for c, value in enumerate(row, 1):
             ref = col(c)+str(r)
             person=re.search(r'Presenter (\d+)', str(value) if not name.endswith('breaks') else str(row[0]))
-            style = '11' if value == 'Break' else str(2+(int(person.group(1))-1)%9) if grid and r>1 and c>1 and person and value else ('1' if r == 1 or grid and c == 1 else '0')
+            style = '11' if value == 'Break' else '0' if value == 'No visit' else str(2+(int(person.group(1))-1)%9) if grid and r>1 and c>1 and person and value else ('1' if r == 1 or grid and c == 1 else '0')
             cells.append('<c r="%s" s="%s"%s>%s</c>' % (ref, style, '' if type(value) in (int, float) else ' t="inlineStr"', '<v>%s</v>' % value if type(value) in (int, float) else '<is><t xml:space="preserve">%s</t></is>' % clean(value)))
         height = 56 if grid and r>1 else max(34, max(math.ceil(len(str(v))/(widths[i]-3)) for i,v in enumerate(row))*18+12)
         xml.append('<row r="%d" ht="%d" customHeight="1">%s</row>' % (r, height, ''.join(cells)))
@@ -185,7 +193,7 @@ def rota_grids(brief, calc):
 def workbook(brief, calc):
     """A snapshot workbook produced by the application calculator, not an LLM claim."""
     sheets = [
-        ('Event plan', [['Item', 'Plan'], ['City', brief['city']], ['Event start date', brief.get('startDate') or 'TBC'], ['Event end date', brief.get('endDate') or 'TBC'], ['Venue', brief.get('venue') or 'TBC'], ['Total attendees', brief['attendees']], ['Event days', brief['days']], ['Minutes per day', brief['duration']], ['People per group', brief['groupSize']], ['Minutes per demo', calc['session']], ['Booths', calc['boothCount']], ['Presenters per day', calc['presenterCount']], ['Floor hosts per day', calc['floorHosts']], ['Event lead per day', 1], ['Harnesses to showcase', ', '.join(HARNESS[h] for h in brief['harnesses'])], ['Staff names', 'Unassigned placeholders; not confirmed bookings'], ['Planning basis', calc['assumptions']], ['Export type', 'Calculated snapshot; change the brief in the app to recalculate']]),
+        ('Event plan', [['Item', 'Plan'], ['City', brief['city']], ['Event start date', brief.get('startDate') or 'TBC'], ['Event end date', brief.get('endDate') or 'TBC'], ['Venue', brief.get('venue') or 'TBC'], ['Total attendees', brief['attendees']], ['Event days', brief['days']], ['Minutes per day', brief['duration']], ['Daily start (local)', brief['startTime']], ['Daily end (local)', brief.get('endTime') or '%02d:%02d' % divmod(int(brief['startTime'][:2])*60+int(brief['startTime'][3:])+brief['duration'],60)], ['Take down by (local)', brief.get('teardownTime') or 'Not specified'], ['People per group', brief['groupSize']], ['Minutes per demo', calc['session']], ['Booths', calc['boothCount']], ['Presenters per day', calc['presenterCount']], ['Floor hosts per day', calc['floorHosts']], ['Event lead per day', 1], ['Harnesses to showcase', ', '.join(HARNESS[h] for h in brief['harnesses'])], ['Staff names', 'Unassigned placeholders; not confirmed bookings'], ['Planning basis', calc['assumptions']], ['Export type', 'Calculated snapshot; change the brief in the app to recalculate']]),
         ('Booth assignments', [['Booth', 'Topic', 'Demo concept', 'Presenter slot', 'Harnesses', 'Presenter expertise']]+[[r[k] for k in ('booth','topic','demo','presenter','harnesses')]+[r.get('presenterExpertise','Topic specialist — confirm with demo producer')] for r in calc['booths']]),
         ('Presenter rota', [['Day', 'Start (local)', 'End (local)', 'Booth', 'Topic', 'Presenter slot', 'Attendees', 'Harnesses']]+[[r[k] for k in ('day','start','end','booth','topic','presenter','attendees','harnesses')] for r in calc['schedule']])]
     from event_rotation import duty_grids, PRESENTER_COLORS

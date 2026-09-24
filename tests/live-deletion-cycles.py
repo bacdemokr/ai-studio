@@ -87,6 +87,16 @@ def verify(item,known_sandboxes):
  owner=item['owner'];native='bac-'+owner
  entries=json.loads(rt.config_path().read_text())['agents']['entries']
  remains={'app':bool(rows('select id from agents where id=?',(owner,))), 'workspaces':[p.name for p in (DATA/'studio/workspaces').glob(owner+'*')], 'nativeEntries':[k for k in entries if k==native or k.startswith(native+'-r')], 'nativeData':[p.name for p in (rt.root()/'state/agents').glob(native+'*') if (p/'agent').exists() or (p/'sessions').exists()], 'sandboxRegistry':len(policy.runtimes(native,probe=False)), 'sandboxes':sorted(known_sandboxes & policy.sandbox_names()) if known_sandboxes else []}
+ # Completed means permanent app-owned retirement, not just a missing roster.
+ remains['cleanupReceipt']=(rt.root()/'deletion-receipts'/(native+'.json')).exists()
+ remains['nativeHistory']=[]
+ state_db=rt.root()/'state/state/openclaw.sqlite'
+ if state_db.exists():
+  with sqlite3.connect(state_db) as db:
+   for table in ('agent_deletion_journal','agent_databases','agent_provenance'):
+    if db.execute("SELECT 1 FROM sqlite_master WHERE name=?",(table,)).fetchone():
+     if db.execute('SELECT 1 FROM '+table+' WHERE agent_id=?',(native,)).fetchone():remains['nativeHistory'].append(table)
+ remains['configBackups']=[p.name for p in (rt.root()/'state').glob('openclaw.json.*') if p.is_file() and native in json.loads(p.read_text()).get('agents',{}).get('entries',{})]
  emit('verified',name=item['name'],clean=not any(remains.values()),remains=remains)
  if any(remains.values()):raise AssertionError('Cleanup left resources')
 baseline={r['id'] for r in rows('select id from agents where profile is not null')}

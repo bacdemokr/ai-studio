@@ -114,16 +114,25 @@ async function resetStudio(scope){
  const buttons=[...modal.querySelectorAll('button')].map(button=>[button,button.disabled]);
  modal.addEventListener('cancel',blockClose);buttons.forEach(([button])=>button.disabled=true);
  status.textContent='Resetting';
- let completed=0,total=0,next=agentId;
+ let completed=0,total=0,next=agentId,background=false;
+ const originalSelection=agentId;
  try{
   const latest=await api('state',undefined,'');
   const agents=scope==='bac'?[]:latest.agents||[];total=agents.length;
   if(scope!=='lounge'){
    await api('bac-reset',{},latest.agentId);selectedJob=null;demoPreparationId='';
   }
+  // Persist every request first. Closing Settings or reloading must not lose
+  // the remainder of a bulk deletion while the native runtime drains it.
+  for(const agent of agents)await api('delete-agent',{name:agent.name},agent.key);
+  if(agents.length){
+   background=true;removingAgent=false;modal.removeEventListener('cancel',blockClose);modal.close();
+   alert('Removing '+agents.length+' agents in the background. Cleanup progress stays visible in their workspaces.');
+   await refresh();
+  }
   for(const agent of agents){
    status.textContent=`Removing ${completed+1} / ${total} · ${agent.name}`;
-   const result=await deleteAgentAndWait(agent.key,agent.name,()=>{status.textContent=`Waiting for ${agent.name} to finish its current call`;});
+   const result=await waitForAgentDeletion(agent.key,agent.name,row=>{status.textContent=row?.deletionProgress||`Cleaning ${agent.name}`;});
    next=result.agentId;completed++;
    try{const layout=JSON.parse(localStorage.getItem('bac-lounge-layout-v1')||'{}');delete layout[agent.key];localStorage.setItem('bac-lounge-layout-v1',JSON.stringify(layout));}catch{}
   }
@@ -131,11 +140,13 @@ async function resetStudio(scope){
   if(scope==='bac'){data=state;render();}
   else{
    clearTimeout(comparisonTimer);comparison=null;comparePanel.replaceChildren();delete comparePanel.dataset.batch;
-   openAgentState(state);fillCreator(true);setRoom('workshop');
+   if(!changingAgent&&(agentId===originalSelection||agents.some(a=>a.key===agentId))){openAgentState(state);fillCreator(true);setRoom('workshop');}
   }
   status.textContent=scope==='all'?'Reset complete.':scope==='bac'?'BaC reset.':'Lounge agents reset.';
+  if(background)alert('Cleanup complete. '+completed+' agents removed.');
  }catch(error){
   status.textContent=(completed?`${completed} / ${total} removed. `:'')+error.message;
+  if(background)alert(status.textContent);
   try{const state=await api('state',undefined,'');if(state.agentId===agentId){data=state;render();}else openAgentState(state);}catch{}
  }finally{
   removingAgent=false;modal.removeEventListener('cancel',blockClose);

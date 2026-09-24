@@ -12,14 +12,21 @@ e=lambda v:escape(str(v),quote=True)
 from event_timetable import tables
 
 
+def theme_card(topic, index, minutes):
+    """Compact session card; all factual copy still comes from the handoff."""
+    source = ('<p class="source"><a href="'+e(topic['source'])+'" target="_blank" rel="noopener noreferrer" title="'+e(topic['sourceTitle'])+'" aria-label="Read research: '+e(topic['sourceTitle'])+'">Read the research <span class="link-arrow" aria-hidden="true">↗</span></a></p>') if topic.get('sourceTitle') else '<p class="pending">Source-backed theme pending.</p>'
+    return ('<article class="theme-card"><div class="theme-body"><small>'+e(topic['topic'])+'</small>'
+            '<h3>'+e(topic['demo'])+'</h3><p class="demo-meta">Booth '+str(index+1)+' · '+e(minutes)+' min</p>'
+            '<p>'+e(topic.get('action','Dylan is reviewing current NVIDIA themes.'))+'</p>'
+            '<div class="outcome"><b>What you’ll take away</b><p>'+e(topic.get('outcome','A concrete participant outcome will appear with the researched theme.'))+'</p></div>'
+            +source+event_insights.design_notes(topic).replace(' open','')+'</div></article>')
+
+
 def render(b,c,outputs,campaign=None,decision_notes=None,roundtable=None):
     campaign=campaign or {}
     title=campaign.get('headline') or 'Build Your Next AI Agent'
     intro=campaign.get('intro') or 'Explore practical agent workflows, try a focused demo, and see what it takes to make the result trustworthy.'
-    cards=[]
-    for i,t in enumerate(c['topics']):
-        source=('<p class="source"><a href="'+e(t['source'])+'" target="_blank" rel="noopener noreferrer">'+e(t['sourceTitle'])+' ↗</a><span>NVIDIA Blog · '+e(t['sourceDate'])+'</span></p>') if t.get('sourceTitle') else '<p class="pending">Source-backed theme pending.</p>'
-        cards.append('<article class="theme-card"><div class="theme-art"><strong>%02d</strong><span>Booth-%d</span></div><div class="theme-body"><small>'%(i+1,i+1)+e(t['topic'])+'</small><h3>'+e(t['demo'])+'</h3><p>'+e(t.get('action','Dylan is reviewing current NVIDIA themes.'))+'</p><div class="outcome"><b>Your takeaway</b><p>'+e(t.get('outcome','A concrete participant outcome will appear with the researched theme.'))+'</p></div>'+source+event_insights.design_notes(t).replace(' open','')+'</div></article>')
+    cards=[theme_card(t,i,c['session']) for i,t in enumerate(c['topics'])]
     research=c.get('research',{})
     note=' · '.join(filter(None,[c.get('demoSource','Live theme research has not completed.'),'Retrieved '+research['retrieved'][:10] if research.get('retrieved') else '']))
     post=('<article class="social-post"><div class="social-author"><div class="social-avatar">BaC</div><div><b>Build-a-Claw · '+e(b['city'])+'</b><small>LinkedIn post draft · not published</small></div></div><div class="social-content"><h3>'+e(title)+'</h3><p>'+e(campaign['body'])+'</p><div class="hashtags">'+e(' '.join(campaign.get('hashtags',[])))+'</div></div></article>') if campaign.get('body') else '<div class="social-post social-placeholder">Morgan’s event headline and LinkedIn post will appear here after the research and operations handoffs.</div>'

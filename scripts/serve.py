@@ -129,12 +129,12 @@ class Handler(SimpleHTTPRequestHandler):
                 import event_planner
                 return self.json_response({'templates':event_planner.TEMPLATES,'topics':event_planner.TOPICS,'harnesses':event_planner.HARNESS})
             if parsed.path == '/api/survey-report':
-                return self.json_response(studio.survey_report(owner, parse_qs(parsed.query).get('id',[''])[0]))
+                return self.json_response(studio.survey_report(studio.job_owner(owner, parse_qs(parsed.query).get('id',[''])[0]), parse_qs(parsed.query).get('id',[''])[0]))
             if parsed.path == '/api/telemetry':
                 import telemetry
                 return self.json_response(telemetry.report(studio, owner))
             if parsed.path == '/api/runtime':
-                return self.json_response(studio.runtime_status())
+                return self.json_response(studio.runtime_status(retry=parse_qs(parsed.query).get('retry') == ['1']))
             if parsed.path == '/api/security':
                 from security_lab import public_report
                 return self.json_response(public_report(studio.directory))
@@ -145,9 +145,9 @@ class Handler(SimpleHTTPRequestHandler):
                 values = query.get('role', [])
                 if set(query) != {'role'} or len(values) != 1 or not values[0].isascii() or not values[0].isdecimal():
                     raise Problem('Choose one valid crew member.')
-                return self.json_response(studio.crew_policy_report(owner, int(values[0])))
+                return self.json_response(studio.crew_policy_report(studio.crew_owner(owner), int(values[0])))
             if parsed.path == '/api/evidence':
-                return self.json_response(studio.evidence(owner, parse_qs(parsed.query).get('id', [''])[0]))
+                return self.json_response(studio.evidence(studio.job_owner(owner, parse_qs(parsed.query).get('id',[''])[0]), parse_qs(parsed.query).get('id',[''])[0]))
             if parsed.path == '/api/agent-documents':
                 from agent_documents import read_documents
                 query=parse_qs(parsed.query,keep_blank_values=True)
@@ -158,12 +158,13 @@ class Handler(SimpleHTTPRequestHandler):
                     value=query['role'][0]
                     if not value.isascii() or not value.isdecimal():raise Problem('Choose a valid crew member.')
                     role=int(value)
-                return self.json_response(read_documents(studio,owner,role))
+                return self.json_response(read_documents(studio,studio.crew_owner(owner) if role is not None else owner,role))
             if parsed.path == '/api/file':
                 name = parse_qs(parsed.query).get('path', [''])[0]
                 if not (name.startswith(('inbox/', 'artifacts/')) or name in ('MEMORY.md', 'IDENTITY.md', 'SOUL.md', 'AGENTS.md')):
                     raise Problem('File is not available.', 404)
-                path = safe_file(studio.workspace(owner), name, True)
+                job_id = parse_qs(parsed.query).get('job',[''])[0]
+                path = safe_file(studio.workspace(studio.job_owner(owner,job_id)),name,True) if job_id else studio.available_file(owner, name)
                 if path.suffix.lower() in ('.png','.jpg','.webp'):
                     mime={'.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp'}[path.suffix.lower()]
                     return self.json_response({'path':name,'encoding':'base64','content':base64.b64encode(path.read_bytes()).decode(),'mime':mime})
@@ -232,16 +233,16 @@ class Handler(SimpleHTTPRequestHandler):
                 '/api/agents': lambda: studio.add_agent(row['id'], data),
                 '/api/onboard': lambda: studio.onboard(owner, data),
                 '/api/profile': lambda: studio.configure(owner, data),
-                '/api/delete-agent': lambda: studio.delete_agent(owner, data),
+                '/api/delete-agent': lambda: studio.delete_agent(owner, data, enqueue_only=True),
                 '/api/agent-policy': lambda: studio.policy_change(owner, data),
-                '/api/crew-policy': lambda: studio.crew_policy_change(owner, data),
-                '/api/jobs': lambda: studio.enqueue(owner, data),
+                '/api/crew-policy': lambda: studio.crew_policy_change(studio.crew_owner(owner), data),
+                '/api/jobs': lambda: studio.enqueue(studio.crew_owner(owner) if data.get('kind') in ('crew','crew-chat') else owner, data, lead=owner if data.get('kind')=='crew' and data.get('preset') is not True else None),
                 '/api/event-plan': lambda: studio.event_plan(data),
-                '/api/survey-replan': lambda: studio.survey_replan(owner, data),
+                '/api/survey-replan': lambda: studio.survey_replan(studio.job_owner(owner, data.get('id')), data),
                 '/api/upload': lambda: studio.upload(owner, data),
-                '/api/decision': lambda: studio.decision(owner, data.get('id'), data.get('action')),
-                '/api/prepare-demo': lambda: studio.prepare_demo(owner, data),
-                '/api/retry-reaction': lambda: studio.retry_reaction(owner, data),
+                '/api/decision': lambda: studio.decision(studio.job_owner(owner, data.get('id')), data.get('id'), data.get('action')),
+                '/api/prepare-demo': lambda: studio.prepare_demo(studio.crew_owner(owner), data),
+                '/api/retry-reaction': lambda: studio.retry_reaction(studio.job_owner(owner, data.get('id')), data),
                 '/api/event-reset': lambda: studio.reset_event_board(owner),
                 '/api/reset': lambda: studio.reset_board(owner),
                 '/api/crew-chat-reset': lambda: studio.reset_crew_chats(owner),

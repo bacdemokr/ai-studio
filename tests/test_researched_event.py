@@ -58,14 +58,14 @@ class ResearchedEventTests(unittest.TestCase):
         return self.studio.state(self.owner)['jobs'][0]
 
     def test_rotation_matches_booths_and_breaks_at_every_scale(self):
-        for n in range(3,7):
+        for n in range(2,7):
             for days in (1,2,5):
                 with self.subTest(themes=n,days=days):
                     b,c=plan({'schema':2,'themeCount':n,'attendees':n*100,'days':days,'duration':120})
-                    self.assertEqual(c['boothCount'],n);self.assertEqual(c['presenterCount'],2*n)
-                    self.assertEqual(c['reliefPresenters'],n)
-                    self.assertTrue(all(t['presenters']==2 for t in c['topics']))
-                    self.assertEqual(c['staff'],2*n+c['floorHosts']+1)
+                    self.assertEqual(c['boothCount'],n);self.assertGreaterEqual(c['presenterCount'],n);self.assertLessEqual(c['presenterCount'],2*n)
+                    self.assertEqual(c['reliefPresenters'],c['presenterCount']-n)
+                    self.assertTrue(all(1<=t['presenters']<=2 for t in c['topics']))
+                    self.assertEqual(c['staff'],c['presenterCount']+c['floorHosts']+1)
                     self.assertEqual(sum(r['attendees'] for r in c['schedule']),b['attendees'])
                     assigned=set()
                     for row in c['schedule']:
@@ -77,24 +77,25 @@ class ResearchedEventTests(unittest.TestCase):
                             seq=[r for r in c['presenterDuty'] if r['day']==day and r['presenter']==person];run=0
                             for r in seq:
                                 run=run+1 if r['status']=='Presenting' else 0
-                                self.assertLessEqual(run,1)
+                                self.assertLessEqual(run*c['session'],max(45,c['session']))
                     for booth in c['booths']:
-                        self.assertEqual(len(set(r['presenter'] for r in c['schedule'] if r['booth']==booth['booth'])),2)
+                        self.assertEqual(len(set(r['presenter'] for r in c['schedule'] if r['booth']==booth['booth'])),next(t['presenters'] for t in c['topics'] if t['id']==booth['topicId']))
                     for person in set(r['presenter'] for r in c['schedule']):
                         self.assertEqual(len({r['topicId'] for r in c['schedule'] if r['presenter']==person}),1,'A presenter keeps the same topic on every day')
                     self.assertEqual(b['harnesses'],['openclaw'])
         b,c=plan({'schema':2,'themeCount':6,'attendees':1});self.assertEqual(len(c['booths']),6)
 
-    def test_sparse_default_schedule_still_rotates(self):
-        for n in range(3,7):
+    def test_sparse_default_schedule_uses_one_presenter_when_breaks_fit(self):
+        for n in range(2,7):
             b,c=plan({'themeCount':n,'attendees':120})
             for booth in c['booths']:
                 people=[r['presenter'] for r in c['schedule'] if r['booth']==booth['booth']]
-                self.assertGreater(len(set(people)),1)
-                self.assertTrue(all(a!=b for a,b in zip(people,people[1:])))
+                topic=next(t for t in c['topics'] if t['id']==booth['topicId'])
+                from event_staffing import presenter_limit
+                self.assertEqual(len(set(people)),presenter_limit(b,c['session'],topic['groups']))
 
     def test_invalid_counts_and_impossible_capacity(self):
-        for n in (2,7,True,'4'):
+        for n in (1,7,True,'4'):
             with self.assertRaises(ValueError):plan({'themeCount':n})
         with self.assertRaises(ValueError):plan({'themeCount':3,'attendees':3000,'duration':30,'groupSize':1})
 
@@ -114,9 +115,9 @@ class ResearchedEventTests(unittest.TestCase):
         page=(self.studio.workspace(self.owner)/p['website']['path']).read_text()
         self.assertIn('Build Agents. See What Changes.',page);self.assertIn('LinkedIn post draft',page)
         self.assertIn('Presenter shifts and breaks',page)
-        self.assertIn('Two dedicated specialists per theme',page)
-        self.assertIn('No cross-topic assignments',page)
-        self.assertIn('same pair stays with that topic',self.adapter.prompts[2])
+        self.assertIn('Staffing follows visit demand',page)
+        self.assertIn('No visit marks unused capacity',page)
+        self.assertIn('use one topic specialist',self.adapter.prompts[2])
         for booth in p['capacity']['booths']:
             self.assertIn(booth['presenter'],allxml)
             for row in p['capacity']['schedule']:

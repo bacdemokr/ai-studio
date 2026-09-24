@@ -111,15 +111,18 @@ class TwelveAgentTests(unittest.TestCase):
         for owner in set(self.owners) - set(protected):
             self.assertEqual(self.studio.policy_report(owner)['mode'], 'standard')
 
-    def test_location_updates_all_sixty_workspaces_without_losing_notes(self):
+    def test_location_updates_twelve_personal_and_one_shared_team_without_losing_notes(self):
+        team = self.studio.crew_owner(self.owner)
         for owner in self.owners:
             (self.studio.workspace(owner) / 'MEMORY.md').write_text('private ' + owner)
         self.studio.enqueue(self.owner, {'prompt': 'Hello'})
         runtime_settings.save(self.studio, {'section': 'location', 'location': {'city': 'Seoul'}})
         for owner in self.owners:
-            for role in (None, 0, 1, 2, 3):
+            for role in (None,):
                 self.assertIn('Seoul', (self.studio.workspace(owner, role) / 'USER.md').read_text())
             self.assertEqual((self.studio.workspace(owner) / 'MEMORY.md').read_text(), 'private ' + owner)
+        for role in range(4):
+            self.assertIn('Seoul', (self.studio.workspace(team, role)/'USER.md').read_text())
         self.assertEqual(self.studio.state(self.owner)['jobs'][0]['status'], 'queued')
 
     def test_restart_interrupts_running_work_without_replaying_it_and_keeps_queue(self):

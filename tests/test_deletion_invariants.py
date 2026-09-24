@@ -70,6 +70,20 @@ class CleanupStateTests(unittest.TestCase):
                 with self.assertRaises(rt.NativeCleanupPending):rt.remove(nid,Path(temp)/'absent')
                 delete.assert_called_once_with(nid)
 
+    def test_only_empty_native_parent_is_removed_after_confirmed_cleanup(self):
+        for pending,remaining in itertools.product((False,True),repeat=2):
+            with self.subTest(pending=pending,remaining=remaining),tempfile.TemporaryDirectory() as temp,patch.object(rt,'root',return_value=Path(temp)):
+                rt.save_config(rt.initial_config());nid='bac-'+'a'*24
+                parent=Path(temp)/'state/agents'/nid;parent.mkdir(parents=True)
+                if remaining:(parent/'keep').write_text('not owned by parent cleanup')
+                report={'agentId':nid,'failed':[],'purgeFailed':pending}
+                with patch.object(rt,'quiesce_native'),patch('agent_policy.runtimes',return_value=[]),patch.object(rt,'delete_native',return_value=json.dumps(report)):
+                    if pending:
+                        with self.assertRaises(rt.NativeCleanupPending):rt.remove(nid,Path(temp)/'absent')
+                    else:rt.remove(nid,Path(temp)/'absent')
+                self.assertEqual(parent.exists(),pending or remaining)
+                if remaining:self.assertEqual((parent/'keep').read_text(),'not owned by parent cleanup')
+
     def test_rejected_or_malformed_confirmation_never_completes(self):
         nid='bac-'+'a'*24
         for report in ([],None,{}, {'agentId':nid}, {'agentId':nid,'failed':None}, {'agentId':nid,'failed':[],'ok':False}, {'agentId':'bac-'+'b'*24,'failed':[]}):
@@ -106,15 +120,15 @@ class CleanupCrashTests(unittest.TestCase):
     setUp=base.DeletionTests.setUp
     tearDown=base.DeletionTests.tearDown
 
-    def test_only_proven_unused_targets_skip_individual_native_cleanup(self):
+    def test_only_proven_unused_personal_runtime_skips_native_cleanup(self):
         from unittest.mock import Mock
         nid=self.studio.profile(self.scout)['id']
-        self.adapter.unregistered_deletion_targets=Mock(return_value={nid+'-r0',nid+'-r2'})
-        with patch.object(self.adapter,'remove',wraps=self.adapter.remove) as remove:
+        self.adapter.unregistered_deletion_targets=Mock(return_value={nid})
+        with patch.object(self.adapter,'remove') as remove:
             self.studio.delete_agent(self.scout,{'name':'Scout'})
-        self.assertEqual([call.args[0] for call in remove.call_args_list],[nid,nid+'-r1',nid+'-r3'])
-        self.assertEqual(len(self.adapter.unregistered_deletion_targets.call_args.args[0]),5)
-        self.assertFalse(any(self.studio.workspace(self.scout).parent.glob(self.scout+'*')))
+            remove.assert_not_called()
+        self.assertEqual(self.adapter.unregistered_deletion_targets.call_args.args[0],[(nid,self.studio.workspace(self.scout))])
+        self.assertFalse(self.studio.workspace(self.scout).exists())
         self.assertIsNotNone(self.studio.profile(self.owner))
 
     def test_failed_batch_inspection_preserves_files_and_fences_agent(self):
@@ -145,9 +159,9 @@ class CleanupCrashTests(unittest.TestCase):
         self.studio.finish_pending_deletions()
         self.assertIsNone(self.studio.profile(self.scout));self.assertIsNone(self.studio.profile(self.owner))
 
-    def test_restart_after_every_native_target_finishes_remaining_plan(self):
+    def test_restart_after_personal_native_cleanup_reconciles_before_removal(self):
         # SystemExit represents process death: bypass ordinary Exception handling.
-        for boundary in range(5):
+        for boundary in range(1):
             with self.subTest(boundary=boundary):
                 target=self.studio.add_agent(self.owner,{**self.profile,'name':'Crash'+str(boundary)})['agentId']
                 original=self.adapter.remove;seen=[]
@@ -161,7 +175,7 @@ class CleanupCrashTests(unittest.TestCase):
                 restarted=Studio(self.temp.name,self.adapter,start_worker=False,recover=True)
                 with patch.object(self.adapter,'remove',wraps=original) as resumed:
                     restarted.finish_pending_deletions()
-                    self.assertEqual(len(resumed.call_args_list),5,'Persist targets even after native config/workspace disappeared')
+                    self.assertEqual(len(resumed.call_args_list),1,'Reconcile the personal identity even after native config/workspace disappeared')
                 self.assertIsNone(restarted.profile(target));self.assertIsNotNone(restarted.profile(self.owner))
                 self.assertFalse(any(restarted.workspace(target).parent.glob(target+'*')))
                 self.studio=restarted

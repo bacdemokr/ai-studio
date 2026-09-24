@@ -13,7 +13,7 @@ class CrewChatTests(unittest.TestCase):
         self.owner = self.person['id']
 
     def send(self, role, prompt):
-        job = self.studio.enqueue(self.owner, {'kind': 'crew-chat', 'crewRole': role, 'prompt': prompt})
+        job = self.studio.enqueue(self.studio.crew_owner(self.owner), {'kind': 'crew-chat', 'crewRole': role, 'prompt': prompt})
         self.studio.execute(self.studio.next_job())
         return job
 
@@ -70,7 +70,7 @@ class CrewChatTests(unittest.TestCase):
         second=self.studio.add_agent(self.owner, {'name':'Second','skills':['documents']})['agentId']
         outsider=self.studio.session()[0]['id']
         for owner in (self.owner,second,outsider):
-            self.studio.enqueue(owner, {'kind':'crew-chat','crewRole':0,'prompt':'Hello'})
+            self.studio.enqueue(self.studio.crew_owner(owner), {'kind':'crew-chat','crewRole':0,'prompt':'Hello'})
             self.studio.execute(self.studio.next_job())
         personal=self.studio.enqueue(self.owner, {'kind':'chat','prompt':'Keep my personal conversation'})
         self.studio.execute(self.studio.next_job())

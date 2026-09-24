@@ -100,7 +100,7 @@ def start():
         raise RuntimeError(f'Port {r.gateway_port()} is already used by another or still-starting runtime. Inspect ./bac dev runtime check before retrying.')
     print(r.cli('config', 'validate'))
     c.install_unit('bac-openclaw', [r.root() / 'package/node_modules/.bin/openclaw', 'gateway', 'run'],
-                   {**c.service_environment(), **{k: r.environment()[k] for k in ('PATH', 'OPENCLAW_STATE_DIR', 'OPENCLAW_CONFIG_PATH')}})
+                   {**c.service_environment(), **{k: r.environment()[k] for k in ('PATH', 'NODE_OPTIONS', 'OPENCLAW_STATE_DIR', 'OPENCLAW_CONFIG_PATH')}})
     c.service('bac-openclaw', 'enable')
     c.service('bac-openclaw', 'start')
     print(f'OpenClaw starting on loopback port {r.gateway_port()}. ./bac dev runtime check shows readiness.')

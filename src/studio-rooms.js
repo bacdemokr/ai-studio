@@ -89,7 +89,7 @@ function renderRooms(){
   if(!roomsReady){roomsReady=true;fillCreator(true);let saved;try{saved=sessionStorage.getItem('bac-studio-room');}catch{}setRoom(data.profile?(roomCopy[saved]?saved:'lounge'):'workshop');window.BacCampus?.overview({instant:true});}
   renderRoomVisibility();
   const agents=data.agents||[];
-  el('gateway-state').textContent=runtime.testFixture?'Test fixture · no live gateway':runtime.gateway?'Gateway connected':'Not connected';
+  el('gateway-state').textContent=runtime.testFixture?'Test fixture · no live gateway':gatewayLabel();
   el('model-state').textContent=runtime.testFixture?'Test fixture · no live model':runtime.model?'Connected':'Not connected';
   el('shell-state').textContent=runtime.openshell||'Optional · not configured';
   if(data.profile){const a=data.profile.avatar||{};el('portrait').dataset.body=a.body||'classic';el('portrait').dataset.accessory=a.accessory||'antenna';el('portrait').style.setProperty('--avatar-accent',appearanceColors[a.color]||appearanceColors.green);}
@@ -126,47 +126,62 @@ el('tone-picker').onclick=e=>{const button=e.target.closest('[data-tone]');if(bu
 root.addEventListener('bac:world-room',e=>setRoom(e.detail.room,{fromWorld:true}));
 el('room-action').onclick=crewForm;
 el('edit-agent').onclick=()=>agentForm(false);el('cancel-create').onclick=()=>{if(editingInPlace){editingInPlace=false;fillCreator(true);renderRoomVisibility();}else setRoom('lounge');};
+function forgetDeletedAgent(target){
+  stateCache.clear();
+  for(const key of chatImageDrafts.keys())if(key.startsWith(target+':'))chatImageDrafts.delete(key);
+  for(const key of crewDrafts.keys())if(key.startsWith(target+':'))crewDrafts.delete(key);
+  try{const layout=JSON.parse(localStorage.getItem('bac-lounge-layout-v1')||'{}');delete layout[target];localStorage.setItem('bac-lounge-layout-v1',JSON.stringify(layout));}catch{}
+}
 async function deleteAgentAndWait(target,name,onWaiting=()=>{}){
   const result=await api('delete-agent',{name},target);
-  if(!result.deleting)return result;
+  if(!result.deleting){forgetDeletedAgent(target);return result;}
+  return waitForAgentDeletion(target,name,onWaiting);
+}
+async function waitForAgentDeletion(target,name,onWaiting=()=>{}){
   onWaiting();
   while(true){
     await new Promise(resolve=>setTimeout(resolve,1000));
     // Query the collection without the removed identity so deletion cannot turn polling into a 404.
     const state=await api('state',undefined,'');
     const agent=state.agents.find(a=>a.key===target);
-    if(!agent)return {deleted:target,agentId:state.agentId};
+    if(!agent){forgetDeletedAgent(target);return {deleted:target,agentId:state.agentId};}
     if(!agent.deletionWaiting)throw new Error('Cleanup could not finish for '+name+'. Retry Delete agent.');
+    onWaiting(agent);
   }
 }
 el('delete-agent').onclick=()=>{
   if(!data.profile||pendingWrites||changingAgent||removingAgent)return;
   const target=agentId,name=data.profile.name;
-  dialog('YOUR COLLECTION',`<div class="studio-delete-identity">${avatarBadge(data.profile.avatar)}<span>REMOVE A TEAMMATE</span></div><h3>Delete ${escape(name)}?</h3><p>Remove this agent, its conversation, saved memory and workspace files from your studio.</p><p>Pending requests and scheduled follow-ups will be cancelled. Any active crew task involving this agent will also stop. Deletion finishes after the current call ends.</p><p class="studio-muted">You cannot undo this in the app. Completed crew packages saved by other agents remain. OpenClaw may move native files to the host’s Trash.</p><p id="studio-delete-error" role="alert" hidden></p><div class="studio-delete-actions"><button class="studio-secondary" id="studio-delete-cancel" autofocus>Keep agent</button><button class="studio-danger" id="studio-delete-confirm">Delete ${escape(name)}</button></div>`);
+  dialog('YOUR COLLECTION',`<div class="studio-delete-identity">${avatarBadge(data.profile.avatar)}<span>REMOVE A TEAMMATE</span></div><h3>Delete ${escape(name)}?</h3><p>Remove this agent, its conversation, saved memory and workspace files from your studio.</p><p>Pending requests and scheduled follow-ups will be cancelled. Any active crew task involving this agent will also stop. Deletion finishes after the current call ends.</p><p class="studio-muted">You cannot undo this in the app. Completed crew packages saved by other agents remain. Agent-owned runtime files and temporary cleanup records are removed when deletion finishes.</p><p id="studio-delete-error" role="alert" hidden></p><div class="studio-delete-actions"><button class="studio-secondary" id="studio-delete-cancel" autofocus>Keep agent</button><button class="studio-danger" id="studio-delete-confirm">Delete ${escape(name)}</button></div>`);
   el('delete-cancel').onclick=()=>el('dialog').close();el('delete-cancel').focus();
   el('delete-confirm').onclick=async()=>{
     if(target!==agentId)return;
     removingAgent=true;++refreshVersion;
     el('dialog').close();
-    const progress=document.createElement('p');progress.className='studio-delete-progress';progress.setAttribute('role','status');
-    progress.textContent='Deleting '+name+' · cleaning up its workspace and runtime…';
-    el('companion').prepend(progress);el('delete-agent').disabled=true;
+    el('delete-agent').disabled=true;
     try{
-      const result=await deleteAgentAndWait(target,name,()=>{progress.textContent='Deleting '+name+' · finishing its current work and cleaning up…';});
-      const state=await api('state',undefined,result.agentId);
-      const viewingRoom=room;openAgentState(state);fillCreator(true);setRoom(viewingRoom==='lounge'?(data.profile?'lounge':'workshop'):viewingRoom);
+      const result=await deleteAgentAndWait(target,name,agent=>{
+        // The durable server fence is in place. Release navigation while native
+        // cleanup continues; never turn an acknowledgement into "deleted".
+        removingAgent=false;
+        if(target===agentId){data.deleting=true;const row=data.agents.find(a=>a.key===target);if(row)Object.assign(row,{deleting:true,deletionWaiting:true,deletionProgress:agent?.deletionProgress||'Queued for cleanup'});render();}
+      });
+      if(target===agentId&&!changingAgent){
+        const state=await api('state',undefined,result.agentId);
+        if(target===agentId&&!changingAgent){const viewingRoom=room;openAgentState(state);fillCreator(true);setRoom(viewingRoom==='lounge'?(data.profile?'lounge':'workshop'):viewingRoom);}
+      }
       alert(name+' was deleted.');root.querySelector('.world-room-map [data-world-room="'+room+'"]')?.focus({preventScroll:true});
     }catch(error){alert(error.message);}
-    finally{removingAgent=false;progress.remove();el('delete-agent').disabled=false;refresh();}
+    finally{removingAgent=false;render();refresh();}
   };
 };
 el('connection-setup').onclick=setup;el('connection-security').onclick=()=>setRoom('policies');
 el('onboarding').onsubmit=async e=>{
-  e.preventDefault();if(hiringArrival)return;syncCreatorTone();const mode=draftMode,target=draftOwner,first=!data.agents?.length;
+  e.preventDefault();if(hiringArrival)return;syncCreatorTone();const mode=draftMode,target=mode==='new'?agentId:draftOwner,first=!data.agents?.length;
   const payload={name:el('name').value,...creatorPrompt(),persona,tone:draftTone,verbosity:'balanced',skills:[...el('skill-picker').querySelectorAll('input:checked')].map(x=>x.value),avatar:{...draftAvatar},protection:el('onboarding').querySelector('[name=protection]:checked').value};
   hiringArrival=true;el('create').disabled=true;el('onboarding').inert=true;
   try{
-    const result=await api(mode==='edit'?'profile':first?'onboard':'agents',payload,target);
+    const result=await api(mode==='edit'?'profile':first?'onboard':'agents',payload,mode==='new'&&!first?'':target);
     // Bind the arrival to this response, never to a changing workspace selection.
     const createdId=mode==='new'&&!first?result.agentId:target;
     if(mode==='new'){++refreshVersion;openAgentState(await api('state',undefined,createdId));}else await refresh();

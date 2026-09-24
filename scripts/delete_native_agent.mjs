@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 const [root, agentId, operation] = process.argv.slice(2);
-if (operation !== undefined && !['--confirm-deleted','--quiesce'].includes(operation)) throw Error('Invalid cleanup operation');
+if (operation !== undefined && !['--confirm-deleted','--quiesce','--forget-deleted'].includes(operation)) throw Error('Invalid cleanup operation');
 if (agentId !== '--list' && !/^bac-[a-f0-9]{24}(?:-r(?:0|[1-9][0-9]*))?$/.test(agentId || '')) throw Error('Invalid cleanup identity');
 const pkg = path.join(root, 'package/node_modules/openclaw');
 if (JSON.parse(await fs.readFile(path.join(pkg, 'package.json'), 'utf8')).version !== '2026.9.4') throw Error('Unsupported native runtime version');
@@ -32,6 +32,49 @@ async function confirmCompletedDeletion() {
   }
   console.log(JSON.stringify({ok:true, agentId, failed:[], alreadyDeleted:true, transport:'completed-journal'}));
   return true;
+}
+async function forgetDeleted() {
+  const exclusive = await nativeExport('mutate-', 'withConfigMutationExclusive');
+  return exclusive(async config => {
+    if (config.agents?.entries?.[agentId]) throw Error('Agent is still registered');
+    try { await fs.lstat(path.join(root,'state/agents',agentId)); throw Error('Native data remains'); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+    const read = await nativeExport('agent-deletion-journal-', 'readAgentDeletionJournal');
+    const journal = read(agentId);
+    if (journal) {
+      if (!journal.cleanupCompleted || !journal.deleteFiles) throw Error('Native cleanup is pending');
+      for (const pathname of [journal.workspaceDir,journal.agentDir,journal.sessionsDir,...journal.databasePaths]) {
+        if (typeof pathname !== 'string' || !path.isAbsolute(pathname)) throw Error('Invalid cleanup path');
+        try { await fs.lstat(pathname); throw Error('Native cleanup path remains'); }
+        catch (error) { if (error.code !== 'ENOENT') throw error; }
+      }
+    }
+    // Native config rotation otherwise keeps the deleted identity in backups.
+    // Hold the native config writer lock and remove only that identity; keep
+    // all remaining agents, credentials, defaults and recovery settings intact.
+    for (const suffix of ['.bak','.bak.1','.bak.2','.bak.3','.bak.4','.last-good']) {
+      const file=process.env.OPENCLAW_CONFIG_PATH+suffix;
+      let stat;
+      try { stat=await fs.lstat(file); } catch(error) { if(error.code==='ENOENT')continue; throw error; }
+      if(!stat.isFile() || stat.nlink!==1)throw Error('Config backup is redirected');
+      const backup=JSON.parse(await fs.readFile(file,'utf8'));
+      let changed=false;
+      if (Object.hasOwn(backup.agents?.entries || {},agentId)) {delete backup.agents.entries[agentId];changed=true;}
+      if(Array.isArray(backup.bindings)) {
+        const filtered=backup.bindings.filter(binding=>binding.agentId!==agentId);
+        if(filtered.length!==backup.bindings.length){backup.bindings=filtered;changed=true;}
+      }
+      if(changed) {
+        const write=await nativeExport('json-store-','writeJsonFileAtomically');
+        await write(file,backup);
+      }
+    }
+    if(journal) {
+      const claim=await nativeExport('agent-lifecycle-registry-','claimCompletedAgentDeletion');
+      if(!claim(agentId,journal.operationId))throw Error('Cleanup completion changed');
+    }
+    return {agentId,forgotten:true};
+  });
 }
 async function deleteThroughGateway() {
   const config = JSON.parse(await fs.readFile(process.env.OPENCLAW_CONFIG_PATH, 'utf8'));
@@ -118,7 +161,9 @@ async function quiesceAgent() {
     await new Promise(resolve=>setTimeout(resolve,250));
   }
 }
-if (operation === '--quiesce') {
+if (operation === '--forget-deleted') {
+  console.log(JSON.stringify(await forgetDeleted()));
+} else if (operation === '--quiesce') {
   console.log(JSON.stringify(await quiesceAgent()));
 } else if (operation === '--confirm-deleted') {
   // Reconciliation from the parent process must never issue another delete.

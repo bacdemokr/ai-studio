@@ -446,3 +446,5 @@
 #agent-campus .world-room-map [data-world-room=mission]{right:0;align-items:flex-start;text-align:left;white-space:normal;line-height:1.35}
 .world-room-map [data-world-room=mission] i{flex-shrink:0}
 #agent-campus .world-campus-room[data-world-room=mission]{max-width:260px;white-space:normal}
+
+#agent-campus .campus-stage-top .campus-sim[data-slow=true]{color:#f0cf88;background:#332c1d;border:1px solid #9a7c3e;font-weight:500}

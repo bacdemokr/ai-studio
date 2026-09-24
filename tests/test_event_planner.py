@@ -32,7 +32,9 @@ class PlanningTests(unittest.TestCase):
                     self.assertLessEqual(r['day'],b['days'])
                     start,end=[int(t[:2])*60+int(t[3:]) for t in (r['start'],r['end'])]
                     self.assertEqual(end-start,c['session'])
-                    self.assertLessEqual(end,600+b['duration'])
+                    event_start=int(b['startTime'][:2])*60+int(b['startTime'][3:])
+                    self.assertGreaterEqual(start,event_start)
+                    self.assertLessEqual(end,event_start+b['duration'])
                 self.assertEqual(set(r['day'] for r in c['schedule']),set(range(1,b['days']+1)))
         _,busy=planner.plan({'attendees':240,'duration':120,'days':1,'topics':['physical','vision','cudax','agents']});self.assertTrue(busy['adjusted']);self.assertEqual(busy['session'],10)
 
@@ -136,13 +138,13 @@ class EventPackageTests(unittest.TestCase):
         self.studio.survey_answer(token,{'visitor':'a'*32,'topic':'agents','experience':'new','rating':5})
         self.studio.survey_answer(token,{'visitor':'a'*32,'topic':'multiagent','experience':'new','rating':4})
         restarted=Studio(self.temp.name,self.adapter,start_worker=False)
-        report=restarted.survey_report(self.owner,self.job);self.assertEqual(report['total'],1);self.assertEqual(report['rating'],4)
+        report=restarted.survey_report(restarted.job_owner(self.owner,self.job),self.job);self.assertEqual(report['total'],1);self.assertEqual(report['rating'],4)
         self.assertEqual([t['count'] for t in report['topics']],[0,1,0])
         other=restarted.session()[0]['id']
         with self.assertRaises(Problem):restarted.survey_report(other,self.job)
         with self.assertRaises(Problem):restarted.survey_replan(other,{'id':self.job})
         with self.assertRaises(Problem):restarted.survey_answer(token,{'visitor':'b'*32,'topic':'bad','experience':'new','rating':5})
-        new=restarted.survey_replan(self.owner,{'id':self.job});self.assertNotEqual(new['id'],self.job)
+        new=restarted.survey_replan(restarted.job_owner(self.owner,self.job),{'id':self.job});self.assertNotEqual(new['id'],self.job)
         state=restarted.state(self.owner)['jobs'][0];self.assertEqual(state['payload']['brief']['topicWeights'],[0,1,0]);self.assertEqual(state['payload']['brief']['attendees'],120)
         self.assertEqual(state['payload']['source'],'survey:'+self.job)
         page=survey_page(token,{**restarted.survey_definition(token),'title':'<script>bad()</script>'})

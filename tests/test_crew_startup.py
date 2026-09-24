@@ -17,7 +17,8 @@ class CrewStartupTests(unittest.TestCase):
         self.addCleanup(folder.cleanup)
         self.adapter = ProtectedAdapter()
         self.studio = Studio(folder.name, self.adapter, start_worker=False)
-        self.owner = self.studio.session()[0]['id']
+        self.personal = self.studio.session()[0]['id']
+        self.owner = self.studio.crew_owner(self.personal)
 
     def warmup(self):
         return self.studio.prepare_demo(self.owner, {'background': True})
@@ -91,8 +92,8 @@ class CrewStartupTests(unittest.TestCase):
     def test_foreground_work_takes_priority_and_new_guests_can_join(self):
         self.warmup()
         profile = dict(name='Scout', persona='analyst', skills=['weather'], protection='standard')
-        self.studio.onboard(self.owner, profile)
-        guest = self.studio.add_agent(self.owner, {**profile, 'name': 'Pixel'})['agentId']
+        self.studio.onboard(self.personal, profile)
+        guest = self.studio.add_agent(self.personal, {**profile, 'name': 'Pixel'})['agentId']
         chat = self.studio.enqueue(guest, {'prompt': 'Hello'})
         row = self.studio.next_job()
         self.assertEqual(row['id'], chat['id'])
@@ -106,14 +107,14 @@ class CrewStartupTests(unittest.TestCase):
 
     def test_hidden_preparation_does_not_consume_user_mission_quota(self):
         profile = dict(name='Scout', persona='guide', skills=['weather'])
-        self.studio.onboard(self.owner, profile)
-        owners = [self.owner] + [self.studio.add_agent(self.owner, {**profile, 'name': name})['agentId'] for name in ('Pixel', 'Orbit')]
+        self.studio.onboard(self.personal, profile)
+        owners = [self.personal] + [self.studio.add_agent(self.personal, {**profile, 'name': name})['agentId'] for name in ('Pixel', 'Orbit')]
         for owner in owners:
             self.studio.prepare_demo(owner, {'background': True})
         for owner in owners:
             self.studio.enqueue(owner, {'prompt': 'Hello'})
         with self.assertRaisesRegex(Problem, 'three pending missions'):
-            self.studio.enqueue(self.owner, {'prompt': 'Fourth message'})
+            self.studio.enqueue(self.personal, {'prompt': 'Fourth message'})
         self.assertEqual(self.studio.next_job()['kind'], 'chat')
 
 

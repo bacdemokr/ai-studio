@@ -121,6 +121,10 @@ function animateRoundtable(dt){
  for(const guest of meetingGuests){
   if(guest.phase==='returned')continue;
   const resident=residents.find(r=>r.key===guest.key);
+  if(resident?.deleting){
+   if(meetingSpeaker===guest.key)meetingSpeaker='';
+   if(!['returning','returned'].includes(guest.phase))returnMeetingGuest(guest);
+  }
   if(resident){resident.atRoundtable=true;resident.mount.visible=false;resident.node.hidden=true;}
   guest.travel+=dt;
   if(['entering','returning'].includes(guest.phase)){

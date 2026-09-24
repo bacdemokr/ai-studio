@@ -37,6 +37,10 @@ class PolicyControls:
             profile = self.profile(owner)
             if not profile:
                 raise Problem('Create a personal agent first.', 404)
+            with self.db() as db:
+                state=db.execute('SELECT deleting FROM agents WHERE id=?',(owner,)).fetchone()
+            if not state:raise Problem('Agent not found.',404)
+            if state['deleting']:raise Problem('This workspace is being deleted.',409)
             return profile
         if type(role) is not int or not 0 <= role < len(CREW_CATALOG):
             raise Problem('Choose a valid crew member.')
@@ -48,7 +52,7 @@ class PolicyControls:
             raise Problem('Agent not found.', 404)
         if account['deleting']:
             raise Problem('This workspace is being deleted.', 409)
-        return {**CREW_CATALOG[role], 'id':'bac-' + owner + '-r' + str(role),
+        return {**CREW_CATALOG[role], 'id':self.crew_native_id(owner, role),
                 'name':ROLES[role][0], 'role':ROLES[role][1]}
 
     def saved_policy(self, owner, role=None):
@@ -108,7 +112,11 @@ class PolicyControls:
         since = latest['created'] if latest else None
         if radar_hosts:
             with self.db() as db:
-                since = db.execute('SELECT reset_at FROM agents WHERE id=?',(owner,)).fetchone()['reset_at']
+                state = db.execute('SELECT reset_at,deleting FROM agents WHERE id=?',(owner,)).fetchone()
+                if not state or state['deleting']:
+                    from studio import Problem
+                    raise Problem('This agent is being removed. Refresh the studio.',409 if state else 404)
+                since = state['reset_at']
         recent = [e for e in report.get('logs', []) if e.get('action') == 'deny' and since is not None and e.get('time') is not None and e['time'] >= since]
         report['recentDenied'] = [e for e in recent if e.get('reason', 'policy-denied') == 'policy-denied']
         report['connectionIssues'] = [e for e in recent if e.get('reason') in ('dns-failed', 'destination-blocked')]

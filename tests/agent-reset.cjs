@@ -29,13 +29,13 @@ with tempfile.TemporaryDirectory() as d:
  assert(await p.locator('#studio-config-form').isVisible());assert.equal(await p.locator('#studio-reset-confirm').count(),0);
  await p.locator('#studio-agent-reset').click();await p.waitForFunction(()=>document.querySelector('#studio-settings-status')?.textContent==='Lounge agents reset.');
  assert.equal(step,2);assert(await p.locator('#studio-compare-open').evaluate(e=>e.hidden),'Reset must clear previous comparison before another agent is hired');assert(await p.locator('#studio-agent-reset').isDisabled());assert.equal(await p.evaluate(()=>BacStudio.inspect().profile),null);
- await p.locator('#studio-dialog-close').click();await p.reload();await p.waitForFunction(()=>window.BacStudio);assert.equal(await p.evaluate(()=>BacCampus.inspect().residents.length),0);
+ assert(!(await p.locator('#studio-dialog').evaluate(e=>e.open)),'Bulk cleanup must release the modal');await p.reload();await p.waitForFunction(()=>window.BacStudio);assert.equal(await p.evaluate(()=>BacCampus.inspect().residents.length),0);
  // One click resets both; a failed BaC reset must not delete Lounge agents.
  step=0;fail=false;await p.reload();await p.waitForFunction(()=>window.BacStudio);bacBusy=true;await openReset();
  await p.locator('#studio-reset-all').click();await p.waitForFunction(()=>document.querySelector('#studio-settings-status')?.textContent.includes('Nothing was reset'));assert.equal(step,0);
  bacBusy=false;await p.evaluate(()=>{document.querySelector('#studio-reset-all').click();document.querySelector('#studio-reset-all').click();});
  await p.waitForFunction(()=>document.querySelector('#studio-settings-status')?.textContent==='Reset complete.');assert.equal(step,2);assert.equal(bacCalls,2,'Repeated clicks must not duplicate the reset');
- await p.locator('#studio-reset-all').click();await p.waitForFunction(()=>document.querySelector('#studio-settings-status')?.textContent==='Reset complete.');assert.equal(bacCalls,3);
+ await openReset();await p.locator('#studio-reset-all').click();await p.waitForFunction(()=>document.querySelector('#studio-settings-status')?.textContent==='Reset complete.');assert.equal(bacCalls,3);
  assert.deepEqual(errors,[]);console.log('PASS: direct reset without confirmation, inline partial failure/retry, zero agents, Reset all, busy rejection and duplicate-click prevention. Disposable data and mocked HTTP only.');
 
  }finally{await b.close()}
