@@ -563,10 +563,14 @@ class Studio(PolicyControls, EventControls, RoundtableControls, DemoReadiness):
                     # Keep its role in the plan so restart/retry still reconciles it.
                     db.execute('UPDATE agent_deletions SET targets=? WHERE owner=?', (json.dumps(sorted(roles)), owner))
                 targets = (None, *sorted(roles))
+                plan = [(profile['id'] + ('-r' + str(r) if r is not None else ''), self.workspace(owner, r)) for r in targets]
+                inspect_unused = getattr(self.adapter, 'unregistered_deletion_targets', None)
+                unused = inspect_unused(plan) if callable(inspect_unused) else set()
                 for role in targets:
                     native_id = profile['id'] + ('-r' + str(role) if role is not None else '')
                     self.provisioned.discard(native_id)
-                    self.adapter.remove(native_id, self.workspace(owner, role))
+                    if native_id not in unused:
+                        self.adapter.remove(native_id, self.workspace(owner, role))
                 for role in targets:
                     path = self.workspace(owner, role)
                     if path.is_symlink():

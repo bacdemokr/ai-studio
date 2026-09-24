@@ -434,6 +434,43 @@ def quiesce_native(agent_id):
         raise NativeCleanupPending('Waiting for the agent’s current background work to stop.')
 
 
+def unregistered_deletion_targets(targets):
+    """Batch read-only checks for unused definitions; registered targets use remove()."""
+    from agent_identity import valid_agent_id
+    if not targets or any(not valid_agent_id(nid) for nid, _ in targets):
+        raise RuntimeError('Invalid cleanup targets.')
+    with config_lock():
+        config = cleanup_config()
+        if config is None:
+            return set()  # Let remove() handle a genuinely uninstalled runtime.
+        entries = config['agents']['entries']
+        shared = [Path(e['workspace']).resolve() for e in entries.values() if e.get('workspace')]
+        candidates = []
+        for nid, pathname in targets:
+            workspace = Path(pathname)
+            if nid in entries or workspace.is_symlink() or workspace.parent.is_symlink():
+                continue
+            owned = workspace.resolve()
+            if any(p == owned or p in owned.parents or owned in p.parents for p in shared):
+                continue  # Preserve remove()'s ownership error for this target.
+            candidates.append(nid)
+        if not candidates or len(candidates) > 256:
+            return set()
+        # Read the roster again, journals, native directories and sandbox registry
+        # under this app's config lock. A missing workspace alone proves nothing.
+        result = subprocess.run([str(root()/'node/bin/node'),
+            str(Path(__file__).with_name('inspect_deletion_plan.mjs')), str(root()), json.dumps(candidates)],
+            env=environment(), capture_output=True, text=True, timeout=30)
+        if result.returncode:
+            raise RuntimeError('Could not verify unused cleanup targets.')
+        report = json.loads(result.stdout)
+        unused = report.get('unregistered') if isinstance(report, dict) else None
+        if (not isinstance(unused, list) or any(not isinstance(nid, str) or nid not in candidates for nid in unused)
+                or len(set(unused)) != len(unused)):
+            raise RuntimeError('Invalid unused-target confirmation.')
+        return set(unused)
+
+
 def delete_native(agent_id):
     """Use the running gateway, with the pinned native command as an offline fallback."""
     from agent_identity import valid_agent_id

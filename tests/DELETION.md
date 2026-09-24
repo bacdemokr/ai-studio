@@ -7,6 +7,7 @@ card alone as proof that resources were deleted.
 | Boundary | Evidence |
 | --- | --- |
 | Registered / definitions only / legacy files / absent workspace | 64 combinations in `test_deletion_invariants.py`; pinned helper tests; live Reset |
+| Batched unused-role inspection | `deletion-plan.cjs`: registration, any journal, sandbox records and orphan directories all require full cleanup; one registry read per plan |
 | Completed and unfinished native deletion journals | `native-deletion.cjs`; live interrupted deletion |
 | Runtime config unreadable, invalid or unexpectedly missing | Preserve files; injected tests |
 | Ordinary and Heartbeat work still active | Verify stopped before sandbox cleanup; live lifecycle tests |
@@ -23,6 +24,7 @@ Fast fault tests (isolated temporary state; native responses are simulated):
 ```bash
 python3 -B -m unittest discover -s tests -p 'test_*deletion*.py'
 node tests/native-deletion.cjs
+node tests/deletion-plan.cjs
 ```
 
 Real runtime tests require the running preview, pinned OpenClaw/OpenShell,

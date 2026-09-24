@@ -12,6 +12,19 @@ from studio import Problem
 import agent_runtime as rt
 
 class CleanupStateTests(unittest.TestCase):
+    def test_unused_batch_keeps_registered_and_shared_workspaces_on_full_cleanup_path(self):
+        import subprocess
+        with tempfile.TemporaryDirectory() as temp,patch.object(rt,'root',return_value=Path(temp)/'native'):
+            nid='bac-'+'a'*24;work=Path(temp)/'work';work.mkdir()
+            config=rt.initial_config();config['agents']['entries']={nid:{'workspace':str(work/'personal')},'other':{'workspace':str(work/'shared')}};rt.save_config(config)
+            targets=[(nid,work/'personal'),(nid+'-r0',work/'shared/child'),(nid+'-r1',work/'unused')]
+            with patch.object(rt.subprocess,'run',return_value=subprocess.CompletedProcess([],0,json.dumps({'unregistered':[nid+'-r1']}),'')) as command:
+                self.assertEqual(rt.unregistered_deletion_targets(targets),{nid+'-r1'})
+                self.assertEqual(json.loads(command.call_args.args[0][-1]),[nid+'-r1'])
+            for report in ({'unregistered':[nid]}, {'unregistered':[nid+'-r1']*2}, {}, []):
+                with self.subTest(report=report),patch.object(rt.subprocess,'run',return_value=subprocess.CompletedProcess([],0,json.dumps(report),'')):
+                    with self.assertRaises(RuntimeError):rt.unregistered_deletion_targets(targets)
+
     def test_64_registration_files_registry_combinations(self):
         nid='bac-'+'a'*24
         for entry,folder,documents,marker,registry,enabled in itertools.product((False,True),repeat=6):
@@ -92,6 +105,26 @@ class CleanupStateTests(unittest.TestCase):
 class CleanupCrashTests(unittest.TestCase):
     setUp=base.DeletionTests.setUp
     tearDown=base.DeletionTests.tearDown
+
+    def test_only_proven_unused_targets_skip_individual_native_cleanup(self):
+        from unittest.mock import Mock
+        nid=self.studio.profile(self.scout)['id']
+        self.adapter.unregistered_deletion_targets=Mock(return_value={nid+'-r0',nid+'-r2'})
+        with patch.object(self.adapter,'remove',wraps=self.adapter.remove) as remove:
+            self.studio.delete_agent(self.scout,{'name':'Scout'})
+        self.assertEqual([call.args[0] for call in remove.call_args_list],[nid,nid+'-r1',nid+'-r3'])
+        self.assertEqual(len(self.adapter.unregistered_deletion_targets.call_args.args[0]),5)
+        self.assertFalse(any(self.studio.workspace(self.scout).parent.glob(self.scout+'*')))
+        self.assertIsNotNone(self.studio.profile(self.owner))
+
+    def test_failed_batch_inspection_preserves_files_and_fences_agent(self):
+        from unittest.mock import Mock
+        self.adapter.unregistered_deletion_targets=Mock(side_effect=RuntimeError('Registry unavailable'))
+        with patch.object(self.adapter,'remove') as remove:
+            with self.assertRaises(Problem):self.studio.delete_agent(self.scout,{'name':'Scout'})
+            remove.assert_not_called()
+        self.assertTrue(self.studio.state(self.scout)['deleting'])
+        self.assertTrue(self.studio.workspace(self.scout).exists())
 
     def test_duplicate_request_joins_pending_cleanup_without_replaying_it(self):
         self.studio.executing_owners={self.scout}
