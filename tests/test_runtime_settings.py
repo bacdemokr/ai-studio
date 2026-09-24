@@ -20,6 +20,19 @@ class SettingsTests(unittest.TestCase):
         self.studio=Studio(Path(self.temp.name)/'studio',Adapter(),start_worker=False)
     def data(self,provider='nvidia',key='test-not-a-real-key'):
         return {'provider':provider,'apiKey':key,'model':'test-model','baseUrl':s.PROVIDERS[provider]['baseUrl'],'event':{'city':'Boston','region':'Americas','language':'English','venue':'Example hall'}}
+    def test_detached_gateway_uses_persistent_runtime_directory(self):
+        binary=r.root()/'package/node_modules/.bin/openclaw'
+        binary.parent.mkdir(parents=True);binary.touch()
+        r.save_config(r.initial_config())
+        with patch.object(r,'gateway',side_effect=RuntimeError('offline')), \
+             patch.object(s.sys,'platform','darwin'), patch.dict(os.environ,{'BAC_CONTAINER':'0'}), \
+             patch.object(s,'_gateway_process',None), patch('socket.socket') as socket, \
+             patch.object(s.subprocess,'Popen') as spawn:
+            socket.return_value.__enter__.return_value.connect_ex.return_value=1
+            self.assertTrue(s.start_gateway()['started'])
+            self.assertEqual(spawn.call_args.kwargs['cwd'],r.root())
+            self.assertTrue(spawn.call_args.kwargs['start_new_session'])
+
     def test_event_can_save_without_model_and_region_is_optional(self):
         result=s.save(self.studio,{'section':'event','event':{'city':'Boston','language':'English','region':'','venue':''}})
         self.assertEqual(result['event']['region'],'')

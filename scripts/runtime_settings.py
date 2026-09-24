@@ -339,7 +339,9 @@ def _start_gateway():
     log=runtime.root()/'gateway.log'
     fd=os.open(log,os.O_WRONLY|os.O_CREAT|os.O_APPEND,0o600)
     with os.fdopen(fd,'a') as output:
-        _gateway_process = subprocess.Popen([str(binary),'gateway','run'],env=runtime.environment(),stdin=subprocess.DEVNULL,stdout=output,stderr=output,start_new_session=True)
+        # Detached runtimes outlive removable development checkouts. Native tools
+        # call process.cwd(), so keep it in the persistent runtime directory.
+        _gateway_process = subprocess.Popen([str(binary),'gateway','run'],cwd=runtime.root(),env=runtime.environment(),stdin=subprocess.DEVNULL,stdout=output,stderr=output,start_new_session=True)
     return {'started':True,'message':'Agent runtime is starting.'}
 
 

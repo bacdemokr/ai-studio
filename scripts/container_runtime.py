@@ -187,7 +187,7 @@ def serve():
     signal.signal(signal.SIGINT, stop)
     try:
         children.append(subprocess.Popen([str(runtime.root()/'package/node_modules/.bin/openclaw'), 'gateway', 'run'],
-                                        env=runtime.environment(), start_new_session=True))
+                                        cwd=runtime.root(), env=runtime.environment(), start_new_session=True))
         deadline = time.monotonic() + 110
         while not stopping:
             if children[0].poll() is not None:
