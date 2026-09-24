@@ -26,8 +26,9 @@ def authored(b,c):
 
 class StaffingTests(unittest.TestCase):
     def test_templates_have_varied_group_sizes_and_realistic_utilization(self):
-        for template,group,themes,attendees in zip(TEMPLATES,(5,2,4),(3,2,4),(420,48,192)):
-            b,c=plan({**template,'themeCount':themes})
+        for template,group,themes,attendees in zip(TEMPLATES,(5,2,4),(2,2,2),(280,48,96)):
+            self.assertEqual(len(template['topics']),themes)
+            b,c=plan({**template,'themeCount':len(template['topics'])})
             self.assertEqual((b['groupSize'],b['attendees']),(group,attendees))
             self.assertEqual(c['presenterCount'],themes)
             usage=len(c['schedule'])/(themes*(b['duration']//c['session']))

@@ -18,7 +18,7 @@ import ops_common as c
 import session_secrets as secrets
 
 MAX_OUTPUT_TOKENS = 8192
-AGENT_TIMEOUT_SECONDS = 240
+AGENT_TIMEOUT_SECONDS = 360
 
 PROVIDERS = {
     'local': {'label': 'Local / on-prem', 'baseUrl': 'http://127.0.0.1:8000/v1', 'api': 'openai-completions'},

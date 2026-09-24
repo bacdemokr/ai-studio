@@ -4,14 +4,16 @@ Updated on 2026-09-24 from the organizer's schedule.
 
 | Template | Date | Local event hours | Venue | Demos |
 | --- | --- | --- | --- | --- |
-| Zurich | 2026-10-01 | 08:30-18:00; take down by 21:30 | StageOne Event & Convention Hall | 3 |
+| Zurich | 2026-10-01 | 08:30-18:00; take down by 21:30 | StageOne Event & Convention Hall | 2 |
 | Paris | 2026-10-13 | 14:00-18:00 | TBC | 2 |
-| London | 2026-10-14 | 09:00-13:00 | TBC | 4 |
+| London | 2026-10-14 | 09:00-13:00 | TBC | 2 |
 
 Dates and hours were supplied by the organizer. Zurich's venue was previously
 confirmed in the same planning conversation. Paris and London venues remain
 unconfirmed. Teardown is separate from the visitor-facing event window.
 
+All templates start with two themes. Example attendance is 280 in Zurich,
+48 in Paris and 96 in London, allowing for presenter breaks.
 Attendance, group size, topics and staffing remain editable planning examples.
 The planner accounts for visit length, workload and breaks; template counts do
 not confirm presenter availability. Saved Seoul, Singapore and Austin briefs

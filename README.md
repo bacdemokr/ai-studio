@@ -46,7 +46,8 @@ Choose **Local / on-prem** in Settings → Model. Enter your existing endpoint, 
 | Server on this PC | Endpoint |
 | --- | --- |
 | Ollama | `http://127.0.0.1:11434/v1` |
-| Other OpenAI-compatible server | `http://127.0.0.1:8000/v1` or its actual port |
+| vLLM | `http://127.0.0.1:8000/v1` (use its actual port) |
+| Other OpenAI-compatible server | Its API URL ending in `/v1` |
 
 The model runs outside BaC's Docker stack. Use a model with tool calling; a keyless local server needs no API key. Keyed providers need reconnecting after refreshing/closing the tab or restarting the app.
 
