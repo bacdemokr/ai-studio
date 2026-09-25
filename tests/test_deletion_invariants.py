@@ -12,6 +12,18 @@ from studio import Problem
 import agent_runtime as rt
 
 class CleanupStateTests(unittest.TestCase):
+    def test_unavailable_fast_inspection_never_proves_a_target_unused(self):
+        import subprocess
+        with tempfile.TemporaryDirectory() as temp,patch.object(rt,'root',return_value=Path(temp)/'native'):
+            rt.save_config(rt.initial_config())
+            nid='bac-'+'a'*24;work=Path(temp)/'workspace';work.mkdir()
+            for outcome in (subprocess.CompletedProcess([],1,'','fixture failure'),subprocess.TimeoutExpired('fixture',30)):
+                with self.subTest(outcome=type(outcome).__name__),patch.object(rt.subprocess,'run') as run:
+                    if isinstance(outcome,Exception):run.side_effect=outcome
+                    else:run.return_value=outcome
+                    self.assertEqual(rt.unregistered_deletion_targets([(nid,work)]),set())
+                    self.assertTrue(work.exists())
+
     def test_unused_batch_keeps_registered_and_shared_workspaces_on_full_cleanup_path(self):
         import subprocess
         with tempfile.TemporaryDirectory() as temp,patch.object(rt,'root',return_value=Path(temp)/'native'):

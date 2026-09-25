@@ -513,11 +513,14 @@ def unregistered_deletion_targets(targets):
             return set()
         # Read the roster again, journals, native directories and sandbox registry
         # under this app's config lock. A missing workspace alone proves nothing.
-        result = subprocess.run([str(root()/'node/bin/node'),
-            str(Path(__file__).with_name('inspect_deletion_plan.mjs')), str(root()), json.dumps(candidates)],
-            env=environment(), capture_output=True, text=True, timeout=30)
+        try:
+            result = subprocess.run([str(root()/'node/bin/node'),
+                str(Path(__file__).with_name('inspect_deletion_plan.mjs')), str(root()), json.dumps(candidates)],
+                env=environment(), capture_output=True, text=True, timeout=30)
+        except subprocess.TimeoutExpired:
+            return set()  # No shortcut proved; remove() still verifies all ownership/state.
         if result.returncode:
-            raise RuntimeError('Could not verify unused cleanup targets.')
+            return set()  # This optional optimization must not replace full cleanup checks.
         report = json.loads(result.stdout)
         unused = report.get('unregistered') if isinstance(report, dict) else None
         if (not isinstance(unused, list) or any(not isinstance(nid, str) or nid not in candidates for nid in unused)
@@ -657,7 +660,7 @@ def finalize_removal(agent_id, workspace):
     A crash at any boundary remains retryable: until this finishes the Studio
     identity stays fenced; afterwards absent native paths prove it unregistered.
     """
-    from deletion_residue import purge, forget_receipt
+    from deletion_residue import purge, forget_receipt, purge_skill_cache
     with config_lock():
         config = cleanup_config()
         if config is None:return
@@ -669,6 +672,7 @@ def finalize_removal(agent_id, workspace):
         if owned_sandbox_names(agent_id):
             raise NativeCleanupPending('An agent sandbox is still present; continuing cleanup.')
         purge(root(), agent_id)
+        purge_skill_cache(root(), agent_id, workspace)
         result = subprocess.run([str(root()/'node/bin/node'),
             str(Path(__file__).with_name('delete_native_agent.mjs')),str(root()),agent_id,'--forget-deleted'],
             env=environment(),capture_output=True,text=True,timeout=30)

@@ -15,8 +15,22 @@ if(state) {
     if(version!=='2026.9.4')throw Error('Unsupported native cleanup runtime');
     const real=fs.realpathSync(target);
     const helper=new URL('./native_cleanup_trash.mjs',import.meta.url).href;
+    const tasksHelper=new URL('./native_cleanup_tasks.mjs',import.meta.url).href;
+    const nativeDist=fs.realpathSync(path.join(root,'package/node_modules/openclaw/dist'));
     registerHooks({load(url,context,nextLoad) {
       const loaded=nextLoad(url,context);
+      if(url.startsWith('file:') && path.dirname(fileURLToPath(url))===nativeDist && /^cleanup-service-.*\.mjs$/.test(path.basename(fileURLToPath(url)))) {
+        let source=Buffer.isBuffer(loaded.source)?loaded.source.toString():String(loaded.source);
+        const signature='async function purgeAgentSessionStoreEntries(cfg, agentId, options = {}) {';
+        if(source.split(signature).length!==2)throw Error('Unsupported native session cleanup implementation');
+        source=source.replace(signature,'async function nativePurgeAgentSessionStoreEntries(cfg, agentId, options = {}) {');
+        source+=`\nasync function purgeAgentSessionStoreEntries(cfg, agentId, options = {}) {
+          if(await nativePurgeAgentSessionStoreEntries(cfg, agentId, options))return true;
+          try { await purgeRetiredTasks(agentId); return false; }
+          catch { return true; }
+        }\n`;
+        return {...loaded,source:`import {purgeRetiredTasks} from ${JSON.stringify(tasksHelper)};\n`+source};
+      }
       if(!url.startsWith('file:') || fileURLToPath(url)!==real)return loaded;
       const replacements=[['function resolveTrashDir() {','function resolveTrashDir(targetPath) {'],
         ['const homeDir = os.homedir();','const homeDir = deletionHome(targetPath) || os.homedir();'],
@@ -28,7 +42,7 @@ if(state) {
         source=source.replace(before,after);
       }
       if(process.argv.includes('gateway') && process.argv.includes('run')) {
-        const integration=createHash('sha256').update(fs.readFileSync(fileURLToPath(import.meta.url))).update(fs.readFileSync(fileURLToPath(helper))).digest('hex');
+        const integration=createHash('sha256').update(fs.readFileSync(fileURLToPath(import.meta.url))).update(fs.readFileSync(fileURLToPath(helper))).update(fs.readFileSync(fileURLToPath(tasksHelper))).digest('hex');
         const destination=path.join(fs.realpathSync(root),'cleanup-capability.json');
         const temporary=destination+'.'+process.pid;
         const fd=fs.openSync(temporary,fs.constants.O_WRONLY|fs.constants.O_CREAT|fs.constants.O_NOFOLLOW,0o600);

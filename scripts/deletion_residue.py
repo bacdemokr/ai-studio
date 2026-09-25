@@ -23,7 +23,7 @@ def require_staging_runtime(root):
     root = Path(root)
     if not (root/'package/node_modules/openclaw/package.json').exists():return
     digest = hashlib.sha256()
-    for name in ('native_cleanup_loader.mjs', 'native_cleanup_trash.mjs'):
+    for name in ('native_cleanup_loader.mjs', 'native_cleanup_trash.mjs', 'native_cleanup_tasks.mjs'):
         digest.update(Path(__file__).with_name(name).read_bytes())
     try:
         capability = json.loads((root/'cleanup-capability.json').read_text())
@@ -137,3 +137,22 @@ def forget_receipt(root, agent_id):
         except OSError:pass
     try:receipt.parent.rmdir()
     except OSError:pass
+
+
+def skill_cache_path(root, agent_id, workspace):
+    """Pinned 2026.9.4 shared.ts: agent scope plus canonical workspace hash."""
+    from agent_identity import valid_agent_id
+    if not valid_agent_id(agent_id):raise RuntimeError('Invalid cleanup identity.')
+    scope = 'agent:' + agent_id + ':workspace:' + hashlib.sha256(str(Path(workspace).resolve()).encode()).hexdigest()[:32]
+    slug = 'workspace-' + hashlib.sha256(scope.encode()).hexdigest()[:32]
+    return Path(root).resolve() / 'state/sandbox/skills-workspaces' / slug
+
+
+def purge_skill_cache(root, agent_id, workspace):
+    """Remove only this identity's materialized skills, never prefix-match caches."""
+    path = skill_cache_path(root, agent_id, workspace)
+    if not path.exists() and not path.is_symlink():return
+    plain_directory(path.parent)
+    plain_directory(path)
+    if not shutil.rmtree.avoids_symlink_attacks:raise RuntimeError('Safe cache cleanup is unavailable.')
+    shutil.rmtree(path)

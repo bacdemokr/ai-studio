@@ -1,4 +1,4 @@
-"""Opt-in live lifecycle test (16 fresh agents, including 8 OpenShell profiles).
+"""Opt-in live lifecycle test (20 fresh agents, including 10 OpenShell profiles).
 
 From the checkout, with the preview and its model already connected:
   python3 -B tests/live-deletion-cycles.py --run-live \
@@ -8,7 +8,7 @@ Uses a fresh app session and real installed runtimes; it never reads model keys.
 Only identities created by this invocation are deleted. Other agents, native
 entries and sandboxes must survive. Run against an idle development preview.
 Failures retain a non-secret report of test identities and cleanup outcomes.
-Use --scenario lifecycle (12 agents) or interruptions (4) to narrow a rerun.
+Use --scenario lifecycle (12), interruptions (4), or ownership (4) to narrow a rerun.
 """
 import os,sys,json,time,sqlite3,urllib.request,urllib.error,http.cookiejar,concurrent.futures
 from pathlib import Path
@@ -20,7 +20,7 @@ parser.add_argument('--run-live',action='store_true',required=True)
 parser.add_argument('--data-dir',type=Path,required=True)
 parser.add_argument('--url',default='http://127.0.0.1:8080')
 parser.add_argument('--report',type=Path,required=True)
-parser.add_argument('--scenario',choices=('lifecycle','interruptions','all'),default='all')
+parser.add_argument('--scenario',choices=('lifecycle','interruptions','ownership','all'),default='all')
 args=parser.parse_args()
 from urllib.parse import urlsplit
 url=urlsplit(args.url)
@@ -86,13 +86,17 @@ def remove(item,duplicate=False):
 def verify(item,known_sandboxes):
  owner=item['owner'];native='bac-'+owner
  entries=json.loads(rt.config_path().read_text())['agents']['entries']
- remains={'app':bool(rows('select id from agents where id=?',(owner,))), 'workspaces':[p.name for p in (DATA/'studio/workspaces').glob(owner+'*')], 'nativeEntries':[k for k in entries if k==native or k.startswith(native+'-r')], 'nativeData':[p.name for p in (rt.root()/'state/agents').glob(native+'*') if (p/'agent').exists() or (p/'sessions').exists()], 'sandboxRegistry':len(policy.runtimes(native,probe=False)), 'sandboxes':sorted(known_sandboxes & policy.sandbox_names()) if known_sandboxes else []}
+ remains={'app':bool(rows('select id from agents where id=?',(owner,))), 'workspaces':[p.name for p in (DATA/'studio/workspaces').glob(owner+'*')], 'nativeEntries':[k for k in entries if k==native or k.startswith(native+'-r')], 'nativeData':[p.name for p in (rt.root()/'state/agents').glob(native+'*') if (p/'agent').exists() or (p/'sessions').exists()], 'sandboxRegistry':len(policy.runtimes(native,probe=False)), 'sandboxes':sorted((known_sandboxes & policy.sandbox_names()) | policy.owned_sandbox_names(native))}
  # Completed means permanent app-owned retirement, not just a missing roster.
+ remains['appOwnedRows']={table:count for table in ('jobs','agent_policies','heartbeat_controls','heartbeat_receipts','agent_deletions') if (count:=rows('SELECT COUNT(*) AS n FROM '+table+' WHERE owner=?',(owner,))[0]['n'])}
  remains['cleanupReceipt']=(rt.root()/'deletion-receipts'/(native+'.json')).exists()
+ from deletion_residue import skill_cache_path
+ remains['skillsCache']=skill_cache_path(rt.root(),native,DATA/'studio/workspaces'/owner).exists()
  remains['nativeHistory']=[]
  state_db=rt.root()/'state/state/openclaw.sqlite'
  if state_db.exists():
   with sqlite3.connect(state_db) as db:
+   remains['taskHistory']=db.execute('SELECT COUNT(*) FROM task_runs WHERE agent_id=?',(native,)).fetchone()[0]
    for table in ('agent_deletion_journal','agent_databases','agent_provenance'):
     if db.execute("SELECT 1 FROM sqlite_master WHERE name=?",(table,)).fetchone():
      if db.execute('SELECT 1 FROM '+table+' WHERE agent_id=?',(native,)).fetchone():remains['nativeHistory'].append(table)
@@ -112,7 +116,11 @@ def renew_browser():
   except Exception as error:emit('lease_renew_failed',errorType=type(error).__name__)
 lease_thread=threading.Thread(target=renew_browser,daemon=True);lease_thread.start()
 try:
- for cycle in (range(3) if args.scenario=='lifecycle' else range(3,4) if args.scenario=='interruptions' else range(4)):
+ deadline=time.monotonic()+90
+ while not call('runtime')[1].get('ready'):
+  if time.monotonic()>deadline:raise TimeoutError('Connect the preview model before running live deletion tests')
+  time.sleep(1)
+ for cycle in (range(3) if args.scenario=='lifecycle' else range(3,4) if args.scenario=='interruptions' else range(4,5) if args.scenario=='ownership' else range(5)):
   batch=[];known={}
   for index in range(4):
    protected=index%2==1;radar=index>=2
@@ -158,7 +166,8 @@ try:
    item=batch[3];native='bac-'+item['owner']
    prompt='Local deletion regression. Use exec to run sleep 30, then return HEARTBEAT_OK. Do not read feeds, access websites, or send messages.'
    (DATA/'studio/workspaces'/item['owner']/'HEARTBEAT.md').write_text(prompt+'\n')
-   rt.gateway_config_patch({'agents':{'entries':{native:{'heartbeat':{'prompt':prompt}}}}},[])
+   with rt.config_lock():
+    rt.gateway_config_patch({'agents':{'entries':{native:{'heartbeat':{'prompt':prompt}}}}},[])
    def probe(action):
     result=subprocess.run([str(rt.root()/'node/bin/node'),str(ROOT/'tests/native-lifecycle-probe.mjs'),str(rt.root()),native,action],env=rt.environment(),capture_output=True,text=True,timeout=40)
     if result.returncode:
@@ -180,11 +189,32 @@ try:
     if time.monotonic()>deadline:raise TimeoutError('Native heartbeat never became active')
     time.sleep(1)
    emit('native_heartbeat_active',name=item['name'],count=active['active'])
-   # Lose only our HTTP reply, leaving the server/native deletion running.
-   try:
-    code,_=call('delete-agent',{'name':item['name']},item['owner'],timeout=.01)
-    emit('early_delete_reply',name=item['name'],status=code)
-   except (TimeoutError,socket.timeout,urllib.error.URLError):emit('client_disconnected',name=item['name'])
+   # Send the full request, then close without ever reading the HTTP reply.
+   # A tiny timeout is nondeterministic: the server can acknowledge sooner.
+   endpoint=args.url.rstrip('/')+'/api/delete-agent'
+   body=json.dumps({'name':item['name']}).encode()
+   request=urllib.request.Request(endpoint,headers={'X-BaC-CSRF':csrf,'X-BaC-Agent':item['owner']})
+   jar.add_cookie_header(request)
+   headers={'Host':url.netloc,'Content-Type':'application/json','Content-Length':str(len(body)),
+            'Connection':'close',**dict(request.header_items())}
+   wire=('POST /api/delete-agent HTTP/1.1\r\n'+''.join(k+': '+v+'\r\n' for k,v in headers.items())+'\r\n').encode()+body
+   with socket.create_connection((url.hostname,url.port or 80),timeout=10) as connection:
+    connection.sendall(wire)
+   deadline=time.monotonic()+10
+   while True:
+    state=rows('SELECT deleting FROM agents WHERE id=?',(item['owner'],))
+    if not state or state[0]['deleting']:break
+    if time.monotonic()>deadline:raise AssertionError('Disconnected request was not accepted')
+    time.sleep(.1)
+   emit('client_disconnected',name=item['name'])
+  if cycle==4:
+   # Deliberately lose only this disposable agent's native registry record.
+   # Its live, creation-labeled sandbox must still be found and removed.
+   item=batch[1];native='bac-'+item['owner']
+   policy.sandbox_registry(native,sorted(known[item['owner']]))
+   assert not policy.runtimes(native,probe=False)
+   assert known[item['owner']] <= policy.owned_sandbox_names(native)
+   emit('native_registry_lost',name=item['name'])
   if cycle==1:
    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
     results=list(pool.map(remove,batch))

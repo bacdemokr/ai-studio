@@ -104,7 +104,7 @@ class StagingReadinessTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);pkg=root/'package/node_modules/openclaw';pkg.mkdir(parents=True);(pkg/'package.json').write_text('{}')
             digest=hashlib.sha256()
-            for name in ('native_cleanup_loader.mjs','native_cleanup_trash.mjs'):digest.update(Path(residue.__file__).with_name(name).read_bytes())
+            for name in ('native_cleanup_loader.mjs','native_cleanup_trash.mjs','native_cleanup_tasks.mjs'):digest.update(Path(residue.__file__).with_name(name).read_bytes())
             (root/'cleanup-capability.json').write_text(json.dumps({'version':1,'pid':123,'integration':digest.hexdigest()}))
             with patch.object(residue.os,'kill') as alive:residue.require_staging_runtime(root);alive.assert_called_once_with(123,0)
             with patch.object(residue.os,'kill',side_effect=ProcessLookupError):
@@ -131,3 +131,27 @@ class CompletionTests(unittest.TestCase):
             self.assertFalse(studio.protection_activity.events)
 
 if __name__=='__main__':unittest.main()
+
+
+class SkillCacheTests(unittest.TestCase):
+    def test_exact_identity_removed_other_workspace_and_symlink_target_survive(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder).resolve();nid='bac-'+'a'*24;work=root/'workspace'
+            cache=residue.skill_cache_path(root,nid,work);cache.mkdir(parents=True)
+            other=residue.skill_cache_path(root,'bac-'+'b'*24,work);other.mkdir()
+            (other/'keep').write_text('keep');(cache/'link').symlink_to(other,target_is_directory=True)
+            residue.purge_skill_cache(root,nid,work)
+            self.assertFalse(cache.exists());self.assertTrue((other/'keep').exists())
+            residue.purge_skill_cache(root,nid,work)
+            cache.symlink_to(other,target_is_directory=True)
+            with self.assertRaises(RuntimeError):residue.purge_skill_cache(root,nid,work)
+            self.assertTrue((other/'keep').exists())
+
+    def test_redirected_cache_parent_is_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder).resolve();nid='bac-'+'a'*24;work=root/'workspace'
+            cache=residue.skill_cache_path(root,nid,work);cache.parent.parent.mkdir(parents=True)
+            target=root/'outside';target.mkdir();cache.parent.symlink_to(target,target_is_directory=True)
+            (target/cache.name).mkdir()
+            with self.assertRaises(RuntimeError):residue.purge_skill_cache(root,nid,work)
+            self.assertTrue((target/cache.name).exists())

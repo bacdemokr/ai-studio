@@ -125,3 +125,28 @@ It repeats deletion requests and checks native storage, config backups and
 sandbox removal, as well as preservation of the pre-existing crew. See the live
 test command above. Deletion during active work can take longer than idle
 deletion because cleanup waits for the in-flight operation to stop safely.
+
+## Shared task history and materialized skills
+
+Receipt-marked BaC deletion also retires terminal task records through the pinned
+native task registry inside the Gateway process. This updates both memory and
+SQLite, including delivery state; direct SQL deletion would leave a live cache.
+Active tasks prevent finalization. Normal native deletions without a BaC receipt
+are unchanged. The exact agent/workspace-scoped skills cache is removed after
+sandbox shutdown; unrelated caches and symlink targets are preserved.
+
+```bash
+node tests/native-task-retirement.mjs /absolute/path/to/private/openclaw
+```
+
+The live `all` scenario now exercises 20 disposable agents (10 OpenShell): idle
+removal, concurrent removal during preparation, active chat cancellation, duplicate
+requests, an already missing sandbox, active Heartbeat with a lost HTTP reply,
+and a deliberately missing native sandbox registry record. It checks app rows,
+task history, skill caches, native files, recovery receipts, config backups and
+actual sandbox ownership labels. Existing agents and sandboxes must survive.
+A failure during test setup is reported as a failed scenario, never a pass.
+
+If the optional unused-workspace inspection exits or times out, no shortcut is
+accepted. Deletion continues through the full ownership, activity, sandbox and
+native cleanup checks. Malformed ownership responses still fail closed.
