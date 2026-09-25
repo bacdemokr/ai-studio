@@ -374,8 +374,17 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
                 if overwrite or not target.exists():shutil.copyfile(Path(__file__).with_name(module+'.py'),target)
 
 
-def register(agent_id, workspace, profile, role=None):
+def bootstrap_host():
+    """Seed only the infrastructure host before the Gateway's first start."""
+    register('bac-host', root() / 'host-workspace',
+             {'name': 'BaC host', 'persona': 'guide', 'skills': ['documents']},
+             bootstrap=True)
+
+
+def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
     """Write native identity/skill files, then atomically publish a scoped agent entry."""
+    if bootstrap and (agent_id != 'bac-host' or role or profile.get('protection', 'standard') != 'standard'):
+        raise ValueError('Offline bootstrap is restricted to the unprotected BaC host.')
     if not config_path().exists():
         raise RuntimeError('Run ./bac dev runtime setup on the host first.')
     protected = profile.get('protection', 'standard') == 'openshell'
@@ -398,6 +407,8 @@ def register(agent_id, workspace, profile, role=None):
         allow += ['exec']
     with config_lock():
         config = c.read_json(config_path())
+        if bootstrap and agent_id in config['agents']['entries']:
+            return
         config['agents']['defaults']['maxConcurrent'] = 2
         config['agents']['ownership'] = 'explicit'
         config.setdefault('tools', {}).setdefault('fs', {})['workspaceOnly'] = False
@@ -430,8 +441,14 @@ def register(agent_id, workspace, profile, role=None):
         if protected or event_exec or radar_exec:
             patch['tools']['deny'] = config['tools']['deny']
             replace_paths.append('tools.deny')
-        gateway_config_patch(patch, replace_paths)
-        _expected_identity[agent_id] = stamp
+        if bootstrap:
+            # First boot has no Gateway to acknowledge an RPC yet. Never use
+            # this path as a fallback for a failed live agent registration.
+            config['agents']['entries'][agent_id] = entry
+            save_config(config)
+        else:
+            gateway_config_patch(patch, replace_paths)
+            _expected_identity[agent_id] = stamp
     (workspace / '.bac-prepared-only').unlink(missing_ok=True)
 
 

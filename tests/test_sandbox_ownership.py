@@ -54,8 +54,9 @@ class SandboxOwnershipTests(unittest.TestCase):
             root=Path(directory);workspace=root/'workspaces'/'agent';workspace.mkdir(parents=True)
             database=root/'studio.sqlite'
             with sqlite3.connect(database) as db:
-                db.execute('CREATE TABLE agents(id TEXT,deleting INTEGER)')
-                db.execute('INSERT INTO agents VALUES (?,0)',(self.agent[4:],))
+                db.execute('CREATE TABLE agents(id TEXT PRIMARY KEY,deleting INTEGER,kind TEXT,profile TEXT)')
+                db.execute('CREATE TABLE crew_resources(owner TEXT,native_id TEXT UNIQUE)')
+                db.execute('INSERT INTO agents VALUES (?,0,?,?)',(self.agent[4:],'personal',json.dumps({'id':self.agent})))
             config={'agents':{'entries':{self.agent:{'workspace':str(workspace)}}}}
             args=['--gateway','demo','sandbox','create','--name','oc-owned','--','sleep','infinity']
             result=creation_args(args,self.agent,config,database)
@@ -66,6 +67,50 @@ class SandboxOwnershipTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,'deletion'):creation_args(args,self.agent,config,database)
             with self.assertRaisesRegex(RuntimeError,'owner'):creation_args(args,self.agent,{'agents':{'entries':{}}},database)
             self.assertEqual(creation_args(['sandbox','delete','oc-owned'],self.agent,config,database),['sandbox','delete','oc-owned'])
+
+
+    def test_preserved_crew_uses_recorded_owner_and_never_native_prefix(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database=Path(directory)/'studio.sqlite'
+            native=self.agent+'-r1'
+            owner='b'*24
+            config={'agents':{'entries':{native:{}}}}
+            args=['sandbox','create','--name','oc-crew']
+            with sqlite3.connect(database) as db:
+                db.execute('CREATE TABLE agents(id TEXT PRIMARY KEY,deleting INTEGER,kind TEXT,profile TEXT)')
+                db.execute('CREATE TABLE crew_resources(owner TEXT,native_id TEXT UNIQUE)')
+                db.execute('INSERT INTO agents VALUES (?,0,?,NULL)',(owner,'crew'))
+                db.execute('INSERT INTO crew_resources VALUES (?,?)',(owner,native))
+            self.assertIn('bac-agent-id='+native,creation_args(args,native,config,database))
+            # A live personal agent matching the old prefix cannot rescue a
+            # deleting crew, nor acquire a role with a missing ownership record.
+            with sqlite3.connect(database) as db:
+                db.execute('INSERT INTO agents VALUES (?,0,?,?)',(self.agent[4:],'personal',json.dumps({'id':self.agent})))
+                db.execute('UPDATE agents SET deleting=1 WHERE id=?',(owner,))
+            with self.assertRaisesRegex(RuntimeError,'deletion'):creation_args(args,native,config,database)
+            with sqlite3.connect(database) as db:db.execute('DELETE FROM agents WHERE id=?',(owner,))
+            with self.assertRaisesRegex(RuntimeError,'owner'):creation_args(args,native,config,database)
+            with sqlite3.connect(database) as db:
+                db.execute('INSERT INTO agents VALUES (?,0,?,NULL)',(owner,'personal'))
+            with self.assertRaisesRegex(RuntimeError,'owner'):creation_args(args,native,config,database)
+            with sqlite3.connect(database) as db:db.execute('DELETE FROM crew_resources')
+            with self.assertRaisesRegex(RuntimeError,'owner'):creation_args(args,native,config,database)
+
+    def test_personal_owner_requires_saved_profile_and_active_identity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database=Path(directory)/'studio.sqlite'
+            config={'agents':{'entries':{self.agent:{}}}}
+            args=['sandbox','create']
+            with sqlite3.connect(database) as db:
+                db.execute('CREATE TABLE agents(id TEXT PRIMARY KEY,deleting INTEGER,kind TEXT,profile TEXT)')
+                db.execute('CREATE TABLE crew_resources(owner TEXT,native_id TEXT UNIQUE)')
+                db.execute('INSERT INTO agents VALUES (?,0,?,NULL)',(self.agent[4:],'personal'))
+            for kind,profile in [('personal',None),('personal',json.dumps({'id':'bac-'+'b'*24})),('crew',json.dumps({'id':self.agent}))]:
+                with self.subTest(kind=kind,profile=profile):
+                    with sqlite3.connect(database) as db:db.execute('UPDATE agents SET kind=?,profile=?',(kind,profile))
+                    with self.assertRaisesRegex(RuntimeError,'owner'):creation_args(args,self.agent,config,database)
+            with sqlite3.connect(database) as db:db.execute('DELETE FROM agents')
+            with self.assertRaisesRegex(RuntimeError,'owner'):creation_args(args,self.agent,config,database)
 
 
 if __name__ == '__main__':unittest.main()

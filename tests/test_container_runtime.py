@@ -119,11 +119,12 @@ class ContainerTests(unittest.TestCase):
         config['agents']['entries']['bac-existing'] = {'name': 'Keep me', 'heartbeat': {'every': '30s', 'target': 'none'}}
         config['models']['providers']['test'] = {'baseUrl': 'http://127.0.0.1:11434/v1'}
         runtime.save_config(config)
-        def publish(patch_data, replace_paths):
-            saved = common.read_json(runtime.config_path())
-            saved['agents']['entries'].update(patch_data['agents']['entries'])
-            runtime.save_config(saved)
-        with patch.object(container, 'register_gateway'), patch.object(runtime, 'cli', return_value='valid'), patch.object(runtime, 'gateway_config_patch', side_effect=publish):
+        # Preparation precedes Gateway startup: RPCs must be unavailable here.
+        def cli(*args, **kwargs):
+            if args[:2] == ('gateway', 'call'):
+                raise RuntimeError('Gateway has not started')
+            return 'valid'
+        with patch.object(container, 'register_gateway'), patch.object(runtime, 'cli', side_effect=cli):
             container.prepare()
             container.prepare()
         result = common.read_json(runtime.config_path())

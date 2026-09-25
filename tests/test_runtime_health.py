@@ -1,5 +1,6 @@
 """Local gateway health transitions and transport errors; no live model calls."""
 import sys
+import io
 from pathlib import Path
 import tempfile
 import unittest
@@ -66,12 +67,13 @@ class RuntimeHealthTests(unittest.TestCase):
         for error, reason in ((TimeoutError(), 'timeout'),
                               (urllib.error.URLError(TimeoutError()), 'timeout'),
                               (urllib.error.URLError(ConnectionRefusedError()), 'unavailable'),
-                              (urllib.error.HTTPError('http://localhost', 401, 'unauthorized', {}, None), 'unavailable')):
+                              (urllib.error.HTTPError('http://localhost', 401, 'unauthorized', {}, io.BytesIO(b'')), 'unavailable')):
             with self.subTest(reason=reason), patch.object(rt.c, 'read_json', return_value={'gateway':{'auth':{'token':'fixture'}}}), patch.object(rt.urllib.request, 'build_opener') as opener:
                 opener.return_value.open.side_effect = error
                 with self.assertRaises(rt.GatewayError) as caught:
                     rt.gateway('/v1/models', timeout=2)
                 self.assertEqual(caught.exception.reason, reason)
+                if isinstance(error, urllib.error.HTTPError):self.assertTrue(error.fp.closed)
 
     def test_retries_share_cached_observation_and_do_not_count_as_failures(self):
         with tempfile.TemporaryDirectory() as folder:

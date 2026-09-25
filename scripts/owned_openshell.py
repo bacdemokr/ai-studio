@@ -16,10 +16,20 @@ def creation_args(args, agent_id, config, database):
         return args
     if not isinstance(agent_id,str) or not re.fullmatch(r'bac-[a-f0-9]{24}(?:-r[0-9]+)?',agent_id) or agent_id not in config.get('agents',{}).get('entries',{}):
         raise RuntimeError('Sandbox creation has no unique active BaC owner.')
-    owner = agent_id[4:].split('-r')[0]
     with sqlite3.connect('file:'+str(Path(database).resolve())+'?mode=ro', uri=True) as db:
-        row = db.execute('SELECT deleting FROM agents WHERE id=?', (owner,)).fetchone()
-    if not row or row[0]:raise RuntimeError('Agent deletion has started; sandbox creation is blocked.')
+        if '-r' in agent_id:
+            # Preserved crew identities may predate the account-owned team.
+            # Their native ID prefix is not an ownership record.
+            rows = db.execute('''SELECT a.deleting FROM crew_resources r
+                JOIN agents a ON a.id=r.owner AND a.kind='crew'
+                WHERE r.native_id=?''', (agent_id,)).fetchall()
+        else:
+            rows = db.execute("SELECT deleting,profile FROM agents WHERE id=? AND kind='personal'",
+                              (agent_id[4:],)).fetchall()
+            rows = [row for row in rows if json.loads(row[1] or '{}').get('id') == agent_id]
+    if len(rows) != 1:
+        raise RuntimeError('Sandbox creation has no unique active BaC owner.')
+    if rows[0][0]:raise RuntimeError('Agent deletion has started; sandbox creation is blocked.')
     # The backend persists this label with the resource, not after CLI success.
     return args[:boundary]+['--label', 'bac-agent-id='+agent_id]+args[boundary:]
 

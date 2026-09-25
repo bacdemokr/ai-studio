@@ -67,7 +67,7 @@ def setup():
     with r.config_lock():
         if not r.config_path().exists():
             r.save_config(r.initial_config())
-    r.register('bac-host', r.root() / 'host-workspace', {'name': 'BaC host', 'persona': 'guide', 'skills': ['documents']})
+    r.bootstrap_host()
     print(r.cli('config', 'validate'))
     print('OpenClaw is installed. Choose a model in the app settings, then start the agent runtime.')
 

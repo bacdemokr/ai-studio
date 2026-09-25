@@ -133,8 +133,7 @@ def prepare():
                 entry['heartbeat']['every'] = '0m'
         runtime.save_config(config)
     if 'bac-host' not in config['agents']['entries']:
-        runtime.register('bac-host', runtime.root()/'host-workspace',
-                         {'name': 'BaC host', 'persona': 'guide', 'skills': ['documents']})
+        runtime.bootstrap_host()
     print(runtime.cli('config', 'validate'), flush=True)
 
 
