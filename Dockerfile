@@ -48,7 +48,7 @@ CMD ["serve"]
 
 FROM app AS test
 COPY tests/ tests/
-COPY bac start.sh ./
+COPY bac launch.sh ./
 COPY runtime/ runtime/
 COPY compose.yaml compose.yaml
 COPY docs/docker-setup.md docs/docker-setup.md

@@ -52,7 +52,7 @@
   el('experiences').after(el('workspace'));
   el('collection').after(layout);layout.after(el('safety-bar'));el('safety-bar').after(el('connections'));layout.after(el('collection'));
   el('collection').after(el('policies'));
-  const policyPanel=document.createElement('details');policyPanel.id='studio-policy-panel';policyPanel.className='studio-inline-panel';policyPanel.innerHTML='<summary>Approved websites</summary>';el('policies').before(policyPanel);policyPanel.append(el('policies'));policyPanel.ontoggle=()=>{if(policyPanel.open)loadPolicy();};
+  const policyPanel=document.createElement('details');policyPanel.id='studio-policy-panel';policyPanel.className='studio-inline-panel';policyPanel.innerHTML='<summary>OpenShell Policy</summary>';el('policies').before(policyPanel);policyPanel.append(el('policies'));policyPanel.ontoggle=()=>{if(policyPanel.open)loadPolicy();};
   el('workspace').append(el('reset'));el('reset').className='studio-secondary';
 
   const demoSkills=['weather','radar','web','writer'],extraSkills=['documents','builder','memory'];
@@ -84,20 +84,24 @@
     const conditional=path==='state'&&payload===undefined,cached=conditional?stateCache.get(target):null;
     if(cached)headers['If-None-Match']=cached.etag;
     const options = payload===undefined ? {headers} : {method:'POST',headers:{...headers,'Content-Type':'application/json','X-BaC-CSRF':csrf},body:JSON.stringify(payload)};
+    const readTimeout=payload===undefined?(['session','state'].includes(path)?30000:/^(?:agent-policy|crew-policy)(?:\?|$)/.test(path)?45000:0):0;
+    const controller=readTimeout?new AbortController():null;
+    const timeout=controller?setTimeout(()=>controller.abort(),readTimeout):null;
+    if(controller)options.signal=controller.signal;
     if(workspaceWrite)pendingWrites++;
     try {
     let response;
-    try {response=await fetch('/api/'+path,options);} catch {throw new Error('Cannot reach the studio. Check ./bac status; use ./bac restart to restart its services.');}
+    try {response=await fetch('/api/'+path,options);} catch {if(controller?.signal.aborted)throw new Error('The studio took too long to respond. Please try again.');throw new Error('Cannot reach the studio. Check ./bac status; use ./bac restart to restart its services.');}
     if(response.status===304&&cached)return cached.value;
     let result;
-    try {result=await response.json();} catch {throw new Error('The app server did not return a valid response. Refresh after updating the app.');}
+    try {result=await response.json();} catch {if(controller?.signal.aborted)throw new Error('The studio took too long to respond. Please try again.');throw new Error('The app server did not return a valid response. Refresh after updating the app.');}
     if(!response.ok){const error=new Error(result.error||'The request could not be completed.');error.status=response.status;throw error;}
     if(conditional&&response.headers.get('ETag')){
       stateCache.set(target,{etag:response.headers.get('ETag'),value:result});
       if(stateCache.size>16)stateCache.delete(stateCache.keys().next().value);
     }
     return result;
-    }finally{if(workspaceWrite)pendingWrites--;}
+    }finally{clearTimeout(timeout);if(workspaceWrite)pendingWrites--;}
   }
   function rememberSelection(){try{sessionStorage.setItem('bac-selected-agent',agentId);}catch{}}
   function openAgentState(state){
@@ -192,7 +196,6 @@
     const watch=data.techRadar;monitor.hidden=!watch;
     if(watch){monitor.innerHTML='<span><b>Heartbeat</b> · '+escape(watch.paused?'Paused':watch.state)+'<small>One unread article every 30 seconds'+(watch.lastChecked?' · Last checked '+new Date(watch.lastChecked*1000).toLocaleTimeString(): '')+'</small></span><button type="button" class="studio-secondary">'+(watch.paused?'Resume':'Pause')+'</button>';const button=monitor.querySelector('button');button.disabled=!!data.deleting;button.onclick=async()=>{button.disabled=true;try{await api('heartbeat',{paused:!watch.paused});await refresh();}catch(error){alert(error.message);button.disabled=false;}};}
 
-    el('agent-policy').setAttribute('aria-label','OpenShell Policy for '+(profile?.name||'this agent'));
     el('edit-agent').disabled=!!data.deleting;el('send').disabled=!!data.deleting;
     if(data.deleting){const waiting=data.agents?.find(a=>a.key===agentId)?.deletionWaiting;el('task-state').textContent=waiting?'DELETING':'DELETION NEEDS ATTENTION';el('task-summary').textContent=waiting?'Stopping work. This agent will be removed automatically after the current call ends.':'Cleanup could not finish. Retry Delete agent.';}
 
@@ -304,7 +307,7 @@
     board=false;layout.hidden=false;window.BacCampus?.overview();
     window.scrollTo({top:0,left:0,behavior:'smooth'});
   };
-  async function boot(){try{const session=await api('session');csrf=session.csrf;settingsButton.hidden=!session.canConfigure;runtime=session.runtime;data=session;agentId=session.agentId;connected=true;runtimeBadge();render();let saved;try{saved=sessionStorage.getItem('bac-selected-agent');}catch{}if(saved&&saved!==agentId&&session.agents.some(a=>a.key===saved))await switchAgent(saved);else rememberSelection();crewStartupReady=true;warmCrewOnOpen();}catch(error){runtimeBadge();alert(error.message);el('create').disabled=true;}}
+  async function boot(){try{const session=await api('session');csrf=session.csrf;settingsButton.hidden=!session.canConfigure;runtime=session.runtime;data=session;agentId=session.agentId;connected=true;runtimeBadge();render();let saved;try{saved=sessionStorage.getItem('bac-selected-agent');}catch{}if(saved&&saved!==agentId&&session.agents.some(a=>a.key===saved))await switchAgent(saved);else rememberSelection();crewStartupReady=true;warmCrewOnOpen();delete root.dataset.boot;root.setAttribute('aria-busy','false');}catch(error){connected=false;runtimeBadge();alert(error.message);el('create').disabled=true;root.dataset.boot='error';root.setAttribute('aria-busy','false');root.querySelector('.studio-boot-status span').textContent='Could not open the studio. Please try again.';root.querySelector('.studio-boot-status button').hidden=false;}}
   boot();setInterval(()=>{if(!document.hidden&&!busy)refresh();},1500);setInterval(async()=>{if(connected&&!document.hidden){try{const nextRuntime=await api('runtime');if(runtime.instance&&nextRuntime.instance!==runtime.instance){demoPreparationId=null;if(!nextRuntime.model)alert('Server restarted. Your agents and results are saved; reconnect the model to continue.');}runtime=nextRuntime;runtimeBadge();}catch{}}},10000);
   window.BacStudio={refresh,inspect:()=>({profile:data.profile,agentId,agents:data.agents,jobs:data.jobs,runtime,board,room}),showBoard,setRoom};
 })();

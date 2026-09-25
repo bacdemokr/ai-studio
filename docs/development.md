@@ -18,7 +18,7 @@ The normal installation path is the [Git + Docker setup](docker-setup.md). Host 
 ./bac dev preview
 ```
 
-`./bac dev --help` lists advanced commands. `start.sh` is a compatibility alias for `./bac dev preview`. See [host Ubuntu setup](ubuntu-setup.md) or [managed Spark model](spark-operations.md) only for those development paths.
+`./bac dev --help` lists advanced commands. `launch.sh` is a development shortcut for `./bac dev preview`. See [host Ubuntu setup](ubuntu-setup.md) or [managed Spark model](spark-operations.md) only for those development paths.
 
 Edit `src/` and run `python3 -B scripts/build.py`; refresh for UI changes. Restart for Python changes. Do not edit generated `app/index.html` directly. Docker installations load changed source files with `./bac start`.
 

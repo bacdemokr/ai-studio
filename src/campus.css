@@ -45,3 +45,10 @@
 
 .world-protection-allow{border-color:#7ae1b7;border-top-color:#a9f9c9;box-shadow:0 0 0 4px #70ffc00a,0 8px 28px #0008,0 0 24px #54ffb529}
 .world-protection-allow b{color:#baffd8}
+
+/* Keep the initial HTML form out of view until the room layout is ready.
+   Visibility preserves the dimensions needed to initialize the 3D renderer. */
+#agent-campus[data-boot] { position:relative; height:calc(100vh - 88px); min-height:360px; overflow:hidden; }
+#agent-campus[data-boot] > :not(.studio-boot-status), #agent-campus[data-boot] > :not(.studio-boot-status) * { visibility:hidden!important; pointer-events:none!important; }
+#agent-campus .studio-boot-status { display:none; }
+#agent-campus[data-boot] .studio-boot-status { display:flex; position:absolute; inset:0; align-items:center; justify-content:center; flex-direction:column; gap:18px; color:#b4c3d0; font-size:18px; }

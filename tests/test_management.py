@@ -118,7 +118,7 @@ class LifecycleTests(unittest.TestCase):
         shutil.copytree(SOURCE / 'src', seed / 'src')
         shutil.copytree(SOURCE / 'scripts', seed / 'scripts', ignore=shutil.ignore_patterns('__pycache__'))
         shutil.copy2(SOURCE / 'bac', seed / 'bac')
-        shutil.copy2(SOURCE / 'start.sh', seed / 'start.sh')
+        shutil.copy2(SOURCE / 'launch.sh', seed / 'launch.sh')
         (seed / '.gitignore').write_text('app/version.json\n__pycache__/\n')
         git(seed, 'add', '.')
         git(seed, 'commit', '-m', 'first version')
@@ -134,7 +134,7 @@ class LifecycleTests(unittest.TestCase):
         with patch.object(c, 'REPO', checkout), patch.object(c, 'active', return_value=False), patch.object(c, 'service') as service:
             first = deploy.stage()
             self.assertTrue(os.access(first / 'bac', os.X_OK))
-            self.assertTrue(os.access(first / 'start.sh', os.X_OK))
+            self.assertTrue(os.access(first / 'launch.sh', os.X_OK))
             deploy.activate(first)
             with (seed / 'src/studio.html').open('a') as output:
                 output.write('\n<!-- second version -->\n')

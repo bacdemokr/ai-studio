@@ -27,7 +27,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Sage edited');
   assert.equal(await page.evaluate(()=>BacStudio.inspect().agents.length),1);
   await page.reload();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Sage edited');await page.locator('.world-room-map [data-world-room=lounge]').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);await page.locator('#studio-edit-agent').click();
-  assert.equal(await page.locator('#studio-purpose').inputValue(),'Tone: Dry, curious and concise.\nRole: Compare papers and summarize documents with evidence.');
+  assert.equal(await page.locator('#studio-purpose').inputValue(),'- Tone: Dry, curious and concise.\n- Role: Compare papers and summarize documents with evidence.');
   for(const width of [1024,736,390]){
    await page.setViewportSize({width,height:950});
    for(const control of ['#studio-purpose','#studio-create']){await page.locator(control).scrollIntoViewIfNeeded();assert(await page.locator(control).isVisible());}

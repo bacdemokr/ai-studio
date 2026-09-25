@@ -1,4 +1,4 @@
-"""Browser test server with explicit fixture status; never used by start.sh or bac."""
+"""Browser test server with explicit fixture status; never used by launch.sh or bac."""
 import sys
 import json
 import tempfile

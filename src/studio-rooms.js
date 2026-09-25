@@ -11,11 +11,11 @@ function avatarBadge(avatar={}){return `<span class="studio-avatar tiny" aria-hi
 // Presets and custom text edit the same two fields; no hidden tone overrides.
 function creatorPrompt(){
   const text=el('purpose').value.trim();
-  const tone=text.match(/^Tone:[ \t]*([^]*?)(?=^Role:|$(?![^]))/im);
-  const role=text.match(/^Role:[ \t]*([^]*?)(?=^Tone:|$(?![^]))/im);
+  const tone=text.match(/^[ \t]*(?:-[ \t]+)?Tone:[ \t]*([^]*?)(?=^[ \t]*(?:-[ \t]+)?Role:|$(?![^]))/im);
+  const role=text.match(/^[ \t]*(?:-[ \t]+)?Role:[ \t]*([^]*?)(?=^[ \t]*(?:-[ \t]+)?Tone:|$(?![^]))/im);
   return {tonePrompt:tone?tone[1].trim():'',purpose:role?role[1].trim():tone?'':text};
 }
-function writeCreatorPrompt(tone,role){el('purpose').value='Tone: '+tone+'\nRole: '+role;}
+function writeCreatorPrompt(tone,role){el('purpose').value='- Tone: '+tone+'\n- Role: '+role;}
 function tonePromptLabel(key){return tones[key][0]+' ('+tones[key][1]+')';}
 function matchesTonePrompt(key,text){return [tones[key][0],tonePromptLabel(key)].some(value=>value.toLowerCase()===text.toLowerCase());}
 function savedTonePrompt(profile){return profile.tonePrompt??tonePromptLabel(profile.tone||'kind');}

@@ -429,6 +429,23 @@ class PolicyTests(unittest.TestCase):
             {'host': 'allowed.example.com', 'action': 'allow', 'time': created + 1}]
         self.assertEqual([e['host'] for e in self.studio.policy_report(self.owner)['recentDenied']], ['www.naver.com'])
 
+    def test_malformed_prompt_urls_do_not_break_policy_report(self):
+        for url in ('https://[broken', 'https://example.com\uff0fwrong', 'http://[::1'):
+            with self.subTest(url=url):
+                job = self.studio.enqueue(self.owner, {'prompt': url + ' and https://arxiv.org/abs/1234.5678'})
+                self.studio.decision(self.owner, job['id'], 'cancel')
+                report = self.studio.policy_report(self.owner)
+                self.assertEqual(report['pendingAccess'], [{'host': 'arxiv.org', 'reason': 'requested'}])
+                self.assertEqual(report['requested'], [])
+
+    def test_escaped_prompt_urls_use_the_same_catalog_and_pending_host(self):
+        job = self.studio.enqueue(self.owner, {'prompt': r'Read https://www\.naver\.com and https://127.0.0.1/private'})
+        self.studio.decision(self.owner, job['id'], 'cancel')
+        report = self.studio.policy_report(self.owner)
+        self.assertEqual(report['pendingAccess'], [{'host': 'www.naver.com', 'reason': 'requested'}])
+        self.assertIn('host:www.naver.com', report['catalog'])
+        self.assertNotIn('host:127.0.0.1', report['catalog'])
+
     def test_approval_request_without_tool_denial_is_visible_and_can_be_saved(self):
         job = self.studio.enqueue(self.owner, {'prompt': 'can you access www.naver.com?'})
         self.studio.decision(self.owner, job['id'], 'cancel')

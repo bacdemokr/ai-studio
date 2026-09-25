@@ -94,12 +94,10 @@ function createScene() {
   box(missionRoom,9.0,.13,2.15,1.45,.26,1.8,0x24303d);
   box(missionRoom,8.35,1.03,2.15,.12,1.8,.16,0x758a9e);box(missionRoom,9.65,1.03,2.15,.12,1.8,.16,0x758a9e);
   const gate=box(missionRoom,9.0,1.36,2.15,1.42,.09,.09,0x9bbacf,true);
-  sign(missionRoom,'ACCESS',9.0,1.93,2.17,1.5,.3,'#e1eef8','#1d2e3e');
   // Small Spark-like appliance and planters, for scale and life.
   box(missionRoom,9.15,.54,-6.23,1.1,1.05,.74,0x1b2633);
   for(let y=.2;y<.9;y+=.11)box(missionRoom,9.15,y,-5.85,.8,.035,.015,0x4b637a);
   box(missionRoom,9.47,.92,-5.84,.065,.065,.02,0x76b900,true);
-  sign(missionRoom,'SHARED MODEL',9.0,1.24,-5.83,1.7,.23,'#c4d5e8');
   function plant(x,z){cylinder(missionRoom,x,.25,z,.24,.5,0x35495c,8);for(let i=0;i<5;i++){const leaf=new THREE.Mesh(new THREE.ConeGeometry(.18,.62,5),mat(i%2?0x5d985b:0x295c40));leaf.position.set(x+Math.sin(i*2)*.18,.65+Math.cos(i)*.12,z+Math.cos(i*2)*.18);leaf.rotation.z=Math.sin(i)*.28;missionRoom.add(leaf);}}
   plant(-9.8,-6.35);plant(-9.8,6.1);plant(4.3,-6.4);
   // Narrow lit walkways visually tie all workstations to the shared state.

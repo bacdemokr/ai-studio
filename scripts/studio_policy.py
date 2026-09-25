@@ -2,10 +2,21 @@
 import json
 import time
 import re
-from pathlib import Path
 from urllib.parse import urlsplit
 
 from agent_policy import CATALOG, destination_permission, permission_rule, individual_permissions
+
+
+def prompt_hosts(prompt):
+    """Return public destinations without letting malformed chat URLs break policy reads."""
+    for match in re.finditer(r'(?:https?://|www\.)[^\s<>"\\]+', prompt.replace('\\.', '.'), re.I):
+        value = match.group().rstrip('.,;!?)')
+        try:
+            host = urlsplit(value if '://' in value else 'https://' + value).hostname or ''
+            key = destination_permission(host)
+            yield permission_rule(key)['hosts'][0]
+        except ValueError:
+            continue
 
 
 class ProtectionNotVerified(RuntimeError):
@@ -89,10 +100,7 @@ class PolicyControls:
             jobs = db.execute("SELECT payload FROM jobs WHERE owner=? AND (CASE WHEN ? IS NULL THEN kind NOT IN ('crew','crew-chat','prepare','prepare-agent') ELSE kind='crew' OR (kind='crew-chat' AND json_extract(payload,'$.crewRole')=?) END) ORDER BY created DESC LIMIT 30", (owner, role, role)).fetchall()
         hosts = [e.get('host', '') for e in report.get('logs', []) if e.get('action') == 'deny' and e.get('reason', 'policy-denied') == 'policy-denied']
         for job in jobs:
-            prompt = json.loads(job['payload']).get('prompt', '')
-            for match in re.finditer(r'(?:https?://|www\.)[^\s<>"\\]+', prompt, re.I):
-                value = match.group().rstrip('.,;!?)')
-                hosts.append(urlsplit(value if '://' in value else 'https://' + value).hostname or '')
+            hosts.extend(prompt_hosts(json.loads(job['payload']).get('prompt', '')))
         for host in hosts:
             try:
                 key = destination_permission(host)
@@ -123,17 +131,11 @@ class PolicyControls:
         covered = {host for key in approved for host in permission_rule(key)['hosts']}
         pending = {e['host']: 'blocked' for e in report['recentDenied'] if e['host'] not in covered}
         if latest:
-            prompt = json.loads(latest['payload']).get('prompt', '').replace('\\.', '.')
-            for match in re.finditer(r'(?:https?://|www\.)[^\s<>"\\]+', prompt, re.I):
-                value = match.group().rstrip('.,;!?)')
-                try:
-                    host = urlsplit(value if '://' in value else 'https://' + value).hostname or ''
-                    key = destination_permission(host)
-                    catalog[key] = permission_rule(key)
-                    if host not in covered:
-                        pending.setdefault(host, 'requested')
-                except ValueError:
-                    pass
+            for host in prompt_hosts(json.loads(latest['payload']).get('prompt', '')):
+                key = destination_permission(host)
+                catalog[key] = permission_rule(key)
+                if host not in covered:
+                    pending.setdefault(host, 'requested')
         if latest:
             answer = json.loads(latest['result'] or '{}').get('answer', '')
             # Only approval-request paragraphs (and their following bullet list),
@@ -201,7 +203,16 @@ class PolicyControls:
         snapshot = self.policy_report(owner, role)
         catalog = snapshot['catalog']
         if batch:
-            pending = {'host:' + item['host'] for item in snapshot.get('pendingAccess', snapshot.get('recentDenied', []))}
+            scope = data.get('scope', 'pending')
+            if scope not in ('pending', 'presets'):
+                raise Problem('Choose a valid approval list.')
+            if scope == 'presets':
+                covered = {host for key in snapshot['requested'] for host in permission_rule(key)['hosts']}
+                pending = {key for key, rule in catalog.items() if rule.get('hosts')
+                           and (not key.startswith('host:') or key in snapshot.get('recommended', []))
+                           and key not in snapshot['requested'] and not set(rule['hosts']) <= covered}
+            else:
+                pending = {'host:' + item['host'] for item in snapshot.get('pendingAccess', snapshot.get('recentDenied', []))}
             if any(key not in pending for key in permissions):
                 raise Problem('The approval list changed. Refresh and review the pending requests again.', 409)
         for key in permissions:

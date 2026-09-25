@@ -8,7 +8,7 @@ const surfaceDefinitions={
   missions:{title:'Try a mission',ids:['experiences']},
   results:{title:'Results & files',ids:['workspace']},
   compare:{title:'Agent comparison',ids:['compare']},
-  policies:{title:'Approved websites',ids:['policy-panel']},
+  policies:{title:'OpenShell Policy',ids:['policy-panel']},
   control:{title:'Mission Control',ids:['board']},
   deliverables:{title:'Results',ids:['event-package','workspace']}
 };
@@ -37,10 +37,11 @@ surfaceDialog.addEventListener('close',()=>{
   // A new surface may already have opened before this queued close event arrives.
   if(surfaceDialog.open)return;
   for(const node of [...el('surface-body').children])surfaceStore.append(node);
-  el('policy-panel').open=false;activeSurface=null;board=false;
+  el('policy-panel').open=false;clearTimeout(policyRefreshTimer);policyRefreshTimer=null;activeSurface=null;board=false;
 });
 function openSurface(name,contribution='all'){
   const definition=surfaceDefinitions[name];if(!definition)return;
+  if(name!=='policies'){el('policy-panel').open=false;clearTimeout(policyRefreshTimer);policyRefreshTimer=null;}
   el('mission-skill-notice')?.remove();
   if(name==='deliverables')selectEventContribution(contribution);
   for(const node of [...el('surface-body').children])surfaceStore.append(node);

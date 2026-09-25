@@ -41,6 +41,24 @@ class BulkPolicyTests(unittest.TestCase):
         self.assertEqual(report['history'][-1]['title'],'Permissions approved')
         self.assertEqual(self.saved(),(self.keys,0))
 
+    def test_preapprove_all_applies_presets_once_without_unrelated_pending_host(self):
+        self.request('Read https://example.com')
+        keys=[key for key,rule in CATALOG.items() if rule.get('hosts')]
+        with patch.object(self.adapter,'policy_apply',wraps=self.adapter.policy_apply) as apply:
+            self.studio.policy_change(self.owner,{'permissions':keys,'allow':True,'scope':'presets'})
+            self.assertEqual(apply.call_count,1)
+        self.assertEqual(self.saved()[0],sorted(individual_permissions(keys)))
+        self.assertNotIn('host:example.com',self.saved()[0])
+        with self.assertRaises(Problem):
+            self.studio.policy_change(self.owner,{'permissions':keys,'allow':True,'scope':'presets'})
+
+    def test_preset_scope_rejects_unrelated_hosts_and_unknown_scope(self):
+        self.request('Read https://example.com')
+        for scope in ('presets','anything'):
+            with self.subTest(scope=scope),self.assertRaises(Problem):
+                self.studio.policy_change(self.owner,{'permissions':['host:example.com'],'allow':True,'scope':scope})
+        self.assertEqual(self.saved(),([],0))
+
     def test_existing_approvals_and_other_agents_are_preserved(self):
         self.studio.policy_change(self.owner,{'permission':'papers','allow':True})
         other=self.studio.add_agent(self.owner,{**self.profile,'name':'Other'})['agentId']

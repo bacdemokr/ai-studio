@@ -14,7 +14,7 @@
 !tests/**
 !README.md
 !bac
-!start.sh
+!launch.sh
 !runtime/
 !runtime/**
 !compose.yaml

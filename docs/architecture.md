@@ -65,7 +65,7 @@ SQLite indexes serve per-owner history and per-role crew chats. Runtime readines
 
 ## Build and development
 
-`scripts/build.py` assembles explicit UI modules, bundled Three.js and local art into `app/index.html`. No old playground code is included and no remote UI dependency is needed. Frontend rebuilds need a browser refresh; backend changes need a restart. `./bac start` manages the Docker distribution. `./bac dev preview` serves a source checkout in the foreground (`start.sh` is its compatibility alias); advanced Linux `./bac dev start` uses committed release snapshots and user services.
+`scripts/build.py` assembles explicit UI modules, bundled Three.js and local art into `app/index.html`. No old playground code is included and no remote UI dependency is needed. Frontend rebuilds need a browser refresh; backend changes need a restart. `./bac start` manages the Docker distribution. `./bac dev preview` serves a source checkout in the foreground (`launch.sh` is its development shortcut); advanced Linux `./bac dev start` uses committed release snapshots and user services.
 
 Python tests use temporary stores/adapters. Browser fixtures test rendering and interactions. Neither proves a real model’s quality, sandbox enforcement or Spark performance; those need host rehearsal.
 
