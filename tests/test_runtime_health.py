@@ -88,5 +88,20 @@ class RuntimeHealthTests(unittest.TestCase):
             with patch('studio.time.monotonic', return_value=106), patch.object(app.adapter, 'status', return_value={'gatewayProbe':'timeout', 'model':True}):
                 self.assertEqual(app.runtime_status(retry=True)['gatewayState'], 'slow')
 
+    def test_http_execution_failure_is_distinct_and_never_replayed(self):
+        import io
+        error = urllib.error.HTTPError('http://localhost', 500, 'Internal error', {},
+                                       io.BytesIO(b'{"error":"agent run failed", "private":"secret"}'))
+        with patch.object(rt.c, 'read_json', return_value={'gateway': {'auth': {'token': 'fixture'}}}), \
+             patch.object(rt.urllib.request, 'build_opener') as opener:
+            opener.return_value.open.side_effect = error
+            with self.assertRaises(rt.GatewayError) as caught:
+                rt.gateway('/v1/chat/completions', {'messages': []})
+            self.assertEqual(caught.exception.reason, 'request_failed')
+            self.assertIn('HTTP 500', str(caught.exception))
+            self.assertIn('model or a tool call', str(caught.exception))
+            self.assertNotIn('secret', str(caught.exception))
+            opener.return_value.open.assert_called_once()
+
 
 if __name__ == '__main__':unittest.main()

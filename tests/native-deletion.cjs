@@ -11,12 +11,13 @@ try{
   if(options.method==='sessions.list'){
    if(options.params.agentId!=='${id}'||!options.params.activeOnly)throw Error('Unscoped session query');
    const trace=await fs.readFile(process.env.TEST_TRACE,'utf8');
-   if(process.env.TEST_MODE==='drain-list-timeout'||process.env.TEST_MODE==='drain-disconnected'&&trace.includes('abort\\n'))throw Object.assign(Error('temporary disconnect'),{transport:true,kind:'timeout'});
+   if(process.env.TEST_MODE==='drain-list-timeout'||['drain-disconnected','drain-retired-disconnected'].includes(process.env.TEST_MODE)&&trace.includes('abort\\n'))throw Object.assign(Error('temporary disconnect'),{transport:true,kind:'timeout'});
    if(process.env.TEST_MODE==='drain-denied')throw Error('Permission denied');
    return {sessions:trace.includes('abort\\n')?[]:[{key:'agent:${id}:heartbeat-radar:heartbeat'}]};
   }
   if(options.method==='sessions.abort'){
-   if(options.params.agentId!=='${id}'||options.params.key!=='agent:${id}:heartbeat-radar:heartbeat'||!options.params.clearQueued)throw Error('Unscoped abort');
+   const retired=['drain-retired','drain-retired-disconnected'].includes(process.env.TEST_MODE);
+   if(options.params.agentId!==(retired?undefined:'${id}')||options.params.key!=='agent:${id}:heartbeat-radar:heartbeat'||!options.params.clearQueued)throw Error('Unscoped abort');
    await fs.appendFile(process.env.TEST_TRACE,'abort\\n');
    if(['drain-abort-timeout','drain-disconnected'].includes(process.env.TEST_MODE))throw Object.assign(Error('abort reply lost'),{transport:true,kind:'timeout'});
    return {ok:true};
@@ -41,6 +42,7 @@ try{
  `);
  fs.writeFileSync(path.join(dist,'agent-deletion-journal-fixture.mjs'),`
  function readAgentDeletionJournal(agentId){
+  if(process.env.TEST_MODE?.startsWith('drain-retired'))return {agentId,cleanupCompleted:false,deleteFiles:true,workspaceDir:process.env.TEST_WORKSPACE};
   if(!['lost-reply-completed','fallback-completed','late-completed','already-completed','incomplete-journal','retained-completed','metadata-only'].includes(process.env.TEST_MODE))return;
   return {agentId,cleanupCompleted:process.env.TEST_MODE!=='incomplete-journal',deleteFiles:process.env.TEST_MODE!=='metadata-only',workspaceDir:process.env.TEST_WORKSPACE,agentDir:process.env.TEST_WORKSPACE+'/agent',sessionsDir:process.env.TEST_WORKSPACE+'/sessions'};
  }
@@ -125,11 +127,12 @@ try{
  assert.equal(quiet.status,0,quiet.stderr);assert.equal(JSON.parse(quiet.stdout).quiescent,true);
  assert.deepEqual(fs.readFileSync(trace,'utf8').trim().split('\n'),['rpc','rpc','abort','rpc']);
  assert.equal(fs.readFileSync(path.join(workspace,'memory.txt'),'utf8'),'keep','Draining must not delete files');
- for(const mode of ['drain-list-timeout','drain-abort-timeout','drain-disconnected','drain-denied']){
+ for(const mode of ['drain-list-timeout','drain-abort-timeout','drain-disconnected','drain-denied','drain-retired','drain-retired-disconnected','drain-retired-registered']){
+  fs.writeFileSync(config,JSON.stringify({agents:{entries:mode==='drain-retired-registered'?{[id]:{workspace}}:{}}}));
   fs.writeFileSync(trace,'');
   const check=spawnSync(process.execPath,[helper,root,id,'--quiesce'],{encoding:'utf8',timeout:8000,env:{...process.env,OPENCLAW_CONFIG_PATH:config,TEST_MODE:mode,TEST_TRACE:trace,TEST_WORKSPACE:workspace}});
   if(mode==='drain-denied')assert.notEqual(check.status,0,'Authorization errors must remain errors');
-  else {assert.equal(check.status,0,check.stderr);assert.equal(JSON.parse(check.stdout).quiescent,mode==='drain-abort-timeout');}
+  else {assert.equal(check.status,0,check.stderr);assert.equal(JSON.parse(check.stdout).quiescent,['drain-abort-timeout','drain-retired','drain-retired-registered'].includes(mode));}
   const calls=fs.readFileSync(trace,'utf8').trim().split('\n');
   assert.deepEqual(calls,mode==='drain-denied'||mode==='drain-list-timeout'?['rpc']:['rpc','rpc','abort','rpc']);
   assert.equal(fs.readFileSync(path.join(workspace,'memory.txt'),'utf8'),'keep','Uncertain stop must preserve files');

@@ -146,7 +146,7 @@ def openshell(action, automatic=False):
         entry = config.setdefault('plugins', {}).setdefault('entries', {}).setdefault('openshell', {})
         entry['enabled'] = True
         entry.setdefault('config', {}).update({
-            'command': command, 'from': 'openclaw', 'mode': 'mirror', 'autoProviders': False, 'providers': [], 'policy': str(default_path())})
+            'command': str(Path(__file__).with_name('owned_openshell.py')), 'from': 'openclaw', 'mode': 'mirror', 'autoProviders': False, 'providers': [], 'policy': str(default_path())})
         config.setdefault('gateway', {}).setdefault('reload', {})['mode'] = 'hybrid'
         r.save_config(config)
         try:

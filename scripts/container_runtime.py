@@ -120,12 +120,17 @@ def prepare():
         plugins = config.setdefault('plugins', {})
         plugins.setdefault('load', {})['paths'] = [str(plugin)]
         plugins.setdefault('entries', {})['openshell'] = {'enabled': True, 'config': {
-            'command': '/usr/local/bin/openshell', 'gateway': 'bac-demo', 'gatewayEndpoint': endpoint,
+            'command': str(Path(__file__).with_name('owned_openshell.py')), 'gateway': 'bac-demo', 'gatewayEndpoint': endpoint,
             'workspace': 'default', 'from': lock['images']['openclaw'], 'mode': 'mirror',
             'autoProviders': False, 'providers': [], 'policy': str(default_path())}}
         # OpenClaw 2026.9.4 keeps installation metadata outside openclaw.json.
         plugins.pop('installs', None)
         config['agents']['defaults']['sandbox'] = {'mode': 'off'}
+        # Leases live in the app process, so persisted timers are never proof
+        # that their owner is still connected after a crash/container restart.
+        for agent_id, entry in config['agents']['entries'].items():
+            if agent_id.startswith('bac-') and 'heartbeat' in entry:
+                entry['heartbeat']['every'] = '0m'
         runtime.save_config(config)
     if 'bac-host' not in config['agents']['entries']:
         runtime.register('bac-host', runtime.root()/'host-workspace',

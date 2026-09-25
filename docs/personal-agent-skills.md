@@ -18,11 +18,11 @@ Role and tone are independent of skill authorization. Changing Cynical to Kind s
 
 ## Research without a paid search key
 
-The research skill uses the [arXiv API](https://info.arxiv.org/help/api/user-manual.html), with a small result count and descending submission-date sort. It also retains public URL reading. General web search still needs a configured provider; do not advertise arbitrary internet search as guaranteed. A query's newest results are not necessarily the world's newest or best papers. Preprints are not automatically peer reviewed.
+The research skill tries the [arXiv API](https://info.arxiv.org/help/api/user-manual.html) once, with a small result count, a valid fielded query and descending submission-date sort. On a timeout, 429, 406 or other API failure, it switches to arXiv's static `/list/<category>/recent` pages, selects a bounded set of relevant entries and reads their `/abs/<id>` pages. It does not retry the API, use unverified model memory or call the dynamic `/search` page as a fallback. It checks at most two category lists and three abstracts, and reports that limited coverage. General web search still needs a configured provider; do not advertise arbitrary internet search as guaranteed. A query's newest results are not necessarily the world's newest or best papers. Preprints are not automatically peer reviewed.
 
 With OpenShell on, **arXiv papers** is a separate, initially unapproved permission for read-only HTTPS to `export.arxiv.org` and `arxiv.org` through sandboxed curl. Equipping research does not approve those hosts. Policy denial and upstream failures are different: approving a destination does not fix API rate limits. Never bypass a denial.
 
-The September 20, 2026 direct endpoint check received HTTP 429, so no live paper-search success is claimed. Native skill registration/tool filtering and policy generation were checked with temporary state; live LLM retrieval quality and actual sandbox enforcement require host testing.
+On September 25, 2026, BaC-container checks showed arXiv HTML category listings and abstract pages returning HTTP 200. A sample API query also returned HTTP 200, while several fresh topic/API requests and the dynamic search page timed out after DNS/TLS connection; an earlier request returned HTTP 429. This points to intermittent API/search-backend response trouble rather than a general BaC outbound-network failure. The new static-list fallback was selected because those pages responded in the same container. Native model compliance with the revised fallback still needs a live user request.
 
 ## Registration
 

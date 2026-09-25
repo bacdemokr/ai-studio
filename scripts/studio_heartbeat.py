@@ -18,11 +18,33 @@ class RadarHeartbeat:
         self.studio = studio
         self.lock = threading.RLock()
         self.statuses = {}
+        self.clients = {}
+        self.closed_clients = {}
         with studio.db() as db:
             db.executescript('''
                 CREATE TABLE IF NOT EXISTS heartbeat_controls(owner TEXT PRIMARY KEY, paused INTEGER NOT NULL DEFAULT 0);
                 CREATE TABLE IF NOT EXISTS heartbeat_receipts(owner TEXT, event TEXT, job TEXT, PRIMARY KEY(owner,event));
             ''')
+
+    def presence(self, participant, tab, end=False):
+        """Authenticated browser lease, independent of whether a model needs a key."""
+        if not isinstance(tab, str) or not 1 <= len(tab) <= 100:
+            return
+        with self.lock:
+            now = time.monotonic()
+            self.clients = {key: expiry for key, expiry in self.clients.items() if expiry > now}
+            self.closed_clients = {key: expiry for key, expiry in self.closed_clients.items() if expiry > now}
+            key = (participant, tab)
+            if end:
+                self.clients.pop(key, None)
+                self.closed_clients[key] = now + 300
+            elif key not in self.closed_clients:
+                self.clients[key] = now + 90
+
+    def connected(self, participant):
+        with self.lock:
+            return any(owner == participant and expiry > time.monotonic()
+                       for (owner, tab), expiry in self.clients.items())
 
     def disable(self, agent_id):
         toggle = getattr(self.studio.adapter, 'set_radar_heartbeat', None)
@@ -167,13 +189,21 @@ class RadarHeartbeat:
                         busy = owner in studio.executing_owners or any(j['owner']==owner or any(m.get('key')==owner for m in job_participants(json.loads(j['payload']))) for j in pending)
                     if not current or current['profile'] != row['profile']:continue
                     paused = bool(paused and paused['paused'])
-                    enabled = bool(ready and not current['deleting'] and not paused and not busy and profile['id'] in studio.provisioned)
+                    connected = self.connected(row['participant'])
+                    if connected and ready and not current['deleting'] and not paused and not busy and profile['id'] not in studio.provisioned:
+                        with studio.db() as db:
+                            db.execute('BEGIN IMMEDIATE')
+                            live = db.execute('SELECT profile,deleting FROM agents WHERE id=?', (owner,)).fetchone()
+                            if live and not live['deleting'] and live['profile'] == row['profile'] and not db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind='prepare-agent' AND status IN ('queued','running')", (owner,)).fetchone():
+                                studio.queue_agent_preparation(db, owner, profile)
+                        studio.signal.set()
+                    enabled = bool(connected and ready and not current['deleting'] and not paused and not busy and profile['id'] in studio.provisioned)
                     registered = toggle(profile['id'],enabled)
-                    state = 'paused' if paused else 'waiting for model' if not ready else 'waiting for task' if busy else 'watching' if enabled and registered else 'preparing'
+                    state = 'paused' if paused else 'waiting for browser' if not connected else 'waiting for model' if not ready else 'waiting for task' if busy else 'watching' if enabled and registered else 'preparing'
                     previous=self.statuses.get(owner,{})
                     since=previous.get('watchingSince',time.time()) if enabled else time.time()
                     self.statuses[owner] = {**previous, 'state':state, 'watchingSince':since}
-                    if not current['deleting'] and not paused:
+                    if connected and not current['deleting'] and not paused:
                         self.import_events(owner,row['participant'],profile,deliveries)
                     if enabled and registered:self.observe_native(owner,profile)
                     last_check=max(since,self.statuses[owner].get('lastChecked',0))

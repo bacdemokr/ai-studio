@@ -123,6 +123,7 @@ class LifecycleRaces(unittest.TestCase):
   self.assertEqual(error.exception.status,404)
   self.assertFalse(self.studio.workspace(self.owner).exists())
  def test_heartbeat_cannot_enable_after_delete_disable(self):
+  self.studio.heartbeat.presence(self.owner,'race-test-tab')
   self.studio.configure(self.owner,{**self.profile,'skills':['radar']})
   with self.studio.db() as db:db.execute('delete from jobs')
   native='bac-'+self.owner;self.studio.provisioned.add(native)

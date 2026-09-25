@@ -1,4 +1,11 @@
 const chatImageDrafts=new Map();
+const personalDrafts=new Map();
+function restorePersonalDraft(next,agents){
+ const live=new Set(agents.map(agent=>agent.key));
+ if(live.has(agentId))personalDrafts.set(agentId,el('prompt').value);
+ for(const owner of personalDrafts.keys())if(!live.has(owner))personalDrafts.delete(owner);
+ el('prompt').value=personalDrafts.get(next)||'';
+}
 const imageKey=crew=>agentId+(crew?':crew:'+selectedCrewRole:':personal');
 function pendingImages(crew=false){return chatImageDrafts.get(imageKey(crew))||[];}
 function clearChatImages(crew=false){chatImageDrafts.delete(imageKey(crew));renderImageDrafts(crew);}

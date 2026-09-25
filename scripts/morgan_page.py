@@ -82,15 +82,34 @@ def prepare(workspace, job, payload):
                 'instructions': 'Edit the HTML file itself. Preserve both protected blocks exactly. Write the LinkedIn post file. No publishing. Final reply: a short human-readable summary.'}
     import agent_workflow
     if agent_workflow.enabled(payload):
-        contract['instructions']='Build the program cards, narrative and page layout yourself from the theme data. Only CSS and organizer logistics are prefilled. Leave BAC:SCHEDULE and the BAC:SOCIAL_POST marker unchanged: the app inserts Alex’s validated timetable and your own text post after validation. Do not read or rewrite the large timetable. The app saves Morgan’s LinkedIn draft before HTML work begins. Preserve that post file unchanged. Edit the HTML output file, not the inbox reference. Read the starter once, replace unique placeholders and insert cards without rewriting CSS. Check placeholders with a short tool result instead of rereading the entire HTML.'
+        from event_page_sections import draft_files
+        contract['sectionEditor'] = 2
+        contract['sectionFiles'] = draft_files(files['html'], len(contract['themes']))
+        contract['instructions'] = ('Write sectionFiles.copy once as a JSON object with headline, intro, cta, program-title and promotion-title. Write each sectionFiles.card-N as raw HTML: one article.theme-card under 6000 characters, in themes order. Use native write calls only; distinct files can be written together. The app collects and applies these files after your turn, escapes text, removes card IDs and retains aria-hidden. No patch file, apply/status command, shell, full-page read or manual assembly. Preserve the saved LinkedIn post. Stop after successful writes with a brief receipt. On repair, rewrite only files/fields named in the errors; accepted sections remain saved.')
         contract['scheduleSummary']={k:payload['capacity'].get(k) for k in ('session','boothCount','presenterCount','scheduleCriteria','staffingPolicy')}
         contract['scheduleSelected']='2' in payload.get('outputs',{})
     safe_file(workspace, 'inbox/morgan-page.json').write_text(json.dumps(contract, ensure_ascii=False, indent=2), encoding='utf-8')
-    payload['pageDraft'] = {'files':files, 'starterSHA256':hashlib.sha256(html.encode()).hexdigest(), 'status':'writing', 'attempts':0}
+    payload['pageDraft'] = {'sectionEditor':contract.get('sectionEditor'), 'files':files, 'starterSHA256':hashlib.sha256(html.encode()).hexdigest(), 'status':'writing', 'attempts':0}
 
 
 class PageError(RuntimeError):
     pass
+
+
+def collect_draft(workspace, payload):
+    if payload.get('pageDraft', {}).get('sectionEditor') != 2:
+        return
+    from event_page_sections import collect
+    try:
+        result = collect(workspace)
+    except (ValueError, OSError, TypeError, KeyError) as error:
+        raise PageError('Could not collect page sections: ' + str(error)) from error
+    if result['status'] != 'complete':
+        errors = [key + ': ' + value + ' [' + result['files'].get(key, result['files']['copy']) + ']'
+                  for key, value in result['errors'].items()]
+        if result['missing']:
+            errors.append('Missing sections: ' + ', '.join(result['missing']))
+        raise PageError('\n'.join(errors)[:2500])
 
 
 class Inspect(HTMLParser):

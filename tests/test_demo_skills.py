@@ -1,3 +1,4 @@
+from native_config_fixture import offline_config
 import json, os, sys, tempfile, unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -6,6 +7,7 @@ import agent_runtime as runtime
 import agent_policy as policy
 
 class DemoSkillsTests(unittest.TestCase):
+    @offline_config
     def test_equipped_skills_are_native_files_with_matching_tool_access(self):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ,{'BAC_DATA_DIR':tmp}):
             runtime.save_config(runtime.initial_config())
@@ -20,6 +22,7 @@ class DemoSkillsTests(unittest.TestCase):
                 self.assertIn('edit',entry['tools']['allow'])
             self.assertIn('sortBy=submittedDate', (Path(tmp)/'web/skills/bac-web/SKILL.md').read_text())
 
+    @offline_config
     def test_papers_stay_inside_protected_transport_and_require_separate_approval(self):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ,{'BAC_DATA_DIR':tmp}), patch.object(policy,'configured',return_value=True):
             runtime.save_config(runtime.initial_config())

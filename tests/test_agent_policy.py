@@ -1,3 +1,4 @@
+from native_config_fixture import offline_config
 import json
 from pathlib import Path
 import sys
@@ -163,6 +164,7 @@ class PolicyTests(unittest.TestCase):
         with self.studio.db() as db:
             self.assertEqual(db.execute('SELECT updating FROM agent_policies WHERE owner=?', (self.owner,)).fetchone()['updating'], 0)
 
+    @offline_config
     def test_native_standard_and_protected_tool_paths_and_config_barrier(self):
         with patch('agent_runtime.root', return_value=Path(self.temp.name) / 'native'):
             runtime.save_config(runtime.initial_config())

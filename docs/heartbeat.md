@@ -9,7 +9,7 @@ Older feed entries are eligible: the agent discovers useful reading rather than 
 
 Shared URLs and skipped items are remembered in the agent workspace across restarts. The agent stays quiet when it exhausts the available relevant feed entries; it does not repeat old summaries or invent news. Feed changes are checked with conditional caching. Removing the agent removes its discovery history.
 
-30 seconds is the native heartbeat cadence, not a response deadline. Model calls and ongoing tasks may delay an update. Checks pause while the model is disconnected or the agent is assigned other work. Keep the app server and runtime running. Pause stops future checks; an in-flight turn may finish, and its queued result appears after Resume.
+30 seconds is the native heartbeat cadence, not a response deadline. Model calls and ongoing tasks may delay an update. Checks pause while the model is disconnected, the agent is assigned other work, or its owning browser session is disconnected. Authenticated browser activity renews a 90-second lease, including for keyless local models. Closing the last tab ends its lease; a lost close signal expires within 90 seconds plus the relay check interval. Other browser sessions cannot keep this session’s agents running. Restart leaves all Radar timers disabled until their owner reconnects. Keep the app server, runtime and owning browser tab running. Pause stops future checks; an in-flight turn may finish, and its queued result appears after Resume.
 
 With **OpenShell on**, approve `developer.nvidia.com` and `huggingface.co` in the agent's **OpenShell Policy** panel. The fixed feed requests run inside the sandbox; blocked requests are not retried through a host connection.
 

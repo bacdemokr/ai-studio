@@ -147,17 +147,26 @@ def runtimes(agent_id, *, probe=True):
     return matches
 
 
-def sandbox_names():
+def sandbox_names(owner=None):
     """Read the complete selected gateway/workspace inventory; errors remain failures."""
     names = set()
     for offset in range(0, 10000, 100):
-        page = shell('sandbox', 'list', '--names', '--limit', '100', '--offset', str(offset)).splitlines()
+        selector = () if owner is None else ('--selector', 'bac-agent-id='+owner)
+        page = shell('sandbox', 'list', '--names', '--limit', '100', '--offset', str(offset), *selector).splitlines()
         if any(not re.fullmatch(r'[a-z0-9][a-z0-9-]{1,62}', name) for name in page):
             raise RuntimeError('Unexpected sandbox inventory response.')
         names.update(page)
         if len(page) < 100:
             return names
     raise RuntimeError('Sandbox inventory was not fully verified.')
+
+
+def owned_sandbox_names(agent_id):
+    """Find creation-labeled resources even after the native registry was lost."""
+    from agent_identity import valid_agent_id
+    if not valid_agent_id(agent_id):raise RuntimeError('Invalid cleanup identity.')
+    if not plugin_config().get('config'):return set()
+    return sandbox_names(agent_id)
 
 
 def network_rows(document):

@@ -1,3 +1,4 @@
+from native_config_fixture import offline_config
 import json
 from pathlib import Path
 import subprocess
@@ -156,6 +157,7 @@ class CrewProtectionTests(unittest.TestCase):
                 self.studio.crew_chat({'owner':self.owner,'id':'fixture'}, {'crewRole':1,'prompt':'Find current themes'})
         self.assertEqual(self.adapter.calls, [])
 
+    @offline_config
     def test_native_config_uses_sandbox_exec_and_can_write_deliverables(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(runtime, 'root', return_value=Path(directory)), patch.object(runtime, 'ensure_openshell'):
             runtime.save_config(runtime.initial_config())

@@ -127,6 +127,13 @@ async function deleteThroughGateway() {
 async function quiesceAgent() {
   const callGateway = await nativeExport('call-', 'callGateway');
   const transportError = await nativeExport('transport-error-', 'isGatewayTransportError');
+  const config = JSON.parse(await fs.readFile(process.env.OPENCLAW_CONFIG_PATH, 'utf8'));
+  let retired = false;
+  if (!Object.hasOwn(config.agents?.entries || {}, agentId)) {
+    const readJournal = await nativeExport('agent-deletion-journal-', 'readAgentDeletionJournal');
+    const journal = readJournal(agentId);
+    retired = journal?.agentId === agentId && journal.deleteFiles === true;
+  }
   const deadline = Date.now()+30000;
   const aborted = new Set();
   while (true) {
@@ -149,7 +156,10 @@ async function quiesceAgent() {
       if (Date.now()>=deadline) return {agentId,quiescent:false};
       aborted.add(session.key);
       try {
-        await callGateway({method:'sessions.abort',params:{agentId,key:session.key,clearQueued:true},
+        // Explicit agentId is rejected once native deletion commits the roster.
+        // The exact, owner-validated key still targets that retired session.
+        // Keep observing real activity; a journal is not proof of quiescence.
+        await callGateway({method:'sessions.abort',params:{...retired?{}:{agentId},key:session.key,clearQueued:true},
           mode:'cli',clientName:'cli',requiredMethods:['sessions.abort'],timeoutMs:Math.max(1,Math.min(10000,deadline-Date.now()))});
       } catch (error) {
         // Abort can commit before its reply is lost. Recheck live activity,

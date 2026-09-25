@@ -77,12 +77,14 @@
   // This cache is tab-local and scoped by agent, never stored on disk.
   const stateCache=new Map();
   async function api(path, payload, target=agentId) {
-    if(payload!==undefined&&changingAgent)throw new Error('Wait for your agent’s workspace to open.');
+    // Presence renewals belong to the tab, not an editable agent workspace.
+    const workspaceWrite=payload!==undefined&&path!=='credential-session';
+    if(workspaceWrite&&changingAgent)throw new Error('Wait for your agent’s workspace to open.');
     const headers={'X-BaC-Key-Session':credentialSession,...(target?{'X-BaC-Agent':target}:{})};
     const conditional=path==='state'&&payload===undefined,cached=conditional?stateCache.get(target):null;
     if(cached)headers['If-None-Match']=cached.etag;
     const options = payload===undefined ? {headers} : {method:'POST',headers:{...headers,'Content-Type':'application/json','X-BaC-CSRF':csrf},body:JSON.stringify(payload)};
-    if(payload!==undefined)pendingWrites++;
+    if(workspaceWrite)pendingWrites++;
     try {
     let response;
     try {response=await fetch('/api/'+path,options);} catch {throw new Error('Cannot reach the studio. Check ./bac status; use ./bac restart to restart its services.');}
@@ -95,12 +97,13 @@
       if(stateCache.size>16)stateCache.delete(stateCache.keys().next().value);
     }
     return result;
-    }finally{if(payload!==undefined)pendingWrites--;}
+    }finally{if(workspaceWrite)pendingWrites--;}
   }
   function rememberSelection(){try{sessionStorage.setItem('bac-selected-agent',agentId);}catch{}}
   function openAgentState(state){
+    restorePersonalDraft(state.agentId,state.agents||[]);
     agentId=state.agentId;data=state;rememberSelection();selectedJob=null;resultKey='';skill=null;
-    el('prompt').value='';el('upload').value='';dismissAlert();
+    el('upload').value='';el('chat-error').hidden=true;dismissAlert();
     el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed','false'));
     if('speechSynthesis' in window)window.speechSynthesis.cancel();
     render();

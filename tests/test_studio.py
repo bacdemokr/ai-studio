@@ -1,3 +1,4 @@
+from native_config_fixture import offline_config
 import json
 from pathlib import Path
 import sys
@@ -177,6 +178,7 @@ class StudioTests(unittest.TestCase):
         other, _ = self.studio.session()
         self.assertEqual(self.studio.onboard(other['id'], {'name': 'Jinny', 'skills': ['web']})['name'], 'Jinny')
 
+    @offline_config
     def test_custom_purpose_persists_and_defines_native_identity(self):
         purpose = 'A skeptical travel buddy who finds vegetarian food.'
         created = self.studio.add_agent(self.owner, {'name': 'Scout', 'purpose': purpose, 'skills': ['web'], 'tone': 'cynical'})
@@ -196,6 +198,7 @@ class StudioTests(unittest.TestCase):
             with self.assertRaises(Problem):
                 restarted.configure(key, {'name': 'Scout II', 'skills': ['web'], 'purpose': invalid})
 
+    @offline_config
     def test_native_voice_configuration_preserves_memory_and_permissions(self):
         workspace = Path(self.temp.name) / 'voice-workspace'
         profile = {'name': 'Sage', 'persona': 'analyst', 'skills': ['documents'], 'tone': 'cynical', 'verbosity': 'verbose'}
@@ -404,6 +407,7 @@ class StudioTests(unittest.TestCase):
         self.assertIsNone(restarted.next_job(), 'Do not replay possibly completed work after restart')
 
 
+    @offline_config
     def test_native_config_restricts_tools_and_models(self):
         with patch('agent_runtime.root', return_value=Path(self.temp.name) / 'native'):
             agent_runtime.save_config(agent_runtime.initial_config())
@@ -416,6 +420,7 @@ class StudioTests(unittest.TestCase):
             self.assertIn('exec', config['tools']['deny'])
             self.assertEqual(agent_runtime.config_path().stat().st_mode & 0o777, 0o600)
 
+    @offline_config
     def test_three_takeaways_can_read_supplied_links_without_research_skill(self):
         with patch('agent_runtime.root', return_value=Path(self.temp.name)/'native'):
             agent_runtime.save_config(agent_runtime.initial_config())
@@ -429,6 +434,7 @@ class StudioTests(unittest.TestCase):
             self.assertIn('Use web_fetch to read a public HTTP(S) link',skill)
             self.assertIn('exactly three top-level numbered points',skill)
 
+    @offline_config
     def test_protected_takeaways_keep_supplied_link_reads_inside_openshell(self):
         with patch('agent_runtime.root', return_value=Path(self.temp.name)/'native'), patch('agent_runtime.ensure_openshell'):
             agent_runtime.save_config(agent_runtime.initial_config())

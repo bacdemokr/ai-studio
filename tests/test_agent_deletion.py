@@ -321,7 +321,11 @@ class DeletionTests(unittest.TestCase):
         native_id = 'bac-' + self.owner
         with patch('agent_runtime.root', return_value=native_root), patch('agent_runtime.quiesce_native'), patch('agent_policy.runtimes', return_value=[]):
             runtime.save_config(runtime.initial_config())
-            runtime.register(native_id, workspace, self.profile)
+            with patch.object(runtime, 'gateway_config_patch') as publish:
+                runtime.register(native_id, workspace, self.profile)
+            config = json.loads(runtime.config_path().read_text())
+            config['agents']['entries'].update(publish.call_args.args[0]['agents']['entries'])
+            runtime.save_config(config)
             for report in ({'purgeFailed': True}, {'failed': [{'path': 'private', 'reason': 'storage'}]},
                            {'workspaceRetained': True}, {'agentId': 'another-agent'}):
                 with patch('agent_runtime.delete_native', return_value=json.dumps({'agentId': native_id, **report})), self.assertRaises(RuntimeError):
@@ -489,8 +493,8 @@ class DeletionTests(unittest.TestCase):
         with patch.object(runtime, 'root', return_value=Path(self.temp.name)/'offline'):
             runtime.save_config(runtime.initial_config())
             workspace=Path(self.temp.name)/'new-workspace'
-            with patch.object(runtime, 'save_config', side_effect=OSError('write failed')):
-                with self.assertRaises(OSError):
+            with patch.object(runtime, 'gateway_config_patch', side_effect=RuntimeError('gateway apply failed')):
+                with self.assertRaises(RuntimeError):
                     runtime.register('bac-'+self.owner, workspace, self.profile)
             self.assertTrue((workspace/'.bac-prepared-only').exists())
 

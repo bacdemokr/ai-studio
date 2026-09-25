@@ -128,6 +128,7 @@ el('room-action').onclick=crewForm;
 el('edit-agent').onclick=()=>agentForm(false);el('cancel-create').onclick=()=>{if(editingInPlace){editingInPlace=false;fillCreator(true);renderRoomVisibility();}else setRoom('lounge');};
 function forgetDeletedAgent(target){
   stateCache.clear();
+  personalDrafts.delete(target);
   for(const key of chatImageDrafts.keys())if(key.startsWith(target+':'))chatImageDrafts.delete(key);
   for(const key of crewDrafts.keys())if(key.startsWith(target+':'))crewDrafts.delete(key);
   try{const layout=JSON.parse(localStorage.getItem('bac-lounge-layout-v1')||'{}');delete layout[target];localStorage.setItem('bac-lounge-layout-v1',JSON.stringify(layout));}catch{}

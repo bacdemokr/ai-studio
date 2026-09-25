@@ -1,3 +1,4 @@
+from native_config_fixture import offline_config
 import io
 import json
 from pathlib import Path
@@ -28,6 +29,14 @@ def author_page(workspace):
     contract=json.loads((workspace/'inbox/morgan-page.json').read_text())
     post='Explore practical AI workflows. Try one focused demo, inspect its outcome and meet the builders. #BuildAClaw #AI'
     values=['Build Agents. See What Changes.','Explore practical AI workflows and leave with a sharper sense of what agents can do.','Explore the experiences','Choose your hands-on demo','Bring your next idea',post]
+    if contract.get('sectionEditor') == 2:
+        from event_page_sections import TEXT
+        (workspace/contract['sectionFiles']['copy']).write_text(json.dumps(dict(zip(TEXT,values))))
+        for index,theme in enumerate(contract['themes'],1):
+            fragment='<article class="theme-card"><div class="theme-body"><h3>'+escape(theme['demo'])+'</h3><p>'+escape(theme.get('action',''))+'</p><a href="'+escape(theme.get('source',''),quote=True)+'">Source</a></div></article>'
+            (workspace/contract['sectionFiles']['card-'+str(index)]).write_text(fragment)
+        (workspace/contract['files']['post']).write_text(post)
+        return
     path=workspace/contract['files']['html']
     html=path.read_text()
     for token,value in zip(morgan_page.TOKENS,values):html=html.replace(token,escape(value))
@@ -155,6 +164,7 @@ class ResearchTransportTests(unittest.TestCase):
         self.assertEqual(result['status'],'unavailable');self.assertEqual(result['sources'],[])
         self.assertEqual(len(result['failedQueries']),4)
 
+    @offline_config
     def test_native_skills_and_template_are_equipped(self):
         import os
         import agent_runtime as runtime

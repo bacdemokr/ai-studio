@@ -146,11 +146,11 @@ class AgentWorkflowTests(unittest.TestCase):
     def test_six_themes_and_agent_cli_export_from_shipped_skill(self):
         import agent_runtime as runtime
         from event_planner import plan
-        with patch.dict(os.environ,{'BAC_DATA_DIR':self.temp.name}):
+        with patch.dict(os.environ,{'BAC_DATA_DIR':self.temp.name}), patch.object(runtime,'gateway_config_patch') as publish:
             runtime.save_config(runtime.initial_config())
             workspace=Path(self.temp.name)/'shipped'
             runtime.register('test-scheduling',workspace,{'name':'Alex','persona':'analyst','skills':['event-tools','event-scheduling']},'Operations planner')
-            entry=json.loads(runtime.config_path().read_text())['agents']['entries']['test-scheduling']
+            entry=publish.call_args.args[0]['agents']['entries']['test-scheduling']
             self.assertIn('exec',entry['tools']['allow']);self.assertEqual(entry['sandbox']['mode'],'off')
             b,c=plan({'themeCount':6,'days':2,'attendees':180})
             payload={'brief':b,'capacity':c};agent_workflow.prepare(workspace,'cli-test',payload,2)
@@ -305,7 +305,7 @@ class AgentWorkflowTests(unittest.TestCase):
         self.assertEqual(job['status'],'done');self.assertEqual(job['payload']['pageDraft']['attempts'],2)
         self.assertEqual(len(calls),2);self.assertNotEqual(calls[0][0],calls[1][0])
         self.assertIn('do not read or rewrite the large timetable',calls[1][1])
-        self.assertIn('Replace every MORGAN_*',calls[1][1])
+        self.assertIn('Missing sections:',calls[1][1])
         self.assertTrue(job['payload']['website']['authored'])
 
     def test_repeated_completion_claims_without_writes_never_publish_a_page(self):
@@ -330,7 +330,7 @@ class AgentWorkflowTests(unittest.TestCase):
         job=self.event(6,days=2);p=job['payload'];work=self.studio.workspace(self.owner,3)
         path=work/morgan_page.paths(job['id'])['html'];raw=path.read_text()
         # Token replacement alone cannot pass if the cards are hidden in a template.
-        first=raw.index('<article>');last=raw.rindex('</article>')+len('</article>')
+        first=raw.index('<article ');last=raw.rindex('</article>')+len('</article>')
         path.write_text(raw[:first]+'<template>'+raw[first:last]+'</template>'+raw[last:])
         with self.assertRaisesRegex(morgan_page.PageError,'demo title in the program'):
             morgan_page.validate(work,job['id'],p)

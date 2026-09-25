@@ -25,6 +25,7 @@ class HeartbeatRelayTests(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.adapter=RadarAdapter();self.studio=Studio(self.temp.name,self.adapter,start_worker=False)
         self.owner=self.studio.session()[0]['id']
+        self.studio.heartbeat.presence(self.owner, 'fixture-tab')
         self.profile=self.studio.onboard(self.owner,{'name':'Echo','skills':['radar']})
         self.studio.execute(self.studio.next_job())
         self.root=self.studio.workspace(self.owner)
@@ -73,6 +74,66 @@ class HeartbeatRelayTests(unittest.TestCase):
     def test_disconnected_model_disables_timer(self):
         with patch('runtime_settings.model_available',return_value=False):self.studio.heartbeat.tick()
         self.assertFalse(self.adapter.cadence[self.profile['id']])
+
+    def test_invisible_old_session_cannot_run_or_deliver_on_another_sessions_lease(self):
+        self.studio.heartbeat.presence(self.owner, 'fixture-tab', end=True)
+        other = self.studio.session()[0]['id']
+        self.studio.heartbeat.presence(other, 'new-browser')
+        with patch.object(telegram, 'send') as send:
+            self.tick(); send.assert_not_called()
+        self.assertFalse(self.adapter.cadence[self.profile['id']])
+        self.assertEqual(self.studio.heartbeat.statuses[self.owner]['state'], 'waiting for browser')
+        self.assertEqual(self.studio.state(self.owner)['jobs'], [])
+
+    def test_expired_keyless_browser_stops_and_reconnect_respects_manual_pause(self):
+        future = time.monotonic() + 91
+        with patch('studio_heartbeat.time.monotonic', return_value=future):
+            self.tick()
+            self.assertFalse(self.adapter.cadence[self.profile['id']])
+            self.studio.heartbeat.control(self.owner, {'paused': True})
+            self.studio.heartbeat.presence(self.owner, 'returning-tab')
+            self.tick()
+            self.assertFalse(self.adapter.cadence[self.profile['id']])
+            self.studio.heartbeat.control(self.owner, {'paused': False})
+            self.tick()
+            self.assertTrue(self.adapter.cadence[self.profile['id']])
+
+    def test_closing_one_tab_preserves_other_tab_and_late_requests_do_not_reopen(self):
+        self.studio.heartbeat.presence(self.owner, 'second-tab')
+        self.studio.heartbeat.presence(self.owner, 'fixture-tab', end=True)
+        self.tick(); self.assertTrue(self.adapter.cadence[self.profile['id']])
+        self.studio.heartbeat.presence(self.owner, 'second-tab', end=True)
+        self.studio.heartbeat.presence(self.owner, 'fixture-tab')
+        self.studio.heartbeat.presence(self.owner, 'second-tab')
+        self.tick(); self.assertFalse(self.adapter.cadence[self.profile['id']])
+
+    def test_restart_disables_timers_without_preparing_absent_owners(self):
+        self.tick()
+        with patch('studio.threading.Thread.start'):
+            restored = Studio(self.temp.name, self.adapter, start_worker=True)
+        try:
+            self.assertFalse(self.adapter.cadence[self.profile['id']])
+            with restored.db() as db:
+                self.assertEqual(db.execute("SELECT count(*) FROM jobs WHERE kind='prepare-agent' AND status='queued'").fetchone()[0], 0)
+            with patch('runtime_settings.model_available', return_value=True):
+                restored.heartbeat.tick()
+                restored.heartbeat.presence(self.owner, 'new-tab')
+                restored.heartbeat.tick(); restored.heartbeat.tick()
+            with restored.db() as db:
+                self.assertEqual(db.execute("SELECT count(*) FROM jobs WHERE kind='prepare-agent' AND status='queued'").fetchone()[0], 1)
+        finally:
+            restored.stop.set(); restored.instance_lock.close()
+
+    def test_deleted_identity_does_not_return_after_browser_reconnect_and_restart(self):
+        deleted = self.profile['id']
+        self.studio.delete_agent(self.owner, {'name': self.profile['name']})
+        restored = Studio(self.temp.name, self.adapter, start_worker=False)
+        restored.heartbeat.presence(self.owner, 'reopened-tab')
+        with patch('runtime_settings.model_available', return_value=True):restored.heartbeat.tick()
+        self.assertNotIn(deleted, self.adapter.agents)
+        self.assertFalse(self.adapter.cadence[deleted])
+        with restored.db() as db:
+            self.assertFalse(db.execute('SELECT 1 FROM agents WHERE id=?', (self.owner,)).fetchone())
 
     def test_native_denial_without_outbox_shows_shield_policy_and_system_notice(self):
         self.profile['protection']='openshell'
@@ -157,7 +218,14 @@ class TelegramTests(unittest.TestCase):
 
 class NativeConfigTests(unittest.TestCase):
     def test_only_radar_agent_gets_native_heartbeat(self):
-        with tempfile.TemporaryDirectory() as tmp, patch.object(agent_runtime,'root',return_value=Path(tmp)):
+        def apply_patch(value, replace_paths):
+            config = json.loads(agent_runtime.config_path().read_text())
+            incoming = value.get('agents', {}).get('entries', {})
+            for key, entry in incoming.items():
+                if 'name' in entry:config['agents']['entries'][key] = entry
+                else:config['agents']['entries'][key].update(entry)
+            agent_runtime.save_config(config)
+        with tempfile.TemporaryDirectory() as tmp, patch.object(agent_runtime,'root',return_value=Path(tmp)), patch.object(agent_runtime,'gateway_config_patch',side_effect=apply_patch):
             agent_runtime.save_config(agent_runtime.initial_config())
             agent='bac-'+'a'*24
             agent_runtime.register(agent,Path(tmp)/'radar',{'name':'Echo','persona':'analyst','skills':['radar']})

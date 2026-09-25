@@ -114,6 +114,8 @@ class Handler(SimpleHTTPRequestHandler):
             studio = self.server.studio
             row, new = self.participant(create=parsed.path == '/api/session')
             owner = studio.resolve_agent(row['id'], self.headers.get('X-BaC-Agent'))
+            if parsed.path in ('/api/session', '/api/state'):
+                studio.heartbeat.presence(row['id'], self.headers.get('X-BaC-Key-Session', ''))
             if parsed.path == '/api/session':
                 return self.json_response({'csrf': row['csrf'], 'canConfigure': self.is_operator(), 'runtime': studio.runtime_status(), **studio.state(owner)}, cookie=row['token'] if new else None)
             if parsed.path == '/api/state':
@@ -212,6 +214,7 @@ class Handler(SimpleHTTPRequestHandler):
             data['_credentialSession']=row['id']+':'+lease
             if self.path == '/api/credential-session':
                 import session_secrets
+                studio.heartbeat.presence(row['id'], self.headers.get('X-BaC-Key-Session', ''), end=bool(data.get('end')))
                 if data.get('end'):session_secrets.release(data['_credentialSession'])
                 else:session_secrets.renew(data['_credentialSession'])
                 studio.status_cache=(0,{})

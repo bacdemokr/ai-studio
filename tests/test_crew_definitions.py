@@ -74,16 +74,16 @@ class CrewDefinitionTests(unittest.TestCase):
             before={name:(workspace/name).read_text() for name in ('SOUL.md','IDENTITY.md','AGENTS.md')}
             profile={**member,'skills':ROLE_SKILLS[role],'protection':member.get('protection','standard')}
             agent_id='bac-'+self.owner+'-r'+str(role)
-            with patch.object(runtime,'ensure_openshell'):
+            with patch.object(runtime,'ensure_openshell'), patch.object(runtime,'gateway_config_patch') as publish:
                 runtime.register(agent_id,workspace,profile,member['role'])
             for name,content in before.items():self.assertEqual((workspace/name).read_text(),content)
-            entry=json.loads(runtime.config_path().read_text())['agents']['entries'][agent_id]
+            entry=publish.call_args.args[0]['agents']['entries'][agent_id]
             self.assertEqual(entry['workspace'],str(workspace))
-            self.assertEqual('exec' in entry['tools']['allow'],role in (1,2))
+            self.assertEqual('exec' in entry['tools']['allow'],role in (1,2,3))
             self.assertFalse((workspace/'.bac-prepared-only').exists())
         self.assertIn('source', (self.studio.workspace(self.owner,1)/'AGENTS.md').read_text())
         self.assertIn('schedule in parallel', (self.studio.workspace(self.owner,2)/'AGENTS.md').read_text())
-        self.assertIn('Check markers and placeholders with a short tool output', (self.studio.workspace(self.owner,3)/'AGENTS.md').read_text())
+        self.assertIn('The app collects and applies them after your turn', (self.studio.workspace(self.owner,3)/'AGENTS.md').read_text())
 
     def test_definitions_alone_do_not_require_native_cleanup(self):
         with patch.object(runtime,'delete_native',side_effect=AssertionError('Never registered')):

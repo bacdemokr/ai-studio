@@ -34,7 +34,7 @@ import threading
 report_lock=threading.RLock()
 jar=http.cookiejar.CookieJar();http=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
 def call(path,body=None,owner=None,timeout=180):
- headers={'Content-Type':'application/json','X-BaC-CSRF':csrf}
+ headers={'Content-Type':'application/json','X-BaC-CSRF':csrf,'X-BaC-Key-Session':'deletion-regression'}
  if owner:headers['X-BaC-Agent']=owner
  req=urllib.request.Request(args.url.rstrip('/')+'/api/'+path,data=None if body is None else json.dumps(body).encode(),headers=headers)
  try:
@@ -105,6 +105,12 @@ baseline_sandboxes=policy.sandbox_names()
 _,session=call('session');csrf=session['csrf'];current=session['agentId']
 if not rows('SELECT id FROM agents WHERE id=?',(current,)):
  raise RuntimeError('The URL and data directory do not belong to the same preview')
+lease_stop=threading.Event()
+def renew_browser():
+ while not lease_stop.wait(20):
+  try:call('credential-session',{},timeout=10)
+  except Exception as error:emit('lease_renew_failed',errorType=type(error).__name__)
+lease_thread=threading.Thread(target=renew_browser,daemon=True);lease_thread.start()
 try:
  for cycle in (range(3) if args.scenario=='lifecycle' else range(3,4) if args.scenario=='interruptions' else range(4)):
   batch=[];known={}
@@ -152,8 +158,7 @@ try:
    item=batch[3];native='bac-'+item['owner']
    prompt='Local deletion regression. Use exec to run sleep 30, then return HEARTBEAT_OK. Do not read feeds, access websites, or send messages.'
    (DATA/'studio/workspaces'/item['owner']/'HEARTBEAT.md').write_text(prompt+'\n')
-   with rt.config_lock():
-    config=json.loads(rt.config_path().read_text());config['agents']['entries'][native]['heartbeat']['prompt']=prompt;rt.save_config(config)
+   rt.gateway_config_patch({'agents':{'entries':{native:{'heartbeat':{'prompt':prompt}}}}},[])
    def probe(action):
     result=subprocess.run([str(rt.root()/'node/bin/node'),str(ROOT/'tests/native-lifecycle-probe.mjs'),str(rt.root()),native,action],env=rt.environment(),capture_output=True,text=True,timeout=40)
     if result.returncode:
@@ -204,3 +209,5 @@ finally:
   if rows('select id from agents where id=?',(item['owner'],)):
    try:remove(item)
    except Exception as e:emit('test_cleanup_failed',name=item['name'],errorType=type(e).__name__)
+ lease_stop.set();lease_thread.join(12)
+ call('credential-session',{'end':True},timeout=10)

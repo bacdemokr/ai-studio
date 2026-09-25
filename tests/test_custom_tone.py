@@ -1,3 +1,4 @@
+from native_config_fixture import offline_config
 import sys, tempfile, unittest, os
 from pathlib import Path
 from unittest.mock import patch
@@ -6,6 +7,7 @@ from studio import Studio, Problem
 from test_studio import Adapter
 import agent_runtime as runtime
 class CustomToneTests(unittest.TestCase):
+    @offline_config
     def test_custom_tone_persists_and_reaches_native_soul(self):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {'BAC_DATA_DIR':tmp}):
             studio=Studio(Path(tmp)/'studio',Adapter(),start_worker=False)
@@ -22,6 +24,7 @@ class CustomToneTests(unittest.TestCase):
             with self.assertRaises(Problem):
                 studio.configure(owner,{'name':'Echo','persona':'guide','skills':['writer'],'tonePrompt':'x'*801})
 
+    @offline_config
     def test_literal_tone_and_role_are_not_expanded(self):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {'BAC_DATA_DIR':tmp}):
             runtime.save_config(runtime.initial_config())
@@ -38,6 +41,7 @@ class CustomToneTests(unittest.TestCase):
                 self.assertIn('within your actual skills and permissions',soul)
                 self.assertNotIn('# Answer length',soul)
 
+    @offline_config
     def test_skill_gap_tracks_actual_equipped_tools(self):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {'BAC_DATA_DIR':tmp}):
             runtime.save_config(runtime.initial_config())

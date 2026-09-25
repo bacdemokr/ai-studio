@@ -287,8 +287,8 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
                             # One unavailable identity must not prevent startup.
                             # Its queued preparation and tick retry independently.
                             self.heartbeat.statuses[owner]={'state':'preparing'}
-                        if not db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind='prepare-agent' AND status='queued'", (owner,)).fetchone():
-                            self.queue_agent_preparation(db, owner, profile)
+                        # A browser lease is required before restoring autonomous work.
+                        # RadarHeartbeat.tick queues preparation only for connected owners.
             self.worker = threading.Thread(target=self.work, daemon=True, name='bac-agent-queue')
             self.deletion_worker = threading.Thread(target=self.clean_deletions, daemon=True, name='bac-cleanup-queue')
             self.worker.start()
@@ -1227,11 +1227,13 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
                 'Do not return JSON or HTML in chat as a substitute for writing the files. No publishing or sending. '
                 +runtime.SKILLS['nvidia-webpage'][1]+'\n'+runtime.SKILLS['nvidia-social'][1])
             if agent_led:
-                steps[3]=('Use bac-nvidia-webpage and bac-nvidia-social. Read inbox/morgan-page.json as your primary source: it contains the organizer brief, Dylan’s completed themes, Alex’s schedule summary and exact output paths. '
-                    'Read the small HTML starter and EDIT it with native file tools. Follow the contract programLayout with the supplied CSS: text-first session cards, no numbered banners or decorative thumbnails. Author exactly the requested number of program cards with Dylan’s exact titles, source links, actions and takeaways. Write original headline, intro, section headings, CTA and matching LinkedIn post. '
-                    'Keep BAC:LOGISTICS, BAC:SCHEDULE and the BAC:SOCIAL_POST marker unchanged. The app inserts Alex’s full timetable and your own post after validation; do not read or rewrite the large timetable or duplicate the post text in HTML. '
-                    'Describe your contribution as page content and HTML edits using a supplied starter; the base CSS, timetable visualization and final assembly are supplied by the app. '
-                    'Replace every MORGAN_* token and the program-card comment. The app generates and saves the LinkedIn draft first. Preserve it unchanged. Read the HTML output starter once; use small unique replacements for placeholders and insert the program cards. Do not edit the inbox reference, rewrite base CSS, or print/read the entire HTML repeatedly. Verify with a short placeholder/count check instead. Save the HTML, then return at most 20 words. No publishing. Do not claim completion before writing the files.')
+                steps[3]=('Use bac-nvidia-webpage. Read inbox/morgan-page.json once for the brief, themes, programLayout and sectionFiles paths. '
+                    'Write one JSON object to sectionFiles.copy with headline, intro, cta, program-title and promotion-title as plain text. '
+                    'Write each sectionFiles.card-N as raw HTML, one article.theme-card under 6000 characters in themes order; preserve exact demo titles, source links, actions, outcomes and limitations. '
+                    'Use native write calls; these distinct files can be written together. The app automatically applies them after your turn and reports any errors. '
+                    'Do not create page-patch.json, invoke exec/apply/status, or read the full HTML/CSS. Do not manually assemble a page; do not read or rewrite the large timetable. '
+                    'The app preserves CSS, logistics, timetable and the already saved LinkedIn draft. Finish immediately after the writes succeed with a receipt under 20 words. '
+                    'On repair, write only the invalid or missing files/fields specified; preserve accepted content. No publishing.')
         enabled = payload.get('enabledRoles', list(range(len(steps))))
         selected_crew = [{'name': payload['roster'][i]['name'], 'role': ROLES[i][1]} for i in enabled] if payload.get('roster') else []
         omitted = [ROLES[i][1] for i in range(len(steps)) if i not in enabled]
@@ -1370,6 +1372,7 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
                     return answer
                 payload['pageDraft']['attempts'] = attempt + 1
                 try:
+                    morgan_page.collect_draft(self.workspace(owner, stage), payload)
                     morgan_page.validate(self.workspace(owner, stage), job_id, payload)
                     payload['pageDraft'].update(status='validated', errors=[])
                     if 'Reply truncated at the model' in str(answer):
@@ -1392,7 +1395,7 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
                     if agent_led:
                         # Retain files, not a potentially exhausted read-loop context.
                         session += '-page-repair'
-                        prompt = steps[3]+'\n'+prompt
+                        prompt = (steps[3]+'\nRewrite only the source files/fields responsible for these errors: '+str(error)+'\nThe app has saved all other valid sections. Do not run status/apply; finish after writing the fixes.')
 
         def save(stage, prepared, answer):
             agent_id, name, shared, prior = prepared

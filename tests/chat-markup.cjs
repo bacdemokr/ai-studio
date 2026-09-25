@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const escape=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const context=vm.createContext({escape});
 const source=fs.readFileSync('src/studio-chat.js','utf8');
-vm.runInContext(source.slice(source.indexOf('function messageMarkup('),source.indexOf('let conversationSignature=')),context);
+vm.runInContext(source.slice(source.indexOf('function messageMarkup('),source.indexOf('function shieldReplyHeld(')),context);
 const render=context.messageMarkup;
 const expected='<ol><li>First</li><li>Second</li><li>Third</li></ol>';
 assert.equal(render('1. First\n\n2. Second\n\n3. Third'),expected);

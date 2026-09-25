@@ -39,6 +39,7 @@ class TwelveAgentTests(unittest.TestCase):
         self.studio = Studio(Path(folder.name) / 'studio', self.adapter, start_worker=False)
         self.account = self.studio.session()[0]
         self.owner = self.account['id']
+        self.studio.heartbeat.presence(self.owner, 'fixture-tab')
         self.studio.onboard(self.owner, self.profile(0))
         with ThreadPoolExecutor(max_workers=6) as pool:
             self.owners = [self.owner] + list(pool.map(
