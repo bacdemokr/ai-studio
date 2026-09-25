@@ -150,3 +150,24 @@ A failure during test setup is reported as a failed scenario, never a pass.
 If the optional unused-workspace inspection exits or times out, no shortcut is
 accepted. Deletion continues through the full ownership, activity, sandbox and
 native cleanup checks. Malformed ownership responses still fail closed.
+
+## Heartbeat and Telegram retirement
+
+```bash
+python3 -B -m unittest discover -s tests -p 'test_heartbeat_deletion.py'
+```
+
+These 22 cases use the real Studio database/lifecycle with policy-aware test
+adapters and controlled Telegram transport, for ordinary and OpenShell profiles.
+They do not send to real chats or replace the native sandbox checks above.
+They cover deletion before preparation, queued delivery, late native output,
+an in-flight successful or timed-out send, cleanup failure/retry, duplicate
+dispatch, restart after an uncertain send, disconnect/credential expiry, and
+rehiring while another agent and the shared Telegram connection remain usable.
+
+Delivery claims and deletion requests share a database fence. An already claimed
+send must settle before deletion completes; remaining queued events are dropped.
+The external request cannot be recalled once sent, and already delivered Telegram
+messages are not deleted. Uncertain sends are never automatically retried.
+Deleting one agent preserves the participant's session-only Telegram connection
+for other/new agents, but removes that agent's jobs, receipts and workspace.

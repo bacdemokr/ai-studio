@@ -563,7 +563,7 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
                     raise Problem('This agent changed. Reopen Delete agent to confirm its name.', 409)
                 pending = db.execute("SELECT * FROM jobs WHERE status IN ('queued','running','waiting','stopping') AND owner IN (SELECT id FROM agents WHERE participant=?)", (row['participant'],)).fetchall()
                 affected = [j for j in pending if j['owner'] == owner or any(m.get('key') == owner for m in job_participants(json.loads(j['payload'])))]
-                waiting = owner in self.executing_owners
+                waiting = owner in self.executing_owners or any(key == owner for key, _ in tuple(self.heartbeat.delivering))
                 for job in affected:
                     running = job['status'] in ('running', 'stopping')
                     waiting = waiting or running

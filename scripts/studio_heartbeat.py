@@ -20,6 +20,9 @@ class RadarHeartbeat:
         self.statuses = {}
         self.clients = {}
         self.closed_clients = {}
+        # Claims and deletion fences are serialized by BEGIN IMMEDIATE, without
+        # holding a database transaction or the heartbeat lock during network I/O.
+        self.delivering = set()
         with studio.db() as db:
             db.executescript('''
                 CREATE TABLE IF NOT EXISTS heartbeat_controls(owner TEXT PRIMARY KEY, paused INTEGER NOT NULL DEFAULT 0);
@@ -155,17 +158,32 @@ class RadarHeartbeat:
 
     def deliver_events(self, deliveries):
         for owner, participant, job, result, message, created in deliveries:
-            with self.studio.db() as db:
-                # Deletion/reset can happen while an earlier send is waiting.
-                active = db.execute('''SELECT 1 FROM jobs JOIN agents ON agents.id=jobs.owner
-                    WHERE jobs.id=? AND jobs.owner=? AND agents.deleting=0
-                    AND jobs.created>=agents.reset_at''', (job, owner)).fetchone()
-            if not active:continue
-            # The durable receipt precedes sending. Never retry an uncertain send.
-            try:delivery=telegram_notifications.send(participant, message, created)
-            except RuntimeError:delivery='failed'
-            result['telegram']=delivery
-            with self.studio.db() as db:db.execute('UPDATE jobs SET result=? WHERE id=?', (json.dumps(result),job))
+            claimed = False
+            try:
+                with self.studio.db() as db:
+                    db.execute('BEGIN IMMEDIATE')
+                    # Claim once under the same database lock as deletion. The
+                    # in-flight marker prevents finalization until I/O settles.
+                    active = db.execute('''SELECT jobs.result FROM jobs JOIN agents ON agents.id=jobs.owner
+                        WHERE jobs.id=? AND jobs.owner=? AND agents.deleting=0
+                        AND jobs.created>=agents.reset_at''', (job, owner)).fetchone()
+                    if not active:continue
+                    stored = json.loads(active['result'])
+                    if stored.get('telegram') != 'pending':continue
+                    stored['telegram'] = 'sending'
+                    db.execute('UPDATE jobs SET result=? WHERE id=?', (json.dumps(stored), job))
+                    self.delivering.add((owner, job))
+                    claimed = True
+                # A receipt/claim survives an uncertain send. Never retry it.
+                try:delivery=telegram_notifications.send(participant, message, created)
+                except RuntimeError:delivery='failed'
+                stored['telegram']=delivery
+                with self.studio.db() as db:
+                    db.execute('UPDATE jobs SET result=? WHERE id=? AND owner=?', (json.dumps(stored),job,owner))
+            finally:
+                if claimed:
+                    self.delivering.discard((owner, job))
+                    self.studio.deletion_signal.set()
 
     def tick(self):
         from studio import job_participants
