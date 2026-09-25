@@ -22,6 +22,30 @@ def pdf_fixture(label='Hello PDF'):
     return result+b'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n'+str(xref).encode()+b'\n%%EOF'
 
 class Documents(unittest.TestCase):
+    def test_extracted_text_and_separate_upload_cannot_overwrite_each_other(self):
+        for suffix in ('pdf','pptx','xlsx'):
+            with self.subTest(suffix=suffix), tempfile.TemporaryDirectory() as d:
+                studio=Studio(d,Adapter(),start_worker=False)
+                owner=studio.session()[0]['id']
+                studio.onboard(owner,{'name':'Reader','skills':['documents']})
+                name='report.'+suffix
+                with patch('document_upload.decode_document',return_value=(b'binary','extracted original')):
+                    studio.upload(owner,{'name':name})
+                with self.assertRaisesRegex(Problem,'reserved'):
+                    studio.upload(owner,{'name':name+'.txt','content':'unrelated text'})
+                self.assertEqual(studio.available_file(owner,'inbox/'+name+'.txt').read_text(),'extracted original')
+                # Replacing the original document itself still refreshes its extraction.
+                with patch('document_upload.decode_document',return_value=(b'updated','new extraction')):
+                    studio.upload(owner,{'name':name})
+                self.assertEqual(studio.available_file(owner,'inbox/'+name+'.txt').read_text(),'new extraction')
+                other='separate.'+suffix
+                studio.upload(owner,{'name':other+'.txt','content':'user document'})
+                with patch('document_upload.decode_document',return_value=(b'binary','replacement')):
+                    with self.assertRaisesRegex(Problem,'separate text'):
+                        studio.upload(owner,{'name':other})
+                self.assertFalse((studio.workspace(owner)/'inbox'/other).exists())
+                self.assertEqual(studio.available_file(owner,'inbox/'+other+'.txt').read_text(),'user document')
+
     def test_all_text_formats_accept_ten_megabytes_and_reject_more(self):
         for name in ('notes.txt','notes.md','notes.csv'):
             with self.subTest(name=name):

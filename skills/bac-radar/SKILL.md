@@ -3,7 +3,7 @@ name: bac-radar
 description: Tech Radar - share one unread technical article or announcement every 30 seconds.
 ---
 
-On each heartbeat, run `python3 skills/bac-radar/scripts/tech_radar.py poll` with exec in your configured runtime (host=sandbox with OpenShell). This tool reads only the fixed NVIDIA Developer Blog and Hugging Face Blog feeds through curl. It tracks article URLs and publication dates; it does not generate your answer. Never request another URL, bypass a denial or use host-side web_fetch for this heartbeat.
+On each heartbeat, run `python3 skills/bac-radar/scripts/tech_radar.py poll` with exec using the host specified for this agent in AGENTS.md. This tool reads only the fixed NVIDIA Developer Blog and Hugging Face Blog feeds through curl. It tracks article URLs and publication dates; it does not generate your answer. Never request another URL, bypass a denial or use host-side web_fetch for this heartbeat.
 
 If status is idle, return exactly HEARTBEAT_OK. If source-unavailable, stop this turn with HEARTBEAT_OK: the app shows the connection issue. Do not retry or troubleshoot in a loop. With partial source failures, use only the successfully retrieved evidence and do not claim all sources were checked.
 

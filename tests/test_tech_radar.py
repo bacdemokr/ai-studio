@@ -217,6 +217,17 @@ class TelegramTests(unittest.TestCase):
 
 
 class NativeConfigTests(unittest.TestCase):
+    def test_radar_instructions_follow_current_protection_mode(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace=Path(tmp)
+            for protection,host,other in [('standard','gateway','sandbox'),('openshell','sandbox','gateway'),('standard','gateway','sandbox')]:
+                with self.subTest(protection=protection):
+                    agent_runtime.write_workspace(workspace,{'name':'Echo','persona':'analyst','skills':['radar'],'protection':protection})
+                    for path in ['AGENTS.md','skills/bac-radar/SKILL.md']:
+                        text=(workspace/path).read_text()
+                        self.assertIn('host='+host,text)
+                        self.assertNotIn('host='+other,text)
+
     def test_only_radar_agent_gets_native_heartbeat(self):
         def apply_patch(value, replace_paths):
             config = json.loads(agent_runtime.config_path().read_text())

@@ -81115,6 +81115,11 @@ root.addEventListener('click',e=>{const button=e.target.closest('[data-surface]'
 
   // Documents persist with the selected agent, independently of message drafts.
 let documentUploadTarget=null,documentUploadName='';
+async function documentText(file){
+ const bytes=await file.arrayBuffer();
+ try{return new TextDecoder('utf-8',{fatal:true}).decode(bytes);}
+ catch{throw new Error('This text file is not valid UTF-8. Save it as UTF-8 and upload it again.');}
+}
 function renderDocuments(){
  const panel=el('documents'),paths=new Set((data.files||[]).map(file=>file.path));
  const documents=(data.files||[]).filter(file=>file.kind==='inbox'&&/\.(pdf|pptx|xlsx|txt|md|csv)$/i.test(file.path)&&!(/\.(pdf|pptx|xlsx)\.txt$/i.test(file.path)&&paths.has(file.path.slice(0,-4))));
@@ -81135,7 +81140,7 @@ async function uploadDocuments(files){
    try{
     let content;
     if(binary){const bytes=new Uint8Array(await file.arrayBuffer());let raw='';for(let i=0;i<bytes.length;i+=8192)raw+=String.fromCharCode(...bytes.subarray(i,i+8192));content=btoa(raw);}
-    else content=await file.text();
+    else content=await documentText(file);
     await api('upload',{name:file.name,content,...(binary?{encoding:'base64'}:{})},target);
     await refresh();
    }catch(error){errors.push(file.name+': '+error.message);}

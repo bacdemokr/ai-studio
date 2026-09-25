@@ -307,7 +307,9 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
                 'On a failure report the actual error; do not try a host tool or another destination.\n')
     if not role and 'radar' in equipped:
         files['AGENTS.md'] = files['AGENTS.md'].replace('Never send messages, install software, change policy, or run shell commands.', 'Never send messages, install software or change policy. Use exec only for the shipped Tech Radar tool.')
-        files['AGENTS.md'] += '\nUse exec to run python3 skills/bac-radar/scripts/tech_radar.py poll or publish for your heartbeat. Use host=sandbox when protected. Read skills/bac-radar/SKILL.md first. Never contact Telegram directly.\n'
+        radar_host = 'sandbox' if protected else 'gateway'
+        files['AGENTS.md'] += ('\nUse exec with host=' + radar_host + ' to run python3 skills/bac-radar/scripts/tech_radar.py poll or publish for your heartbeat. '
+                              'Read skills/bac-radar/SKILL.md first. Never contact Telegram directly.\n')
         files['HEARTBEAT.md'] = '# Tech Radar\nEvery 30 seconds, follow skills/bac-radar/SKILL.md. Share one technical article or announcement you have not shared before, including older articles in the feeds. Never repeat a shared article or call an older article breaking news. Otherwise HEARTBEAT_OK. Skip politics, stocks and earnings.\n'
     if role:
         files['AGENTS.md'] += ('\n# Reading supplied documents\n'
@@ -340,6 +342,8 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
         (workspace / 'MEMORY.md').write_text('# Saved preferences\n', encoding='utf-8')
     for skill in equipped:
         title, instruction = SKILLS[skill]
+        if skill == 'radar':
+            instruction = 'For this agent, use exec with host=' + ('sandbox' if protected else 'gateway') + '.\n\n' + instruction
         if protected and skill == 'documents':
             instruction = instruction.replace('Use web_fetch to read a public HTTP(S) link supplied by the user before summarizing it.',
                 'Use exec with host=sandbox and /usr/bin/curl -fsS --max-time 15 to read a public HTTP(S) link supplied by the user. Quote the URL. If blocked, stop and request approval for the exact host in OpenShell Policy; never use host-side web tools or bypass the denial.')

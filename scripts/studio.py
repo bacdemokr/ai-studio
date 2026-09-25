@@ -810,6 +810,14 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
                 raise Problem('Workspace file limit reached.')
             path = safe_file(self.workspace(owner), 'inbox/' + name)
             readable = safe_file(self.workspace(owner), 'inbox/' + name + '.txt') if extracted is not None else None
+            # A binary document and its extracted text form one upload. Never
+            # let a separate text upload silently replace that document's view.
+            if name.lower().endswith(('.pdf.txt', '.pptx.txt', '.xlsx.txt')):
+                original = safe_file(self.workspace(owner), 'inbox/' + name[:-4])
+                if original.exists():
+                    raise Problem('This name is reserved for text extracted from an existing document. Rename your text file before uploading.')
+            if readable is not None and readable.exists() and not path.exists():
+                raise Problem('A separate text document already uses the extracted-text file name. Rename this document before uploading.')
             path.write_bytes(raw)
             if readable is not None:
                 readable.write_text(extracted, encoding='utf-8')

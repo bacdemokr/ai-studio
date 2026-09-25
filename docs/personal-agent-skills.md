@@ -16,6 +16,8 @@ For a short local-LLM presentation, start with weather (fresh data), meeting-not
 
 Use **Add a document** or drop files onto an agent’s chat. PDF, PPTX, XLSX, TXT, Markdown and CSV files share a 10 MB per-file limit. The document list above the conversation belongs to the selected agent and persists across reloads; PDF/PPTX/XLSX text companions are hidden from that list. Wait for active work to finish before uploading, so OpenShell workspace synchronization cannot overwrite the new file. OpenShell agents read their uploads from their own sandbox workspace. Standard mode uses separate workspaces and app-scoped file access, but does not provide OS-level isolation from the host.
 
+Save text documents as UTF-8; invalid encodings are rejected before upload instead of replacing unreadable characters. Names such as `report.pdf.txt` are reserved while `report.pdf` exists, to protect its extracted text. If a separate text document already has that name, rename the incoming PDF/PPTX/XLSX before uploading. Re-uploading the original binary document refreshes its own extracted text.
+
 Role and tone are independent of skill authorization. Changing Cynical to Kind should change expression, not weather facts or paper citations. Run all agents compares personal responses through the queue; each needs the relevant skills and permissions for a fair capability comparison.
 
 ## Research without a paid search key

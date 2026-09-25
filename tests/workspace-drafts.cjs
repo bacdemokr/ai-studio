@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const chat=fs.readFileSync('src/studio-chat.js','utf8'),studio=fs.readFileSync('src/studio.js','utf8');
-const input={value:'A draft'},ctx=vm.createContext({input,el:()=>input,agentId:'a'});
+const input={value:'A draft'},ctx=vm.createContext({input,el:()=>input,agentId:'a',setTimeout,clearTimeout,AbortController});
 vm.runInContext(chat.slice(chat.indexOf('const personalDrafts='),chat.indexOf('const imageKey=')),ctx);
 const select=(next,agents=['a','b'])=>vm.runInContext(`restorePersonalDraft(${JSON.stringify(next)},${JSON.stringify(agents.map(key=>({key})))});agentId=${JSON.stringify(next)}`,ctx);
 select('b');assert.equal(input.value,'');input.value='B draft';select('a');assert.equal(input.value,'A draft');select('b');assert.equal(input.value,'B draft');
