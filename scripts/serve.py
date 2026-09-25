@@ -174,8 +174,8 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.json_response({'path':name,'encoding':'base64','content':base64.b64encode(path.read_bytes()).decode(), 'mime':'application/pdf'})
                 if path.suffix.lower()=='.pptx':
                     return self.json_response({'path':name,'encoding':'base64','content':base64.b64encode(path.read_bytes()).decode(),'mime':'application/vnd.openxmlformats-officedocument.presentationml.presentation'})
-                if path.suffix in ('.xlsx','.eml'):
-                    return self.json_response({'path':name,'encoding':'base64','content':base64.b64encode(path.read_bytes()).decode(), 'mime':'message/rfc822' if path.suffix=='.eml' else 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})
+                if path.suffix.lower() in ('.xlsx','.eml'):
+                    return self.json_response({'path':name,'encoding':'base64','content':base64.b64encode(path.read_bytes()).decode(), 'mime':'message/rfc822' if path.suffix.lower()=='.eml' else 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})
                 return self.json_response({'path': name, 'content': path.read_text(encoding='utf-8')})
             raise Problem('Not found.', 404)
         except Problem as error:

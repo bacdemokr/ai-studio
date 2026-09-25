@@ -58,6 +58,22 @@ class AgentDocumentsTests(unittest.TestCase):
         self.assertEqual(files['IDENTITY.md']['content'],'Scout identity')
         self.assertNotIn('Do not expose',json.dumps(result))
 
+    def test_binary_file_api_accepts_uppercase_extensions_and_parentheses(self):
+        import base64
+        from urllib.parse import quote
+        server=create_server('127.0.0.1',0,self.studio)
+        threading.Thread(target=server.serve_forever,daemon=True).start()
+        self.addCleanup(server.server_close);self.addCleanup(server.shutdown)
+        for name,mime in [('Budget (1).XLSX','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),('Invite (1).EML','message/rfc822')]:
+            with self.subTest(name=name):
+                raw=b'\x80\xff binary fixture'
+                self.save('inbox/'+name,'').write_bytes(raw)
+                url='http://127.0.0.1:'+str(server.server_port)+'/api/file?path='+quote('inbox/'+name)
+                request=urllib.request.Request(url,headers={'Cookie':'bac_session='+self.person['token'],'X-BaC-Agent':self.owner})
+                with urllib.request.urlopen(request) as response:result=json.load(response)
+                self.assertEqual(result['mime'],mime)
+                self.assertEqual(base64.b64decode(result['content']),raw)
+
     def test_http_reads_are_account_scoped_and_accept_no_arbitrary_file_paths(self):
         self.save('SOUL.md','Personal source')
         team=self.studio.crew_owner(self.owner)

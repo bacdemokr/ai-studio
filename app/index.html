@@ -1040,7 +1040,7 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
   <aside class="studio-evidence"><div class="studio-section-heading"><span class="studio-kicker">VISIBLE EVIDENCE</span><span class="studio-evidence-dot"></span></div><ol id="studio-events"><li><b>No mission has run yet.</b><small>Gateway requests, role handoffs and saved files appear here as they happen.</small></li></ol><div class="studio-files-head"><span class="studio-kicker">YOUR WORKSPACE</span><button id="studio-refresh-files">↻</button></div><div id="studio-files"><p class="studio-muted">Uploaded documents and deliverables live here.</p></div></aside>
 </section>
 <div id="studio-alert" class="studio-alert" role="alert" hidden><span></span><button aria-label="Dismiss message">×</button></div>
-<input type="file" id="studio-upload" multiple accept=".pdf,.pptx,.csv,.txt,.md" hidden>
+<input type="file" id="studio-upload" multiple accept=".pdf,.pptx,.xlsx,.csv,.txt,.md" hidden>
 <dialog id="studio-dialog"><div class="studio-dialog-heading"><span class="studio-kicker" id="studio-dialog-kicker">AGENT STUDIO</span><button id="studio-dialog-close" aria-label="Close dialog">×</button></div><div id="studio-dialog-body"></div></dialog>
 
 <div class="campus-layout">
@@ -80408,7 +80408,7 @@ root.addEventListener('click',async event=>{
     }el('mission-skill-notice')?.remove();closeSurface();setRoom('lounge');if(mission.id==='radar'){el('radar-monitor')?.scrollIntoView({block:'nearest'});return;}skill=mission.id;const city=runtime.location?.city||'Zurich';el('prompt').value=['weather','writer'].includes(mission.id)?mission.prompt.replaceAll('Zurich',city):mission.prompt;el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===button));if(mission.id==='documents'&&!data.files.some(f=>f.kind==='inbox')){sampleDocument();}el('prompt').focus({preventScroll:true});};
   el('chat').onsubmit=async e=>{e.preventDefault();if(!runtime.ready||data.deleting||chatSending||comparisonSending||documentUploadTarget===agentId){syncComposer();return;}el('chat-error').hidden=true;if(e.submitter?.id==='studio-send-all')return askAllAgents();const draft=captureChatDraft();chatSending=true;syncComposer();try{const result=await api('jobs',{kind:'chat',prompt:draft.prompt,skill,images:draft.images});selectedJob=result.id;acknowledgeChatDraft(draft);await refresh();el('conversation').scrollTop=el('conversation').scrollHeight;}catch(error){el('chat-error').textContent=error.message;el('chat-error').hidden=false;}finally{chatSending=false;syncComposer();}};
   el('prompt').addEventListener('input',()=>{skill=null;});
-  function sampleDocument(){dialog('Upload notes','<h3>Give your agent something to read.</h3><p>Use your own PDF, PPTX, CSV, Markdown or text file, or try a clearly labeled sample meeting note.</p><div class="studio-dialog-actions"><button class="studio-secondary" id="studio-own-document">Upload my file</button><button class="studio-primary" id="studio-sample-document">Use sample notes</button></div>');el('own-document').onclick=()=>{el('dialog').close();el('upload').click();};el('sample-document').onclick=async()=>{try{await api('upload',{name:'sample-meeting-notes.md',content:'# Sample meeting notes — fictional demo data\n\nWe agreed to keep the agent demo to 10 minutes.\nDylan will check the weather-demo endpoint by Thursday.\nMorgan will draft a short invitation; no deadline was agreed.\nWe still need someone to confirm the venue.\nDo not send invitations until the venue is confirmed.\n'});el('dialog').close();await refresh();}catch(e){alert(e.message);}};}
+  function sampleDocument(){dialog('Upload notes','<h3>Give your agent something to read.</h3><p>Use your own PDF, PPTX, XLSX, CSV, Markdown or text file, or try a clearly labeled sample meeting note.</p><div class="studio-dialog-actions"><button class="studio-secondary" id="studio-own-document">Upload my file</button><button class="studio-primary" id="studio-sample-document">Use sample notes</button></div>');el('own-document').onclick=()=>{el('dialog').close();el('upload').click();};el('sample-document').onclick=async()=>{try{await api('upload',{name:'sample-meeting-notes.md',content:'# Sample meeting notes — fictional demo data\n\nWe agreed to keep the agent demo to 10 minutes.\nDylan will check the weather-demo endpoint by Thursday.\nMorgan will draft a short invitation; no deadline was agreed.\nWe still need someone to confirm the venue.\nDo not send invitations until the venue is confirmed.\n'});el('dialog').close();await refresh();}catch(e){alert(e.message);}};}
   el('attach').onclick=()=>el('upload').click();
   el('upload').onchange=()=>{const files=[...el('upload').files];el('upload').value='';uploadDocuments(files);};
   el('refresh-files').onclick=refresh;
@@ -81031,7 +81031,7 @@ root.addEventListener('click',e=>{const button=e.target.closest('[data-surface]'
 let documentUploadTarget=null,documentUploadName='';
 function renderDocuments(){
  const panel=el('documents'),paths=new Set((data.files||[]).map(file=>file.path));
- const documents=(data.files||[]).filter(file=>file.kind==='inbox'&&/\.(pdf|pptx|txt|md|csv)$/i.test(file.path)&&!(/\.(pdf|pptx)\.txt$/i.test(file.path)&&paths.has(file.path.slice(0,-4))));
+ const documents=(data.files||[]).filter(file=>file.kind==='inbox'&&/\.(pdf|pptx|xlsx|txt|md|csv)$/i.test(file.path)&&!(/\.(pdf|pptx|xlsx)\.txt$/i.test(file.path)&&paths.has(file.path.slice(0,-4))));
  const busy=documentUploadTarget===agentId;
  panel.hidden=!documents.length&&!busy;
  panel.innerHTML='<small>Documents · '+escape(data.profile?.name||'')+'</small><ul>'+documents.map(file=>'<li title="'+escape(file.path.slice(6))+'"><span aria-hidden="true">▤</span><span>'+escape(file.path.slice(6))+'</span><small>'+escape(file.size<1024*1024?Math.max(1,Math.ceil(file.size/1024))+' KB':(file.size/1024/1024).toFixed(1)+' MB')+'</small></li>').join('')+'</ul>'+(busy?'<p role="status">Adding '+escape(documentUploadName)+'…</p>':'');
@@ -81042,8 +81042,8 @@ async function uploadDocuments(files){
  const target=agentId,errors=[];documentUploadTarget=target;pendingWrites++;renderDocuments();syncComposer();
  try{
   for(const file of files){
-   const binary=/\.(pdf|pptx)$/i.test(file.name),limit=10*1024*1024;
-   if(!/\.(pdf|pptx|txt|md|csv)$/i.test(file.name)){errors.push(file.name+': Use PDF, PPTX, TXT, Markdown or CSV.');continue;}
+   const binary=/\.(pdf|pptx|xlsx)$/i.test(file.name),limit=10*1024*1024;
+   if(!/\.(pdf|pptx|xlsx|txt|md|csv)$/i.test(file.name)){errors.push(file.name+': Use PDF, PPTX, XLSX, TXT, Markdown or CSV.');continue;}
    if(file.size>limit){errors.push(file.name+': Choose a file of 10 MB or smaller.');continue;}
    documentUploadName=file.name;renderDocuments();
    try{

@@ -54,6 +54,27 @@ class Documents(unittest.TestCase):
                 self.assertIn('inbox/private.txt',adapter.calls[-1][2])
                 self.assertNotIn('owner-only.md',adapter.calls[-1][2])
 
+    @unittest.skipUnless(shutil.which('pdftotext') and shutil.which('pdfinfo'),'Poppler required')
+    def test_deletion_removes_uploaded_documents_and_preserves_other_agent(self):
+        for protection in ('standard', 'openshell'):
+            with self.subTest(protection=protection), tempfile.TemporaryDirectory() as d:
+                studio=Studio(d,Adapter(),start_worker=False)
+                owner=studio.session()[0]['id']
+                studio.onboard(owner,{'name':'First','skills':['documents'],'protection':protection})
+                if (job:=studio.next_job()):studio.execute(job)
+                other=studio.add_agent(owner,{'name':'Second','skills':['documents']})['agentId']
+                studio.upload(owner,{'name':'large.txt','content':'x'*MAX_TEXT})
+                document=studio.upload(owner,{'name':'notes.pdf','encoding':'base64',
+                    'content':base64.b64encode(pdf_fixture()).decode()})
+                workspace=studio.workspace(owner)
+                self.assertTrue((workspace/document['path']).is_file())
+                self.assertTrue((workspace/document['textPath']).is_file())
+                studio.upload(other,{'name':'large.txt','content':'keep this document'})
+                result=studio.delete_agent(owner,{'name':'First'})
+                self.assertEqual(result['deleted'],owner)
+                self.assertFalse(workspace.exists())
+                self.assertEqual(studio.available_file(other,'inbox/large.txt').read_text(),'keep this document')
+
     def test_in_flight_workspace_sync_cannot_race_an_upload(self):
         with tempfile.TemporaryDirectory() as d:
             studio=Studio(d,Adapter(),start_worker=False);owner=studio.session()[0]['id']
@@ -110,6 +131,36 @@ class Documents(unittest.TestCase):
             with self.assertRaises(Problem):studio.upload(owner,{**data,'name':'../escape.pdf'})
         with self.assertRaisesRegex(ValueError,'OCR'):
             decode_document('scan.pdf',{'encoding':'base64','content':base64.b64encode(pdf_fixture('')).decode()})
+
+    def test_xlsx_upload_with_parentheses_in_both_modes(self):
+        import io
+        from zipfile import ZipFile
+        out=io.BytesIO()
+        with ZipFile(out,'w') as z:
+            z.writestr('xl/workbook.xml','<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Budget" r:id="a"/></sheets></workbook>')
+            z.writestr('xl/_rels/workbook.xml.rels','<Relationships><Relationship Id="a" Target="worksheets/sheet1.xml"/></Relationships>')
+            z.writestr('xl/sharedStrings.xml','<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><si><t>Revenue</t></si></sst>')
+            z.writestr('xl/worksheets/sheet1.xml','<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1"><v>42</v></c><c r="C1"><f>B1*2</f><v>84</v></c><c r="D1" t="inlineStr"><is><t>한국어</t></is></c></row></sheetData></worksheet>')
+        data={'name':'Budget (1).xlsx','encoding':'base64','content':base64.b64encode(out.getvalue()).decode()}
+        for mode in ('standard','openshell'):
+            with self.subTest(mode=mode),tempfile.TemporaryDirectory() as d:
+                adapter=Adapter();studio=Studio(d,adapter,start_worker=False)
+                owner=studio.session()[0]['id']
+                studio.onboard(owner,{'name':'Reader','skills':['documents'],'protection':mode})
+                if (job:=studio.next_job()):studio.execute(job)
+                result=studio.upload(owner,data)
+                self.assertEqual(studio.available_file(owner,result['path']).read_bytes(),out.getvalue())
+                text=studio.available_file(owner,result['textPath']).read_text()
+                for value in ('Sheet: Budget','A1: Revenue','B1: 42','cached result: 84','D1: 한국어'):self.assertIn(value,text)
+                studio.upload(owner,{'name':'Notes (1).txt','content':'readable'})
+                studio.enqueue(owner,{'kind':'chat','prompt':'Read my workbook.'})
+                studio.execute(studio.next_job())
+                self.assertIn('inbox/Budget (1).xlsx.txt',adapter.calls[-1][2])
+                workspace=studio.workspace(owner)
+                self.assertEqual(studio.delete_agent(owner,{'name':'Reader'})['deleted'],owner)
+                self.assertFalse(workspace.exists())
+        with self.assertRaisesRegex(ValueError,'damaged'):
+            decode_document('bad.xlsx',{'encoding':'base64','content':base64.b64encode(b'bad').decode()})
 
     def test_missing_pdf_tool_has_actionable_error(self):
         with patch('document_upload.shutil.which',return_value=None),self.assertRaisesRegex(ValueError,'Poppler'):

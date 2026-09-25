@@ -2,7 +2,7 @@
 let documentUploadTarget=null,documentUploadName='';
 function renderDocuments(){
  const panel=el('documents'),paths=new Set((data.files||[]).map(file=>file.path));
- const documents=(data.files||[]).filter(file=>file.kind==='inbox'&&/\.(pdf|pptx|txt|md|csv)$/i.test(file.path)&&!(/\.(pdf|pptx)\.txt$/i.test(file.path)&&paths.has(file.path.slice(0,-4))));
+ const documents=(data.files||[]).filter(file=>file.kind==='inbox'&&/\.(pdf|pptx|xlsx|txt|md|csv)$/i.test(file.path)&&!(/\.(pdf|pptx|xlsx)\.txt$/i.test(file.path)&&paths.has(file.path.slice(0,-4))));
  const busy=documentUploadTarget===agentId;
  panel.hidden=!documents.length&&!busy;
  panel.innerHTML='<small>Documents · '+escape(data.profile?.name||'')+'</small><ul>'+documents.map(file=>'<li title="'+escape(file.path.slice(6))+'"><span aria-hidden="true">▤</span><span>'+escape(file.path.slice(6))+'</span><small>'+escape(file.size<1024*1024?Math.max(1,Math.ceil(file.size/1024))+' KB':(file.size/1024/1024).toFixed(1)+' MB')+'</small></li>').join('')+'</ul>'+(busy?'<p role="status">Adding '+escape(documentUploadName)+'…</p>':'');
@@ -13,8 +13,8 @@ async function uploadDocuments(files){
  const target=agentId,errors=[];documentUploadTarget=target;pendingWrites++;renderDocuments();syncComposer();
  try{
   for(const file of files){
-   const binary=/\.(pdf|pptx)$/i.test(file.name),limit=10*1024*1024;
-   if(!/\.(pdf|pptx|txt|md|csv)$/i.test(file.name)){errors.push(file.name+': Use PDF, PPTX, TXT, Markdown or CSV.');continue;}
+   const binary=/\.(pdf|pptx|xlsx)$/i.test(file.name),limit=10*1024*1024;
+   if(!/\.(pdf|pptx|xlsx|txt|md|csv)$/i.test(file.name)){errors.push(file.name+': Use PDF, PPTX, XLSX, TXT, Markdown or CSV.');continue;}
    if(file.size>limit){errors.push(file.name+': Choose a file of 10 MB or smaller.');continue;}
    documentUploadName=file.name;renderDocuments();
    try{

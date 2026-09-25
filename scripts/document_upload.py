@@ -17,9 +17,9 @@ MAX_PAGES = 100
 
 def decode_document(name, data):
     suffix = Path(name).suffix.lower()
-    if suffix not in ('.txt', '.md', '.csv', '.pdf', '.pptx'):
-        raise ValueError('Upload a PDF, PPTX, CSV, Markdown or text document. Convert older .ppt files to .pptx or PDF first.')
-    if suffix not in ('.pdf', '.pptx'):
+    if suffix not in ('.txt', '.md', '.csv', '.pdf', '.pptx', '.xlsx'):
+        raise ValueError('Upload a PDF, PPTX, XLSX, CSV, Markdown or text document. Convert older .ppt files to .pptx or PDF first.')
+    if suffix not in ('.pdf', '.pptx', '.xlsx'):
         content = data.get('content')
         if not isinstance(content, str) or not content.strip() or '\x00' in content:
             raise ValueError('This document has no readable text. Save CSV and text files as UTF-8.')
@@ -28,11 +28,15 @@ def decode_document(name, data):
             raise ValueError('Choose a document of 10 MB or smaller.')
         return content.encode('utf-8'), None
     if data.get('encoding') != 'base64' or not isinstance(data.get('content'), str):
-        raise ValueError('Upload the PDF or PPTX as a binary document.')
+        raise ValueError('Upload the PDF, PPTX or XLSX as a binary document.')
     try:
         raw = base64.b64decode(data['content'], validate=True)
     except (ValueError, binascii.Error):
         raise ValueError('The document upload is invalid.') from None
+    if suffix=='.xlsx':
+        if not raw or len(raw)>MAX_FILE:
+            raise ValueError('Choose an XLSX of 10 MB or smaller.')
+        return raw, xlsx_text(name, raw)
     if suffix=='.pptx':
         if not raw or len(raw)>MAX_FILE:
             raise ValueError('Choose a PPTX of 10 MB or smaller.')
@@ -71,6 +75,64 @@ def decode_document(name, data):
     if len(readable.encode('utf-8')) > MAX_TEXT:
         raise ValueError('The PDF contains too much text. Split it into smaller documents.')
     return raw, readable
+
+
+def xlsx_text(name, raw):
+    ns={'s':'http://schemas.openxmlformats.org/spreadsheetml/2006/main',
+        'r':'http://schemas.openxmlformats.org/officeDocument/2006/relationships'}
+    try:
+        with ZipFile(io.BytesIO(raw)) as archive:
+            entries=archive.infolist()
+            if len(entries)>5000 or sum(f.file_size for f in entries)>100*1024*1024:
+                raise ValueError('This workbook is too large after unpacking.')
+            def xml(path):
+                if archive.getinfo(path).file_size>20*1024*1024:
+                    raise ValueError('A workbook sheet contains too much data.')
+                content=archive.read(path)
+                if b'<!DOCTYPE' in content or b'<!ENTITY' in content:
+                    raise ValueError('Unsupported workbook XML.')
+                return ET.fromstring(content)
+            relations={r.attrib['Id']:r.attrib['Target'] for r in xml('xl/_rels/workbook.xml.rels') if r.attrib.get('TargetMode')!='External'}
+            shared=[]
+            if 'xl/sharedStrings.xml' in archive.namelist():
+                shared=[''.join(t.text or '' for t in item.findall('.//s:t',ns)) for item in xml('xl/sharedStrings.xml')]
+            sheets=xml('xl/workbook.xml').findall('s:sheets/s:sheet',ns)
+            if not 0<len(sheets)<=100:
+                raise ValueError('Upload a workbook with 1–100 sheets.')
+            lines=[];size=0;cells=0
+            def emit(line):
+                nonlocal size
+                size+=len(line.encode('utf-8'))+1
+                if size>MAX_TEXT:raise ValueError('This workbook contains too much text. Split it first.')
+                lines.append(line)
+            emit('Source: '+name)
+            emit('Sheet cell extraction. Formatting, charts and images are omitted. Dates may be Excel serial numbers. Formulas are not recalculated; cached results may be outdated.')
+            for sheet in sheets:
+                target=relations[sheet.attrib['{'+ns['r']+'}id']]
+                path=posixpath.normpath('xl/'+target) if not target.startswith('/') else target.lstrip('/')
+                if not path.startswith('xl/worksheets/'):
+                    raise ValueError('Invalid worksheet reference.')
+                emit('\n--- Sheet: '+sheet.attrib['name']+' ---')
+                for cell in xml(path).findall('.//s:sheetData/s:row/s:c',ns):
+                    value=cell.findtext('s:v',default='',namespaces=ns)
+                    kind=cell.attrib.get('t')
+                    if kind=='s':
+                        index=int(value)
+                        if index<0 or index>=len(shared):raise ValueError('Invalid shared string reference.')
+                        value=shared[index]
+                    elif kind=='inlineStr':value=''.join(t.text or '' for t in cell.findall('.//s:t',ns))
+                    elif kind=='b':value='TRUE' if value=='1' else 'FALSE'
+                    formula=cell.find('s:f',ns)
+                    if formula is not None:
+                        value='[Formula: '+(formula.text or 'shared formula')+'; cached result: '+(value or 'unavailable')+']'
+                    if value:
+                        cells+=1
+                        if cells>100000:raise ValueError('This workbook has too many cells. Split it first.')
+                        emit(cell.attrib.get('r','Cell')+': '+value)
+            if not cells:raise ValueError('This workbook has no readable cells.')
+            return '\n'.join(lines)
+    except (BadZipFile, KeyError, ET.ParseError, RuntimeError, OSError):
+        raise ValueError('This XLSX is damaged, encrypted or unsupported. Upload an unlocked XLSX or CSV.') from None
 
 
 def pptx_text(name, raw):

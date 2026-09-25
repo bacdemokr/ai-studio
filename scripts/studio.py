@@ -99,7 +99,7 @@ def text(value, limit=6000, name='Text'):
 
 
 def safe_file(directory, relative, exists=False):
-    if not isinstance(relative, str) or not re.fullmatch(r'[\w. /-]{1,160}', relative):
+    if not isinstance(relative, str) or not re.fullmatch(r'[\w. ()/-]{1,160}', relative):
         raise Problem('Invalid file name.')
     path = Path(relative)
     if path.is_absolute() or '..' in path.parts or path.suffix.lower() not in ('.md', '.txt', '.csv', '.html', '.json', '.xlsx', '.eml', '.pdf', '.pptx', '.png', '.jpg', '.webp'):

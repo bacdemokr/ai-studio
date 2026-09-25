@@ -311,7 +311,7 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
         files['HEARTBEAT.md'] = '# Tech Radar\nEvery 30 seconds, follow skills/bac-radar/SKILL.md. Share one technical article or announcement you have not shared before, including older articles in the feeds. Never repeat a shared article or call an older article breaking news. Otherwise HEARTBEAT_OK. Skip politics, stocks and earnings.\n'
     if role:
         files['AGENTS.md'] += ('\n# Reading supplied documents\n'
-                              'Read supplied files with native file tools. For PDF/PPTX, use the companion extracted .txt file '
+                              'Read supplied files with native file tools. For PDF/PPTX/XLSX, use the companion extracted .txt file '
                               'and cite the filename and page or slide where available. Extraction may omit images and layout; '
                               'do not claim to have seen omitted content. Choose a response format suited to the current request '
                               'and your crew role; personal-agent reply formats do not apply.\n')
