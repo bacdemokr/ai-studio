@@ -202,7 +202,10 @@ class Handler(SimpleHTTPRequestHandler):
             if not secrets.compare_digest(self.headers.get('X-BaC-CSRF', ''), row['csrf']):
                 raise Problem('Refresh the page to renew your session.', 403)
             size = int(self.headers.get('Content-Length', '0'))
-            if not 0 < size <= (15 * 1024 * 1024 if self.path in ('/api/upload','/api/jobs') else 512000):
+            # A 10 MB text file can expand sixfold when JSON escapes control
+            # characters. The decoder still enforces the actual 10 MB file cap.
+            limit = 64 * 1024 * 1024 if self.path == '/api/upload' else 15 * 1024 * 1024 if self.path == '/api/jobs' else 512000
+            if not 0 < size <= limit:
                 raise Problem('Request is too large or empty.', 413)
             data = json.loads(self.rfile.read(size))
             if not isinstance(data, dict):

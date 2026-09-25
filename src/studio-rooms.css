@@ -445,6 +445,17 @@
 /* Keep the full demo name readable within the studio map and room cards. */
 #agent-campus .world-room-map [data-world-room=mission]{right:0;align-items:flex-start;text-align:left;white-space:normal;line-height:1.35}
 .world-room-map [data-world-room=mission] i{flex-shrink:0}
+.world-room-map [data-world-room=mission]>span,.world-campus-room[data-world-room=mission]>b{white-space:nowrap}
 #agent-campus .world-campus-room[data-world-room=mission]{max-width:260px;white-space:normal}
 
 #agent-campus .campus-stage-top .campus-sim[data-slow=true]{color:#f0cf88;background:#332c1d;border:1px solid #9a7c3e;font-weight:500}
+
+/* Agent-local documents remain visible above the conversation. */
+#studio-documents{flex:none;max-height:140px;overflow:auto;padding:10px 4px;border-top:1px solid #344553}
+#studio-documents>small{color:#a7bdce;font-size:12px}
+#studio-documents ul{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0 0;padding:0;list-style:none}
+#studio-documents li{display:flex;align-items:center;gap:7px;max-width:100%;min-width:0;padding:6px 9px;background:#20333e;border:1px solid #45606d;border-radius:7px;font-size:12px}
+#studio-documents li>span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#studio-documents li small{flex:none;color:#a7bdce;font-size:11px}
+#studio-documents p{margin:6px 0;font-size:12px;color:#a7bdce}
+#studio-companion.document-drag-over{outline:2px dashed #76b900;outline-offset:-3px;background:#76b9000a}

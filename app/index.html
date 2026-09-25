@@ -700,9 +700,20 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 /* Keep the full demo name readable within the studio map and room cards. */
 #agent-campus .world-room-map [data-world-room=mission]{right:0;align-items:flex-start;text-align:left;white-space:normal;line-height:1.35}
 .world-room-map [data-world-room=mission] i{flex-shrink:0}
+.world-room-map [data-world-room=mission]>span,.world-campus-room[data-world-room=mission]>b{white-space:nowrap}
 #agent-campus .world-campus-room[data-world-room=mission]{max-width:260px;white-space:normal}
 
 #agent-campus .campus-stage-top .campus-sim[data-slow=true]{color:#f0cf88;background:#332c1d;border:1px solid #9a7c3e;font-weight:500}
+
+/* Agent-local documents remain visible above the conversation. */
+#studio-documents{flex:none;max-height:140px;overflow:auto;padding:10px 4px;border-top:1px solid #344553}
+#studio-documents>small{color:#a7bdce;font-size:12px}
+#studio-documents ul{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0 0;padding:0;list-style:none}
+#studio-documents li{display:flex;align-items:center;gap:7px;max-width:100%;min-width:0;padding:6px 9px;background:#20333e;border:1px solid #45606d;border-radius:7px;font-size:12px}
+#studio-documents li>span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#studio-documents li small{flex:none;color:#a7bdce;font-size:11px}
+#studio-documents p{margin:6px 0;font-size:12px;color:#a7bdce}
+#studio-companion.document-drag-over{outline:2px dashed #76b900;outline-offset:-3px;background:#76b9000a}
 
 .studio-sound{display:flex;align-items:center;gap:3px;flex-shrink:0}
 #agent-campus #campus-sound-toggle{width:auto;min-height:35px;height:auto;padding:4px 9px;font-size:15px;white-space:nowrap;color:#b8c9d7;border:1px solid #526071;background:#191e25;border-radius:3px}
@@ -995,14 +1006,14 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 <section id="studio-policies" class="studio-policies" hidden aria-label="Agent policies"><div class="studio-policy-toolbar"><label for="studio-policy-agent">AGENT (OpenShell)<select id="studio-policy-agent"></select></label></div><div id="studio-policy-content"></div></section>
 <aside id="studio-passport">
   <div class="studio-passport-head"><span class="studio-kicker">YOUR AGENT / YOUR RULES</span><span class="studio-spark">✦</span></div>
-  <div id="studio-lounge-empty"><div class="studio-avatar"><i></i><i></i></div><h3>Room for your first agent.</h3><p class="studio-muted">Everyone you create gets a place here, with their own look, memory and skills.</p></div>
+  <div id="studio-lounge-empty"><div class="studio-avatar"><i></i><i></i></div><h3>Room for your first agent.</h3></div>
   <div id="studio-companion" hidden>
     <div class="studio-companion-name"><button type="button" id="studio-portrait" class="studio-avatar small studio-identity-open" aria-label="View agent files" title="View agent files"><i aria-hidden="true"></i><i aria-hidden="true"></i></button><div><div class="studio-agent-title"><h3><button type="button" id="studio-agent-name" class="studio-identity-name" title="View agent files" aria-haspopup="dialog"></button></h3><div class="studio-agent-actions"><button id="studio-edit-agent" class="studio-secondary">Edit agent</button><button id="studio-delete-agent" class="studio-danger-link">Delete agent</button></div></div><span id="studio-personality" class="studio-muted"></span><div id="studio-agent-skills" aria-label="Equipped skills"></div></div><span class="studio-online-dot"></span></div>
 
     <button type="button" id="studio-agent-policy" class="studio-secondary studio-policy-link" hidden>◇ OpenShell Policy</button>
     <div class="studio-agent-state" hidden><span class="studio-kicker" id="studio-task-state">READY FOR A MISSION</span><p id="studio-task-summary">Choose a mission below, or ask for something of your own.</p></div>
     <button id="studio-assigned-crew" class="studio-secondary" hidden>Open assigned crew</button>
-    <section id="studio-conversation" aria-label="Conversation history" role="log" aria-live="polite"></section><form id="studio-chat"><div id="studio-equipped" class="studio-equipped" aria-label="Message templates"></div><div id="studio-chat-connection" role="status" hidden><span id="studio-chat-connection-text"></span><button type="button" id="studio-chat-connect">Connect model</button></div><p id="studio-chat-error" role="alert" hidden></p><label for="studio-prompt">Message your agent</label><textarea id="studio-prompt" rows="3" maxlength="6000" placeholder="Ask a question or give your agent a task…" required></textarea><div class="studio-compose-actions"><button type="button" id="studio-attach">＋ Add a document</button><div id="studio-run-control"><button type="submit" class="studio-primary" id="studio-send">Run this agent</button><button type="button" class="studio-primary" id="studio-run-options" aria-label="More run options" aria-expanded="false" aria-controls="studio-run-menu">▾</button><div id="studio-run-menu" hidden><button type="submit" class="studio-secondary" id="studio-send-all">Run all agents</button></div></div></div></form>
+    <section id="studio-documents" aria-label="Agent documents" hidden></section><section id="studio-conversation" aria-label="Conversation history" role="log" aria-live="polite"></section><form id="studio-chat"><div id="studio-equipped" class="studio-equipped" aria-label="Message templates"></div><div id="studio-chat-connection" role="status" hidden><span id="studio-chat-connection-text"></span><button type="button" id="studio-chat-connect">Connect model</button></div><p id="studio-chat-error" role="alert" hidden></p><label for="studio-prompt">Message your agent</label><textarea id="studio-prompt" rows="3" maxlength="6000" placeholder="Ask a question or give your agent a task…" required></textarea><div class="studio-compose-actions"><button type="button" id="studio-attach">＋ Add a document</button><div id="studio-run-control"><button type="submit" class="studio-primary" id="studio-send">Run this agent</button><button type="button" class="studio-primary" id="studio-run-options" aria-label="More run options" aria-expanded="false" aria-controls="studio-run-menu">▾</button><div id="studio-run-menu" hidden><button type="submit" class="studio-secondary" id="studio-send-all">Run all agents</button></div></div></div></form>
     <details class="studio-agent-extras"><summary>Memory &amp; scheduling</summary><div class="studio-quick-links"><button id="studio-memory">View saved memory</button><button id="studio-schedule">Schedule a task</button></div></details>
     <div class="studio-native-note"><span>OPENCLAW</span><p>Native persona · skills · persistent conversation<br></p></div>
   </div>
@@ -1029,7 +1040,7 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
   <aside class="studio-evidence"><div class="studio-section-heading"><span class="studio-kicker">VISIBLE EVIDENCE</span><span class="studio-evidence-dot"></span></div><ol id="studio-events"><li><b>No mission has run yet.</b><small>Gateway requests, role handoffs and saved files appear here as they happen.</small></li></ol><div class="studio-files-head"><span class="studio-kicker">YOUR WORKSPACE</span><button id="studio-refresh-files">↻</button></div><div id="studio-files"><p class="studio-muted">Uploaded documents and deliverables live here.</p></div></aside>
 </section>
 <div id="studio-alert" class="studio-alert" role="alert" hidden><span></span><button aria-label="Dismiss message">×</button></div>
-<input type="file" id="studio-upload" accept=".pdf,.pptx,.csv,.txt,.md" hidden>
+<input type="file" id="studio-upload" multiple accept=".pdf,.pptx,.csv,.txt,.md" hidden>
 <dialog id="studio-dialog"><div class="studio-dialog-heading"><span class="studio-kicker" id="studio-dialog-kicker">AGENT STUDIO</span><button id="studio-dialog-close" aria-label="Close dialog">×</button></div><div id="studio-dialog-body"></div></dialog>
 
 <div class="campus-layout">
@@ -79416,6 +79427,7 @@ function residentInfo(){return residents.map(r=>({key:r.key,avatar:r.appearance,
 setDraft(draftProfile);
 
   // One persistent floor plan. Room changes move the camera, never swap worlds.
+function roomTitleMarkup(title){return title.replace(' (BaC Planning)','<br>(BaC Planning)');}
 const studioRooms={
   workshop:{group:workshopRoom,x:0,z:18,title:roomTitles.workshop,verb:'Meet your next agent',number:'01'},
   lounge:{group:loungeRoom,x:0,z:0,title:roomTitles.lounge,verb:'Meet your agents',number:'02'},
@@ -79428,7 +79440,7 @@ const navigationLayer=document.createElement('div');navigationLayer.className='w
 const overviewButton=document.createElement('button');overviewButton.type='button';overviewButton.className='world-overview-button';overviewButton.dataset.worldOverview='';overviewButton.textContent='⌑ See the whole studio';overviewButton.setAttribute('aria-pressed','false');navigationLayer.append(overviewButton);
 const journeyNote=document.createElement('div');journeyNote.className='world-journey';journeyNote.setAttribute('role','status');journeyNote.setAttribute('aria-live','polite');journeyNote.hidden=true;navigationLayer.append(journeyNote);
 const roomMap=document.createElement('nav');roomMap.className='world-room-map';roomMap.setAttribute('aria-label','Connected studio rooms');
-roomMap.innerHTML='<span class="world-map-caption">STUDIO MAP</span><div><svg viewBox="0 0 320 66" aria-hidden="true"><path d="M13 53 V13 H207"/></svg>'+['lounge','mission','workshop'].map(id=>'<button type="button" data-world-room="'+id+'"><i>'+studioRooms[id].number+'</i><span>'+studioRooms[id].title+'</span></button>').join('')+'</div>';
+roomMap.innerHTML='<span class="world-map-caption">STUDIO MAP</span><div><svg viewBox="0 0 320 66" aria-hidden="true"><path d="M13 53 V13 H207"/></svg>'+['lounge','mission','workshop'].map(id=>'<button type="button" data-world-room="'+id+'"><i>'+studioRooms[id].number+'</i><span>'+roomTitleMarkup(studioRooms[id].title)+'</span></button>').join('')+'</div>';
 navigationLayer.append(roomMap);
 function goToRoom(next){
   const restoreFocus=navigationLayer.contains(document.activeElement);
@@ -79484,7 +79496,7 @@ doorway('lounge','mission',8.8,3);doorway('mission','lounge',-10.6,3);
 doorway('lounge','workshop',0,6.1,Math.PI/2);doorway('workshop','lounge',0,-4.05,Math.PI/2);
 Object.entries(studioRooms).forEach(([id,r])=>{
   const node=document.createElement('button');node.type='button';node.className='world-campus-room';node.dataset.worldRoom=id;
-  node.innerHTML='<span>'+r.number+' / '+r.verb+'</span><b>'+r.title+'</b>';node.onclick=()=>goToRoom(id);navigationLayer.append(node);overviewLabels.push({id,node,group:r.group});
+  node.innerHTML='<span>'+r.number+' / '+r.verb+'</span><b>'+roomTitleMarkup(r.title)+'</b>';node.onclick=()=>goToRoom(id);navigationLayer.append(node);overviewLabels.push({id,node,group:r.group});
 });
 function roomHeight(id){
   const aspect=viewport.clientWidth/Math.max(1,viewport.clientHeight);
@@ -80394,11 +80406,11 @@ root.addEventListener('click',async event=>{
       notice.querySelector('button').onclick=async()=>{const action=notice.querySelector('button');action.disabled=true;try{if(agentId!==target)throw new Error('The selected agent changed. Choose a mission again.');await api('profile',{...data.profile,skills:[...new Set([...data.profile.skills,mission.id])]},target);await refresh();notice.remove();if(agentId===target)button.click();}catch(error){notice.querySelector('p').textContent=error.message;action.disabled=false;}};
       notice.scrollIntoView({block:'nearest'});return;
     }el('mission-skill-notice')?.remove();closeSurface();setRoom('lounge');if(mission.id==='radar'){el('radar-monitor')?.scrollIntoView({block:'nearest'});return;}skill=mission.id;const city=runtime.location?.city||'Zurich';el('prompt').value=['weather','writer'].includes(mission.id)?mission.prompt.replaceAll('Zurich',city):mission.prompt;el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===button));if(mission.id==='documents'&&!data.files.some(f=>f.kind==='inbox')){sampleDocument();}el('prompt').focus({preventScroll:true});};
-  el('chat').onsubmit=async e=>{e.preventDefault();if(!runtime.ready||data.deleting||chatSending||comparisonSending){syncComposer();return;}el('chat-error').hidden=true;if(e.submitter?.id==='studio-send-all')return askAllAgents();const draft=captureChatDraft();chatSending=true;syncComposer();try{const result=await api('jobs',{kind:'chat',prompt:draft.prompt,skill,images:draft.images});selectedJob=result.id;acknowledgeChatDraft(draft);await refresh();el('conversation').scrollTop=el('conversation').scrollHeight;}catch(error){el('chat-error').textContent=error.message;el('chat-error').hidden=false;}finally{chatSending=false;syncComposer();}};
+  el('chat').onsubmit=async e=>{e.preventDefault();if(!runtime.ready||data.deleting||chatSending||comparisonSending||documentUploadTarget===agentId){syncComposer();return;}el('chat-error').hidden=true;if(e.submitter?.id==='studio-send-all')return askAllAgents();const draft=captureChatDraft();chatSending=true;syncComposer();try{const result=await api('jobs',{kind:'chat',prompt:draft.prompt,skill,images:draft.images});selectedJob=result.id;acknowledgeChatDraft(draft);await refresh();el('conversation').scrollTop=el('conversation').scrollHeight;}catch(error){el('chat-error').textContent=error.message;el('chat-error').hidden=false;}finally{chatSending=false;syncComposer();}};
   el('prompt').addEventListener('input',()=>{skill=null;});
   function sampleDocument(){dialog('Upload notes','<h3>Give your agent something to read.</h3><p>Use your own PDF, PPTX, CSV, Markdown or text file, or try a clearly labeled sample meeting note.</p><div class="studio-dialog-actions"><button class="studio-secondary" id="studio-own-document">Upload my file</button><button class="studio-primary" id="studio-sample-document">Use sample notes</button></div>');el('own-document').onclick=()=>{el('dialog').close();el('upload').click();};el('sample-document').onclick=async()=>{try{await api('upload',{name:'sample-meeting-notes.md',content:'# Sample meeting notes — fictional demo data\n\nWe agreed to keep the agent demo to 10 minutes.\nDylan will check the weather-demo endpoint by Thursday.\nMorgan will draft a short invitation; no deadline was agreed.\nWe still need someone to confirm the venue.\nDo not send invitations until the venue is confirmed.\n'});el('dialog').close();await refresh();}catch(e){alert(e.message);}};}
   el('attach').onclick=()=>el('upload').click();
-  el('upload').onchange=async()=>{const target=agentId,file=el('upload').files[0];if(!file)return;const pdf=/\.(pdf|pptx)$/i.test(file.name),limit=(pdf?10:1)*1024*1024;if(file.size>limit){alert(pdf?'Choose a PDF or PPTX of 10 MB or smaller.':'Choose a text, Markdown or CSV file of 1 MB or smaller.');el('upload').value='';return;}el('attach').disabled=true;try{let content;if(pdf){const bytes=new Uint8Array(await file.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));content=btoa(binary);}else content=await file.text();const result=await api('upload',{name:file.name,content,...(pdf?{encoding:'base64'}:{})},target);await refresh();alert(result.path+' is ready for your agent.');}catch(error){alert(error.message);}finally{el('upload').value='';el('attach').disabled=false;}};
+  el('upload').onchange=()=>{const files=[...el('upload').files];el('upload').value='';uploadDocuments(files);};
   el('refresh-files').onclick=refresh;
   el('memory').onclick=()=>{dialog('PERSISTENT MEMORY',`<h3>What ${escape(data.profile.name)} remembers.</h3><p>This is the actual MEMORY.md in your agent’s workspace. Ask your agent to remember, correct or forget a preference.</p><pre>${escape(data.memory||'No saved preferences yet.')}</pre><p>Try refreshing this page, then ask “What do you remember about me?”</p><button class="studio-primary" id="studio-recall">Ask my agent</button>`);el('recall').onclick=()=>{el('dialog').close();el('prompt').value='What do you remember about my preferences? Read MEMORY.md and apply my preferred response style.';skill='memory';el('prompt').focus();};};
   el('schedule').onclick=()=>{dialog('PERSISTENT FOLLOW-UP',`<h3>Give it something to come back to.</h3><p>The app keeps this task across refreshes and app restarts. It runs through OpenClaw when due; the result appears in this workspace. The server must stay on.</p><form id="studio-schedule-form"><label for="studio-followup">Task</label><textarea id="studio-followup" rows="3" required>Read my saved preferences and suggest one useful next task for me to try.</textarea><label for="studio-delay">Run in</label><select id="studio-delay"><option value="60">1 minute · demo</option><option value="300">5 minutes</option><option value="3600">1 hour</option></select><div class="studio-dialog-actions"><button class="studio-primary">Schedule follow-up</button></div></form>`);el('schedule-form').onsubmit=async e=>{e.preventDefault();try{const job=await api('jobs',{kind:'reminder',prompt:el('followup').value,delay:Number(el('delay').value)});selectedJob=job.id;el('dialog').close();await refresh();}catch(error){alert(error.message);}};};
@@ -81015,7 +81027,51 @@ function openSurface(name,contribution='all'){
 el('surface-close').onclick=closeSurface;
 root.addEventListener('click',e=>{const button=e.target.closest('[data-surface]');if(button)openSurface(button.dataset.surface);});
 
-  const chatImageDrafts=new Map();
+  // Documents persist with the selected agent, independently of message drafts.
+let documentUploadTarget=null,documentUploadName='';
+function renderDocuments(){
+ const panel=el('documents'),paths=new Set((data.files||[]).map(file=>file.path));
+ const documents=(data.files||[]).filter(file=>file.kind==='inbox'&&/\.(pdf|pptx|txt|md|csv)$/i.test(file.path)&&!(/\.(pdf|pptx)\.txt$/i.test(file.path)&&paths.has(file.path.slice(0,-4))));
+ const busy=documentUploadTarget===agentId;
+ panel.hidden=!documents.length&&!busy;
+ panel.innerHTML='<small>Documents · '+escape(data.profile?.name||'')+'</small><ul>'+documents.map(file=>'<li title="'+escape(file.path.slice(6))+'"><span aria-hidden="true">▤</span><span>'+escape(file.path.slice(6))+'</span><small>'+escape(file.size<1024*1024?Math.max(1,Math.ceil(file.size/1024))+' KB':(file.size/1024/1024).toFixed(1)+' MB')+'</small></li>').join('')+'</ul>'+(busy?'<p role="status">Adding '+escape(documentUploadName)+'…</p>':'');
+}
+async function uploadDocuments(files){
+ if(!files.length||documentUploadTarget!==null)return;
+ if(!data.profile||data.deleting){alert('Choose an available agent before adding documents.');return;}
+ const target=agentId,errors=[];documentUploadTarget=target;pendingWrites++;renderDocuments();syncComposer();
+ try{
+  for(const file of files){
+   const binary=/\.(pdf|pptx)$/i.test(file.name),limit=10*1024*1024;
+   if(!/\.(pdf|pptx|txt|md|csv)$/i.test(file.name)){errors.push(file.name+': Use PDF, PPTX, TXT, Markdown or CSV.');continue;}
+   if(file.size>limit){errors.push(file.name+': Choose a file of 10 MB or smaller.');continue;}
+   documentUploadName=file.name;renderDocuments();
+   try{
+    let content;
+    if(binary){const bytes=new Uint8Array(await file.arrayBuffer());let raw='';for(let i=0;i<bytes.length;i+=8192)raw+=String.fromCharCode(...bytes.subarray(i,i+8192));content=btoa(raw);}
+    else content=await file.text();
+    await api('upload',{name:file.name,content,...(binary?{encoding:'base64'}:{})},target);
+    await refresh();
+   }catch(error){errors.push(file.name+': '+error.message);}
+  }
+ }finally{pendingWrites--;documentUploadTarget=null;documentUploadName='';renderDocuments();syncComposer();}
+ if(errors.length)dialog('Document upload','<p>'+errors.map(escape).join('<br>')+'</p>');
+}
+const documentDropZone=el('companion');
+for(const eventName of ['dragenter','dragover'])documentDropZone.addEventListener(eventName,event=>{
+ if(![...event.dataTransfer.types].includes('Files'))return;
+ event.preventDefault();event.dataTransfer.dropEffect=data.deleting||documentUploadTarget!==null?'none':'copy';
+ documentDropZone.classList.toggle('document-drag-over',!data.deleting&&documentUploadTarget===null);
+});
+documentDropZone.addEventListener('dragleave',event=>{if(!documentDropZone.contains(event.relatedTarget))documentDropZone.classList.remove('document-drag-over');});
+documentDropZone.addEventListener('drop',event=>{
+ if(![...event.dataTransfer.types].includes('Files'))return;
+ event.preventDefault();documentDropZone.classList.remove('document-drag-over');
+ const files=[...event.dataTransfer.files],images=files.filter(file=>file.type.startsWith('image/'));
+ if(images.length)addChatImages(images);
+ uploadDocuments(files.filter(file=>!file.type.startsWith('image/')));
+});
+const chatImageDrafts=new Map();
 const personalDrafts=new Map();
 function restorePersonalDraft(next,agents){
  const live=new Set(agents.map(agent=>agent.key));
@@ -81066,11 +81122,11 @@ function syncComposer(){
   if(!connected)return;
   const unavailable=!runtime.ready,blocked=unavailable||!!data.deleting;
   el('prompt').disabled=blocked;
-  el('send').disabled=blocked||chatSending||comparisonSending;
-  el('send-all').disabled=blocked||chatSending||comparisonSending||(data.agents||[]).length<2;
+  el('send').disabled=blocked||chatSending||comparisonSending||documentUploadTarget===agentId;
+  el('send-all').disabled=blocked||chatSending||comparisonSending||documentUploadTarget===agentId||(data.agents||[]).length<2;
   el('run-options').disabled=el('send-all').disabled;
   if(el('run-options').disabled)setRunOptions(false);
-  el('attach').disabled=blocked;
+  el('attach').disabled=!!data.deleting||!data.profile||documentUploadTarget!==null;
   el('chat-connection').hidden=!blocked;
   el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':!runtime.gateway?(gatewayState()==='slow'?'Waiting for the agent runtime to respond. Checking automatically.':'Agent runtime unavailable. Retry the connection to continue.'):'Model not connected. Connect a model to start chatting.';
   el('chat-connect').hidden=!unavailable||(runtime.gateway&&settingsButton.hidden);
@@ -81130,7 +81186,7 @@ const shieldReplyWait='<div class="chat-progress shield-reply-wait" role="status
 root.addEventListener('bac:protection-reveal',()=>{if(connected)render();});
 let conversationSignature='',conversationOwner=null;
 function renderConversation(){
-  renderImageDrafts();syncComposer();const log=el('conversation');if(!log)return;
+  renderImageDrafts();renderDocuments();syncComposer();const log=el('conversation');if(!log)return;
   const jobs=[...data.jobs.filter(j=>j.kind!=='crew'),...(data.roundtableTurns||[])].sort((a,b)=>a.created-b.created);
   const signature=JSON.stringify([agentId,data.profile?.name,jobs.map(j=>[j.id,j.status,j.result,j.events?.at(-1),shieldReplyHeld(j)])]);
   if(conversationOwner!==agentId)el('chat-error').hidden=true;

@@ -22,6 +22,74 @@ def pdf_fixture(label='Hello PDF'):
     return result+b'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n'+str(xref).encode()+b'\n%%EOF'
 
 class Documents(unittest.TestCase):
+    def test_all_text_formats_accept_ten_megabytes_and_reject_more(self):
+        for name in ('notes.txt','notes.md','notes.csv'):
+            with self.subTest(name=name):
+                content='x'*MAX_TEXT
+                raw,extra=decode_document(name,{'content':content})
+                self.assertEqual(len(raw),10*1024*1024);self.assertIsNone(extra)
+                with self.assertRaisesRegex(ValueError,'10 MB'):
+                    decode_document(name,{'content':content+'x'})
+        with self.assertRaisesRegex(ValueError,'10 MB'):
+            decode_document('unicode.txt',{'content':'가'*(MAX_TEXT//3+1)})
+
+    def test_uploads_and_prompts_stay_with_selected_agent_in_both_modes(self):
+        for protection in ('standard', 'openshell'):
+            with self.subTest(protection=protection), tempfile.TemporaryDirectory() as d:
+                adapter=Adapter();studio=Studio(d,adapter,start_worker=False)
+                owner=studio.session()[0]['id']
+                studio.onboard(owner,{'name':'First','skills':['documents'],'protection':protection})
+                if (job:=studio.next_job()):studio.execute(job)
+                other=studio.add_agent(owner,{'name':'Second','skills':['documents']})['agentId']
+                studio.upload(owner,{'name':'private.txt','content':'first-private-nonce'})
+                self.assertEqual(studio.state(other)['files'],[])
+                with self.assertRaises(Problem):studio.available_file(other,'inbox/private.txt')
+                with self.assertRaises(Problem):studio.available_file(other,'inbox/../../'+owner+'/inbox/private.txt')
+                studio.upload(other,{'name':'private.txt','content':'second-private-nonce'})
+                self.assertEqual(studio.available_file(owner,'inbox/private.txt').read_text(),'first-private-nonce')
+                self.assertEqual(studio.available_file(other,'inbox/private.txt').read_text(),'second-private-nonce')
+                studio.upload(owner,{'name':'owner-only.md','content':'Only first sees this.'})
+                studio.enqueue(other,{'kind':'chat','prompt':'Read my document.'})
+                studio.execute(studio.next_job())
+                self.assertIn('inbox/private.txt',adapter.calls[-1][2])
+                self.assertNotIn('owner-only.md',adapter.calls[-1][2])
+
+    def test_in_flight_workspace_sync_cannot_race_an_upload(self):
+        with tempfile.TemporaryDirectory() as d:
+            studio=Studio(d,Adapter(),start_worker=False);owner=studio.session()[0]['id']
+            studio.onboard(owner,{'name':'Reader','skills':['documents'],'protection':'openshell'})
+            studio.execute(studio.next_job())
+            studio.upload(owner,{'name':'notes.txt','content':'original'})
+            studio.executing_owners.add(owner)
+            with self.assertRaises(Problem):studio.upload(owner,{'name':'notes.txt','content':'replacement'})
+            self.assertEqual(studio.available_file(owner,'inbox/notes.txt').read_text(),'original')
+            studio.executing_owners.clear()
+            studio.upload(owner,{'name':'notes.txt','content':'replacement'})
+            self.assertEqual(studio.available_file(owner,'inbox/notes.txt').read_text(),'replacement')
+            studio.delete_agent(owner,{'name':'Reader'},enqueue_only=True)
+            with self.assertRaises(Problem):studio.upload(owner,{'name':'late.txt','content':'late'})
+            self.assertFalse((studio.workspace(owner)/'inbox/late.txt').exists())
+
+    def test_existing_document_can_be_replaced_at_capacity(self):
+        with tempfile.TemporaryDirectory() as d:
+            studio=Studio(d,Adapter(),start_worker=False);owner=studio.session()[0]['id']
+            studio.onboard(owner,{'name':'Reader','skills':['documents']})
+            for index in range(80):studio.upload(owner,{'name':str(index)+'.txt','content':'old'})
+            studio.upload(owner,{'name':'0.txt','content':'updated'})
+            self.assertEqual(studio.available_file(owner,'inbox/0.txt').read_text(),'updated')
+            with self.assertRaises(Problem):studio.upload(owner,{'name':'81.txt','content':'overflow'})
+
+    def test_large_successful_upload_is_listed_readable_and_in_agent_prompt(self):
+        with tempfile.TemporaryDirectory() as d:
+            adapter=Adapter();studio=Studio(d,adapter,start_worker=False);owner=studio.session()[0]['id']
+            studio.onboard(owner,{'name':'Reader','skills':['documents']})
+            studio.upload(owner,{'name':'large.txt','content':'x'*MAX_TEXT})
+            self.assertEqual(studio.state(owner)['files'][0]['size'],MAX_TEXT)
+            self.assertEqual(studio.available_file(owner,'inbox/large.txt').stat().st_size,MAX_TEXT)
+            studio.enqueue(owner,{'kind':'chat','prompt':'Summarize my uploaded file.'})
+            studio.execute(studio.next_job())
+            self.assertIn('inbox/large.txt',adapter.calls[-1][2])
+
     def test_csv_preserves_rows_and_rejects_large_or_invalid_files(self):
         text='Name,Value\n"a,b",42\n';raw,extra=decode_document('표.csv',{'content':'\ufeff'+text})
         self.assertEqual(raw.decode(),text);self.assertIsNone(extra)

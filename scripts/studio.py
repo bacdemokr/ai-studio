@@ -112,8 +112,9 @@ def safe_file(directory, relative, exists=False):
             break
         if part.is_symlink():
             raise Problem('Symbolic links are not accepted.')
-    if exists and (not result.is_file() or result.stat().st_size > 512_000):
-        raise Problem('File is unavailable or exceeds 500 KB.', 404)
+    from document_upload import MAX_FILE
+    if exists and (not result.is_file() or result.stat().st_size > MAX_FILE):
+        raise Problem('File is unavailable or exceeds 10 MB.', 404)
     return result
 
 
@@ -796,11 +797,17 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
             raw, extracted = decode_document(name, data)
         except ValueError as error:
             raise Problem(str(error)) from None
-        if len(self.files(owner)) + (2 if extracted is not None else 1) > 80:
-            raise Problem('Workspace file limit reached.')
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
             self.require_available(db, owner)
+            # Native OpenShell mirrors the workspace around tool calls. Do not
+            # let its download overwrite a document uploaded mid-execution.
+            self.require_idle(db, owner)
+            existing = {file['path'] for file in self.files(owner)}
+            incoming = {'inbox/' + name}
+            if extracted is not None:incoming.add('inbox/' + name + '.txt')
+            if len(existing | incoming) > 80:
+                raise Problem('Workspace file limit reached.')
             path = safe_file(self.workspace(owner), 'inbox/' + name)
             readable = safe_file(self.workspace(owner), 'inbox/' + name + '.txt') if extracted is not None else None
             path.write_bytes(raw)

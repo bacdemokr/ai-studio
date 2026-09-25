@@ -11,7 +11,7 @@ from zipfile import ZipFile, BadZipFile
 import xml.etree.ElementTree as ET
 
 MAX_FILE = 10 * 1024 * 1024
-MAX_TEXT = 1024 * 1024
+MAX_TEXT = MAX_FILE
 MAX_PAGES = 100
 
 
@@ -25,7 +25,7 @@ def decode_document(name, data):
             raise ValueError('This document has no readable text. Save CSV and text files as UTF-8.')
         content = content.removeprefix('\ufeff')
         if len(content.encode('utf-8')) > MAX_TEXT:
-            raise ValueError('Text, Markdown and CSV files must be 1 MB or smaller.')
+            raise ValueError('Choose a document of 10 MB or smaller.')
         return content.encode('utf-8'), None
     if data.get('encoding') != 'base64' or not isinstance(data.get('content'), str):
         raise ValueError('Upload the PDF or PPTX as a binary document.')
@@ -68,6 +68,8 @@ def decode_document(name, data):
         sections.pop()
     readable = 'Source: '+name+'\nPDF text extraction; visual layout and images may be omitted.\n\n'
     readable += '\n\n'.join('--- Page %d ---\n%s' % (i, page.strip() or '[No text extracted on this page; an image or scan may need OCR.]') for i,page in enumerate(sections,1))
+    if len(readable.encode('utf-8')) > MAX_TEXT:
+        raise ValueError('The PDF contains too much text. Split it into smaller documents.')
     return raw, readable
 
 
@@ -78,7 +80,7 @@ def pptx_text(name, raw):
             if len(archive.infolist())>5000 or sum(f.file_size for f in archive.infolist())>100*1024*1024:
                 raise ValueError('This presentation is too large after unpacking.')
             def xml(path):
-                if archive.getinfo(path).file_size>5*MAX_TEXT:
+                if archive.getinfo(path).file_size>5*1024*1024:
                     raise ValueError('A slide contains too much data.')
                 content=archive.read(path)
                 if b'<!DOCTYPE' in content or b'<!ENTITY' in content:

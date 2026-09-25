@@ -1,3 +1,47 @@
+// Documents persist with the selected agent, independently of message drafts.
+let documentUploadTarget=null,documentUploadName='';
+function renderDocuments(){
+ const panel=el('documents'),paths=new Set((data.files||[]).map(file=>file.path));
+ const documents=(data.files||[]).filter(file=>file.kind==='inbox'&&/\.(pdf|pptx|txt|md|csv)$/i.test(file.path)&&!(/\.(pdf|pptx)\.txt$/i.test(file.path)&&paths.has(file.path.slice(0,-4))));
+ const busy=documentUploadTarget===agentId;
+ panel.hidden=!documents.length&&!busy;
+ panel.innerHTML='<small>Documents · '+escape(data.profile?.name||'')+'</small><ul>'+documents.map(file=>'<li title="'+escape(file.path.slice(6))+'"><span aria-hidden="true">▤</span><span>'+escape(file.path.slice(6))+'</span><small>'+escape(file.size<1024*1024?Math.max(1,Math.ceil(file.size/1024))+' KB':(file.size/1024/1024).toFixed(1)+' MB')+'</small></li>').join('')+'</ul>'+(busy?'<p role="status">Adding '+escape(documentUploadName)+'…</p>':'');
+}
+async function uploadDocuments(files){
+ if(!files.length||documentUploadTarget!==null)return;
+ if(!data.profile||data.deleting){alert('Choose an available agent before adding documents.');return;}
+ const target=agentId,errors=[];documentUploadTarget=target;pendingWrites++;renderDocuments();syncComposer();
+ try{
+  for(const file of files){
+   const binary=/\.(pdf|pptx)$/i.test(file.name),limit=10*1024*1024;
+   if(!/\.(pdf|pptx|txt|md|csv)$/i.test(file.name)){errors.push(file.name+': Use PDF, PPTX, TXT, Markdown or CSV.');continue;}
+   if(file.size>limit){errors.push(file.name+': Choose a file of 10 MB or smaller.');continue;}
+   documentUploadName=file.name;renderDocuments();
+   try{
+    let content;
+    if(binary){const bytes=new Uint8Array(await file.arrayBuffer());let raw='';for(let i=0;i<bytes.length;i+=8192)raw+=String.fromCharCode(...bytes.subarray(i,i+8192));content=btoa(raw);}
+    else content=await file.text();
+    await api('upload',{name:file.name,content,...(binary?{encoding:'base64'}:{})},target);
+    await refresh();
+   }catch(error){errors.push(file.name+': '+error.message);}
+  }
+ }finally{pendingWrites--;documentUploadTarget=null;documentUploadName='';renderDocuments();syncComposer();}
+ if(errors.length)dialog('Document upload','<p>'+errors.map(escape).join('<br>')+'</p>');
+}
+const documentDropZone=el('companion');
+for(const eventName of ['dragenter','dragover'])documentDropZone.addEventListener(eventName,event=>{
+ if(![...event.dataTransfer.types].includes('Files'))return;
+ event.preventDefault();event.dataTransfer.dropEffect=data.deleting||documentUploadTarget!==null?'none':'copy';
+ documentDropZone.classList.toggle('document-drag-over',!data.deleting&&documentUploadTarget===null);
+});
+documentDropZone.addEventListener('dragleave',event=>{if(!documentDropZone.contains(event.relatedTarget))documentDropZone.classList.remove('document-drag-over');});
+documentDropZone.addEventListener('drop',event=>{
+ if(![...event.dataTransfer.types].includes('Files'))return;
+ event.preventDefault();documentDropZone.classList.remove('document-drag-over');
+ const files=[...event.dataTransfer.files],images=files.filter(file=>file.type.startsWith('image/'));
+ if(images.length)addChatImages(images);
+ uploadDocuments(files.filter(file=>!file.type.startsWith('image/')));
+});
 const chatImageDrafts=new Map();
 const personalDrafts=new Map();
 function restorePersonalDraft(next,agents){
@@ -49,11 +93,11 @@ function syncComposer(){
   if(!connected)return;
   const unavailable=!runtime.ready,blocked=unavailable||!!data.deleting;
   el('prompt').disabled=blocked;
-  el('send').disabled=blocked||chatSending||comparisonSending;
-  el('send-all').disabled=blocked||chatSending||comparisonSending||(data.agents||[]).length<2;
+  el('send').disabled=blocked||chatSending||comparisonSending||documentUploadTarget===agentId;
+  el('send-all').disabled=blocked||chatSending||comparisonSending||documentUploadTarget===agentId||(data.agents||[]).length<2;
   el('run-options').disabled=el('send-all').disabled;
   if(el('run-options').disabled)setRunOptions(false);
-  el('attach').disabled=blocked;
+  el('attach').disabled=!!data.deleting||!data.profile||documentUploadTarget!==null;
   el('chat-connection').hidden=!blocked;
   el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':!runtime.gateway?(gatewayState()==='slow'?'Waiting for the agent runtime to respond. Checking automatically.':'Agent runtime unavailable. Retry the connection to continue.'):'Model not connected. Connect a model to start chatting.';
   el('chat-connect').hidden=!unavailable||(runtime.gateway&&settingsButton.hidden);
@@ -113,7 +157,7 @@ const shieldReplyWait='<div class="chat-progress shield-reply-wait" role="status
 root.addEventListener('bac:protection-reveal',()=>{if(connected)render();});
 let conversationSignature='',conversationOwner=null;
 function renderConversation(){
-  renderImageDrafts();syncComposer();const log=el('conversation');if(!log)return;
+  renderImageDrafts();renderDocuments();syncComposer();const log=el('conversation');if(!log)return;
   const jobs=[...data.jobs.filter(j=>j.kind!=='crew'),...(data.roundtableTurns||[])].sort((a,b)=>a.created-b.created);
   const signature=JSON.stringify([agentId,data.profile?.name,jobs.map(j=>[j.id,j.status,j.result,j.events?.at(-1),shieldReplyHeld(j)])]);
   if(conversationOwner!==agentId)el('chat-error').hidden=true;

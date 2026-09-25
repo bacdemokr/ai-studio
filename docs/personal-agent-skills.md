@@ -14,6 +14,8 @@ These are seven BaC-authored workspace skills registered in OpenClaw as `bac-web
 
 For a short local-LLM presentation, start with weather (fresh data), meeting-note action extraction (grounded evidence), and a short message rewrite (persona contrast). Paper discovery is another primary scenario. App creation and memory are folded under additional options. Research is a strong alternative when the external endpoint is available. Three Takeaways demonstrates evidence grounding; Slack announcements demonstrates the same facts expressed in different personas. Avoid presenting generic writing alone as proof of tool use.
 
+Use **Add a document** or drop files onto an agent’s chat. PDF, PPTX, TXT, Markdown and CSV files share a 10 MB per-file limit. The document list above the conversation belongs to the selected agent and persists across reloads; PDF/PPTX text companions are hidden from that list. Wait for active work to finish before uploading, so OpenShell workspace synchronization cannot overwrite the new file. OpenShell agents read their uploads from their own sandbox workspace. Standard mode uses separate workspaces and app-scoped file access, but does not provide OS-level isolation from the host.
+
 Role and tone are independent of skill authorization. Changing Cynical to Kind should change expression, not weather facts or paper citations. Run all agents compares personal responses through the queue; each needs the relevant skills and permissions for a fair capability comparison.
 
 ## Research without a paid search key
