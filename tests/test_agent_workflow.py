@@ -316,14 +316,31 @@ class AgentWorkflowTests(unittest.TestCase):
                 return Reply('I finished and saved both files.',{})
             return original(agent,session,prompt)
         self.adapter.respond=no_writes
-        with self.assertRaisesRegex(RuntimeError,'one repair'):self.event(6,days=2)
+        with self.assertRaisesRegex(RuntimeError,'3 repair attempts'):self.event(6,days=2)
         job=self.studio.state(self.owner)['jobs'][0];p=job['payload']
-        self.assertEqual(len(calls),2);self.assertNotEqual(job['status'],'done')
-        self.assertEqual(p['pageDraft']['status'],'failed');self.assertEqual(p['pageDraft']['attempts'],2)
+        self.assertEqual(len(calls),4);self.assertEqual(len(set(calls)),4);self.assertNotEqual(job['status'],'done')
+        self.assertEqual(p['pageDraft']['status'],'failed');self.assertEqual(p['pageDraft']['attempts'],4)
         self.assertNotIn('3',p['outputs']);self.assertIn('1',p['outputs']);self.assertIn('2',p['outputs'])
         self.assertFalse(p.get('website',{}).get('authored'))
         self.assertEqual(p['socialDraft']['status'],'ready')
         self.assertFalse(any(f.endswith('-event-page.html') for f in p.get('packageFiles',[])))
+
+    def test_stop_during_page_repair_prevents_more_model_calls(self):
+        original=self.adapter.respond;calls=[]
+        def stop_repair(agent,session,prompt):
+            if agent.endswith('-r3') and not prompt.startswith('LINKEDIN-FIRST:'):
+                calls.append(session)
+                if len(calls)==2:
+                    with self.studio.db() as db:
+                        job=db.execute("SELECT id FROM jobs WHERE owner=? AND kind='crew'",(self.owner,)).fetchone()
+                    self.studio.decision(self.owner,job['id'],'cancel')
+                return Reply('No files written.',{})
+            return original(agent,session,prompt)
+        self.adapter.respond=stop_repair
+        job=self.event(2)
+        self.assertEqual(job['status'],'cancelled');self.assertEqual(len(calls),2)
+        self.assertEqual(set(job['payload']['outputs']),{'0','1','2'})
+        self.assertFalse(job['payload'].get('website',{}).get('authored'))
 
     def test_completed_source_must_contain_program_and_promotion_in_the_page(self):
         import morgan_page

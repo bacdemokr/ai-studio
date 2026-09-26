@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 from nvidia_event_page import render
 
 MODE = 'agent-html-v1'
+MAX_REPAIRS = 3
 TOKENS = ('MORGAN_HEADLINE', 'MORGAN_INTRO', 'MORGAN_CTA', 'MORGAN_PROGRAM_TITLE', 'MORGAN_PROMOTION_TITLE', 'MORGAN_SOCIAL_POST')
 SCHEDULE_MOUNT='<section class="section" id="schedule"><h2>Presenter timetable</h2><!-- The app inserts Alex’s validated timetable here. Keep this block unchanged. --></section>'
 POST_MOUNT='<!-- BAC:SOCIAL_POST -->'
@@ -82,10 +83,14 @@ def prepare(workspace, job, payload):
                 'instructions': 'Edit the HTML file itself. Preserve both protected blocks exactly. Write the LinkedIn post file. No publishing. Final reply: a short human-readable summary.'}
     import agent_workflow
     if agent_workflow.enabled(payload):
-        from event_page_sections import draft_files
+        from event_page_sections import draft_files, Card
         contract['sectionEditor'] = 2
         contract['sectionFiles'] = draft_files(files['html'], len(contract['themes']))
-        contract['instructions'] = ('Write sectionFiles.copy once as a JSON object with headline, intro, cta, program-title and promotion-title. Write each sectionFiles.card-N as raw HTML: one article.theme-card under 6000 characters, in themes order. Use native write calls only; distinct files can be written together. The app collects and applies these files after your turn, escapes text, removes card IDs and retains aria-hidden. No patch file, apply/status command, shell, full-page read or manual assembly. Preserve the saved LinkedIn post. Stop after successful writes with a brief receipt. On repair, rewrite only files/fields named in the errors; accepted sections remain saved.')
+        contract['cardRules'] = {'tags':sorted(Card.TAGS), 'attributes':sorted(Card.ATTRS),
+                                 'links':'Use the exact supplied HTTPS research URL.',
+                                 'details':'Omit open entirely; open="false" also opens details in HTML.',
+                                 'normalized':'The app removes id, data-* attributes, anchor target/rel and details open. Authored text and source links are preserved.'}
+        contract['instructions'] = ('Write sectionFiles.copy once as a JSON object with headline, intro, cta, program-title and promotion-title. Write each sectionFiles.card-N as raw HTML: one article.theme-card under 6000 characters, in themes order, following cardRules. Use native write calls only; distinct files can be written together. The app collects and applies these files after your turn, escapes text, normalizes presentation attributes and retains aria-hidden. No patch file, apply/status command, shell, full-page read or manual assembly. Preserve the saved LinkedIn post. Stop after successful writes with a brief receipt. On repair, rewrite only files/fields named in the errors; accepted sections remain saved.')
         contract['scheduleSummary']={k:payload['capacity'].get(k) for k in ('session','boothCount','presenterCount','scheduleCriteria','staffingPolicy')}
         contract['scheduleSelected']='2' in payload.get('outputs',{})
     safe_file(workspace, 'inbox/morgan-page.json').write_text(json.dumps(contract, ensure_ascii=False, indent=2), encoding='utf-8')

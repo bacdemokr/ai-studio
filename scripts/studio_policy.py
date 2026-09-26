@@ -2,6 +2,7 @@
 import json
 import time
 import re
+import math
 from urllib.parse import urlsplit
 
 from agent_policy import CATALOG, destination_permission, permission_rule, individual_permissions
@@ -9,12 +10,22 @@ from agent_policy import CATALOG, destination_permission, permission_rule, indiv
 
 def prompt_hosts(prompt):
     """Return public destinations without letting malformed chat URLs break policy reads."""
-    for match in re.finditer(r'(?:https?://|www\.)[^\s<>"\\]+', prompt.replace('\\.', '.'), re.I):
-        value = match.group().rstrip('.,;!?)')
+    pattern = (r'(?:https?://|www\.)[^\s<>"\\]+'
+               r'|(?<![\w@/\\.*:-])(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}'
+               r'(?::[0-9]+)?(?:/[^\s<>"\\]*)?(?![\w@-]|\.[a-z0-9])')
+    seen = set()
+    for match in re.finditer(pattern, prompt.replace('\\.', '.'), re.I):
+        value = match.group().rstrip('.,;!?)]}*`\'')
         try:
             host = urlsplit(value if '://' in value else 'https://' + value).hostname or ''
             key = destination_permission(host)
-            yield permission_rule(key)['hosts'][0]
+            host = permission_rule(key)['hosts'][0]
+            # A plain uploaded filename is not a request for website access.
+            if '://' not in value and not value.lower().startswith('www.') and host.rsplit('.', 1)[-1] in ('pdf','pptx','xlsx','txt','md','csv','json','py','js'):
+                continue
+            if host not in seen:
+                seen.add(host)
+                yield host
         except ValueError:
             continue
 
@@ -38,7 +49,11 @@ class PolicyControls:
         reader = getattr(self.adapter, 'policy_events', None)
         if profile.get('protection') != 'openshell' or not callable(reader):
             return self.adapter.respond(agent_id, session, prompt, **kwargs)
-        with self.protection_activity.watch(owner, role, agent_id, reader):
+        def observe(agent):
+            logs = reader(agent)
+            self.remember_policy_denials(owner, logs, role)
+            return logs
+        with self.protection_activity.watch(owner, role, agent_id, observe):
             return self.adapter.respond(agent_id, session, prompt, **kwargs)
 
     def policy_profile(self, owner, role=None):
@@ -82,23 +97,66 @@ class PolicyControls:
             raise Problem('Choose a valid crew member.')
         return self.policy_report(owner, role)
 
+    def remember_policy_denials(self, owner, logs, role=None):
+        """Retain verified destinations when native logs rotate or restart.
+
+        Store only host/time evidence, never URLs or commands. The same policy
+        row is removed by agent deletion; late observers cannot recreate it.
+        """
+        from research_http import RESEARCH_APPROVALS
+        policy_role = -1 if role is None else role
+        now = time.time()
+        with self.db() as db:
+            db.execute('BEGIN IMMEDIATE')
+            state = db.execute('SELECT reset_at,deleting FROM agents WHERE id=?',(owner,)).fetchone()
+            if not state or state['deleting']:return []
+            row = db.execute('SELECT denials FROM agent_policies WHERE owner=? AND role=?',(owner,policy_role)).fetchone()
+            previous = json.loads(row['denials']) if row else []
+            retained = {}
+            for event in previous + logs:
+                stamp = event.get('time')
+                if (event.get('action') != 'deny' or event.get('reason','policy-denied') != 'policy-denied'
+                        or type(stamp) not in (int,float) or not math.isfinite(stamp)
+                        or not state['reset_at'] <= stamp <= now + 2):continue
+                try:host = permission_rule(destination_permission(event.get('host')))['hosts'][0]
+                except ValueError:continue
+                if host not in retained or retained[host]['time'] < stamp:
+                    retained[host] = {'host':host,'time':stamp,'action':'deny','reason':'policy-denied','source':'OpenShell policy log'}
+            events = sorted(retained.values(),key=lambda event:event['time'],reverse=True)[:256]
+            if events != previous:
+                # Creating an observation row must preserve crew default grants.
+                defaults = list(RESEARCH_APPROVALS) if role is not None else []
+                db.execute('INSERT OR IGNORE INTO agent_policies(owner,role,approved) VALUES(?,?,?)',
+                           (owner,policy_role,json.dumps(defaults)))
+                db.execute('UPDATE agent_policies SET denials=? WHERE owner=? AND role=?',
+                           (json.dumps(events),owner,policy_role))
+            return events
+
     def policy_report(self, owner, role=None):
         profile = self.policy_profile(owner, role)
         row, approved = self.saved_policy(owner, role)
         # Verify legacy native rule names against the original saved representation.
         # A read only expands the display; the next explicit edit migrates storage.
         report = self.adapter.policy_status(profile['id'], profile.get('protection', 'standard'), approved)
+        denials = self.remember_policy_denials(owner, report.get('logs', []), role)
+        report['observedDenied'] = denials
         approved = individual_permissions(approved)
         report.update(agentId=profile['id'] if role is not None else owner, agentName=profile['name'], crewRole=role, history=json.loads(row['events']) if row else [],
                       updating=bool(row and row['updating']), requested=approved)
         with self.db() as db:
+            state = db.execute('SELECT reset_at,deleting FROM agents WHERE id=?',(owner,)).fetchone()
+            if not state or state['deleting']:
+                from studio import Problem
+                raise Problem('This agent is being removed. Refresh the studio.',409 if state else 404)
+            reset_at = state['reset_at']
             report['preparing'] = bool(db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind=? AND status IN ('queued','running','stopping')", (owner, 'prepare-agent' if role is None else 'prepare')).fetchone())
             report['busy'] = role is not None and bool(db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind IN ('crew','crew-chat','prepare') AND status IN ('queued','running','waiting','stopping')", (owner,)).fetchone())
         # Candidates never grant access; assistant suggestions require explicit approval too.
         catalog = dict(report.get('catalog', CATALOG))
         with self.db() as db:
-            jobs = db.execute("SELECT payload FROM jobs WHERE owner=? AND (CASE WHEN ? IS NULL THEN kind NOT IN ('crew','crew-chat','prepare','prepare-agent') ELSE kind='crew' OR (kind='crew-chat' AND json_extract(payload,'$.crewRole')=?) END) ORDER BY created DESC LIMIT 30", (owner, role, role)).fetchall()
-        hosts = [e.get('host', '') for e in report.get('logs', []) if e.get('action') == 'deny' and e.get('reason', 'policy-denied') == 'policy-denied']
+            jobs = db.execute("SELECT payload FROM jobs WHERE owner=? AND created>=? AND (CASE WHEN ? IS NULL THEN kind NOT IN ('crew','crew-chat','prepare','prepare-agent') ELSE kind='crew' OR (kind='crew-chat' AND json_extract(payload,'$.crewRole')=?) END) ORDER BY created DESC LIMIT 30", (owner, reset_at, role, role)).fetchall()
+        hosts = [e['host'] for e in denials]
+        hosts += [e.get('host', '') for e in report.get('logs', []) if e.get('action') == 'deny' and e.get('reason', 'policy-denied') == 'policy-denied']
         for job in jobs:
             hosts.extend(prompt_hosts(json.loads(job['payload']).get('prompt', '')))
         for host in hosts:
@@ -114,22 +172,19 @@ class PolicyControls:
         for key in approved + report['recommended']:
             catalog[key] = permission_rule(key)
         with self.db() as db:
-            latest = db.execute("SELECT created,payload,result FROM jobs WHERE owner=? AND (CASE WHEN ? IS NULL THEN kind NOT IN ('crew','crew-chat','prepare','prepare-agent') ELSE kind='crew' OR (kind='crew-chat' AND json_extract(payload,'$.crewRole')=?) END) ORDER BY created DESC LIMIT 1", (owner, role, role)).fetchone()
+            latest = db.execute("SELECT created,payload,result FROM jobs WHERE owner=? AND created>=? AND (CASE WHEN ? IS NULL THEN kind NOT IN ('crew','crew-chat','prepare','prepare-agent') ELSE kind='crew' OR (kind='crew-chat' AND json_extract(payload,'$.crewRole')=?) END) ORDER BY created DESC LIMIT 1", (owner, reset_at, role, role)).fetchone()
         # Heartbeats run without a chat job. Their native denials must remain
         # visible even before the first summary is published, including after chat.
         since = latest['created'] if latest else None
         if radar_hosts:
-            with self.db() as db:
-                state = db.execute('SELECT reset_at,deleting FROM agents WHERE id=?',(owner,)).fetchone()
-                if not state or state['deleting']:
-                    from studio import Problem
-                    raise Problem('This agent is being removed. Refresh the studio.',409 if state else 404)
-                since = state['reset_at']
+            since = reset_at
         recent = [e for e in report.get('logs', []) if e.get('action') == 'deny' and since is not None and e.get('time') is not None and e['time'] >= since]
         report['recentDenied'] = [e for e in recent if e.get('reason', 'policy-denied') == 'policy-denied']
         report['connectionIssues'] = [e for e in recent if e.get('reason') in ('dns-failed', 'destination-blocked')]
         covered = {host for key in approved for host in permission_rule(key)['hosts']}
-        pending = {e['host']: 'blocked' for e in report['recentDenied'] if e['host'] not in covered}
+        # A follow-up can refer to a previous block without making another tool
+        # call. Keep observed, unapproved denials across turns until board reset.
+        pending = {e['host']: 'blocked' for e in denials if e['time'] >= reset_at and e['host'] not in covered}
         if latest:
             for host in prompt_hosts(json.loads(latest['payload']).get('prompt', '')):
                 key = destination_permission(host)

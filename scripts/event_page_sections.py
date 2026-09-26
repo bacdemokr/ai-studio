@@ -36,8 +36,9 @@ def atomic(path, text):
 
 
 class Card(HTMLParser):
-    TAGS = {'article', 'div', 'small', 'h3', 'p', 'b', 'strong', 'em', 'span',
+    TAGS = {'article', 'div', 'section', 'small', 'h3', 'p', 'b', 'strong', 'em', 'span',
             'a', 'details', 'summary', 'ul', 'ol', 'li', 'br'}
+    ATTRS = {'class', 'href', 'title', 'aria-label', 'aria-hidden', 'role'}
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -56,10 +57,13 @@ class Card(HTMLParser):
                 raise ValueError('Use one article.theme-card as the card root.')
         clean = []
         for key, value in attrs:
-            # Card IDs are unnecessary and could collide with page navigation.
-            if key == 'id':
+            # These presentation-only fields do not contribute authored text.
+            # In HTML even open="false" opens <details>; the design needs it closed.
+            if (key == 'id' or key.startswith('data-')
+                    or tag == 'details' and key == 'open'
+                    or tag == 'a' and key in ('target', 'rel')):
                 continue
-            if key not in ('class', 'href', 'title', 'aria-label', 'aria-hidden', 'role'):
+            if key not in self.ATTRS:
                 raise ValueError('Card contains an unsupported attribute: ' + key)
             if key == 'aria-hidden' and value not in ('true', 'false'):
                 raise ValueError('aria-hidden must be true or false.')

@@ -429,6 +429,66 @@ class PolicyTests(unittest.TestCase):
             {'host': 'allowed.example.com', 'action': 'allow', 'time': created + 1}]
         self.assertEqual([e['host'] for e in self.studio.policy_report(self.owner)['recentDenied']], ['www.naver.com'])
 
+    def test_unapproved_block_survives_followup_without_new_tool_call(self):
+        self.run_job({'prompt':'search google.com'})
+        denial={'host':'www.google.com','action':'deny','reason':'policy-denied','time':time.time()}
+        self.adapter.policy_logs[self.studio.profile(self.owner)['id']]=[denial]
+        self.run_job({'prompt':'search google.com'})
+        report=self.studio.policy_report(self.owner)
+        self.assertEqual(report['recentDenied'],[])
+        self.assertEqual(report['pendingAccess'],[
+            {'host':'www.google.com','reason':'blocked'},
+            {'host':'google.com','reason':'requested'}])
+        self.assertEqual(report['requested'],[])
+        # OpenShell loses its runtime logs on restart; the app retains evidence.
+        self.adapter.policy_logs[self.studio.profile(self.owner)['id']]=[]
+        reopened=Studio(self.temp.name,self.adapter,start_worker=False)
+        self.assertEqual(reopened.policy_report(self.owner)['pendingAccess'],report['pendingAccess'])
+        self.studio.policy_change(self.owner,{'permission':'host:www.google.com','allow':True})
+        self.assertEqual(self.studio.policy_report(self.owner)['pendingAccess'],[
+            {'host':'google.com','reason':'requested'}])
+        self.adapter.policy_logs[self.studio.profile(self.owner)['id']].append(
+            {'host':'unapproved.google.com','action':'deny','time':time.time()})
+        self.assertIn({'host':'unapproved.google.com','reason':'blocked'},self.studio.policy_report(self.owner)['pendingAccess'])
+        # Reset starts a new conversation; neither old logs nor archived prompts return.
+        self.studio.reset_board(self.owner)
+        self.assertEqual(self.studio.policy_report(self.owner)['pendingAccess'],[])
+        other=self.studio.add_agent(self.owner,{**self.profile,'name':'Other'})['agentId']
+        self.assertEqual(self.studio.policy_report(other)['pendingAccess'],[])
+
+    def test_bare_requested_domains_are_candidates_without_claiming_a_block(self):
+        from studio_policy import prompt_hosts
+        self.assertEqual(list(prompt_hosts('search Google.COM, then arxiv.org/abs/1234.5678.')),['google.com','arxiv.org'])
+        self.assertEqual(list(prompt_hosts('Read `google.com` and https://google.com/search?q=test')),['google.com'])
+        self.assertEqual(list(prompt_hosts('Try google.com.')),['google.com'])
+        for text in ['google,com','person@google.com','/tmp/report.pdf','report.pdf notes.md table.xlsx',
+                     '*.google.com','metadata.internal','127.0.0.1','https://[broken']:
+            with self.subTest(text=text):self.assertEqual(list(prompt_hosts(text)),[])
+
+    def test_denial_observations_preserve_crew_defaults_and_cannot_revive_deletion(self):
+        from research_http import RESEARCH_APPROVALS
+        event={'host':'www.google.com','action':'deny','time':time.time()}
+        self.studio.remember_policy_denials(self.owner,[event],role=1)
+        self.assertEqual(self.studio.saved_policy(self.owner,1)[1],list(RESEARCH_APPROVALS))
+        self.assertEqual(self.studio.remember_policy_denials(self.owner,[]),[])
+        with self.studio.db() as db:
+            db.execute('UPDATE agents SET deleting=1 WHERE id=?',(self.owner,))
+            db.execute('DELETE FROM agent_policies WHERE owner=?',(self.owner,))
+        self.assertEqual(self.studio.remember_policy_denials(self.owner,[event],role=1),[])
+        with self.studio.db() as db:
+            self.assertIsNone(db.execute('SELECT 1 FROM agent_policies WHERE owner=?',(self.owner,)).fetchone())
+
+    def test_saved_denials_accept_only_public_policy_blocks_and_store_no_payload(self):
+        now=time.time()
+        valid={'host':'Google.COM','action':'deny','time':now,'command':'private command','url':'https://google.com/?secret=hidden'}
+        invalid=[{**valid,'host':host} for host in ['127.0.0.1','metadata.internal','*.google.com']]
+        invalid += [{**valid,'reason':'dns-failed'},{**valid,'action':'allow'},{**valid,'time':None},{**valid,'time':float('nan')},{**valid,'time':now+60}]
+        self.assertEqual(self.studio.remember_policy_denials(self.owner,invalid),[])
+        self.assertIsNone(self.studio.saved_policy(self.owner)[0])
+        saved=self.studio.remember_policy_denials(self.owner,[valid,valid])
+        self.assertEqual(saved,[{'host':'google.com','time':now,'action':'deny','reason':'policy-denied','source':'OpenShell policy log'}])
+        self.assertNotIn('secret',self.studio.saved_policy(self.owner)[0]['denials'])
+
     def test_malformed_prompt_urls_do_not_break_policy_report(self):
         for url in ('https://[broken', 'https://example.com\uff0fwrong', 'http://[::1'):
             with self.subTest(url=url):

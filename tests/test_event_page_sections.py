@@ -160,6 +160,26 @@ class AutomaticSectionTests(PageFixture):
         self.assertIn('role="presentation"', page)
         self.assertEqual(path.read_text(), source)  # The agent's original source is retained.
 
+    def test_live_morgan_presentation_attributes_do_not_consume_a_repair(self):
+        fill(self.work)
+        path=self.work/self.contract['sectionFiles']['card-1']
+        source=card(self.contract['themes'][0]).replace('<article ', '<article data-theme="agents" ').replace(
+            '<a href=', '<a target="_blank" rel="noopener noreferrer" href=').replace(
+            '</div>', '<section><details class="demo-reason" open="false"><summary>Limitation</summary><p>Keep this limitation.</p></details></section></div>')
+        for attribute in ['open="false"','open="true"','open']:
+            with self.subTest(attribute=attribute):
+                original=source.replace('open="false"',attribute);path.write_text(original)
+                self.assertEqual(sections.collect(self.work)['status'],'complete')
+                page=(self.work/'artifacts/page.html').read_text()
+                for extra in ['data-theme=','target=','rel=',' open']:self.assertNotIn(extra,page)
+                self.assertIn('Keep this limitation.',page)
+                self.assertIn(self.contract['themes'][0]['source'],page)
+                self.assertEqual(path.read_text(),original)
+        path.write_text(source.replace('<details ','<details onclick="alert(1)" '))
+        result=sections.collect(self.work)
+        self.assertEqual(result['status'],'incomplete')
+        self.assertIn('onclick',result['errors']['card-1'])
+
     def test_invalid_card_retains_valid_copy_and_repair_changes_only_card(self):
         fill(self.work)
         path = self.work/self.contract['sectionFiles']['card-1']
@@ -194,6 +214,30 @@ class AutomaticSectionTests(PageFixture):
 
 
 class SectionWorkflowTests(unittest.TestCase):
+    def test_second_section_failure_gets_fresh_context_and_keeps_post(self):
+        class RepairAdapter(SectionsAdapter):
+            def __init__(self):super().__init__();self.page_sessions=[];self.posts=[]
+            def respond(self,agent,session,prompt):
+                result=super().respond(agent,session,prompt)
+                if agent.endswith('-r3') and not prompt.startswith('LINKEDIN-FIRST:'):
+                    self.page_sessions.append(session)
+                    work=Path(self.agents[agent]);contract=json.loads((work/'inbox/morgan-page.json').read_text())
+                    self.posts.append((work/contract['files']['post']).read_bytes())
+                    if len(self.page_sessions)==1:
+                        path=work/contract['sectionFiles']['copy'];data=json.loads(path.read_text());data['headline']='x'*101;path.write_text(json.dumps(data))
+                    elif len(self.page_sessions)==2:
+                        path=work/contract['sectionFiles']['card-1'];path.write_text(path.read_text().replace('https:','javascript:'))
+                return result
+        with tempfile.TemporaryDirectory() as directory:
+            adapter=RepairAdapter();app=Studio(directory,adapter,start_worker=False);owner=app.session()[0]['id']
+            app.enqueue(owner,{'kind':'crew','preset':True,'workflow':'showcase','executionMode':'agent-led-v1','brief':{'schema':2,'themeCount':2}})
+            with patch('nvidia_research.search_one',return_value=copy.deepcopy(SOURCES['sources'])),patch('event_agent_tools.read_article',return_value='Fixture source read by the agent.'):
+                app.execute(app.next_job())
+            job=app.state(owner)['jobs'][0]
+            self.assertEqual(job['status'],'done');self.assertEqual(job['payload']['pageDraft']['attempts'],3)
+            self.assertEqual(len(set(adapter.page_sessions)),3)
+            self.assertEqual(len(set(adapter.posts)),1)
+
     def test_full_workflow_assembles_named_sections_and_preserves_social_draft(self):
         with tempfile.TemporaryDirectory() as directory:
             app = Studio(directory, SectionsAdapter(), start_worker=False)

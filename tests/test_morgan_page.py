@@ -65,11 +65,23 @@ class MorganPageTests(unittest.TestCase):
                     self.assertIn('<!-- BAC:SCHEDULE -->',calls[1][2])
                     self.assertIn('<!-- /BAC:SCHEDULE -->',calls[1][2])
 
-    def test_second_failure_does_not_claim_a_completed_page(self):
-        with self.assertRaisesRegex(RuntimeError,'one repair'):
-            self.run_event(['unchanged','unchanged'])
+    def test_second_failure_gets_another_targeted_repair(self):
+        job=self.run_event(['source','anchor'])
+        self.assertEqual(job['status'],'done')
+        self.assertEqual(job['payload']['pageDraft']['attempts'],3)
+        self.assertEqual(len([c for c in self.adapter.calls if c[0]==3]),3)
+
+    def test_last_allowed_repair_can_complete_the_page(self):
+        job=self.run_event(['source','anchor','script'])
+        self.assertEqual(job['status'],'done')
+        self.assertEqual(job['payload']['pageDraft']['attempts'],4)
+        self.assertTrue(job['payload']['website']['authored'])
+
+    def test_exhausted_repairs_do_not_claim_a_completed_page(self):
+        with self.assertRaisesRegex(RuntimeError,'3 repair attempts'):
+            self.run_event(['unchanged'] * (morgan_page.MAX_REPAIRS + 1))
         p=self.studio.state(self.owner)['jobs'][0]['payload']
-        self.assertEqual(p['pageDraft']['status'],'failed');self.assertEqual(p['pageDraft']['attempts'],2)
+        self.assertEqual(p['pageDraft']['status'],'failed');self.assertEqual(p['pageDraft']['attempts'],4)
         self.assertFalse(p['website'].get('authored'));self.assertNotIn('3',p['outputs']);self.assertIn('1',p['outputs']);self.assertIn('2',p['outputs'])
 
     def test_transport_failure_is_not_shown_as_pending_webpage(self):
@@ -79,8 +91,8 @@ class MorganPageTests(unittest.TestCase):
         self.assertEqual(p['pageDraft']['status'],'failed');self.assertNotIn('3',p['outputs'])
 
     def test_symlink_is_a_repairable_validation_error(self):
-        with self.assertRaisesRegex(RuntimeError,'one repair'):
-            self.run_event(['symlink','symlink'])
-        p=self.studio.state(self.owner)['jobs'][0]['payload'];self.assertEqual(p['pageDraft']['attempts'],2)
+        with self.assertRaisesRegex(RuntimeError,'3 repair attempts'):
+            self.run_event(['symlink'] * (morgan_page.MAX_REPAIRS + 1))
+        p=self.studio.state(self.owner)['jobs'][0]['payload'];self.assertEqual(p['pageDraft']['attempts'],4)
 
 if __name__=='__main__':unittest.main()

@@ -227,6 +227,8 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
                     DROP TABLE agent_policies_legacy;
                     COMMIT;
                 """)
+            if 'denials' not in {r['name'] for r in db.execute('PRAGMA table_info(agent_policies)')}:
+                db.execute("ALTER TABLE agent_policies ADD COLUMN denials TEXT NOT NULL DEFAULT '[]'")
             if 'reset_at' not in {r['name'] for r in db.execute('PRAGMA table_info(participants)')}:
                 db.execute('ALTER TABLE participants ADD COLUMN reset_at REAL NOT NULL DEFAULT 0')
             db.execute('''CREATE TABLE IF NOT EXISTS agents (
@@ -1242,7 +1244,7 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
                 'Do not return JSON or HTML in chat as a substitute for writing the files. No publishing or sending. '
                 +runtime.SKILLS['nvidia-webpage'][1]+'\n'+runtime.SKILLS['nvidia-social'][1])
             if agent_led:
-                steps[3]=('Use bac-nvidia-webpage. Read inbox/morgan-page.json once for the brief, themes, programLayout and sectionFiles paths. '
+                steps[3]=('Use bac-nvidia-webpage. Read inbox/morgan-page.json once for the brief, themes, programLayout, cardRules and sectionFiles paths. '
                     'Write one JSON object to sectionFiles.copy with headline, intro, cta, program-title and promotion-title as plain text. '
                     'Write each sectionFiles.card-N as raw HTML, one article.theme-card under 6000 characters in themes order; preserve exact demo titles, source links, actions, outcomes and limitations. '
                     'Use native write calls; these distinct files can be written together. The app automatically applies them after your turn and reports any errors. '
@@ -1344,7 +1346,9 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
                 self.event(job_id,'Morgan’s LinkedIn draft is ready','Draft available in Morgan chat. Writing the webpage next.',stage,payload=json.dumps(payload))
                 if self.stop_checkpoint(job_id):raise RuntimeError('Webpage work stopped; LinkedIn draft is saved.')
                 prompt += '\nThe LinkedIn draft is already saved and shown in chat. Preserve the post file unchanged. Work only on the HTML now. Do not rewrite the post or repeat it in your final response.'
-            for attempt in range(2):
+            repair_limit = morgan_page.MAX_REPAIRS if stage == 3 and morgan_page.enabled(payload) else 1
+            original_session = session
+            for attempt in range(repair_limit + 1):
                 if self.stop_checkpoint(job_id):
                     raise RuntimeError('Event page authoring stopped.')
                 answer = self.protected_response(agent_id, session, prompt, assigned or owner, None if assigned or (stage == 0 and not member) else stage)
@@ -1397,20 +1401,21 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
                         answer=Reply('Webpage and LinkedIn draft saved and validated. Only the final model reply was truncated.',getattr(answer,'metrics',{}))
                     return answer
                 except morgan_page.PageError as error:
-                    payload['pageDraft'].update(status='needs-repair' if attempt == 0 else 'failed', errors=str(error).splitlines())
-                    self.event(job_id, name+' is checking the webpage' if attempt == 0 else name+' could not complete the webpage', str(error), stage, payload=json.dumps(payload))
-                    if attempt:
-                        raise RuntimeError('Morgan’s HTML did not pass validation after one repair. The specialist results are saved; no replacement webpage was substituted.') from error
                     self.record_usage(job_id, payload, answer, agent_id, name, stage)
-                    prompt = ('Repair your existing HTML/post files once. Validation found:\n'+str(error)+
+                    exhausted = attempt >= repair_limit
+                    payload['pageDraft'].update(status='failed' if exhausted else 'needs-repair', errors=str(error).splitlines(), repairLimit=repair_limit)
+                    self.event(job_id, name+' could not complete the webpage' if exhausted else name+' is checking the webpage', str(error), stage, payload=json.dumps(payload))
+                    if exhausted:
+                        raise RuntimeError('Morgan’s HTML did not pass validation after '+str(repair_limit)+' repair attempts. The saved specialist results and page sections are preserved. Validation: '+str(error)[:2000]) from error
+                    prompt = ('Repair your existing HTML/post files. Repair '+str(attempt+1)+' of '+str(repair_limit)+'. Validation found:\n'+str(error)+
                               morgan_page.repair_blocks(payload,error)+
                               '\nUse the original starter in inbox/morgan-page-starter.html if a protected block needs restoring. '
                               'Do not overwrite the whole page with the unedited starter. Read inbox/morgan-page.json for exact paths. '
                               'Keep your authored content and fix the listed issues. Save the actual files and return a brief summary.')
                     if agent_led:
                         # Retain files, not a potentially exhausted read-loop context.
-                        session += '-page-repair'
-                        prompt = (steps[3]+'\nRewrite only the source files/fields responsible for these errors: '+str(error)+'\nThe app has saved all other valid sections. Do not run status/apply; finish after writing the fixes.')
+                        session = original_session + '-page-repair-' + str(attempt + 1)
+                        prompt = (steps[3]+'\nRepair '+str(attempt+1)+' of '+str(repair_limit)+'. Read cardRules in inbox/morgan-page.json. Rewrite only the source files/fields responsible for these errors: '+str(error)+'\nThe app has saved all other valid sections. Do not run status/apply; finish after writing the fixes.')
 
         def save(stage, prepared, answer):
             agent_id, name, shared, prior = prepared
