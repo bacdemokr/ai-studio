@@ -306,11 +306,13 @@
       if(file.encoding==='base64'){downloadBytes(Uint8Array.from(atob(file.content),c=>c.charCodeAt(0)),file.mime,path.split('/').pop());return;}
       const html=/\.html$/i.test(path),eventPage=path.endsWith('-event-page.html');
       dialog(html?(eventPage?'EVENT PAGE':'WEBPAGE PREVIEW'):'WORKSPACE FILE',
-        (html?'<div class="studio-page-toolbar"><div role="group" aria-label="Preview width"><button type="button" data-preview-width="desktop" aria-pressed="true">Desktop</button><button type="button" data-preview-width="mobile" aria-pressed="false">Mobile</button></div><button class="studio-primary" id="studio-download">Download HTML</button></div><div class="studio-page-canvas"><iframe id="studio-app-frame" title="Generated page preview" sandbox="allow-scripts"></iframe></div>':
+        (html?'<div class="studio-page-toolbar"><div role="group" aria-label="Preview width"><button type="button" data-preview-width="desktop" aria-pressed="true">Desktop</button><button type="button" data-preview-width="mobile" aria-pressed="false">Mobile</button></div><button class="studio-primary" id="studio-download">Download HTML</button></div><div class="studio-page-canvas"><span class="studio-preview-loading" role="status">Loading preview…</span><iframe id="studio-app-frame" title="Generated page preview" sandbox="allow-scripts"></iframe></div>':
         '<h3>'+escape(path.split('/').pop())+'</h3><pre>'+escape(file.content)+'</pre><div class="studio-dialog-actions"><button class="studio-primary" id="studio-download">Download file</button></div>'));
       const protection='<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\'; style-src \'unsafe-inline\'; img-src data: blob:; font-src data:; connect-src \'none\'; form-action \'none\'; base-uri \'none\'">';
       if(html){
-        el('app-frame').srcdoc=protection+file.content;
+        const frame=el('app-frame');
+        frame.onload=()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{if(!frame.isConnected)return;frame.dataset.ready='true';frame.previousElementSibling.hidden=true;}));
+        frame.srcdoc=protection+file.content;
         el('dialog-body').querySelectorAll('[data-preview-width]').forEach(button=>button.onclick=()=>{
           el('dialog-body').querySelector('.studio-page-canvas').dataset.width=button.dataset.previewWidth;
           el('dialog-body').querySelectorAll('[data-preview-width]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));

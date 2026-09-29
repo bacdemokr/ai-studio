@@ -1014,6 +1014,11 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 .studio-page-canvas{display:flex;justify-content:center;flex:1;min-height:0;background:#080e13;border:1px solid #30424d;overflow:hidden}
 #studio-dialog.studio-page-preview .studio-page-canvas #studio-app-frame{flex:none;box-sizing:border-box;height:100%;border:0;border-radius:0;width:100%;background:white}
 #studio-dialog.studio-page-preview .studio-page-canvas[data-width=mobile] #studio-app-frame{width:390px;max-width:100%}
+
+.studio-page-canvas{position:relative}
+.studio-preview-loading{position:absolute;inset:0;display:grid;place-items:center;color:#aabcc7;font-size:15px}
+.studio-preview-loading[hidden]{display:none}
+#studio-dialog.studio-page-preview .studio-page-canvas iframe:not([data-ready=true]){opacity:0;pointer-events:none}
 </style>
 <button class="studio-secondary" id="studio-room-action" hidden></button>
 <nav hidden class="studio-safety-bar" id="studio-safety-bar" aria-label="Studio controls"><span>YOU STAY IN CONTROL</span><button id="studio-security">◇ Security lab</button><button id="studio-help">Help &amp; fallback</button><button id="studio-reset">Reset mission board</button></nav>
@@ -81660,11 +81665,13 @@ el('dialog').addEventListener('close',()=>{if(!el('dialog').open)identityRequest
       if(file.encoding==='base64'){downloadBytes(Uint8Array.from(atob(file.content),c=>c.charCodeAt(0)),file.mime,path.split('/').pop());return;}
       const html=/\.html$/i.test(path),eventPage=path.endsWith('-event-page.html');
       dialog(html?(eventPage?'EVENT PAGE':'WEBPAGE PREVIEW'):'WORKSPACE FILE',
-        (html?'<div class="studio-page-toolbar"><div role="group" aria-label="Preview width"><button type="button" data-preview-width="desktop" aria-pressed="true">Desktop</button><button type="button" data-preview-width="mobile" aria-pressed="false">Mobile</button></div><button class="studio-primary" id="studio-download">Download HTML</button></div><div class="studio-page-canvas"><iframe id="studio-app-frame" title="Generated page preview" sandbox="allow-scripts"></iframe></div>':
+        (html?'<div class="studio-page-toolbar"><div role="group" aria-label="Preview width"><button type="button" data-preview-width="desktop" aria-pressed="true">Desktop</button><button type="button" data-preview-width="mobile" aria-pressed="false">Mobile</button></div><button class="studio-primary" id="studio-download">Download HTML</button></div><div class="studio-page-canvas"><span class="studio-preview-loading" role="status">Loading preview…</span><iframe id="studio-app-frame" title="Generated page preview" sandbox="allow-scripts"></iframe></div>':
         '<h3>'+escape(path.split('/').pop())+'</h3><pre>'+escape(file.content)+'</pre><div class="studio-dialog-actions"><button class="studio-primary" id="studio-download">Download file</button></div>'));
       const protection='<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\'; style-src \'unsafe-inline\'; img-src data: blob:; font-src data:; connect-src \'none\'; form-action \'none\'; base-uri \'none\'">';
       if(html){
-        el('app-frame').srcdoc=protection+file.content;
+        const frame=el('app-frame');
+        frame.onload=()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{if(!frame.isConnected)return;frame.dataset.ready='true';frame.previousElementSibling.hidden=true;}));
+        frame.srcdoc=protection+file.content;
         el('dialog-body').querySelectorAll('[data-preview-width]').forEach(button=>button.onclick=()=>{
           el('dialog-body').querySelector('.studio-page-canvas').dataset.width=button.dataset.previewWidth;
           el('dialog-body').querySelectorAll('[data-preview-width]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));

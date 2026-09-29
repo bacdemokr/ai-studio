@@ -115,3 +115,8 @@
 .studio-page-canvas{display:flex;justify-content:center;flex:1;min-height:0;background:#080e13;border:1px solid #30424d;overflow:hidden}
 #studio-dialog.studio-page-preview .studio-page-canvas #studio-app-frame{flex:none;box-sizing:border-box;height:100%;border:0;border-radius:0;width:100%;background:white}
 #studio-dialog.studio-page-preview .studio-page-canvas[data-width=mobile] #studio-app-frame{width:390px;max-width:100%}
+
+.studio-page-canvas{position:relative}
+.studio-preview-loading{position:absolute;inset:0;display:grid;place-items:center;color:#aabcc7;font-size:15px}
+.studio-preview-loading[hidden]{display:none}
+#studio-dialog.studio-page-preview .studio-page-canvas iframe:not([data-ready=true]){opacity:0;pointer-events:none}
