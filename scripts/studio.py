@@ -26,6 +26,7 @@ from crew_roundtable import RoundtableControls, participants as job_participants
 from demo_readiness import DemoReadiness
 from crew_ownership import CrewOwnership
 from collaboration_plan import CollaborationPlans, is_plan
+from webpage_artifacts import PAGE_INSTRUCTIONS, html_files, collect_pages
 import event_planner
 
 CREW_CATALOG = json.loads((Path(__file__).resolve().parents[1] / 'src/crew-catalog.json').read_text())
@@ -1161,6 +1162,8 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
         if protection_report:
             hosts = sorted({rule['host'] for rule in protection_report.get('rules', [])})
             prompt += '\n\nCurrent verified OpenShell access: ' + (', '.join(hosts) or 'no approved destinations') + '. Use sandbox tools to test permitted hosts when requested. Do not repeat earlier approval requests for these hosts; report actual tool results. HTTP 403 alone is not proof of an OpenShell denial. ENOENT, command launch failures and runtime disconnections are execution failures, not policy denials; report the execution problem without asking for website approval or claiming OpenShell blocked the request.'
+        prompt += PAGE_INSTRUCTIONS
+        pages_before = html_files(self.workspace(owner))
         before = {x['path']: x['updated'] for x in self.files(owner)}
         if self.stop_checkpoint(job_id):
             return
@@ -1172,9 +1175,11 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
         html = re.search(r'```html\s*\n([\s\S]+?)```', answer, re.I)
         if html and 'builder' in profile['skills'] and len(html.group(1)) < 500_000:
             safe_file(self.workspace(owner), 'artifacts/app-' + job_id[:6] + '.html').write_text(html.group(1), encoding='utf-8')
+        pages = collect_pages(self, owner, job_id, None, pages_before, answer)
         report = safe_file(self.workspace(owner), 'artifacts/reply-' + job_id[:6] + '.md')
         report.write_text(answer, encoding='utf-8')
         changed = [x['path'] for x in self.files(owner) if x['path'] not in before or x['updated'] > before[x['path']]]
+        changed = [p for p in changed if not p.lower().endswith('.html')] + pages
         self.event(job_id, 'Result saved', ', '.join(changed) or 'Agent response received.',
                    result=json.dumps({'answer': answer, 'files': changed, 'activity':getattr(answer,'activity',None)}), status='done')
         if self.stop_checkpoint(job_id):
@@ -1209,10 +1214,13 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
                   'or send invitations or publish anything on the user’s behalf.\n\n' + payload['prompt'])
         prompt += self.conversation_context(owner, role, row['created'], job_id, plans_only=True)
         session = self.crew_chat_session(owner, role) + ('-' + reset['epoch'] if reset['epoch'] else '')
+        prompt += PAGE_INSTRUCTIONS
+        pages_before = html_files(self.workspace(owner, role))
         answer = self.respond_chat(agent_id, session, prompt, owner, payload)
+        pages = collect_pages(self, owner, job_id, role, pages_before, answer)
         self.record_usage(job_id, payload, answer, agent_id, member['name'], role)
         self.event(job_id, 'Reply ready', member['name'], role,
-                   result=json.dumps({'answer': answer,'activity':getattr(answer,'activity',None)}), status='done')
+                   result=json.dumps({'answer': answer,'files':pages,'activity':getattr(answer,'activity',None)}), status='done')
 
     def crew(self, row, profile, payload):
         owner, job_id = row['owner'], row['id']

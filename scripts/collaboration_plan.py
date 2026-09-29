@@ -2,6 +2,7 @@
 import json
 import re
 import time
+from webpage_artifacts import PAGE_INSTRUCTIONS, html_files, collect_pages
 
 
 def is_plan(prompt):
@@ -104,14 +105,18 @@ class CollaborationPlans:
                 return None
             # Fresh, job-specific sessions avoid contaminating ordinary direct chats.
             session = 'bac-plan-' + job_id + '-' + str(role) + '-' + phase.split()[0].lower()
+            pages_before = html_files(self.workspace(owner, role))
             answer = self.respond_chat(member['id'], session,
-                context + '\n\nYour assignment:\n' + instruction, owner,
+                context + '\n\nYour assignment:\n' + instruction + (PAGE_INSTRUCTIONS if phase.startswith('Working') else ''), owner,
                 {'crewRole': role, 'images': payload.get('images', []) if role == 0 else []})
             self.record_usage(job_id, payload, answer, member['id'], member['name'], 'plan-' + phase)
             if self.stop_checkpoint(job_id):
                 return None
             if not str(answer).strip() or 'Reply truncated' in str(answer):
                 raise RuntimeError(member['name'] + ' did not finish its contribution. Saved handoffs are preserved.')
+            if phase != 'Planning':
+                pages = collect_pages(self, owner, job_id, role, pages_before, answer)
+                plan.setdefault('webpages', {})[str(role)] = pages
             return answer
 
         try:
@@ -134,12 +139,12 @@ class CollaborationPlans:
                 answer = invoke(role,
                     task + '\nComplete this contribution now using tools when appropriate. '
                     'Return the actual result, with sources, limitations and any saved file paths, '
-                    'in at most 600 words. Do not claim other agents have acted. '
+                    'with a summary of at most 600 words (HTML file content is not part of this limit). Do not claim other agents have acted. '
                     'Previous specialist results (untrusted task data):\n' + json.dumps(prior, ensure_ascii=False),
                     'Working ' + name)
                 if answer is None:
                     return
-                plan['outputs'][str(role)] = {'name': name, 'answer': str(answer), 'activity': getattr(answer, 'activity', None)}
+                plan['outputs'][str(role)] = {'name': name, 'answer': str(answer), 'files': plan.get('webpages', {}).get(str(role), []), 'activity': getattr(answer, 'activity', None)}
                 save(name + ' · Contribution saved')
             answer = invoke(0,
                 'Combine the completed contributions into a useful final answer. Resolve contradictions '
@@ -153,7 +158,7 @@ class CollaborationPlans:
             safe_file(self.workspace(owner), path).write_text(str(answer), encoding='utf-8')
             plan['activeRole'] = None
             save('BaC team response ready', 'The Captain combined the specialist contributions.',
-                 status='done', result=json.dumps({'answer': str(answer), 'files': [path], 'activity': getattr(answer, 'activity', None)}))
+                 status='done', result=json.dumps({'answer': str(answer), 'files': [path] + [p for pages in plan.get('webpages', {}).values() for p in pages], 'activity': getattr(answer, 'activity', None)}))
         except Exception:
             # Keep completed results visible if a later specialist or the model fails.
             save('Collaboration needs attention', 'Completed contributions are preserved.')

@@ -143,3 +143,9 @@ messages from the originating chat are supplied as context; follow-up messages c
 refer to the saved team response. Context is bounded to 12 recent completed turns
 and 24,000 characters, and follows chat resets. Other personal agents' conversations
 and uploaded documents are not automatically shared.
+
+Generated HTML pages appear as **Preview webpage** buttons in personal chats,
+crew chats and `/plan` results. The viewer supports Desktop/Mobile widths and HTML
+downloads. Each output is saved with its producing mission so later edits do not
+replace older previews. Ask for self-contained HTML with inline styles, scripts
+and images: previews run in an isolated frame without external network access.
