@@ -57,6 +57,11 @@ function collaborationMarkup(job,role){
  const handoff=!captain&&plan.handoffs?.[role]?'<div class="chat-message chat-handoff"><small>Casey → '+escape(defaultNames[role])+'</small><div class="chat-prose">'+messageMarkup(plan.handoffs[role].task)+'</div><small>Received: '+escape(['Captain’s task',...plan.handoffs[role].receivedFrom.map(i=>defaultNames[Number(i)]+"’s contribution")].join(' · '))+'</small></div>':'';
  return '<article class="chat-turn" data-collaboration-job="'+escape(job.id)+'">'+(captain?'<div class="chat-message chat-user"><small>You</small><div>'+escape(job.payload.prompt).replace(/\n/g,'<br>')+imageHistoryMarkup(job.payload.images,job.id)+'</div></div>':'')+(held?shieldReplyWait:summary+handoff+contributions+'<div class="chat-message chat-agent"><small>'+escape(defaultNames[role])+' · '+(captain?'BaC collaboration':'Specialist contribution')+'</small><div class="chat-prose">'+messageMarkup(answer||status)+'</div></div>')+(pending?'<div class="chat-progress" role="status">'+escape(status)+(job.status!=='stopping'?'<button type="button" data-crew-chat-stop="'+escape(job.id)+'">Stop</button>':'')+'</div>':'')+(captain?(job.result?.files||[]).map(path=>'<button type="button" class="studio-secondary" data-plan-file="'+escape(path)+'">Open team response</button>').join(''):'')+'</article>';
 }
+function collaborationHistoryMarkup(job){
+ const held=shieldReplyHeld(job,0),pending=['queued','running','waiting','stopping'].includes(job.status);
+ const answer=job.result?.answer||job.result?.error||(pending?'The BaC team is collaborating…':job.status==='cancelled'?'Stopped.':'No final reply was returned.');
+ return '<article class="chat-turn" data-collaboration-history="'+escape(job.id)+'"><div class="chat-message chat-user"><small>You</small><div>'+messageMarkup(job.payload.prompt)+'</div></div><div class="chat-message chat-agent"><small>Casey · BaC collaboration</small>'+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(answer)+'</div>')+'<button type="button" class="studio-secondary" data-open-collaboration>View team conversation</button></div></article>';
+}
 function showCollaboration(){selectedCrewRole=0;setRoom('mission');root.dataset.crewDetails='true';renderCrewPassport();}
 function syncCrewComposer(){
  const blocked=!runtime.ready||!!data.deleting;
@@ -85,14 +90,14 @@ function renderCrewPassport(){
  if(switched){if(crewChatKey)crewDrafts.set(crewChatKey,el('crew-prompt').value);crewChatKey=key;el('crew-prompt').value=crewDrafts.get(key)||'';el('crew-chat-error').hidden=true;}
  renderImageDrafts(true);
  el('crew-prompt').placeholder='Message '+name+'… or /plan a task with the BaC team';syncCrewComposer();
- const turns=(data.crewChats||[]).filter(j=>j.payload.crewRole===i||(j.payload.collaboration&&(j.payload.collaboration.handoffs?.[i]||j.payload.collaboration.activeRole===i))).map(j=>({...j,direct:true}));
+ const turns=(data.crewChats||[]).filter(j=>j.payload.crewRole===i||(j.payload.collaboration&&(j.payload.collaboration.origin?.role===i||j.payload.collaboration.handoffs?.[i]||j.payload.collaboration.activeRole===i))).map(j=>({...j,direct:true}));
  for(const j of data.jobs||[])if(j.kind==='crew'&&j.created>=(data.crewChatReset?.at||0)&&(i===0||j.payload.handoffs?.[i]||j.payload.outputs?.[i]))turns.push({...j,direct:false});
  turns.sort((a,b)=>a.created-b.created);
  const signature=JSON.stringify([key,turns.map(j=>[j.id,j.status,j.result,j.payload.collaboration,j.events?.at(-1),shieldReplyHeld(j,i),j.direct?null:[j.payload.outputs?.[i],j.payload.website,i===3?j.payload.socialDraft:null,j.payload.activity?.[i],i===0?j.payload.handoffs:j.payload.handoffs?.[i],i===0?[crewBriefMessage(j),j.payload.roundtable]:null]])]);
  if(signature===crewChatSignature)return;
  crewChatSignature=signature;const log=el('crew-conversation'),follow=switched||log.scrollHeight-log.scrollTop-log.clientHeight<70,top=log.scrollTop;
  log.innerHTML=turns.length?turns.map(j=>{
- if(j.payload.collaboration)return collaborationMarkup(j,i);
+ if(j.payload.collaboration)return i!==0&&j.payload.collaboration.origin?.role===i&&!j.payload.collaboration.handoffs?.[i]?collaborationHistoryMarkup(j):collaborationMarkup(j,i);
  const held=shieldReplyHeld(j,i),pending=['queued','running','waiting','stopping'].includes(j.status);
  const answer=j.direct?(j.result?.answer||j.result?.error||''):(j.payload.outputs?.[i]||j.payload.stageErrors?.[i]||(j.status==='error'&&Number(j.payload.stage)===i?j.result?.error:''));
  const webpage=!j.direct&&i===3&&j.payload.website?.authored?'<button class="studio-secondary" data-crew-webpage="'+escape(j.id)+'">Open webpage</button>':'';
@@ -129,3 +134,5 @@ root.addEventListener('click',async event=>{
  try{await api('retry-reaction',{id:button.dataset.reactionJob,member:button.dataset.retryReaction});await refresh();}
  catch(error){alert(error.message);button.disabled=false;}
 });
+
+el('crew-conversation').addEventListener('click',event=>{if(event.target.closest('[data-open-collaboration]'))showCollaboration();});

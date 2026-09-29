@@ -93,3 +93,13 @@
 .heartbeat-delivery { display:block; }
 
 .heartbeat-source { display:block;margin-top:.8rem;line-height:1.5;overflow-wrap:anywhere; }
+
+.studio-command-anchor{position:relative;min-width:0}
+.studio-command-anchor textarea{box-sizing:border-box;width:100%}
+.studio-command-menu{position:absolute;bottom:calc(100% + 6px);left:0;right:0;z-index:8;padding:5px;background:#152630;border:1px solid #425966;border-radius:10px;box-shadow:0 8px 24px #0006}
+.studio-command-menu[hidden]{display:none}
+#agent-campus .studio-command-menu button{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border:0;border-radius:6px;background:#243b45;color:#eef5f8;text-align:left;font-size:14px}
+.studio-command-menu strong{color:#b4ed64;font-size:15px}
+.studio-command-menu span{flex:1}
+.studio-command-menu small{color:#a0b5c0}
+.studio-command-menu button:hover{background:#304b56}

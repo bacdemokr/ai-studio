@@ -135,3 +135,11 @@ Start a Lounge or crew message with `/plan` followed by a task, for example `/pl
 Messages without the leading command remain direct requests to the selected agent. `/plan` uses the existing account-owned BaC team, not hired agents or a newly created team. Existing OpenShell grants remain in force. Personal uploaded documents are not copied to the team. Attached chat images go to the Captain; specialists receive the assigned task and text handoffs. The command does not start the structured event-template export pipeline, and does not authorize sending or publishing. The existing Plan a BaC form continues to create validated event packages.
 
 Plans are stored as crew conversations, so account isolation, crew reset and policy-update fences apply. Completed specialist contributions survive later failures. A failed plan is not silently rerun, and a stopped in-flight tool call may finish before cancellation settles.
+
+Type `/` at the start of either chat composer to select `/plan` (click, Enter or Tab).
+Escape dismisses the suggestion. A plan started in a personal chat also appears in
+that chat's history, with a link to Casey's team conversation. Recent completed
+messages from the originating chat are supplied as context; follow-up messages can
+refer to the saved team response. Context is bounded to 12 recent completed turns
+and 24,000 characters, and follows chat resets. Other personal agents' conversations
+and uploaded documents are not automatically shared.

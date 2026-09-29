@@ -152,3 +152,63 @@ class CollaborationTests(unittest.TestCase):
         self.assertTrue(all('private uploaded document' not in p for _,_,p in self.adapter.calls))
         team=self.app.crew_owner(self.owner)
         for role in range(4):self.assertFalse((self.app.workspace(team,role)/'inbox/private.txt').exists())
+
+    def test_plan_reads_source_conversation_and_captain_followups(self):
+        self.app.enqueue(self.owner, {'kind':'chat','prompt':'Use Zurich, with a budget of CHF 800.'})
+        self.app.execute(self.app.next_job())
+        first=self.start('/plan Use the constraints we discussed.')
+        self.app.execute(self.app.next_job())
+        self.assertIn('CHF 800', self.adapter.calls[1][2])
+        self.assertEqual(self.job(first)['payload']['collaboration']['origin'], {'owner':self.owner,'role':None})
+        team=self.app.crew_owner(self.owner)
+        self.adapter.calls.clear()
+        self.app.enqueue(team, {'kind':'crew-chat','crewRole':0,'prompt':'/plan Make that proposal shorter.'})
+        self.app.execute(self.app.next_job())
+        self.assertIn('A combined proposal', self.adapter.calls[0][2])
+        self.assertIn('Use the constraints we discussed.', self.adapter.calls[0][2])
+        self.adapter.calls.clear()
+        self.app.enqueue(team, {'kind':'crew-chat','crewRole':0,'prompt':'What did we decide?'})
+        self.app.execute(self.app.next_job())
+        self.assertEqual(len(self.adapter.calls),1)
+        self.assertIn('A combined proposal', self.adapter.calls[0][2])
+
+    def test_personal_followup_knows_team_response_without_delegation(self):
+        self.start();self.app.execute(self.app.next_job());self.adapter.calls.clear()
+        self.app.enqueue(self.owner, {'kind':'chat','prompt':'Summarize their proposal.'})
+        self.app.execute(self.app.next_job())
+        self.assertEqual(len(self.adapter.calls),1)
+        self.assertEqual(self.adapter.calls[0][0],'bac-'+self.owner)
+        self.assertIn('A combined proposal',self.adapter.calls[0][2])
+
+    def test_history_does_not_read_other_personal_agents_or_accounts(self):
+        outsider=self.app.session()[0]['id']
+        self.app.onboard(outsider, {'name':'Other','skills':['web']})
+        self.app.enqueue(outsider, {'kind':'chat','prompt':'PRIVATE_OTHER_ACCOUNT'})
+        self.app.execute(self.app.next_job())
+        with self.app.db() as db:
+            participant=db.execute('SELECT participant FROM agents WHERE id=?',(self.owner,)).fetchone()[0]
+        other=self.app.add_agent(participant, {'name':'Sibling','skills':['web']})['agentId']
+        self.app.enqueue(other, {'kind':'chat','prompt':'PRIVATE_OTHER_AGENT'})
+        self.app.execute(self.app.next_job());self.adapter.calls.clear()
+        self.start();self.app.execute(self.app.next_job())
+        self.assertTrue(all('PRIVATE_OTHER' not in p for _,_,p in self.adapter.calls))
+
+    def test_history_is_bounded_and_reset_clears_plan_context(self):
+        first=self.start('/plan UNIQUE_OLD_PLAN');self.app.execute(self.app.next_job())
+        team=self.app.crew_owner(self.owner)
+        with self.app.db() as db:
+            db.execute('UPDATE jobs SET result=? WHERE id=?',(json.dumps({'answer':'x'*100000}),first['id']))
+        context=self.app.conversation_context(team,0,float('inf'),'new')
+        self.assertLess(len(context),24500)
+        self.app.reset_crew_chats(self.owner)
+        self.app.enqueue(team, {'kind':'crew-chat','crewRole':0,'prompt':'/plan A fresh request'})
+        self.adapter.calls.clear();self.app.execute(self.app.next_job())
+        self.assertNotIn('UNIQUE_OLD_PLAN',self.adapter.calls[0][2])
+
+    def test_unfinished_or_future_jobs_are_not_context(self):
+        result=self.start('/plan NOT_FINISHED')
+        team=self.app.crew_owner(self.owner)
+        self.assertEqual(self.app.conversation_context(team,0,float('inf'),'next'),'')
+        self.app.execute(self.app.next_job())
+        self.assertEqual(self.app.conversation_context(team,0,0,'next'),'')
+        self.assertEqual(self.app.conversation_context(team,0,float('inf'),result['id']),'')

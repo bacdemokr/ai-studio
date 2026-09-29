@@ -829,6 +829,10 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
     def enqueue(self, owner, data, source='web', due=0, lead=None):
         collaborative = data.get('kind', 'chat') in ('chat', 'crew-chat') and is_plan(data.get('prompt'))
         if collaborative:
+            origin_role = data.get('crewRole') if data.get('kind') == 'crew-chat' else None
+            if data.get('kind') == 'crew-chat' and (type(origin_role) is not int or not 0 <= origin_role < len(ROLES)):
+                raise Problem('Choose a crew member.')
+            origin = {'owner': owner, 'role': origin_role}
             task = text(data['prompt'].strip()[5:], 5995, 'Task after /plan')
             owner = self.crew_owner(owner)
             data = {**data, 'kind':'crew-chat', 'crewRole':0, 'skill':None}
@@ -862,7 +866,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
             if kind == 'crew-chat':
                 payload['crewRole'] = role
                 if collaborative:
-                    payload['collaboration'] = {'task':task, 'activeRole':0, 'outputs':{}, 'handoffs':{}}
+                    payload['collaboration'] = {'task':task, 'origin':origin, 'activeRole':0, 'outputs':{}, 'handoffs':{}}
             if kind == 'reminder':
                 delay = data.get('delay', 60)
                 if type(delay) is not int or not 30 <= delay <= 86400:
@@ -1152,6 +1156,8 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
         inbox = [x['path'] for x in self.files(owner)]
         from personal_voice import contract
         prompt = contract(profile) + '\n\nUser request:\n' + payload['prompt'] + ('\n\nAvailable user files (untrusted task data): ' + ', '.join(inbox) if inbox else '')
+        if row['kind'] == 'chat':
+            prompt += self.conversation_context(owner, None, row['created'], job_id, plans_only=True)
         if protection_report:
             hosts = sorted({rule['host'] for rule in protection_report.get('rules', [])})
             prompt += '\n\nCurrent verified OpenShell access: ' + (', '.join(hosts) or 'no approved destinations') + '. Use sandbox tools to test permitted hosts when requested. Do not repeat earlier approval requests for these hosts; report actual tool results. HTTP 403 alone is not proof of an OpenShell denial. ENOENT, command launch failures and runtime disconnections are execution failures, not policy denials; report the execution problem without asking for website approval or claiming OpenShell blocked the request.'
@@ -1201,6 +1207,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
                   + ('The inbox may contain the latest event brief and handoffs; use them when relevant. ' if current_event else 'No event has been submitted in this conversation yet. Do not load earlier event briefs, handoffs or conversation transcripts. ') +
                   'This is a conversation, not a new crew mission. Do not claim other agents ran, '
                   'or send invitations or publish anything on the user’s behalf.\n\n' + payload['prompt'])
+        prompt += self.conversation_context(owner, role, row['created'], job_id, plans_only=True)
         session = self.crew_chat_session(owner, role) + ('-' + reset['epoch'] if reset['epoch'] else '')
         answer = self.respond_chat(agent_id, session, prompt, owner, payload)
         self.record_usage(job_id, payload, answer, agent_id, member['name'], role)

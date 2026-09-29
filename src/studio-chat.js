@@ -163,13 +163,14 @@ root.addEventListener('bac:protection-reveal',()=>{if(connected)render();});
 let conversationSignature='',conversationOwner=null;
 function renderConversation(){
   renderImageDrafts();renderDocuments();syncComposer();const log=el('conversation');if(!log)return;
-  const jobs=[...data.jobs.filter(j=>j.kind!=='crew'),...(data.roundtableTurns||[])].sort((a,b)=>a.created-b.created);
+  const jobs=[...data.jobs.filter(j=>j.kind!=='crew'),...(data.crewChats||[]).filter(j=>j.payload.collaboration?.origin?.owner===agentId&&j.payload.collaboration.origin.role===null),...(data.roundtableTurns||[])].sort((a,b)=>a.created-b.created);
   const signature=JSON.stringify([agentId,data.profile?.name,jobs.map(j=>[j.id,j.status,j.result,j.events?.at(-1),shieldReplyHeld(j)])]);
   if(conversationOwner!==agentId)el('chat-error').hidden=true;
   if(signature===conversationSignature)return;
   const follow=conversationOwner!==agentId||log.scrollHeight-log.scrollTop-log.clientHeight<70,top=log.scrollTop;
   conversationSignature=signature;conversationOwner=agentId;
   log.innerHTML=(data.jobs.length>=30?'<small class="chat-history-note">Recent conversations · up to 30 missions</small>':'')+(jobs.length?jobs.map(j=>{
+    if(j.payload.collaboration)return collaborationHistoryMarkup(j);
     const held=shieldReplyHeld(j),result=held?{}:j.result||{},pending=['queued','running','waiting','stopping'].includes(j.status);
     const status={queued:'Waiting to start…',running:j.events?.at(-1)?.title==='Preparing OpenShell'?'Preparing your protected runtime…':'Working on your request…',waiting:'Waiting for a decision.',stopping:'Stopping after the current model call…',cancelled:'Stopped.'}[j.status];
     return '<article class="chat-turn" data-chat-turn="'+escape(j.id)+'">'+(j.kind==='heartbeat'?'':'<div class="chat-message chat-user"><small>'+escape(j.payload.sender||'You')+'</small><div>'+escape(j.payload.prompt||'').replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images,j.id)+'</div></div>')+'<div class="chat-message chat-agent"><small>'+escape(j.result?.systemNotice?'System':data.profile?.name||'Agent')+(j.kind==='heartbeat'?' · Heartbeat':'')+' · '+escape(new Date(j.created*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))+'</small>'+(j.kind==='heartbeat'?'<small class="heartbeat-delivery">'+escape(result.telegram==='sent'?'Sent to Telegram':result.telegram==='failed'?'Telegram delivery failed. Your summary is saved here.':['pending','sending'].includes(result.telegram)?'Telegram delivery unconfirmed':'')+'</small>':'')+customSkillMarkup(result.activity)+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(result.answer||result.error||(pending?'':status||'No text reply was returned.'))+'</div>')+(!held&&pending?'<div class="chat-progress" role="status">'+escape(status)+(j.status!=='stopping'?'<button type="button" data-chat-stop="'+escape(j.id)+'">Stop</button>':'')+'</div>':'')+(!held&&result.source?'<small class="heartbeat-source">'+'Technical discovery · '+'Published '+escape(result.source.published)+' · Feed excerpt<br><a href="'+escape(result.source.url)+'" target="_blank" rel="noopener noreferrer">'+escape(result.source.title)+'</a></small>':'')+(result.files||[]).filter(f=>!f.endsWith('.md')||!result.answer).map(f=>'<details class="chat-file"><summary data-chat-file="'+escape(f)+'">'+escape(f.split('/').pop())+'</summary><div class="chat-file-body"></div></details>').join('')+'</div></article>';
@@ -178,6 +179,7 @@ function renderConversation(){
   if(follow)log.scrollTop=log.scrollHeight;else log.scrollTop=top;
 }
 el('conversation').addEventListener('click',async event=>{
+  if(event.target.closest('[data-open-collaboration]')){showCollaboration();return;}
   const stop=event.target.closest('[data-chat-stop]');
   if(stop){stop.disabled=true;try{await api('decision',{id:stop.dataset.chatStop,action:'cancel'});await refresh();}catch(error){stop.disabled=false;alert(error.message);}return;}
   const item=event.target.closest('[data-chat-file]');if(!item||item.dataset.loaded)return;
@@ -208,3 +210,29 @@ el('run-control').addEventListener('keydown',e=>{
 });
 document.addEventListener('pointerdown',e=>{if(!el('run-control').contains(e.target))setRunOptions(false);});
 el('chat').addEventListener('submit',()=>setRunOptions(false));
+
+// Suggestions only complete an explicit slash prefix; Enter selects before sending.
+for(const id of ['prompt','crew-prompt']){
+ const input=el(id),anchor=document.createElement('div'),menu=document.createElement('div'),option=document.createElement('button');
+ anchor.className='studio-command-anchor';input.before(anchor);anchor.append(input,menu);
+ menu.className='studio-command-menu';menu.id=input.id+'-commands';menu.hidden=true;menu.setAttribute('role','listbox');menu.setAttribute('aria-label','Commands');
+ option.type='button';option.id=menu.id+'-plan';option.setAttribute('role','option');option.setAttribute('aria-selected','true');
+ option.innerHTML='<strong>/plan</strong><span>Collaborate with the BaC team</span><small>↵</small>';menu.append(option);
+ input.setAttribute('aria-controls',menu.id);input.setAttribute('aria-autocomplete','list');
+ const close=()=>{menu.hidden=true;input.removeAttribute('aria-activedescendant');};
+ const update=()=>{const value=input.value.trimStart();const show=!input.disabled&&/^\/(?:p(?:l(?:a(?:n)?)?)?)?$/i.test(value)&&input.selectionStart===input.value.length;
+  menu.hidden=!show;if(show)input.setAttribute('aria-activedescendant',option.id);else input.removeAttribute('aria-activedescendant');};
+ const choose=()=>{input.value='/plan ';close();input.focus({preventScroll:true});input.setSelectionRange(input.value.length,input.value.length);input.dispatchEvent(new Event('input',{bubbles:true}));};
+ input.addEventListener('input',update);input.addEventListener('focus',update);input.addEventListener('click',update);
+ input.addEventListener('keydown',event=>{
+  if(menu.hidden||event.isComposing)return;
+  if(['Enter','Tab','Escape','ArrowDown','ArrowUp'].includes(event.key)&&!event.shiftKey){
+   event.preventDefault();event.stopImmediatePropagation();
+   if(event.key==='Enter'||event.key==='Tab')choose();else if(event.key==='Escape')close();
+  }
+ },true);
+ option.addEventListener('pointerdown',event=>event.preventDefault());option.addEventListener('click',choose);
+ anchor.addEventListener('focusout',event=>{if(!anchor.contains(event.relatedTarget))close();});
+ input.form.addEventListener('submit',close);
+ new MutationObserver(()=>{if(input.disabled)close();}).observe(input,{attributes:true,attributeFilter:['disabled']});
+}
