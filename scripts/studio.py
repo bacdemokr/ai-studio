@@ -830,6 +830,9 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
     def enqueue(self, owner, data, source='web', due=0, lead=None):
         collaborative = data.get('kind', 'chat') in ('chat', 'crew-chat') and is_plan(data.get('prompt'))
         if collaborative:
+            if data.get('kind', 'chat') == 'chat':
+                with self.db() as db:
+                    self.require_available(db, owner)
             origin_role = data.get('crewRole') if data.get('kind') == 'crew-chat' else None
             if data.get('kind') == 'crew-chat' and (type(origin_role) is not int or not 0 <= origin_role < len(ROLES)):
                 raise Problem('Choose a crew member.')
@@ -914,6 +917,8 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
             if db.execute('SELECT 1 FROM agent_policies WHERE owner=? AND (CASE WHEN ? THEN role>=0 ELSE role=-1 END) AND updating=1', (owner, preset)).fetchone():
                 raise Problem('This agent’s policy is being updated. Please wait.', 409)
             if collaborative:
+                if origin['role'] is None:
+                    self.require_available(db, origin['owner'])
                 self.require_event_crew_idle(db, owner)
             # An immediate personal request can do the same preparation itself.
             if kind == 'chat':

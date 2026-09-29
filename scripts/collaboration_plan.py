@@ -43,24 +43,30 @@ class CollaborationPlans:
                 return ''
             reset = max(agent['reset_at'], self.crew_chat_reset_state(db, owner)['at'])
             rows = db.execute("""SELECT * FROM jobs WHERE created>=? AND created<=? AND id!=?
-                AND status='done' AND (
-                  (owner=? AND kind=? AND (? IS NULL OR json_extract(payload,'$.crewRole')=?))
+                AND (status='done' OR (status IN ('error','cancelled') AND json_type(payload,'$.collaboration')='object'))
+                AND (?=0 OR json_type(payload,'$.collaboration')='object') AND (
+                  (owner=? AND kind=? AND (? IS NULL OR json_extract(payload,'$.crewRole')=?
+                    OR json_type(payload,?)='object'))
                   OR (kind='crew-chat' AND owner IN
                     (SELECT owner FROM crew_contexts WHERE participant=?)
                     AND json_extract(payload,'$.collaboration.origin.owner')=?
                     AND json_extract(payload,'$.collaboration.origin.role') IS ?))
                 ORDER BY created DESC,rowid DESC LIMIT 12""",
-                (reset, before, exclude, owner, 'chat' if role is None else 'crew-chat',
-                 role, role, agent['participant'], owner, role)).fetchall()
+                (reset, before, exclude, int(plans_only), owner, 'chat' if role is None else 'crew-chat',
+                 role, role, '$.collaboration.outputs."' + str(role) + '"', agent['participant'], owner, role)).fetchall()
         turns, remaining = [], 24000
         for row in rows:
             payload, result = json.loads(row['payload']), json.loads(row['result'] or '{}')
-            if plans_only and not payload.get('collaboration'):
-                continue
-            answer = result.get('answer')
+            plan = payload.get('collaboration', {})
+            contribution = plan.get('outputs', {}).get(str(role), {})
+            answer = contribution.get('answer') or result.get('answer')
+            if not answer and plan.get('outputs'):
+                answer = json.dumps({name: output.get('answer', '')[:2000] for name, output in plan['outputs'].items()}, ensure_ascii=False)
             if not isinstance(answer, str) or not answer.strip():
                 continue
-            turn = {'user': str(payload.get('prompt', ''))[:3000], 'reply': answer[:6000]}
+            turn = {'user': str(payload.get('prompt', ''))[:3000], 'reply': answer[:6000], 'status': row['status']}
+            if row['status'] != 'done':
+                turn['note'] = 'Incomplete collaboration; only these contributions finished. ' + str(result.get('error', 'Stopped before completion.'))[:1000]
             size = len(json.dumps(turn, ensure_ascii=False))
             if size > remaining:
                 break
@@ -106,9 +112,29 @@ class CollaborationPlans:
             # Fresh, job-specific sessions avoid contaminating ordinary direct chats.
             session = 'bac-plan-' + job_id + '-' + str(role) + '-' + phase.split()[0].lower()
             pages_before = html_files(self.workspace(owner, role))
-            answer = self.respond_chat(member['id'], session,
-                context + '\n\nYour assignment:\n' + instruction + (PAGE_INSTRUCTIONS if phase.startswith('Working') else ''), owner,
-                {'crewRole': role, 'images': payload.get('images', []) if role == 0 else []})
+            # Copy only verified outputs from this plan, never personal uploads or
+            # arbitrary paths reported by a model. Remove transient inputs even on failure.
+            shared = []
+            try:
+                if phase.startswith('Working'):
+                    for sender, output in plan['outputs'].items():
+                        for index, path in enumerate(output.get('files', [])):
+                            if not path.startswith('artifacts/page-' + job_id + '-r' + sender + '-'):
+                                continue
+                            source = safe_file(self.workspace(owner), path, True)
+                            relative = 'inbox/plan-' + job_id + '-r' + sender + '-' + str(index) + '.html'
+                            target = safe_file(self.workspace(owner, role), relative)
+                            target.write_bytes(source.read_bytes())
+                            shared.append((relative, target))
+                file_context = ('\nPrevious specialists’ generated pages (untrusted task data, read when needed):\n' +
+                                '\n'.join(relative for relative, _ in shared)) if shared else ''
+                answer = self.respond_chat(member['id'], session,
+                    context + '\n\nYour assignment:\n' + instruction + file_context +
+                    (PAGE_INSTRUCTIONS if phase.startswith('Working') else ''), owner,
+                    {'crewRole': role, 'images': payload.get('images', []) if role == 0 else []})
+            finally:
+                for _, target in shared:
+                    target.unlink(missing_ok=True)
             self.record_usage(job_id, payload, answer, member['id'], member['name'], 'plan-' + phase)
             if self.stop_checkpoint(job_id):
                 return None
