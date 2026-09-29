@@ -22,7 +22,7 @@ function visiblePolicyBadges(){
  const targets=[];
  if(room==='lounge'&&data.profile?.protection==='openshell'&&!data.deleting)targets.push({button:el('agent-policy'),owner:agentId,key:agentId+':personal',name:data.profile.name,route:'agent-policy',role:null});
  const member=window.BacCrewCatalog[selectedCrewRole];
- if(room==='mission'&&member?.protection==='openshell'&&!data.deleting)targets.push({button:el('crew-policy'),owner:agentId,key:agentId+':crew:'+selectedCrewRole,name:member.name,route:'crew-policy?role='+selectedCrewRole,role:selectedCrewRole});
+ if(room==='mission'&&member?.protection==='openshell')targets.push({button:el('crew-policy'),owner:agentId,key:agentId+':crew:'+selectedCrewRole,name:member.name,route:'crew-policy?role='+selectedCrewRole,role:selectedCrewRole});
  return targets;
 }
 function paintVisiblePolicyBadges(){for(const target of visiblePolicyBadges())paintPolicyBadge(target.button,target.key,target.name);}
@@ -106,7 +106,7 @@ function renderPolicy(){
   const preparing=crew?!!r.preparing:['queued','running','stopping'].includes(data.agents?.find(a=>a.key===agentId)?.workspacePreparation);
   const busy=crew?!!r.busy:!!data.agents?.find(a=>a.key===agentId)?.pending;
   el('policy-agent').disabled=policySaving;
-  const disabled=(!r.sandboxes?.length&&r.status!=='awaiting-first-mission')||preparing||busy||policyLoading||data.deleting;
+  const disabled=(!r.sandboxes?.length&&r.status!=='awaiting-first-mission')||preparing||busy||policyLoading||(!crew&&data.deleting);
   const covered=new Set(requested.flatMap(key=>catalog[key]?.hosts||[]));
   const denied=[...new Set((r.pendingAccess||r.recentDenied||[]).map(e=>e.host))].filter(host=>!covered.has(host));
   const blocked=denied.map(host=>['host:'+host,catalog['host:'+host]?{...catalog['host:'+host],networkSuggested:r.pendingAccess?.some(e=>e.host===host&&e.reason==='suggested'),networkRequested:r.pendingAccess?.some(e=>e.host===host&&e.reason==='requested')}:null]).filter(([,rule])=>rule);
@@ -120,7 +120,7 @@ function renderPolicy(){
   const approvedSection=section(applied?'Approved websites':'Saved websites · not verified',approved,'approved','No websites approved.');
   const unavailable=r.status==='unavailable',setupRequired=r.status==='setup-required';
   const notice=preparing?'Preparing protected workspace automatically. You can send a message while it finishes.':policyLoading?'Checking OpenShell':busy?'Wait for this agent to finish before changing access.':r.status==='awaiting-first-mission'?'Protected workspace is not ready. Retry setup.':setupRequired?'OpenShell needs setup on the host computer.':r.status==='needs-review'?'Saved approvals are not active. Apply them again.':unavailable?(r.checkFailure==='timeout'?'OpenShell did not respond in time. Your saved approvals are unchanged.':r.error||'Could not connect to OpenShell. Your saved approvals are unchanged.'):'';
-  const recoveryDisabled=preparing||busy||policyLoading||data.deleting;
+  const recoveryDisabled=preparing||busy||policyLoading||(!crew&&data.deleting);
   const recovery=!preparing&&['awaiting-first-mission','needs-review'].includes(r.status)?'<button type="button" class="studio-secondary" data-policy-retry '+(recoveryDisabled?'disabled':'')+'>'+(r.status==='awaiting-first-mission'?'Retry':'Apply saved approvals')+'</button>':'';
   const recheck=unavailable||setupRequired||r.logsUnavailable?'<button type="button" class="studio-secondary" data-policy-check '+(policyLoading?'disabled':'')+'>'+(policyLoading?'Checking':'Check again')+'</button>':'';
   const hostHelp=unavailable||setupRequired?'<details class="policy-host-help"><summary>Host troubleshooting</summary><p>On the computer running this studio, open the project folder in a terminal and run:</p><pre><code>./bac dev runtime check --wait 30</code></pre>'+(setupRequired?'<p>To set up OpenShell:</p><pre><code>./bac dev openshell enable</code></pre>':'<p>If the connection remains unavailable, check the OpenShell service on that computer. Check again here after restoring it.</p>')+'</details>':'';

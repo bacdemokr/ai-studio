@@ -92,7 +92,7 @@ let demoPreparationId=null,demoPreparing=false,demoPreparationError='',demoAutoP
 const crewWarmups=new Map();
 let crewStartupReady=false;
 function warmCrewOnOpen(){
- if(!crewStartupReady||!connected||!agentId||changingAgent||removingAgent||!runtime.gateway||data.deleting)return;
+ if(!crewStartupReady||!connected||!agentId||changingAgent||removingAgent||!runtime.gateway)return;
  const key=runtime.instance+':'+(data.crewOwner||agentId),now=Date.now();
  if((crewWarmups.get(key)||0)>now)return;
  const target=agentId;crewWarmups.set(key,Infinity);

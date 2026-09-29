@@ -15,6 +15,16 @@ class PlanEdgeCases(unittest.TestCase):
         with self.assertRaises(Problem):self.start()
         self.assertEqual(self.app.state(self.owner)['crewChats'],[])
 
+    def test_crew_remains_usable_while_personal_agent_is_deleting(self):
+        team=self.app.crew_owner(self.owner)
+        with self.app.db() as db:db.execute('UPDATE agents SET deleting=1 WHERE id=?',(self.owner,))
+        for prompt in ('Hello Casey','/plan Prepare a proposal'):
+            result=self.app.enqueue(team,{'kind':'crew-chat','crewRole':0,'prompt':prompt})
+            self.app.execute(self.app.next_job())
+            self.assertEqual(self.job(result)['status'],'done')
+        self.assertEqual(self.app.policy_profile(team,1)['name'],'Dylan')
+        with self.assertRaises(Problem):self.app.enqueue(self.owner,{'kind':'chat','prompt':'Hello'})
+
     def test_specialist_followup_remembers_own_contribution(self):
         self.start();self.app.execute(self.app.next_job());self.adapter.calls.clear()
         team=self.app.crew_owner(self.owner)
