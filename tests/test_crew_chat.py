@@ -28,7 +28,7 @@ class CrewChatTests(unittest.TestCase):
         self.assertEqual(len(self.adapter.agents), 2)
         profiles = list(self.adapter.profiles.values())
         self.assertEqual([p['name'] for p in profiles], ['Casey', 'Dylan'])
-        self.assertIn('Briefs the specialists', profiles[0]['purpose'])
+        self.assertIn('Choose the specialists', profiles[0]['purpose'])
         calls = self.adapter.calls
         self.assertEqual(calls[0][1], calls[2][1])
         self.assertNotEqual(calls[0][1], calls[1][1])
@@ -153,7 +153,7 @@ class CrewChatTests(unittest.TestCase):
         self.assertNotEqual(*sessions)
 
     def test_invalid_roles_and_offline_requests_do_not_enqueue(self):
-        for role in [-1, 6, True, '0', None]:
+        for role in [-1, 9, True, '0', None]:
             with self.assertRaises(Problem):
                 self.studio.enqueue(self.owner, {'kind':'crew-chat', 'crewRole':role, 'prompt':'Hello'})
         self.studio.runtime_status = lambda: {'ready':False}

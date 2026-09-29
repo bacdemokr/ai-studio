@@ -11,7 +11,7 @@
 body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 </style>
 </head><body>
-<div id="bac-planner" lang="en" aria-label="Virtual BaC planning crew" data-view="board">
+<div id="bac-planner" lang="en" aria-label="Virtual multi-agent crew" data-view="board">
 <style>
 #bac-planner{font:19px/1.5 Arial,Helvetica,sans-serif;color:var(--ink);background:var(--paper);overflow:hidden}
 #bac-planner *{box-sizing:border-box}
@@ -217,6 +217,25 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 /* The board follows execution dependencies; the paired roles share one stage. */
 #studio-lanes,#studio-surface #studio-lanes{display:flex;flex-direction:column;gap:26px}
 .studio-work-group{position:relative;min-width:0}
+#studio-lanes.studio-plan-control,#studio-surface #studio-lanes.studio-plan-control{display:flex;flex-direction:column;gap:14px;align-items:stretch}
+#studio-surface #studio-board.has-plan .studio-board-intro{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+#studio-surface #studio-board.has-plan .studio-board-intro h3{font-size:20px;margin:0!important}
+#studio-surface #studio-board.has-plan .studio-board-intro p,#studio-surface #studio-board.has-plan .studio-board-intro .studio-kicker{display:none}
+.mission-plan-step{display:grid;grid-template-columns:180px minmax(0,1fr);border:1px solid #344957;border-radius:8px;background:#15212b;overflow:hidden}
+.mission-plan-step>header{padding:22px;background:#111c25;border-right:1px solid #344957;font-size:14px;color:#b1c3cf}
+.mission-plan-step h4{margin:8px 0;font-size:24px;color:#eff5f8}
+.mission-plan-step>header>small{font-size:11px;letter-spacing:.12em;color:#9eafb9}
+.mission-plan-step>header>span{display:inline-block;margin-top:16px;padding:4px 9px;border:1px solid #45616f;border-radius:20px;font-size:12px}
+.mission-plan-step[data-step-state=working]{border-color:#76b900}
+.mission-plan-step[data-step-state=done]>header>span{color:#b6e27c;border-color:#597733}
+.mission-plan-content{padding:22px;min-width:0;overflow-wrap:anywhere;line-height:1.6;color:#c5d3dc}
+.mission-plan-content>strong{font-size:14px;color:#f0f5f8}
+.mission-expectation{margin:16px 0 0;padding:12px 14px;border-left:2px solid #76b900;background:#0b161d55;overflow-wrap:anywhere;font-size:15px;line-height:1.6}
+.mission-expectation>small{display:block;margin-bottom:6px;font-size:12px;font-weight:600;color:#b6d58e}
+.mission-expectation details{margin-top:10px}.mission-expectation summary{cursor:pointer;color:#b8cbd6}
+#studio-lanes .mission-expectation p{display:block}.mission-expectation pre,.mission-plan-content pre{white-space:pre-wrap;overflow-wrap:anywhere}
+.mission-plan-inputs{display:block;margin-top:12px;font-size:12px;color:#9fb2bf}
+@media(max-width:650px){.mission-plan-step{grid-template-columns:minmax(0,1fr)}.mission-plan-step>header{border-right:0;border-bottom:1px solid #344957;padding:16px}.mission-plan-content{padding:16px}}
 .studio-work-group:not(:last-child)::after{content:'↓';position:absolute;bottom:-25px;left:50%;color:#8ba0b3;font-size:22px}
 .studio-work-group-cards{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
 .studio-work-group.is-parallel{padding:16px;border:1px solid #526779;border-radius:6px;background:#101c26}
@@ -527,7 +546,7 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 
 /* Crew selection belongs to the inspector, leaving the scene footer stable across rooms. */
 #agent-campus[data-room=mission]:not([data-world-overview=true]) .campus-layout #studio-crew-passport:not([hidden]){
-  display:grid!important;grid-template-rows:auto minmax(0,1fr) auto;overflow:hidden;
+  display:grid!important;grid-template-rows:auto auto minmax(0,1fr) auto;overflow:hidden;
 }
 #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content{
   min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;
@@ -539,6 +558,17 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
   padding:10px 8px;border:1px solid #344553;border-radius:4px;font-size:16px;
 }
 #agent-campus #studio-crew-passport #campus-roster small{font-size:14px;line-height:1.35}
+
+#studio-standby{position:relative;z-index:3;min-width:0;border-bottom:1px solid #ffffff0e;background:#111b24;color:#b5c4cf;font-size:13px}
+#studio-standby>summary{cursor:pointer;padding:11px 18px;line-height:1.4}
+#studio-standby>summary:focus-visible{outline:2px solid #76b900;outline-offset:-2px}
+#studio-standby-count{margin-left:6px;color:#a8d96e;font-variant-numeric:tabular-nums}
+.studio-standby-content{position:absolute;top:100%;left:10px;right:10px;max-height:220px;overflow-y:auto;overscroll-behavior:contain;padding:12px;background:#14212b;border:1px solid #354957;border-radius:6px;box-shadow:0 12px 28px #0006}
+#studio-standby p{font-size:12px;line-height:1.5;color:#94a8b6;margin:0 0 8px}
+#studio-standby ul{list-style:none;padding:0;margin:0}
+#studio-standby li{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid #ffffff08;line-height:1.4}
+#studio-standby li strong{font-size:13px;color:#e3ebf0;font-weight:600}
+#studio-standby li span{font-size:12px;color:#a6b8c5;text-align:right}
 
 #agent-campus[data-world-overview=true] .campus-stage-top{display:flex;justify-content:flex-end}
 
@@ -706,7 +736,7 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 @media(max-width:650px){#studio-dialog.studio-agent-documents{padding:16px}.studio-identity-layout{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);gap:12px}.studio-identity-files{display:flex;gap:18px;overflow-x:auto;padding:0;max-height:150px}.studio-identity-files section{flex:none;display:flex;align-items:flex-start;gap:5px;padding-top:23px;position:relative}.studio-identity-files section+section{margin:0}.studio-identity-files h4{position:absolute;top:0;left:0;margin:0}.studio-identity-files button{width:150px;margin:0}.studio-identity-heading{margin-bottom:12px}.studio-identity-document>header{padding:12px}#studio-dialog #studio-identity-source{padding:14px}.studio-identity-document header small{font-size:11px}}
 
 /* Keep the full demo name readable within the studio map and room cards. */
-#agent-campus .world-room-map [data-world-room=mission]{right:0;align-items:flex-start;text-align:left;white-space:normal;line-height:1.35}
+#agent-campus .world-room-map [data-world-room=mission]{right:0;text-align:left}
 .world-room-map [data-world-room=mission] i{flex-shrink:0}
 .world-room-map [data-world-room=mission]>span,.world-campus-room[data-world-room=mission]>b{white-space:nowrap}
 #agent-campus .world-campus-room[data-world-room=mission]{max-width:260px;white-space:normal}
@@ -1096,7 +1126,7 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 
 <div class="campus-layout">
   <div class="campus-stage">
-    <div class="campus-stage-top"><span class="campus-location" id="campus-location">Multi-Agent demo (BaC Planning)</span><span class="campus-sim">Connecting…</span></div>
+    <div class="campus-stage-top"><span class="campus-location" id="campus-location">Multi-Agent demo</span><span class="campus-sim">Connecting…</span></div>
     <div id="campus-viewport" role="img" aria-label="Interactive 3D studio with personal agents and four event specialists. Drag to orbit. Use the agent buttons below to select a role."><div id="campus-fallback" hidden><strong>3D is unavailable in this browser.</strong><p>Enable hardware acceleration or use the agent controls and progress board below. The planning workflow still works.</p></div><div id="campus-labels" aria-hidden="true"></div></div>
     <div class="campus-scene-bottom"><span id="campus-motion-status">Ready to explore</span><div class="row"><button id="campus-motion" title="Pause scene motion" aria-label="Pause scene motion">Ⅱ</button><button id="campus-camera" title="Reset camera" aria-label="Reset camera">⌖</button></div></div>
     <div id="campus-roster" class="campus-roster" aria-label="Select an agent"></div>
@@ -1150,12 +1180,12 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 </style>
 <script>
 (() => {
-  window.BacCrewCatalog = Object.freeze(([{"name": "Casey", "role": "BaC Captain", "persona": "guide", "description": "Briefs the specialists and sets priorities for their shared event plan.", "id": "event-lead", "skills": ["nvidia-webpage"]}, {"name": "Dylan", "role": "Demo producer", "persona": "maker", "description": "Researches NVIDIA themes and turns them into lightweight, source-backed demos.", "id": "demo-producer", "protection": "openshell", "skills": ["nvidia-research", "event-tools"]}, {"name": "Alex", "role": "Operations planner", "persona": "analyst", "description": "Decides topic-specialist staffing, visit times and presenter breaks, then exports the timetable.", "id": "operations-planner", "skills": ["event-scheduling", "event-tools"]}, {"name": "Morgan", "role": "Marketing producer", "persona": "guide", "description": "Builds the event webpage and writes its LinkedIn post from the crew\u2019s results.", "id": "marketing-producer", "skills": ["web", "nvidia-social", "nvidia-webpage"]}, {"name": "Riley", "role": "Audience & review", "persona": "analyst", "description": "Creates the interest survey and checks the complete plan.", "id": "audience-host", "skills": []}, {"name": "Wade", "role": "Event web developer", "persona": "maker", "description": "Turns the shared event plan into a polished landing page you can open and download.", "id": "event-web-developer", "skills": ["event-page", "nvidia-webpage"]}]).map(member => Object.freeze(member)));
+  window.BacCrewCatalog = Object.freeze(([{"name": "Casey", "role": "BaC Captain", "persona": "guide", "description": "Briefs the specialists and sets priorities for their shared event plan.", "id": "event-lead", "skills": ["nvidia-webpage"], "collaboration": {"title": "Team captain", "description": "Choose the specialists for the current request, define acceptance criteria, and combine their actual contributions."}}, {"name": "Dylan", "role": "Demo producer", "persona": "maker", "description": "Researches NVIDIA themes and turns them into lightweight, source-backed demos.", "id": "demo-producer", "planEligible": false, "protection": "openshell", "skills": ["nvidia-research", "event-tools"], "collaboration": {"title": "Demo producer", "description": "Research NVIDIA themes and create event demos. Reserved for BaC event preparation, not /plan assignments. External reads run inside OpenShell and require the current website policy."}}, {"name": "Alex", "role": "Operations planner", "persona": "analyst", "description": "Decides topic-specialist staffing, visit times and presenter breaks, then exports the timetable.", "id": "operations-planner", "skills": ["event-scheduling", "event-tools"], "collaboration": {"title": "Planner & analyst", "description": "Break down requirements, constraints, calculations and dependencies for any task; propose a practical plan and acceptance criteria."}}, {"name": "Morgan", "role": "Marketing producer", "persona": "guide", "description": "Builds the event webpage and writes its LinkedIn post from the crew\u2019s results.", "id": "marketing-producer", "skills": ["web", "nvidia-social", "nvidia-webpage"], "collaboration": {"title": "Writer & editor", "description": "Write or edit the requested content in its requested format. LinkedIn posts and event marketing are optional, only when requested."}}, {"name": "Riley", "role": "Audience & review", "persona": "analyst", "description": "Creates the interest survey and checks the complete plan.", "id": "audience-host", "skills": [], "collaboration": {"title": "Reviewer", "description": "Independently inspect supplied outputs, source files and assumptions; identify defects and missing requirements. Distinguish static review from executed tests."}}, {"name": "Wade", "role": "Event web developer", "persona": "maker", "description": "Turns the shared event plan into a polished landing page you can open and download.", "id": "event-web-developer", "skills": ["event-page", "nvidia-webpage"], "collaboration": {"title": "Programmer", "description": "Implement small programs and self-contained HTML/CSS/JavaScript prototypes with file tools. No arbitrary code execution, package installation or deployment is available."}}, {"name": "Nora", "role": "Data analyst", "persona": "analyst", "id": "data-analyst", "skills": ["data-analysis"], "planOnly": true, "description": "Interpret supplied tables, CSV and JSON; compare options and explain trends, units and missing data. Produce small analysis tables or chart specifications. State when calculations are reasoned rather than executed; no arbitrary Python execution or spreadsheet engine is available.", "collaboration": {"title": "Data analyst", "description": "Interpret supplied tables, CSV and JSON; compare options and explain trends, units and missing data. Produce small analysis tables or chart specifications. State when calculations are reasoned rather than executed; no arbitrary Python execution or spreadsheet engine is available."}}, {"name": "Quinn", "role": "UX designer", "persona": "maker", "id": "ux-designer", "skills": ["interface-design"], "planOnly": true, "description": "Turn user requirements into clear screen flows, accessible layouts, interaction states and acceptance criteria. Specify a practical design for Wade to implement; do not claim usability studies or browser tests were performed.", "collaboration": {"title": "UX designer", "description": "Turn user requirements into clear screen flows, accessible layouts, interaction states and acceptance criteria. Specify a practical design for Wade to implement; do not claim usability studies or browser tests were performed."}}, {"name": "Avery", "role": "Researcher", "persona": "analyst", "id": "general-researcher", "skills": ["web"], "protection": "standard", "planOnly": true, "description": "Research public web sources, compare evidence and cite findings for the current task.", "collaboration": {"title": "Researcher", "description": "Read public sources with available web tools and compare evidence. Cite source URLs, distinguish observations from inference, and report unavailable pages honestly. No search API key is assumed; use supplied URLs and supported public sources. OpenShell is off. Never claim a page was read without a successful tool result."}}]).map(member => Object.freeze(member)));
   window.BacDemo = {
     snapshot: () => ({phase:-1,revision:0,brief:null,calc:null,gap:false,policy:null,selected:0,
       flow:['Your crew is ready','', ''], agents:window.BacCrewCatalog.map((member,i)=>({
         ...member,zone:member.role,tone:['lime','blue','sand','rose','purple','blue'][i],
-        skills:[],status:'Ready',lane:0,task:member.description,permission:''
+        displayed:i<4,skills:[],status:'Ready',lane:0,task:member.description,permission:''
       }))})
 
   };
@@ -78608,15 +78638,15 @@ const root = document.getElementById('agent-campus');
 const el = name => document.getElementById('campus-' + name);
 const api = window.BacDemo;
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const colors = [0x76b900, 0x55bfff, 0xf4b34f, 0xff8873, 0xb49aff, 0xcbddea];
+const colors = [0x76b900, 0x55bfff, 0xf4b34f, 0xff8873, 0xb49aff, 0xcbddea, 0x55bfff, 0xb49aff, 0x55bfff];
 const hex = i => '#' + colors[i].toString(16);
 let snapshot = api.snapshot(), selected = 0, sceneView = null;
 function choose(i) {
-  if(!snapshot.agents[i]||i>=4)return;
+  if(!snapshot.agents[i])return;
   selected=i;render();root.dispatchEvent(new CustomEvent('bac:live-select',{detail:i}));
 }
 function render() {
-  el('roster').innerHTML=snapshot.agents.slice(0,4).map((agent,i)=>`<button data-campus-agent="${i}" data-lane="${agent.lane}" data-included="${agent.included!==false}" aria-pressed="${i===selected}"><b>${escape(agent.name)}</b><small>${escape(agent.role)}</small></button>`).join('');
+  el('roster').innerHTML=snapshot.agents.map((agent,i)=>agent.displayed===false?'':`<button data-campus-agent="${i}" data-lane="${agent.lane}" data-included="${agent.included!==false}" aria-pressed="${i===selected}"><b>${escape(agent.name)}</b><small>${escape(agent.role)}</small></button>`).join('');
   sceneView?.update(snapshot,selected);
 }
 el('roster').addEventListener('click',event=>{
@@ -78737,7 +78767,7 @@ const studioSound=createStudioSound();window.BacSound=studioSound;
 
 // A miniature agent workshop: role workbenches around one shared brief.
 function createScene() {
-  const roomTitles={workshop:'Hiring',lounge:'Agent lounge',mission:'Multi-Agent demo (BaC Planning)'};
+  const roomTitles={workshop:'Hiring',lounge:'Agent lounge',mission:'Multi-Agent demo'};
   const viewport=el('viewport');
   const scene=new THREE.Scene();
   const renderer=new THREE.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true,powerPreference:'low-power'});
@@ -78778,7 +78808,7 @@ function createScene() {
   }
   // Shared rigs keep a saved agent recognizable in the workshop, lounge and crew.
 const avatarColors={green:0x76b900,cyan:0x55bfff,amber:0xf4b34f,coral:0xff8873,violet:0xb49aff,ice:0xcbddea};
-const avatarDefaults=[{body:'classic',color:'green',accessory:'antenna'},{body:'round',color:'cyan',accessory:'headset'},{body:'rover',color:'amber',accessory:'cap'},{body:'round',color:'coral',accessory:'antenna'},{body:'classic',color:'violet',accessory:'glasses'},{body:'claw',color:'ice',accessory:'headset'}];
+const avatarDefaults=[{body:'classic',color:'green',accessory:'antenna'},{body:'round',color:'cyan',accessory:'headset'},{body:'rover',color:'amber',accessory:'cap'},{body:'round',color:'coral',accessory:'antenna'},{body:'classic',color:'violet',accessory:'glasses'},{body:'claw',color:'ice',accessory:'headset'},{body:'classic',color:'cyan',accessory:'glasses'},{body:'round',color:'violet',accessory:'cap'},{body:'rover',color:'cyan',accessory:'glasses'}];
 const robotShape=new THREE.Shape();robotShape.moveTo(-.29,-.2);robotShape.lineTo(.29,-.2);robotShape.lineTo(.29,.2);robotShape.lineTo(-.29,.2);robotShape.closePath();
 const robotHeadGeometry=new THREE.ExtrudeGeometry(robotShape,{depth:.38,bevelEnabled:true,bevelThickness:.07,bevelSize:.065,bevelSegments:2,steps:1});robotHeadGeometry.translate(0,0,-.19);
 const robotSphereGeometry=new THREE.SphereGeometry(1,24,16),robotLensGeometry=new THREE.TorusGeometry(.1,.019,6,20);
@@ -78950,11 +78980,13 @@ function createClaw(appearance,color,group,body){
   artwork.position.set(-.6,2.175,-7.049);missionRoom.add(artwork);
   box(missionRoom,-.6,.60,-7.06,5.22,.026,.02,0x76b900,true);
   // Preserve role IDs; arrange Dylan, Alex and Morgan from left to right.
-  const positions=[[0,.4],[-6.2,-4.5],[0,-4.5],[6.2,-4.5]];
+  const positions=[[0,.4],[-6.2,-4.5],[0,-4.5],[6.2,-4.5],...state.agents.slice(4).map(()=>[10.3,0])];
   const homes=positions.map(([x,z],i)=>new THREE.Vector3(i?x:-1.65,.05,i?z+1:1.65));
-  const titles=['CAPTAIN','DEMO STUDIO','OPERATIONS','MARKETING','REVIEW','WEB STUDIO'];
   const deskLights=[],deskScreens=[],routes=[];
+  const exchangeExit=new THREE.Vector3(10.3,.05,0),exchangeEntry=new THREE.Vector3(8.3,.05,0);
+  const originalHomes=homes.map(h=>h.clone());
   positions.forEach(([x,z],i)=>{
+    if(i>3)return;
     if(i===0){deskLights.push(ring(missionRoom,0,.085,.4,.38,colors[0]));deskScreens.push(box(missionRoom,0,.06,.4,.01,.01,.01,0x152333));return;}
     box(missionRoom,x,.035,z,3.35,.04,2.65,0x343f4c);
     box(missionRoom,x,.064,z+1.25,3.3,.04,.045,colors[i],true);
@@ -78964,16 +78996,20 @@ function createClaw(appearance,color,group,body){
     const monitor=box(missionRoom,x,1.36,z-.159,1.29,.61,.016,0x070e17);monitor.material=mat(0x070e17).clone();deskScreens.push(monitor);
     for(let row=0;row<3;row++){box(missionRoom,x-.32,1.53-row*.16,z-.145,.39+.13*row,.033,.01,colors[i],true);box(missionRoom,x+.43,1.41-row*.09,z-.145,.17,.026,.01,0x41627d);}
     box(missionRoom,x,.92,z+.22,.74,.018,.24,0x5e7186);
-    sign(missionRoom,titles[i],x,.15,z+1.35,2.7,.32,'#e8f0f8','#1c2835');
     cylinder(missionRoom,x+.85,.98,z+.12,.1,.21,colors[i],12);
     deskLights.push(ring(missionRoom,x,.085,z,.38,colors[i]));
   });
+  // A separate entrance for specialists called in by the Captain.
+  const exchangeDoor=new THREE.Group();missionRoom.add(exchangeDoor);
+  for(const z of [-.8,.8])box(exchangeDoor,9.7,1.3,z,.18,2.6,.18,0x536d87);
+  box(exchangeDoor,9.7,2.6,0,.18,.16,1.8,0x536d87);
+  const exchangePanel=box(exchangeDoor,9.7,1.3,0,.07,2.4,1.5,0x233545);
+  const exchangeGlow=box(exchangeDoor,9.61,2.4,0,.035,.06,1.35,0x76b900,true);
   // Shared state hub: all agents use this same versioned brief.
   cylinder(missionRoom,0,.23,.4,1.14,.44,0x152333,48);cylinder(missionRoom,0,.48,.4,1.02,.07,0x536d87,48);
   ring(missionRoom,0,.525,.4,.93,0x76b900);
   const core=box(missionRoom,0,1.5,.4,.35,.38,.35,0x76b900);core.rotation.y=Math.PI/4;
   const coreRing=ring(missionRoom,0,1.24,.4,.72,0x96d52b);
-  sign(missionRoom,'CAPTAIN’S DESK',0,.7,1.34,1.7,.25,'#d8edfb','#132536');
   // Layered data cards make shared state the physical center of the workspace.
   for(let i=0;i<3;i++){const card=box(missionRoom,0,.72+i*.23,.4,.92,.055,.7,0xb5d0e6);card.rotation.y=.12+i*.15;}
 
@@ -78995,12 +79031,12 @@ function createClaw(appearance,color,group,body){
   const brand=sign(missionRoom,'NVIDIA',-3.5,.075,6.7,2.8,.62,'#aebdce');brand.rotation.x=-Math.PI/2;
   const robots=[];const hitTargets=[];const labels=[];
   positions.forEach((_,i)=>{
-    const rig=createCharacter(avatarDefaults[i]),robot=rig.group;robot.position.copy(homes[i]);if(i===0)robot.scale.setScalar(1.12);missionRoom.add(robot);
+    const rig=createCharacter(avatarDefaults[i]),robot=rig.group;robot.position.copy(homes[i]);robot.visible=i<4;if(i===0)robot.scale.setScalar(1.12);missionRoom.add(robot);
     const halo=ring(missionRoom,homes[i].x,.086,homes[i].z,.48,rig.color);
     const packet=box(rig.body,.39,.7,.2,.21,.27,.045,rig.color,true);packet.visible=false;
     robot.traverse(object=>{if(object.isMesh){object.userData.agent=i;hitTargets.push(object);}});
     const badge=document.createElement('button');badge.type='button';badge.className='campus-agent-label';badge.dataset.crewMember=String(i);badge.onclick=()=>{if(room==='mission'&&!overview&&!journey)choose(i);};badge.style.setProperty('--agent-color',hex(i));el('labels').append(badge);labels.push(badge);
-    robots.push({...rig,robot,halo,packet,home:homes[i],path:[],idle:i*.9,destination:homes[i].clone(),avatarKey:JSON.stringify(avatarDefaults[i])});
+    robots.push({...rig,robot,halo,packet,home:homes[i],path:[],idle:i*.9,destination:homes[i].clone(),exchange:null,wanted:i<4,avatarKey:JSON.stringify(avatarDefaults[i])});
   });
   function dressCrew(){
     robots.forEach((r,i)=>{
@@ -79069,6 +79105,7 @@ function createClaw(appearance,color,group,body){
     if(!documentFlight&&!documentQueue.length)return;
     if(reduced.matches||!motion){for(const d of [...documentQueue,...(documentFlight?[documentFlight]:[])]){if(d.kind==='return')receivedDocuments.add(d.role);else assignedDocuments.add(d.role);}documentQueue.length=0;documentFlight=null;flyingDocument.visible=false;receivedDocuments.forEach(i=>returnedSheets[i].visible=true);renderCrewLabels();return;}
     if(!motion||room!=='mission'||overview||journey)return;
+    if(!documentFlight&&documentQueue.length&&!robots[documentQueue[0].role]?.robot.visible)return;
     if(!documentFlight&&documentQueue.length){documentFlight=documentQueue.shift();documentProgress=0;documentStripe.material=mat(colors[documentFlight.role],true);}
     if(!documentFlight)return;
     documentProgress=Math.min(1,documentProgress+dt/1.65);const t=documentProgress,p=t*t*(3-2*t),d=documentFlight;
@@ -79476,7 +79513,6 @@ function residentInfo(){return residents.map(r=>({key:r.key,avatar:r.appearance,
 setDraft(draftProfile);
 
   // One persistent floor plan. Room changes move the camera, never swap worlds.
-function roomTitleMarkup(title){return title.replace(' (BaC Planning)','<br>(BaC Planning)');}
 const studioRooms={
   workshop:{group:workshopRoom,x:0,z:18,title:roomTitles.workshop,verb:'Meet your next agent',number:'01'},
   lounge:{group:loungeRoom,x:0,z:0,title:roomTitles.lounge,verb:'Meet your agents',number:'02'},
@@ -79489,7 +79525,7 @@ const navigationLayer=document.createElement('div');navigationLayer.className='w
 const overviewButton=document.createElement('button');overviewButton.type='button';overviewButton.className='world-overview-button';overviewButton.dataset.worldOverview='';overviewButton.textContent='⌑ See the whole studio';overviewButton.setAttribute('aria-pressed','false');navigationLayer.append(overviewButton);
 const journeyNote=document.createElement('div');journeyNote.className='world-journey';journeyNote.setAttribute('role','status');journeyNote.setAttribute('aria-live','polite');journeyNote.hidden=true;navigationLayer.append(journeyNote);
 const roomMap=document.createElement('nav');roomMap.className='world-room-map';roomMap.setAttribute('aria-label','Connected studio rooms');
-roomMap.innerHTML='<span class="world-map-caption">STUDIO MAP</span><div><svg viewBox="0 0 320 66" aria-hidden="true"><path d="M13 53 V13 H207"/></svg>'+['lounge','mission','workshop'].map(id=>'<button type="button" data-world-room="'+id+'"><i>'+studioRooms[id].number+'</i><span>'+roomTitleMarkup(studioRooms[id].title)+'</span></button>').join('')+'</div>';
+roomMap.innerHTML='<span class="world-map-caption">STUDIO MAP</span><div><svg viewBox="0 0 320 66" aria-hidden="true"><path d="M13 53 V13 H207"/></svg>'+['lounge','mission','workshop'].map(id=>'<button type="button" data-world-room="'+id+'"><i>'+studioRooms[id].number+'</i><span>'+studioRooms[id].title+'</span></button>').join('')+'</div>';
 navigationLayer.append(roomMap);
 function goToRoom(next){
   const restoreFocus=navigationLayer.contains(document.activeElement);
@@ -79545,7 +79581,7 @@ doorway('lounge','mission',8.8,3);doorway('mission','lounge',-10.6,3);
 doorway('lounge','workshop',0,6.1,Math.PI/2);doorway('workshop','lounge',0,-4.05,Math.PI/2);
 Object.entries(studioRooms).forEach(([id,r])=>{
   const node=document.createElement('button');node.type='button';node.className='world-campus-room';node.dataset.worldRoom=id;
-  node.innerHTML='<span>'+r.number+' / '+r.verb+'</span><b>'+roomTitleMarkup(r.title)+'</b>';node.onclick=()=>goToRoom(id);navigationLayer.append(node);overviewLabels.push({id,node,group:r.group});
+  node.innerHTML='<span>'+r.number+' / '+r.verb+'</span><b>'+r.title+'</b>';node.onclick=()=>goToRoom(id);navigationLayer.append(node);overviewLabels.push({id,node,group:r.group});
 });
 function roomHeight(id){
   const aspect=viewport.clientWidth/Math.max(1,viewport.clientHeight);
@@ -79639,7 +79675,7 @@ function animateNavigation(now){
 }
 function navigationTargets(){
   if(overview)return Object.values(studioRooms).map(r=>r.group);
-  return room==='mission'?hitTargets:roomHitTargets();
+  return room==='mission'?hitTargets.filter(o=>robots[o.userData.agent]?.robot.visible):roomHitTargets();
 }
 function selectNavigationObject(object){
   for(let node=object;node;node=node.parent){
@@ -79836,26 +79872,76 @@ function roundtableInfo(){return {job:meetingId,tableWidth:meetingWidth,speaker:
     renderer.setSize(w,h,false);resizeNavigation();frame();renderer.render(scene,camera);
   }
   function movement(){
-    robots.forEach(r=>{r.path=r.robot.position.distanceTo(r.home)>.06?[r.home.clone()]:[];r.packet.visible=false;});
+    robots.forEach(r=>{if(!r.exchange)r.path=r.robot.visible&&r.robot.position.distanceTo(r.home)>.06?[r.home.clone()]:[];r.packet.visible=false;});
     const active=state.agents.findIndex((a,i)=>i<robots.length&&(a.lane===1||a.lane===2));
     if(active>=0){
       const r=robots[active],station={builder:[0,-2.3],documents:[-6.55,-.45],memory:[-6.55,-.45],weather:[6.3,-1],web:[-6.5,1.6],writer:[-4.8,4]}[state.missionSkill];
       const target=state.crewMission&&active===0?new THREE.Vector3(-.62,.55,.85):station?new THREE.Vector3(station[0],.05,station[1]):r.home.clone();
-      r.path=state.crewMission||active===0?[target]:[new THREE.Vector3(r.robot.position.x,.05,.5),new THREE.Vector3(0,.05,.5),new THREE.Vector3(target.x,.05,.5),target];r.packet.visible=!state.crewMission;
+      if(!r.exchange)r.path=state.crewMission||active===0?[target]:[new THREE.Vector3(r.robot.position.x,.05,.5),new THREE.Vector3(0,.05,.5),new THREE.Vector3(target.x,.05,.5),target];r.packet.visible=!state.crewMission;
       packetStart=lastJob===state.jobId&&lastActive>=0&&lastActive!==active?robots[lastActive].home.clone():new THREE.Vector3(0,.6,.4);packetEnd=target.clone();packetTime=clock;
     }
     lastActive=active;lastJob=state.jobId;
     routes.forEach((route,i)=>{route.material.opacity=state.agents[i]?.lane===1 ? .85 : .18;});
     // Equipment decisions are app approvals; never color OpenShell as enforced from them.
-    if(!motion)robots.forEach(r=>{if(r.path.length)r.robot.position.copy(r.path.at(-1));r.path=[];});
+    if(!motion)settleCrewExchange();
   }
+  // Visual substitutions never create/delete agents or delay model execution.
+let deskAssignments=[0,1,2,3],exchangeTeamKey='event:0,1,2,3';
+function deskRole(slot){return deskAssignments[slot];}
+function settleCrewExchange(){
+  robots.forEach((r,i)=>{r.robot.visible=r.wanted;r.robot.position.copy(r.wanted?r.home:exchangeExit);r.path=[];r.exchange=null;labels[i].hidden=!r.wanted;r.halo.visible=r.wanted&&i===activeSelection;});
+  exchangePanel.position.y=1.3;exchangeGlow.material.emissiveIntensity=.4;
+}
+function enterCrew(r){
+  r.robot.visible=true;r.robot.position.copy(exchangeExit);r.exchange='entering';
+  r.path=[exchangeEntry.clone(),new THREE.Vector3(r.home.x,.05,0),r.home.clone()];
+}
+function placeTeam(){
+  const selected=state.agents.map((a,i)=>a.displayed===false?null:i).filter(i=>i!==null),key=(state.crewMission?.kind==='plan'?'plan:':'event:')+selected.join();
+  if(key!==exchangeTeamKey){
+    exchangeTeamKey=key;
+    // Keep returning specialists at their existing desks, fill only free seats.
+    if(state.crewMission?.kind!=='plan')deskAssignments=[0,1,2,3];
+    deskAssignments=deskAssignments.map((role,slot)=>slot===0?0:selected.includes(role)?role:null);
+    for(const role of selected.filter(i=>i>0))if(!deskAssignments.includes(role)){
+      const free=deskAssignments.indexOf(null);if(free>=0)deskAssignments[free]=role;
+    }
+    robots.forEach((r,i)=>{
+      r.wanted=selected.includes(i);
+      const slot=deskAssignments.indexOf(i);
+      r.home.copy(slot>=0?originalHomes[slot]:exchangeExit);
+      if(i===0)return;
+      if(!r.wanted){
+        if(r.robot.visible){r.exchange='leaving';r.path=[new THREE.Vector3(r.robot.position.x,.05,0),exchangeEntry.clone(),exchangeExit.clone()];}
+        else{r.exchange=null;r.path=[];}
+      }else if(!r.robot.visible){r.exchange='queued';r.path=[];}
+      else if(r.exchange==='leaving'){r.exchange='entering';r.path=[new THREE.Vector3(r.robot.position.x,.05,0),new THREE.Vector3(r.home.x,.05,0),r.home.clone()];}
+    });
+    if(!motion||reduced.matches)settleCrewExchange();
+  }
+}
+function animateCrewExchange(dt){
+  if(!motion||reduced.matches){if(robots.some(r=>r.exchange))settleCrewExchange();return;}
+  for(const r of robots){
+    if(r.exchange==='leaving'&&!r.path.length){r.robot.visible=false;r.exchange=null;}
+    if(r.exchange==='entering'&&!r.path.length)r.exchange=null;
+  }
+  // Outgoing members clear the doorway before incoming members appear.
+  if(!robots.some(r=>r.exchange==='leaving'||r.exchange==='entering'&&r.robot.position.distanceTo(exchangeExit)<1.8)){
+    const next=robots.find(r=>r.exchange==='queued');if(next)enterCrew(next);
+  }
+  const exchanging=robots.some(r=>r.exchange),target=exchanging?3.75:1.3;
+  exchangePanel.position.y=THREE.MathUtils.lerp(exchangePanel.position.y,target,Math.min(1,dt*6));
+  exchangeGlow.material.emissiveIntensity=exchanging?1.1:.4;
+}
+
   const workLines=['Organizing the brief and assigning the team…','Comparing sources and choosing demo themes…','Reviewing presenter coverage and breaks…','Writing the webpage and LinkedIn post…','Preparing the survey and reviewing the plan…','Building the event page…'];
   function crewWorking(i){
     if(state.agents[i].included===false||state.agents[i].lane!==1)return false;
     return !state.crewMission||(state.crewMission.activeStages||[]).includes(i)&&(i===0||assignedDocuments.has(i));
   }
-  function renderCrewLabels(){labels.forEach((b,i)=>{const working=crewWorking(i);b.innerHTML=escape(state.agents[i].name)+'<small>'+escape(state.agents[i].included===false?'Not in this mission':working?'Working · '+state.agents[i].role:state.agents[i].lane===2?'Waiting for you':state.agents[i].role)+'</small>'+(working?'<span class="crew-work-bubble"><i></i>'+escape(state.crewMission?workLines[i]:'Working on your request…')+'</span>':'');b.setAttribute('aria-pressed',String(activeSelection===i));b.setAttribute('aria-label','Select '+state.agents[i].name);b.classList.toggle('selected',activeSelection===i);b.classList.toggle('excluded',state.agents[i].included===false);b.classList.toggle('waiting',state.agents[i].lane===2);});}
-  function update(next,index){state=next;syncCaptain();syncRoundtable();activeSelection=index;phase=state.phase;dressCrew();const key=[state.jobId,state.phase,state.missionSkill,state.agents.map(a=>a.lane).join('')].join(':');if(key!==lastKey){lastKey=key;movement();}renderCrewLabels();}
+  function renderCrewLabels(){labels.forEach((b,i)=>{const working=crewWorking(i);b.innerHTML=escape(state.agents[i].name)+'<small>'+escape(robots[i].exchange==='leaving'?'Leaving team':robots[i].exchange==='entering'?'Joining team':state.agents[i].included===false?'Available':working?'Working · '+state.agents[i].role:state.agents[i].lane===2?'Waiting for you':state.agents[i].role)+'</small>'+(working?'<span class="crew-work-bubble"><i></i>'+escape(state.crewMission?.kind==='plan'?state.agents[i].task:state.crewMission?workLines[i]:'Working on your request…')+'</span>':'');b.setAttribute('aria-pressed',String(activeSelection===i));b.setAttribute('aria-label','Select '+state.agents[i].name);b.classList.toggle('selected',activeSelection===i);b.classList.toggle('excluded',state.agents[i].included===false);b.classList.toggle('waiting',state.agents[i].lane===2);});}
+  function update(next,index){state=next;placeTeam();syncCaptain();syncRoundtable();activeSelection=index;phase=state.phase;dressCrew();const key=[state.jobId,state.phase,state.missionSkill,state.crewMission?.id,state.crewMission?.enabledRoles?.join(),state.agents.map(a=>a.lane).join('')].join(':');if(key!==lastKey){lastKey=key;movement();}renderCrewLabels();}
 
   // Both directions require native OpenShell policy evidence, never an approval click.
 const protectionSeen=new Set(),protectionHits=new Map(),protectionCooldown=new Map();
@@ -80055,20 +80141,20 @@ function animateProtection(now){
   // inputs the WebGL, label layout and backdrop recompositing on every frame.
   const studioDialog=document.getElementById('studio-dialog');
   function animate(now){requestAnimationFrame(animate);if(document.hidden||root.hidden||studioDialog?.open||!viewport.clientWidth||lost){lastFrame=now;return;}if(now-lastFrame<32)return;const dt=Math.min((now-lastFrame)/1000,.06);lastFrame=now;if(motion)clock+=dt;
-    animateNavigation(now);animateRooms(dt);animateRoundtable(dt);
+    animateNavigation(now);animateRooms(dt);animateRoundtable(dt);animateCrewExchange(dt);
     // Keep idle name buttons at the desk while the character fidgets; walking labels still follow.
-    robots.forEach((r,i)=>{let walking=false;if(motion){if(r.path.length){const delta=r.path[0].clone().sub(r.robot.position),dist=delta.length();if(dist<.1)r.path.shift();else{walking=true;r.robot.position.addScaledVector(delta.normalize(),Math.min(dist,dt*1.65));r.robot.rotation.y=Math.atan2(delta.x,delta.z);}}else if(state.agents[i].lane===0&&state.agents[i].included!==false&&i!==0){const target=r.home.clone().add(new THREE.Vector3(Math.sin(clock*.45+i)*.32,0,Math.cos(clock*.45+i)*.18));const delta=target.clone().sub(r.robot.position);walking=delta.length()>.05;r.robot.position.lerp(target,.025);r.robot.rotation.y=THREE.MathUtils.lerp(r.robot.rotation.y,Math.atan2(delta.x,delta.z),.04);}else r.robot.rotation.y=THREE.MathUtils.lerp(r.robot.rotation.y,crewWorking(i)?Math.PI:0,.08);r.body.position.y=walking?Math.abs(Math.sin(clock*8+i))*.04:Math.sin(clock*2+i)*.02;r.legs.forEach((l,j)=>l.rotation.x=walking?Math.sin(clock*9+i+j*Math.PI)*.4:0);r.arms.forEach((a,j)=>a.rotation.x=!walking&&crewWorking(i)?-.85+Math.sin(clock*9+j*Math.PI+i)*.16:Math.sin(clock*(walking?8:1.6)+j*Math.PI+i)*(walking ? .38 : .08));}
-      r.halo.position.set(r.robot.position.x,.086,r.robot.position.z);r.halo.visible=i===activeSelection||state.agents[i].lane!==0;deskLights[i].visible=crewWorking(i);const labelAnchor=state.agents[i].lane===0&&!r.path.length?r.home:r.robot.position;positionLabel(labels[i],missionRoom.localToWorld(labelAnchor.clone().add(new THREE.Vector3(0,1.65,0))));});
+    robots.forEach((r,i)=>{if(!r.robot.visible){r.halo.visible=false;labels[i].hidden=true;return;}labels[i].hidden=false;let walking=false;if(motion){if(r.path.length){const delta=r.path[0].clone().sub(r.robot.position),dist=delta.length();if(dist<.1)r.path.shift();else{walking=true;r.robot.position.addScaledVector(delta.normalize(),Math.min(dist,dt*(r.exchange?4:1.65)));r.robot.rotation.y=Math.atan2(delta.x,delta.z);}}else if(!r.exchange&&state.agents[i].lane===0&&state.agents[i].included!==false&&i!==0){const target=r.home.clone().add(new THREE.Vector3(Math.sin(clock*.45+i)*.32,0,Math.cos(clock*.45+i)*.18));const delta=target.clone().sub(r.robot.position);walking=delta.length()>.05;r.robot.position.lerp(target,.025);r.robot.rotation.y=THREE.MathUtils.lerp(r.robot.rotation.y,Math.atan2(delta.x,delta.z),.04);}else r.robot.rotation.y=THREE.MathUtils.lerp(r.robot.rotation.y,crewWorking(i)?Math.PI:0,.08);r.body.position.y=walking?Math.abs(Math.sin(clock*8+i))*.04:Math.sin(clock*2+i)*.02;r.legs.forEach((l,j)=>l.rotation.x=walking?Math.sin(clock*9+i+j*Math.PI)*.4:0);r.arms.forEach((a,j)=>a.rotation.x=!walking&&crewWorking(i)?-.85+Math.sin(clock*9+j*Math.PI+i)*.16:Math.sin(clock*(walking?8:1.6)+j*Math.PI+i)*(walking ? .38 : .08));}
+      r.halo.position.set(r.robot.position.x,.086,r.robot.position.z);r.halo.visible=i===activeSelection||state.agents[i].lane!==0;const labelAnchor=state.agents[i].lane===0&&!r.path.length?r.home:r.robot.position;positionLabel(labels[i],missionRoom.localToWorld(labelAnchor.clone().add(new THREE.Vector3(0,1.65,0))));});
     if(room==='mission')hotspots.forEach(h=>positionLabel(h.button,missionRoom.localToWorld(h.position.clone())));
     if(motion){core.rotation.y=clock*.25;coreRing.position.y=1.35+Math.sin(clock*1.5)*.045;weatherRotor.rotation.y=clock*.28;}
-    deskScreens.forEach((screen,i)=>{const busy=crewWorking(i);screen.material.emissive.setHex(busy?colors[i]:0);screen.material.emissiveIntensity=busy ? .3+Math.sin(clock*3+i)*.12 : 0;});
+    deskScreens.forEach((screen,i)=>{const role=deskRole(i),busy=role!=null&&crewWorking(role);deskLights[i].visible=busy;screen.material.emissive.setHex(busy?colors[role]:0);screen.material.emissiveIntensity=busy ? .3+Math.sin(clock*3+i)*.12 : 0;});
     packets.forEach((p,i)=>{const t=(clock-packetTime-i*.13)/2.8;p.visible=!state.crewMission&&t>=0&&t<=1&&state.phase>=0;if(p.visible){p.position.lerpVectors(packetStart,packetEnd,t);p.position.y=.65+Math.sin(t*Math.PI)*1.15;}});
     animateCaptain(dt);
     animateProtection(now);
     renderer.render(scene,camera);
   }
   motionButton();resize();update(snapshot,0);requestAnimationFrame(animate);root.dataset.renderer='webgl';
-  return {resize,update,setRoom,setCollection,observeProtection,protectionReplyDelay,setDraft,welcomeAgent,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',protectionHits:[...protectionHits.values()].map(h=>({id:h.event.id,owner:h.event.owner,role:h.event.role,action:h.event.action,globeRotation:h.earth?.rotation.y,visible:h.group.visible,animated:motion&&h.phase!=='blocked',phase:h.phase})),roundtable:roundtableInfo(),arrival:arrival?{key:arrival.key,avatar:{...arrival.rig.appearance},phase:arrival.time<1.8?'loading':'walking',position:arrival.rig.group.position.toArray()}:null,room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,draftShield:!!draftRig?.body.getObjectByName('openshell-shield'),crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,captain:{position:robots[0].robot.position.toArray(),job:captainJob,received:[...receivedDocuments],assigned:[...assignedDocuments],pending:documentQueue.map(d=>({...d})),inFlight:documentFlight?{...documentFlight}:null},robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
+  return {resize,update,setRoom,setCollection,observeProtection,protectionReplyDelay,setDraft,welcomeAgent,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',protectionHits:[...protectionHits.values()].map(h=>({id:h.event.id,owner:h.event.owner,role:h.event.role,action:h.event.action,globeRotation:h.earth?.rotation.y,visible:h.group.visible,animated:motion&&h.phase!=='blocked',phase:h.phase})),roundtable:roundtableInfo(),arrival:arrival?{key:arrival.key,avatar:{...arrival.rig.appearance},phase:arrival.time<1.8?'loading':'walking',position:arrival.rig.group.position.toArray()}:null,room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,draftShield:!!draftRig?.body.getObjectByName('openshell-shield'),crewExchange:robots.map((r,role)=>({role,visible:r.robot.visible,phase:r.exchange,wanted:r.wanted})),deskAssignments:[...deskAssignments],crewHomes:robots.map(r=>r.home.toArray()),selectedTeam:state.crewMission?.enabledRoles||[0,1,2,3],crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,captain:{position:robots[0].robot.position.toArray(),job:captainJob,received:[...receivedDocuments],assigned:[...assignedDocuments],pending:documentQueue.map(d=>({...d})),inFlight:documentFlight?{...documentFlight}:null},robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
 }
 
 try {sceneView=createScene();}catch(error){el('fallback').hidden=false;root.dataset.renderer='fallback';console.warn('3D unavailable; accessible workflow controls remain available.',error.message);}
@@ -80310,10 +80396,11 @@ render();
     const crew=crewMission(), stage=crew?.payload.stage??-1;
     roles.forEach((r,i)=>r[0]=crew?.payload.roster?.[i]?.name||(i===0&&room!=='mission'?data.profile?.name:null)||defaultNames[i]);
     const groups=crewGroups(crew).map(group=>group.filter(i=>i<4)).filter(group=>group.length);el('lanes').style.setProperty('--crew-groups',groups.length);
-    el('lanes').innerHTML=groups.map(group=>`<section class="studio-work-group ${group.length>1?'is-parallel':''}">${group.length>1?'<div class="studio-parallel-caption">In parallel <span>Both finish before the next handoff</span></div>':''}<div class="studio-work-group-cards">${group.map(i=>{const [name,role,description]=roles[i],done=!!crew?.payload.outputs?.[i],working=['running','stopping'].includes(crew?.status)&&(crew?.payload.activeStages||[stage]).includes(i),waiting=crew?.status==='waiting'&&i===2;return `<article class="studio-lane" data-state="${waiting?'waiting':done?'done':working?'running':'ready'}"><span>${waiting?'NEEDS YOU':done?'DELIVERED':working?(crew?.status==='stopping'?'STOPPING':'WORKING'):crew?'WAITING':'READY'}</span><h4>${escape(name)}</h4><strong>${escape(role)}</strong><p>${escape(description)}</p>${hasCrewDeliverable(crew,i)?'<button data-role-output="'+i+'">Open deliverable</button>':''}</article>`;}).join('')}</div></section>`).join('');
+    el('lanes').innerHTML=groups.map(group=>`<section class="studio-work-group ${group.length>1?'is-parallel':''}">${group.length>1?'<div class="studio-parallel-caption">In parallel <span>Both finish before the next handoff</span></div>':''}<div class="studio-work-group-cards">${group.map(i=>{const [name,role,description]=roles[i],done=!!crew?.payload.outputs?.[i],working=['running','stopping'].includes(crew?.status)&&(crew?.payload.activeStages||[stage]).includes(i),waiting=crew?.status==='waiting'&&i===2;return `<article class="studio-lane" data-state="${waiting?'waiting':done?'done':working?'running':'ready'}"><span>${waiting?'NEEDS YOU':done?'DELIVERED':working?(crew?.status==='stopping'?'STOPPING':'WORKING'):crew?'WAITING':'READY'}</span><h4>${escape(name)}</h4><strong>${escape(role)}</strong><p>${escape(description)}</p>${eventExpectationMarkup(crew,i)}${hasCrewDeliverable(crew,i)?'<button data-role-output="'+i+'">Open deliverable</button>':''}</article>`;}).join('')}</div></section>`).join('');
+    renderMissionControl();
     const active=room==='mission'?(crew&&['running','stopping','waiting'].includes(crew.status)?crew:null):data.jobs.find(j=>['running','stopping'].includes(j.status))||data.jobs.find(j=>j.status==='waiting');
     const s=window.BacDemo.snapshot();
-    const a=roles.map(([name,role,description],i)=>({...s.agents[i],name,role,persona:description,skills:i===0?['Shared brief']:i===1?['Demo design']:i===2?['Capacity planning']:i===3?['Campaign writing']:i===4?['Evidence review']:['Event page studio'],lane:0,status:'Ready',task:description,permission:'Scoped workspace',included:(crew?.payload.enabledRoles||[0,1,2,3]).includes(i)}));
+    const a=roles.map(([name,role,description],i)=>({...s.agents[i],name,role,persona:description,skills:i===0?['Shared brief']:i===1?['Demo design']:i===2?['Capacity planning']:i===3?['Campaign writing']:i===4?['Evidence review']:['Event page studio'],lane:0,status:'Ready',task:description,permission:'Scoped workspace',displayed:i<4,included:(crew?.payload.enabledRoles||[0,1,2,3]).includes(i)}));
     crew?.payload.roster?.forEach((m,i)=>{a[i].persona=m.purpose||personas[m.persona];a[i].skills=m.skills.map(x=>titles[x]);a[i].avatar=m.avatar;a[i].protection=m.protection;});
     let phase=-1,selected=0,flow=['Your campus is ready','Choose a mission or launch a crew.','Start'];
     if(active?.kind==='crew'){
@@ -80327,11 +80414,20 @@ render();
     }else if(data.profile&&room!=='mission'){a[0].name=data.profile.name;a[0].role='Your personal agent';a[0].persona=personas[data.profile.persona];a[0].skills=data.profile.skills.map(x=>titles[x]);}
     if(data.profile&&!crew&&room!=='mission')a[0].avatar=data.profile.avatar;
     if(active?.payload.roundtable?.status==='reviewing')flow=['Your agents’ roundtable','The package is ready. Your agents are sharing their personal takes.','Open mission'];
-    const planning=(data.crewChats||[]).find(j=>j.payload.collaboration&&['running','stopping'].includes(j.status));
+    const collaboration=currentCollaboration(),planning=collaboration&&!collaboration.payload.collaboration.responseReady&&['running','stopping'].includes(collaboration.status)?collaboration:null;
+    if(collaboration){
+      const plan=collaboration.payload.collaboration,chosen=[0,...(plan.calledRoles||(plan.tasks||[]).map(t=>t.role))];
+      a.forEach((agent,i)=>{const expertise=window.BacCrewCatalog[i].collaboration;agent.name=defaultNames[i];agent.role=expertise.title;agent.persona=expertise.description;agent.skills=[];agent.lane=0;agent.included=chosen.includes(i);agent.displayed=chosen.length>1?chosen.includes(i):i<4;agent.task=plan.tasks?.find(t=>t.role===i)?.task||expertise.description;agent.status=plan.outputs?.[i]?'Done':agent.included?'Selected':'Ready';});
+    }
+    if(!a[selectedCrewRole]?.displayed)selectedCrewRole=0;
+    renderStandbySpecialists(a,crew);
+    a.forEach((agent,i)=>{agent.protection=window.BacCrewCatalog[i].protection||'standard';});
     if(planning){const role=planning.payload.collaboration.activeRole??0;phase=role;a[role].lane=1;a[role].status=planning.status==='stopping'?'Stopping':'Collaborating';a[role].task=planning.events?.at(-1)?.title||'Working with the BaC team';flow=[a[role].name+' · '+a[role].status,a[role].task,'Open mission'];}
+    const planRoundtable=collaboration?.payload.collaboration.tasks&&collaboration.payload.collaboration.outcome!=='unavailable'?collaboration.payload.roundtable:null;
+    if(planRoundtable?.status==='reviewing'&&['running','stopping'].includes(collaboration.status))flow=['Your agents’ take','The result is ready. Your agents are sharing their personal reactions.','Open mission'];
     const b=crew?.payload.brief;
-    window.BacCampus?.setLive({...s,live:true,crewMission:planning?{id:planning.id,status:planning.status,activeStages:[planning.payload.collaboration.activeRole??0],count:4,enabledRoles:[0,...(planning.payload.collaboration.tasks||[]).map(t=>t.role)],completed:Object.keys(planning.payload.collaboration.outputs||{}).map(Number)}:crew?{id:crew.id,status:crew.status,failed:Object.keys(crew.payload.stageErrors||{}).length>0,activeStages:['running','stopping'].includes(crew.status)?(crew.payload.activeStages||[crew.payload.stage]):[],count:crew.payload.roster?.length||5,enabledRoles:crew.payload.enabledRoles||roles.map((_,i)=>i),roundtable:crew.payload.roundtable,completed:Object.keys(crew.payload.outputs||{}).map(Number)}:null,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected:room==='mission'?selectedCrewRole:selected,flow,gap:active?.status==='waiting',brief:b?{...b,location:b.city}:null,calc:crew?.payload.capacity||null,policy:null});
-    document.getElementById('campus-motion-status').textContent=active?flow[0]:'Meet your specialists · give the lead an event brief';
+    window.BacCampus?.setLive({...s,live:true,crewMission:collaboration?{id:collaboration.id,kind:'plan',status:collaboration.status,roundtable:planRoundtable,activeStages:planning?[planning.payload.collaboration.activeRole??0]:[],count:roles.length,enabledRoles:[0,...(collaboration.payload.collaboration.calledRoles||(collaboration.payload.collaboration.tasks||[]).map(t=>t.role))],completed:Object.keys(collaboration.payload.collaboration.outputs||{}).map(Number)}:crew?{id:crew.id,status:crew.status,failed:Object.keys(crew.payload.stageErrors||{}).length>0,activeStages:['running','stopping'].includes(crew.status)?(crew.payload.activeStages||[crew.payload.stage]):[],count:crew.payload.roster?.length||5,enabledRoles:crew.payload.enabledRoles||roles.map((_,i)=>i),roundtable:crew.payload.roundtable,completed:Object.keys(crew.payload.outputs||{}).map(Number)}:null,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected:room==='mission'?selectedCrewRole:selected,flow,gap:active?.status==='waiting',brief:b?{...b,location:b.city}:null,calc:crew?.payload.capacity||null,policy:null});
+    document.getElementById('campus-motion-status').textContent=planning||active?flow[0]:'Meet your specialists · use /plan to assemble a team';
     renderCrewPassport();
   }
   // Each specialist has a durable direct conversation, separate from crew execution.
@@ -80387,21 +80483,81 @@ function webpageButtons(files,jobId){
  return pages.length?'<div class="chat-webpages">'+pages.map((path,index)=>'<button type="button" class="studio-secondary" data-preview-file="'+escape(path)+'" data-preview-job="'+escape(jobId)+'">Preview webpage'+(pages.length>1?' '+(index+1):'')+' <span aria-hidden="true">↗</span></button>').join('')+'</div>':'';
 }
 root.addEventListener('click',event=>{const page=event.target.closest('[data-preview-file]');if(page)openFile(page.dataset.previewFile,page.dataset.previewJob);});
+// Conversation history survives reloads; stage substitutions belong to this visit.
+// Only a newly submitted /plan may replace the original team at their desks.
+const stagedCollaborationIds=new Set();
+function stageCollaboration(job){
+ stagedCollaborationIds.add(job.id);
+ render();
+ showCollaboration();
+}
+// Keep this visit's chosen team visible until a newer event mission/reset.
+function currentCollaboration(){
+ const latest=(data.crewChats||[]).filter(j=>stagedCollaborationIds.has(j.id)&&j.payload.collaboration&&j.created>=(data.crewChatReset?.at||0)).sort((a,b)=>b.created-a.created)[0];
+ const event=crewMission();
+ return latest&&(!event||latest.created>=event.created)?latest:null;
+}
+// Mission Control can inspect saved plans without replaying their stage animation.
+function missionControlPlan(){
+ const latest=(data.crewChats||[]).filter(j=>j.payload.collaboration&&j.created>=(data.crewChatReset?.at||0)).sort((a,b)=>b.created-a.created)[0];
+ const event=crewMission();
+ return latest&&(!event||latest.created>=event.created)?latest:null;
+}
+function renderStandbySpecialists(agents,crew){
+ const occupied=new Set(agents.flatMap((agent,i)=>agent.displayed?[i]:[]));
+ if(!currentCollaboration()&&crew&&['queued','running','waiting','stopping'].includes(crew.status))
+  (crew.payload.enabledRoles||[]).forEach(role=>occupied.add(role));
+ const available=window.BacCrewCatalog.map((member,role)=>({...member,roleIndex:role}))
+  .filter(member=>member.roleIndex>0&&member.planEligible!==false&&!occupied.has(member.roleIndex));
+ el('standby-count').textContent=String(available.length);
+ const markup=available.map(member=>'<li data-standby-role="'+member.roleIndex+'"><strong>'+escape(member.name)+'</strong><span>'+escape(member.collaboration.title)+'</span></li>').join('')||'<li class="studio-muted">All specialists are with the team.</li>';
+ if(el('standby-list').innerHTML!==markup)el('standby-list').innerHTML=markup;
+}
+function eventExpectationMarkup(job,role){
+ const p=job?.payload,h=p?.handoffs?.[role],name=p?.roster?.[role]?.name||defaultNames[role];
+ const assignment=p?.assignments?.find(a=>a.name===name)?.task;
+ if(!h?.task&&!assignment)return '';
+ return '<div class="mission-expectation"><small>Expected contribution</small><div>'+messageMarkup(assignment||h.task)+'</div>'+(assignment&&h?.task?'<details><summary>Full assignment</summary><div>'+messageMarkup(h.task)+'</div></details>':'')+'</div>';
+}
+function renderMissionControl(){
+ const job=missionControlPlan(),intro=el('board').querySelector('.studio-board-intro');
+ el('lanes').classList.toggle('studio-plan-control',!!job);
+ el('board').classList.toggle('has-plan',!!job);
+ intro.querySelector('h3').textContent=job?'Casey’s plan & expectations':'Different roles. Shared evidence.';
+ intro.querySelector('p').textContent=job?job.payload.collaboration.task:'Each specialist receives the brief and previous deliverables. Recorded assignments appear with each stage.';
+ el('board-shared').textContent=job?'View team conversation':'Inspect shared state & handoffs';
+ if(!job)return;
+ const plan=job.payload.collaboration,active=['queued','running','waiting','stopping'].includes(job.status),tasks=plan.tasks||[];
+ const captainState=plan.responseReady?(plan.outcome==='unavailable'?'Capability unavailable':'Response ready'):active?(plan.activeRole===0?'Reviewing':'Coordinating'):job.status==='done'?(plan.outcome==='unavailable'?'Capability unavailable':'Response ready'):job.status==='cancelled'?'Stopped':'Needs attention';
+ const captain='<article class="mission-plan-step" data-plan-role="0"><header><small>CAPTAIN</small><h4>Casey</h4><span>'+escape(captainState)+'</span></header><div class="mission-plan-content"><strong>Approach</strong><div>'+messageMarkup(plan.summary||'Casey is deciding which expertise this request needs.')+'</div>'+collaborationDecisionMarkup({...plan,checks:(plan.checks||[]).filter(check=>check.done)})+'</div></article>';
+ const steps=tasks.map((task,index)=>{
+  const role=task.role,h=plan.handoffs?.[role],output=plan.outputs?.[role],skipped=plan.skippedRoles?.includes(role),working=active&&plan.activeRole===role;
+  const status=skipped?'Not called':output?'Delivered':working?(job.status==='stopping'?'Stopping':'Working'):h?(active?'Started':'Incomplete'):active?'Planned':'Not called';
+  const checks=(plan.checks||[]).filter(check=>check.afterRole===role);
+  return '<article class="mission-plan-step" data-plan-role="'+role+'" data-step-state="'+(skipped?'skipped':output?'done':working?'working':'planned')+'"><header><small>STEP '+(index+1)+'</small><h4>'+escape(defaultNames[role])+'</h4><div>'+escape(window.BacCrewCatalog[role].collaboration.title)+'</div><span>'+escape(status)+'</span></header><div class="mission-plan-content"><strong>Casey’s assignment</strong><div>'+messageMarkup(h?.task||task.task)+'</div>'+((h?.expected||task.expected)?'<div class="mission-expectation"><small>Expected result</small><div>'+messageMarkup(h?.expected||task.expected)+'</div></div>':'')+(h?'<small class="mission-plan-inputs">Received: '+escape(['Casey’s brief',...(h.receivedFrom||[]).map(i=>defaultNames[Number(i)]+"’s contribution")].join(' · '))+'</small>':'')+checks.map(check=>'<div class="mission-expectation"><small>Casey’s review</small><div>'+messageMarkup(check.reason)+'</div></div>').join('')+(skipped?'<small class="mission-plan-inputs">Casey ended the plan before calling this agent.</small>':'')+'</div></article>';
+ }).join('');
+ el('lanes').innerHTML=captain+steps;
+}
 // /plan is a real Captain-led job; contributions come from completed model calls.
+function collaborationDecisionMarkup(plan){
+ const checks=plan.checks||[];
+ if(plan.summary&&Array.isArray(plan.tasks)&&!plan.tasks.length)return '<div class="chat-message chat-handoff" data-plan-decision><small>Casey · '+(plan.outcome==='unavailable'?'Required expertise unavailable - no agents called':'No additional agents needed')+'</small><div class="chat-prose">'+messageMarkup(plan.summary)+'</div></div>';
+ return checks.map(check=>'<div class="chat-message chat-handoff" data-plan-decision><small>Casey · '+(check.done?(check.outcome==='unavailable'?'Required expertise unavailable - no additional agents will be called':'Enough to finish - no additional agents will be called'):'More work needed')+'</small><div class="chat-prose">'+messageMarkup(check.reason)+'</div></div>').join('');
+}
 function collaborationMarkup(job,role){
  const plan=job.payload.collaboration,pending=['queued','running','waiting','stopping'].includes(job.status);
  const held=shieldReplyHeld(job,role),piece=plan.outputs?.[role],captain=role===0;
  const answer=captain?(job.result?.answer||job.result?.error||''):piece?.answer||'';
  const status=job.status==='cancelled'?'Stopped.':job.status==='stopping'?'Stopping after the current call…':job.events?.at(-1)?.title||'Waiting for the Captain…';
- const summary=captain&&plan.summary?'<div class="chat-message chat-handoff"><small>Captain’s plan</small><div class="chat-prose">'+messageMarkup(plan.summary)+'</div><ol>'+plan.tasks.map(t=>'<li><strong>'+escape(defaultNames[t.role])+'</strong>: '+escape(t.task)+'</li>').join('')+'</ol></div>':'';
+ const summary=captain&&plan.summary?'<div class="chat-message chat-handoff"><small>Captain’s plan</small><div class="chat-prose">'+messageMarkup(plan.summary)+'</div><ol>'+plan.tasks.map(t=>'<li><strong>'+escape(defaultNames[t.role])+' · '+escape(window.BacCrewCatalog[t.role].collaboration.title)+'</strong>: '+escape(t.task)+(plan.skippedRoles?.includes(t.role)?' <small>Not called - '+(plan.outcome==='unavailable'?'required expertise unavailable':'no longer needed')+'</small>':'')+'</li>').join('')+'</ol></div>':'';
  const contributions=captain?Object.values(plan.outputs||{}).map(p=>'<details class="crew-tool-activity"><summary>'+escape(p.name)+' · Contribution</summary>'+customSkillMarkup(p.activity)+'<div class="chat-prose">'+messageMarkup(p.answer)+'</div></details>').join(''):'';
  const handoff=!captain&&plan.handoffs?.[role]?'<div class="chat-message chat-handoff"><small>Casey → '+escape(defaultNames[role])+'</small><div class="chat-prose">'+messageMarkup(plan.handoffs[role].task)+'</div><small>Received: '+escape(['Captain’s task',...plan.handoffs[role].receivedFrom.map(i=>defaultNames[Number(i)]+"’s contribution")].join(' · '))+'</small></div>':'';
- return '<article class="chat-turn" data-collaboration-job="'+escape(job.id)+'">'+(captain||plan.origin?.role===role?'<div class="chat-message chat-user"><small>You</small><div>'+escape(job.payload.prompt).replace(/\n/g,'<br>')+imageHistoryMarkup(job.payload.images,job.id)+'</div></div>':'')+(held?shieldReplyWait:summary+handoff+contributions+'<div class="chat-message chat-agent"><small>'+escape(defaultNames[role])+' · '+(captain?'BaC collaboration':'Specialist contribution')+'</small><div class="chat-prose">'+messageMarkup(answer||status)+'</div></div>')+(pending?'<div class="chat-progress" role="status">'+escape(status)+(job.status!=='stopping'?'<button type="button" data-crew-chat-stop="'+escape(job.id)+'">Stop</button>':'')+'</div>':'')+(held?'':webpageButtons(captain?Object.values(plan.webpages||{}).flat():piece?.files,job.id))+(captain?(job.result?.files||[]).filter(path=>!/\.html$/i.test(path)).map(path=>'<button type="button" class="studio-secondary" data-plan-file="'+escape(path)+'" data-plan-job="'+escape(job.id)+'">Open team response</button>').join(''):'')+'</article>';
+ return '<article class="chat-turn" data-collaboration-job="'+escape(job.id)+'">'+(captain||plan.origin?.role===role?'<div class="chat-message chat-user"><small>You</small><div>'+escape(job.payload.prompt).replace(/\n/g,'<br>')+imageHistoryMarkup(job.payload.images,job.id)+'</div></div>':'')+(held?shieldReplyWait:summary+handoff+contributions+(captain?collaborationDecisionMarkup(plan):'')+'<div class="chat-message chat-agent"><small>'+escape(defaultNames[role])+' · '+(captain?'BaC collaboration':'Specialist contribution')+'</small><div class="chat-prose">'+messageMarkup(answer||status)+'</div></div>')+(pending?'<div class="chat-progress" role="status">'+escape(status)+(job.status!=='stopping'?'<button type="button" data-crew-chat-stop="'+escape(job.id)+'">'+(plan.responseReady?'Stop reactions':'Stop')+'</button>':'')+'</div>':'')+(held?'':webpageButtons(captain?Object.values(plan.webpages||{}).flat():piece?.files,job.id))+(captain?(job.result?.files||[]).filter(path=>!/\.html$/i.test(path)).map(path=>'<button type="button" class="studio-secondary" data-plan-file="'+escape(path)+'" data-plan-job="'+escape(job.id)+'">Open team response</button>').join(''):'')+(captain&&!held?roundtableMarkup(job):'')+'</article>';
 }
 function collaborationHistoryMarkup(job){
  const held=shieldReplyHeld(job,0),pending=['queued','running','waiting','stopping'].includes(job.status);
  const answer=job.result?.answer||job.result?.error||(pending?'The BaC team is collaborating…':job.status==='cancelled'?'Stopped.':'No final reply was returned.');
- return '<article class="chat-turn" data-collaboration-history="'+escape(job.id)+'"><div class="chat-message chat-user"><small>You</small><div>'+messageMarkup(job.payload.prompt)+'</div></div><div class="chat-message chat-agent"><small>Casey · BaC collaboration</small>'+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(answer)+'</div>')+(held?'':webpageButtons(job.result?.files||Object.values(job.payload.collaboration.webpages||{}).flat(),job.id))+'<button type="button" class="studio-secondary" data-open-collaboration>View team conversation</button></div></article>';
+ return '<article class="chat-turn" data-collaboration-history="'+escape(job.id)+'"><div class="chat-message chat-user"><small>You</small><div>'+messageMarkup(job.payload.prompt)+'</div></div><div class="chat-message chat-agent"><small>Casey · BaC collaboration</small>'+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(answer)+'</div>')+(held?'':collaborationDecisionMarkup(job.payload.collaboration)+webpageButtons(job.result?.files||Object.values(job.payload.collaboration.webpages||{}).flat(),job.id))+'<button type="button" class="studio-secondary" data-open-collaboration>View team conversation</button></div></article>';
 }
 function showCollaboration(){selectedCrewRole=0;setRoom('mission');root.dataset.crewDetails='true';renderCrewPassport();}
 function syncCrewComposer(){
@@ -80417,12 +80573,12 @@ function renderCrewPassport(){
   for(const key of chatImageDrafts.keys())if(key.includes(':crew:'))chatImageDrafts.delete(key);
  }
  if(room!=='mission')return;
- const i=selectedCrewRole,name=defaultNames[i],role=roles[i][1],crew=crewMission();
+ const i=selectedCrewRole,name=defaultNames[i],role=currentCollaboration()?window.BacCrewCatalog[i].collaboration.title:roles[i][1],crew=crewMission();
  const avatar=window.BacCampus?.inspect().crewAvatars?.[i]||{};
- el('crew-number').textContent=String(i+1).padStart(2,'0')+' / 4';
+ el('crew-number').textContent=String(i+1).padStart(2,'0')+' / '+roles.length;
  el('crew-name').textContent=name;el('crew-role').textContent=role;
  const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';portrait.style.setProperty('--avatar-accent',appearanceColors[avatar.color]||appearanceColors.green);
- const skills=window.BacCrewCatalog[i].skills;
+ const skills=currentCollaboration()?[]:window.BacCrewCatalog[i].skills;
  const skillLabels={...titles,'event-tools':'Event tools','event-scheduling':'Presenter scheduling'};
  el('crew-policy').hidden=window.BacCrewCatalog[i].protection!=='openshell';
  syncPolicyBadges();
@@ -80431,7 +80587,7 @@ function renderCrewPassport(){
  if(switched){if(crewChatKey)crewDrafts.set(crewChatKey,el('crew-prompt').value);crewChatKey=key;el('crew-prompt').value=crewDrafts.get(key)||'';el('crew-chat-error').hidden=true;}
  renderImageDrafts(true);
  el('crew-prompt').placeholder='Message '+name+'… or /plan a task with the BaC team';syncCrewComposer();
- const turns=(data.crewChats||[]).filter(j=>j.payload.crewRole===i||(j.payload.collaboration&&(j.payload.collaboration.origin?.role===i||j.payload.collaboration.handoffs?.[i]||j.payload.collaboration.activeRole===i))).map(j=>({...j,direct:true}));
+ const turns=(data.crewChats||[]).filter(j=>j.payload.crewRole===i||(j.payload.collaboration&&(j.payload.collaboration.origin?.role===i||j.payload.collaboration.handoffs?.[i]||j.payload.collaboration.tasks?.some(t=>t.role===i)||j.payload.collaboration.activeRole===i))).map(j=>({...j,direct:true}));
  for(const j of data.jobs||[])if(j.kind==='crew'&&j.created>=(data.crewChatReset?.at||0)&&(i===0||j.payload.handoffs?.[i]||j.payload.outputs?.[i]))turns.push({...j,direct:false});
  turns.sort((a,b)=>a.created-b.created);
  const signature=JSON.stringify([key,turns.map(j=>[j.id,j.status,j.result,j.payload.collaboration,j.events?.at(-1),shieldReplyHeld(j,i),j.direct?null:[j.payload.outputs?.[i],j.payload.website,i===3?j.payload.socialDraft:null,j.payload.activity?.[i],i===0?j.payload.handoffs:j.payload.handoffs?.[i],i===0?[crewBriefMessage(j),j.payload.roundtable]:null]])]);
@@ -80447,7 +80603,7 @@ function renderCrewPassport(){
  const request=j.direct?(j.payload.prompt||'Describe the attached image.'):i===0?crewBriefMessage(j):'';
  const status={queued:'Waiting to start…',running:'Working on your message…',waiting:'Waiting for a decision.',stopping:'Stopping…',cancelled:'Stopped.',error:'This message could not finish.'}[j.status];
  return '<article class="chat-turn">'+(i!==0?handoffs:'')+(request?'<div class="chat-message chat-user"><small>You</small><div>'+escape(request).replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images,j.id)+'</div></div>':'')+(held?'':social)+'<div class="chat-message chat-agent"><small>'+escape(name)+(j.direct?'':' · Event mission')+'</small>'+(held?shieldReplyWait:customSkillMarkup(j.direct?j.result?.activity:j.payload.activity?.[i])+'<div class="chat-prose">'+messageMarkup(answer||(!j.direct&&pending?(i===0?'Your event brief is with the crew.':(i===3&&j.payload.socialDraft?.status==='ready'?'LinkedIn draft ready. Writing the webpage…':'Working on the assigned task…')):status)||'No text reply was returned.')+'</div>'+crewActivityMarkup(j,i)+webpage+(j.direct?webpageButtons(j.result?.files,j.id):'')+(j.direct&&pending?'<div class="chat-progress"><button type="button" data-crew-chat-stop="'+escape(j.id)+'" '+(j.status==='stopping'?'disabled':'')+'>Stop</button></div>':''))+'</div>'+(i===0?handoffs+roundtableMarkup(j):'')+'</article>';
- }).join(''):'<p class="chat-empty">'+escape(roles[i][2])+'</p>';
+ }).join(''):'<p class="chat-empty">'+escape(currentCollaboration()?window.BacCrewCatalog[i].collaboration.description:roles[i][2])+'</p>';
  loadChatImages(log,agentId);
  if(follow)log.scrollTop=log.scrollHeight;else log.scrollTop=top;
 }
@@ -80456,7 +80612,7 @@ el('crew-chat').onsubmit=async e=>{
  e.preventDefault();syncCrewComposer();if(el('crew-send').disabled)return;
  const owner=agentId,index=selectedCrewRole,key=owner+':'+index,draft=captureChatDraft(true);
  crewChatSending=true;syncCrewComposer();el('crew-chat-error').hidden=true;
- try{const result=await api('jobs',{kind:'crew-chat',crewRole:index,prompt:draft.prompt,images:draft.images},owner);acknowledgeChatDraft(draft);await refresh();if(result.collaboration)showCollaboration();}
+ try{const result=await api('jobs',{kind:'crew-chat',crewRole:index,prompt:draft.prompt,images:draft.images},owner);acknowledgeChatDraft(draft);await refresh();if(result.collaboration)stageCollaboration(result);}
  catch(error){if(crewChatKey===key){el('crew-chat-error').textContent=error.message;el('crew-chat-error').hidden=false;}}
  finally{crewChatSending=false;syncCrewComposer();}
 };
@@ -80464,9 +80620,9 @@ el('crew-prompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey
 el('crew-conversation').onclick=async e=>{const file=e.target.closest('[data-plan-file]');if(file){await openFile(file.dataset.planFile,file.dataset.planJob);return;}const page=e.target.closest('[data-crew-webpage]');if(page){selectedJob=page.dataset.crewWebpage;openSurface('deliverables','webpage');return;}const button=e.target.closest('[data-crew-chat-stop]');if(!button)return;try{await api('decision',{id:button.dataset.crewChatStop,action:'cancel'});await refresh();}catch(error){el('crew-chat-error').textContent=error.message;el('crew-chat-error').hidden=false;}};
 
 function roundtableMarkup(job){
- const meeting=job.payload.roundtable;if(!meeting?.members?.length&&!meeting?.skipped?.length)return '';
- const intro=meeting.status==='invited'?'Your hired agents are joining the table. Their reactions follow the finished package.':'Personal reactions to this event · opinions, not independent tests.';
- return '<section class="crew-roundtable-log"><h4>Your agents’ take</h4><p>'+(meeting.members.length?intro:'No personal agents are joining this event.')+'</p>'+(meeting.skipped||[]).map(m=>'<p class="studio-muted" data-roundtable-skipped="'+escape(m.key)+'">'+escape(m.name)+' · Skipped: '+escape(m.detail)+'</p>').join('')+meeting.members.map(member=>{const reply=meeting.replies?.[member.key]||{},text=reply.answer||reply.error||(meeting.status==='cancelled'?'Roundtable stopped before this reaction.':reply.status==='running'?'Considering the plan…':'Waiting for the results.');return '<article class="chat-message chat-agent" data-roundtable-reply="'+escape(member.key)+'"><small>'+escape(member.name)+' · '+escape(member.tonePrompt||member.tone||'')+'</small>'+customSkillMarkup(reply.activity)+'<div class="chat-prose">'+messageMarkup(text)+'</div>'+(reply.status==='error'&&job.status==='done'?'<button type="button" class="studio-secondary" data-retry-reaction="'+escape(member.key)+'" data-reaction-job="'+escape(job.id)+'">Retry this reaction</button>':'')+'</article>'}).join('')+'</section>';
+ const meeting=job.payload.roundtable,plan=job.payload.collaboration;if((!meeting?.members?.length&&!meeting?.skipped?.length)||(plan&&(!plan.responseReady||plan.outcome==='unavailable')))return '';
+ const intro=plan?'Personal reactions to the result, in each agent’s own voice. Opinions, not independent tests.':meeting.status==='invited'?'Your hired agents are joining the table. Their reactions follow the finished package.':'Personal reactions to this event · opinions, not independent tests.';
+ return '<section class="crew-roundtable-log"><h4>Your agents’ take</h4><p>'+(meeting.members.length?intro:'No personal agents are joining this event.')+'</p>'+(meeting.skipped||[]).map(m=>'<p class="studio-muted" data-roundtable-skipped="'+escape(m.key)+'">'+escape(m.name)+' · Skipped: '+escape(m.detail)+'</p>').join('')+meeting.members.map(member=>{const reply=meeting.replies?.[member.key]||{},text=reply.answer||reply.error||((meeting.status==='cancelled'||job.status==='cancelled')?'Roundtable stopped before this reaction.':reply.status==='running'?'Considering the plan…':'Waiting for the results.');return '<article class="chat-message chat-agent" data-roundtable-reply="'+escape(member.key)+'"><small>'+escape(member.name)+' · '+escape(member.tonePrompt||member.tone||'')+'</small>'+customSkillMarkup(reply.activity)+'<div class="chat-prose">'+messageMarkup(text)+'</div>'+(reply.status==='error'&&job.status==='done'?'<button type="button" class="studio-secondary" data-retry-reaction="'+escape(member.key)+'" data-reaction-job="'+escape(job.id)+'">Retry this reaction</button>':'')+'</article>'}).join('')+'</section>';
 }
 
 root.addEventListener('click',async event=>{
@@ -80486,7 +80642,7 @@ el('crew-conversation').addEventListener('click',event=>{if(event.target.closest
       notice.querySelector('button').onclick=async()=>{const action=notice.querySelector('button');action.disabled=true;try{if(agentId!==target)throw new Error('The selected agent changed. Choose a mission again.');await api('profile',{...data.profile,skills:[...new Set([...data.profile.skills,mission.id])]},target);await refresh();notice.remove();if(agentId===target)button.click();}catch(error){notice.querySelector('p').textContent=error.message;action.disabled=false;}};
       notice.scrollIntoView({block:'nearest'});return;
     }el('mission-skill-notice')?.remove();closeSurface();setRoom('lounge');if(mission.id==='radar'){el('radar-monitor')?.scrollIntoView({block:'nearest'});return;}skill=mission.id;const city=runtime.location?.city||'Zurich';el('prompt').value=['weather','writer'].includes(mission.id)?mission.prompt.replaceAll('Zurich',city):mission.prompt;el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===button));if(mission.id==='documents'&&!data.files.some(f=>f.kind==='inbox')){sampleDocument();}el('prompt').focus({preventScroll:true});};
-  el('chat').onsubmit=async e=>{e.preventDefault();if(!runtime.ready||data.deleting||chatSending||comparisonSending||documentUploadTarget===agentId){syncComposer();return;}el('chat-error').hidden=true;if(e.submitter?.id==='studio-send-all')return askAllAgents();const draft=captureChatDraft();chatSending=true;syncComposer();try{const result=await api('jobs',{kind:'chat',prompt:draft.prompt,skill,images:draft.images});selectedJob=result.id;acknowledgeChatDraft(draft);await refresh();if(result.collaboration)showCollaboration();el('conversation').scrollTop=el('conversation').scrollHeight;}catch(error){el('chat-error').textContent=error.message;el('chat-error').hidden=false;}finally{chatSending=false;syncComposer();}};
+  el('chat').onsubmit=async e=>{e.preventDefault();if(!runtime.ready||data.deleting||chatSending||comparisonSending||documentUploadTarget===agentId){syncComposer();return;}el('chat-error').hidden=true;if(e.submitter?.id==='studio-send-all')return askAllAgents();const draft=captureChatDraft();chatSending=true;syncComposer();try{const result=await api('jobs',{kind:'chat',prompt:draft.prompt,skill,images:draft.images});selectedJob=result.id;acknowledgeChatDraft(draft);await refresh();if(result.collaboration)stageCollaboration(result);el('conversation').scrollTop=el('conversation').scrollHeight;}catch(error){el('chat-error').textContent=error.message;el('chat-error').hidden=false;}finally{chatSending=false;syncComposer();}};
   el('prompt').addEventListener('input',()=>{skill=null;});
   function sampleDocument(){dialog('Upload notes','<h3>Give your agent something to read.</h3><p>Use your own PDF, PPTX, XLSX, CSV, Markdown or text file, or try a clearly labeled sample meeting note.</p><div class="studio-dialog-actions"><button class="studio-secondary" id="studio-own-document">Upload my file</button><button class="studio-primary" id="studio-sample-document">Use sample notes</button></div>');el('own-document').onclick=()=>{el('dialog').close();el('upload').click();};el('sample-document').onclick=async()=>{try{await api('upload',{name:'sample-meeting-notes.md',content:'# Sample meeting notes — fictional demo data\n\nWe agreed to keep the agent demo to 10 minutes.\nDylan will check the weather-demo endpoint by Thursday.\nMorgan will draft a short invitation; no deadline was agreed.\nWe still need someone to confirm the venue.\nDo not send invitations until the venue is confirmed.\n'});el('dialog').close();await refresh();}catch(e){alert(e.message);}};}
   el('attach').onclick=()=>el('upload').click();
@@ -81134,6 +81290,9 @@ el('crew-passport').prepend(crewActions);crewActions.append(el('room-action'));
 el('crew-passport').append(document.getElementById('campus-roster'));
 const controlButton=document.createElement('button');controlButton.type='button';controlButton.className='studio-secondary';controlButton.dataset.surface='control';controlButton.textContent='Mission Control';crewActions.append(controlButton);
 const resultsButton=document.createElement('button');resultsButton.type='button';resultsButton.className='studio-primary';resultsButton.dataset.surface='deliverables';resultsButton.textContent='Results';resultsButton.hidden=true;crewActions.append(resultsButton);
+const standbyPanel=document.createElement('details');standbyPanel.id='studio-standby';
+standbyPanel.innerHTML='<summary>Standby specialists <span id="studio-standby-count"></span></summary><div class="studio-standby-content"><p>Casey can call these specialists when your /plan task needs them.</p><ul id="studio-standby-list"></ul></div>';
+crewActions.after(standbyPanel);
 function syncSurface(){
   resultsButton.hidden=!crewMission();
   el('compare-open').hidden=!comparison;
@@ -81413,7 +81572,7 @@ const appearanceNames={classic:'Jinny',round:'Orbit',rover:'Scout',operative:'Sm
 const roomCopy={
   workshop:'Hiring',
   lounge:'Agent lounge',
-  mission:'Multi-Agent demo (BaC Planning)'
+  mission:'Multi-Agent demo'
 };
 function avatarBadge(avatar={}){return `<span class="studio-avatar tiny" aria-hidden="true" data-body="${escape(avatar.body||'classic')}" data-accessory="${escape(avatar.accessory||'antenna')}" style="--avatar-accent:${appearanceColors[avatar.color]||appearanceColors.green}"><i></i><i></i></span>`;}
 // Presets and custom text edit the same two fields; no hidden tone overrides.
@@ -81488,7 +81647,7 @@ function renderRoomVisibility(){
   el('experiences').hidden=!lounge;el('workspace').hidden=workshop||(mission?!crewMission():(!current()&&!data.files?.length));el('safety-bar').hidden=true;
   const action=el('room-action');action.hidden=!mission;action.textContent='Plan a BaC';
   document.getElementById('campus-roster').hidden=!mission;
-  document.getElementById('campus-location').textContent=workshop?'HIRING / MEET YOUR NEXT AGENT':lounge?'LOUNGE / Current Agents: '+(data.agents?.length||0):'Multi-Agent demo (BaC Planning)';
+  document.getElementById('campus-location').textContent=workshop?'HIRING / MEET YOUR NEXT AGENT':lounge?'LOUNGE / Current Agents: '+(data.agents?.length||0):'Multi-Agent demo';
   syncSurface();
   if(workshop)document.getElementById('campus-motion-status').textContent='';
   if(lounge)document.getElementById('campus-motion-status').textContent='';
@@ -81726,7 +81885,7 @@ el('dialog').addEventListener('close',()=>{if(!el('dialog').open)identityRequest
     return `<div class="studio-security-label ${complete?'captured':''}">${complete?'HOST CAPTURE · THREE CHECKS PASSED':report.status==='running'?'HOST CAPTURE IN PROGRESS':'NO COMPLETE HOST PROOF'}${report.finished?' · '+escape(new Date(report.finished*1000).toLocaleString()):''}</div><p>${complete?'Observed: denied request → operator policy change → allowed GET → another destination still denied.':'No successful enforcement claim is available. Run the operator test on the host, then refresh this panel.'}</p><div class="studio-proof-steps">${[['blocked','01 · Block before permission'],['allowed','02 · Permit a public read'],['still-blocked','03 · Keep other destinations blocked']].map(([id,title])=>{const s=report.steps?.find(x=>x.id===id);return `<article data-passed="${!!s?.passed}"><strong>${title}</strong><b>${s?.passed?(s.outcome==='allow'?'ALLOWED':'DENIED'):'NOT VERIFIED'}</b><small>${escape(s?.host||'Awaiting host capture')}</small>${s?`<details><summary>Inspect request + log match</summary><pre>${escape(JSON.stringify(s,null,2))}</pre></details>`:''}</article>`;}).join('')}</div>${report.error?'<p class="studio-proof-error">'+escape(report.error)+'</p>':''}<p>${report.sandbox?'Sandbox: <code>'+escape(report.sandbox)+'</code>. ':''}${report.version?'CLI: '+escape(report.version)+'. ':''}${report.finished?(report.cleanedUp?'Temporary sandbox removed.':'Cleanup needs operator attention.') :''}</p><p>Host captures record past observations from a separate proof sandbox. They do not indicate current protection for participant agent traffic. Only a matching policy log plus the expected request result counts; a timeout alone never counts as a denial.</p><pre># Operator runs on the host, with OpenShell gateway ready:\n./bac dev openshell prove\n\n# Separately inspect the actual OpenClaw sandbox:\n./bac dev openshell check</pre><button class="studio-secondary" id="studio-security-refresh">Refresh host evidence ↻</button>`;
   }
   el('security').onclick=()=>securityLab();el('help').onclick=recovery;
-  el('board-shared').onclick=()=>{const crew=data.jobs.find(j=>j.kind==='crew');if(!crew){alert('Launch a crew mission to inspect its actual shared inputs and handoffs.');return;}selectedJob=crew.id;render();sharedState();};
+  el('board-shared').onclick=()=>{if(missionControlPlan()){closeSurface();showCollaboration();return;}const crew=data.jobs.find(j=>j.kind==='crew');if(!crew){alert('Launch a crew mission to inspect its actual shared inputs and handoffs.');return;}selectedJob=crew.id;render();sharedState();};
   el('reset').onclick=()=>{dialog('RESET THIS AGENT’S MISSION BOARD',`<h3>A fresh board. The same agent.</h3><p>This cancels queued or waiting missions, including scheduled follow-ups, then archives the selected agent’s mission history. Its memory and saved files remain. Your other agents and other participants are unaffected.</p><p>Reset is unavailable while this app is waiting for an active call. It archives the app board; it does not terminate gateway execution after a lost connection. This does not erase personal data or prepare a shared browser for a different attendee; use a new browser profile for the next person.</p><div class="studio-dialog-actions"><button class="studio-primary" id="studio-confirm-reset">Reset my mission board</button></div>`);el('confirm-reset').onclick=async()=>{el('confirm-reset').disabled=true;try{await api('reset',{});selectedJob=null;el('dialog').close();await refresh();alert('Mission board reset. Your agent, memory and files are preserved.');}catch(error){alert(error.message);el('confirm-reset').disabled=false;}};};
   root.addEventListener('click',e=>{const b=e.target.closest('[data-safety]');if(!b)return;({shared:sharedState,evidence:downloadEvidence,recovery,reset:()=>el('reset').click()})[b.dataset.safety]?.();});
 

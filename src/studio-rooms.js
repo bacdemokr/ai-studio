@@ -5,7 +5,7 @@ const appearanceNames={classic:'Jinny',round:'Orbit',rover:'Scout',operative:'Sm
 const roomCopy={
   workshop:'Hiring',
   lounge:'Agent lounge',
-  mission:'Multi-Agent demo (BaC Planning)'
+  mission:'Multi-Agent demo'
 };
 function avatarBadge(avatar={}){return `<span class="studio-avatar tiny" aria-hidden="true" data-body="${escape(avatar.body||'classic')}" data-accessory="${escape(avatar.accessory||'antenna')}" style="--avatar-accent:${appearanceColors[avatar.color]||appearanceColors.green}"><i></i><i></i></span>`;}
 // Presets and custom text edit the same two fields; no hidden tone overrides.
@@ -80,7 +80,7 @@ function renderRoomVisibility(){
   el('experiences').hidden=!lounge;el('workspace').hidden=workshop||(mission?!crewMission():(!current()&&!data.files?.length));el('safety-bar').hidden=true;
   const action=el('room-action');action.hidden=!mission;action.textContent='Plan a BaC';
   document.getElementById('campus-roster').hidden=!mission;
-  document.getElementById('campus-location').textContent=workshop?'HIRING / MEET YOUR NEXT AGENT':lounge?'LOUNGE / Current Agents: '+(data.agents?.length||0):'Multi-Agent demo (BaC Planning)';
+  document.getElementById('campus-location').textContent=workshop?'HIRING / MEET YOUR NEXT AGENT':lounge?'LOUNGE / Current Agents: '+(data.agents?.length||0):'Multi-Agent demo';
   syncSurface();
   if(workshop)document.getElementById('campus-motion-status').textContent='';
   if(lounge)document.getElementById('campus-motion-status').textContent='';

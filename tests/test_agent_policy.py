@@ -71,7 +71,7 @@ class PolicyTests(unittest.TestCase):
         self.studio.execute(self.studio.next_job())
         result = self.run_job({'kind': 'crew', 'preset': True, 'brief': {}})
         self.assertEqual(result['status'], 'done')
-        self.assertEqual([m['name'] for m in result['payload']['roster']], [role['name'] for role in json.loads((Path(__file__).resolve().parents[1]/'src/crew-catalog.json').read_text())])
+        self.assertEqual([m['name'] for m in result['payload']['roster']], [role['name'] for role in json.loads((Path(__file__).resolve().parents[1]/'src/crew-catalog.json').read_text()) if not role.get('planOnly')])
         self.assertTrue(all(m['protection'] == ('openshell' if i == 1 else 'standard') and m['key'] is None for i,m in enumerate(result['payload']['roster'])))
         self.assertFalse(any(call[0] == 'bac-' + self.owner for call in self.adapter.calls))
         self.assertEqual(self.studio.policy_report(self.owner)['requested'], [])

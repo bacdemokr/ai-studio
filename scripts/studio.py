@@ -31,12 +31,13 @@ import event_planner
 
 CREW_CATALOG = json.loads((Path(__file__).resolve().parents[1] / 'src/crew-catalog.json').read_text())
 ROLES = [(member['name'], member['role'], member['persona']) for member in CREW_CATALOG]
+EVENT_ROLE_COUNT = sum(not member.get('planOnly', False) for member in CREW_CATALOG)
 ACTIVE = ('queued', 'running', 'waiting', 'stopping')
 ROLE_SKILLS = [list(member['skills']) for member in CREW_CATALOG]
 MAX_AGENTS = 12
 ROLE_AVATARS = [dict(body=b, color=c, accessory=a) for b, c, a in (
     ('classic', 'green', 'antenna'), ('round', 'cyan', 'headset'), ('rover', 'amber', 'cap'),
-    ('round', 'coral', 'antenna'), ('classic', 'violet', 'glasses'), ('claw', 'ice', 'headset'))]
+    ('round', 'coral', 'antenna'), ('classic', 'violet', 'glasses'), ('claw', 'ice', 'headset'), ('classic', 'cyan', 'glasses'), ('round', 'violet', 'cap'), ('rover', 'cyan', 'glasses'))]
 AVATAR_OPTIONS = {'body': ('classic', 'round', 'rover', 'cat', 'operative', 'claw', 'crab'),
                   'color': ('green', 'cyan', 'amber', 'coral', 'violet', 'ice'),
                   'accessory': ('none', 'antenna', 'headset', 'glasses', 'cap')}
@@ -51,15 +52,15 @@ def personal_agent_activity(jobs, owner):
     for job in jobs:
         payload, kind = job['payload'], job['kind']
         # Background readiness keeps its reservation but is not personal work.
-        if kind in ('crew-chat', 'prepare', 'prepare-agent'):
+        if kind in ('prepare', 'prepare-agent') or (kind == 'crew-chat' and not payload.get('roundtable')):
             continue
         roster_member = any(m.get('key') == owner for m in payload.get('roster', []))
         guest = any(m.get('key') == owner for m in payload.get('roundtable', {}).get('members', []))
-        if kind == 'crew' and not roster_member:
+        if kind in ('crew','crew-chat') and not roster_member:
             reply = payload.get('roundtable', {}).get('replies', {}).get(owner, {})
             if not guest or reply.get('status') in ('done', 'error', 'cancelled'):
                 continue
-            category, label = 'roundtable', 'Sharing opinion' if reply.get('status') == 'running' else 'Waiting for event results'
+            category, label = 'roundtable', 'Sharing opinion' if reply.get('status') == 'running' else 'Waiting for task results' if payload.get('collaboration') else 'Waiting for event results'
         elif job['owner'] == owner or roster_member:
             category = 'mission'
             label = {'queued':'Request queued', 'running':'Working on your request',
@@ -104,7 +105,7 @@ def safe_file(directory, relative, exists=False):
     if not isinstance(relative, str) or not re.fullmatch(r'[\w. ()/-]{1,160}', relative):
         raise Problem('Invalid file name.')
     path = Path(relative)
-    if path.is_absolute() or '..' in path.parts or path.suffix.lower() not in ('.md', '.txt', '.csv', '.html', '.json', '.xlsx', '.eml', '.pdf', '.pptx', '.png', '.jpg', '.webp'):
+    if path.is_absolute() or '..' in path.parts or path.suffix.lower() not in ('.md', '.txt', '.csv', '.html', '.json', '.xlsx', '.eml', '.pdf', '.pptx', '.png', '.jpg', '.webp', '.py', '.js', '.css'):
         raise Problem('Use a supported document, spreadsheet or email draft in this workspace.')
     result = directory / path
     if directory.resolve() not in result.resolve().parents:
@@ -378,7 +379,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
     def require_idle(self, db, owner):
         if owner in self.executing_owners or db.execute("SELECT 1 FROM jobs WHERE owner=? AND status IN ('queued','running','waiting','stopping') AND NOT (kind='prepare-agent' AND status='queued')", (owner,)).fetchone():
             raise Problem('Finish or cancel this agent’s pending missions before changing it.', 409)
-        crews = db.execute("SELECT payload FROM jobs WHERE kind IN ('crew','prepare') AND status IN ('queued','running','waiting','stopping') AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?))", (owner,)).fetchall()
+        crews = db.execute("SELECT payload FROM jobs WHERE kind IN ('crew','crew-chat','prepare') AND status IN ('queued','running','waiting','stopping') AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?))", (owner,)).fetchall()
         if any(any(m.get('key') == owner for m in job_participants(json.loads(j['payload']))) for j in crews):
             raise Problem('This agent is assigned to a pending crew mission. Finish or cancel it first.', 409)
 
@@ -426,7 +427,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
             number += 1
 
     def initialize_crew_workspaces(self, owner):
-        for role, member in enumerate(CREW_CATALOG[:4]):
+        for role, member in enumerate(CREW_CATALOG):
             profile = {**member, 'skills':list(ROLE_SKILLS[role]), 'protection':member.get('protection','standard')}
             runtime.write_workspace(self.workspace(owner, role), profile, member['role'], overwrite=False)
 
@@ -728,7 +729,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
             collection = db.execute('SELECT id,profile,deleting FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?) AND profile IS NOT NULL ORDER BY created,id', (owner,)).fetchall()
             active = [dict(j, payload=json.loads(j['payload'])) for j in db.execute("SELECT id,owner,status,payload,kind,due FROM jobs WHERE status IN ('queued','running','waiting','stopping') AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) ORDER BY created", (owner,))]
             agents = [{'key': r['id'], **json.loads(r['profile']), 'deleting': bool(r['deleting']), 'deletionWaiting': r['deleting'] == 2,
-                       'pending': sum((j['owner'] == r['id'] and j['kind'] not in ('crew','prepare','prepare-agent')) or any(m.get('key') == r['id'] for m in job_participants(j['payload'])) for j in active if j['kind'] != 'crew-chat'),
+                       'pending': sum((j['owner'] == r['id'] and j['kind'] not in ('crew','prepare','prepare-agent')) or any(m.get('key') == r['id'] for m in job_participants(j['payload'])) for j in active if j['kind'] != 'crew-chat' or j['payload'].get('roundtable')),
                        'activity': personal_agent_activity(active, r['id'])} for r in collection]
             for agent in agents:
                 deletion = db.execute('SELECT progress FROM agent_deletions WHERE owner=?', (agent['key'],)).fetchone()
@@ -746,7 +747,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
             roundtable_turns = self.roundtable_history(db, owner)
             names = {a['key']: a['name'] for a in agents}
             assignments = [{'job': j['id'], 'lead': j['owner'], 'name': names.get(j['owner'], 'BaC Captain'), 'role': m['role'], 'status': j['status']}
-                           for j in active if j['kind'] == 'crew' and j['owner'] != owner for m in job_participants(j['payload']) if m.get('key') == owner
+                           for j in active if j['kind'] in ('crew','crew-chat') and j['owner'] != owner for m in job_participants(j['payload']) if m.get('key') == owner
                            and (m in j['payload'].get('roster', []) or j['payload'].get('roundtable', {}).get('replies', {}).get(owner, {}).get('status') not in ('done','error','cancelled'))]
         memory = self.workspace(owner) / 'MEMORY.md'
         memory_text = ''
@@ -764,7 +765,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
 
     def crew_roster(self, db, owner, members, preset=False, lead=None):
         """Freeze names/skills and assignments; no extra permissions for a crew role."""
-        if not isinstance(members, dict) or any(k not in {str(i) for i in range(1, len(ROLES))} for k in members):
+        if not isinstance(members, dict) or any(k not in {str(i) for i in range(1, EVENT_ROLE_COUNT)} for k in members):
             raise Problem('Assign personal agents to the specialist roles.')
         account = db.execute('SELECT participant FROM agents WHERE id=?', (owner,)).fetchone()['participant']
         roster, used = [], {owner}
@@ -885,7 +886,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
                 selected = data['enabledRoles']
                 if (brief.get('schema') != 2 or not preset or data.get('members')
                         or not isinstance(selected, list) or not selected
-                        or any(type(i) is not int or i < 0 or i >= len(ROLES) for i in selected)
+                        or any(type(i) is not int or i < 0 or (i >= len(ROLES) or CREW_CATALOG[i].get('planOnly')) for i in selected)
                         or len(set(selected)) != len(selected)):
                     raise Problem('Select at least one member of the preset BaC crew.')
                 payload['enabledRoles'] = sorted(selected)
@@ -924,6 +925,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
                 if origin['role'] is None:
                     self.require_available(db, origin['owner'])
                 self.require_event_crew_idle(db, owner)
+                payload['roundtable'] = self.capture_roundtable(db, owner)
             # An immediate personal request can do the same preparation itself.
             if kind == 'chat':
                 db.execute("UPDATE jobs SET status='cancelled',updated=? WHERE owner=? AND kind='prepare-agent' AND status='queued'", (time.time(), owner))
@@ -933,7 +935,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
             if pending >= 3:
                 raise Problem('Your collection has three pending missions. Finish or cancel one before adding another.', 429)
             if kind == 'crew':
-                payload['roster'] = self.crew_roster(db, owner, data.get('members', {}), preset, lead)
+                payload['roster'] = self.crew_roster(db, owner, data.get('members', {}), preset, lead)[:EVENT_ROLE_COUNT]
                 if payload.get('workflow') == 'showcase':
                     self.require_event_crew_idle(db, owner)
                     prepared = self.prepared_event(db, owner, data['preparationId'], payload['enabledRoles']) if data.get('preparationId') else None
@@ -1174,6 +1176,12 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
             self.check_protected_run(owner, profile)
             self.event(job_id, 'Agent workspace ready', 'Prepared without a model request or additional access.', status='done')
             return
+        if row['kind'] in ('crew','crew-chat') and payload.get('reactionRetry'):
+            self.run_roundtable(row, payload)
+            payload.pop('reactionRetry', None)
+            if not self.stop_checkpoint(job_id):
+                self.event(job_id, 'Reaction retry finished', 'The completed results and other reactions were preserved.', status='done', payload=json.dumps(payload))
+            return
         if row['kind'] == 'crew-chat' and payload.get('collaboration'):
             return self.collaboration_plan(row, payload)
         if row['kind'] == 'crew-chat':
@@ -1181,12 +1189,6 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
         if row['kind'] == 'prepare':
             return self.prepare_demo_run(row, payload)
         if row['kind'] == 'crew':
-            if payload.get('reactionRetry'):
-                self.run_roundtable(row, payload)
-                payload.pop('reactionRetry', None)
-                if not self.stop_checkpoint(job_id):
-                    self.event(job_id, 'Reaction retry finished', 'The event results and other reactions were preserved.', status='done', payload=json.dumps(payload))
-                return
             return self.crew(row, profile, payload)
         if profile.get('protection') == 'openshell':
             self.event(job_id, 'Preparing OpenShell', 'Checking the protected runtime and agent sandbox configuration.')
@@ -1237,7 +1239,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
             member = self.crew_roster(db, owner, {}, preset=True)[role]
             reset = self.crew_chat_reset_state(db, owner)
             current_event = db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind='crew' AND created>=?", (owner, reset['at'])).fetchone()
-        member['purpose'] = CREW_CATALOG[role]['description']
+        member['purpose'] = CREW_CATALOG[role]['collaboration']['description']
         agent_id = member['id']
         report = self.prepare_builtin_crew(owner, role, member)
         if report:
@@ -1246,7 +1248,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
         self.event(job_id, member['name'] + ' is working', member['role'], role)
         if self.stop_checkpoint(job_id):
             return
-        prompt = ('You are ' + member['name'] + ', the ' + member['role'] + '. '
+        prompt = ('You are ' + member['name'] + ', the ' + CREW_CATALOG[role]['collaboration']['title'] + '. '
                   + member['purpose'] + '\nAnswer this direct message using your equipped skills. '
                   + ('The inbox may contain the latest event brief and handoffs; use them when relevant. ' if current_event else 'No event has been submitted in this conversation yet. Do not load earlier event briefs, handoffs or conversation transcripts. ') +
                   'This is a conversation, not a new crew mission. Do not claim other agents ran, '
@@ -1413,6 +1415,8 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
                 self.event(job_id,'Morgan’s LinkedIn draft is ready','Draft available in Morgan chat. Writing the webpage next.',stage,payload=json.dumps(payload))
                 if self.stop_checkpoint(job_id):raise RuntimeError('Webpage work stopped; LinkedIn draft is saved.')
                 prompt += '\nThe LinkedIn draft is already saved and shown in chat. Preserve the post file unchanged. Work only on the HTML now. Do not rewrite the post or repeat it in your final response.'
+            if member and not assigned:
+                prompt = runtime.crew_event_instructions(CREW_CATALOG[stage]) + '\n\nCurrent event assignment:\n' + prompt
             repair_limit = morgan_page.MAX_REPAIRS if stage == 3 and morgan_page.enabled(payload) else 1
             original_session = session
             for attempt in range(repair_limit + 1):

@@ -75,7 +75,8 @@ class CrewSelectionTests(unittest.TestCase):
     def test_defaults_remain_all_six(self):
         self.studio.enqueue(self.owner, {'kind':'crew','preset':True,'brief':{'schema':2}})
         self.studio.execute(self.studio.next_job())
-        self.assertEqual(set(self.adapter.stages), set(range(len(ROLES))))
+        self.assertEqual(set(self.adapter.stages), set(range(6)))
+        self.assertEqual(len(self.studio.state(self.owner)['jobs'][0]['payload']['roster']),6)
 
 if __name__ == '__main__':
     unittest.main()

@@ -10,13 +10,17 @@ class PlanAdapter(Adapter):
     def __init__(self):
         super().__init__()
         self.plan = {'summary': 'Research, check operations, then write the proposal.', 'tasks': [
-            {'role': 1, 'task': 'Research current NVIDIA themes.'},
+            {'role': 8, 'task': 'Research current NVIDIA themes.'},
             {'role': 2, 'task': 'Check a practical sequence and constraints.'},
             {'role': 3, 'task': 'Write the proposal using both contributions.'}]}
+        self.reaction_calls = []
         self.after_call = None
         self.fail_role = None
 
     def respond(self, agent, session, prompt, **kwargs):
+        if session.startswith('bac-roundtable-'):
+            self.reaction_calls.append((agent, session, prompt))
+            return self.profiles[agent]['name'] + ': That result sparks a personal thought.'
         self.calls.append((agent, session, prompt))
         role = int(agent.rsplit('-r', 1)[1]) if '-r' in agent else None
         if self.after_call:
@@ -25,8 +29,10 @@ class PlanAdapter(Adapter):
             raise RuntimeError('Fixture policy denial')
         if session.endswith('-planning'):
             return json.dumps(self.plan)
+        if '-checking-' in session:
+            return json.dumps({'done':False,'reason':'The remaining assigned work is still required.'})
         if session.endswith('-reviewing'):
-            return 'A combined proposal grounded in the three saved contributions.'
+            return json.dumps({'done':True,'reason':'The requested contributions are complete; no additional agents are needed.','answer':'A combined proposal grounded in the three saved contributions.'})
         return 'Verified contribution from ' + self.profiles[agent]['name']
 
 
@@ -52,14 +58,15 @@ class CollaborationTests(unittest.TestCase):
         self.app.execute(self.app.next_job())
         job = self.job(result)
         self.assertEqual(job['status'], 'done')
-        self.assertEqual([a.rsplit('-r',1)[1] for a,_,_ in self.adapter.calls], ['0','1','2','3','0'])
-        self.assertIn('Verified contribution from Dylan', self.adapter.calls[2][2])
-        self.assertIn('Verified contribution from Alex', self.adapter.calls[3][2])
-        self.assertIn('Verified contribution from Morgan', self.adapter.calls[4][2])
+        self.assertEqual([a.rsplit('-r',1)[1] for a,_,_ in self.adapter.calls], ['0','8','0','2','0','3','0'])
+        self.assertIn('Verified contribution from Avery', self.adapter.calls[2][2])
+        self.assertIn('Verified contribution from Alex', self.adapter.calls[4][2])
+        self.assertIn('Verified contribution from Morgan', self.adapter.calls[6][2])
         self.assertEqual(len(self.app.state(self.owner)['agents']), 1)
-        self.assertNotIn('bac-' + self.owner, self.adapter.agents)
-        self.assertEqual(set(job['payload']['collaboration']['outputs']), {'1','2','3'})
-        self.assertEqual(len({session for _,session,_ in self.adapter.calls}), 5)
+        self.assertIn('bac-' + self.owner, self.adapter.agents)
+        self.assertEqual(len(self.adapter.reaction_calls), 1)
+        self.assertEqual(set(job['payload']['collaboration']['outputs']), {'8','2','3'})
+        self.assertEqual(len({session for _,session,_ in self.adapter.calls}), 7)
         self.assertEqual(self.app.available_file(self.owner, job['result']['files'][0]).read_text(), job['result']['answer'])
 
     def test_normal_message_only_runs_selected_agent(self):
@@ -88,7 +95,7 @@ class CollaborationTests(unittest.TestCase):
         self.assertEqual(self.adapter.calls,[])
 
     def test_invalid_plan_never_dispatches_a_specialist(self):
-        for tasks in [[],[{'role':True,'task':'x'}],[{'role':4,'task':'x'}],
+        for tasks in [[],[{'role':True,'task':'x'}],[{'role':9,'task':'x'},{'role':2,'task':'y'}], [{'role':1,'task':'x'},{'role':2,'task':'y'}],
                       [{'role':1,'task':'x'},{'role':1,'task':'y'}]]:
             with self.subTest(tasks=tasks), self.assertRaises(RuntimeError):
                 read_plan(json.dumps({'summary':'Plan','tasks':tasks}))
@@ -102,7 +109,7 @@ class CollaborationTests(unittest.TestCase):
         result = self.start()
         team = self.app.crew_owner(self.owner)
         def stop(role, prompt):
-            if role==1:self.app.decision(team,result['id'],'cancel')
+            if role==8:self.app.decision(team,result['id'],'cancel')
         self.adapter.after_call=stop
         self.app.execute(self.app.next_job())
         self.assertEqual(len(self.adapter.calls),2)
@@ -112,18 +119,39 @@ class CollaborationTests(unittest.TestCase):
         result=self.start();self.adapter.fail_role=2
         with self.assertRaisesRegex(RuntimeError,'policy denial'):self.app.execute(self.app.next_job())
         plan=self.job(result)['payload']['collaboration']
-        self.assertEqual(set(plan['outputs']),{'1'})
-        self.assertEqual(len(self.adapter.calls),3)
+        self.assertEqual(set(plan['outputs']),{'8'})
+        self.assertEqual(len(self.adapter.calls),4)
         self.assertNotIn('answer',self.job(result)['result'])
 
-    def test_dylan_uses_existing_protected_runtime_and_no_added_grants(self):
+    def test_researcher_is_unprotected_and_dylan_direct_chat_stays_protected(self):
         result=self.start()
-        with patch.object(self.app,'protected_response',wraps=self.app.protected_response) as response:
+        with patch.object(self.adapter,'policy_status',wraps=self.adapter.policy_status) as policy_status:
             self.app.execute(self.app.next_job())
-        team=self.app.crew_owner(self.owner);dylan=self.app.crew_native_id(team,1)
+        team=self.app.crew_owner(self.owner)
+        dylan=self.app.crew_native_id(team,1)
+        avery=self.app.crew_native_id(team,8)
+        self.assertEqual(self.adapter.profiles[avery]['protection'],'standard')
+        self.assertEqual(self.adapter.profiles[avery]['skills'],['web'])
+        self.assertNotIn(dylan,self.adapter.profiles)
+        self.assertFalse(any(c.args[0]==avery for c in policy_status.call_args_list))
+        self.assertEqual(self.job(result)['status'],'done')
+        with patch.object(self.app,'protected_response',wraps=self.app.protected_response) as response:
+            self.app.enqueue(team, {'kind':'crew-chat','crewRole':1,'prompt':'Research a demo theme'})
+            self.app.execute(self.app.next_job())
         self.assertEqual(self.adapter.profiles[dylan]['protection'],'openshell')
         self.assertTrue(any(c.args[0]==dylan and c.args[3:]==(team,1) for c in response.call_args_list))
-        self.assertEqual(self.job(result)['status'],'done')
+
+    def test_dylan_is_not_offered_or_dispatched_even_if_captain_selects_him(self):
+        result=self.start()
+        self.adapter.plan['tasks']=[{'role':2,'task':'Plan'}, {'role':1,'task':'Research'}]
+        with self.assertRaisesRegex(RuntimeError,'invalid or duplicate specialist'):
+            self.app.execute(self.app.next_job())
+        self.assertEqual(len(self.adapter.calls),1)
+        prompt=self.adapter.calls[0][2]
+        pool,_=json.JSONDecoder().raw_decode(prompt.split('available pool to match the current request: ',1)[1])
+        self.assertNotIn('Dylan',[member['name'] for member in pool])
+        self.assertIn('Avery',[member['name'] for member in pool])
+        self.assertEqual(self.job(result)['payload']['collaboration']['outputs'],{})
 
     def test_revoke_stays_revoked_and_policy_edits_are_fenced(self):
         team=self.app.crew_owner(self.owner)

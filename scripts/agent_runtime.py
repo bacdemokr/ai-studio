@@ -42,6 +42,8 @@ def project_skill(name):
     return (Path(__file__).resolve().parents[1] / ('skills/bac-'+name+'/SKILL.md')).read_text(encoding='utf-8').split('---',2)[2].strip()
 
 SKILLS = {
+    'data-analysis': ('Data interpretation', project_skill('data-analysis')),
+    'interface-design': ('Interface design', project_skill('interface-design')),
     'radar': ('Tech Radar', project_skill('radar')),
     'event-tools': ('Event execution tools', project_skill('event-tools')),
     'event-scheduling': ('Presenter scheduling', project_skill('event-scheduling')),
@@ -189,6 +191,13 @@ def ensure_openshell():
             raise RuntimeError('OpenShell setup did not pass verification. The protected request was not started.')
 
 
+def crew_event_instructions(member):
+    """Event contracts are injected only by the event pipeline, never general chats."""
+    directory = Path(__file__).resolve().parents[1] / 'crew' / member['id']
+    return '\n\n'.join((directory / name).read_text(encoding='utf-8')
+                       for name in ('SOUL.md', 'AGENTS.md') if (directory / name).is_file())
+
+
 def write_workspace(workspace, profile, role=None, overwrite=True):
     """Materialize definitions and skills without starting a runtime or model request."""
     protected = profile.get('protection', 'standard') == 'openshell'
@@ -320,18 +329,20 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
         catalog = json.loads((Path(__file__).resolve().parents[1] / 'src/crew-catalog.json').read_text())
         member = next((item for item in catalog if item['role'] == role), None)
         if member:
-            directory = Path(__file__).resolve().parents[1] / 'crew' / member['id']
-            for name in ('IDENTITY.md', 'SOUL.md', 'AGENTS.md'):
-                source = directory / name
-                if not source.exists():continue
-                content = source.read_text(encoding='utf-8')
-                for key, value in {'name':profile['name'], 'role':role, 'description':member['description']}.items():
-                    content = content.replace('{{'+key+'}}', value)
-                if name == 'AGENTS.md':
-                    files[name] += ('\n# Crew context\nRead IDENTITY.md and SOUL.md for your role and USER.md for organizer preferences. '
-                                    'The current request and event brief take precedence over saved defaults. '
-                                    'Do not reuse an earlier event’s facts, handoffs or results unless the current request asks for them.\n\n' + content)
-                else:files[name] = content
+            expertise = member['collaboration']
+            files['IDENTITY.md'] = '# Identity\nName: ' + profile['name'] + '\nRole: ' + expertise['title'] + '\nTeam: BaC\n'
+            files['SOUL.md'] = ('# Character\nBe clear, practical and honest. Follow the user\'s language and requested format.\n'
+                                '# Expertise\n' + expertise['description'] + '\n'
+                                '# Task scope\nComplete the current assignment using actual available tools. '
+                                'Do not substitute an event or marketing deliverable for a different request. '
+                                'Never invent tool results, citations, testing or other agents\' work.\n')
+            files['AGENTS.md'] += ('\n# Crew context\nRead IDENTITY.md and SOUL.md for your expertise and USER.md for preferences. '
+                                  'Ordinary chats and /plan use the current request, not an event workflow. '
+                                  'Event-specific skills, templates, contracts and EVENT_WORKFLOW.md apply only when explicitly required '
+                                  'by the current event assignment. Do not load them for unrelated work. '
+                                  'Previous event briefs and artifacts are not evidence for a new task. '
+                                  'Produce the requested deliverable, not a default LinkedIn post, survey or event page.\n')
+            files['EVENT_WORKFLOW.md'] = crew_event_instructions(member)
     def write(target, content):
         if overwrite or not target.exists():target.write_text(content, encoding='utf-8')
     import user_location

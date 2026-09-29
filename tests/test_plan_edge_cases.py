@@ -87,15 +87,17 @@ class PlanEdgeCases(unittest.TestCase):
         self.adapter.fail_role=None;self.adapter.calls.clear()
         self.start('/plan Continue from the completed research.');self.app.execute(self.app.next_job())
         prompt=self.adapter.calls[0][2]
-        self.assertIn('Verified contribution from Dylan',prompt)
+        self.assertIn('Verified contribution from Avery',prompt)
         self.assertIn('error',prompt)
 
     def test_webpage_is_handed_to_next_specialist_not_just_its_filename(self):
         self.adapter.plan['tasks']=[{'role':3,'task':'Write HTML'},{'role':2,'task':'Review the written HTML'}]
         def respond(agent,session,prompt,**kwargs):
+            if session.startswith('bac-roundtable-'):return 'A personal reaction.'
             self.adapter.calls.append((agent,session,prompt))
+            if '-checking-' in session:return json.dumps({'done':False,'reason':'Review is required.'})
             if session.endswith('-planning'):return json.dumps(self.adapter.plan)
-            if session.endswith('-reviewing'):return 'Combined'
+            if session.endswith('-reviewing'):return json.dumps({'done':True,'reason':'Complete.','answer':'Combined'})
             if agent.endswith('-r3'):
                 (self.adapter.agents[agent]/'artifacts'/'index.html').write_text('<html><body>HANDOFF_PAGE_MARKER</body></html>')
                 return 'Saved artifacts/index.html'
@@ -118,7 +120,7 @@ class PlanEdgeCases(unittest.TestCase):
         self.assertEqual(sum(r is not None for r in results),1)
 
     def test_stop_at_each_model_phase_starts_no_later_call(self):
-        for stop_at in range(1,6):
+        for stop_at in range(1,8):
             with self.subTest(stop_at=stop_at):
                 self.adapter.calls.clear();first=self.start();team=self.app.crew_owner(self.owner)
                 def stop(role,prompt):
@@ -144,8 +146,8 @@ class PlanEdgeCases(unittest.TestCase):
         self.adapter.respond=respond
         self.app.enqueue(self.owner,{'kind':'chat','prompt':'/plan Summarize this diagram','images':images})
         self.app.execute(self.app.next_job())
-        self.assertTrue(seen[0][1]);self.assertTrue(seen[-1][1])
-        self.assertTrue(all(not images for _,images in seen[1:-1]))
+        self.assertTrue(seen[0][1]);self.assertTrue(all(images for agent,images in seen if agent.endswith('-r0')))
+        self.assertTrue(all(not images for agent,images in seen if not agent.endswith('-r0')))
 
     def test_failed_and_cancelled_handoffs_remove_temporary_page_copies(self):
         for stop in (False,True):
@@ -154,6 +156,7 @@ class PlanEdgeCases(unittest.TestCase):
                 result=self.start();team=self.app.crew_owner(self.owner)
                 original=self.adapter.respond
                 def respond(agent,session,prompt,**kwargs):
+                    if '-checking-' in session:return json.dumps({'done':False,'reason':'Review is required.'})
                     if session.endswith('-planning'):return json.dumps(self.adapter.plan)
                     if agent.endswith('-r3'):
                         (self.adapter.agents[agent]/'artifacts'/'index.html').write_text('<html><body>draft</body></html>')
@@ -192,12 +195,12 @@ class PlanEdgeCases(unittest.TestCase):
         self.assertIn('SAVED_BEFORE_RESTART',json.dumps(job))
         self.assertEqual(self.adapter.calls,[])
 
-    def test_one_two_three_specialists_and_non_default_order(self):
-        for order in [(3,),(2,3),(3,2,1)]:
+    def test_two_three_specialists_and_non_default_order(self):
+        for order in [(5,4),(2,3),(3,2,8),(2,5,4)]:
             with self.subTest(order=order):
                 self.adapter.plan['tasks']=[{'role':role,'task':'Do your part'} for role in order]
                 self.adapter.calls.clear();result=self.start();self.app.execute(self.app.next_job())
-                self.assertEqual([int(agent.rsplit('-r',1)[1]) for agent,_,_ in self.adapter.calls],[0,*order,0])
+                self.assertEqual([int(agent.rsplit('-r',1)[1]) for agent,_,_ in self.adapter.calls],[0,*[item for role in order[:-1] for item in (role,0)],order[-1],0])
                 self.assertEqual(self.job(result)['status'],'done')
 
     def test_preparation_failure_makes_no_unprotected_model_call(self):
@@ -209,15 +212,15 @@ class PlanEdgeCases(unittest.TestCase):
         self.assertEqual(self.job(result)['payload']['collaboration']['outputs'],{})
 
     def test_failure_in_each_specialist_or_final_review_preserves_prior_work(self):
-        for failing in (1,2,3,0):
+        for completed, failing in enumerate((8,2,3,0)):
             with self.subTest(failing=failing):
                 result=self.start();original=self.adapter.respond
                 def respond(agent,session,prompt,**kwargs):
                     role=int(agent.rsplit('-r',1)[1])
-                    if role==failing and not session.endswith('-planning'):raise RuntimeError('Fixture runtime failure')
+                    if role==failing and (session.endswith('-reviewing') if failing==0 else not session.endswith('-planning')):raise RuntimeError('Fixture runtime failure')
                     return original(agent,session,prompt,**kwargs)
                 self.adapter.respond=respond
                 with self.assertRaises(RuntimeError):self.app.execute(self.app.next_job())
                 plan=self.job(result)['payload']['collaboration']
-                self.assertEqual(len(plan['outputs']),3 if failing==0 else failing-1)
+                self.assertEqual(len(plan['outputs']),completed)
                 self.app.event(result['id'],'Failed','Fixture',status='error',result='{}');self.adapter.respond=original

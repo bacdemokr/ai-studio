@@ -17,6 +17,7 @@ class CrewOwnership:
         return row['owner'] if row else None
 
     def initialize_crew_ownership(self):
+        from studio import ROLES
         with self.db() as db:
             if 'kind' not in {r['name'] for r in db.execute('PRAGMA table_info(agents)')}:
                 db.execute("ALTER TABLE agents ADD COLUMN kind TEXT NOT NULL DEFAULT 'personal'")
@@ -27,6 +28,13 @@ class CrewOwnership:
                 owner TEXT NOT NULL, role INTEGER NOT NULL, native_id TEXT NOT NULL UNIQUE,
                 workspace_name TEXT NOT NULL UNIQUE, chat_session TEXT NOT NULL UNIQUE,
                 PRIMARY KEY(owner,role))''')
+            # Expand each existing team's explicitly owned reserve roster. This
+            # creates ownership records only, not native runtimes or sandboxes.
+            for row in db.execute('SELECT owner FROM crew_contexts').fetchall():
+                team = row['owner']
+                for role in range(len(ROLES)):
+                    db.execute('INSERT OR IGNORE INTO crew_resources VALUES (?,?,?,?,?)',
+                               (team, role, 'bac-'+team+'-r'+str(role), team+'-'+str(role), 'bac-crew-chat-'+team+'-'+str(role)))
             self.crew_resources = {(r['owner'],r['role']):dict(r) for r in db.execute('SELECT * FROM crew_resources')}
 
     def crew_owner(self, owner):

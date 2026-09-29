@@ -1,6 +1,6 @@
 # NVIDIA Build-a-Claw
 
-Hire personal agents, try their skills, and run **Multi-Agent demo (BaC Planning)**.
+Hire personal agents, try their skills, and run **Multi-Agent demo**.
 
 ## Start on a new PC
 
@@ -57,7 +57,7 @@ The model runs outside BaC's Docker stack. Use a model with tool calling; a keyl
 
 1. **Hiring:** choose a character, role, tone and skills.
 2. **Agent lounge:** chat, inspect files, or approve OpenShell access.
-3. **Multi-Agent demo (BaC Planning):** prepare the crew and run an event. View each agent's work in Results and Activity.
+3. **Multi-Agent demo:** prepare the crew and run an event. View each agent's work in Results and Activity.
 
 **Heartbeat:** hire **Tech Radar**. Every 30 seconds, it summarizes one technical article it has not shared before, with a source link. Pause or resume in the agent panel. [Telegram setup and details](docs/heartbeat.md).
 
