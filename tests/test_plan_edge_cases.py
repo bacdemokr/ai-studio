@@ -15,6 +15,46 @@ class PlanEdgeCases(unittest.TestCase):
         with self.assertRaises(Problem):self.start()
         self.assertEqual(self.app.state(self.owner)['crewChats'],[])
 
+    def test_bac_reset_stops_running_plan_and_discards_late_reply(self):
+        import threading
+        entered,release=threading.Event(),threading.Event()
+        original=self.adapter.respond
+        def respond(*args,**kwargs):
+            entered.set();release.wait(5)
+            return original(*args,**kwargs)
+        self.adapter.respond=respond
+        result=self.start();row=self.app.next_job()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            execution=pool.submit(self.app.execute,row)
+            try:
+                self.assertTrue(entered.wait(5))
+                reset=self.app.reset_crew_chats(self.owner,reset_event=True)
+                self.assertTrue(reset['resetting'])
+                self.assertEqual(self.job(result)['status'],'stopping')
+                with self.assertRaises(Problem):self.start('/plan New work')
+            finally:release.set()
+            execution.result(timeout=5)
+        self.app.finish_pending_bac_resets()
+        self.assertEqual(self.app.state(self.owner)['crewChats'],[])
+        self.assertEqual(len(self.adapter.calls),1)
+        self.app.event(result['id'],'Late reply','',status='done',result=json.dumps({'answer':'STALE'}))
+        self.assertEqual(self.app.state(self.owner)['crewChats'],[])
+        fresh=self.start('/plan Fresh work')
+        self.app.reset_crew_chats(self.owner,reset_event=True,pending_only=True)
+        self.assertEqual(self.job(fresh)['status'],'queued')
+
+    def test_pending_bac_reset_survives_restart_and_preserves_personal_chat(self):
+        self.app.enqueue(self.owner,{'kind':'chat','prompt':'Keep personal history'})
+        self.app.execute(self.app.next_job())
+        self.start();self.app.next_job()
+        self.assertTrue(self.app.reset_crew_chats(self.owner,reset_event=True)['resetting'])
+        from test_studio import Studio
+        restarted=Studio(self.temp.name,self.adapter,start_worker=False,recover=True)
+        restarted.finish_pending_bac_resets()
+        state=restarted.state(self.owner)
+        self.assertEqual(state['crewChats'],[])
+        self.assertTrue(any(j['payload'].get('prompt')=='Keep personal history' for j in state['jobs']))
+
     def test_crew_remains_usable_while_personal_agent_is_deleting(self):
         team=self.app.crew_owner(self.owner)
         with self.app.db() as db:db.execute('UPDATE agents SET deleting=1 WHERE id=?',(self.owner,))

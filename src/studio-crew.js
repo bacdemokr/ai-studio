@@ -69,10 +69,10 @@ function collaborationHistoryMarkup(job){
 }
 function showCollaboration(){selectedCrewRole=0;setRoom('mission');root.dataset.crewDetails='true';renderCrewPassport();}
 function syncCrewComposer(){
- const blocked=!runtime.ready;
+ const blocked=!runtime.ready||!!data.bacResetting;
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending;
  el('crew-chat-connection').hidden=!blocked;
- el('crew-chat-connection').textContent=!runtime.model?'Connect a model in Settings to message your crew.':'Reconnect the agent runtime in Settings to message your crew.';
+ el('crew-chat-connection').textContent=data.bacResetting?'Stopping BaC work and resetting…':!runtime.model?'Connect a model in Settings to message your crew.':'Reconnect the agent runtime in Settings to message your crew.';
 }
 function renderCrewPassport(){
  const epoch=data.crewChatReset?.epoch||'';
