@@ -12,10 +12,10 @@ with tempfile.TemporaryDirectory() as d:
  print(json.dumps({'states':states,'results':results}))`],{encoding:'utf8'}));
  const b=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});
  try{const p=await b.newPage({viewport:{width:1500,height:1100}}),errors=[];p.on('pageerror',e=>errors.push(e.message));let step=0,fail=true;
- await p.route(/\/api\/(session|state)$/,r=>r.fulfill({json:fixture.states[step]}));
+ await p.route(/\/api\/(session|state)$/,r=>r.fulfill({json:{...fixture.states[step],bacResetting:bacPending>0?(bacPending--,true):false}}));
  await p.route('**/api/settings',r=>r.fulfill({json:{provider:'local',providers:{local:{label:'Local',baseUrl:'http://localhost:8000/v1'}},profiles:{},event:{city:'Zurich',language:'English',venue:''}}}));
  await p.route('**/api/delete-agent',r=>{if(step===1&&fail){fail=false;return r.fulfill({status:503,json:{error:'Cleanup needs retry.'}})}assert.equal(r.request().postDataJSON().name,fixture.states[step].agents[0].name);return r.fulfill({json:fixture.results[step++]})});
- let bacCalls=0,bacBusy=false;await p.route('**/api/bac-reset',r=>{bacCalls++;return bacBusy?r.fulfill({status:409,json:{error:'BaC is still running. Nothing was reset.'}}):r.fulfill({json:{reset:true}});});
+ let bacCalls=0,bacBusy=false,bacPending=0;await p.route('**/api/bac-reset',r=>{bacCalls++;if(bacPending>0){return r.fulfill({json:{reset:false,resetting:true}});}return bacBusy?r.fulfill({status:409,json:{error:'BaC is still running. Nothing was reset.'}}):r.fulfill({json:{reset:true}});});
  await p.goto(process.env.BAC_TEST_URL||'http://127.0.0.1:8080');await p.waitForFunction(()=>window.BacStudio);
  async function openReset(){await p.locator('#studio-config').click();await p.locator('#studio-settings-reset-tab').click();assert.equal(await p.locator('#studio-settings-reset-panel button').count(),3);}
  await p.route('**/api/jobs',r=>r.fulfill({json:{id:'fixture-compare'}}));
@@ -36,6 +36,11 @@ with tempfile.TemporaryDirectory() as d:
  bacBusy=false;await p.evaluate(()=>{document.querySelector('#studio-reset-all').click();document.querySelector('#studio-reset-all').click();});
  await p.waitForFunction(()=>document.querySelector('#studio-settings-status')?.textContent==='Reset complete.');assert.equal(step,2);assert.equal(bacCalls,2,'Repeated clicks must not duplicate the reset');
  await openReset();await p.locator('#studio-reset-all').click();await p.waitForFunction(()=>document.querySelector('#studio-settings-status')?.textContent==='Reset complete.');assert.equal(bacCalls,3);
+ bacPending=2;await p.locator('#studio-bac-reset').click();
+ await p.waitForFunction(()=>document.querySelector('#studio-settings-status')?.textContent==='Stopping BaC work and resetting…');
+ assert(await p.locator('#studio-bac-reset').isDisabled());
+ await p.waitForFunction(()=>document.querySelector('#studio-settings-status')?.textContent==='BaC reset.');
+ assert.equal(bacCalls,4);assert.equal(await p.locator('#studio-bac-reset').isDisabled(),false);
  assert.deepEqual(errors,[]);console.log('PASS: direct reset without confirmation, inline partial failure/retry, zero agents, Reset all, busy rejection and duplicate-click prevention. Disposable data and mocked HTTP only.');
 
  }finally{await b.close()}

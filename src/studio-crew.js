@@ -47,10 +47,10 @@ function crewHandoffMessages(job,role){
  }).join('');
 }
 function syncCrewComposer(){
- const blocked=!runtime.ready||!!data.deleting;
+ const blocked=!runtime.ready||!!data.deleting||!!data.bacResetting;
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending;
  el('crew-chat-connection').hidden=!blocked;
- el('crew-chat-connection').textContent=data.deleting?'This workspace is being deleted.':!runtime.model?'Connect a model in Settings to message your crew.':'Reconnect the agent runtime in Settings to message your crew.';
+ el('crew-chat-connection').textContent=data.bacResetting?'Stopping BaC work and resetting…':data.deleting?'This workspace is being deleted.':!runtime.model?'Connect a model in Settings to message your crew.':'Reconnect the agent runtime in Settings to message your crew.';
 }
 function renderCrewPassport(){
  const epoch=data.crewChatReset?.epoch||'';

@@ -120,17 +120,15 @@ class CrewChatTests(unittest.TestCase):
         self.assertEqual(restarted.state(self.owner)['jobs'],[])
         self.assertEqual(restarted.state(self.owner)['crewChats'],[])
 
-    def test_combined_reset_rejects_active_preparation_without_partial_changes(self):
-        self.send(0,'Keep this conversation')
+    def test_combined_reset_cancels_queued_preparation(self):
+        self.send(0,'Old conversation')
         self.studio.prepare_demo(self.owner,{})
-        before=self.studio.state(self.owner)
-        with self.assertRaises(Problem):self.studio.reset_crew_chats(self.owner,reset_event=True)
+        result=self.studio.reset_crew_chats(self.owner,reset_event=True)
+        self.assertTrue(result['reset'])
         after=self.studio.state(self.owner)
-        self.assertEqual(after['crewChats'],before['crewChats'])
-        self.assertEqual(after['crewChatReset'],before['crewChatReset'])
-        self.assertEqual(after['preparation'],before['preparation'])
-        with self.studio.db() as db:
-            self.assertIsNone(db.execute('SELECT 1 FROM metadata WHERE key=?',('event-board-reset:'+self.owner,)).fetchone())
+        self.assertEqual(after['crewChats'],[])
+        self.assertFalse(after['preparation'])
+        self.assertIsNone(self.studio.next_job())
 
     def test_busy_reset_is_atomic(self):
         self.send(0,'Keep this until reset succeeds')

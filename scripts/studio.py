@@ -192,6 +192,7 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
         self.deletion_signal = threading.Event()
         self.deletion_worker = None
         self.executing_owners = set()
+        self.executing_bac_owners = set()
         from protection_activity import ProtectionActivity
         self.protection_activity = ProtectionActivity()
         with self.db() as db:
@@ -738,6 +739,7 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
                 agent['avatar'] = avatar_for(agent['key'], agent.get('avatar'))
                 agent.setdefault('tone', 'kind')
                 agent.setdefault('verbosity', 'balanced')
+            bac_resetting = bool(db.execute("SELECT 1 FROM metadata m JOIN agents a ON m.key='bac-reset-pending:'||a.participant WHERE a.id=?",(owner,)).fetchone())
             crew_chat_reset = self.crew_chat_reset_state(db, owner)
             roundtable_turns = self.roundtable_history(db, owner)
             names = {a['key']: a['name'] for a in agents}
@@ -753,7 +755,7 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
         return {'profile': self.profile(owner), 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': self.files(owner),
                 'techRadar': self.heartbeat.status(owner, self.profile(owner) or {}),
                 'memory': memory_text, 'agentId': owner, 'crewOwner': team, 'roundtableTurns': roundtable_turns,
-                'agents': agents, 'agentLimit': MAX_AGENTS, 'assignments': assignments,
+                'agents': agents, 'agentLimit': MAX_AGENTS, 'assignments': assignments, 'bacResetting': bac_resetting,
                 'deleting': any(a['key'] == owner and a['deleting'] for a in agents),
                 'preparation': self.demo_preparation(team) or self.demo_preparation(owner),
                 'protectionEvents': self.protection_activity.snapshot({a['key'] for a in agents}, team)}
@@ -899,6 +901,8 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
                 raise Problem('Open a new studio session.', 404)
             if db.execute('SELECT 1 FROM agent_policies WHERE owner=? AND (CASE WHEN ? THEN role>=0 ELSE role=-1 END) AND updating=1', (owner, preset)).fetchone():
                 raise Problem('This agent’s policy is being updated. Please wait.', 409)
+            if kind in ('crew','crew-chat'):
+                self.require_bac_not_resetting(db, owner)
             # An immediate personal request can do the same preparation itself.
             if kind == 'chat':
                 db.execute("UPDATE jobs SET status='cancelled',updated=? WHERE owner=? AND kind='prepare-agent' AND status='queued'", (time.time(), owner))
@@ -988,7 +992,7 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
         saved = db.execute('SELECT value FROM metadata WHERE key=?', ('crew-chat-reset:' + account['participant'],)).fetchone()
         return json.loads(saved['value']) if saved else {'at': 0, 'epoch': ''}
 
-    def reset_crew_chats(self, owner, reset_event=False):
+    def reset_crew_chats(self, owner, reset_event=False, *, pending_only=False):
         """Clear the collection's crew chats and start fresh native conversations.
 
         Completed mission packages remain available in Results. Native transcripts
@@ -1002,7 +1006,22 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
             owners = [r['id'] for r in db.execute('SELECT id FROM agents WHERE participant=?', (account['participant'],))]
             slots = ','.join('?' for _ in owners)
             kinds = "('crew','crew-chat','prepare')" if reset_event else "('crew','crew-chat')"
-            if db.execute("SELECT 1 FROM jobs WHERE owner IN (" + slots + ") AND kind IN " + kinds + " AND status IN ('queued','running','waiting','stopping')", owners).fetchone():
+            active = db.execute("SELECT id,status FROM jobs WHERE owner IN (" + slots + ") AND kind IN " + kinds + " AND status IN ('queued','running','waiting','stopping')", owners).fetchall()
+            pending_key = 'bac-reset-pending:' + account['participant']
+            if pending_only and not db.execute('SELECT 1 FROM metadata WHERE key=?',(pending_key,)).fetchone():
+                return {'reset':True}
+            if reset_event:
+                for job in active:
+                    status = 'stopping' if job['status'] in ('running','stopping') else 'cancelled'
+                    db.execute('UPDATE jobs SET status=?,updated=? WHERE id=?', (status,time.time(),job['id']))
+                # Keep a durable request until both native calls and post-processing
+                # drain. Do not erase the rows that stop checkpoints depend on.
+                if any(job['status'] in ('running','stopping') for job in active) or self.executing_bac_owners.intersection(owners):
+                    db.execute('INSERT OR REPLACE INTO metadata(key,value) VALUES (?,?)', (pending_key,owner))
+                    self.signal.set()
+                    return {'reset':False,'resetting':True}
+                db.execute('DELETE FROM metadata WHERE key=?',(pending_key,))
+            elif active:
                 raise Problem('Finish or stop the active BaC work before resetting. Nothing was reset.', 409)
             # This reset only removes chat rows and rotates an account-scoped session epoch.
             # Native agent cleanup is independent; active crew calls are fenced above.
@@ -1015,6 +1034,19 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
                            ('event-board-reset:' + account['participant'], str(reset['at'])))
                 db.execute("DELETE FROM jobs WHERE owner IN (" + slots + ") AND kind='prepare'", owners)
         return {'reset': True, 'removed': removed, 'crewChatReset': reset}
+
+    def finish_pending_bac_resets(self):
+        with self.db() as db:
+            pending = db.execute("SELECT a.id FROM metadata m JOIN agents a ON m.key='bac-reset-pending:'||a.participant GROUP BY a.participant").fetchall()
+        for row in pending:
+            try:
+                self.reset_crew_chats(row['id'], reset_event=True, pending_only=True)
+            except Problem as error:
+                if error.status != 404:raise
+
+    def require_bac_not_resetting(self, db, owner):
+        if db.execute("SELECT 1 FROM metadata m JOIN agents a ON m.key='bac-reset-pending:'||a.participant WHERE a.id=?",(owner,)).fetchone():
+            raise Problem('BaC is stopping its current work and resetting. Please wait.',409)
 
     def reset_event_board(self, owner):
         """Hide completed event missions; preserve chats, hired agents and artifacts."""
@@ -1096,6 +1128,7 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
     def execute(self, row):
         # Keep the deletion fence until post-result work has ended.
         self.executing_owners = {row['owner']} | {m['key'] for m in job_participants(json.loads(row['payload'])) if m.get('key')}
+        self.executing_bac_owners = set(self.executing_owners) if row['kind'] in ('crew','crew-chat','prepare') else set()
         try:
             return self._execute(row)
         except Exception:
@@ -1105,6 +1138,7 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
             raise
         finally:
             self.executing_owners = set()
+            self.executing_bac_owners = set()
 
     def _execute(self, row):
         owner, job_id = row['owner'], row['id']
@@ -1516,6 +1550,7 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
 
     def work(self):
         while not self.stop.is_set():
+            self.finish_pending_bac_resets()
             if self.deletion_worker is None:self.finish_pending_deletions()
             row = self.next_job()
             if row:

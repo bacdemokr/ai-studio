@@ -92,7 +92,7 @@ let demoPreparationId=null,demoPreparing=false,demoPreparationError='',demoAutoP
 const crewWarmups=new Map();
 let crewStartupReady=false;
 function warmCrewOnOpen(){
- if(!crewStartupReady||!connected||!agentId||changingAgent||removingAgent||!runtime.gateway||data.deleting)return;
+ if(!crewStartupReady||!connected||!agentId||changingAgent||removingAgent||!runtime.gateway||data.deleting||data.bacResetting)return;
  const key=runtime.instance+':'+(data.crewOwner||agentId),now=Date.now();
  if((crewWarmups.get(key)||0)>now)return;
  const target=agentId;crewWarmups.set(key,Infinity);
@@ -124,7 +124,7 @@ function syncDemoPreparation(){
  if(demoAutoPrepare&&runtime.gateway&&!demoPreparing){demoAutoPrepare=false;queueMicrotask(prepareDemo);}
 }
 async function prepareDemo(){
- if(demoPreparing||!el('demo-preparation')||!el('dialog').open||!runtime.gateway)return;
+ if(demoPreparing||!el('demo-preparation')||!el('dialog').open||!runtime.gateway||data.bacResetting)return;
  const form=el('crew-form');demoAutoPrepare=false;demoPreparing=true;demoPreparationError='';demoPreparationId=null;syncDemoPreparation();
  try{const prepared=await api('prepare-demo',{enabledRoles:selectedDemoRoles()});if(el('crew-form')!==form)return;demoPreparationId=prepared.id;await refresh();}
  catch(error){if(el('crew-form')===form)demoPreparationError=error.message;}

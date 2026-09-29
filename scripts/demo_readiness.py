@@ -13,6 +13,7 @@ class DemoReadiness:
 
     def require_event_crew_idle(self, db, owner):
         from studio import Problem
+        self.require_bac_not_resetting(db, owner)
         if not db.execute('SELECT 1 FROM agents WHERE id=? AND deleting=0', (owner,)).fetchone():
             raise Problem('This workspace is unavailable or being deleted.', 409)
         if db.execute('SELECT 1 FROM agent_policies WHERE owner=? AND role>=0 AND updating=1', (owner,)).fetchone():

@@ -120,7 +120,14 @@ async function resetStudio(scope){
   const latest=await api('state',undefined,'');
   const agents=scope==='bac'?[]:latest.agents||[];total=agents.length;
   if(scope!=='lounge'){
-   await api('bac-reset',{},latest.agentId);selectedJob=null;demoPreparationId='';
+   let reset=await api('bac-reset',{},latest.agentId);
+   while(reset.resetting){
+    status.textContent='Stopping BaC work and resetting…';
+    await new Promise(resolve=>setTimeout(resolve,1000));
+    const snapshot=await api('state',undefined,'');
+    reset={resetting:!!snapshot.bacResetting};
+   }
+   selectedJob=null;demoPreparationId='';
   }
   // Persist every request first. Closing Settings or reloading must not lose
   // the remainder of a bulk deletion while the native runtime drains it.
