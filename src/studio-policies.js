@@ -31,7 +31,7 @@ function syncPolicyBadges(){
  for(const key of policyBadgeReports.keys())if(!live.has(key.split(':')[0]))policyBadgeReports.delete(key);
  for(const target of visiblePolicyBadges()){
   paintPolicyBadge(target.button,target.key,target.name);
-  const jobs=target.role===null?(data.jobs||[]).filter(j=>!['crew','crew-chat','prepare','prepare-agent'].includes(j.kind)):[...(data.jobs||[]).filter(j=>j.kind==='crew'),...(data.crewChats||[]).filter(j=>j.payload.crewRole===target.role)];
+  const jobs=target.role===null?(data.jobs||[]).filter(j=>!['crew','crew-chat','prepare','prepare-agent'].includes(j.kind)):[...(data.jobs||[]).filter(j=>j.kind==='crew'),...(data.crewChats||[]).filter(j=>(j.payload.crewRole===target.role||j.payload.collaboration))];
   const signature=JSON.stringify([jobs.map(j=>[j.id,j.status]),(data.protectionEvents||[]).filter(e=>e.role===target.role&&(target.role!==null||e.owner===target.owner)).map(e=>e.id),target.role===null?data.agents?.find(a=>a.key===target.owner)?.workspacePreparation:data.preparation]);
   let entry=policyBadgeReports.get(target.key);
   if(entry?.loading||entry?.signature===signature||Date.now()<(entry?.retryAfter||0))continue;
@@ -63,7 +63,7 @@ function renderPolicySelector(){
   el('policy-agent').value=selected?(policyCrewRole===null?agentId:'crew:'+policyCrewRole):'';
   el('policy-agent').disabled=policySaving;
   const target=policyTarget(),agent=data.agents?.find(a=>a.key===agentId);
-  const activityKey=JSON.stringify(policyCrewRole===null?[target.key,agent?.pending||0,agent?.workspacePreparation,agent?.latestMission?.id,agent?.latestMission?.status]:[target.key,data.preparation,(data.crewChats||[]).filter(j=>j.payload.crewRole===policyCrewRole).map(j=>[j.id,j.status]),(data.jobs||[]).filter(j=>j.kind==='crew').map(j=>[j.id,j.status,j.payload.stage])]);
+  const activityKey=JSON.stringify(policyCrewRole===null?[target.key,agent?.pending||0,agent?.workspacePreparation,agent?.latestMission?.id,agent?.latestMission?.status]:[target.key,data.preparation,(data.crewChats||[]).filter(j=>(j.payload.crewRole===policyCrewRole||j.payload.collaboration)).map(j=>[j.id,j.status]),(data.jobs||[]).filter(j=>j.kind==='crew').map(j=>[j.id,j.status,j.payload.stage])]);
   const activityChanged=activityKey!==policyActivityKey;
   policyActivityKey=activityKey;
   if(el('policy-panel').open){

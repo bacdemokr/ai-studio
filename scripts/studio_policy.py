@@ -154,7 +154,7 @@ class PolicyControls:
         # Candidates never grant access; assistant suggestions require explicit approval too.
         catalog = dict(report.get('catalog', CATALOG))
         with self.db() as db:
-            jobs = db.execute("SELECT payload FROM jobs WHERE owner=? AND created>=? AND (CASE WHEN ? IS NULL THEN kind NOT IN ('crew','crew-chat','prepare','prepare-agent') ELSE kind='crew' OR (kind='crew-chat' AND json_extract(payload,'$.crewRole')=?) END) ORDER BY created DESC LIMIT 30", (owner, reset_at, role, role)).fetchall()
+            jobs = db.execute("SELECT payload FROM jobs WHERE owner=? AND created>=? AND (CASE WHEN ? IS NULL THEN kind NOT IN ('crew','crew-chat','prepare','prepare-agent') ELSE kind='crew' OR (kind='crew-chat' AND (json_extract(payload,'$.crewRole')=? OR json_type(payload,'$.collaboration')='object')) END) ORDER BY created DESC LIMIT 30", (owner, reset_at, role, role)).fetchall()
         hosts = [e['host'] for e in denials]
         hosts += [e.get('host', '') for e in report.get('logs', []) if e.get('action') == 'deny' and e.get('reason', 'policy-denied') == 'policy-denied']
         for job in jobs:
@@ -172,7 +172,7 @@ class PolicyControls:
         for key in approved + report['recommended']:
             catalog[key] = permission_rule(key)
         with self.db() as db:
-            latest = db.execute("SELECT created,payload,result FROM jobs WHERE owner=? AND created>=? AND (CASE WHEN ? IS NULL THEN kind NOT IN ('crew','crew-chat','prepare','prepare-agent') ELSE kind='crew' OR (kind='crew-chat' AND json_extract(payload,'$.crewRole')=?) END) ORDER BY created DESC LIMIT 1", (owner, reset_at, role, role)).fetchone()
+            latest = db.execute("SELECT created,payload,result FROM jobs WHERE owner=? AND created>=? AND (CASE WHEN ? IS NULL THEN kind NOT IN ('crew','crew-chat','prepare','prepare-agent') ELSE kind='crew' OR (kind='crew-chat' AND (json_extract(payload,'$.crewRole')=? OR json_type(payload,'$.collaboration')='object')) END) ORDER BY created DESC LIMIT 1", (owner, reset_at, role, role)).fetchone()
         # Heartbeats run without a chat job. Their native denials must remain
         # visible even before the first summary is published, including after chat.
         since = latest['created'] if latest else None

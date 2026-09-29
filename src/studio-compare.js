@@ -24,6 +24,7 @@ async function pollComparison(schedule=true){
 }
 async function askAllAgents(){
   if(comparisonSending||!runtime.ready||data.deleting)return;
+  if(/^\/plan(?:\s|$)/i.test(el('prompt').value.trim())){el('chat-error').textContent='Use Run this agent for /plan. The Captain will coordinate one BaC team task.';el('chat-error').hidden=false;return;}
   comparisonSending=true;syncComposer();
   try{
     // Refresh before deciding: the cached comparison may lag behind completed jobs.

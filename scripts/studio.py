@@ -25,6 +25,7 @@ from studio_events import EventControls
 from crew_roundtable import RoundtableControls, participants as job_participants
 from demo_readiness import DemoReadiness
 from crew_ownership import CrewOwnership
+from collaboration_plan import CollaborationPlans, is_plan
 import event_planner
 
 CREW_CATALOG = json.loads((Path(__file__).resolve().parents[1] / 'src/crew-catalog.json').read_text())
@@ -166,7 +167,7 @@ def capacity(brief):
                'assumptions': 'One topic per attendee; one device and presenter per station; one floor assistant per 30 attendees plus one lead. This sizes demo stations, not measured LLM throughput.'}
 
 
-class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, DemoReadiness):
+class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, RoundtableControls, DemoReadiness):
     def __init__(self, directory=None, adapter=runtime, start_worker=True, recover=False):
         self.directory = Path(directory) if directory else c.initialize() / 'studio'
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -826,6 +827,12 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
         return {'path': 'inbox/' + name, 'textPath': 'inbox/' + name + '.txt' if extracted is not None else 'inbox/' + name}
 
     def enqueue(self, owner, data, source='web', due=0, lead=None):
+        collaborative = data.get('kind', 'chat') in ('chat', 'crew-chat') and is_plan(data.get('prompt'))
+        if collaborative:
+            task = text(data['prompt'].strip()[5:], 5995, 'Task after /plan')
+            owner = self.crew_owner(owner)
+            data = {**data, 'kind':'crew-chat', 'crewRole':0, 'skill':None}
+            lead = None
         profile = self.profile(lead or owner)
         preset = (data.get('kind') == 'crew' and data.get('preset') is True) or data.get('kind') == 'crew-chat'
         if not profile and not preset:
@@ -854,6 +861,8 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
             payload = {'prompt': prompt, 'skill': skill, 'source': source}
             if kind == 'crew-chat':
                 payload['crewRole'] = role
+                if collaborative:
+                    payload['collaboration'] = {'task':task, 'activeRole':0, 'outputs':{}, 'handoffs':{}}
             if kind == 'reminder':
                 delay = data.get('delay', 60)
                 if type(delay) is not int or not 30 <= delay <= 86400:
@@ -899,6 +908,8 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
                 raise Problem('Open a new studio session.', 404)
             if db.execute('SELECT 1 FROM agent_policies WHERE owner=? AND (CASE WHEN ? THEN role>=0 ELSE role=-1 END) AND updating=1', (owner, preset)).fetchone():
                 raise Problem('This agent’s policy is being updated. Please wait.', 409)
+            if collaborative:
+                self.require_event_crew_idle(db, owner)
             # An immediate personal request can do the same preparation itself.
             if kind == 'chat':
                 db.execute("UPDATE jobs SET status='cancelled',updated=? WHERE owner=? AND kind='prepare-agent' AND status='queued'", (time.time(), owner))
@@ -930,7 +941,7 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
                 job['payload']=json.dumps(payload)
             db.execute('INSERT INTO jobs VALUES (:id,:owner,:kind,:status,:payload,:result,:events,:created,:updated,:due)', job)
         self.signal.set()
-        return {'id': job['id']}
+        return {'id': job['id'], **({'collaboration':True, 'crewRole':0} if collaborative else {})}
 
     def event(self, job_id, title, detail, role=0, **changes):
         with self.db() as db:
@@ -1119,6 +1130,8 @@ class Studio(CrewOwnership, PolicyControls, EventControls, RoundtableControls, D
             self.check_protected_run(owner, profile)
             self.event(job_id, 'Agent workspace ready', 'Prepared without a model request or additional access.', status='done')
             return
+        if row['kind'] == 'crew-chat' and payload.get('collaboration'):
+            return self.collaboration_plan(row, payload)
         if row['kind'] == 'crew-chat':
             return self.crew_chat(row, payload)
         if row['kind'] == 'prepare':
