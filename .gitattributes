@@ -1,2 +1,5 @@
 app/index.html linguist-generated=true
 src/vendor/** linguist-vendored=true
+
+# api.cfg is local-only content; startup installs the required clean filter.
+api.cfg filter=bac-api-key

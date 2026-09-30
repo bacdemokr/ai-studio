@@ -17,6 +17,3 @@ image-metadata.json
 # Machine-specific host model configuration and service identity
 local-model.json
 .local-model/
-
-# Legacy local credentials must never enter version control.
-/api.cfg

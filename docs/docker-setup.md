@@ -14,7 +14,7 @@ cd ai-studio
 
 The first start creates `.env` from the supplied example, builds the pinned runtime image and downloads the OpenShell images. Later starts reuse the image unless its dependencies changed.
 
-Startup works without an inference key. Use Stage 3 **API & models** to connect the API for this browser session and save model selections with **Apply changes**.
+Startup validates the Stage 3 inference key in `api.cfg` and exits with instructions to edit the file if it is missing or rejected. Stage 3 uses this saved connection automatically; its **API & models** panel lets you choose agent models and save them with **Apply changes**.
 
 Open **http://localhost:8080**. For Stages 1 and 2, open **Settings → Model**. Choose **Local / on-prem**, enter the endpoint, **Load models**, then **Connect model**.
 
@@ -59,7 +59,7 @@ Keep the repository folder: app files are copied into the container at startup, 
 
 | Message or symptom | Action |
 | --- | --- |
-| Missing or rejected inference key | Connect a valid key in Stage 3 **API & models** |
+| Missing or rejected inference key | Put a valid key in `api.cfg`; run `./bac start` again |
 | Inference API unavailable or rate-limited | Check connectivity or wait, then retry; the existing key is not replaced |
 | Docker unavailable | Start Docker; check `docker info` works for your account |
 | Wrong architecture | Use Docker running locally on this PC and its native architecture |
@@ -91,4 +91,6 @@ Backups contain app data and gateway metadata/certificates, not every sandbox's 
 
 ### Inference API key
 
-Connect the key through Stage 3 **API & models**. It is validated and kept in memory only; the app does not load credential files. Reconnect after refreshing/closing the browser session or restarting the server. Model choices remain saved, but credentials do not. Legacy `api.cfg` and credential files are unused; remove them manually if they are no longer needed.
+`./bac start` creates an empty `api.cfg` beside `bac` if needed. Put only your NVIDIA inference API key on its first line. There is no interactive key prompt. Startup checks access to the team models and makes a small inference request. Missing or rejected keys stop startup with instructions to edit the file. Empty files are detected before Docker is invoked. Network/service failures stop startup without replacing your key or restarting running services.
+
+A validated key is saved with owner-only file permissions and used for Stage 3 automatically. `api.cfg` is tracked as an empty placeholder and excluded from the Docker image; release packages always include an empty file. `./bac start` installs a local Git clean filter that keeps the key out of commits while preserving it in your working file. After cloning, run `bash scripts/setup-key-filter.sh` before entering a key if you plan to use Git before starting the demo. Startup uses this file, never silently falls back to the previous saved key.
