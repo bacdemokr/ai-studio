@@ -106,6 +106,58 @@ for row in sys.stdin.read().splitlines():
         (self.root/'SHA256SUMS').write_text(checksum+'  '+name+'\n')
         return self.root/name
 
+    def enable_local_model(self):
+        (self.root/'local-model.json').write_text('{"enabled":true}')
+        (self.root/'scripts/local_model.py').write_text("""import json,os,sys
+from pathlib import Path
+state=json.loads(Path(os.environ['TEST_STATE']).read_text())
+action=sys.argv[1]
+with open(os.environ['TEST_CALLS'],'a') as out:out.write(json.dumps(['local-model',*sys.argv[1:]])+'\\n')
+if action=='start':
+    if state.get('model_failure'):sys.exit(1)
+    folder=Path('.local-model');folder.mkdir(exist_ok=True)
+    (folder/'connection.json').write_text('{}')
+if action=='connect' and state.get('connection_failure'):sys.exit(1)
+""")
+
+    def test_ready_defaults_to_qwen_without_docker_or_api_key(self):
+        self.enable_local_model();self.configure(offline=True)
+        result=self.run_bac('vllm')
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(self.calls(),[['local-model','start','--model','qwen'],['local-model','commit']])
+        self.assertFalse((self.root/'api.cfg').exists())
+
+    def test_ready_accepts_explicit_model_and_separate_lifecycle(self):
+        self.enable_local_model()
+        result=self.run_bac('vllm','--model','gemma')
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn(['local-model','start','--model','gemma'],self.calls())
+        for option,action in (('--stop','stop'),('--status','status'),('--logs','logs')):
+            self.log.unlink(missing_ok=True)
+            result=self.run_bac('vllm',option)
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertEqual(self.calls(),[['local-model',action]])
+
+    def test_start_and_stop_leave_local_model_alone(self):
+        self.enable_local_model();self.configure(image=True,model_failure=True)
+        for action in ('start','stop'):
+            self.log.unlink(missing_ok=True)
+            result=self.run_bac(action)
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertFalse(any(c[0]=='local-model' for c in self.calls()))
+
+    def test_failed_ready_never_starts_studio(self):
+        self.enable_local_model();self.configure(model_failure=True)
+        result=self.run_bac('vllm')
+        self.assertNotEqual(result.returncode,0)
+        self.assertEqual(self.calls(),[['local-model','start','--model','qwen']])
+
+    def test_vllm_restart_is_one_command_without_starting_studio(self):
+        self.enable_local_model();self.configure(offline=True)
+        result=self.run_bac('vllm','--restart')
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(self.calls(),[['local-model','restart','--model','qwen']])
+
     def test_help_needs_no_docker_and_lists_only_daily_commands(self):
         result=self.run_bac()
         self.assertEqual(result.returncode,0,result.stderr)

@@ -20,6 +20,52 @@ Open **http://localhost:8080**. **Stage 3 is configured automatically** with the
 
 The first start builds the runtime image for your PC and downloads the pinned OpenShell images. OpenClaw and OpenShell are included; no host Python or Node installation is needed. BaC does not install model weights. A local model server, if used for Stages 1 and 2, runs separately.
 
+## Prepare a local model (optional)
+
+`./bac vllm` starts or reuses **Qwen by default**, then waits for the exact model
+ID and a small inference request to succeed. This command runs independently of
+Docker, Studio, and the Stage 3 API key. Ordinary `./bac start` never starts or
+waits for a local model, even if model configuration exists or model files are
+missing. `./bac stop` stops Studio only.
+
+```bash
+./bac vllm                # Prepare Qwen, default wait: 600 seconds
+./bac vllm --model qwen   # Same, explicit selection
+./bac vllm --model gemma  # Only if a Gemma installation is configured
+./bac vllm --restart      # Stop the configured server, restart and wait
+./bac vllm --status       # Inspect the local model
+./bac vllm --logs         # Show the managed model service journal
+./bac vllm --stop         # Stop only a model this helper launched
+./bac start                # Start Studio separately
+```
+
+Put a machine-specific `local-model.json` beside `bac`. It contains a `models`
+object and optional `wait_seconds` (1–3600). Each model specifies its `model_id`,
+`model_path`, `base_url`, `context_window`, exact `argv` list, and `env` object.
+Qwen remains the command default regardless of `default_model` or `enabled` in
+this file. Executable and weight paths can point anywhere on this PC. The
+existing parent installation is configured on this machine, but the parent demo
+is never invoked or modified. No model files or runtime packages are downloaded.
+If paths are missing, `vllm` explains the problem; `start` is unaffected.
+
+After starting Studio, connect Stages 1 and 2 in **Settings → Model → Local**
+using the model ID and endpoint printed by `vllm`. Stage 3 retains its separate
+NVIDIA inference API connection. Model preparation does not change Studio's
+saved provider settings.
+
+The helper requires host Python 3.9+ and a systemd user session to launch a new
+background model service. It displays loading progress every 15 seconds, fails
+early if the service exits, and times out with a useful error. An unexpected
+listener is rejected. A healthy external server is reused and never stopped.
+A newly launched model is stopped if readiness fails. Logs remain in the user
+journal; model files are preserved. Changing a managed model's launch settings
+requires `./bac vllm --stop` first.
+
+Machine-specific configuration and service identity under `.local-model/` are
+ignored by Git. Do not put API credentials in this unauthenticated local model
+configuration. BaC removal does not delete the external weights or vLLM runtime;
+stop a helper-owned model explicitly before removing Studio.
+
 ## API key and model settings
 
 ### Stage 3: Multi-Agent demo
@@ -98,3 +144,15 @@ To update, finish active work, then run in the repository folder:
 `remove` asks you to type `remove` once. It deletes BaC containers, data, shared files, backups, recorded project images, local settings, and `api.cfg`. A source checkout keeps its code; an installed release folder is removed. Other projects and your model server remain.
 
 [Setup & troubleshooting](docs/docker-setup.md) · [Model settings](docs/runtime-settings.md) · [Development & tests](docs/development.md)
+
+`./bac vllm --restart` is the demo recovery command. It checks the replacement
+installation first, stops the helper-owned service (or the exact configured
+external vLLM command and its captured workers), restarts Qwen, and waits for
+successful inference. It sends TERM first and uses KILL if workers do not exit.
+It never uses a broad process-name kill. If an occupied port cannot be tied to
+the configured command, restart fails without killing that listener. Explicit
+restart may interrupt other applications using this same model server.
+
+Missing-installation errors list the required executable and weights paths, explain
+how to update local-model.json, and remind you that ./bac start still works
+independently. Failed new launches print the final startup-log lines automatically.

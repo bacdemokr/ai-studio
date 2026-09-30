@@ -7,6 +7,9 @@ usage() {
   cat <<'HELP'
 BaC Agent Studio
 
+  ./bac vllm     Start or reuse Qwen and wait for successful inference
+  ./bac vllm --model gemma   Prepare another configured model
+  ./bac vllm --restart | --status | --logs | --stop   Manage the local model
   ./bac start     Install / start / apply updated app files
   ./bac update    Download the latest GitHub main; then run ./bac start
   ./bac status    Check service status
@@ -22,6 +25,41 @@ die() { echo "BaC: $*" >&2; exit 1; }
 command_name=${1:-help}
 case "$command_name" in
   help|-h|--help) usage; exit 0 ;;
+  vllm|ready)
+    command -v python3 >/dev/null || die 'Local model preparation requires Python 3.9 or newer.'
+    [[ -f scripts/local_model.py ]] || die 'The local model helper is missing.'
+    model=qwen
+    action=start
+    if [[ $# -eq 3 && $2 == --model ]]; then
+      model=$3
+      [[ $model == qwen || $model == gemma ]] || die 'Use ./bac vllm --model qwen|gemma.'
+    elif [[ $# -eq 2 ]]; then
+      case $2 in
+        --restart) action=restart ;;
+        --stop) action=stop ;;
+        --status) action=status ;;
+        --logs) action=logs ;;
+        *) die 'Use ./bac vllm [--model qwen|gemma | --restart | --status | --logs | --stop].' ;;
+      esac
+    elif [[ $# -ne 1 ]]; then
+      die 'Use ./bac vllm [--model qwen|gemma | --restart | --status | --logs | --stop].'
+    fi
+    mkdir -p .local-model
+    exec 8>.local-model/launcher.lock
+    if [[ $action == start || $action == restart || $action == stop ]]; then
+      flock -n 8 || die 'Another local model operation is running.'
+    fi
+    if [[ $action == start ]]; then
+      python3 scripts/local_model.py start --model "$model"
+      python3 scripts/local_model.py commit
+      echo 'Local model ready. Run ./bac start, then select Local in Settings → Model.'
+    elif [[ $action == restart ]]; then
+      python3 scripts/local_model.py restart --model "$model"
+    else
+      python3 scripts/local_model.py "$action"
+    fi
+    exit 0
+    ;;
   update)
     [[ $# -eq 1 ]] || die 'Use ./bac update without extra arguments.'
     exec bash scripts/update.sh
