@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 from test_studio import Studio, Adapter, Problem
-from collaboration_plan import is_plan, read_plan
+from collaboration_plan import is_plan, read_plan, plan_task
 
 
 class PlanAdapter(Adapter):
@@ -89,10 +89,20 @@ class CollaborationTests(unittest.TestCase):
         self.assertEqual(self.adapter.calls[0][0],self.app.crew_native_id(team,0))
 
     def test_parser_and_empty_command(self):
-        for prompt in ['/plan x',' /PLAN\nTask ']:self.assertTrue(is_plan(prompt))
-        for prompt in ['Explain /plan','/planet x','/planning x',None]:self.assertFalse(is_plan(prompt))
-        with self.assertRaises(Problem):self.start('/plan')
+        for command in ['/plan', '  /plan', '\n \t/PLAN', '/plans', ' \n/PLANS']:
+            with self.subTest(command=command):
+                self.assertTrue(is_plan(command + '\nTask'))
+                self.assertEqual(plan_task(command + '\nTask'), 'Task')
+                with self.assertRaises(Problem):self.start(command)
+        for prompt in ['Explain /plan','/planet x','/planning x','/plansomething x',None]:
+            self.assertFalse(is_plan(prompt))
         self.assertEqual(self.adapter.calls,[])
+
+    def test_alias_routes_to_captain_without_leaving_suffix_in_task(self):
+        result = self.start(' \n /PLANS Build a calculator')
+        job = self.job(result)
+        self.assertEqual(job['payload']['crewRole'], 0)
+        self.assertEqual(job['payload']['collaboration']['task'], 'Build a calculator')
 
     def test_invalid_plan_never_dispatches_a_specialist(self):
         for tasks in [[],[{'role':True,'task':'x'}],[{'role':9,'task':'x'},{'role':2,'task':'y'}], [{'role':1,'task':'x'},{'role':2,'task':'y'}],

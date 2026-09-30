@@ -10,8 +10,15 @@ from plan_handoff import required_files, missing_files
 from plan_revision import PLAN_TIME_BUDGET_SECONDS, PlanBudgetExceeded, read_revision, effective_outputs, REVISION_INSTRUCTIONS
 
 
+PLAN_COMMAND = re.compile(r'^\s*/plans?(?=\s|$)', re.I)
+
+
 def is_plan(prompt):
-    return isinstance(prompt, str) and re.match(r'^/plan(?:\s|$)', prompt.strip(), re.I) is not None
+    return isinstance(prompt, str) and PLAN_COMMAND.match(prompt) is not None
+
+
+def plan_task(prompt):
+    return PLAN_COMMAND.sub('', prompt, count=1).strip()
 
 
 def plan_roles():

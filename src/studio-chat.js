@@ -220,7 +220,7 @@ for(const id of ['prompt','crew-prompt']){
  option.innerHTML='<strong>/plan</strong><span>Collaborate with the BaC team</span><small>↵</small>';menu.append(option);
  input.setAttribute('aria-controls',menu.id);input.setAttribute('aria-autocomplete','list');
  const close=()=>{menu.hidden=true;input.removeAttribute('aria-activedescendant');};
- const update=()=>{const value=input.value.trimStart();const show=!input.disabled&&/^\/(?:p(?:l(?:a(?:n)?)?)?)?$/i.test(value)&&input.selectionStart===input.value.length;
+ const update=()=>{const value=input.value.trimStart();const show=!input.disabled&&/^\/(?:p(?:l(?:a(?:ns?)?)?)?)?$/i.test(value)&&input.selectionStart===input.value.length;
   menu.hidden=!show;if(show)input.setAttribute('aria-activedescendant',option.id);else input.removeAttribute('aria-activedescendant');};
  const choose=()=>{input.value='/plan ';close();input.focus({preventScroll:true});input.setSelectionRange(input.value.length,input.value.length);input.dispatchEvent(new Event('input',{bubbles:true}));};
  input.addEventListener('input',update);input.addEventListener('focus',update);input.addEventListener('click',update);

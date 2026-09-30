@@ -25,7 +25,7 @@ from studio_events import EventControls
 from crew_roundtable import RoundtableControls, participants as job_participants
 from demo_readiness import DemoReadiness
 from crew_ownership import CrewOwnership
-from collaboration_plan import CollaborationPlans, is_plan
+from collaboration_plan import CollaborationPlans, is_plan, plan_task
 from webpage_artifacts import PAGE_INSTRUCTIONS, html_files, collect_pages
 import event_planner
 
@@ -840,7 +840,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
             if data.get('kind') == 'crew-chat' and (type(origin_role) is not int or not 0 <= origin_role < len(ROLES)):
                 raise Problem('Choose a crew member.')
             origin = {'owner': owner, 'role': origin_role}
-            task = text(data['prompt'].strip()[5:], 5995, 'Task after /plan')
+            task = text(plan_task(data['prompt']), 5995, 'Task after /plan')
             owner = self.crew_owner(owner)
             data = {**data, 'kind':'crew-chat', 'crewRole':0, 'skill':None}
             lead = None
