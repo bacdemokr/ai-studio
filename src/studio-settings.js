@@ -173,8 +173,10 @@ async function resetStudio(scope,sourceButton=null){
 
 
 const teamModelDrafts=new Map();
+let teamModelDraftOwner=null;
 function openTeamSettings(){
- teamModelDrafts.clear();
+ if(!modelPickerSaving||teamModelDraftOwner!==agentId)teamModelDrafts.clear();
+ teamModelDraftOwner=agentId;
  const available=window.BacCrewCatalog.map((member,role)=>({...member,roleIndex:role})).filter(member=>member.planEligible!==false);
  dialog('Multi-Agent setup',`<form id="studio-team-config-form">
   <div class="studio-model-scope"><span>STAGE 03</span><h3>Team API &amp; models</h3><p>A dedicated NVIDIA API connection for Casey and the specialists.</p></div>
@@ -186,4 +188,6 @@ function openTeamSettings(){
   <div class="studio-team-model-save"><button type="button" class="studio-primary" data-team-apply-all disabled>Apply changes</button></div><p class="studio-team-setup-note">Stage 1 &amp; 2 keep using the model selected in Settings.</p></form>`);
  el('dialog').classList.add('studio-team-settings');
  el('team-config-form').onsubmit=event=>event.preventDefault();
+ syncTeamModelForm();
+ if(modelPickerSaving){const notice=el('team-model-status');notice.hidden=false;notice.textContent='Applying model changes…';}
 }

@@ -15,7 +15,7 @@ function renderDocuments(){
 async function uploadDocuments(files){
  if(!files.length||documentUploadTarget!==null)return;
  if(!data.profile||data.deleting){alert('Choose an available agent before adding documents.');return;}
- const target=agentId,errors=[];documentUploadTarget=target;pendingWrites++;renderDocuments();syncComposer();
+ const target=agentId,revision=dialogRevision,errors=[];documentUploadTarget=target;pendingWrites++;renderDocuments();syncComposer();
  try{
   for(const file of files){
    const binary=/\.(pdf|pptx|xlsx)$/i.test(file.name),limit=10*1024*1024;
@@ -31,7 +31,27 @@ async function uploadDocuments(files){
    }catch(error){errors.push(file.name+': '+error.message);}
   }
  }finally{pendingWrites--;documentUploadTarget=null;documentUploadName='';renderDocuments();syncComposer();}
- if(errors.length)dialog('Document upload','<p>'+errors.map(escape).join('<br>')+'</p>');
+ if(errors.length){
+  if(agentId===target&&dialogRevision===revision)dialog('Document upload','<p>'+errors.map(escape).join('<br>')+'</p>');
+  else alert(errors.join('\n'));
+ }
+}
+// Keep cancellation pending independently of DOM nodes replaced by polling.
+const pendingChatStops=new Set();
+function chatStopButton(id,crew=false,stopping=false,label='Stop'){
+ const pending=stopping||pendingChatStops.has(agentId+':'+id);
+ return '<button type="button" '+(crew?'data-crew-chat-stop':'data-chat-stop')+'="'+escape(id)+'" '+(pending?'disabled':'')+'>'+(pending?'Stopping…':label)+'</button>';
+}
+async function stopChat(id,crew=false){
+ const owner=agentId,role=selectedCrewRole,key=owner+':'+id;
+ if(pendingChatStops.has(key))return;
+ if(crew)el('crew-chat-error').hidden=true;
+ pendingChatStops.add(key);render();
+ try{await api('decision',{id,action:'cancel'},owner);await refresh();}
+ catch(error){
+  if(crew&&agentId===owner&&selectedCrewRole===role){el('crew-chat-error').textContent=error.message;el('crew-chat-error').hidden=false;}
+  else alert(error.message);
+ }finally{pendingChatStops.delete(key);render();}
 }
 const documentDropZone=el('companion');
 for(const eventName of ['dragenter','dragover'])documentDropZone.addEventListener(eventName,event=>{
@@ -165,7 +185,7 @@ let conversationSignature='',conversationOwner=null;
 function renderConversation(){
   renderImageDrafts();renderDocuments();syncComposer();const log=el('conversation');if(!log)return;
   const jobs=[...data.jobs.filter(j=>j.kind!=='crew'),...(data.crewChats||[]).filter(j=>j.payload.collaboration?.origin?.owner===agentId&&j.payload.collaboration.origin.role===null),...(data.roundtableTurns||[])].sort((a,b)=>a.created-b.created);
-  const signature=JSON.stringify([agentId,data.profile?.name,jobs.map(j=>[j.id,j.status,j.result,j.events?.at(-1),shieldReplyHeld(j)])]);
+  const signature=JSON.stringify([agentId,data.profile?.name,[...pendingChatStops],jobs.map(j=>[j.id,j.status,j.result,j.events?.at(-1),shieldReplyHeld(j)])]);
   if(conversationOwner!==agentId)el('chat-error').hidden=true;
   if(signature===conversationSignature)return;
   const follow=conversationOwner!==agentId||log.scrollHeight-log.scrollTop-log.clientHeight<70,top=log.scrollTop;
@@ -174,7 +194,7 @@ function renderConversation(){
     if(j.payload.collaboration)return collaborationHistoryMarkup(j);
     const held=shieldReplyHeld(j),result=held?{}:j.result||{},pending=['queued','running','waiting','stopping'].includes(j.status);
     const status={queued:'Waiting to start…',running:j.events?.at(-1)?.title==='Preparing OpenShell'?'Preparing your protected runtime…':'Working on your request…',waiting:'Waiting for a decision.',stopping:'Stopping after the current model call…',cancelled:'Stopped.'}[j.status];
-    return '<article class="chat-turn" data-chat-turn="'+escape(j.id)+'">'+(j.kind==='heartbeat'?'':'<div class="chat-message chat-user"><small>'+escape(j.payload.sender||'You')+'</small><div>'+escape(j.payload.prompt||'').replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images,j.id)+'</div></div>')+'<div class="chat-message chat-agent"><small>'+escape(j.result?.systemNotice?'System':data.profile?.name||'Agent')+(j.kind==='heartbeat'?' · Heartbeat':'')+' · '+escape(new Date(j.created*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))+'</small>'+(j.kind==='heartbeat'?'<small class="heartbeat-delivery">'+escape(result.telegram==='sent'?'Sent to Telegram':result.telegram==='failed'?'Telegram delivery failed. Your summary is saved here.':['pending','sending'].includes(result.telegram)?'Telegram delivery unconfirmed':'')+'</small>':'')+customSkillMarkup(result.activity)+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(result.answer||result.error||(pending?'':status||'No text reply was returned.'))+'</div>')+(!held&&pending?'<div class="chat-progress" role="status">'+escape(status)+(j.status!=='stopping'?'<button type="button" data-chat-stop="'+escape(j.id)+'">Stop</button>':'')+'</div>':'')+(!held&&result.source?'<small class="heartbeat-source">'+'Technical discovery · '+'Published '+escape(result.source.published)+' · Feed excerpt<br><a href="'+escape(result.source.url)+'" target="_blank" rel="noopener noreferrer">'+escape(result.source.title)+'</a></small>':'')+webpageButtons(result.files,j.id)+(result.files||[]).filter(f=>!/\.html$/i.test(f)&&(!f.endsWith('.md')||!result.answer)).map(f=>'<details class="chat-file"><summary data-chat-file="'+escape(f)+'">'+escape(f.split('/').pop())+'</summary><div class="chat-file-body"></div></details>').join('')+'</div></article>';
+    return '<article class="chat-turn" data-chat-turn="'+escape(j.id)+'">'+(j.kind==='heartbeat'?'':'<div class="chat-message chat-user"><small>'+escape(j.payload.sender||'You')+'</small><div>'+escape(j.payload.prompt||'').replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images,j.id)+'</div></div>')+'<div class="chat-message chat-agent"><small>'+escape(j.result?.systemNotice?'System':data.profile?.name||'Agent')+(j.kind==='heartbeat'?' · Heartbeat':'')+' · '+escape(new Date(j.created*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))+'</small>'+(j.kind==='heartbeat'?'<small class="heartbeat-delivery">'+escape(result.telegram==='sent'?'Sent to Telegram':result.telegram==='failed'?'Telegram delivery failed. Your summary is saved here.':['pending','sending'].includes(result.telegram)?'Telegram delivery unconfirmed':'')+'</small>':'')+customSkillMarkup(result.activity)+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(result.answer||result.error||(pending?'':status||'No text reply was returned.'))+'</div>')+(!held&&pending?'<div class="chat-progress" role="status">'+escape(status)+(j.status!=='stopping'?chatStopButton(j.id):'')+'</div>':'')+(!held&&result.source?'<small class="heartbeat-source">'+'Technical discovery · '+'Published '+escape(result.source.published)+' · Feed excerpt<br><a href="'+escape(result.source.url)+'" target="_blank" rel="noopener noreferrer">'+escape(result.source.title)+'</a></small>':'')+webpageButtons(result.files,j.id)+(result.files||[]).filter(f=>!/\.html$/i.test(f)&&(!f.endsWith('.md')||!result.answer)).map(f=>'<details class="chat-file"><summary data-chat-file="'+escape(f)+'">'+escape(f.split('/').pop())+'</summary><div class="chat-file-body"></div></details>').join('')+'</div></article>';
   }).join(''):'<p class="chat-empty">Start a conversation. Your questions and replies will stay here.</p>');
   loadChatImages(log,agentId);
   if(follow)log.scrollTop=log.scrollHeight;else log.scrollTop=top;
@@ -182,7 +202,7 @@ function renderConversation(){
 el('conversation').addEventListener('click',async event=>{
   if(event.target.closest('[data-open-collaboration]')){showCollaboration();return;}
   const stop=event.target.closest('[data-chat-stop]');
-  if(stop){stop.disabled=true;try{await api('decision',{id:stop.dataset.chatStop,action:'cancel'});await refresh();}catch(error){stop.disabled=false;alert(error.message);}return;}
+  if(stop){if(!stop.disabled)await stopChat(stop.dataset.chatStop);return;}
   const item=event.target.closest('[data-chat-file]');if(!item||item.dataset.loaded)return;
   const owner=agentId,body=item.nextElementSibling;item.dataset.loaded='true';body.textContent='Loading…';
   try{

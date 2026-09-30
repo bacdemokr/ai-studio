@@ -54,6 +54,18 @@ teamModelDialog.setAttribute('aria-labelledby','team-model-heading');
 teamModelDialog.innerHTML='<header><div><h3 id="team-model-heading">Choose a model</h3><p id="team-model-member"></p></div><button type="button" data-model-close>← Back</button></header><input type="search" aria-label="Search API models" placeholder="Search models or providers…" autocomplete="off"><p class="team-model-count" aria-live="polite"></p><div class="team-model-results"></div><p class="team-model-error" role="alert" hidden></p>';
 // The picker is a view inside Settings, never a second native modal.
 let modelPickerRole=0,modelPickerSaving=false,modelPickerDraft=null,modelPickerOwner=null,modelPickerForm=null,modelPickerSettingsScroll=0;
+function syncTeamModelForm(){
+ const form=el('team-config-form');if(!form)return;
+ const blocked=modelPickerSaving||!runtime.teamModel||data.bacResetting||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
+ for(const trigger of form.querySelectorAll('[data-team-model]')){
+  const role=Number(trigger.dataset.teamModel),draft=teamModelDrafts.get(role);
+  const model=draft?(runtime.teamModels||[]).find(m=>m.id===draft):teamModel(role);
+  trigger.querySelector('span').textContent=model?.label||draft||'Choose model';trigger.title=model?.id||draft||'';trigger.disabled=!!blocked;
+ }
+ const apply=form.querySelector('[data-team-apply-all]');
+ apply.textContent=modelPickerSaving?'Applying…':'Apply changes';
+ apply.disabled=!!blocked||![...teamModelDrafts].some(([role,id])=>id!==teamModel(role)?.id);
+}
 function renderModelResults(){
  const query=teamModelDialog.querySelector('input').value.trim().toLowerCase();
  const selected=modelPickerDraft;
@@ -121,13 +133,12 @@ root.addEventListener('click',async event=>{
   if(!await applyTeamModel()){button.textContent='Apply changes';return;}
  }
  button.textContent='Apply changes';
- const notice=el('team-model-status');if(notice){notice.hidden=false;notice.textContent='Model changes applied. Used from the next request.';}
+ const notice=el('team-model-status');if(notice&&agentId===owner){notice.hidden=false;notice.textContent='Model changes applied. Used from the next request.';}
 });
 async function applyTeamModel(){
  const target=modelPickerOwner,role=modelPickerRole,model=modelPickerDraft;
  modelPickerSaving=true;
- const form=el('team-config-form');
- if(form)for(const button of form.querySelectorAll('[data-team-model],[data-team-apply-all]'))button.disabled=true;
+ syncTeamModelForm();
  try{
   const result=await api('team-model',{role,model},target);
   if(agentId===target){
@@ -145,14 +156,10 @@ async function applyTeamModel(){
    }else alert(defaultNames[role]+' model applied. Used from the next request.');
   }
   return true;
- }catch(error){const message=el('team-model-status');if(message){message.textContent='Some changes may have saved. '+error.message+' Unsaved selections are kept for retry.';message.hidden=false;}return false;}
+ }catch(error){const message=el('team-model-status');if(message&&agentId===target){message.textContent='Some changes may have saved. '+error.message+' Unsaved selections are kept for retry.';message.hidden=false;}else alert('Model changes could not be applied. '+error.message);return false;}
  finally{
   modelPickerSaving=false;render();
-  if(form&&form.isConnected){
-   const blocked=!runtime.teamModel||data.bacResetting||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
-   for(const button of form.querySelectorAll('[data-team-model]'))button.disabled=!!blocked;
-   form.querySelector('[data-team-apply-all]').disabled=!!blocked||![...teamModelDrafts].some(([r,id])=>id!==teamModel(r)?.id);
-  }
+  syncTeamModelForm();
  }
 }
 
@@ -318,7 +325,7 @@ function collaborationMarkup(job,role){
  const outputRoles=collaborationRoleOrder(plan).filter(i=>plan.outputs?.[i]);
  const contributions=captain?outputRoles.map(i=>{const p=plan.outputs[i];return '<details class="crew-tool-activity" data-contribution-role="'+i+'"><summary>'+escape(p.name)+' · Contribution</summary>'+customSkillMarkup(p.activity)+'<div class="chat-prose">'+messageMarkup(p.answer)+'</div>'+collaborationFileButtons(p.files,job.id)+'</details>'+collaborationDecisionMarkup({...plan,checks:(plan.checks||[]).filter(check=>!check.afterRevision&&Number(check.afterRole)===i)});}).join(''):'';
  const handoff=!captain&&plan.handoffs?.[role]?'<div class="chat-message chat-handoff"><small>Casey → '+escape(defaultNames[role])+'</small><div class="chat-prose">'+messageMarkup(plan.handoffs[role].task)+'</div><small>Received: '+escape(['Captain’s task',...plan.handoffs[role].receivedFrom.map(i=>defaultNames[Number(i)]+"’s contribution")].join(' · '))+'</small></div>':'';
- return '<article class="chat-turn" data-collaboration-job="'+escape(job.id)+'">'+(captain||plan.origin?.role===role?'<div class="chat-message chat-user"><small>You</small><div>'+escape(job.payload.prompt).replace(/\n/g,'<br>')+imageHistoryMarkup(job.payload.images,job.id)+'</div></div>':'')+(captain?collaborationTimeMarkup(job):'')+(held?shieldReplyWait:summary+handoff+contributions+livePlanActivityMarkup(plan,role,job.id)+(captain?collaborationRevisionMarkup(job):'')+(captain&&!outputRoles.length?collaborationDecisionMarkup(plan):'')+'<div class="chat-message chat-agent"><small>'+escape(defaultNames[role])+' · '+(captain?'BaC collaboration':'Specialist contribution')+'</small><div class="chat-prose">'+messageMarkup(answer||status)+'</div>'+(captain?collaborationCompletionMarkup(plan,finalAnswer):'')+'</div>')+(!held&&!captain&&plan.revision?.role===role?collaborationRevisionMarkup(job):'')+(pending?'<div class="chat-progress" role="status">'+escape(status)+(job.status!=='stopping'?'<button type="button" data-crew-chat-stop="'+escape(job.id)+'">'+(plan.responseReady?'Stop reactions':'Stop')+'</button>':'')+'</div>':'')+(held?'':webpageButtons(captain?Object.values(plan.webpages||{}).flat():piece?.files,job.id))+(!held?collaborationFileButtons(captain?(job.result?.files||[]).filter(path=>path==='artifacts/plan-'+job.id+'.md'):piece?.files,job.id,captain?'Open team response':'Open supporting file'):'')+(captain&&!held?roundtableMarkup(job):'')+'</article>';
+ return '<article class="chat-turn" data-collaboration-job="'+escape(job.id)+'">'+(captain||plan.origin?.role===role?'<div class="chat-message chat-user"><small>You</small><div>'+escape(job.payload.prompt).replace(/\n/g,'<br>')+imageHistoryMarkup(job.payload.images,job.id)+'</div></div>':'')+(captain?collaborationTimeMarkup(job):'')+(held?shieldReplyWait:summary+handoff+contributions+livePlanActivityMarkup(plan,role,job.id)+(captain?collaborationRevisionMarkup(job):'')+(captain&&!outputRoles.length?collaborationDecisionMarkup(plan):'')+'<div class="chat-message chat-agent"><small>'+escape(defaultNames[role])+' · '+(captain?'BaC collaboration':'Specialist contribution')+'</small><div class="chat-prose">'+messageMarkup(answer||status)+'</div>'+(captain?collaborationCompletionMarkup(plan,finalAnswer):'')+'</div>')+(!held&&!captain&&plan.revision?.role===role?collaborationRevisionMarkup(job):'')+(pending?'<div class="chat-progress" role="status">'+escape(status)+(job.status!=='stopping'?chatStopButton(job.id,true,false,plan.responseReady?'Stop reactions':'Stop'):'')+'</div>':'')+(held?'':webpageButtons(captain?Object.values(plan.webpages||{}).flat():piece?.files,job.id))+(!held?collaborationFileButtons(captain?(job.result?.files||[]).filter(path=>path==='artifacts/plan-'+job.id+'.md'):piece?.files,job.id,captain?'Open team response':'Open supporting file'):'')+(captain&&!held?roundtableMarkup(job):'')+'</article>';
 }
 function collaborationHistoryMarkup(job){
  const held=shieldReplyHeld(job,0),pending=['queued','running','waiting','stopping'].includes(job.status);
@@ -393,7 +400,7 @@ function renderCrewPassport(){
  el('crew-prompt').placeholder='Message '+name+'… or /plan a task with the BaC team';syncCrewComposer();
  const turns=(data.crewChats||[]).filter(j=>j.payload.crewRole===i||(j.payload.collaboration&&(j.payload.collaboration.origin?.role===i||j.payload.collaboration.handoffs?.[i]||j.payload.collaboration.tasks?.some(t=>t.role===i)||j.payload.collaboration.activeRole===i))).map(j=>({...j,direct:true}));
  turns.sort((a,b)=>a.created-b.created);
- const signature=JSON.stringify([key,turns.map(j=>[j.id,j.status,j.result,j.payload.collaboration?.liveActivity?{...j.payload.collaboration,liveActivity:{...j.payload.collaboration.liveActivity,elapsed:0}}:j.payload.collaboration,j.events?.at(-1),shieldReplyHeld(j,i)])]);
+ const signature=JSON.stringify([key,[...pendingChatStops],turns.map(j=>[j.id,j.status,j.result,j.payload.collaboration?.liveActivity?{...j.payload.collaboration,liveActivity:{...j.payload.collaboration.liveActivity,elapsed:0}}:j.payload.collaboration,j.events?.at(-1),shieldReplyHeld(j,i)])]);
  for(const job of turns){const total=el('crew-conversation').querySelector('[data-plan-total="'+job.id+'"]');if(total)total.textContent=collaborationTime(job);const timer=el('crew-conversation').querySelector('[data-plan-elapsed="'+job.id+'"]');if(timer&&job.payload.collaboration?.liveActivity)timer.textContent=Number(job.payload.collaboration.liveActivity.elapsed);}
  if(signature===crewChatSignature)return;
  crewChatSignature=signature;const log=el('crew-conversation'),follow=switched||log.scrollHeight-log.scrollTop-log.clientHeight<70,top=log.scrollTop;
@@ -403,7 +410,7 @@ function renderCrewPassport(){
  const answer=j.result?.answer||j.result?.error||'';
  const request=j.payload.prompt||'Describe the attached image.';
  const status={queued:'Waiting to start…',running:'Working on your message…',waiting:'Waiting for a decision.',stopping:'Stopping…',cancelled:'Stopped.',error:'This message could not finish.'}[j.status];
- return '<article class="chat-turn"><div class="chat-message chat-user"><small>You</small><div>'+escape(request).replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images,j.id)+'</div></div><div class="chat-message chat-agent"><small>'+escape(name)+'</small>'+(held?shieldReplyWait:customSkillMarkup(j.result?.activity)+'<div class="chat-prose">'+messageMarkup(answer||status||'No text reply was returned.')+'</div>'+crewActivityMarkup(j,i)+webpageButtons(j.result?.files,j.id)+(pending?'<div class="chat-progress"><button type="button" data-crew-chat-stop="'+escape(j.id)+'" '+(j.status==='stopping'?'disabled':'')+'>Stop</button></div>':''))+'</div>'+(i===0?roundtableMarkup(j):'')+'</article>';
+ return '<article class="chat-turn"><div class="chat-message chat-user"><small>You</small><div>'+escape(request).replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images,j.id)+'</div></div><div class="chat-message chat-agent"><small>'+escape(name)+'</small>'+(held?shieldReplyWait:customSkillMarkup(j.result?.activity)+'<div class="chat-prose">'+messageMarkup(answer||status||'No text reply was returned.')+'</div>'+crewActivityMarkup(j,i)+webpageButtons(j.result?.files,j.id)+(pending?'<div class="chat-progress">'+chatStopButton(j.id,true,j.status==='stopping')+'</div>':''))+'</div>'+(i===0?roundtableMarkup(j):'')+'</article>';
  }).join(''):'<p class="chat-empty">'+escape(currentCollaboration()?window.BacCrewCatalog[i].collaboration.description:roles[i][2])+'</p>';
  loadChatImages(log,agentId);
  if(follow)log.scrollTop=log.scrollHeight;else log.scrollTop=top;
@@ -420,7 +427,7 @@ el('crew-chat').onsubmit=async e=>{
  finally{crewChatSending=false;syncCrewComposer();}
 };
 el('crew-prompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();if(!el('crew-send').disabled)el('crew-chat').requestSubmit(el('crew-send'));}});
-el('crew-conversation').onclick=async e=>{const file=e.target.closest('[data-plan-file]');if(file){await openFile(file.dataset.planFile,file.dataset.planJob);return;}const button=e.target.closest('[data-crew-chat-stop]');if(!button)return;try{await api('decision',{id:button.dataset.crewChatStop,action:'cancel'});await refresh();}catch(error){el('crew-chat-error').textContent=error.message;el('crew-chat-error').hidden=false;}};
+el('crew-conversation').onclick=async e=>{const file=e.target.closest('[data-plan-file]');if(file){await openFile(file.dataset.planFile,file.dataset.planJob);return;}const button=e.target.closest('[data-crew-chat-stop]');if(!button||button.disabled)return;await stopChat(button.dataset.crewChatStop,true);};
 
 function roundtableMarkup(job){
  const meeting=job.payload.roundtable,plan=job.payload.collaboration;if((!meeting?.members?.length&&!meeting?.skipped?.length)||(plan&&(!plan.responseReady||plan.outcome==='unavailable')))return '';
