@@ -169,4 +169,34 @@ class ModelTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,'build-a-claw installation'):
             self.model.configuration('qwen')
 
+    def parent_installation(self):
+        parent = self.root / 'build-a-claw'
+        studio = parent / 'ai-studio'
+        studio.mkdir(parents=True)
+        source = {k: v for k, v in self.spec.items() if k not in ('name', 'wait_seconds', 'model_path')}
+        source.update(path='models/qwen', base_url='http://127.0.0.1:8000',
+                      argv=[sys.executable, 'serve', '{model_path}', '--served-model-name', '{model_id}'])
+        (parent / 'config.json').write_text(json.dumps({'models': {'qwen': source}}))
+        return lm.Model(studio), parent
+
+    def test_explicit_model_uses_adjacent_installation(self):
+        model, parent = self.parent_installation()
+        spec = model.configuration('qwen')
+        self.assertEqual(spec['model_path'], str(parent / 'models/qwen'))
+        self.assertEqual(spec['base_url'], 'http://127.0.0.1:8000/v1')
+        self.assertEqual(spec['argv'][2], spec['model_path'])
+        self.assertEqual(spec['argv'][-1], spec['model_id'])
+        self.assertFalse((model.root / 'local-model.json').exists())
+        self.assertIsNone(model.configuration())
+
+    def test_local_configuration_overrides_parent_installation(self):
+        model, _ = self.parent_installation()
+        (model.root / 'local-model.json').write_text(json.dumps(self.config))
+        self.assertEqual(model.configuration('qwen')['model_path'], self.spec['model_path'])
+
+    def test_unconfigured_parent_model_has_clear_error(self):
+        model, _ = self.parent_installation()
+        with self.assertRaisesRegex(RuntimeError, 'not configured in build-a-claw: gemma'):
+            model.configuration('gemma')
+
 if __name__=='__main__':unittest.main()

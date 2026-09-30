@@ -48,10 +48,28 @@ class Model:
     def configuration(self, name=None):
         path = self.root / 'local-model.json'
         if not path.exists():
-            if name:
+            # Explicit model preparation can reuse the adjacent installation.
+            # Ordinary Studio startup remains independent of the parent demo.
+            parent = self.root.parent
+            parent_config = parent / 'config.json'
+            if name and parent.name == 'build-a-claw' and parent_config.is_file():
+                source = json.loads(parent_config.read_text()).get('models', {}).get(name)
+                if isinstance(source, dict):
+                    weights = str((parent / source['path']).resolve())
+                    data = {'models': {name: {
+                        **source, 'model_path': weights,
+                        'base_url': source.get('base_url', '').rstrip('/') + '/v1',
+                        'argv': [arg.replace('{model_path}', weights).replace('{model_id}', source['model_id'])
+                                 for arg in source.get('argv', [])],
+                    }}}
+                else:
+                    raise RuntimeError('Local model is not configured in build-a-claw: ' + str(name))
+            elif name:
                 raise RuntimeError('No local model setup was found. Create local-model.json beside bac with the vLLM executable and downloaded Qwen weights paths. If using the build-a-claw installation, that directory must be present with runtime/restored/vllm/bin/vllm and models/qwen. You can still run ./bac start without a local model.')
-            return None
-        data = json.loads(path.read_text())
+            else:
+                return None
+        else:
+            data = json.loads(path.read_text())
         if not name and not data.get('enabled', False):
             return None
         name = name or data.get('default_model', 'qwen')

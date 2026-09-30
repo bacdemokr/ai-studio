@@ -39,7 +39,14 @@ missing. `./bac stop` stops Studio only.
 ./bac start                # Start Studio separately
 ```
 
-Put a machine-specific `local-model.json` beside `bac`. It contains a `models`
+When Studio is inside a `build-a-claw` installation, `./bac vllm` automatically
+reads the selected model's launch settings from the parent's `config.json` if
+`local-model.json` is absent. It resolves the weight path relative to that
+installation and reuses its executable and environment settings. This does not
+invoke the parent demo or enable local models during ordinary Studio startup.
+
+For a standalone installation or to override those settings, put a
+machine-specific `local-model.json` beside `bac`. It contains a `models`
 object and optional `wait_seconds` (1–3600). Each model specifies its `model_id`,
 `model_path`, `base_url`, `context_window`, exact `argv` list, and `env` object.
 Qwen remains the command default regardless of `default_model` or `enabled` in
