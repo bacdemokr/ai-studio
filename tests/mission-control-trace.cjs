@@ -60,3 +60,17 @@ for(const markup of [render(partialPlan,'done',{answer:'Draft saved.'}),context.
  assert(!markup.includes('Why this result is sufficient'));assert(!markup.includes('Enough to finish'));
 }
 console.log('PASS: trace order, live review/continuation, early finish, uncalled roles, cancellation/failure, unsupported work, legacy ordering and escaping.');
+
+// The final reply and specialist research are distinct files, not two team responses.
+const responsePath='artifacts/plan-chat.md',briefPath='artifacts/shared-chat-r8-brief.md',htmlPath='artifacts/page-chat-r5.html';
+const withFiles={...chatJob,result:{answer:'Finished.',files:[responsePath,briefPath,htmlPath,responsePath]},payload:{...chatJob.payload,collaboration:{...chatPlan,handoffs:{8:{task:'Research',receivedFrom:[]}},outputs:{8:{name:'Avery',answer:'Research first.',files:[briefPath,briefPath,htmlPath]}}}}};
+const fileMarkup=context.collaborationMarkup(withFiles,0);
+assert.equal((fileMarkup.match(/>Open team response</g)||[]).length,1);
+assert.equal((fileMarkup.match(/>Open supporting file</g)||[]).length,1);
+assert.equal((fileMarkup.match(/data-plan-file=/g)||[]).length,2);
+assert(fileMarkup.indexOf(briefPath)<fileMarkup.indexOf('</details>'));
+assert(!fileMarkup.includes('data-plan-file="'+htmlPath+'"'));
+assert.match(context.collaborationMarkup(withFiles,8),/>Open supporting file</);
+assert(!context.collaborationMarkup(withFiles,8).includes('Open team response'));
+assert(!context.collaborationMarkup({...withFiles,result:{files:[briefPath]}},0).includes('Open team response'));
+console.log('PASS: one final-response button; deduplicated supporting files stay with their specialist.');
