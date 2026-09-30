@@ -37,6 +37,7 @@ class PlanHandoffTests(unittest.TestCase):
             if agent.endswith('-r5'):
                 copies = list((self.adapter.agents[agent] / 'inbox').glob('*.md'))
                 self.assertTrue(any('https://example.com/source' in p.read_text() for p in copies))
+                self.assertIn('"originalPath": "artifacts/brief.md"', prompt)
             return result
         self.adapter.respond = respond
 

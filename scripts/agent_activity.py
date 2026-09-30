@@ -132,6 +132,20 @@ def model_failure(state, agent, session, started, output_limit):
                     'message': 'The model returned an incomplete or invalid tool call.' +
                     (f' Its output reached the configured {output_limit:,}-token limit, which may have cut the call short.' if capped else '') +
                     ' Saved work is preserved. The request was not automatically repeated.'}
+            if error:
+                lowered = error.lower()
+                # Some providers wrap their database saturation in HTTP 401.
+                # Do not misdiagnose that explicit infrastructure error as a bad key.
+                if 'remaining connection slots are reserved' in lowered or 'too many connections' in lowered:
+                    return {'code': 'provider-capacity', 'message':
+                        'The model service could not accept the request because its connection capacity was exhausted. '
+                        'Saved work is preserved; try again after the service recovers. The request was not automatically repeated.'}
+                if re.search(r'(?:http\s*|status(?:\s+code)?[\s:=]*)(?:502|503|504)\b', lowered):
+                    return {'code': 'provider-unavailable', 'message':
+                        'The model service is temporarily unavailable. Saved work is preserved; the request was not automatically repeated.'}
+                if re.search(r'(?:http\s*|status(?:\s+code)?[\s:=]*)429\b', lowered):
+                    return {'code': 'provider-rate-limit', 'message':
+                        'The model service rate limit was reached. Saved work is preserved; wait before trying again. The request was not automatically repeated.'}
             # Do not diagnose an older error after a later successful response.
             return None
     except (OSError, ValueError, TypeError, AttributeError, sqlite3.Error):

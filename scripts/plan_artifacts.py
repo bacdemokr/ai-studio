@@ -33,7 +33,7 @@ def snapshot_files(workspace):
     return found
 
 
-def collect_files(studio, owner, job_id, role, before):
+def collect_files(studio, owner, job_id, role, before, source_map=None):
     from studio import safe_file, Problem
     workspace = studio.workspace(owner, role)
     paths, total = [], 0
@@ -49,6 +49,8 @@ def collect_files(studio, owner, job_id, role, before):
             target = ('artifacts/shared-' + job_id + '-r' + str(role) + '-' + signature[0][:12]
                       + '-' + str(len(paths)) + Path(relative).suffix.lower())
             safe_file(studio.workspace(owner), target).write_bytes(raw)
+            if source_map is not None:
+                source_map[target] = relative
             paths.append(target)
             total += len(raw)
         except (Problem, OSError):

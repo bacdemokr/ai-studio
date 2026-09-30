@@ -152,6 +152,15 @@ class ModelFailureTests(unittest.TestCase):
                 insert(4,1400,{'role':'assistant','errorMessage':'PRIVATE_PROVIDER_RESPONSE'})
                 self.assertIsNone(model_failure(folder,'a','s',1,8192))
 
+                for seq, text, code in [
+                    (5, 'HTTP 401 Authentication Error: FATAL: remaining connection slots are reserved for roles with the SUPERUSER attribute PRIVATE_DETAIL', 'provider-capacity'),
+                    (6, 'Model provider returned HTTP 503 PRIVATE_DETAIL', 'provider-unavailable'),
+                    (7, 'HTTP 429 PRIVATE_DETAIL', 'provider-rate-limit')]:
+                    insert(seq, 1400 + seq, {'role':'assistant', 'errorMessage':text})
+                    diagnosis = model_failure(folder,'a','s',1,8192)
+                    self.assertEqual(diagnosis['code'], code)
+                    self.assertNotIn('PRIVATE_DETAIL', json.dumps(diagnosis))
+
     def test_gateway_error_enriched_without_repeating_model_request(self):
         error = runtime.GatewayError('Generic 500','request_failed')
         def gateway(path,*args,**kwargs):

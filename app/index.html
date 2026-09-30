@@ -80584,7 +80584,7 @@ function missionControlTraceMarkup(job){
   const role=task.role,h=plan.handoffs?.[role],output=plan.outputs?.[role],working=active&&plan.activeRole===role;
   const recovery=plan.handoffRecovery?.role===role?plan.handoffRecovery:null;
   const missing=output?.handoffStatus==='missing';
-  const status=missing?(working&&recovery?.status==='working'?'Saving missing handoff':'Handoff incomplete'):output?'Delivered':working?(job.status==='stopping'?'Stopping':'Working'):active?'Started':'Incomplete';
+  const status=missing?(working&&recovery?.status==='working'?'Saving missing handoff':'Handoff incomplete'):output?.incomplete?'Partial work saved':output?'Delivered':working?(job.status==='stopping'?'Stopping':'Working'):active?'Started':'Incomplete';
   const expected=h?.expected||task.expected;
   const assignment='<strong>Casey’s assignment</strong><div>'+messageMarkup(h?.task||task.task)+'</div>'+(expected?'<div class="mission-expectation"><small>Expected result</small><div>'+messageMarkup(expected)+'</div></div>':'')+(h?'<small class="mission-plan-inputs">Received: '+escape(['Casey’s brief',...(h.receivedFrom||[]).map(i=>defaultNames[Number(i)]+"’s contribution")].join(' · '))+'</small>':'');
   const recoveryNote=recovery?'<p class="mission-plan-inputs">'+escape(recovery.status==='delivered'?'A missing handoff was saved and verified in one repair before continuing.':recovery.status==='working'?'Required files are missing. One repair is using the existing research; later specialists are waiting.':'The required handoff could not be recovered. Later specialists were not started.')+'</p>':'';

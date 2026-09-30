@@ -843,9 +843,15 @@ def respond(agent_id, session, prompt, images=None, json_response=False):
         raise error
     choices = result.get('choices', [])
     elapsed = time.monotonic() - request_started
+    if choices and choices[0].get('finish_reason') == 'length':
+        error = GatewayError('The model reached its output limit before finishing. Saved work is preserved; the request was not automatically repeated.', 'output-limit')
+        error.activity = observed_activity(agent_id, session, started)
+        raise error
     content = choices[0].get('message', {}).get('content') if choices else None
     if not isinstance(content, str) or not content.strip():
-        raise RuntimeError('OpenClaw returned no text. Check the model tool-calling configuration and retry.')
+        error = GatewayError('OpenClaw returned no text. Saved work is preserved; the request was not automatically repeated. Check the model tool-calling configuration before retrying.', 'empty-response')
+        error.activity = observed_activity(agent_id, session, started)
+        raise error
     from telemetry import Reply, measure
     answer=Reply(content, measure(result, root() / 'state', agent_id, session, started, elapsed=elapsed))
     answer.activity = observed_activity(agent_id, session, started)

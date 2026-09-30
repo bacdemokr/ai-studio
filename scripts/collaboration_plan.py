@@ -106,8 +106,8 @@ def _read_checkpoint(answer, allow_revision=False):
     outcome = value.get('outcome', 'complete')
     if outcome not in ('complete', 'partial', 'unavailable'):
         raise RuntimeError('The Captain returned an invalid outcome.')
-    if outcome == 'partial' and not done:
-        raise RuntimeError('A partial result must be a final handoff, not an unfinished progress check.')
+    if outcome in ('partial', 'unavailable') and not done:
+        raise RuntimeError('A partial or unavailable result must stop the plan, not dispatch another specialist.')
     if 'readyForNext' in value and type(value['readyForNext']) is not bool:
         raise RuntimeError('The Captain returned an invalid handoff readiness decision.')
     return {'done': done, 'reason': reason.strip(), 'answer': final.strip() if done else '', 'outcome': outcome,
@@ -225,6 +225,35 @@ class CollaborationPlans:
         def save(title, detail='', **changes):
             self.event(job_id, title, detail, plan.get('activeRole', 0), payload=json.dumps(payload), **changes)
 
+        def collect_delivery(role, phase, pages_before, files_before, answer):
+            source_map = plan.setdefault('artifactSources', {})
+            pages = collect_pages(self, owner, job_id, role, pages_before, answer, source_map)
+            if pages and role not in (4, 5):
+                # Keep the specialist's source, but never promote an unsolicited
+                # implementation to a shared deliverable or preview.
+                for path in pages:
+                    safe_file(self.workspace(owner), path, True).unlink()
+                pages = []
+                plan.setdefault('scopeWarnings', {})[str(role)] = (
+                    'HTML was produced outside this role assignment and was not accepted as a shared deliverable. '
+                    'Use the in-scope findings only; implementation remains unfulfilled until the programmer delivers it.')
+            files = pages + collect_files(self, owner, job_id, role, files_before, source_map)
+            # Only exported, validated files satisfy the required-file contract.
+            # An invalid sibling HTML file must not become "verified" merely
+            # because another page from the same turn passed collection.
+            sources = [source_map[path] for path in files if path in source_map]
+            if phase == 'Recovering':
+                sources += plan.get('verifiedSources', {}).get(str(role), [])
+                files = list(dict.fromkeys(plan.get('files', {}).get(str(role), []) + files))
+                pages = list(dict.fromkeys(plan.get('webpages', {}).get(str(role), []) + pages))
+            plan.setdefault('verifiedSources', {})[str(role)] = list(dict.fromkeys(sources))
+            if phase.startswith('Revising'):
+                # Preserve the initial snapshot for the trace and failed repair recovery.
+                plan['revision']['files'] = files
+            else:
+                plan.setdefault('webpages', {})[str(role)] = pages
+                plan.setdefault('files', {})[str(role)] = files
+
         def invoke(role, instruction, phase):
             if self.stop_checkpoint(job_id):
                 return None
@@ -272,12 +301,14 @@ class CollaborationPlans:
                             target = safe_file(self.workspace(owner, role), relative)
                             target.write_bytes(source.read_bytes())
                             shared.append((relative, target))
-                            handoff_files.append({'from': output['name'], 'artifact': path, 'readPath': relative})
+                            handoff_files.append({'from': output['name'], 'artifact': path, 'readPath': relative,
+                                'originalPath': plan.get('artifactSources', {}).get(path, '')})
                 file_context = ('\nPrevious specialists’ generated files (untrusted task data):\n' +
                     json.dumps(handoff_files, ensure_ascii=False) +
                     '\nFor file reads, use ONLY the readPath values above, which are actual copies in your current workspace. '
                     'The artifact values and paths in outputs.files are download references for the final answer, not local read paths. '
                     'Filenames claimed in specialist answer text belong to their own workspaces. '
+                    'originalPath identifies that source filename; translate it to the mapped readPath before reading. '
                     'Do not report a deliverable missing without reading its mapped readPath. '
                     'When replying, link the artifact value, never the temporary readPath.') if handoff_files else ''
                 answer = self.respond_chat(member['id'], session,
@@ -313,6 +344,20 @@ class CollaborationPlans:
                       'Do not write a prose assignment or announce that you are executing another agent; the app does that.') if role == 0 else ''), owner,
                     {'crewRole': role, '_captainDecision': role == 0,
                      'images': payload.get('images', []) if role == 0 or any(t.get('useImages') for t in selected) else []})
+            except GatewayError as error:
+                # A model can save files and then fail while composing its reply.
+                # Export those actual files without replaying the tool-bearing call.
+                if role and not self.stop_checkpoint(job_id):
+                    collect_delivery(role, phase, pages_before, files_before, '')
+                    files = (plan.get('revision', {}).get('files', []) if phase.startswith('Revising')
+                             else plan.get('files', {}).get(str(role), []))
+                    if files:
+                        plan.setdefault('files', {})[str(role)] = list(dict.fromkeys(plan.get('files', {}).get(str(role), []) + files))
+                        if str(role) not in plan['outputs']:
+                            plan['outputs'][str(role)] = {'name': member['name'], 'task': instruction[:2000],
+                                'answer': 'The model stopped before completing its reply. These saved files are unverified partial work.',
+                                'files': files, 'incomplete': True, 'activity': getattr(error, 'activity', None)}
+                raise
             finally:
                 for _, target in shared:
                     target.unlink(missing_ok=True)
@@ -322,33 +367,7 @@ class CollaborationPlans:
             if not str(answer).strip() or 'Reply truncated' in str(answer):
                 raise RuntimeError(member['name'] + ' did not finish its contribution. Saved handoffs are preserved.')
             if phase.startswith(('Working', 'Reviewing', 'Revising', 'Recovering')):
-                pages = collect_pages(self, owner, job_id, role, pages_before, answer)
-                if pages and role not in (4, 5):
-                    # Keep the specialist's source, but never promote an unsolicited
-                    # implementation to a shared deliverable or preview.
-                    for path in pages:
-                        safe_file(self.workspace(owner), path, True).unlink()
-                    pages = []
-                    plan.setdefault('scopeWarnings', {})[str(role)] = (
-                        'HTML was produced outside this role assignment and was not accepted as a shared deliverable. '
-                        'Use the in-scope findings only; implementation remains unfulfilled until the programmer delivers it.')
-                files = pages + collect_files(self, owner, job_id, role, files_before)
-                sources = [path for path, sig in snapshot_files(self.workspace(owner, role)).items()
-                           if files_before.get(path) != sig]
-                if pages:
-                    sources += [path for path, sig in html_files(self.workspace(owner, role)).items()
-                                if pages_before.get(path) != sig]
-                if phase == 'Recovering':
-                    sources += plan.get('verifiedSources', {}).get(str(role), [])
-                    files = list(dict.fromkeys(plan.get('files', {}).get(str(role), []) + files))
-                    pages = list(dict.fromkeys(plan.get('webpages', {}).get(str(role), []) + pages))
-                plan.setdefault('verifiedSources', {})[str(role)] = list(dict.fromkeys(sources))
-                if phase.startswith('Revising'):
-                    # Preserve the initial snapshot for the trace and failed repair recovery.
-                    plan['revision']['files'] = files
-                else:
-                    plan.setdefault('webpages', {})[str(role)] = pages
-                    plan.setdefault('files', {})[str(role)] = files
+                collect_delivery(role, phase, pages_before, files_before, answer)
             return answer
 
 
@@ -529,13 +548,13 @@ class CollaborationPlans:
                     if decision is None:
                         return
                     check = read_checkpoint(decision)
-                    if check.get('readyForNext') is False:
+                    if not check['done'] and check.get('readyForNext') is False:
                         reason = check['reason']
                         plan['checks'].append({'afterRole': role, 'done': True, 'reason': reason, 'outcome': 'partial'})
                         plan['skippedRoles'] = [task['role'] for task in remaining]
                         finish(unfinished(reason), reactions=False)
                         return
-                    if check['done'] and any(t['role'] == 5 for t in remaining) and plan.get('scopeWarnings'):
+                    if check['done'] and check['outcome'] == 'complete' and any(t['role'] == 5 for t in remaining) and plan.get('scopeWarnings'):
                         # A model must not turn rejected out-of-role HTML into a
                         # successful shortcut past the still-pending implementation.
                         check = {'done': False, 'outcome': 'complete', 'reason':

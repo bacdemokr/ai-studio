@@ -34,7 +34,7 @@ def html_files(workspace):
     return found
 
 
-def collect_pages(studio, owner, job_id, role, before, answer):
+def collect_pages(studio, owner, job_id, role, before, answer, source_map=None):
     """Export changed pages into job-specific immutable, account-owned paths.
 
     Never trust paths mentioned in a model reply. Only actual artifact files or
@@ -43,15 +43,19 @@ def collect_pages(studio, owner, job_id, role, before, answer):
     from studio import safe_file, Problem
     workspace = studio.workspace(owner, role)
     sources = []
+    source_names = {}
     for relative, signature in html_files(workspace).items():
         if before.get(relative) == signature:
             continue
         try:
             raw = safe_file(workspace, relative, True).read_bytes()
             # Do not attach a file that changed during collection.
-            if hashlib.sha256(raw).hexdigest() == signature[0]:
+            content = raw.decode('utf-8')
+            if (hashlib.sha256(raw).hexdigest() == signature[0]
+                    and re.search(r'<html\b', content, re.I) and re.search(r'</html\s*>', content, re.I)):
                 sources.append(raw)
-        except (Problem, OSError):
+                source_names[hashlib.sha256(raw.strip()).hexdigest()] = relative
+        except (Problem, OSError, UnicodeError):
             continue
     # A model without file tools can still supply a complete HTML deliverable.
     for match in re.finditer(r'^```html\s*\n([\s\S]*?)^```\s*$', str(answer), re.I | re.M):
@@ -69,5 +73,7 @@ def collect_pages(studio, owner, job_id, role, before, answer):
         seen.add(digest)
         relative = 'artifacts/page-' + job_id + '-' + label + '-' + digest[:12] + '.html'
         safe_file(studio.workspace(owner), relative).write_bytes(raw)
+        if source_map is not None and digest in source_names:
+            source_map[relative] = source_names[digest]
         paths.append(relative)
     return paths

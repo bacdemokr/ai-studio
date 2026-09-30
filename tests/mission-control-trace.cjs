@@ -96,3 +96,6 @@ assert.match(render(missingHandoff),/Saving missing handoff/);
 assert(!render(missingHandoff).includes('>Delivered<'));
 assert.match(render({...missingHandoff,handoffRecovery:{role:8,status:'failed'}},'done'),/Handoff incomplete/);
 assert.match(render({...delivered,handoffRecovery:{role:8,status:'delivered'}}),/saved and verified in one repair/);
+const interruptedOutput={...delivered,outputs:{8:{answer:'Saved but unverified',incomplete:true}},outcome:'partial',responseReady:true,finalAnswer:'Partial work preserved.'};
+assert.match(render(interruptedOutput,'done'),/Partial work saved/);
+assert(!render(interruptedOutput,'done').includes('>Delivered<'));
