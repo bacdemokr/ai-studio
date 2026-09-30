@@ -141,7 +141,7 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 #agent-campus.studio-world-open{position:fixed;inset:0;z-index:90;width:100%;height:100%;overflow:hidden;background:#090c10}
 #agent-campus.studio-world-open::backdrop{background:#090c10}
 #agent-campus.studio-world-open #studio-alert{top:12px;bottom:auto}
-#agent-campus.studio-world-open>:not(.campus-layout):not(#studio-dialog):not(#studio-surface):not(#studio-alert):not(#studio-team-total-time){display:none!important}
+#agent-campus.studio-world-open>:not(.campus-layout):not(#studio-dialog):not(#studio-surface):not(#studio-alert){display:none!important}
 #agent-campus .campus-layout.world-expanded{position:absolute;inset:0;z-index:1;margin:0;width:100%;height:100%;max-width:none;border:0;border-radius:0!important;box-shadow:none;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr)}
 #agent-campus .world-expanded .campus-stage{height:100%;min-height:0;overflow:hidden}
 #agent-campus .world-expanded #campus-viewport{height:0!important;min-height:0!important;flex:1 1 0;touch-action:none}
@@ -1125,9 +1125,9 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 #studio-surface #studio-board:not(.has-plan) .studio-board-intro{display:block;padding:24px 8px}
 #studio-surface #studio-board:not(.has-plan) .studio-kicker{display:none}
 
-/* One viewport-anchored timer across the scene, panels and modal dialogs. */
-#studio-team-total-time{position:fixed;inset:16px 16px auto auto;margin:0;box-sizing:border-box;width:max-content;max-width:calc(100vw - 32px);padding:10px 16px;border:1px solid #76b90088;border-radius:9px;background:#203026;color:#d1eca9;box-shadow:0 4px 18px #0005;font:600 14px/1.4 Arial,sans-serif;font-variant-numeric:tabular-nums;z-index:2147483647;pointer-events:none}
-#studio-team-total-time::backdrop{background:transparent;pointer-events:none}
+/* Keep total process time inline with Casey's identity. */
+#studio-crew-passport .studio-captain-heading{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px}
+#studio-team-total-time{margin:0;color:#b9d88a;font:500 13px/1.4 Arial,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
 #studio-team-total-time[hidden]{display:none}
 </style>
 <button class="studio-secondary" id="studio-room-action" hidden></button>
@@ -80915,7 +80915,7 @@ function renderCrewPassport(){
  const i=selectedCrewRole,name=defaultNames[i],role=window.BacCrewCatalog[i].collaboration.title;
  const avatar=window.BacCampus?.inspect().crewAvatars?.[i]||{};
  el('crew-number').textContent=String(i+1).padStart(2,'0')+' / '+roles.length;
- el('crew-name').textContent=name;el('crew-role').textContent=role;
+ el('crew-name').textContent=name;syncTeamTotalTime();el('crew-role').textContent=role;
  const model=teamModel(i);el('crew-model').textContent=model?.label||'';el('crew-model').title=model?.id||'';el('crew-model').hidden=!model;
  const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';portrait.style.setProperty('--avatar-accent',appearanceColors[avatar.color]||appearanceColors.green);
  const skills=[];
@@ -81335,7 +81335,7 @@ const controlButton=document.createElement('button');controlButton.type='button'
 const teamResetButton=document.createElement('button');teamResetButton.type='button';teamResetButton.id='studio-bac-reset';teamResetButton.className='studio-secondary';teamResetButton.textContent='Reset';teamResetButton.setAttribute('aria-label','Reset Multi-Agent Demo');teamResetButton.title='Stop active team work and clear team chats, files and the board';teamResetButton.onclick=()=>confirmTeamReset(teamResetButton);crewActions.append(teamResetButton);
 const teamResetStatus=document.createElement('p');teamResetStatus.id='studio-team-reset-status';teamResetStatus.className='studio-muted';teamResetStatus.setAttribute('role','status');teamResetStatus.hidden=true;crewActions.after(teamResetStatus);
 const resultsButton=document.createElement('button');resultsButton.type='button';resultsButton.className='studio-primary';resultsButton.dataset.surface='deliverables';resultsButton.textContent='Results';resultsButton.hidden=true;crewActions.append(resultsButton);
-const teamTotalTime=document.createElement('div');teamTotalTime.id='studio-team-total-time';teamTotalTime.hidden=true;teamTotalTime.setAttribute('role','timer');teamTotalTime.title='Total process time, including queueing, planning, specialists and review';teamTotalTime.setAttribute('popover','manual');root.append(teamTotalTime);
+const teamTotalTime=document.createElement('div');teamTotalTime.id='studio-team-total-time';teamTotalTime.hidden=true;teamTotalTime.setAttribute('role','timer');teamTotalTime.title='Total process time, including queueing, planning, specialists and review';el('crew-name').parentElement.classList.add('studio-captain-heading');el('crew-name').after(teamTotalTime);
 const teamConnectionBar=document.createElement('div');teamConnectionBar.className='studio-team-connection-bar';teamConnectionBar.innerHTML='<span><i aria-hidden="true"></i><span id="studio-team-connection-label">Team API</span></span><button type="button" class="studio-secondary" id="studio-team-setup">API &amp; models ↗</button>';crewActions.after(teamConnectionBar);el('team-setup').onclick=openTeamSettings;
 const standbyPanel=document.createElement('details');standbyPanel.id='studio-standby';
 standbyPanel.innerHTML='<summary>Standby specialists <span id="studio-standby-count"></span></summary><div class="studio-standby-content"><ul id="studio-standby-list"></ul></div>';
@@ -81357,22 +81357,13 @@ standbyPanel.addEventListener('keydown',event=>{
     standbyPanel.open=false;standbyPanel.querySelector('summary').focus();event.stopPropagation();
   }
 });
-// A manual popover stays in the browser top layer, above dialogs and fullscreen.
-function syncTeamTotalTime(raise=false){
+// Total process time belongs beside Casey's name, not over page controls.
+function syncTeamTotalTime(){
   const timer=el('team-total-time'),plan=currentCollaboration();
-  const label=plan?collaborationTime(plan):'';
+  const label=plan&&selectedCrewRole===0?collaborationTime(plan):'';
   if(timer.textContent!==label)timer.textContent=label;
-  if(!label){if(timer.hidePopover&&timer.matches(':popover-open'))timer.hidePopover();timer.hidden=true;return;}
-  timer.hidden=false;
-  if(timer.showPopover){
-    if(raise&&timer.matches(':popover-open'))timer.hidePopover();
-    if(!timer.matches(':popover-open'))timer.showPopover();
-  }
+  timer.hidden=!label;
 }
-new MutationObserver(records=>{
-  if(records.some(record=>record.target.tagName==='DIALOG'))syncTeamTotalTime(true);
-}).observe(root,{subtree:true,attributes:true,attributeFilter:['open']});
-document.addEventListener('fullscreenchange',()=>syncTeamTotalTime(true));
 setInterval(()=>syncTeamTotalTime(),1000);
 function syncSurface(){
   teamConnectionBar.dataset.connected=String(!!runtime.teamReady);
