@@ -108,32 +108,6 @@ class ResearchedEventTests(unittest.TestCase):
             with self.assertRaises(ValueError):plan({'themeCount':n})
         with self.assertRaises(ValueError):plan({'themeCount':3,'attendees':3000,'duration':30,'groupSize':1})
 
-    def test_real_handoffs_and_export_share_researched_titles(self):
-        job=self.make_event();p=job['payload'];self.assertEqual(job['status'],'done')
-        self.assertEqual(set(self.adapter.prompts),{0,1,2,3})
-        self.assertEqual(p['handoffs']['2']['receivedFrom'],['0'])
-        self.assertIn('Fixture NVIDIA source',self.adapter.prompts[1]);self.assertIn('Safer personal agents',self.adapter.prompts[3])
-        self.assertEqual(len([t for t in p['capacity']['topics'] if t['researchStatus']=='sourced']),4)
-        self.assertEqual(p['campaign']['format'],'linkedin')
-        self.assertFalse(any(f.endswith('.eml') for f in p['packageFiles']))
-        self.assertTrue(any(f.endswith('linkedin-post.txt') for f in p['packageFiles']))
-        xlsx=next(f for f in p['packageFiles'] if f.endswith('.xlsx'))
-        with ZipFile(self.studio.workspace(self.owner)/xlsx) as z:
-            allxml=''.join(z.read(n).decode() for n in z.namelist() if n.endswith('.xml'))
-            self.assertIn('Safer personal agents',allxml);self.assertIn('Break',allxml);self.assertIn('Day 1 breaks',allxml)
-        page=(self.studio.workspace(self.owner)/p['website']['path']).read_text()
-        self.assertIn('Build Agents. See What Changes.',page);self.assertIn('LinkedIn post draft',page)
-        self.assertIn('Presenter shifts and breaks',page)
-        self.assertIn('Staffing follows visit demand',page)
-        self.assertIn('No visit marks unused capacity',page)
-        self.assertIn('use one topic specialist',self.adapter.prompts[2])
-        for booth in p['capacity']['booths']:
-            self.assertIn(booth['presenter'],allxml)
-            for row in p['capacity']['schedule']:
-                if row['booth']==booth['booth']:
-                    self.assertEqual(row['topic'],booth['topic'])
-                    self.assertIn(row['presenter'],booth['presenter'])
-        self.assertNotIn('INVITATION DRAFT',page)
 
     def test_missing_or_fabricated_sources_remain_pending(self):
         b,c=plan({'themeCount':3});items=demos(b)

@@ -144,7 +144,7 @@ class ModelTests(unittest.TestCase):
 
     def test_restart_never_kills_an_unmatched_listener(self):
         with patch.object(self.model,'process_matches',return_value=False), \
-             patch.object(self.model,'listening',return_value=True),patch.object(lm.signal,'pidfd_send_signal') as signal:
+             patch.object(self.model,'listening',return_value=True),patch.object(lm.signal,'pidfd_send_signal',create=True) as signal, patch.object(lm.os,'pidfd_open',create=True), patch.object(Path,'iterdir',return_value=iter([Path('/proc/123')])):
             with self.assertRaisesRegex(RuntimeError,'Nothing was killed'):
                 self.model.stop_configured_process(self.spec)
             signal.assert_not_called()
@@ -182,7 +182,7 @@ class ModelTests(unittest.TestCase):
     def test_explicit_model_uses_adjacent_installation(self):
         model, parent = self.parent_installation()
         spec = model.configuration('qwen')
-        self.assertEqual(spec['model_path'], str(parent / 'models/qwen'))
+        self.assertEqual(spec['model_path'], str((parent / 'models/qwen').resolve()))
         self.assertEqual(spec['base_url'], 'http://127.0.0.1:8000/v1')
         self.assertEqual(spec['argv'][2], spec['model_path'])
         self.assertEqual(spec['argv'][-1], spec['model_id'])

@@ -39,15 +39,17 @@ class TeamModelTests(unittest.TestCase):
         vault.release('general');self.assertTrue(team.public()['connected'])
         self.assertEqual(team.credentials()['apiKey'],self.key)
         for path in Path(self.temp.name).rglob('*'):
-            if path.is_file() and path != team.credential_path():self.assertNotIn(self.key.encode(),path.read_bytes())
-        vault.release('team-session-'+self.temp.name);self.assertTrue(team.public()['connected'])
-        self.assertEqual(team.credential_path().stat().st_mode & 0o777,0o600)
-        self.assertEqual(team.credential_path().parent.stat().st_mode & 0o777,0o700)
+            if path.is_file():self.assertNotIn(self.key.encode(),path.read_bytes())
         self.assertNotIn(self.key,json.dumps(team.public()))
-        # Simulate a fresh process with neither an in-memory key nor catalog.
-        with patch.object(team,'_catalog',[]):
-            self.assertTrue(team.public()['connected'])
-            self.assertEqual({m['id'] for m in team.public()['models']},set(team.MODELS))
+        vault.release('team-session-'+self.temp.name)
+        self.assertFalse(team.public()['connected'])
+        self.assertEqual(team.credentials(),{})
+
+    def test_legacy_disk_key_is_never_loaded(self):
+        folder=Path(self.temp.name)/'credentials';folder.mkdir()
+        (folder/'stage3.json').write_text(json.dumps({'apiKey':'obsolete-fixture-key','models':[]}))
+        self.assertEqual(team.credentials(),{})
+        self.assertFalse(team.public()['connected'])
 
     def test_missing_model_and_active_work_do_not_replace_key(self):
         self.configure()

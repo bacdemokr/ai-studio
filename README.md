@@ -14,7 +14,7 @@ cd ai-studio
 ./bac start
 ```
 
-Startup checks the NVIDIA inference API key in `api.cfg`. If the file is empty or the API rejects the key, startup prints instructions and exits. Edit `api.cfg`, then run `./bac start` again. Startup checks access to the configured team models and makes a small inference request before restarting services.
+Startup does not require an inference connection. Open Stage 3 **API & models** to connect the team API after the app starts.
 
 Open **http://localhost:8080**. **Stage 3 is configured automatically** with the validated key. For **Stages 1 and 2**, connect a model separately in **Settings → Model**.
 
@@ -82,24 +82,9 @@ Scout uses keyless Parallel Search: one focused search and 2–3 useful findings
 For code tasks, a planned Vera review runs before Casey can mark the result complete. Saved-file checks confirm delivery; specialist reviews are static inspections unless actual execution evidence is available. Generated pages run in a restricted preview, so browser storage must be optional.
 
 
-`api.cfg` sits beside `bac` and contains only your NVIDIA inference API key on one line. Edit this file directly; startup never asks you to type a key in the terminal. To change the key, edit `api.cfg`, then run:
+Open Stage 3 **API & models** and enter your NVIDIA inference key. It is validated and kept only in server memory under this browser session. Refreshing or closing the tab, lease expiry, or an app restart disconnects it. Enter the key again to reconnect. Existing credential files are never loaded automatically.
 
-```bash
-./bac start
-```
-
-- The validated key is saved on this computer with owner-only file permissions. Refreshing the browser does not require re-entry.
-- Missing or rejected keys stop startup with instructions to edit `api.cfg`. Empty files are detected before Docker is invoked.
-- Network or API service failures stop startup without replacing your key or restarting running services. Startup never silently falls back to the previous saved key.
-- GitHub tracks an **empty `api.cfg` placeholder**. Startup installs a local Git clean filter that stages an empty file while preserving your working key. Release packages also contain an empty file; the Docker image excludes it.
-
-If you want to edit `api.cfg` and use Git **before your first start**, install the filter first:
-
-```bash
-bash scripts/setup-key-filter.sh
-```
-
-In Stage 3, open **API & models** to view connection status and choose each agent’s model. Select the single **Apply changes** button to save your selections for the next request. The UI explains how to manage the key from the terminal; it has no Stage 3 key-entry form.
+Choose each agent's model and select **Apply changes**. Model selections persist independently of the session key. Stages 1 and 2 keep their own model connection.
 
 ### Stages 1 and 2: Hiring and Agent lounge
 
@@ -148,7 +133,7 @@ git pull --ff-only
 ./bac start
 ```
 
-Use normal Git commands to update your checkout. Resolve local changes or divergent history before pulling. With the Git key filter configured, your local key stays in `api.cfg`.
+Use normal Git commands to update your checkout. Resolve local changes or divergent history before pulling. API keys must not be added to the checkout.
 
 `start` recreates services and can interrupt active work. It preserves agents, conversations, and results. App changes reuse the runtime image; dependency changes rebuild it automatically. There is no separate restart command.
 

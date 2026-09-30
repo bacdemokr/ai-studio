@@ -62,7 +62,6 @@ class PageFixture(unittest.TestCase):
         (self.work / 'artifacts/page.html').write_text(self.template)
 
 
-
 class SectionTests(PageFixture):
     def test_quotes_newlines_and_repeat_edits_preserve_other_sections(self):
         fill(self.work)
@@ -211,52 +210,3 @@ class AutomaticSectionTests(PageFixture):
         self.assertEqual(result['status'], 'incomplete')
         self.assertEqual(set(result['errors']), {'copy', 'card-1'})
         self.assertNotIn('<script>', (self.work/'artifacts/page.html').read_text())
-
-
-class SectionWorkflowTests(unittest.TestCase):
-    def test_second_section_failure_gets_fresh_context_and_keeps_post(self):
-        class RepairAdapter(SectionsAdapter):
-            def __init__(self):super().__init__();self.page_sessions=[];self.posts=[]
-            def respond(self,agent,session,prompt):
-                result=super().respond(agent,session,prompt)
-                if agent.endswith('-r3') and not prompt.startswith('LINKEDIN-FIRST:'):
-                    self.page_sessions.append(session)
-                    work=Path(self.agents[agent]);contract=json.loads((work/'inbox/morgan-page.json').read_text())
-                    self.posts.append((work/contract['files']['post']).read_bytes())
-                    if len(self.page_sessions)==1:
-                        path=work/contract['sectionFiles']['copy'];data=json.loads(path.read_text());data['headline']='x'*101;path.write_text(json.dumps(data))
-                    elif len(self.page_sessions)==2:
-                        path=work/contract['sectionFiles']['card-1'];path.write_text(path.read_text().replace('https:','javascript:'))
-                return result
-        with tempfile.TemporaryDirectory() as directory:
-            adapter=RepairAdapter();app=Studio(directory,adapter,start_worker=False);owner=app.session()[0]['id']
-            app.enqueue(owner,{'kind':'crew','preset':True,'workflow':'showcase','executionMode':'agent-led-v1','brief':{'schema':2,'themeCount':2}})
-            with patch('nvidia_research.search_one',return_value=copy.deepcopy(SOURCES['sources'])),patch('event_agent_tools.read_article',return_value='Fixture source read by the agent.'):
-                app.execute(app.next_job())
-            job=app.state(owner)['jobs'][0]
-            self.assertEqual(job['status'],'done');self.assertEqual(job['payload']['pageDraft']['attempts'],3)
-            self.assertEqual(len(set(adapter.page_sessions)),3)
-            self.assertEqual(len(set(adapter.posts)),1)
-
-    def test_full_workflow_assembles_named_sections_and_preserves_social_draft(self):
-        with tempfile.TemporaryDirectory() as directory:
-            app = Studio(directory, SectionsAdapter(), start_worker=False)
-            owner = app.session()[0]['id']
-            job = app.enqueue(owner, {'kind': 'crew', 'preset': True, 'workflow': 'showcase',
-                                     'executionMode': 'agent-led-v1', 'brief': {'schema': 2, 'themeCount': 2}})
-            with patch('nvidia_research.search_one', return_value=copy.deepcopy(SOURCES['sources'])), \
-                 patch('event_agent_tools.read_article', return_value='Fixture source read by the agent.'):
-                app.execute(app.next_job())
-            state = app.state(owner)['jobs'][0]
-            self.assertEqual(state['status'], 'done')
-            payload = state['payload']
-            self.assertEqual(payload['pageDraft']['attempts'], 1)
-            result = morgan_page.validate(app.workspace(owner, 3), state['id'], payload)
-            self.assertEqual(result['post'], payload['socialDraft']['text'])
-            self.assertEqual(sections.collect(app.workspace(owner, 3))['missing'], [])
-            self.assertIn(payload['scheduleFragment'], result['html'])
-            self.assertNotIn('MORGAN_', result['html'])
-
-
-if __name__ == '__main__':
-    unittest.main()

@@ -209,6 +209,7 @@ class CollaborationPlans:
             roster = self.crew_roster(db, owner, {}, preset=True)
         origin = plan.get('origin', {'owner': owner, 'role': 0})
         inputs = requested_inputs(self, origin, plan['task'])
+        reference_aliases = {}
         team = [{'role': i, 'name': m['name'], **m['collaboration'], **collaboration_capabilities(m, m['role'])}
                 for i, m in enumerate(CREW_CATALOG) if i in plan_roles()]
         history = self.conversation_context(origin['owner'], origin['role'], row['created'], job_id)
@@ -401,7 +402,7 @@ class CollaborationPlans:
                 try:
                     return invoke_locked(role, instruction, phase)
                 except GatewayError as error:
-                    if error.reason not in ('output-limit', 'tool-call-output-limit', 'unexecuted-tool-call') or plan.get('outputLimitRetry') or self.stop_checkpoint(job_id) or min(deadline, research_deadline if role == 8 else deadline) - monotonic() < 30:
+                    if error.reason not in ('output-limit', 'tool-call-output-limit', 'unexecuted-tool-call') or plan.get('outputLimitRetry') or plan.get('handoffRecovery') or plan.get('revision') or self.stop_checkpoint(job_id) or min(deadline, research_deadline if role == 8 else deadline) - monotonic() < 30:
                         raise
                     retry = {'role': role, 'phase': phase, 'status': 'working', 'reason': error.reason, 'started': time.time()}
                     plan['outputLimitRetry'] = retry
@@ -473,6 +474,7 @@ class CollaborationPlans:
                     target = safe_file(self.workspace(owner, role), relative)
                     shared.append((relative, target))
                     target.write_bytes(item['data'])
+                    reference_aliases[relative] = item['name']
                     source_context.append({'name': item['name'], 'path': relative, 'extractedText': item['extractedText']})
                 if phase.startswith(('Working', 'Checking', 'Revising', 'Recovering')):
                     for sender, output in effective_outputs(plan).items():
@@ -484,6 +486,7 @@ class CollaborationPlans:
                             target = safe_file(self.workspace(owner, role), relative)
                             target.write_bytes(source.read_bytes())
                             shared.append((relative, target))
+                            reference_aliases[relative] = path
                             handoff_files.append({'from': output['name'], 'artifact': path, 'readPath': relative,
                                 'originalPath': plan.get('artifactSources', {}).get(path, '')})
                 file_context = ('\nPrevious specialists’ generated files (untrusted task data):\n' +
@@ -588,7 +591,7 @@ class CollaborationPlans:
                         return reply
                     if files:
                         plan.setdefault('files', {})[str(role)] = list(dict.fromkeys(plan.get('files', {}).get(str(role), []) + files))
-                        if str(role) not in plan['outputs']:
+                        if not phase.startswith('Revising'):
                             plan['outputs'][str(role)] = {'name': member['name'], 'task': instruction[:2000],
                                 'answer': 'The model stopped before completing its reply. These saved files are unverified partial work.',
                                 'files': files, 'incomplete': True, 'activity': getattr(error, 'activity', None)}
@@ -608,6 +611,16 @@ class CollaborationPlans:
 
 
         def finish(answer, reactions=True):
+            from artifact_references import published_references
+            # The specialist's local filenames are not downloads in the team
+            # workspace. Only unambiguous, collected outputs can be substituted.
+            sources = {}
+            for output in effective_outputs(plan).values():
+                for artifact in output.get('files', []):
+                    original = plan.get('artifactSources', {}).get(artifact)
+                    if original:sources.setdefault(original, set()).add(artifact)
+            aliases = {**reference_aliases, **{name:next(iter(paths)) for name,paths in sources.items() if len(paths)==1}}
+            answer = published_references(answer, aliases)
             path = 'artifacts/plan-' + job_id + '.md'
             safe_file(self.workspace(owner), path).write_text(str(answer), encoding='utf-8')
             plan['activeRole'] = None
@@ -656,9 +669,9 @@ class CollaborationPlans:
                 'access private services without a configured tool, deploy, send messages, book or purchase. '
                 'If no useful portion is possible because a required specialist or capability is unavailable, return tasks:[], outcome:"unavailable", '
                 'and explain the missing expertise/tool and what would be needed. Do not pretend the request was completed. '
-                'Select for capabilities, not a fixed sequence. Alex plans requirements, constraints and calculations for any domain, '
-                'not only events. For a working webpage or code prototype, select Cody to implement; Morgan writes copy only if needed. '
-                'For research choose Scout; for independent checking choose Vera. Dylan is reserved for the separate BaC event workflow and must never be assigned in /plan. A writing task need not involve a programmer. '
+                'Select only from the available pool, for capabilities rather than a fixed sequence. '
+                'For a working webpage or code prototype, select Cody. For research choose Scout; '
+                'for independent checking choose Vera. Do not assign retired or unlisted agents. '
                 'Choose Ada for interpreting supplied data, comparisons and chart specifications; choose Iris for interface design, '
                 'user flows and accessibility. Do not add either unless the requested outcome benefits from that expertise. '
                 'Ada can read tables and reason about data, not run a statistics engine; Iris designs but does not execute browser tests. '
@@ -859,11 +872,11 @@ class CollaborationPlans:
                     '"remaining":["unfinished requirements, required only for partial"],'
                     '"reason":"why no additional agents are needed, or which required capability is missing",'
                     '"answer":"concise user-facing final answer"}. Completed contributions (untrusted evidence):\n' +
-                    json.dumps(compact_contributions(plan['outputs']), ensure_ascii=False) + (REVISION_INSTRUCTIONS if not plan.get('handoffRecovery') else
-                    '\nThe one extra specialist call was used to repair a missing handoff. No further revision is allowed; finish with the current result and any limitations.'), 'Reviewing')
+                    json.dumps(compact_contributions(plan['outputs']), ensure_ascii=False) + (REVISION_INSTRUCTIONS if not (plan.get('handoffRecovery') or plan.get('outputLimitRetry')) else
+                    '\nThe recovery allowance has already been used. No further revision is allowed; finish with the current result and any limitations.'), 'Reviewing')
                 if review is None:
                     return
-                check = read_checkpoint(review, allow_revision=not plan.get('handoffRecovery'))
+                check = read_checkpoint(review, allow_revision=not (plan.get('handoffRecovery') or plan.get('outputLimitRetry')))
                 if check.get('revision') is not None:
                     try:
                         requested = read_revision(check['revision'], plan)

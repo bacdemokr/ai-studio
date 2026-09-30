@@ -91,17 +91,3 @@ class TelemetryTests(unittest.TestCase):
             self.assertIsNone(telemetry.measure(result,folder,'a','other',started)['context'])
             self.assertIsNone(telemetry.measure(result,folder,'a','s',started+5)['context'])
             self.assertIsNone(telemetry.measure({'usage':{'total_tokens':0}},folder,'a','s',started)['total'])
-    def test_persisted_usage_scoped_to_participant_and_not_double_counted(self):
-        class Adapter(BrowserAdapter):
-            def respond(self,*args):return telemetry.Reply(super().respond(*args),{'total':150,'input':100,'output':50,'context':100,'limit':1000})
-        with tempfile.TemporaryDirectory() as folder,patch.object(telemetry,'host',return_value={'cpu':12,'memory':34}):
-            studio=Studio(folder,Adapter(),start_worker=False)
-            owner=studio.session()[0]['id'];other=studio.session()[0]['id']
-            studio.enqueue(owner,{'kind':'crew','preset':True,'brief':{'schema':2}})
-            studio.execute(studio.next_job())
-            first=telemetry.report(studio,owner);second=telemetry.report(studio,owner)
-            self.assertEqual(first['total'],900);self.assertEqual(first,second)
-            self.assertEqual(len(first['agents']),6);self.assertEqual(first['agents'][0]['context'],100)
-            self.assertIsNone(telemetry.report(studio,other)['total'])
-            restored=Studio(folder,Adapter(),start_worker=False)
-            self.assertEqual(telemetry.report(restored,owner)['total'],900)

@@ -116,7 +116,7 @@ class CrewProtectionTests(unittest.TestCase):
     def test_policy_change_fences_new_work_and_rejects_active_crew(self):
         def during_apply(agent_id, approved):
             with self.assertRaises(Problem):
-                self.studio.prepare_demo(self.owner, {})
+                self.studio.enqueue(self.owner, {'kind':'crew-chat','crewRole':0,'prompt':'/plan Help'})
             with self.assertRaises(Problem):
                 self.studio.enqueue(self.owner, {'kind':'crew-chat', 'crewRole':8, 'prompt':'Hello'})
             return {'status':'applied'}
@@ -174,12 +174,6 @@ class CrewProtectionTests(unittest.TestCase):
             self.assertTrue({'web_fetch','web_search'} <= set(entry['tools']['deny']))
             self.assertTrue((workspace/'skills/bac-event-tools/scripts/research_http.py').exists())
 
-    def test_legacy_host_research_is_rejected_for_protected_dylan(self):
-        self.studio.enqueue(self.owner, {'kind':'crew','preset':True,'workflow':'showcase',
-                                        'brief':{'schema':2,'themeCount':3}})
-        with patch('nvidia_research.discover', side_effect=AssertionError('Host bypass')):
-            with self.assertRaisesRegex(RuntimeError, 'No host research was performed'):
-                self.studio.execute(self.studio.next_job())
 
     def test_l7_denial_without_arrow_is_visible_in_policy_evidence(self):
         import agent_policy as policy

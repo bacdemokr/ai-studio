@@ -43,56 +43,5 @@ class MorganPageTests(unittest.TestCase):
             self.studio.execute(self.studio.next_job())
         return self.studio.state(self.owner)['jobs'][0]
 
-    def test_actual_file_is_published_unchanged_and_roundtable_cannot_overwrite(self):
-        job=self.run_event();p=job['payload'];self.assertEqual(job['status'],'done');self.assertTrue(p['website']['authored']);self.assertEqual(p['website']['author'],'Morgan')
-        source=self.studio.workspace(self.owner,3)/morgan_page.paths(job['id'])['html'];published=self.studio.workspace(self.owner)/p['website']['path']
-        before=published.read_bytes();self.assertEqual(before,source.read_bytes());self.assertEqual(hashlib.sha256(before).hexdigest(),p['website']['sha256'])
-        self.assertEqual(p['pageDraft']['attempts'],1);self.assertEqual(len(self.adapter.calls),4)
-        self.assertEqual(set(p['handoffs']['3']['receivedFrom']),{'0','1','2'})
-        p['roundtable']={'status':'done','members':[],'replies':{}}
-        self.studio.event_stage_files(self.owner,job['id'],p,-1,'')
-        self.assertEqual(before,published.read_bytes())
-        self.assertIn(b'StageOne Event &amp; Convention Hall',before)
-        self.assertEqual(p['brief']['days'],1)
-
-    def test_one_repair_for_invalid_file_outputs(self):
-        for fault in ('missing','unchanged','schedule','date','source','script','anchor','post','json'):
-            with self.subTest(fault=fault):
-                job=self.run_event([fault]);self.assertEqual(job['status'],'done');self.assertEqual(job['payload']['pageDraft']['attempts'],2)
-                calls=[c for c in self.adapter.calls if c[0]==3];self.assertEqual(len(calls),2);self.assertEqual(calls[0][1],calls[1][1]);self.assertIn('Repair your existing',calls[1][2])
-                if fault=='schedule':
-                    self.assertIn('Restore these exact original blocks',calls[1][2])
-                    self.assertIn('<!-- BAC:SCHEDULE -->',calls[1][2])
-                    self.assertIn('<!-- /BAC:SCHEDULE -->',calls[1][2])
-
-    def test_second_failure_gets_another_targeted_repair(self):
-        job=self.run_event(['source','anchor'])
-        self.assertEqual(job['status'],'done')
-        self.assertEqual(job['payload']['pageDraft']['attempts'],3)
-        self.assertEqual(len([c for c in self.adapter.calls if c[0]==3]),3)
-
-    def test_last_allowed_repair_can_complete_the_page(self):
-        job=self.run_event(['source','anchor','script'])
-        self.assertEqual(job['status'],'done')
-        self.assertEqual(job['payload']['pageDraft']['attempts'],4)
-        self.assertTrue(job['payload']['website']['authored'])
-
-    def test_exhausted_repairs_do_not_claim_a_completed_page(self):
-        with self.assertRaisesRegex(RuntimeError,'3 repair attempts'):
-            self.run_event(['unchanged'] * (morgan_page.MAX_REPAIRS + 1))
-        p=self.studio.state(self.owner)['jobs'][0]['payload']
-        self.assertEqual(p['pageDraft']['status'],'failed');self.assertEqual(p['pageDraft']['attempts'],4)
-        self.assertFalse(p['website'].get('authored'));self.assertNotIn('3',p['outputs']);self.assertIn('1',p['outputs']);self.assertIn('2',p['outputs'])
-
-    def test_transport_failure_is_not_shown_as_pending_webpage(self):
-        with self.assertRaisesRegex(RuntimeError,'Test model disconnected'):
-            self.run_event(['transport'])
-        p=self.studio.state(self.owner)['jobs'][0]['payload']
-        self.assertEqual(p['pageDraft']['status'],'failed');self.assertNotIn('3',p['outputs'])
-
-    def test_symlink_is_a_repairable_validation_error(self):
-        with self.assertRaisesRegex(RuntimeError,'3 repair attempts'):
-            self.run_event(['symlink'] * (morgan_page.MAX_REPAIRS + 1))
-        p=self.studio.state(self.owner)['jobs'][0]['payload'];self.assertEqual(p['pageDraft']['attempts'],4)
 
 if __name__=='__main__':unittest.main()

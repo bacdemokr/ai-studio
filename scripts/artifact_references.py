@@ -43,3 +43,17 @@ def relative_references(answer, workspace, structured=False):
         result.__dict__.update(answer.__dict__)
         return result
     return text
+
+
+def published_references(answer, aliases):
+    """Resolve only server-recorded aliases; preserve code and external URLs."""
+    if not aliases:return answer
+    pattern=re.compile(r'(?<![\w/.-])(?:'+ '|'.join(re.escape(key) for key in sorted(aliases,key=len,reverse=True)) +r')(?![\w/-]|\.\w)')
+    pieces=re.split(r'(^```[^\n]*\n.*?(?:^```[^\n]*$|\Z)|^~~~[^\n]*\n.*?(?:^~~~[^\n]*$|\Z)|https?://[^\s<>]+)',
+                    str(answer), flags=re.MULTILINE|re.DOTALL)
+    text=''.join(piece if i%2 else pattern.sub(lambda m:aliases[m[0]],piece) for i,piece in enumerate(pieces))
+    if hasattr(answer,'metrics'):
+        from telemetry import Reply
+        result=Reply(text,answer.metrics);result.__dict__.update(answer.__dict__)
+        return result
+    return text

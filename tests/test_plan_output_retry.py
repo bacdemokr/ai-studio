@@ -157,6 +157,53 @@ class OutputRetryTests(unittest.TestCase):
             self.app.execute(self.app.next_job())
         self.assertEqual(timeouts,[50])
 
+    def test_failed_retry_exports_newest_saved_snapshot(self):
+        self.install_failure(always=True)
+        original=self.adapter.respond
+        def respond(agent,session,prompt,**kwargs):
+            if session.endswith('-output-retry'):
+                (self.adapter.agents[agent]/'artifacts/spec.md').write_text('# Newest partial design')
+            return original(agent,session,prompt,**kwargs)
+        self.adapter.respond=respond
+        result=self.start();self.app.execute(self.app.next_job())
+        plan=self.job(result)['payload']['collaboration']
+        files=plan['outputs']['7']['files']
+        self.assertEqual(len(files),1)
+        self.assertIn('Newest partial design',self.app.available_file(self.owner,files[0]).read_text())
+        self.assertTrue(plan['outputs']['7']['incomplete'])
+
+    def test_handoff_repair_cannot_nest_an_output_retry(self):
+        self.adapter.plan={'summary':'Design','tasks':[{'role':7,'task':'Save design','requiredFiles':['artifacts/spec.md']}]}
+        original=self.adapter.respond
+        def respond(agent,session,prompt,**kwargs):
+            if session.endswith('-recovering'):
+                self.adapter.calls.append((agent,session,prompt))
+                raise GatewayError('Output stopped','output-limit')
+            return original(agent,session,prompt,**kwargs)
+        self.adapter.respond=respond
+        result=self.start();self.app.execute(self.app.next_job())
+        plan=self.job(result)['payload']['collaboration']
+        self.assertNotIn('outputLimitRetry',plan)
+        self.assertEqual(plan['handoffRecovery']['status'],'failed')
+        self.assertEqual(sum(a.endswith('-r7') for a,_,_ in self.adapter.calls),2)
+
+    def test_output_retry_cannot_be_followed_by_another_revision(self):
+        import json
+        self.install_failure()
+        original=self.adapter.respond
+        def respond(agent,session,prompt,**kwargs):
+            if session.endswith('-reviewing'):
+                return json.dumps({'done':False,'reason':'More work','revision':{
+                    'role':7,'evidenceRole':7,'severity':'blocking','issue':'Missing detail',
+                    'task':'Fix detail','expected':'Detail included'}})
+            return original(agent,session,prompt,**kwargs)
+        self.adapter.respond=respond
+        result=self.start();self.app.execute(self.app.next_job())
+        plan=self.job(result)['payload']['collaboration']
+        self.assertEqual(len(self.attempts),2)
+        self.assertNotIn('revision',plan)
+        self.assertEqual(plan['outcome'],'partial')
+
     def test_compact_context_preserves_artifact_references(self):
         value=compact_contributions({'7':{'answer':'x'*20000,'task':'y'*3000,'files':['artifacts/spec.md'],'activity':{'calls':['large']}}})[0]
         self.assertLess(len(value['answer']),2100)

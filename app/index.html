@@ -80903,7 +80903,7 @@ function syncCrewComposer(){
  renderCrewDocuments();
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending;
  el('crew-chat-connection').hidden=!blocked;
- el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping BaC work and resetting…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(runtime.teamModel??runtime.model)?'Add your key to api.cfg, then run ./bac start.':'Run ./bac start on this computer to connect the team runtime.';
+ el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping BaC work and resetting…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(runtime.teamModel??runtime.model)?'Connect the team API in API & models.':'Run ./bac start on this computer to connect the team runtime.';
 }
 function renderCrewPassport(){
  const epoch=data.crewChatReset?.epoch||'';
@@ -82195,20 +82195,40 @@ async function resetStudio(scope,sourceButton=null){
 
 
 const teamModelDrafts=new Map();
+let teamConnectionSaving=false;
 function openTeamSettings(){
+ if(teamConnectionSaving)return;
+ const canConfigure=!settingsButton.hidden;
  teamModelDrafts.clear();
  const available=window.BacCrewCatalog.map((member,role)=>({...member,roleIndex:role})).filter(member=>member.planEligible!==false);
  dialog('Multi-Agent setup',`<form id="studio-team-config-form">
   <div class="studio-model-scope"><span>STAGE 03</span><h3>Team API &amp; models</h3><p>A dedicated NVIDIA API connection for Casey and the specialists.</p></div>
   <div class="studio-team-api-card"><div class="studio-team-api-heading"><strong>NVIDIA Inference</strong><span class="studio-team-api-state" data-connected="${!!runtime.teamModel}">${runtime.teamModel?(runtime.teamReady?'Connected':'API connected · Runtime offline'):'Not connected'}</span></div>
   <small>inference-api.nvidia.com</small>
-  <small>${runtime.teamModel?'Key loaded from <code>api.cfg</code>.':'Add a key to <code>api.cfg</code> and run <code>./bac start</code>.'}</small></div>
+  <label for="studio-team-api-key">${runtime.teamModel?'Replace API key':'API key'}</label><input id="studio-team-api-key" type="password" autocomplete="off" spellcheck="false" required placeholder="Paste your NVIDIA API key">
+  <small>${canConfigure?'':'Ask the host to connect the team API. '}Session only. The key is kept in memory, never saved to disk. Closing or refreshing this tab clears a key entered here.</small>
+  <div class="studio-dialog-actions"><button type="submit" id="studio-team-connect" class="studio-primary" ${canConfigure?'':'disabled'}>${runtime.teamModel?'Update API key':'Connect API'}</button></div><p id="studio-team-connect-status" role="status" hidden></p></div>
   <div class="studio-team-models-heading"><h3>Agent models</h3><small>Choose models for your agents, then select Apply changes. No API key re-entry needed.</small></div><p id="studio-team-model-status" role="status" hidden></p>
   <div class="studio-team-setup-models">${available.map(member=>`<div><span><strong>${escape(member.name)}</strong><small>${escape(member.collaboration.title)}</small></span><div class="studio-team-model-controls"><button type="button" class="team-model-trigger" data-team-model="${member.roleIndex}" ${!runtime.teamModel||data.bacResetting||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status))?'disabled':''}><span>${escape(teamModel(member.roleIndex)?.label||'Choose model')}</span><span aria-hidden="true">⌕</span></button></div></div>`).join('')}</div>
   <div class="studio-team-model-save"><button type="button" class="studio-primary" data-team-apply-all disabled>Apply changes</button></div><p class="studio-team-setup-note">Stage 1 &amp; 2 keep using the model selected in Settings.</p></form>`);
  el('dialog').classList.add('studio-team-settings');
- el('team-config-form').onsubmit=event=>event.preventDefault();
+ const form=el('team-config-form'),key=el('team-api-key'),status=el('team-connect-status'),button=el('team-connect');
+ const current=()=>el('team-config-form')===form&&el('dialog').open;
+ form.onsubmit=async event=>{
+  event.preventDefault();if(!canConfigure||teamConnectionSaving||!form.reportValidity())return;
+  teamConnectionSaving=true;button.disabled=true;key.disabled=true;status.hidden=false;status.textContent='Checking API key and available models…';
+  const request={apiKey:key.value.trim()};key.value='';
+  try{
+   await api('settings/team-model',request);
+   runtime=await api('runtime');
+   if(!runtime.gateway){if(current())status.textContent='Starting agent runtime…';await api('settings/start',{});await waitForAgentRuntime();}
+   await refresh();
+   if(current()){teamConnectionSaving=false;openTeamSettings();el('team-connect-status').hidden=false;el('team-connect-status').textContent='Team API connected. Choose a model for each agent below.';}
+  }catch(error){if(current())status.textContent=error.message;}
+  finally{request.apiKey='';teamConnectionSaving=false;button.disabled=false;key.disabled=false;}
+ };
 }
+el('dialog').addEventListener('close',()=>{if(el('team-api-key'))el('team-api-key').value='';});
 
   el('home').onclick=async()=>{
     closeSurface();el('dialog').close();await leaveWorld();

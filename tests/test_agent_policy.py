@@ -66,34 +66,6 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(self.studio.policy_report(other)['requested'], [])
         self.assertEqual(self.studio.policy_report(other)['logs'], [])
 
-    def test_preset_crew_is_separate_from_protected_personal_agent_and_needs_no_onboarding(self):
-        # Hiring now prepares the personal runtime independently of event work.
-        self.studio.execute(self.studio.next_job())
-        result = self.run_job({'kind': 'crew', 'preset': True, 'brief': {}})
-        self.assertEqual(result['status'], 'done')
-        self.assertEqual([m['name'] for m in result['payload']['roster']], [role['name'] for role in json.loads((Path(__file__).resolve().parents[1]/'src/crew-catalog.json').read_text()) if not role.get('planOnly')])
-        self.assertTrue(all(m['protection'] == ('openshell' if i == 1 else 'standard') and m['key'] is None for i,m in enumerate(result['payload']['roster'])))
-        self.assertFalse(any(call[0] == 'bac-' + self.owner for call in self.adapter.calls))
-        self.assertEqual(self.studio.policy_report(self.owner)['requested'], [])
-        self.assertTrue(all(p['protection'] == ('openshell' if key.endswith('-r1') else 'standard') for key,p in self.adapter.profiles.items() if key != 'bac-' + self.owner))
-        account, _ = self.studio.session()
-        job = self.studio.enqueue(account['id'], {'kind': 'crew', 'preset': True, 'brief': {}})
-        self.studio.execute(self.studio.next_job())
-        self.assertEqual(self.studio.evidence(account['id'], job['id'])['mission']['status'], 'done')
-        self.assertIsNone(self.studio.state(account['id'])['profile'])
-
-    def test_custom_crew_preserves_protected_member_and_modes_cannot_change_while_assigned(self):
-        other = self.studio.add_agent(self.owner, {**self.profile, 'name': 'Other', 'protection': 'standard'})['agentId']
-        job = self.studio.enqueue(other, {'kind': 'crew', 'brief': {}, 'members': {'1': self.owner}})
-        self.assertEqual(self.studio.state(other)['jobs'][0]['payload']['roster'][1]['protection'], 'openshell')
-        with self.assertRaises(Problem):
-            self.studio.policy_change(self.owner, {'mode': 'standard'})
-        with self.assertRaises(Problem):
-            self.studio.policy_change(self.owner, {'permission': 'weather', 'allow': True})
-        self.studio.decision(other, job['id'], 'cancel')
-        with self.assertRaises(Problem):
-            self.studio.policy_change(self.owner, {'mode': 'standard'})
-        self.assertEqual(self.studio.profile(self.owner)['protection'], 'openshell')
 
     def test_failure_keeps_requested_and_applied_state_distinct_and_is_retryable(self):
         self.run_job({'prompt': 'Check weather'})

@@ -24,6 +24,10 @@ class BootstrapTests(unittest.TestCase):
         manifest = self.root / 'package/node_modules/openclaw/package.json'
         manifest.parent.mkdir(parents=True)
         manifest.write_text(json.dumps({'version': runtime.VERSION}))
+        from research_search import PACKAGE, VERSION
+        plugin=self.root/'package/node_modules'/PACKAGE/'package.json'
+        plugin.parent.mkdir(parents=True)
+        plugin.write_text(json.dumps({'version':VERSION}))
         def cli(*args, **kwargs):
             self.assertEqual(args, ('config', 'validate'))
             return 'valid'

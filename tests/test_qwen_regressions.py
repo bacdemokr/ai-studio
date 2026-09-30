@@ -50,7 +50,7 @@ class QwenPlanRegressions(unittest.TestCase):
         with self.assertRaises(CaptainDecisionError):
             read_checkpoint(json.dumps({'done':False,'outcome':'unavailable','reason':'No access.'}))
 
-    def test_saved_page_survives_late_model_failure_without_replaying(self):
+    def test_saved_page_survives_one_bounded_output_retry(self):
         self.adapter.plan['tasks'] = [{'role':5,'task':'Build a page','requiredFiles':['artifacts/page.html']},
                                      {'role':4,'task':'Review'}]
         original = self.adapter.respond
@@ -70,7 +70,8 @@ class QwenPlanRegressions(unittest.TestCase):
         pages=[p for p in job['result']['files'] if p.endswith('.html')]
         self.assertEqual(len(pages),1)
         self.assertIn('Saved before failure',self.app.available_file(self.owner,pages[0]).read_text())
-        self.assertEqual(sum(agent.endswith('-r5') for agent,_,_ in self.adapter.calls),1)
+        self.assertEqual(sum(agent.endswith('-r5') for agent,_,_ in self.adapter.calls),2)
+        self.assertEqual(plan['outputLimitRetry']['status'],'failed')
 
     def test_good_page_does_not_validate_an_incomplete_sibling(self):
         self.adapter.plan['tasks'] = [{'role':5,'task':'Build two pages',

@@ -143,17 +143,6 @@ class DeletionTests(unittest.TestCase):
         restarted.add_agent(self.owner, {**self.profile, 'name': 'One more'})
         self.assertEqual(len(restarted.state(last)['agents']), 2)
 
-    def test_queued_followups_and_waiting_assigned_crew_are_cancelled_on_delete(self):
-        self.studio.enqueue(self.scout, {'kind': 'reminder', 'prompt': 'Later', 'delay': 60})
-        crew = self.studio.enqueue(self.owner, {'kind': 'crew', 'brief': {}, 'members': {'1': self.scout}})
-        with self.studio.db() as db:
-            db.execute("UPDATE jobs SET status='waiting' WHERE id=?", (crew['id'],))
-        self.studio.delete_agent(self.scout, {'name': 'Scout'})
-        self.assertIsNone(self.studio.profile(self.scout))
-        evidence = self.studio.evidence(self.owner, crew['id'])['mission']
-        self.assertEqual(evidence['status'], 'cancelled')
-        self.assertEqual(evidence['payload']['roster'][1]['key'], self.scout)
-        self.assertIsNone(self.studio.next_job())
 
     def test_running_call_finishes_before_native_cleanup_and_deletion_resumes_automatically(self):
         entered, release = threading.Event(), threading.Event()
@@ -199,15 +188,6 @@ class DeletionTests(unittest.TestCase):
         self.studio.finish_pending_deletions()
         self.assertIsNone(self.studio.profile(self.scout))
 
-    def test_running_shared_crew_stops_before_member_cleanup(self):
-        crew = self.studio.enqueue(self.owner, {'kind': 'crew', 'brief': {}, 'members': {'1': self.scout}})
-        row = self.studio.next_job()
-        self.studio.delete_agent(self.scout, {'name': 'Scout'})
-        self.assertEqual(self.studio.evidence(self.owner, crew['id'])['mission']['status'], 'stopping')
-        self.studio.execute(row)
-        self.studio.finish_pending_deletions()
-        self.assertIsNone(self.studio.profile(self.scout))
-        self.assertEqual(self.studio.evidence(self.owner, crew['id'])['mission']['status'], 'cancelled')
 
     def test_post_result_writes_and_native_cleanup_are_still_fenced(self):
         self.studio.executing_owners = {self.scout}

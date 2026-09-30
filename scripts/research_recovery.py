@@ -16,12 +16,16 @@ def recovered_sources(state, agent, session, started):
                 JOIN session_windows s USING(session_id) WHERE s.session_key=? AND t.created_at>=?
                 ORDER BY t.seq LIMIT 2000''', ('agent:'+agent+':openai-user:'+session, int(started*1000)))
             for raw, in rows:
-                m = json.loads(raw).get('message', {})
+                try:event = json.loads(raw)
+                except (ValueError, TypeError):continue
+                m = event.get('message') if isinstance(event,dict) else None
+                if not isinstance(m,dict):continue
                 if m.get('role') == 'assistant':
                     for item in m.get('content', []) if isinstance(m.get('content'), list) else []:
-                        if item.get('type') == 'toolCall' and item.get('name') in ('web_fetch','web_search'):calls[item.get('id')] = item.get('name')
-                if m.get('role') != 'toolResult' or m.get('toolCallId') not in calls or m.get('isError'):continue
-                d = m.get('details') or {}
+                        if isinstance(item,dict) and item.get('type') == 'toolCall' and item.get('name') in ('web_fetch','web_search') and isinstance(item.get('id'),str):
+                            calls[item['id']] = item['name']
+                if m.get('role') != 'toolResult' or not isinstance(m.get('toolCallId'),str) or m['toolCallId'] not in calls or m.get('isError'):continue
+                d = m.get('details') if isinstance(m.get('details'),dict) else {}
                 # Some native versions put the fetch envelope in text content.
                 if not d.get('url') and not d.get('results'):
                     for item in m.get('content', []) if isinstance(m.get('content'), list) else []:
@@ -32,10 +36,13 @@ def recovered_sources(state, agent, session, started):
                             d = envelope
                             break
                 if calls[m['toolCallId']] == 'web_search':
-                    for item in d.get('results', [])[:3]:
+                    results=d.get('results')
+                    for item in results[:3] if isinstance(results,list) else []:
+                        if not isinstance(item,dict):continue
                         url=item.get('url');text=item.get('snippet') or item.get('description')
                         if not isinstance(url,str) or not isinstance(text,str) or not text.strip():continue
-                        parsed=urlsplit(url)
+                        try:parsed=urlsplit(url)
+                        except ValueError:continue
                         if parsed.scheme not in ('http','https') or not parsed.hostname or parsed.username or parsed.password or url in seen:continue
                         seen.add(url)
                         sources.append({'url':url[:2000],'text':text[:3000],'truncated':True})
@@ -43,13 +50,14 @@ def recovered_sources(state, agent, session, started):
                     continue
                 url, text = d.get('finalUrl') or d.get('url'), d.get('text')
                 if not isinstance(url, str) or not isinstance(text, str) or not text.strip():continue
-                parsed = urlsplit(url)
+                try:parsed = urlsplit(url)
+                except ValueError:continue
                 if parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username or parsed.password:continue
                 if type(d.get('status')) is not int or not 200 <= d['status'] < 300 or url in seen:continue
                 seen.add(url)
                 sources.append({'url':url[:2000], 'text':text[:6000], 'truncated':bool(d.get('truncated')) or len(text)>6000})
                 if len(sources) == 6:break
-    except (OSError, ValueError, TypeError, AttributeError, sqlite3.Error):return []
+    except (OSError, ValueError, TypeError, AttributeError, sqlite3.Error):return sources
     return sources
 
 

@@ -42,6 +42,22 @@ class SourceRecoveryTests(unittest.TestCase):
         self.assertIn('does not by itself mean the connection failed',str(raised.exception))
         self.assertEqual(sum(c.args[0]=='/v1/chat/completions' for c in calls.call_args_list),1)
 
+    def test_malformed_events_do_not_discard_or_hide_valid_evidence(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'agents/a/agent/openclaw-agent.sqlite';path.parent.mkdir(parents=True)
+            with sqlite3.connect(path) as db:
+                db.executescript('CREATE TABLE session_windows(session_id,session_key); CREATE TABLE transcript_events(session_id,seq,created_at,event_json);')
+                db.execute('INSERT INTO session_windows VALUES(1,?)',('agent:a:openai-user:s',))
+                events=[{'message':{'role':'assistant','content':[None,{'type':'toolCall','name':'web_fetch','id':'fetch'}]}},
+                    {'message':{'role':'toolResult','toolCallId':'fetch','details':{'url':'https://first.example/','status':200,'text':'FIRST'}}},
+                    None, {'message':[]}, {'message':{'role':'toolResult','toolCallId':[]}},
+                    {'message':{'role':'toolResult','toolCallId':'fetch','details':{'url':'https://[invalid','status':200,'text':'bad'}}},
+                    {'message':{'role':'toolResult','toolCallId':'fetch','details':{'url':'https://last.example/','status':200,'text':'LAST'}}}]
+                for seq,event in enumerate(events):
+                    db.execute('INSERT INTO transcript_events VALUES(1,?,2000,?)',(seq,json.dumps(event)))
+                db.execute('INSERT INTO transcript_events VALUES(1,99,2000,?)',('{truncated',))
+            self.assertEqual([s['text'] for s in recovered_sources(folder,'a','s',1)],['FIRST','LAST'])
+
     def test_search_results_survive_without_a_final_file_write(self):
         with tempfile.TemporaryDirectory() as folder:
             path=Path(folder)/'agents/a/agent/openclaw-agent.sqlite';path.parent.mkdir(parents=True)
