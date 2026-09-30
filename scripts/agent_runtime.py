@@ -838,6 +838,14 @@ def respond(agent_id, session, prompt, images=None, json_response=False):
             if failure:
                 error = GatewayError(failure['message'], failure['code'])
         error.activity = observed_activity(agent_id, session, started)
+        if isinstance(error, GatewayError) and error.reason == 'timeout':
+            from research_recovery import recovered_sources
+            error.recovered_sources = recovered_sources(root() / 'state', agent_id, session, started)
+            completed = sum(call.get('status') == 'completed' for call in error.activity.get('calls', []))
+            error.args = (f'The agent reached its {settings.AGENT_TIMEOUT_SECONDS}-second time limit. '
+                          f'{completed} tool calls completed before the timeout. '
+                          'The limit includes all model responses and tool calls in this turn; it does not by itself mean the connection failed. '
+                          'Saved work is preserved; this request was not automatically repeated.',)
         if images:
             raise RuntimeError('The image request failed. Check that the connected model supports image input and that its vision components are available. The image was not silently omitted. '+str(error)) from None
         raise error

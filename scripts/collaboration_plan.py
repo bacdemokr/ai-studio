@@ -199,7 +199,7 @@ class CollaborationPlans:
             'For public-web research, request maxChars:3000 per web_fetch and make at most six fetch attempts '
             'for the initial brief, counting failed attempts too. Fetch at most two pages before assessing '
             'whether they answer your assignment; do not launch a broad batch of guessed URLs. '
-            'After the first two useful reads, save a concise cited evidence brief in your assigned artifacts/ file '
+            'Save after each useful read, starting with the first: save a concise cited evidence brief in your assigned artifacts/ file '
             '(or artifacts/research-brief.md if none was assigned), then update that file as evidence arrives. '
             'Stop browsing and hand off the verified brief when the attempt budget is used, explicitly recording '
             'unanswered questions and truncated excerpts. Do not treat a partial excerpt as a fully read page. '
@@ -330,7 +330,7 @@ class CollaborationPlans:
                     'Do not report a deliverable missing without reading its mapped readPath. '
                     'When replying, link the artifact value, never the temporary readPath.') if handoff_files else ''
                 answer = self.respond_chat(member['id'], session,
-                    context + ((captain_context +
+                    context + '\nExecution budget: this turn has at most 360 seconds including every model and tool round trip. Save useful work early and return a partial result with gaps instead of expanding the investigation.\n' + ((captain_context +
                         '\nReturn only the requested compact JSON object. Keep the decision summary/reason under 120 words, '
                         'each assignment under 120 words, and any final answer under 600 words. '
                         'Do not create assignment files, implement deliverables, or repeat the evidence. '
@@ -366,6 +366,11 @@ class CollaborationPlans:
                 # A model can save files and then fail while composing its reply.
                 # Export those actual files without replaying the tool-bearing call.
                 if role and not self.stop_checkpoint(job_id):
+                    recovered = getattr(error, 'recovered_sources', [])
+                    if error.reason == 'timeout' and recovered:
+                        from research_recovery import evidence_note
+                        safe_file(self.workspace(owner, role), 'artifacts/recovered-sources-' + job_id + '.md').write_text(
+                            evidence_note(recovered), encoding='utf-8')
                     collect_delivery(role, phase, pages_before, files_before, '')
                     files = (plan.get('revision', {}).get('files', []) if phase.startswith('Revising')
                              else plan.get('files', {}).get(str(role), []))

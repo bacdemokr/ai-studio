@@ -165,3 +165,7 @@ crew chats and `/plan` results. The viewer supports Desktop/Mobile widths and HT
 downloads. Each output is saved with its producing mission so later edits do not
 replace older previews. Ask for self-contained HTML with inline styles, scripts
 and images: previews run in an isolated frame without external network access.
+
+### Time-limited research turns
+
+The 360-second agent limit covers the complete turn, including every model response and tool call. A timeout alone does not prove a broken model connection. Research instructions ask for saving after each useful read. On a native timeout, the app can export up to six bounded successful `web_fetch` excerpts from that exact agent/session/invocation as incomplete, untrusted evidence. This excludes hidden reasoning, failed reads and other sessions. The team returns a partial result without replaying the model request or starting downstream specialists. Provider latency can still exhaust the deadline; recovered excerpts are not a completed research brief.
