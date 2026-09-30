@@ -965,7 +965,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
     def reset_crew_chats(self, owner, reset_event=False, *, pending_only=False):
         """Clear the collection's crew chats and start fresh native conversations.
 
-        Stage 3 reset also removes generated team artifacts after active work drains.
+        Stage 3 reset removes team artifacts and attached documents after active work drains.
         Native transcripts remain stored but are not reused as conversation context.
         """
         with self.db() as db:
@@ -1003,17 +1003,18 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
                 # themselves are unlinked without following their targets.
                 for workspace in workspaces:
                     if workspace.parent.is_symlink() or workspace.is_symlink():
-                        raise Problem('Team workspace is redirected; artifacts were not cleared.', 409)
+                        raise Problem('Team workspace is redirected; files were not cleared.', 409)
                 for workspace in workspaces:
-                    artifacts = workspace / 'artifacts'
-                    if artifacts.is_symlink():
-                        artifacts.unlink()
-                    elif artifacts.is_dir():
-                        shutil.rmtree(artifacts)
-                    elif artifacts.exists():
-                        artifacts.unlink()
-                    if workspace.is_dir():
-                        artifacts.mkdir(exist_ok=True)
+                    for category in ('artifacts', 'inbox'):
+                        folder = workspace / category
+                        if folder.is_symlink():
+                            folder.unlink()
+                        elif folder.is_dir():
+                            shutil.rmtree(folder)
+                        elif folder.exists():
+                            folder.unlink()
+                        if workspace.is_dir():
+                            folder.mkdir(exist_ok=True)
             # Rotate an account-scoped session epoch after artifact cleanup succeeds.
             # Native agent cleanup is independent; active crew calls are fenced above.
             reset = {'at': time.time(), 'epoch': secrets.token_hex(12)}

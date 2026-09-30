@@ -95,7 +95,7 @@ If a protected request reports `Sandbox backend "openshell" is not registered`, 
 
 ## Resetting BaC crew chats between demos
 
-Stage 3 → Reset asks for confirmation, stops active team work and waits for it to settle, then clears team chats, plan history, and generated artifacts in the team's shared and specialist workspaces. Uploaded documents, API/model settings, personal agents, and personal files/chats are preserved. All roles receive fresh conversation session keys, including after a restart. Reset works without a model connection. Native OpenClaw transcripts remain stored but are not reused as conversation context; this is not secure data erasure. Download generated files before confirming Reset if you want to keep them.
+Stage 3 → Reset asks for confirmation, stops active team work and waits for it to settle, then clears team chats, plan history, generated artifacts, and attached documents (including extracted text) in the team's shared and specialist workspaces. API/model settings, personal agents, and personal files/chats are preserved. All roles receive fresh conversation session keys, including after a restart. Reset works without a model connection. Native OpenClaw transcripts remain stored but are not reused as conversation context; this is not secure data erasure. Download attached documents and generated files before confirming Reset if you want to keep them.
 
 
 

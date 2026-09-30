@@ -109,7 +109,7 @@ el('dialog').addEventListener('close',()=>{if(el('api-key'))el('api-key').value=
 
 function confirmTeamReset(sourceButton){
  if(removingAgent||pendingWrites||changingAgent||data.bacResetting)return;
- dialog('RESET STAGE 3', '<h3>Do you really want to reset Stage 3?</h3><p>This stops active team work and clears team chats, generated files, and the board.</p><div class="studio-dialog-actions"><button type="button" class="studio-secondary" id="studio-team-reset-cancel" autofocus>Cancel</button><button type="button" class="studio-danger" id="studio-team-reset-confirm">Yes, Reset Stage 3.</button></div>');
+ dialog('RESET STAGE 3', '<h3>Do you really want to reset Stage 3?</h3><p>This stops active team work and clears team chats, attached documents, generated files, and the board.</p><div class="studio-dialog-actions"><button type="button" class="studio-secondary" id="studio-team-reset-cancel" autofocus>Cancel</button><button type="button" class="studio-danger" id="studio-team-reset-confirm">Yes, Reset Stage 3.</button></div>');
  el('team-reset-cancel').onclick=()=>el('dialog').close();
  el('team-reset-confirm').onclick=()=>{el('dialog').close();resetStudio('bac',sourceButton);};
  el('team-reset-cancel').focus();
