@@ -4,7 +4,7 @@ import unittest
 import agent_runtime
 import test_collaboration_plan as fixture
 from collaboration_plan import read_plan
-from plan_inputs import requested_inputs
+from plan_inputs import requested_inputs, validate_assignments
 from studio import CREW_CATALOG, Problem
 
 
@@ -96,6 +96,27 @@ class PlanInputs(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.app.execute(self.app.next_job())
         self.assertEqual(list(self.app.workspace(self.app.crew_owner(self.owner), 6).glob('inbox/plan-input-*')), [])
+
+    def test_prior_outputs_are_handoffs_while_upload_ids_are_preserved(self):
+        tasks = read_plan(json.dumps({'summary': 'Research, design, implement', 'tasks': [
+            {'role': 8, 'task': 'Research', 'inputs': [], 'requiredFiles': ['artifacts/av-research-brief.md']},
+            {'role': 7, 'task': 'Design', 'inputs': ['artifacts/av-research-brief.md', 'document-0'],
+             'requiredFiles': ['artifacts/av-design-spec.md']},
+            {'role': 5, 'task': 'Implement',
+             'inputs': ['artifacts/av-research-brief.md', 'artifacts/av-design-spec.md']}]}))['tasks']
+        validate_assignments(tasks, [{'id': 'document-0'}], False)
+        self.assertEqual([task['inputs'] for task in tasks], [[], ['document-0'], []])
+
+    def test_unknown_self_and_future_outputs_remain_blocked(self):
+        for selected in ('artifacts/unknown.md', 'artifacts/design.md',
+                         'artifacts/future.md', 'artifacts/../brief.md', 'document-9'):
+            with self.subTest(selected=selected):
+                tasks = [
+                    {'task': 'Research', 'requiredFiles': ['artifacts/brief.md']},
+                    {'task': 'Design', 'inputs': [selected], 'requiredFiles': ['artifacts/design.md']},
+                    {'task': 'Implement', 'requiredFiles': ['artifacts/future.md']}]
+                with self.assertRaisesRegex(RuntimeError, 'unavailable document'):
+                    validate_assignments(tasks, [], False)
 
     def test_symlink_cannot_be_used_as_document(self):
         inbox = self.app.workspace(self.owner) / 'inbox'

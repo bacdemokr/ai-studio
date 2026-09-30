@@ -45,7 +45,9 @@ def input_manifest(inputs):
 
 
 def validate_assignments(tasks, available, has_images):
+    from plan_handoff import required_files
     allowed = {item['id'] for item in available}
+    earlier_outputs = set()
     for task in tasks:
         if 'inputs' not in task:
             # Some models mention the provided document ID in their assignment
@@ -54,7 +56,15 @@ def validate_assignments(tasks, available, has_images):
             text = task.get('task', '') + '\n' + task.get('expected', '')
             task['inputs'] = [item['id'] for item in available
                               if re.search(r'(?<![\w-])' + re.escape(item['id']) + r'(?![\w-])', text)]
-        if any(key not in allowed for key in task.get('inputs', [])):
+        # Models sometimes put planned handoff paths in the upload selector.
+        # Only exact outputs declared by an EARLIER assignment are handoffs;
+        # never resolve arbitrary paths or inspect existing workspace files.
+        selected = task.get('inputs', [])
+        if any(key not in allowed and key not in earlier_outputs for key in selected):
             raise RuntimeError('The Captain selected an unavailable document. No specialist was started.')
         if task.get('useImages') and not has_images:
             raise RuntimeError('The Captain selected images that were not attached. No specialist was started.')
+        task['inputs'] = [key for key in selected if key in allowed]
+        # Execution already verifies required outputs before the next turn and
+        # copies collected artifacts through the job-scoped handoff mapping.
+        earlier_outputs.update(required_files(task))

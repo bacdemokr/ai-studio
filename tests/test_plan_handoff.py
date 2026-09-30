@@ -79,6 +79,22 @@ class PlanHandoffTests(unittest.TestCase):
         self.assertNotIn('handoffRecovery', plan)
         self.assertEqual(len(self.research_sessions), 1)
 
+    def test_planned_artifact_input_uses_verified_handoff_copy(self):
+        self.configure(initial='saved')
+        self.adapter.plan['tasks'][1]['inputs'] = ['artifacts/brief.md']
+        plan = self.run_plan()['payload']['collaboration']
+        self.assertEqual(plan['calledRoles'], [8, 5])
+        self.assertEqual(plan['tasks'][1]['inputs'], [])
+        self.assertIn('artifacts/brief.md', plan['verifiedSources']['8'])
+
+    def test_planned_artifact_input_does_not_bypass_missing_output_gate(self):
+        self.configure(repair='missing')
+        self.adapter.plan['tasks'][1]['inputs'] = ['artifacts/brief.md']
+        plan = self.run_plan()['payload']['collaboration']
+        self.assertEqual(plan['calledRoles'], [8])
+        self.assertEqual(plan['outcome'], 'partial')
+        self.assertNotIn('5', plan['outputs'])
+
     def test_captain_blocks_unusable_evidence_even_when_file_exists(self):
         self.configure(initial='saved')
         original = self.adapter.respond
