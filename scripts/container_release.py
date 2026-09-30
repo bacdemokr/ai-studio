@@ -34,6 +34,8 @@ def bundle(image, version, output, archive=None):
     for name in ('scripts', 'src', 'crew', 'skills', 'docker'):
         shutil.copytree(ROOT/name, output/name, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
     shutil.copyfile(ROOT/'Dockerfile', output/'Dockerfile')
+    (output/'api.cfg').write_text('')
+    (output/'api.cfg').chmod(0o600)
     shutil.copy2(ROOT/'bac', output/'bac')
     (output/'bac').chmod(0o755)
     if archive:

@@ -20,6 +20,8 @@ class LauncherTests(unittest.TestCase):
         self.bin = self.root/'bin'
         self.bin.mkdir()
         shutil.copy2(ROOT/'bac', self.root/'bac')
+        (self.root/'scripts').mkdir()
+        shutil.copy2(ROOT/'scripts/setup-key-filter.sh', self.root/'scripts/setup-key-filter.sh')
         (self.root/'compose.yaml').write_text('services: {}\n')
         (self.root/'.env').write_text('BAC_IMAGE=bac-studio:test\n')
         (self.root/'release.json').write_text('{}')
@@ -54,6 +56,8 @@ elif args[:2]==['image','rm']:
     s.setdefault('removed',[]).append(args[-1]);state_file.write_text(json.dumps(s))
 elif args[0]=='load' or args[:2] in (['compose','build'],['compose','pull']):
     s['image']=True;state_file.write_text(json.dumps(s))
+elif args[:2]==['compose','run']:
+    if s.get('invalid_key'):sys.exit(1)
 elif args[:2]==['compose','up']:
     if s.get('fail_up'):sys.exit(1)
     print('Studio Healthy')
@@ -105,7 +109,8 @@ for row in sys.stdin.read().splitlines():
     def test_help_needs_no_docker_and_lists_only_daily_commands(self):
         result=self.run_bac()
         self.assertEqual(result.returncode,0,result.stderr)
-        self.assertIn('./bac restart',result.stdout)
+        self.assertIn('./bac start',result.stdout)
+        self.assertNotIn('./bac restart',result.stdout)
         self.assertEqual(self.calls(),[])
         self.assertNotIn('--model qwen',result.stdout)
 
@@ -118,6 +123,14 @@ for row in sys.stdin.read().splitlines():
         self.assertIn(['up','-d','--force-recreate','--no-build','--pull','missing','--wait','--wait-timeout','180'],self.operations())
         self.assertEqual(self.run_bac('start').returncode,0)
         self.assertEqual(sum(a[0]=='load' for a in self.calls()),1)
+
+    def test_invalid_key_stops_before_service_restart(self):
+        self.configure(image=True, invalid_key=True)
+        result=self.run_bac('start')
+        self.assertNotEqual(result.returncode,0)
+        self.assertTrue((self.root/'api.cfg').is_file())
+        self.assertEqual((self.root/'api.cfg').read_text(), '')
+        self.assertFalse(any(a[0] in ('stop','up') for a in self.operations()))
 
     def test_corrupt_or_missing_archive_never_starts(self):
         archive=self.archive();archive.write_bytes(b'corrupt')
@@ -164,10 +177,10 @@ for row in sys.stdin.read().splitlines():
         self.assertTrue((self.root/'.env').exists())
         self.assertIn(['build'],self.operations())
 
-    def test_restart_stops_both_services_then_waits_without_deleting_data(self):
+    def test_start_stops_both_services_then_waits_without_deleting_data(self):
         self.configure(image=True)
         sentinel=self.root/'shared/keep.txt';sentinel.parent.mkdir();sentinel.write_text('keep')
-        result=self.run_bac('restart')
+        result=self.run_bac('start')
         self.assertEqual(result.returncode,0,result.stderr)
         ops=self.operations();stop=ops.index(['stop','studio','openshell'])
         self.assertEqual(ops[stop+1][0],'up')
@@ -196,7 +209,7 @@ for row in sys.stdin.read().splitlines():
         self.configure(imagearch='arm64',compose='2.23.0')
         self.assertIn('2.24 or newer',self.run_bac('start').stderr)
         self.configure(compose='5.5.1',offline=True)
-        self.assertIn('Docker is not reachable',self.run_bac('restart').stderr)
+        self.assertIn('Docker is not reachable',self.run_bac('start').stderr)
         self.assertFalse(any(a[0]=='up' for a in self.operations()))
 
     def test_rootless_remote_and_macos_are_rejected_before_start(self):
@@ -255,7 +268,7 @@ for row in sys.stdin.read().splitlines():
 
     def test_source_remove_preserves_checkout(self):
         (self.root/'release.json').unlink()
-        (self.root/'scripts').mkdir(); (self.root/'scripts/container_remove.py').touch()
+        (self.root/'scripts').mkdir(exist_ok=True); (self.root/'scripts/container_remove.py').touch()
         (self.root/'docker').mkdir(); (self.root/'docker/runtime-lock.json').write_text('{}')
         self.configure(image=True)
         result=self.run_bac('remove',input='remove\n')

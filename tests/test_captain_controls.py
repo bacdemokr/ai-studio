@@ -72,6 +72,21 @@ class CaptainControlsTests(unittest.TestCase):
         self.assertEqual(job['payload']['collaboration']['outcome'], 'partial')
         self.assertIn('Verified contribution from Scout', job['result']['answer'])
 
+    def test_specialists_keep_editing_tools_without_patch_retries(self):
+        with tempfile.TemporaryDirectory() as folder, patch.object(runtime, 'root', return_value=Path(folder)):
+            runtime.save_config(runtime.initial_config())
+            for role in (5, 7, 8):
+                agent = 'bac-' + 'f'*24 + '-r' + str(role)
+                try:
+                    with patch.object(runtime, 'gateway_config_patch') as publish:
+                        runtime.register(agent, Path(folder)/str(role),
+                                         {'name':'Specialist','persona':'maker','skills':[]}, 'Specialist')
+                        tools = publish.call_args.args[0]['agents']['entries'][agent]['tools']
+                        self.assertTrue({'read','write','edit'}.issubset(tools['allow']))
+                        self.assertIn('apply_patch',tools['deny'])
+                        self.assertTrue(tools['loopDetection']['enabled'])
+                finally:runtime._expected_identity.pop(agent,None)
+
     def test_native_config_restricts_tools_and_workspace_then_restores(self):
         with tempfile.TemporaryDirectory() as folder, patch.object(runtime, 'root', return_value=Path(folder)):
             runtime.save_config(runtime.initial_config())

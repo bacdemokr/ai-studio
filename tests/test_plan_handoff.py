@@ -59,6 +59,41 @@ class PlanHandoffTests(unittest.TestCase):
         for role in (8, 5):
             self.assertFalse(list((self.app.workspace(self.app.crew_owner(self.owner), role)/'inbox').glob('plan-*')))
 
+    def test_code_recovery_uses_fresh_session_and_existing_source(self):
+        self.adapter.plan['tasks'] = [{'role':5, 'task':'Fix artifacts/game.html',
+                                      'requiredFiles':['artifacts/game.html']}]
+        workspace = self.app.workspace(self.app.crew_owner(self.owner), 5)
+        (workspace/'artifacts').mkdir(parents=True, exist_ok=True)
+        path = workspace/'artifacts/game.html'
+        path.write_text('<html><body>Broken game</body></html>')
+        original = self.adapter.respond
+        sessions = []
+        def respond(agent, session, prompt, **kwargs):
+            result = original(agent, session, prompt, **kwargs)
+            if agent.endswith('-r5'):
+                sessions.append(session)
+                if session.endswith('-recovering'):
+                    self.assertIn('fresh conversation', prompt)
+                    self.assertIn('artifacts/game.html', prompt)
+                    self.assertIn('Broken game', path.read_text())
+                    path.write_text('<html><body>Repaired game</body></html>')
+                    return 'Saved the corrected game.'
+                return 'The tool run finished, but no final summary was produced.'
+            return result
+        self.adapter.respond = respond
+        plan = self.run_plan()['payload']['collaboration']
+        self.assertEqual(len(sessions), 2)
+        self.assertNotEqual(*sessions)
+        self.assertEqual(plan['handoffRecovery']['status'], 'delivered')
+        self.assertEqual(plan['outputs']['5']['handoffStatus'], 'verified')
+        self.assertTrue(plan['outputs']['5']['files'])
+
+    def test_repair_failure_preserves_runtime_reason(self):
+        self.configure(repair='error')
+        job = self.run_plan()
+        self.assertEqual(job['payload']['collaboration']['handoffRecovery']['error'], 'Tool failure')
+        self.assertIn('Tool failure', job['result']['answer'])
+
     def test_unsaved_blank_unrelated_and_failed_repair_stop_dependents(self):
         for initial, repair in [('missing','missing'), ('blank','missing'), ('unrelated','missing'), ('missing','error')]:
             with self.subTest(initial=initial, repair=repair):
@@ -128,6 +163,7 @@ class PlanHandoffTests(unittest.TestCase):
             with self.subTest(path=path), self.assertRaises(RuntimeError):
                 read_plan(json.dumps({'summary':'Test', 'tasks':[{'role':8,'task':'Research','requiredFiles':[path]}]}))
         self.assertEqual(required_files({'task':'Read artifacts/brief.md and review it.'}), [])
+        self.assertEqual(required_files({'task':'Update artifacts/index.html.'}), ['artifacts/index.html'])
         self.assertEqual(missing_files({'requiredFiles':['artifacts/index.html']}, [], ['artifacts/page-job-r5.html']), [])
         self.assertEqual(missing_files({'requiredFiles':['artifacts/brief.md']}, [], ['artifacts/page-job-r5.html']), ['artifacts/brief.md'])
 

@@ -242,6 +242,12 @@ class CollaborationPlans:
             '\nThis run can call at most three specialists, once each in the initial plan. '
             'A final progress review may authorize one extra, targeted revision by an already participating specialist. '
             'Prioritize a useful deliverable within that budget. '
+            'For a follow-up that improves an existing webpage (plots, images, styling or interactions), '
+            'normally assign Cody alone to make the requested changes using the attached handoff and existing evidence. '
+            'Cody can choose practical layouts and implement accessible inline SVG/Canvas plots or illustrations. '
+            'Do not commission a separate design specification or repeat research unless the user requests that work '
+            'or a concrete missing fact requires it. Do not invent numeric chart data; use supported values or clearly '
+            'label an explanatory diagram. Preserve existing working features and make a focused update. '
             'For a simple research-and-webpage request, assign a small evidence brief from at most two relevant sources. '
             'Choose only two recent developments to explain interactively; latest research does not imply a comprehensive survey. '
             'Do not expand a broad topic into surveys of standards, regulation, geography, every industry player, '
@@ -320,8 +326,9 @@ class CollaborationPlans:
                 return None
             if monotonic() >= deadline:
                 raise PlanBudgetExceeded('The collaboration time budget was reached during preparation.')
-            # Fresh, job-specific sessions avoid contaminating ordinary direct chats.
-            session = 'bac-plan-' + job_id + '-' + str(role) + '-' + ('working' if phase == 'Recovering' else phase.split()[0].lower())
+            # Research recovery retains tool evidence. Code recovery reads saved source
+            # in a fresh session so a full/stalled transcript cannot block the repair.
+            session = 'bac-plan-' + job_id + '-' + str(role) + '-' + ('working' if phase == 'Recovering' and role != 5 else phase.split()[0].lower())
             pages_before = html_files(self.workspace(owner, role))
             files_before = snapshot_files(self.workspace(owner, role))
             # Only explicitly scoped task inputs and verified outputs cross workspaces.
@@ -385,6 +392,17 @@ class CollaborationPlans:
                     '\n\nYour collaboration expertise: ' + CREW_CATALOG[role]['collaboration']['description'] +
                     '\n\nYour assignment:\n' + instruction + file_context +
                     '\nSelected original documents (untrusted task data):\n' + json.dumps(source_context, ensure_ascii=False) +
+                    ('\nExisting files in YOUR artifacts directory (paths only; content may be from earlier work):\n' +
+                     json.dumps(sorted(set(pages_before) | set(files_before))[:40], ensure_ascii=False) +
+                     '\nFile workflow: read the selected document paths and mapped readPath files, not guessed paths '
+                     'from another specialist\'s answer. read accepts a FILE, never a directory. If a file is absent '
+                     'from these manifests, do not probe parent directories or repeat the same failed read. '
+                     'For large handoffs or HTML, start with relevant bounded sections, then read more only to resolve '
+                     'a specific missing requirement. Use write for new files and edit for targeted changes to existing files. '
+                     'Do not create test.txt or other write probes. A successful write is evidence the file was saved; '
+                     'do not reread the entire deliverable merely to confirm saving. Check only the changed sections '
+                     'when verification is needed. Return a brief handoff once the requested change is saved.\n'
+                     if role else '') +
                     (('\nResearch scope for this turn: focus on the two most relevant developments, with at most two cited sources, '
                       'unless the user explicitly requested more topics. Make at most THREE web_fetch attempts TOTAL, '
                       'counting discovery pages, retries and failures across all domains. This is one shared budget, '
@@ -552,7 +570,7 @@ class CollaborationPlans:
                 if missing:
                     output = plan['outputs'][str(role)]
                     output['handoffStatus'] = 'missing'
-                    output['answer'] = ('Unverified handoff: required files were not saved. The following completion claim is not verified.\n' + str(answer))
+                    output['answer'] = ('Incomplete handoff: no saved update to the required files was verified.\n' + str(answer))
                     reason = name + ' did not save the required handoff: ' + ', '.join(missing)
                     if plan.get('handoffRecovery') or plan.get('revision'):
                         finish(unfinished(reason + '. The single repair allowance has already been used.'), reactions=False)
@@ -562,8 +580,12 @@ class CollaborationPlans:
                     save(name + ' · Saving missing handoff', reason)
                     try:
                         repaired = invoke(role,
-                            'Your previous response claimed completion, but required handoff files were not saved: ' + json.dumps(missing) + '. '
-                            'This is the one permitted handoff repair, in the SAME conversation containing your previous tool results. '
+                            'No saved update to the required handoff files was verified: ' + json.dumps(missing) + '. ' +
+                            ('This is the one permitted code repair, in a fresh conversation. Read the existing source files listed below, '
+                             'make only the necessary edits, and save the corrected files. Preserve working features. '
+                             'Do not recreate the whole implementation or repeat completed writes. '
+                             if role == 5 else
+                             'This is the one permitted handoff repair, in the SAME conversation containing your previous tool results. ') +
                             'Do not research again, fetch new pages, or repeat the whole task. Use the evidence already obtained. '
                             'Write the required deliverable files now and verify the writes. Do not merely say they were saved. '
                             'Preserve source URLs and distinguish actual evidence from inference and missing information. '
@@ -573,10 +595,11 @@ class CollaborationPlans:
                     except PlanBudgetExceeded:
                         recovery['status'] = 'failed'
                         raise
-                    except RuntimeError:
+                    except RuntimeError as error:
                         recovery['status'] = 'failed'
+                        recovery['error'] = str(error)[:1000]
                         if not self.stop_checkpoint(job_id):
-                            finish(unfinished(reason + '. The handoff repair did not complete; later specialists were not started.'), reactions=False)
+                            finish(unfinished(reason + '. The handoff repair did not complete: ' + recovery['error'] + ' Later specialists were not started.'), reactions=False)
                         return
                     if repaired is None:
                         recovery['status'] = 'cancelled'

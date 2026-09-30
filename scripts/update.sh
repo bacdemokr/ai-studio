@@ -4,6 +4,7 @@ set -Eeuo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 die() { echo "BaC update: $*" >&2; exit 1; }
 command -v git >/dev/null || die 'Install Git first.'
+bash scripts/setup-key-filter.sh
 [[ $(git rev-parse --show-toplevel 2>/dev/null) == "$PWD" ]] || die 'Update requires a Git clone of bacdemokr/ai-studio.'
 [[ $(git symbolic-ref --quiet --short HEAD) == main ]] || die 'Switch to main before updating. Development branches are left unchanged.'
 [[ -z $(git status --porcelain) ]] || die 'Local changes found. Commit or stash them before updating; nothing was overwritten.'

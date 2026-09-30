@@ -15,7 +15,7 @@ def required_files(task):
             raise RuntimeError('Required handoff files must be supported files inside artifacts/.')
     # Older plans can name the required output in their assignment instead.
     prose = task.get('task', '') + '\n' + task.get('expected', '')
-    inferred = re.findall(r'(?:\bsave(?:d)?\b|\bwrite\b|\bwritten\b|\bcreate(?:d)?\b|\bproduce\b|\boutput\b|저장)'
+    inferred = re.findall(r'(?:\bsave(?:d)?\b|\bwrite\b|\bwritten\b|\bcreate(?:d)?\b|\bproduce\b|\boutput\b|\bupdate\b|저장)'
                           r'[^\n]{0,100}?\b(artifacts/[\w./-]+\.(?:md|txt|csv|json|py|js|css|html))\b', prose, re.I)
     return list(dict.fromkeys(explicit + [p for p in inferred if '..' not in p.split('/')]))
 

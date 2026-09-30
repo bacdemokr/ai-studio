@@ -9,7 +9,6 @@ BaC Agent Studio
 
   ./bac start     Install / start / apply updated app files
   ./bac update    Download the latest GitHub main; then run ./bac start
-  ./bac restart   Restart the studio and its agent services
   ./bac status    Check service status
   ./bac logs      Show recent errors and activity
   ./bac stop      Stop services; keep saved data
@@ -39,7 +38,7 @@ case "$command_name" in
     fi
     exec python3 scripts/manage.py "$@"
     ;;
-  start|restart|status|logs|stop|remove) ;;
+  start|status|logs|stop|remove) ;;
   *) usage >&2; die "Unknown command: $command_name. Old host commands now use ./bac dev COMMAND." ;;
 esac
 [[ $# -eq 1 ]] || die "Use ./bac $command_name without extra arguments."
@@ -95,7 +94,7 @@ ensure_image() {
   esac
   [[ $actual == "$expected" ]] || die "This image is $actual; use the $expected release folder for this PC."
   studio_image=$image
-  if [[ $command_name == start || $command_name == restart ]]; then
+  if [[ $command_name == start ]]; then
     if ! docker run --rm --pull never --network none --entrypoint python3 \
       --mount "type=bind,src=$PWD,dst=/opt/bac/source,readonly" \
       "$image" /opt/bac/bootstrap.py --check; then
@@ -121,13 +120,24 @@ resource_files() {
 }
 
 case "$command_name" in
-  start|restart)
+  start)
+    bash scripts/setup-key-filter.sh
     resource_files
     ensure_image
     echo 'Checking app files before restarting services…'
     docker run --rm --pull never --network none --entrypoint python3 \
       --mount "type=bind,src=$PWD,dst=/opt/bac/source,readonly" \
       "$studio_image" /opt/bac/source/scripts/build.py --check
+    [[ ! -L api.cfg ]] || die 'api.cfg must be a regular file, not a symlink.'
+    if [[ ! -e api.cfg ]]; then (umask 077; touch api.cfg); fi
+    [[ -f api.cfg ]] || die 'api.cfg must be a regular file.'
+    chmod 600 api.cfg
+    key_terminal=()
+    if [[ ! -t 0 ]]; then key_terminal=(-T); fi
+    echo 'Checking the inference API key in api.cfg…'
+    compose run --rm --no-deps "${key_terminal[@]}" --user 0 --entrypoint python3 \
+      -v "$PWD/api.cfg:/run/bac-api.cfg" studio \
+      /opt/bac/source/scripts/api_key_setup.py /run/bac-api.cfg
     # Record before provisioning so failed starts and later version changes are
     # both covered by remove. This helper needs no Docker socket or network.
     docker run --rm --pull never --network none --user 0 --entrypoint python3 \
@@ -136,10 +146,8 @@ case "$command_name" in
       --mount "type=bind,src=$PWD/$lock,dst=/runtime-lock.json,readonly" \
       "$studio_image" /resources.py --record /runtime-lock.json "$studio_image"
     mkdir -p shared
-    if [[ $command_name == restart || $command_name == start ]]; then
-      echo 'Restarting BaC services. Active work may stop; saved data is kept.'
-      compose stop studio openshell
-    fi
+    echo 'Restarting BaC services. Active work may stop; saved data is kept.'
+    compose stop studio openshell
     echo 'Starting the studio and checking readiness…'
     compose up -d --force-recreate --no-build --pull missing --wait --wait-timeout 180
     # The generated config contains the effective port even with .env overrides.

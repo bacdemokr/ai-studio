@@ -488,8 +488,12 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
             'tools': {'allow': allow, 'deny': ['web_fetch', 'web_search'] if protected else [] if event_exec or radar_exec else ['exec'],
                       'fs': {'workspaceOnly': protected}},
         }
-        if team_models.role_for(agent_id) == 8:
-            # Use the native per-agent repetition guard, not only prompt advice.
+        if team_models.role_for(agent_id) is not None and not protected:
+            # Native edit exposure can also enable apply_patch. These models
+            # repeatedly emitted invalid patch syntax; keep read/write/edit.
+            entry['tools']['deny'].append('apply_patch')
+        if team_models.role_for(agent_id) not in (None, 0):
+            # Guard repeated failing reads for every specialist, not just Scout.
             entry['tools']['loopDetection'] = {'enabled': True}
         control = profile.get('_planControl')
         if control in ('none', 'read'):

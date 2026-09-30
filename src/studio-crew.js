@@ -379,7 +379,7 @@ function syncCrewComposer(){
  renderCrewDocuments();
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending;
  el('crew-chat-connection').hidden=!blocked;
- el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping BaC work and resetting…':captainPlanning?'Casey is coordinating the current plan. You can send a new message when it finishes or is stopped.':memberWorking?'This agent is working. You can send a new message when the current task finishes or is stopped.':!(runtime.teamModel??runtime.model)?'Connect your team API using API & models above.':'Open API & models above to connect the team runtime.';
+ el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping BaC work and resetting…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(runtime.teamModel??runtime.model)?'Add your key to api.cfg, then run ./bac start.':'Run ./bac start on this computer to connect the team runtime.';
 }
 function renderCrewPassport(){
  const epoch=data.crewChatReset?.epoch||'';

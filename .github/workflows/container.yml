@@ -20,7 +20,10 @@ jobs:
           BAC_IMAGE: bac-studio:ci
           BAC_VERSION: git-check
         run: |
-          ./bac start
+          # CI uses a deterministic local model, with no external API credential.
+          mkdir -p shared
+          docker compose build
+          docker compose up -d --wait --wait-timeout 180
           ./bac status
           docker compose exec -T studio python3 scripts/container_runtime.py health
           docker compose exec -T studio openshell --gateway bac-demo --workspace default sandbox list
@@ -37,7 +40,7 @@ jobs:
           BAC_IMAGE: bac-studio:ci
         run: |
           docker compose exec -T -e BAC_CONTAINER_TEST=1 studio python3 tests/container_persistence_smoke.py create
-          ./bac restart
+          docker compose stop studio openshell
           docker compose up -d --force-recreate --wait --wait-timeout 180
           docker compose cp tests studio:/opt/bac/app/tests
           docker compose exec -T -e BAC_CONTAINER_TEST=1 studio python3 tests/container_persistence_smoke.py verify

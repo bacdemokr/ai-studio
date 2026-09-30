@@ -373,7 +373,10 @@
 #studio-crew-chat textarea{width:100%;box-sizing:border-box;min-height:70px;max-height:140px;resize:vertical;background:transparent;border:0;color:#e7eef5;font:inherit;font-size:15px;padding:8px 3px}
 #studio-crew-chat .studio-compose-actions{margin:4px 0 0;gap:6px}
 #studio-crew-chat #studio-crew-send{margin-left:auto;font-size:13px;padding:8px 12px}
-#studio-crew-chat-connection,#studio-crew-chat-error{font-size:13px!important;color:#ffb4b4!important;margin:0 0 5px!important}
+#studio-crew-chat-connection,#studio-crew-chat-error{font-size:13px!important;margin:0 0 5px!important}
+#studio-crew-chat-error{color:#ffb4b4!important}
+#studio-crew-chat-connection{color:#bdcdd9!important;line-height:1.5;padding:8px 10px;border-radius:8px;background:#243641}
+#studio-crew-chat-connection::before{content:'';display:inline-block;width:7px;height:7px;margin-right:8px;border-radius:50%;background:#a5c96c;vertical-align:middle}
 #studio-crew-chat :disabled{opacity:.5;cursor:not-allowed}
 #studio-crew-passport .studio-passport-head{display:none}
 #agent-campus #studio-crew-passport #campus-roster button{padding:6px 7px;font-size:13px}

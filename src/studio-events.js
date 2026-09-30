@@ -89,7 +89,7 @@ function presenterTimetable(b,c){
  return Array.from({length:b.days},(_,d)=>`<h4>Day ${d+1}</h4><div class="event-table-wrap"><table class="event-rota-grid"><thead><tr><th>Booth / local time</th>${times.map(t=>'<th>'+t+'</th>').join('')}</tr></thead><tbody>${c.booths.map((booth,i)=>`<tr style="--rota-color:${['#263c20','#203747','#433b20','#402c37','#322c43','#203c37'][i%6]}"><th>${escape(booth.booth)}<small>${escape(booth.topic)}</small></th>${times.map(t=>{const r=visits.get([d+1,booth.booth,t].join(':'));return '<td'+(r?' class="is-assigned"':'')+'>'+(r?escape(r.presenter):'—')+'</td>';}).join('')}</tr>`).join('')}</tbody></table></div>`).join('')+'<p class="event-note">Presenter numbers are unassigned staffing slots. Blank slots have no scheduled visit.</p>';
 }
 function renderEventPackage(force=false){
- const job=crewMission();eventPackage.hidden=room!=='mission'||job?.payload.brief?.schema!==2;if(eventPackage.hidden)return;
+ const job=crewMission();eventPackage.hidden=room!=='mission'||!!currentCollaboration()||job?.payload.brief?.schema!==2;if(eventPackage.hidden)return;
  if(eventContributionJob!==job.id)selectEventContribution();
  const p=job.payload,b=p.brief,c=p.capacity;
  const key=JSON.stringify(p.workflow==='showcase'?[job.id,b,c,p.outputs,p.website,p.campaign,p.packageFiles,p.pageDraft?.status,p.schedulePlan]:[job.id,job.status,job.updated,job.events.length,p.roundtable,eventPackageTab,eventContribution,audienceJob,audienceReport]);
