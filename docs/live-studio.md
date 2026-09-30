@@ -169,3 +169,7 @@ and images: previews run in an isolated frame without external network access.
 ### Time-limited research turns
 
 The 360-second agent limit covers the complete turn, including every model response and tool call. A timeout alone does not prove a broken model connection. Research instructions ask for saving after each useful read. On a native timeout, the app can export up to six bounded successful `web_fetch` excerpts from that exact agent/session/invocation as incomplete, untrusted evidence. This excludes hidden reasoning, failed reads and other sessions. The team returns a partial result without replaying the model request or starting downstream specialists. Provider latency can still exhaust the deadline; recovered excerpts are not a completed research brief.
+
+### Observed collaboration progress
+
+While a `/plan` invocation is running, Casey's chat and the active specialist's chat show a bounded live list of observed native tool calls and their statuses. The footer reports time since the request, not time spent thinking. When no tool is currently observed running, it says it is waiting for the agent response; missing telemetry is labeled separately. Source content, hidden reasoning, tool arguments, host directories and URL queries are excluded. State polling reads only the authorized job's exact native session and invocation time, never dispatches work, and stops reading after completion or cancellation.

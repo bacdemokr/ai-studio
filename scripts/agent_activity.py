@@ -33,7 +33,7 @@ def collect(state, agent, session, started=0, skill_paths=None):
     path=Path(state)/'agents'/agent/'agent/openclaw-agent.sqlite'
     if not path.is_file():return {'source':'OpenClaw transcript','available':False,'calls':[]}
     try:
-        with sqlite3.connect('file:'+str(path)+'?mode=ro',uri=True,timeout=2) as db:
+        with closing(sqlite3.connect('file:'+str(path)+'?mode=ro',uri=True,timeout=.2)) as db:
             rows=db.execute('''SELECT t.event_json FROM transcript_events t JOIN session_windows s USING(session_id)
                 WHERE s.session_key=? AND t.created_at>=? ORDER BY t.seq LIMIT 2000''',
                 ('agent:'+agent+':openai-user:'+session,int(started*1000))).fetchall()

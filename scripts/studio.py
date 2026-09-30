@@ -749,6 +749,12 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
             assignments = [{'job': j['id'], 'lead': j['owner'], 'name': names.get(j['owner'], 'BaC Captain'), 'role': m['role'], 'status': j['status']}
                            for j in active if j['kind'] in ('crew','crew-chat') and j['owner'] != owner for m in job_participants(j['payload']) if m.get('key') == owner
                            and (m in j['payload'].get('roster', []) or j['payload'].get('roundtable', {}).get('replies', {}).get(owner, {}).get('status') not in ('done','error','cancelled'))]
+        from live_plan_activity import snapshot as live_snapshot
+        for job in crew_chats:
+            plan = job['payload'].get('collaboration', {})
+            observation = plan.pop('observation', None)
+            if job['status'] == 'running' and observation and not plan.get('responseReady'):
+                plan['liveActivity'] = live_snapshot(self.adapter, observation)
         memory = self.workspace(owner) / 'MEMORY.md'
         memory_text = ''
         try:

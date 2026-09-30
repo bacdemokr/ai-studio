@@ -11,6 +11,10 @@ from serve import create_server
 
 
 class DynamicAdapter(PlanAdapter):
+    def observed_activity(self,agent,session,started):
+        return {'available':True,'calls':[{'tool':'web_fetch','target':'https://example.com/source?private=hidden','status':'completed'},
+                {'tool':'write','target':'/private/workspace/artifacts/brief.md','status':'started'}]}
+
     def status(self):
         return {'ready': True, 'gateway': True, 'model': True, 'testFixture': True}
 

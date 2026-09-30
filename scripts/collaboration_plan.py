@@ -329,6 +329,8 @@ class CollaborationPlans:
                     'originalPath identifies that source filename; translate it to the mapped readPath before reading. '
                     'Do not report a deliverable missing without reading its mapped readPath. '
                     'When replying, link the artifact value, never the temporary readPath.') if handoff_files else ''
+                plan['observation'] = {'agent':member['id'], 'session':session, 'started':time.time(), 'role':role}
+                save(member['name'] + ' · Request sent', 'Waiting for observed runtime activity.')
                 answer = self.respond_chat(member['id'], session,
                     context + '\nExecution budget: this turn has at most 360 seconds including every model and tool round trip. Save useful work early and return a partial result with gaps instead of expanding the investigation.\n' + ((captain_context +
                         '\nReturn only the requested compact JSON object. Keep the decision summary/reason under 120 words, '
@@ -382,6 +384,7 @@ class CollaborationPlans:
                                 'files': files, 'incomplete': True, 'activity': getattr(error, 'activity', None)}
                 raise
             finally:
+                plan.pop('observation', None)
                 for _, target in shared:
                     target.unlink(missing_ok=True)
             self.record_usage(job_id, payload, answer, member['id'], member['name'], 'plan-' + phase)

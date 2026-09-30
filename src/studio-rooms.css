@@ -486,3 +486,5 @@
 [data-policy-section="preset"] .policy-access-card h4 { margin:0; font-size:15px; }
 #studio-policy-content [data-policy-section="preset"] button { padding:7px 13px; font-size:13px; border-radius:5px; }
 @media(max-width:700px) { [data-policy-section="preset"] .policy-access-card>div { grid-template-columns:1fr; gap:4px; } }
+
+.plan-live-activity{margin:14px 0;padding:14px 16px;background:#14232c;border-left:3px solid #76b900;font-size:13px}.plan-live-activity strong{color:#c7dbb5}.plan-live-activity ol{list-style:none;padding:0;margin:10px 0;max-height:220px;overflow:auto}.plan-live-activity li{display:flex;justify-content:space-between;gap:12px;padding:5px 0}.plan-live-activity li span{overflow-wrap:anywhere}.plan-live-activity small,.plan-live-activity p{color:#a9bcc5}.plan-live-activity p{margin:8px 0 0}

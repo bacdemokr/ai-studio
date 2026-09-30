@@ -34,6 +34,12 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.locator('#studio-crew-send').click();
   await page.waitForFunction(()=>BacCampus.inspect().selectedTeam.join()==='0,8,5,4');
   await page.waitForFunction(()=>{const s=BacCampus.inspect();return [8,5,4].every(i=>s.crewExchange[i].visible&&!s.crewExchange[i].phase);},null,{timeout:15000});
+  await page.waitForFunction(()=>document.querySelector('.plan-live-activity')?.textContent.includes('example.com'));
+  const progress=await page.locator('.plan-live-activity').innerText();
+  assert(progress.includes('Avery')&&progress.includes('Completed')&&progress.includes('brief.md'));
+  assert(!progress.includes('/private/')&&!progress.includes('private=hidden'));
+  assert(progress.includes('Waiting for tool completion'));
+  await page.waitForFunction(()=>[5,4].every(role=>document.querySelector('.campus-agent-label[data-crew-member=\"'+role+'\"] small')?.textContent.includes('Waiting for Casey')));
   const assembled=await page.evaluate(()=>BacCampus.inspect());
   assert.equal(assembled.activeRole,8);
   for(const role of [5,4]){
