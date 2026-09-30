@@ -12,9 +12,12 @@ def role_for(agent):
     return int(match[1]) if match else None
 
 
-def model_for(agent):
+def model_for(agent, selected=None):
     role = role_for(agent)
-    return 'bac-team/' + MODELS[0 if role == 0 else 1] if role is not None else None
+    if role is None:return None
+    if selected in MODELS:return 'bac-team/'+selected
+    if selected in ['bac-team/'+m for m in MODELS]:return selected
+    return 'bac-team/'+MODELS[0 if role == 0 else 1]
 
 
 def public():
@@ -33,7 +36,7 @@ def apply(config):
                    'contextTokens':32768,'maxTokens':settings.MAX_OUTPUT_TOKENS,
                    'cost':{'input':0,'output':0,'cacheRead':0,'cacheWrite':0}} for m in MODELS]}
     for agent,entry in config.get('agents',{}).get('entries',{}).items():
-        model=model_for(agent)
+        model=model_for(agent,entry.get('model'))
         if model:entry.update(model=model,modelPolicy={'allow':[model]})
     return config
 
@@ -60,3 +63,32 @@ def configure(studio,data):
         secrets.put(settings.secret_key('team'),profile,data.get('_credentialSession','direct'))
         studio.provisioned.clear();studio.status_cache=(0,{})
     return public()
+
+
+def selections(studio, owner):
+    with studio.db() as db:
+        saved={r['role']:r['model'] for r in db.execute('SELECT role,model FROM crew_resources WHERE owner=?',(owner,))}
+    return [{'id':saved.get(role) if saved.get(role) in MODELS else MODELS[0 if role==0 else 1],
+             'role':role} for role in range(9)]
+
+
+def select(studio, owner, data):
+    from studio import Problem
+    role,model=data.get('role'),data.get('model')
+    if type(role) is not int or role not in (0,2,3,4,5,6,7,8) or model not in MODELS:
+        raise Problem('Choose a team member and an available model.')
+    with studio.db() as db:
+        db.execute('BEGIN IMMEDIATE')
+        if not db.execute("SELECT 1 FROM agents WHERE id=? AND kind='crew' AND deleting=0",(owner,)).fetchone():
+            raise Problem('Team not found.',404)
+        studio.require_bac_not_resetting(db,owner)
+        studio.require_event_crew_idle(db,owner)
+        if db.execute("SELECT 1 FROM jobs WHERE owner=? AND status IN ('queued','running','waiting','stopping')",(owner,)).fetchone():
+            raise Problem('Wait for the current team task to finish before changing models.',409)
+        resource=db.execute('SELECT native_id FROM crew_resources WHERE owner=? AND role=?',(owner,role)).fetchone()
+        if not resource:raise Problem('Team member not found.',404)
+        db.execute('UPDATE crew_resources SET model=? WHERE owner=? AND role=?',(model,owner,role))
+        # Provisioning applies the preference before the next request; no idle
+        # native agent, container or credential is created by a model selection.
+        studio.provisioned.discard(resource['native_id'])
+    return {'teamSelections':selections(studio,owner)}

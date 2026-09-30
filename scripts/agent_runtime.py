@@ -475,7 +475,7 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
         config.setdefault('tools', {}).setdefault('fs', {})['workspaceOnly'] = False
         import team_models
         team_models.apply(config)
-        model = team_models.model_for(agent_id) or config['agents']['defaults']['model']['primary']
+        model = team_models.model_for(agent_id, profile.get('_teamModel') or config['agents']['entries'].get(agent_id,{}).get('model')) or config['agents']['defaults']['model']['primary']
         entry = {
             'name': profile['name'], 'workspace': str(workspace), 'model': model,
             'modelPolicy': {'allow': [model]}, 'skills': ['bac-' + x for x in equipped],

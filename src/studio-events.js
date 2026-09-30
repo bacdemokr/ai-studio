@@ -1,5 +1,5 @@
 // Event briefs, deterministic planning, and the deliverables handed over by the crew.
-let eventCatalog=null,eventPreviewVersion=0,eventPreviewValid=false,eventSubmitting=false,eventPackageKey='',eventPackageTab='plan',eventContribution='all',eventContributionJob='',eventPreviewUrl='',audienceReport=null,audienceJob='';
+let eventCatalog=null,eventPackageKey='',eventPackageTab='plan',eventContribution='all',eventContributionJob='',eventPreviewUrl='',audienceReport=null,audienceJob='';
 const eventPackage=document.createElement('section');eventPackage.id='studio-event-package';eventPackage.className='studio-event-package';eventPackage.hidden=true;el('workspace').before(eventPackage);
 // Role links lead to each saved contribution, not a section of Morgan's page.
 function hasCrewDeliverable(job,role){
@@ -87,100 +87,6 @@ function presenterTimetable(b,c){
  for(let t=start;t+c.session<=start+b.duration;t+=c.session)times.push(String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0'));
  const visits=new Map(c.schedule.map(r=>[[r.day,r.booth,r.start].join(':'),r]));
  return Array.from({length:b.days},(_,d)=>`<h4>Day ${d+1}</h4><div class="event-table-wrap"><table class="event-rota-grid"><thead><tr><th>Booth / local time</th>${times.map(t=>'<th>'+t+'</th>').join('')}</tr></thead><tbody>${c.booths.map((booth,i)=>`<tr style="--rota-color:${['#263c20','#203747','#433b20','#402c37','#322c43','#203c37'][i%6]}"><th>${escape(booth.booth)}<small>${escape(booth.topic)}</small></th>${times.map(t=>{const r=visits.get([d+1,booth.booth,t].join(':'));return '<td'+(r?' class="is-assigned"':'')+'>'+(r?escape(r.presenter):'—')+'</td>';}).join('')}</tr>`).join('')}</tbody></table></div>`).join('')+'<p class="event-note">Presenter numbers are unassigned staffing slots. Blank slots have no scheduled visit.</p>';
-}
-let demoPreparationId=null,demoPreparing=false,demoPreparationError='',demoAutoPrepare=false;
-const crewWarmups=new Map();
-let crewStartupReady=false;
-function warmCrewOnOpen(){
- if(!crewStartupReady||!connected||!agentId||changingAgent||removingAgent||!runtime.gateway||data.bacResetting)return;
- const key=runtime.instance+':'+(data.crewOwner||agentId),now=Date.now();
- if((crewWarmups.get(key)||0)>now)return;
- const target=agentId;crewWarmups.set(key,Infinity);
- api('prepare-demo',{background:true},target).catch(()=>{
-  // A policy edit or current mission can briefly hold the preparation fence.
-  // The server deduplicates attempts, including terminal preparation failures.
-  crewWarmups.set(key,Date.now()+30000);
- });
-}
-const excludedDemoGuests=new Set();
-function demoGuestChoices(){
- const skipped=new Map((matchingPreparation()?.payload.roundtable?.skipped||[]).map(m=>[m.key,m.detail]));
- return (data.agents||[]).map(a=>({key:a.key,name:a.name,reason:a.deleting?'Unavailable':a.activity?'Busy with another task.':skipped.get(a.key)||''}));
-}
-function selectedDemoRoles(){return [...(el('crew-form')?.querySelectorAll('[name=crewRole]:checked')||[])].map(input=>Number(input.value));}
-function matchingPreparation(){
- const prep=data.preparation;
- return prep?.id===demoPreparationId&&prep.valid!==false&&selectedDemoRoles().every(role=>prep.payload.enabledRoles.includes(role))?prep:null;
-}
-function syncDemoPreparation(){
- const box=el('demo-preparation');if(!box||!el('dialog').open)return;
- const prep=matchingPreparation(),status=prep?.status|| (demoPreparing?'queued':'idle');
- const error=demoPreparationError||prep?.result?.error||(status==='cancelled'?'Preparation stopped. Check again when ready.':'');
- const guests=demoGuestChoices();
- box.innerHTML='<div class="demo-ready-heading"><b>BaC crew</b><span>'+escape(error?'Needs attention':status==='done'?'Ready':status==='idle'?'Not checked':status==='queued'?'Queued':'Preparing')+'</span></div>'+(error?'<p class="event-plan-error" role="alert">'+escape(error)+'</p>':'')+(prep?.payload.checks||[]).filter(c=>c.required).map(c=>'<div class="demo-ready-row" data-status="'+escape(c.status)+'"><span>'+escape(c.name)+'</span><small>'+escape(c.detail||(c.status==='ready'?'Ready':c.status==='preparing'?'Preparing':'Needs attention'))+'</small></div>').join('')+'<button type="button" class="studio-secondary" id="studio-prepare-demo" '+(!runtime.gateway||demoPreparing||['queued','running'].includes(status)?'disabled':'')+'>'+(status==='done'?'Check again':error?'Retry preparation':'Prepare demo')+'</button>'+(guests.length?'<div class="demo-guests"><b>Personal reactions · optional</b><div class="demo-guest-list">'+guests.map(g=>'<label class="demo-guest" data-available="'+String(!g.reason)+'"><input type="checkbox" data-demo-guest="'+escape(g.key)+'" '+(!g.reason&&!excludedDemoGuests.has(g.key)?'checked ':'')+(g.reason?'disabled ':'')+'><span>'+escape(g.name)+'</span>'+(g.reason?'<small>'+escape(g.reason)+'</small>':'')+'</label>').join('')+'</div></div>':'');
- box.querySelectorAll('[data-demo-guest]').forEach(input=>input.onchange=()=>{if(input.checked)excludedDemoGuests.delete(input.dataset.demoGuest);else excludedDemoGuests.add(input.dataset.demoGuest);});
- el('prepare-demo').onclick=prepareDemo;
- syncEventLaunch();
- if(demoAutoPrepare&&runtime.gateway&&!demoPreparing){demoAutoPrepare=false;queueMicrotask(prepareDemo);}
-}
-async function prepareDemo(){
- if(demoPreparing||!el('demo-preparation')||!el('dialog').open||!runtime.gateway||data.bacResetting)return;
- const form=el('crew-form');demoAutoPrepare=false;demoPreparing=true;demoPreparationError='';demoPreparationId=null;syncDemoPreparation();
- try{const prepared=await api('prepare-demo',{enabledRoles:selectedDemoRoles()});if(el('crew-form')!==form)return;demoPreparationId=prepared.id;await refresh();}
- catch(error){if(el('crew-form')===form)demoPreparationError=error.message;}
- finally{demoPreparing=false;if(el('crew-form')===form)syncDemoPreparation();}
-}
-function syncEventLaunch(){
- const form=el('crew-form'),button=el('launch-event');if(!form||!button)return;
- const prepared=matchingPreparation()?.status==='done'&&!demoPreparationError;
- button.disabled=!teamReady()||eventSubmitting||!eventPreviewValid||!prepared||!form.querySelector('[name=crewRole]:checked');
- button.textContent=!runtime.gateway?gatewayLabel():!(runtime.teamModel??runtime.model)?'Team API not connected':eventSubmitting?'Assigning your brief…':!prepared?'Prepare demo':'Start the event plan';
- const note=el('event-connection');if(note){note.hidden=!!teamReady();note.textContent=runtime.gateway?'Connect the dedicated Multi-Agent Demo API on the host.':gatewayState()==='slow'?'Waiting for the agent runtime. Checking automatically.':'Agent runtime unavailable. Use Retry connection in the status indicator.';}
-}
-async function updateEventPreview(){
- const form=el('crew-form');if(!form)return;const version=++eventPreviewVersion;eventPreviewValid=false;syncEventLaunch();
- try{
-  const {brief:b,capacity:c}=await api('event-plan',{brief:eventBrief(form)});
-  if(version!==eventPreviewVersion||!el('crew-form'))return;
-  el('event-preview').innerHTML=`<div class="event-preview-head"><b>Your booth plan</b><span>Calculated from this brief</span></div><p class="event-note">${escape(b.startTime)}-${escape(b.endTime)} local time${b.teardownTime?` · Take down by ${escape(b.teardownTime)}`:''}</p><div class="event-metrics"><div><strong>${c.boothCount} / ${b.boothLimit}</strong><span>demo booths</span></div><div><strong>${c.session} min</strong><span>per group</span></div><div><strong>${c.presenterCount}</strong><span>presenters / day</span></div><div><strong>${c.staff}</strong><span>total staff / day</span></div></div>${c.adjusted?`<p class="event-adjustment">The crew will use ${c.session}-minute visits instead of ${b.session} minutes to stay within ${b.boothLimit} booths.</p>`:''}<div class="event-topic-summary">${c.topics.map(t=>`<span><b>${escape(t.topic)}</b>${t.attendees} attendees · ${t.groups} visits · ${t.presenters} presenter${t.presenters===1?'':'s'}</span>`).join('')}</div><small>One interest-based demo per attendee across the event. Equal topic split. Includes ${c.floorHosts} floor host${c.floorHosts===1?'':'s'} and 1 lead. Presenters are sized to the visit load. Normally 45 minutes presenting, then at least 15 minutes of rest. Unused time is marked No visit. Names are unassigned.</small>`;
-  eventPreviewValid=true;syncEventLaunch();
- }catch(error){if(version===eventPreviewVersion&&el('event-preview'))el('event-preview').innerHTML='<p class="event-plan-error">'+escape(error.message)+'</p>';}
-}
-async function crewForm(){
- try{eventCatalog=eventCatalog||await api('event-catalog');}catch(error){alert(error.message);return;}
- dialog('Plan a BaC',`<label class="event-template-picker">Template<select id="studio-event-template">${eventCatalog.templates.map(t=>`<option value="${t.id}">${escape(t.title)} (Template)</option>`).join('')}</select></label><form id="studio-crew-form"><div class="studio-form-grid"><label>City<input name="city" maxlength="80" required></label><label>Event date · start<input type="date" name="startDate"></label><label>Event date · end<input type="date" name="endDate"></label><label>Venue<input name="venue" maxlength="120" placeholder="To be confirmed"></label><label>Total attendees<input type="number" name="attendees" min="1" max="3000" step="1" required></label><label>Event duration · minutes per day<input type="number" name="duration" min="30" max="720" step="30" required></label><label>Event days<input type="number" name="days" min="1" max="5" required></label><label>People per group<input type="number" name="groupSize" value="5" min="1" max="30" required></label><label>Preferred demo length · minutes<input type="number" name="session" value="15" min="5" max="60" step="5" required></label><label>Themes (one booth each)<select name="themeCount"><option value="2">2 themes</option><option value="3">3 themes</option><option value="4">4 themes</option><option value="5">5 themes</option><option value="6">6 themes</option></select></label><div class="event-time-field"><span id="studio-event-time-label">Daily start · local time</span><div class="event-start-time" role="group" aria-labelledby="studio-event-time-label"><select name="startHour" aria-label="Start hour (24-hour)">${Array.from({length:24},(_,i)=>`<option value="${String(i).padStart(2,'0')}">${String(i).padStart(2,'0')}</option>`).join('')}</select><span aria-hidden="true">:</span><select name="startMinute" aria-label="Start minute"><option value="00">00</option><option value="30">30</option></select></div><input type="hidden" name="startTime" value="10:00"></div><label>Take down by · local time (optional)<input type="time" name="teardownTime"></label></div><div id="studio-event-preview" class="event-plan-preview" aria-live="polite"></div>${crewAssignments()}<section id="studio-demo-preparation" class="demo-preparation" aria-live="polite"></section><p id="studio-event-connection" class="event-note" role="status" hidden></p><div class="studio-dialog-actions"><button id="studio-launch-event" type="submit" class="studio-primary" disabled>Give the brief to my crew</button></div></form>`);
- const form=el('crew-form');eventSubmitting=false;eventPreviewValid=false;syncEventLaunch();
- function syncDates(){
-  const start=form.elements.startDate,end=form.elements.endDate,days=form.elements.days;
-  end.min=start.value;end.setCustomValidity('');
-  days.readOnly=!!start.value;
-  if(start.value){
-   const count=end.value?Math.round((Date.parse(end.value)-Date.parse(start.value))/86400000)+1:1;
-   if(count>=1&&count<=5)days.value=count;
-   else end.setCustomValidity('Choose an end date within 1 to 5 event days.');
-  }else if(end.value)end.setCustomValidity('Choose a start date first.');
- }
- function applyTemplate(id){
-  const template=eventCatalog.templates.find(t=>t.id===id);if(!template)return;
-  el('event-template').value=id;
-  for(const k of ['city','attendees','duration','days','venue','startDate','endDate','teardownTime'])form.elements[k].value=template[k]??'';
-  const startTime=template.startTime||'10:00';
-  for(const [key,value] of Object.entries({groupSize:template.groupSize??5,session:15,themeCount:template.topics.length,startTime,startHour:startTime.slice(0,2),startMinute:startTime.slice(3)}))form.elements[key].value=value;
-  syncDates();updateEventPreview();
- }
- el('event-template').onchange=e=>applyTemplate(e.target.value);
- form.addEventListener('input',e=>{
-  if(e.target.name==='crewRole'){updateCrewSelection();return;}
-  if(['startDate','endDate'].includes(e.target.name))syncDates();
-  if(['startHour','startMinute'].includes(e.target.name))form.elements.startTime.value=form.elements.startHour.value+':'+form.elements.startMinute.value;
-  updateEventPreview();
- });
- function updateCrewSelection(){const count=form.querySelectorAll('[name=crewRole]:checked').length;el('crew-selection-note').textContent=count+' selected';demoPreparationError='';syncDemoPreparation();}
- form.onsubmit=async event=>{event.preventDefault();syncEventLaunch();if(el('launch-event').disabled)return;eventSubmitting=true;syncEventLaunch();const enabledRoles=selectedDemoRoles();try{const job=await api('jobs',{kind:'crew',workflow:'showcase',executionMode:'agent-led-v1',brief:eventBrief(form),enabledRoles,preparationId:demoPreparationId,guestKeys:demoGuestChoices().filter(g=>!g.reason&&!excludedDemoGuests.has(g.key)).map(g=>g.key),preset:true});selectedJob=job.id;selectedCrewRole=0;eventPackageTab='plan';el('dialog').close();await refresh();showBoard(false);}catch(error){demoPreparationError=error.message;syncDemoPreparation();}finally{eventSubmitting=false;syncEventLaunch();}};
- applyTemplate('zurich');
- const previous=data.preparation;
- demoPreparationId=previous?.valid&&(previous.payload.background||['queued','running','error','cancelled'].includes(previous.status))&&selectedDemoRoles().every(r=>previous.payload.enabledRoles.includes(r))?previous.id:null;
- demoPreparationError='';demoAutoPrepare=!demoPreparationId;syncDemoPreparation();
 }
 function renderEventPackage(force=false){
  const job=crewMission();eventPackage.hidden=room!=='mission'||job?.payload.brief?.schema!==2;if(eventPackage.hidden)return;

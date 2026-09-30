@@ -67,3 +67,32 @@ class TeamModelTests(unittest.TestCase):
         self.assertIsNone(team.model_for('bac-'+'a'*24))
         self.assertIsNone(team.model_for('bac-'+'a'*24+'-r99'))
         self.assertEqual(team.model_for(self.research),'bac-team/'+team.MODELS[1])
+
+    def test_member_selection_is_scoped_and_preserved_by_settings(self):
+        owner=self.app.session()[0]['id'];other=self.app.session()[0]['id']
+        crew=self.app.crew_owner(owner);other_crew=self.app.crew_owner(other)
+        team.select(self.app,crew,{'role':8,'model':team.MODELS[0]})
+        self.assertEqual(team.selections(self.app,crew)[8]['id'],team.MODELS[0])
+        self.assertEqual(team.selections(self.app,other_crew)[8]['id'],team.MODELS[1])
+        self.assertEqual(self.app.state(owner)['teamSelections'][8]['id'],team.MODELS[0])
+        config=runtime.initial_config();agent=self.app.crew_native_id(crew,8)
+        config['agents']['entries'][agent]={'model':'bac-team/'+team.MODELS[0]}
+        profile={'baseUrl':'http://localhost:8000/v1','model':'local','apiKey':'','contextWindow':32768}
+        config=settings.apply_to_config(config,'local',profile)
+        self.assertEqual(config['agents']['entries'][agent]['model'],'bac-team/'+team.MODELS[0])
+        with self.app.db() as db:member=self.app.crew_roster(db,crew,{},preset=True)[8]
+        with patch.object(self.app.adapter,'register') as register:
+            self.app.prepare_builtin_crew(crew,8,member)
+            self.assertEqual(register.call_args.args[2]['_teamModel'],team.MODELS[0])
+        self.assertIn(agent,self.app.provisioned)
+        team.select(self.app,crew,{'role':8,'model':team.MODELS[1]})
+        self.assertNotIn(agent,self.app.provisioned)
+
+    def test_member_selection_rejects_bad_input_and_active_work(self):
+        owner=self.app.session()[0]['id'];crew=self.app.crew_owner(owner)
+        for role,model in [(True,team.MODELS[0]),(1,team.MODELS[0]),(99,team.MODELS[0]),(0,'other')]:
+            with self.assertRaises(Problem):team.select(self.app,crew,{'role':role,'model':model})
+        self.app.enqueue(crew,{'kind':'crew-chat','crewRole':0,'prompt':'Hello'})
+        with self.assertRaises(Problem) as error:team.select(self.app,crew,{'role':0,'model':team.MODELS[1]})
+        self.assertEqual(error.exception.status,409)
+        self.assertEqual(team.selections(self.app,crew)[0]['id'],team.MODELS[0])

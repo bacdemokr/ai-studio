@@ -127,7 +127,7 @@ async function resetStudio(scope){
     const snapshot=await api('state',undefined,'');
     reset={resetting:!!snapshot.bacResetting};
    }
-   selectedJob=null;demoPreparationId='';
+   selectedJob=null;
   }
   // Persist every request first. Closing Settings or reloading must not lose
   // the remainder of a bulk deletion while the native runtime drains it.

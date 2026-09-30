@@ -51,17 +51,14 @@ function webpageButtons(files,jobId){
  return pages.length?'<div class="chat-webpages">'+pages.map((path,index)=>'<button type="button" class="studio-secondary" data-preview-file="'+escape(path)+'" data-preview-job="'+escape(jobId)+'">Preview webpage'+(pages.length>1?' '+(index+1):'')+' <span aria-hidden="true">↗</span></button>').join('')+'</div>':'';
 }
 root.addEventListener('click',event=>{const page=event.target.closest('[data-preview-file]');if(page)openFile(page.dataset.previewFile,page.dataset.previewJob);});
-// Conversation history survives reloads; stage substitutions belong to this visit.
-// Only a newly submitted /plan may replace the original team at their desks.
-const stagedCollaborationIds=new Set();
+// The latest saved plan owns the visible team, including after a refresh.
 function stageCollaboration(job){
- stagedCollaborationIds.add(job.id);
  render();
  showCollaboration();
 }
 // Keep this visit's chosen team visible until a newer event mission/reset.
 function currentCollaboration(){
- const latest=(data.crewChats||[]).filter(j=>stagedCollaborationIds.has(j.id)&&j.payload.collaboration&&j.created>=(data.crewChatReset?.at||0)).sort((a,b)=>b.created-a.created)[0];
+ const latest=(data.crewChats||[]).filter(j=>j.payload.collaboration&&j.created>=(data.crewChatReset?.at||0)).sort((a,b)=>b.created-a.created)[0];
  const event=crewMission();
  return latest&&(!event||latest.created>=event.created)?latest:null;
 }
@@ -76,11 +73,20 @@ function renderStandbySpecialists(agents,crew){
  if(!currentCollaboration()&&crew&&['queued','running','waiting','stopping'].includes(crew.status))
   (crew.payload.enabledRoles||[]).forEach(role=>occupied.add(role));
  const available=window.BacCrewCatalog.map((member,role)=>({...member,roleIndex:role}))
-  .filter(member=>member.roleIndex>0&&member.planEligible!==false&&!occupied.has(member.roleIndex));
+  .filter(member=>member.planEligible!==false);
  el('standby-count').textContent=String(available.length);
- const markup=available.map(member=>'<li data-standby-role="'+member.roleIndex+'"><strong>'+escape(member.name)+'</strong><span>'+escape(member.collaboration.title)+'</span></li>').join('')||'<li class="studio-muted">All specialists are with the team.</li>';
- if(el('standby-list').innerHTML!==markup)el('standby-list').innerHTML=markup;
+ const busyTeam=(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status))||data.bacResetting;
+ const markup=available.map(member=>'<li data-standby-role="'+member.roleIndex+'"><div><strong>'+escape(member.name)+'</strong><span>'+escape(member.collaboration.title)+(occupied.has(member.roleIndex)?' · With team':'')+'</span></div><select data-team-model="'+member.roleIndex+'" aria-label="Model for '+escape(member.name)+'" '+(busyTeam?'disabled':'')+'>'+(runtime.teamModels||[]).map(model=>'<option value="'+escape(model.id)+'" '+(model.id===teamModel(member.roleIndex)?.id?'selected':'')+'>'+escape(model.label)+'</option>').join('')+'</select></li>').join('');
+ if(!el('standby-list').contains(document.activeElement)&&el('standby-list').innerHTML!==markup)el('standby-list').innerHTML=markup;
 }
+root.addEventListener('change',async event=>{
+ const select=event.target.closest('[data-team-model]');if(!select)return;
+ select.disabled=true;
+ try{await api('team-model',{role:Number(select.dataset.teamModel),model:select.value});await refresh();}
+ catch(error){alert(error.message);}
+ finally{select.blur();render();}
+});
+
 function eventExpectationMarkup(job,role){
  const p=job?.payload,h=p?.handoffs?.[role],name=p?.roster?.[role]?.name||defaultNames[role];
  const assignment=p?.assignments?.find(a=>a.name===name)?.task;
@@ -100,7 +106,9 @@ function collaborationRoleOrder(plan){
 }
 // Presence follows the approved plan; execution still follows calledRoles/handoffs.
 function collaborationTeam(plan){
- const selected=Array.isArray(plan.tasks)?plan.tasks.map(task=>task.role):(plan.calledRoles||[]);
+ // Keep the seated team while Casey is still deciding the next assignment.
+ const previous=!Array.isArray(plan.tasks)?(data.crewChats||[]).filter(j=>j.payload.collaboration!==plan&&Array.isArray(j.payload.collaboration?.tasks)&&j.created>=(data.crewChatReset?.at||0)).sort((a,b)=>b.created-a.created)[0]?.payload.collaboration:null;
+ const selected=Array.isArray(plan.tasks)?plan.tasks.map(task=>task.role):previous?previous.tasks.map(task=>task.role):(plan.calledRoles||[]);
  return [0,...new Set(selected.filter(role=>Number.isInteger(role)&&role>0&&defaultNames[role]))];
 }
 function collaborationAnswer(job){return job.result?.answer||job.payload.collaboration.finalAnswer||'';}
@@ -243,7 +251,7 @@ function collaborationHistoryMarkup(job){
 }
 function showCollaboration(){selectedCrewRole=0;setRoom('mission');root.dataset.crewDetails='true';renderCrewPassport();}
 function teamReady(){return runtime.teamReady??runtime.ready;}
-function teamModel(role){return runtime.teamModels?.[role===0?0:1];}
+function teamModel(role){const id=data.teamSelections?.find(row=>row.role===role)?.id;return runtime.teamModels?.find(model=>model.id===id)||runtime.teamModels?.[role===0?0:1];}
 function syncCrewComposer(){
  const blocked=!teamReady()||!!data.bacResetting;
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending;
@@ -257,13 +265,13 @@ function renderCrewPassport(){
   for(const key of chatImageDrafts.keys())if(key.includes(':crew:'))chatImageDrafts.delete(key);
  }
  if(room!=='mission')return;
- const i=selectedCrewRole,name=defaultNames[i],role=currentCollaboration()?window.BacCrewCatalog[i].collaboration.title:roles[i][1],crew=crewMission();
+ const i=selectedCrewRole,name=defaultNames[i],role=window.BacCrewCatalog[i].collaboration.title,crew=crewMission();
  const avatar=window.BacCampus?.inspect().crewAvatars?.[i]||{};
  el('crew-number').textContent=String(i+1).padStart(2,'0')+' / '+roles.length;
  el('crew-name').textContent=name;el('crew-role').textContent=role;
  const model=teamModel(i);el('crew-model').textContent=model?.label||'';el('crew-model').title=model?.id||'';el('crew-model').hidden=!model;
  const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';portrait.style.setProperty('--avatar-accent',appearanceColors[avatar.color]||appearanceColors.green);
- const skills=currentCollaboration()?[]:window.BacCrewCatalog[i].skills;
+ const skills=[];
  const skillLabels={...titles,'event-tools':'Event tools','event-scheduling':'Presenter scheduling'};
  el('crew-policy').hidden=window.BacCrewCatalog[i].protection!=='openshell';
  syncPolicyBadges();

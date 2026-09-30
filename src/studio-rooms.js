@@ -78,7 +78,7 @@ function renderRoomVisibility(){
   el('collection').hidden=!lounge||!data.profile;renderEventPackage();
   layout.hidden=false;el('board').hidden=true;
   el('experiences').hidden=!lounge;el('workspace').hidden=workshop||(mission?!crewMission():(!current()&&!data.files?.length));el('safety-bar').hidden=true;
-  const action=el('room-action');action.hidden=!mission;action.textContent='Plan a BaC';
+  const action=el('room-action');action.hidden=true;
   document.getElementById('campus-roster').hidden=!mission;
   document.getElementById('campus-location').textContent=workshop?'HIRING / MEET YOUR NEXT AGENT':lounge?'LOUNGE / Current Agents: '+(data.agents?.length||0):'Multi-Agent demo';
   syncSurface();
@@ -124,7 +124,7 @@ el('apply-prompt').onclick=()=>{
 el('onboarding').querySelectorAll('[name=protection]').forEach(input=>input.onchange=updateDraft);
 el('tone-picker').onclick=e=>{const button=e.target.closest('[data-tone]');if(button){draftTone=button.dataset.tone;writeCreatorPrompt(tonePromptLabel(draftTone),creatorPrompt().purpose);updateDraft();}};
 root.addEventListener('bac:world-room',e=>setRoom(e.detail.room,{fromWorld:true}));
-el('room-action').onclick=crewForm;
+
 el('edit-agent').onclick=()=>agentForm(false);el('cancel-create').onclick=()=>{if(editingInPlace){editingInPlace=false;fillCreator(true);renderRoomVisibility();}else setRoom('lounge');};
 function forgetDeletedAgent(target){
   stateCache.clear();

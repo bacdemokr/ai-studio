@@ -1,5 +1,5 @@
 // Visual substitutions never create/delete agents or delay model execution.
-let deskAssignments=[0,1,2,3],exchangeTeamKey='event:0,1,2,3';
+let deskAssignments=[0,null,null,null],exchangeTeamKey='event:0',crewPresenceInitialized=false;
 function deskRole(slot){return deskAssignments[slot];}
 function settleCrewExchange(){
   robots.forEach((r,i)=>{r.robot.visible=r.wanted;r.robot.position.copy(r.wanted?r.home:exchangeExit);r.path=[];r.exchange=null;labels[i].hidden=!r.wanted;r.halo.visible=r.wanted&&i===activeSelection;});
@@ -10,11 +10,12 @@ function enterCrew(r){
   r.path=[exchangeEntry.clone(),new THREE.Vector3(r.home.x,.05,0),r.home.clone()];
 }
 function placeTeam(){
+  const initial=state.live&&!crewPresenceInitialized;if(state.live)crewPresenceInitialized=true;
   const selected=state.agents.map((a,i)=>a.displayed===false?null:i).filter(i=>i!==null),key=(state.crewMission?.kind==='plan'?'plan:':'event:')+selected.join();
   if(key!==exchangeTeamKey){
     exchangeTeamKey=key;
     // Keep returning specialists at their existing desks, fill only free seats.
-    if(state.crewMission?.kind!=='plan')deskAssignments=[0,1,2,3];
+    if(state.crewMission?.kind!=='plan')deskAssignments=[0,null,null,null];
     deskAssignments=deskAssignments.map((role,slot)=>slot===0?0:selected.includes(role)?role:null);
     for(const role of selected.filter(i=>i>0))if(!deskAssignments.includes(role)){
       const free=deskAssignments.indexOf(null);if(free>=0)deskAssignments[free]=role;
@@ -30,7 +31,7 @@ function placeTeam(){
       }else if(!r.robot.visible){r.exchange='queued';r.path=[];}
       else if(r.exchange==='leaving'){r.exchange='entering';r.path=[new THREE.Vector3(r.robot.position.x,.05,0),new THREE.Vector3(r.home.x,.05,0),r.home.clone()];}
     });
-    if(!motion||reduced.matches)settleCrewExchange();
+    if(initial||!motion||reduced.matches)settleCrewExchange();
   }
 }
 function animateCrewExchange(dt){

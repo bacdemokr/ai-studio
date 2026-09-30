@@ -237,6 +237,11 @@ class Handler(SimpleHTTPRequestHandler):
                 if self.path == '/api/settings/models':return self.json_response(runtime_settings.models(data))
                 if self.path == '/api/settings/start':return self.json_response(runtime_settings.start_gateway())
                 return self.json_response(runtime_settings.save(studio,data))
+            if self.path in ('/api/prepare-demo','/api/event-plan','/api/survey-replan') or (self.path=='/api/jobs' and data.get('kind')=='crew'):
+                raise Problem('Plan a BaC has been retired. Send /plan to Casey instead.',410)
+            if self.path == '/api/team-model':
+                import team_models
+                return self.json_response(team_models.select(studio,studio.crew_owner(owner),data))
             routes = {
                 '/api/heartbeat': lambda: studio.heartbeat.control(owner, data),
                 '/api/agents': lambda: studio.add_agent(row['id'], data),
@@ -246,11 +251,8 @@ class Handler(SimpleHTTPRequestHandler):
                 '/api/agent-policy': lambda: studio.policy_change(owner, data),
                 '/api/crew-policy': lambda: studio.crew_policy_change(studio.crew_owner(owner), data),
                 '/api/jobs': lambda: studio.enqueue(studio.crew_owner(owner) if data.get('kind') in ('crew','crew-chat') else owner, data, lead=owner if data.get('kind')=='crew' and data.get('preset') is not True else None),
-                '/api/event-plan': lambda: studio.event_plan(data),
-                '/api/survey-replan': lambda: studio.survey_replan(studio.job_owner(owner, data.get('id')), data),
                 '/api/upload': lambda: studio.upload(owner, data),
                 '/api/decision': lambda: studio.decision(studio.job_owner(owner, data.get('id')), data.get('id'), data.get('action')),
-                '/api/prepare-demo': lambda: studio.prepare_demo(studio.crew_owner(owner), data),
                 '/api/retry-reaction': lambda: studio.retry_reaction(studio.job_owner(owner, data.get('id')), data),
                 '/api/event-reset': lambda: studio.reset_event_board(owner),
                 '/api/reset': lambda: studio.reset_board(owner),

@@ -28,12 +28,14 @@ class CrewOwnership:
                 owner TEXT NOT NULL, role INTEGER NOT NULL, native_id TEXT NOT NULL UNIQUE,
                 workspace_name TEXT NOT NULL UNIQUE, chat_session TEXT NOT NULL UNIQUE,
                 PRIMARY KEY(owner,role))''')
+            if 'model' not in {r['name'] for r in db.execute('PRAGMA table_info(crew_resources)')}:
+                db.execute('ALTER TABLE crew_resources ADD COLUMN model TEXT')
             # Expand each existing team's explicitly owned reserve roster. This
             # creates ownership records only, not native runtimes or sandboxes.
             for row in db.execute('SELECT owner FROM crew_contexts').fetchall():
                 team = row['owner']
                 for role in range(len(ROLES)):
-                    db.execute('INSERT OR IGNORE INTO crew_resources VALUES (?,?,?,?,?)',
+                    db.execute('INSERT OR IGNORE INTO crew_resources(owner,role,native_id,workspace_name,chat_session) VALUES (?,?,?,?,?)',
                                (team, role, 'bac-'+team+'-r'+str(role), team+'-'+str(role), 'bac-crew-chat-'+team+'-'+str(role)))
             self.crew_resources = {(r['owner'],r['role']):dict(r) for r in db.execute('SELECT * FROM crew_resources')}
 
@@ -53,7 +55,7 @@ class CrewOwnership:
             resources=[]
             for role in range(len(ROLES)):
                 resource=dict(owner=team,role=role,native_id='bac-'+team+'-r'+str(role),workspace_name=team+'-'+str(role),chat_session='bac-crew-chat-'+team+'-'+str(role))
-                db.execute('INSERT INTO crew_resources VALUES (:owner,:role,:native_id,:workspace_name,:chat_session)',resource)
+                db.execute('INSERT INTO crew_resources(owner,role,native_id,workspace_name,chat_session) VALUES (:owner,:role,:native_id,:workspace_name,:chat_session)',resource)
                 resources.append(resource)
             self.crew_resources.update({(team,r['role']):r for r in resources})
         self.initialize_workspace(team)

@@ -788,6 +788,10 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 
 .studio-model-label{font-size:11px;color:#b7cc99;font-weight:400;letter-spacing:0;display:inline-block;padding:3px 6px;border:1px solid #394b35;border-radius:4px}
 
+#studio-standby-list li>div{display:flex;flex-direction:column;gap:4px}
+#studio-standby-list select{width:210px;font-size:12px;padding:7px 10px;background:#101c25;color:#e7eff4;border:1px solid #455c6a;border-radius:4px;cursor:pointer}
+#studio-standby-list select:disabled{opacity:.5;cursor:wait}
+
 .studio-sound{display:flex;align-items:center;gap:3px;flex-shrink:0}
 #agent-campus #campus-sound-toggle{width:auto;min-height:35px;height:auto;padding:4px 9px;font-size:15px;white-space:nowrap;color:#b8c9d7;border:1px solid #526071;background:#191e25;border-radius:3px}
 #agent-campus #campus-sound-toggle[aria-pressed=true]{color:#d3edb5;border-color:#5f843c;background:#1d2a22}
@@ -1199,7 +1203,7 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 </style>
 <script>
 (() => {
-  window.BacCrewCatalog = Object.freeze(([{"name": "Casey", "role": "BaC Captain", "persona": "guide", "description": "Briefs the specialists and sets priorities for their shared event plan.", "id": "event-lead", "skills": ["nvidia-webpage"], "collaboration": {"title": "Team captain", "description": "Choose the specialists for the current request, define acceptance criteria, and combine their actual contributions.", "scope": "Assign distinct specialist-sized tasks and judge each against its expected result. Do not implement specialist deliverables yourself or treat out-of-scope work as completion of another assignment."}}, {"name": "Dylan", "role": "Demo producer", "persona": "maker", "description": "Researches NVIDIA themes and turns them into lightweight, source-backed demos.", "id": "demo-producer", "planEligible": false, "protection": "openshell", "skills": ["nvidia-research", "event-tools"], "collaboration": {"title": "Demo producer", "description": "Research NVIDIA themes and create event demos. Reserved for BaC event preparation, not /plan assignments. External reads run inside OpenShell and require the current website policy."}}, {"name": "Alex", "role": "Operations planner", "persona": "analyst", "description": "Decides topic-specialist staffing, visit times and presenter breaks, then exports the timetable.", "id": "operations-planner", "skills": ["event-scheduling", "event-tools"], "collaboration": {"title": "Planner & analyst", "description": "Break down requirements, constraints, calculations and dependencies for any task; propose a practical plan and acceptance criteria.", "scope": "Return requirements, constraints, calculations and a plan to Casey. Do not implement a webpage or application assigned to the programmer."}}, {"name": "Morgan", "role": "Marketing producer", "persona": "guide", "description": "Builds the event webpage and writes its LinkedIn post from the crew\u2019s results.", "id": "marketing-producer", "skills": ["web", "nvidia-social", "nvidia-webpage"], "collaboration": {"title": "Writer & editor", "description": "Write or edit the requested content in its requested format. LinkedIn posts and event marketing are optional, only when requested.", "scope": "Return the requested prose or edited copy to Casey. Do not implement a webpage or application; supply its copy to the programmer when needed."}}, {"name": "Riley", "role": "Audience & review", "persona": "analyst", "description": "Creates the interest survey and checks the complete plan.", "id": "audience-host", "skills": [], "collaboration": {"title": "Reviewer", "description": "Independently inspect supplied outputs, source files and assumptions; identify defects and missing requirements. Distinguish static review from executed tests.", "scope": "Review the supplied deliverable and report findings to Casey. Make minimal corrections only when assigned; do not replace missing implementation with a new application."}}, {"name": "Wade", "role": "Event web developer", "persona": "maker", "description": "Turns the shared event plan into a polished landing page you can open and download.", "id": "event-web-developer", "skills": ["event-page", "nvidia-webpage"], "collaboration": {"title": "Programmer", "description": "Implement small programs and self-contained HTML/CSS/JavaScript prototypes with file tools. No arbitrary code execution, package installation or deployment is available.", "scope": "Implement only the assigned program or webpage using the supplied evidence and requirements. Preserve source limitations; do not invent research or claim unperformed execution."}}, {"name": "Nora", "role": "Data analyst", "persona": "analyst", "id": "data-analyst", "skills": ["data-analysis"], "planOnly": true, "description": "Interpret supplied tables, CSV and JSON; compare options and explain trends, units and missing data. Produce small analysis tables or chart specifications. State when calculations are reasoned rather than executed; no arbitrary Python execution or spreadsheet engine is available.", "collaboration": {"title": "Data analyst", "description": "Interpret supplied tables, CSV and JSON; compare options and explain trends, units and missing data. Produce small analysis tables or chart specifications. State when calculations are reasoned rather than executed; no arbitrary Python execution or spreadsheet engine is available.", "scope": "Return the requested data analysis, tables and chart specifications to Casey. Do not implement the finished webpage or application."}}, {"name": "Quinn", "role": "UX designer", "persona": "maker", "id": "ux-designer", "skills": ["interface-design"], "planOnly": true, "description": "Turn user requirements into clear screen flows, accessible layouts, interaction states and acceptance criteria. Specify a practical design for Wade to implement; do not claim usability studies or browser tests were performed.", "collaboration": {"title": "UX designer", "description": "Turn user requirements into clear screen flows, accessible layouts, interaction states and acceptance criteria. Specify a practical design for Wade to implement; do not claim usability studies or browser tests were performed.", "scope": "Return design specifications, flows and accessibility guidance to Casey for implementation. Do not build the finished webpage or application."}}, {"name": "Avery", "role": "Researcher", "persona": "analyst", "id": "general-researcher", "skills": ["web"], "protection": "standard", "planOnly": true, "description": "Research public web sources, compare evidence and cite findings for the current task.", "collaboration": {"title": "Researcher", "description": "Read public sources with available web tools and compare evidence. Cite source URLs, distinguish observations from inference, and report unavailable pages honestly. web_fetch is available for public HTTP(S) pages. No search API key is assumed. Without supplied URLs, start from a confidently known official homepage and follow links returned by it; search-engine search is optional and separate. OpenShell is off. Never claim a page was read without a successful tool result.", "scope": "Research only: read sources and return a cited evidence brief, dates, findings and limitations to Casey. Do not create HTML, implement a webpage/application, or perform the programmer or reviewer assignment."}}]).map(member => Object.freeze(member)));
+  window.BacCrewCatalog = Object.freeze(([{"name": "Casey", "role": "BaC Captain", "persona": "guide", "description": "Assembles the right specialists, reviews their contributions, and brings the result together.", "id": "event-lead", "skills": ["nvidia-webpage"], "collaboration": {"title": "Team captain", "description": "Choose the specialists for the current request, define acceptance criteria, and combine their actual contributions.", "scope": "Assign distinct specialist-sized tasks and judge each against its expected result. Do not implement specialist deliverables yourself or treat out-of-scope work as completion of another assignment."}}, {"name": "Dylan", "role": "Demo producer", "persona": "maker", "description": "Researches NVIDIA themes and turns them into lightweight, source-backed demos.", "id": "demo-producer", "planEligible": false, "protection": "openshell", "skills": ["nvidia-research", "event-tools"], "collaboration": {"title": "Demo producer", "description": "Research NVIDIA themes and create event demos. Reserved for BaC event preparation, not /plan assignments. External reads run inside OpenShell and require the current website policy."}}, {"name": "Alex", "role": "Operations planner", "persona": "analyst", "description": "Decides topic-specialist staffing, visit times and presenter breaks, then exports the timetable.", "id": "operations-planner", "skills": ["event-scheduling", "event-tools"], "collaboration": {"title": "Planner & analyst", "description": "Break down requirements, constraints, calculations and dependencies for any task; propose a practical plan and acceptance criteria.", "scope": "Return requirements, constraints, calculations and a plan to Casey. Do not implement a webpage or application assigned to the programmer."}}, {"name": "Morgan", "role": "Marketing producer", "persona": "guide", "description": "Builds the event webpage and writes its LinkedIn post from the crew\u2019s results.", "id": "marketing-producer", "skills": ["web", "nvidia-social", "nvidia-webpage"], "collaboration": {"title": "Writer & editor", "description": "Write or edit the requested content in its requested format. LinkedIn posts and event marketing are optional, only when requested.", "scope": "Return the requested prose or edited copy to Casey. Do not implement a webpage or application; supply its copy to the programmer when needed."}}, {"name": "Riley", "role": "Audience & review", "persona": "analyst", "description": "Creates the interest survey and checks the complete plan.", "id": "audience-host", "skills": [], "collaboration": {"title": "Reviewer", "description": "Independently inspect supplied outputs, source files and assumptions; identify defects and missing requirements. Distinguish static review from executed tests.", "scope": "Review the supplied deliverable and report findings to Casey. Make minimal corrections only when assigned; do not replace missing implementation with a new application."}}, {"name": "Wade", "role": "Event web developer", "persona": "maker", "description": "Turns the shared event plan into a polished landing page you can open and download.", "id": "event-web-developer", "skills": ["event-page", "nvidia-webpage"], "collaboration": {"title": "Programmer", "description": "Implement small programs and self-contained HTML/CSS/JavaScript prototypes with file tools. No arbitrary code execution, package installation or deployment is available.", "scope": "Implement only the assigned program or webpage using the supplied evidence and requirements. Preserve source limitations; do not invent research or claim unperformed execution."}}, {"name": "Nora", "role": "Data analyst", "persona": "analyst", "id": "data-analyst", "skills": ["data-analysis"], "planOnly": true, "description": "Interpret supplied tables, CSV and JSON; compare options and explain trends, units and missing data. Produce small analysis tables or chart specifications. State when calculations are reasoned rather than executed; no arbitrary Python execution or spreadsheet engine is available.", "collaboration": {"title": "Data analyst", "description": "Interpret supplied tables, CSV and JSON; compare options and explain trends, units and missing data. Produce small analysis tables or chart specifications. State when calculations are reasoned rather than executed; no arbitrary Python execution or spreadsheet engine is available.", "scope": "Return the requested data analysis, tables and chart specifications to Casey. Do not implement the finished webpage or application."}}, {"name": "Quinn", "role": "UX designer", "persona": "maker", "id": "ux-designer", "skills": ["interface-design"], "planOnly": true, "description": "Turn user requirements into clear screen flows, accessible layouts, interaction states and acceptance criteria. Specify a practical design for Wade to implement; do not claim usability studies or browser tests were performed.", "collaboration": {"title": "UX designer", "description": "Turn user requirements into clear screen flows, accessible layouts, interaction states and acceptance criteria. Specify a practical design for Wade to implement; do not claim usability studies or browser tests were performed.", "scope": "Return design specifications, flows and accessibility guidance to Casey for implementation. Do not build the finished webpage or application."}}, {"name": "Avery", "role": "Researcher", "persona": "analyst", "id": "general-researcher", "skills": ["web"], "protection": "standard", "planOnly": true, "description": "Research public web sources, compare evidence and cite findings for the current task.", "collaboration": {"title": "Researcher", "description": "Read public sources with available web tools and compare evidence. Cite source URLs, distinguish observations from inference, and report unavailable pages honestly. web_fetch is available for public HTTP(S) pages. No search API key is assumed. Without supplied URLs, start from a confidently known official homepage and follow links returned by it; search-engine search is optional and separate. OpenShell is off. Never claim a page was read without a successful tool result.", "scope": "Research only: read sources and return a cited evidence brief, dates, findings and limitations to Casey. Do not create HTML, implement a webpage/application, or perform the programmer or reviewer assignment."}}]).map(member => Object.freeze(member)));
   window.BacDemo = {
     snapshot: () => ({phase:-1,revision:0,brief:null,calc:null,gap:false,policy:null,selected:0,
       flow:['Your crew is ready','', ''], agents:window.BacCrewCatalog.map((member,i)=>({
@@ -79050,12 +79054,12 @@ function createClaw(appearance,color,group,body){
   const brand=sign(missionRoom,'NVIDIA',-3.5,.075,6.7,2.8,.62,'#aebdce');brand.rotation.x=-Math.PI/2;
   const robots=[];const hitTargets=[];const labels=[];
   positions.forEach((_,i)=>{
-    const rig=createCharacter(avatarDefaults[i]),robot=rig.group;robot.position.copy(homes[i]);robot.visible=i<4;if(i===0)robot.scale.setScalar(1.12);missionRoom.add(robot);
+    const rig=createCharacter(avatarDefaults[i]),robot=rig.group;robot.position.copy(homes[i]);robot.visible=i===0;if(i===0)robot.scale.setScalar(1.12);missionRoom.add(robot);
     const halo=ring(missionRoom,homes[i].x,.086,homes[i].z,.48,rig.color);
     const packet=box(rig.body,.39,.7,.2,.21,.27,.045,rig.color,true);packet.visible=false;
     robot.traverse(object=>{if(object.isMesh){object.userData.agent=i;hitTargets.push(object);}});
     const badge=document.createElement('button');badge.type='button';badge.className='campus-agent-label';badge.dataset.crewMember=String(i);badge.onclick=()=>{if(room==='mission'&&!overview&&!journey)choose(i);};badge.style.setProperty('--agent-color',hex(i));el('labels').append(badge);labels.push(badge);
-    robots.push({...rig,robot,halo,packet,home:homes[i],path:[],idle:i*.9,destination:homes[i].clone(),exchange:null,wanted:i<4,avatarKey:JSON.stringify(avatarDefaults[i])});
+    robots.push({...rig,robot,halo,packet,home:homes[i],path:[],idle:i*.9,destination:homes[i].clone(),exchange:null,wanted:i===0,avatarKey:JSON.stringify(avatarDefaults[i])});
   });
   function dressCrew(){
     robots.forEach((r,i)=>{
@@ -79923,7 +79927,7 @@ function roundtableInfo(){return {job:meetingId,tableWidth:meetingWidth,speaker:
     if(!motion)settleCrewExchange();
   }
   // Visual substitutions never create/delete agents or delay model execution.
-let deskAssignments=[0,1,2,3],exchangeTeamKey='event:0,1,2,3';
+let deskAssignments=[0,null,null,null],exchangeTeamKey='event:0',crewPresenceInitialized=false;
 function deskRole(slot){return deskAssignments[slot];}
 function settleCrewExchange(){
   robots.forEach((r,i)=>{r.robot.visible=r.wanted;r.robot.position.copy(r.wanted?r.home:exchangeExit);r.path=[];r.exchange=null;labels[i].hidden=!r.wanted;r.halo.visible=r.wanted&&i===activeSelection;});
@@ -79934,11 +79938,12 @@ function enterCrew(r){
   r.path=[exchangeEntry.clone(),new THREE.Vector3(r.home.x,.05,0),r.home.clone()];
 }
 function placeTeam(){
+  const initial=state.live&&!crewPresenceInitialized;if(state.live)crewPresenceInitialized=true;
   const selected=state.agents.map((a,i)=>a.displayed===false?null:i).filter(i=>i!==null),key=(state.crewMission?.kind==='plan'?'plan:':'event:')+selected.join();
   if(key!==exchangeTeamKey){
     exchangeTeamKey=key;
     // Keep returning specialists at their existing desks, fill only free seats.
-    if(state.crewMission?.kind!=='plan')deskAssignments=[0,1,2,3];
+    if(state.crewMission?.kind!=='plan')deskAssignments=[0,null,null,null];
     deskAssignments=deskAssignments.map((role,slot)=>slot===0?0:selected.includes(role)?role:null);
     for(const role of selected.filter(i=>i>0))if(!deskAssignments.includes(role)){
       const free=deskAssignments.indexOf(null);if(free>=0)deskAssignments[free]=role;
@@ -79954,7 +79959,7 @@ function placeTeam(){
       }else if(!r.robot.visible){r.exchange='queued';r.path=[];}
       else if(r.exchange==='leaving'){r.exchange='entering';r.path=[new THREE.Vector3(r.robot.position.x,.05,0),new THREE.Vector3(r.home.x,.05,0),r.home.clone()];}
     });
-    if(!motion||reduced.matches)settleCrewExchange();
+    if(initial||!motion||reduced.matches)settleCrewExchange();
   }
 }
 function animateCrewExchange(dt){
@@ -80191,7 +80196,7 @@ function animateProtection(now){
     renderer.render(scene,camera);
   }
   motionButton();resize();update(snapshot,0);requestAnimationFrame(animate);root.dataset.renderer='webgl';
-  return {resize,update,setRoom,setCollection,observeProtection,protectionReplyDelay,setDraft,welcomeAgent,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',protectionHits:[...protectionHits.values()].map(h=>({id:h.event.id,owner:h.event.owner,role:h.event.role,action:h.event.action,globeRotation:h.earth?.rotation.y,visible:h.group.visible,animated:motion&&h.phase!=='blocked',phase:h.phase})),roundtable:roundtableInfo(),arrival:arrival?{key:arrival.key,avatar:{...arrival.rig.appearance},phase:arrival.time<1.8?'loading':'walking',position:arrival.rig.group.position.toArray()}:null,room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,draftShield:!!draftRig?.body.getObjectByName('openshell-shield'),crewExchange:robots.map((r,role)=>({role,visible:r.robot.visible,phase:r.exchange,wanted:r.wanted})),deskAssignments:[...deskAssignments],crewHomes:robots.map(r=>r.home.toArray()),selectedTeam:state.crewMission?.enabledRoles||[0,1,2,3],crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,captain:{position:robots[0].robot.position.toArray(),job:captainJob,received:[...receivedDocuments],assigned:[...assignedDocuments],pending:documentQueue.map(d=>({...d})),inFlight:documentFlight?{...documentFlight}:null},robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
+  return {resize,update,setRoom,setCollection,observeProtection,protectionReplyDelay,setDraft,welcomeAgent,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',protectionHits:[...protectionHits.values()].map(h=>({id:h.event.id,owner:h.event.owner,role:h.event.role,action:h.event.action,globeRotation:h.earth?.rotation.y,visible:h.group.visible,animated:motion&&h.phase!=='blocked',phase:h.phase})),roundtable:roundtableInfo(),arrival:arrival?{key:arrival.key,avatar:{...arrival.rig.appearance},phase:arrival.time<1.8?'loading':'walking',position:arrival.rig.group.position.toArray()}:null,room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,draftShield:!!draftRig?.body.getObjectByName('openshell-shield'),crewExchange:robots.map((r,role)=>({role,visible:r.robot.visible,phase:r.exchange,wanted:r.wanted})),deskAssignments:[...deskAssignments],crewHomes:robots.map(r=>r.home.toArray()),selectedTeam:state.crewMission?.enabledRoles||[0],crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,captain:{position:robots[0].robot.position.toArray(),job:captainJob,received:[...receivedDocuments],assigned:[...assignedDocuments],pending:documentQueue.map(d=>({...d})),inFlight:documentFlight?{...documentFlight}:null},robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
 }
 
 try {sceneView=createScene();}catch(error){el('fallback').hidden=false;root.dataset.renderer='fallback';console.warn('3D unavailable; accessible workflow controls remain available.',error.message);}
@@ -80321,7 +80326,7 @@ render();
     try{
       const state=await api('state',undefined,next);
       openAgentState(state);
-    }catch(error){alert(error.message);}finally{changingAgent=false;busy=false;warmCrewOnOpen();}
+    }catch(error){alert(error.message);}finally{changingAgent=false;busy=false;}
   }
   function renderCollection(){
     el('collection').hidden=!data.profile;
@@ -80355,7 +80360,7 @@ render();
   modelBadge.onclick=e=>{e.stopPropagation();if(modelBadge.dataset.actionable==='true')connectionAction();};
   modelBadge.onkeydown=e=>{if(modelBadge.dataset.actionable==='true'&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();connectionAction();}};
   function runtimeBadge(){
-    syncDemoPreparation();syncEventLaunch();syncCrewComposer();
+    syncCrewComposer();
     const state=gatewayState(),slow=state==='slow',modelConnected=room==='mission'?(runtime.teamModel??runtime.model):runtime.model,viewReady=room==='mission'?teamReady():runtime.ready,ready=!!viewReady&&!runtime.testFixture;
     const actionable=!runtime.testFixture&&!runtimeRetrying&&(!runtime.gateway||(!modelConnected&&!settingsButton.hidden));
     modelBadge.textContent=runtime.testFixture?'TEST FIXTURE · NO REAL MODEL':runtimeRetrying?'Checking connection…':slow?'◷ '+gatewayLabel():!runtime.gateway?'⚠ Agent runtime unavailable · Retry connection':!modelConnected?(room==='mission'?'○ Team API not connected':'○ Model not connected'):'● Ready';
@@ -80365,7 +80370,7 @@ render();
     modelBadge.setAttribute('role',actionable?'button':'status');modelBadge.tabIndex=actionable?0:-1;
     modelBadge.setAttribute('aria-live','polite');
     modelBadge.title=runtimeRetrying?'Checking the local agent runtime':!runtime.gateway?'Retry connection':slow?'Checking automatically. Tasks already running are not cancelled.':actionable?'Open model settings':'Agent runtime ready';
-    if(roomsReady)renderRooms();syncComposer();syncDemoPreparation();
+    if(roomsReady)renderRooms();syncComposer();
   }
 
   function current(){return data.jobs.find(j=>j.id===selectedJob)||data.jobs[0];}
@@ -80374,7 +80379,7 @@ render();
     const profile=data.profile, job=current();
     window.BacCampus?.observeProtection(data.protectionEvents||[]);
     if(profile)roles[0][0]=profile.name;
-    renderCollection();syncDemoPreparation();
+    renderCollection();
     el('onboarding').hidden=false;el('companion').hidden=!profile;el('lounge-empty').hidden=!!profile;
     if(profile){el('agent-name').textContent=profile.name;el('personality').textContent=toneSummary(profile);el('personality').title=profile.tonePrompt||toneSummary(profile);el('agent-skills').innerHTML=profile.skills.map(s=>'<span class="studio-skill-badge" title="'+escape(capabilities[s]?.[1]||titles[s]||s)+'"><i aria-hidden="true">'+escape(missions.find(m=>m.id===s)?.icon||'◇')+'</i>'+escape(titles[s]||capabilities[s]?.[0]||s)+'</span>').join('');el('agent-skills').hidden=!profile.skills.length;el('equipped').innerHTML=profile.skills.map(s=>{const c=capabilities[s];return c?'<button type="button" data-try-skill="'+s+'"><strong>'+escape(c[0])+'</strong><small>'+escape(c[1])+'</small></button>':'<span>'+escape(titles[s])+'</span>';}).join('');el('memory').hidden=!profile.skills.includes('memory');}
     const personalJobs=data.jobs.filter(j=>!['crew','crew-chat','prepare'].includes(j.kind));
@@ -80439,7 +80444,7 @@ render();
     renderMissionControl();
     const active=room==='mission'?(crew&&['running','stopping','waiting'].includes(crew.status)?crew:null):data.jobs.find(j=>['running','stopping'].includes(j.status))||data.jobs.find(j=>j.status==='waiting');
     const s=window.BacDemo.snapshot();
-    const a=roles.map(([name,role,description],i)=>({...s.agents[i],name,role,persona:description,skills:i===0?['Shared brief']:i===1?['Demo design']:i===2?['Capacity planning']:i===3?['Campaign writing']:i===4?['Evidence review']:['Event page studio'],lane:0,status:'Ready',task:description,permission:'Scoped workspace',displayed:i<4,included:(crew?.payload.enabledRoles||[0,1,2,3]).includes(i)}));
+    const a=roles.map(([name,role,description],i)=>({...s.agents[i],name,role,persona:description,skills:i===0?['Shared brief']:i===1?['Demo design']:i===2?['Capacity planning']:i===3?['Campaign writing']:i===4?['Evidence review']:['Event page studio'],lane:0,status:'Ready',task:description,permission:'Scoped workspace',displayed:i===0,included:i===0}));
     crew?.payload.roster?.forEach((m,i)=>{a[i].persona=m.purpose||personas[m.persona];a[i].skills=m.skills.map(x=>titles[x]);a[i].avatar=m.avatar;a[i].protection=m.protection;});
     let phase=-1,selected=0,flow=['Your campus is ready','Choose a mission or launch a crew.','Start'];
     if(active?.kind==='crew'){
@@ -80456,7 +80461,7 @@ render();
     const collaboration=currentCollaboration(),planning=collaboration&&!collaboration.payload.collaboration.responseReady&&['running','stopping'].includes(collaboration.status)?collaboration:null;
     if(collaboration){
       const plan=collaboration.payload.collaboration,chosen=collaborationTeam(plan),ended=plan.responseReady||!['queued','running','waiting','stopping'].includes(collaboration.status);
-      a.forEach((agent,i)=>{const expertise=window.BacCrewCatalog[i].collaboration;agent.name=defaultNames[i];agent.role=expertise.title;agent.persona=expertise.description;agent.skills=[];agent.lane=0;agent.included=chosen.includes(i);agent.displayed=chosen.length>1?chosen.includes(i):i<4;agent.task=plan.tasks?.find(t=>t.role===i)?.task||expertise.description;agent.status=plan.outputs?.[i]?'Done':i===0?'Selected':!agent.included?'Ready':ended?(plan.handoffs?.[i]?'Stopped':'Not started'):plan.handoffs?.[i]?'Selected':'Waiting for Casey';});
+      a.forEach((agent,i)=>{const expertise=window.BacCrewCatalog[i].collaboration;agent.name=defaultNames[i];agent.role=expertise.title;agent.persona=expertise.description;agent.skills=[];agent.lane=0;agent.included=chosen.includes(i);agent.displayed=chosen.includes(i);agent.task=plan.tasks?.find(t=>t.role===i)?.task||expertise.description;agent.status=plan.outputs?.[i]?'Done':i===0?'Selected':!agent.included?'Ready':ended?(plan.handoffs?.[i]?'Stopped':'Not started'):plan.handoffs?.[i]?'Selected':'Waiting for Casey';});
     }
     if(!a[selectedCrewRole]?.displayed)selectedCrewRole=0;
     renderStandbySpecialists(a,crew);
@@ -80522,17 +80527,14 @@ function webpageButtons(files,jobId){
  return pages.length?'<div class="chat-webpages">'+pages.map((path,index)=>'<button type="button" class="studio-secondary" data-preview-file="'+escape(path)+'" data-preview-job="'+escape(jobId)+'">Preview webpage'+(pages.length>1?' '+(index+1):'')+' <span aria-hidden="true">↗</span></button>').join('')+'</div>':'';
 }
 root.addEventListener('click',event=>{const page=event.target.closest('[data-preview-file]');if(page)openFile(page.dataset.previewFile,page.dataset.previewJob);});
-// Conversation history survives reloads; stage substitutions belong to this visit.
-// Only a newly submitted /plan may replace the original team at their desks.
-const stagedCollaborationIds=new Set();
+// The latest saved plan owns the visible team, including after a refresh.
 function stageCollaboration(job){
- stagedCollaborationIds.add(job.id);
  render();
  showCollaboration();
 }
 // Keep this visit's chosen team visible until a newer event mission/reset.
 function currentCollaboration(){
- const latest=(data.crewChats||[]).filter(j=>stagedCollaborationIds.has(j.id)&&j.payload.collaboration&&j.created>=(data.crewChatReset?.at||0)).sort((a,b)=>b.created-a.created)[0];
+ const latest=(data.crewChats||[]).filter(j=>j.payload.collaboration&&j.created>=(data.crewChatReset?.at||0)).sort((a,b)=>b.created-a.created)[0];
  const event=crewMission();
  return latest&&(!event||latest.created>=event.created)?latest:null;
 }
@@ -80547,11 +80549,20 @@ function renderStandbySpecialists(agents,crew){
  if(!currentCollaboration()&&crew&&['queued','running','waiting','stopping'].includes(crew.status))
   (crew.payload.enabledRoles||[]).forEach(role=>occupied.add(role));
  const available=window.BacCrewCatalog.map((member,role)=>({...member,roleIndex:role}))
-  .filter(member=>member.roleIndex>0&&member.planEligible!==false&&!occupied.has(member.roleIndex));
+  .filter(member=>member.planEligible!==false);
  el('standby-count').textContent=String(available.length);
- const markup=available.map(member=>'<li data-standby-role="'+member.roleIndex+'"><strong>'+escape(member.name)+'</strong><span>'+escape(member.collaboration.title)+'</span></li>').join('')||'<li class="studio-muted">All specialists are with the team.</li>';
- if(el('standby-list').innerHTML!==markup)el('standby-list').innerHTML=markup;
+ const busyTeam=(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status))||data.bacResetting;
+ const markup=available.map(member=>'<li data-standby-role="'+member.roleIndex+'"><div><strong>'+escape(member.name)+'</strong><span>'+escape(member.collaboration.title)+(occupied.has(member.roleIndex)?' · With team':'')+'</span></div><select data-team-model="'+member.roleIndex+'" aria-label="Model for '+escape(member.name)+'" '+(busyTeam?'disabled':'')+'>'+(runtime.teamModels||[]).map(model=>'<option value="'+escape(model.id)+'" '+(model.id===teamModel(member.roleIndex)?.id?'selected':'')+'>'+escape(model.label)+'</option>').join('')+'</select></li>').join('');
+ if(!el('standby-list').contains(document.activeElement)&&el('standby-list').innerHTML!==markup)el('standby-list').innerHTML=markup;
 }
+root.addEventListener('change',async event=>{
+ const select=event.target.closest('[data-team-model]');if(!select)return;
+ select.disabled=true;
+ try{await api('team-model',{role:Number(select.dataset.teamModel),model:select.value});await refresh();}
+ catch(error){alert(error.message);}
+ finally{select.blur();render();}
+});
+
 function eventExpectationMarkup(job,role){
  const p=job?.payload,h=p?.handoffs?.[role],name=p?.roster?.[role]?.name||defaultNames[role];
  const assignment=p?.assignments?.find(a=>a.name===name)?.task;
@@ -80571,7 +80582,9 @@ function collaborationRoleOrder(plan){
 }
 // Presence follows the approved plan; execution still follows calledRoles/handoffs.
 function collaborationTeam(plan){
- const selected=Array.isArray(plan.tasks)?plan.tasks.map(task=>task.role):(plan.calledRoles||[]);
+ // Keep the seated team while Casey is still deciding the next assignment.
+ const previous=!Array.isArray(plan.tasks)?(data.crewChats||[]).filter(j=>j.payload.collaboration!==plan&&Array.isArray(j.payload.collaboration?.tasks)&&j.created>=(data.crewChatReset?.at||0)).sort((a,b)=>b.created-a.created)[0]?.payload.collaboration:null;
+ const selected=Array.isArray(plan.tasks)?plan.tasks.map(task=>task.role):previous?previous.tasks.map(task=>task.role):(plan.calledRoles||[]);
  return [0,...new Set(selected.filter(role=>Number.isInteger(role)&&role>0&&defaultNames[role]))];
 }
 function collaborationAnswer(job){return job.result?.answer||job.payload.collaboration.finalAnswer||'';}
@@ -80714,7 +80727,7 @@ function collaborationHistoryMarkup(job){
 }
 function showCollaboration(){selectedCrewRole=0;setRoom('mission');root.dataset.crewDetails='true';renderCrewPassport();}
 function teamReady(){return runtime.teamReady??runtime.ready;}
-function teamModel(role){return runtime.teamModels?.[role===0?0:1];}
+function teamModel(role){const id=data.teamSelections?.find(row=>row.role===role)?.id;return runtime.teamModels?.find(model=>model.id===id)||runtime.teamModels?.[role===0?0:1];}
 function syncCrewComposer(){
  const blocked=!teamReady()||!!data.bacResetting;
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending;
@@ -80728,13 +80741,13 @@ function renderCrewPassport(){
   for(const key of chatImageDrafts.keys())if(key.includes(':crew:'))chatImageDrafts.delete(key);
  }
  if(room!=='mission')return;
- const i=selectedCrewRole,name=defaultNames[i],role=currentCollaboration()?window.BacCrewCatalog[i].collaboration.title:roles[i][1],crew=crewMission();
+ const i=selectedCrewRole,name=defaultNames[i],role=window.BacCrewCatalog[i].collaboration.title,crew=crewMission();
  const avatar=window.BacCampus?.inspect().crewAvatars?.[i]||{};
  el('crew-number').textContent=String(i+1).padStart(2,'0')+' / '+roles.length;
  el('crew-name').textContent=name;el('crew-role').textContent=role;
  const model=teamModel(i);el('crew-model').textContent=model?.label||'';el('crew-model').title=model?.id||'';el('crew-model').hidden=!model;
  const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';portrait.style.setProperty('--avatar-accent',appearanceColors[avatar.color]||appearanceColors.green);
- const skills=currentCollaboration()?[]:window.BacCrewCatalog[i].skills;
+ const skills=[];
  const skillLabels={...titles,'event-tools':'Event tools','event-scheduling':'Presenter scheduling'};
  el('crew-policy').hidden=window.BacCrewCatalog[i].protection!=='openshell';
  syncPolicyBadges();
@@ -80791,7 +80804,7 @@ root.addEventListener('click',async event=>{
 
 el('crew-conversation').addEventListener('click',event=>{if(event.target.closest('[data-open-collaboration]'))showCollaboration();});
 
-  async function refresh(){if(changingAgent||removingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion&&target===agentId&&!changingAgent&&state!==data){data=state;render();}}catch(error){if(version===refreshVersion){if(error.status===404){try{const state=await api('state',undefined,'');if(version===refreshVersion&&!changingAgent){el('dialog').close();openAgentState(state);alert('This agent was deleted in another tab. Your collection is up to date.');}}catch(recovery){alert(recovery.message);}}else if(!document.hidden)alert(error.message);}}finally{if(version===refreshVersion)busy=false;warmCrewOnOpen();}}
+  async function refresh(){if(changingAgent||removingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion&&target===agentId&&!changingAgent&&state!==data){data=state;render();}}catch(error){if(version===refreshVersion){if(error.status===404){try{const state=await api('state',undefined,'');if(version===refreshVersion&&!changingAgent){el('dialog').close();openAgentState(state);alert('This agent was deleted in another tab. Your collection is up to date.');}}catch(recovery){alert(recovery.message);}}else if(!document.hidden)alert(error.message);}}finally{if(version===refreshVersion)busy=false;}}
   el('equipped').onclick=e=>{const button=e.target.closest('[data-try-skill]');if(button)el('missions').querySelector('[data-studio-mission="'+button.dataset.trySkill+'"]')?.click();};
   el('missions').onclick=e=>{const button=e.target.closest('[data-studio-mission]');if(!button)return;const mission=missions.find(m=>m.id===button.dataset.studioMission);if(!data.profile){alert('Hire an agent first.');agentForm(true);el('name').focus();return;}if(!data.profile.skills.includes(mission.id)){
       let notice=el('mission-skill-notice');if(!notice){notice=document.createElement('div');notice.id='studio-mission-skill-notice';notice.className='studio-mission-skill-notice';el('missions').before(notice);}
@@ -80807,9 +80820,6 @@ el('crew-conversation').addEventListener('click',event=>{if(event.target.closest
   el('refresh-files').onclick=refresh;
   el('memory').onclick=()=>{dialog('PERSISTENT MEMORY',`<h3>What ${escape(data.profile.name)} remembers.</h3><p>This is the actual MEMORY.md in your agent’s workspace. Ask your agent to remember, correct or forget a preference.</p><pre>${escape(data.memory||'No saved preferences yet.')}</pre><p>Try refreshing this page, then ask “What do you remember about me?”</p><button class="studio-primary" id="studio-recall">Ask my agent</button>`);el('recall').onclick=()=>{el('dialog').close();el('prompt').value='What do you remember about my preferences? Read MEMORY.md and apply my preferred response style.';skill='memory';el('prompt').focus();};};
   el('schedule').onclick=()=>{dialog('PERSISTENT FOLLOW-UP',`<h3>Give it something to come back to.</h3><p>The app keeps this task across refreshes and app restarts. It runs through OpenClaw when due; the result appears in this workspace. The server must stay on.</p><form id="studio-schedule-form"><label for="studio-followup">Task</label><textarea id="studio-followup" rows="3" required>Read my saved preferences and suggest one useful next task for me to try.</textarea><label for="studio-delay">Run in</label><select id="studio-delay"><option value="60">1 minute · demo</option><option value="300">5 minutes</option><option value="3600">1 hour</option></select><div class="studio-dialog-actions"><button class="studio-primary">Schedule follow-up</button></div></form>`);el('schedule-form').onsubmit=async e=>{e.preventDefault();try{const job=await api('jobs',{kind:'reminder',prompt:el('followup').value,delay:Number(el('delay').value)});selectedJob=job.id;el('dialog').close();await refresh();}catch(error){alert(error.message);}};};
-  function crewAssignments(){
-    return `<fieldset class="studio-crew-assignments"><legend>Choose your crew</legend><div class="studio-crew-toggles">${roles.slice(0,4).map((r,i)=>`<label><input type="checkbox" name="crewRole" value="${i}" checked ${i===0?'disabled':''}><span>${avatarBadge(window.BacCampus?.inspect().crewAvatars?.[i]||{})}<strong>${escape(defaultNames[i])}${i===0?'<em class="crew-required">Required</em>':''}</strong><small>${escape(r[1])}</small></span></label>`).join('')}</div><small id="studio-crew-selection-note">4 selected</small></fieldset>`;
-  }
   function crewGroups(crew){
     const enabled=crew?.payload.enabledRoles||[0,1,2,3];
     const groups=crew?.payload.workflow==='showcase'||!crew?[[0],[1,2],[3]]:crew.payload.brief?.schema===2?[[0],[1,2],[3],[4],[5]]:roles.map((_,i)=>[i]);
@@ -80865,7 +80875,7 @@ async function openResultJson(path,title,jobId){
 }
 
   // Event briefs, deterministic planning, and the deliverables handed over by the crew.
-let eventCatalog=null,eventPreviewVersion=0,eventPreviewValid=false,eventSubmitting=false,eventPackageKey='',eventPackageTab='plan',eventContribution='all',eventContributionJob='',eventPreviewUrl='',audienceReport=null,audienceJob='';
+let eventCatalog=null,eventPackageKey='',eventPackageTab='plan',eventContribution='all',eventContributionJob='',eventPreviewUrl='',audienceReport=null,audienceJob='';
 const eventPackage=document.createElement('section');eventPackage.id='studio-event-package';eventPackage.className='studio-event-package';eventPackage.hidden=true;el('workspace').before(eventPackage);
 // Role links lead to each saved contribution, not a section of Morgan's page.
 function hasCrewDeliverable(job,role){
@@ -80953,100 +80963,6 @@ function presenterTimetable(b,c){
  for(let t=start;t+c.session<=start+b.duration;t+=c.session)times.push(String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0'));
  const visits=new Map(c.schedule.map(r=>[[r.day,r.booth,r.start].join(':'),r]));
  return Array.from({length:b.days},(_,d)=>`<h4>Day ${d+1}</h4><div class="event-table-wrap"><table class="event-rota-grid"><thead><tr><th>Booth / local time</th>${times.map(t=>'<th>'+t+'</th>').join('')}</tr></thead><tbody>${c.booths.map((booth,i)=>`<tr style="--rota-color:${['#263c20','#203747','#433b20','#402c37','#322c43','#203c37'][i%6]}"><th>${escape(booth.booth)}<small>${escape(booth.topic)}</small></th>${times.map(t=>{const r=visits.get([d+1,booth.booth,t].join(':'));return '<td'+(r?' class="is-assigned"':'')+'>'+(r?escape(r.presenter):'—')+'</td>';}).join('')}</tr>`).join('')}</tbody></table></div>`).join('')+'<p class="event-note">Presenter numbers are unassigned staffing slots. Blank slots have no scheduled visit.</p>';
-}
-let demoPreparationId=null,demoPreparing=false,demoPreparationError='',demoAutoPrepare=false;
-const crewWarmups=new Map();
-let crewStartupReady=false;
-function warmCrewOnOpen(){
- if(!crewStartupReady||!connected||!agentId||changingAgent||removingAgent||!runtime.gateway||data.bacResetting)return;
- const key=runtime.instance+':'+(data.crewOwner||agentId),now=Date.now();
- if((crewWarmups.get(key)||0)>now)return;
- const target=agentId;crewWarmups.set(key,Infinity);
- api('prepare-demo',{background:true},target).catch(()=>{
-  // A policy edit or current mission can briefly hold the preparation fence.
-  // The server deduplicates attempts, including terminal preparation failures.
-  crewWarmups.set(key,Date.now()+30000);
- });
-}
-const excludedDemoGuests=new Set();
-function demoGuestChoices(){
- const skipped=new Map((matchingPreparation()?.payload.roundtable?.skipped||[]).map(m=>[m.key,m.detail]));
- return (data.agents||[]).map(a=>({key:a.key,name:a.name,reason:a.deleting?'Unavailable':a.activity?'Busy with another task.':skipped.get(a.key)||''}));
-}
-function selectedDemoRoles(){return [...(el('crew-form')?.querySelectorAll('[name=crewRole]:checked')||[])].map(input=>Number(input.value));}
-function matchingPreparation(){
- const prep=data.preparation;
- return prep?.id===demoPreparationId&&prep.valid!==false&&selectedDemoRoles().every(role=>prep.payload.enabledRoles.includes(role))?prep:null;
-}
-function syncDemoPreparation(){
- const box=el('demo-preparation');if(!box||!el('dialog').open)return;
- const prep=matchingPreparation(),status=prep?.status|| (demoPreparing?'queued':'idle');
- const error=demoPreparationError||prep?.result?.error||(status==='cancelled'?'Preparation stopped. Check again when ready.':'');
- const guests=demoGuestChoices();
- box.innerHTML='<div class="demo-ready-heading"><b>BaC crew</b><span>'+escape(error?'Needs attention':status==='done'?'Ready':status==='idle'?'Not checked':status==='queued'?'Queued':'Preparing')+'</span></div>'+(error?'<p class="event-plan-error" role="alert">'+escape(error)+'</p>':'')+(prep?.payload.checks||[]).filter(c=>c.required).map(c=>'<div class="demo-ready-row" data-status="'+escape(c.status)+'"><span>'+escape(c.name)+'</span><small>'+escape(c.detail||(c.status==='ready'?'Ready':c.status==='preparing'?'Preparing':'Needs attention'))+'</small></div>').join('')+'<button type="button" class="studio-secondary" id="studio-prepare-demo" '+(!runtime.gateway||demoPreparing||['queued','running'].includes(status)?'disabled':'')+'>'+(status==='done'?'Check again':error?'Retry preparation':'Prepare demo')+'</button>'+(guests.length?'<div class="demo-guests"><b>Personal reactions · optional</b><div class="demo-guest-list">'+guests.map(g=>'<label class="demo-guest" data-available="'+String(!g.reason)+'"><input type="checkbox" data-demo-guest="'+escape(g.key)+'" '+(!g.reason&&!excludedDemoGuests.has(g.key)?'checked ':'')+(g.reason?'disabled ':'')+'><span>'+escape(g.name)+'</span>'+(g.reason?'<small>'+escape(g.reason)+'</small>':'')+'</label>').join('')+'</div></div>':'');
- box.querySelectorAll('[data-demo-guest]').forEach(input=>input.onchange=()=>{if(input.checked)excludedDemoGuests.delete(input.dataset.demoGuest);else excludedDemoGuests.add(input.dataset.demoGuest);});
- el('prepare-demo').onclick=prepareDemo;
- syncEventLaunch();
- if(demoAutoPrepare&&runtime.gateway&&!demoPreparing){demoAutoPrepare=false;queueMicrotask(prepareDemo);}
-}
-async function prepareDemo(){
- if(demoPreparing||!el('demo-preparation')||!el('dialog').open||!runtime.gateway||data.bacResetting)return;
- const form=el('crew-form');demoAutoPrepare=false;demoPreparing=true;demoPreparationError='';demoPreparationId=null;syncDemoPreparation();
- try{const prepared=await api('prepare-demo',{enabledRoles:selectedDemoRoles()});if(el('crew-form')!==form)return;demoPreparationId=prepared.id;await refresh();}
- catch(error){if(el('crew-form')===form)demoPreparationError=error.message;}
- finally{demoPreparing=false;if(el('crew-form')===form)syncDemoPreparation();}
-}
-function syncEventLaunch(){
- const form=el('crew-form'),button=el('launch-event');if(!form||!button)return;
- const prepared=matchingPreparation()?.status==='done'&&!demoPreparationError;
- button.disabled=!teamReady()||eventSubmitting||!eventPreviewValid||!prepared||!form.querySelector('[name=crewRole]:checked');
- button.textContent=!runtime.gateway?gatewayLabel():!(runtime.teamModel??runtime.model)?'Team API not connected':eventSubmitting?'Assigning your brief…':!prepared?'Prepare demo':'Start the event plan';
- const note=el('event-connection');if(note){note.hidden=!!teamReady();note.textContent=runtime.gateway?'Connect the dedicated Multi-Agent Demo API on the host.':gatewayState()==='slow'?'Waiting for the agent runtime. Checking automatically.':'Agent runtime unavailable. Use Retry connection in the status indicator.';}
-}
-async function updateEventPreview(){
- const form=el('crew-form');if(!form)return;const version=++eventPreviewVersion;eventPreviewValid=false;syncEventLaunch();
- try{
-  const {brief:b,capacity:c}=await api('event-plan',{brief:eventBrief(form)});
-  if(version!==eventPreviewVersion||!el('crew-form'))return;
-  el('event-preview').innerHTML=`<div class="event-preview-head"><b>Your booth plan</b><span>Calculated from this brief</span></div><p class="event-note">${escape(b.startTime)}-${escape(b.endTime)} local time${b.teardownTime?` · Take down by ${escape(b.teardownTime)}`:''}</p><div class="event-metrics"><div><strong>${c.boothCount} / ${b.boothLimit}</strong><span>demo booths</span></div><div><strong>${c.session} min</strong><span>per group</span></div><div><strong>${c.presenterCount}</strong><span>presenters / day</span></div><div><strong>${c.staff}</strong><span>total staff / day</span></div></div>${c.adjusted?`<p class="event-adjustment">The crew will use ${c.session}-minute visits instead of ${b.session} minutes to stay within ${b.boothLimit} booths.</p>`:''}<div class="event-topic-summary">${c.topics.map(t=>`<span><b>${escape(t.topic)}</b>${t.attendees} attendees · ${t.groups} visits · ${t.presenters} presenter${t.presenters===1?'':'s'}</span>`).join('')}</div><small>One interest-based demo per attendee across the event. Equal topic split. Includes ${c.floorHosts} floor host${c.floorHosts===1?'':'s'} and 1 lead. Presenters are sized to the visit load. Normally 45 minutes presenting, then at least 15 minutes of rest. Unused time is marked No visit. Names are unassigned.</small>`;
-  eventPreviewValid=true;syncEventLaunch();
- }catch(error){if(version===eventPreviewVersion&&el('event-preview'))el('event-preview').innerHTML='<p class="event-plan-error">'+escape(error.message)+'</p>';}
-}
-async function crewForm(){
- try{eventCatalog=eventCatalog||await api('event-catalog');}catch(error){alert(error.message);return;}
- dialog('Plan a BaC',`<label class="event-template-picker">Template<select id="studio-event-template">${eventCatalog.templates.map(t=>`<option value="${t.id}">${escape(t.title)} (Template)</option>`).join('')}</select></label><form id="studio-crew-form"><div class="studio-form-grid"><label>City<input name="city" maxlength="80" required></label><label>Event date · start<input type="date" name="startDate"></label><label>Event date · end<input type="date" name="endDate"></label><label>Venue<input name="venue" maxlength="120" placeholder="To be confirmed"></label><label>Total attendees<input type="number" name="attendees" min="1" max="3000" step="1" required></label><label>Event duration · minutes per day<input type="number" name="duration" min="30" max="720" step="30" required></label><label>Event days<input type="number" name="days" min="1" max="5" required></label><label>People per group<input type="number" name="groupSize" value="5" min="1" max="30" required></label><label>Preferred demo length · minutes<input type="number" name="session" value="15" min="5" max="60" step="5" required></label><label>Themes (one booth each)<select name="themeCount"><option value="2">2 themes</option><option value="3">3 themes</option><option value="4">4 themes</option><option value="5">5 themes</option><option value="6">6 themes</option></select></label><div class="event-time-field"><span id="studio-event-time-label">Daily start · local time</span><div class="event-start-time" role="group" aria-labelledby="studio-event-time-label"><select name="startHour" aria-label="Start hour (24-hour)">${Array.from({length:24},(_,i)=>`<option value="${String(i).padStart(2,'0')}">${String(i).padStart(2,'0')}</option>`).join('')}</select><span aria-hidden="true">:</span><select name="startMinute" aria-label="Start minute"><option value="00">00</option><option value="30">30</option></select></div><input type="hidden" name="startTime" value="10:00"></div><label>Take down by · local time (optional)<input type="time" name="teardownTime"></label></div><div id="studio-event-preview" class="event-plan-preview" aria-live="polite"></div>${crewAssignments()}<section id="studio-demo-preparation" class="demo-preparation" aria-live="polite"></section><p id="studio-event-connection" class="event-note" role="status" hidden></p><div class="studio-dialog-actions"><button id="studio-launch-event" type="submit" class="studio-primary" disabled>Give the brief to my crew</button></div></form>`);
- const form=el('crew-form');eventSubmitting=false;eventPreviewValid=false;syncEventLaunch();
- function syncDates(){
-  const start=form.elements.startDate,end=form.elements.endDate,days=form.elements.days;
-  end.min=start.value;end.setCustomValidity('');
-  days.readOnly=!!start.value;
-  if(start.value){
-   const count=end.value?Math.round((Date.parse(end.value)-Date.parse(start.value))/86400000)+1:1;
-   if(count>=1&&count<=5)days.value=count;
-   else end.setCustomValidity('Choose an end date within 1 to 5 event days.');
-  }else if(end.value)end.setCustomValidity('Choose a start date first.');
- }
- function applyTemplate(id){
-  const template=eventCatalog.templates.find(t=>t.id===id);if(!template)return;
-  el('event-template').value=id;
-  for(const k of ['city','attendees','duration','days','venue','startDate','endDate','teardownTime'])form.elements[k].value=template[k]??'';
-  const startTime=template.startTime||'10:00';
-  for(const [key,value] of Object.entries({groupSize:template.groupSize??5,session:15,themeCount:template.topics.length,startTime,startHour:startTime.slice(0,2),startMinute:startTime.slice(3)}))form.elements[key].value=value;
-  syncDates();updateEventPreview();
- }
- el('event-template').onchange=e=>applyTemplate(e.target.value);
- form.addEventListener('input',e=>{
-  if(e.target.name==='crewRole'){updateCrewSelection();return;}
-  if(['startDate','endDate'].includes(e.target.name))syncDates();
-  if(['startHour','startMinute'].includes(e.target.name))form.elements.startTime.value=form.elements.startHour.value+':'+form.elements.startMinute.value;
-  updateEventPreview();
- });
- function updateCrewSelection(){const count=form.querySelectorAll('[name=crewRole]:checked').length;el('crew-selection-note').textContent=count+' selected';demoPreparationError='';syncDemoPreparation();}
- form.onsubmit=async event=>{event.preventDefault();syncEventLaunch();if(el('launch-event').disabled)return;eventSubmitting=true;syncEventLaunch();const enabledRoles=selectedDemoRoles();try{const job=await api('jobs',{kind:'crew',workflow:'showcase',executionMode:'agent-led-v1',brief:eventBrief(form),enabledRoles,preparationId:demoPreparationId,guestKeys:demoGuestChoices().filter(g=>!g.reason&&!excludedDemoGuests.has(g.key)).map(g=>g.key),preset:true});selectedJob=job.id;selectedCrewRole=0;eventPackageTab='plan';el('dialog').close();await refresh();showBoard(false);}catch(error){demoPreparationError=error.message;syncDemoPreparation();}finally{eventSubmitting=false;syncEventLaunch();}};
- applyTemplate('zurich');
- const previous=data.preparation;
- demoPreparationId=previous?.valid&&(previous.payload.background||['queued','running','error','cancelled'].includes(previous.status))&&selectedDemoRoles().every(r=>previous.payload.enabledRoles.includes(r))?previous.id:null;
- demoPreparationError='';demoAutoPrepare=!demoPreparationId;syncDemoPreparation();
 }
 function renderEventPackage(force=false){
  const job=crewMission();eventPackage.hidden=room!=='mission'||job?.payload.brief?.schema!==2;if(eventPackage.hidden)return;
@@ -81153,7 +81069,7 @@ async function renderShowcasePackage(job){
  }catch(error){if(key===eventPackageKey&&frame.isConnected)frame.replaceWith(Object.assign(document.createElement('p'),{textContent:error.message}));}
 }
 
-  root.addEventListener('bac:world-skill',async e=>{const id=e.detail;if(id==='crew')crewForm();else if(id==='security')securityLab();else if(id==='runtime')setup();else{el('missions').querySelector('[data-studio-mission="'+id+'"]')?.click();}});
+  root.addEventListener('bac:world-skill',async e=>{const id=e.detail;if(id==='crew'){setRoom('mission');el('crew-prompt').focus();}else if(id==='security')securityLab();else if(id==='runtime')setup();else{el('missions').querySelector('[data-studio-mission="'+id+'"]')?.click();}});
     // Included in Studio's closure. Keep dialogs inside the fullscreen root.
   const worldViewport=document.getElementById('campus-viewport');
   const worldButton=document.createElement('button');
@@ -81448,7 +81364,7 @@ el('crew-passport').append(document.getElementById('campus-roster'));
 const controlButton=document.createElement('button');controlButton.type='button';controlButton.className='studio-secondary';controlButton.dataset.surface='control';controlButton.textContent='Mission Control';crewActions.append(controlButton);
 const resultsButton=document.createElement('button');resultsButton.type='button';resultsButton.className='studio-primary';resultsButton.dataset.surface='deliverables';resultsButton.textContent='Results';resultsButton.hidden=true;crewActions.append(resultsButton);
 const standbyPanel=document.createElement('details');standbyPanel.id='studio-standby';
-standbyPanel.innerHTML='<summary>Standby specialists <span id="studio-standby-count"></span></summary><div class="studio-standby-content"><p>Casey can call these specialists when your /plan task needs them.</p><ul id="studio-standby-list"></ul></div>';
+standbyPanel.innerHTML='<summary>Standby specialists <span id="studio-standby-count"></span></summary><div class="studio-standby-content"><p>Casey assembles the team for your /plan task. Choose a model for each member.</p><ul id="studio-standby-list"></ul></div>';
 crewActions.after(standbyPanel);
 // Capture outside clicks even when another control stops event propagation.
 document.addEventListener('click',event=>{
@@ -81812,7 +81728,7 @@ function renderRoomVisibility(){
   el('collection').hidden=!lounge||!data.profile;renderEventPackage();
   layout.hidden=false;el('board').hidden=true;
   el('experiences').hidden=!lounge;el('workspace').hidden=workshop||(mission?!crewMission():(!current()&&!data.files?.length));el('safety-bar').hidden=true;
-  const action=el('room-action');action.hidden=!mission;action.textContent='Plan a BaC';
+  const action=el('room-action');action.hidden=true;
   document.getElementById('campus-roster').hidden=!mission;
   document.getElementById('campus-location').textContent=workshop?'HIRING / MEET YOUR NEXT AGENT':lounge?'LOUNGE / Current Agents: '+(data.agents?.length||0):'Multi-Agent demo';
   syncSurface();
@@ -81858,7 +81774,7 @@ el('apply-prompt').onclick=()=>{
 el('onboarding').querySelectorAll('[name=protection]').forEach(input=>input.onchange=updateDraft);
 el('tone-picker').onclick=e=>{const button=e.target.closest('[data-tone]');if(button){draftTone=button.dataset.tone;writeCreatorPrompt(tonePromptLabel(draftTone),creatorPrompt().purpose);updateDraft();}};
 root.addEventListener('bac:world-room',e=>setRoom(e.detail.room,{fromWorld:true}));
-el('room-action').onclick=crewForm;
+
 el('edit-agent').onclick=()=>agentForm(false);el('cancel-create').onclick=()=>{if(editingInPlace){editingInPlace=false;fillCreator(true);renderRoomVisibility();}else setRoom('lounge');};
 function forgetDeletedAgent(target){
   stateCache.clear();
@@ -82247,7 +82163,7 @@ async function resetStudio(scope){
     const snapshot=await api('state',undefined,'');
     reset={resetting:!!snapshot.bacResetting};
    }
-   selectedJob=null;demoPreparationId='';
+   selectedJob=null;
   }
   // Persist every request first. Closing Settings or reloading must not lose
   // the remainder of a bulk deletion while the native runtime drains it.
@@ -82288,8 +82204,8 @@ async function resetStudio(scope){
     board=false;layout.hidden=false;window.BacCampus?.overview();
     window.scrollTo({top:0,left:0,behavior:'smooth'});
   };
-  async function boot(){try{const session=await api('session');csrf=session.csrf;settingsButton.hidden=!session.canConfigure;runtime=session.runtime;data=session;agentId=session.agentId;connected=true;runtimeBadge();render();let saved;try{saved=sessionStorage.getItem('bac-selected-agent');}catch{}if(saved&&saved!==agentId&&session.agents.some(a=>a.key===saved))await switchAgent(saved);else rememberSelection();crewStartupReady=true;warmCrewOnOpen();delete root.dataset.boot;root.setAttribute('aria-busy','false');}catch(error){connected=false;runtimeBadge();alert(error.message);el('create').disabled=true;root.dataset.boot='error';root.setAttribute('aria-busy','false');root.querySelector('.studio-boot-status span').textContent='Could not open the studio. Please try again.';root.querySelector('.studio-boot-status button').hidden=false;}}
-  boot();setInterval(()=>{if(!document.hidden&&!busy)refresh();},1500);setInterval(async()=>{if(connected&&!document.hidden){try{const nextRuntime=await api('runtime');if(runtime.instance&&nextRuntime.instance!==runtime.instance){demoPreparationId=null;if(!nextRuntime.model)alert('Server restarted. Your agents and results are saved; reconnect the model to continue.');}runtime=nextRuntime;runtimeBadge();}catch{}}},10000);
+  async function boot(){try{const session=await api('session');csrf=session.csrf;settingsButton.hidden=!session.canConfigure;runtime=session.runtime;data=session;agentId=session.agentId;connected=true;runtimeBadge();render();let saved;try{saved=sessionStorage.getItem('bac-selected-agent');}catch{}if(saved&&saved!==agentId&&session.agents.some(a=>a.key===saved))await switchAgent(saved);else rememberSelection();delete root.dataset.boot;root.setAttribute('aria-busy','false');}catch(error){connected=false;runtimeBadge();alert(error.message);el('create').disabled=true;root.dataset.boot='error';root.setAttribute('aria-busy','false');root.querySelector('.studio-boot-status span').textContent='Could not open the studio. Please try again.';root.querySelector('.studio-boot-status button').hidden=false;}}
+  boot();setInterval(()=>{if(!document.hidden&&!busy)refresh();},1500);setInterval(async()=>{if(connected&&!document.hidden){try{const nextRuntime=await api('runtime');if(runtime.instance&&nextRuntime.instance!==runtime.instance){if(!nextRuntime.model)alert('Server restarted. Your agents and results are saved; reconnect the model to continue.');}runtime=nextRuntime;runtimeBadge();}catch{}}},10000);
   window.BacStudio={refresh,inspect:()=>({profile:data.profile,agentId,agents:data.agents,jobs:data.jobs,runtime,board,room}),showBoard,setRoom};
 })();
 </script>

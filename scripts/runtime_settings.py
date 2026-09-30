@@ -245,10 +245,11 @@ def apply_to_config(config, provider, profile):
                    'cost':{'input':0,'output':0,'cacheRead':0,'cacheWrite':0}}]}
     config['agents']['defaults']['model']={'primary':ref,'fallbacks':[]}
     config['agents']['defaults']['timeoutSeconds']=AGENT_TIMEOUT_SECONDS
-    for agent in config['agents']['entries'].values():
+    import team_models
+    for agent_id,agent in config['agents']['entries'].items():
+        if team_models.role_for(agent_id) is not None:continue
         agent['model']=ref;agent['modelPolicy']={'allow':[ref]}
         agent['identity']={'theme':'bac-model-'+str(time.time_ns())}
-    import team_models
     return apply_context_limits(team_models.apply(config))
 
 

@@ -761,7 +761,8 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
             memory_text = safe_file(self.workspace(owner), 'MEMORY.md', True).read_text(encoding='utf-8')
         except (Problem, UnicodeError):
             pass
-        return {'profile': self.profile(owner), 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': self.files(owner),
+        from team_models import selections
+        return {'teamSelections': selections(self,team), 'profile': self.profile(owner), 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': self.files(owner),
                 'techRadar': self.heartbeat.status(owner, self.profile(owner) or {}),
                 'memory': memory_text, 'agentId': owner, 'crewOwner': team, 'roundtableTurns': roundtable_turns,
                 'agents': agents, 'agentLimit': MAX_AGENTS, 'assignments': assignments, 'bacResetting': bac_resetting,
@@ -1123,6 +1124,8 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
         # Saved jobs from an older build must not restore an unprotected Dylan.
         member['protection'] = CREW_CATALOG[role].get('protection', 'standard')
         agent_id = member['id']
+        from team_models import selections
+        member['_teamModel'] = selections(self,owner)[role]['id']
         control = member.get('_planControl') if role == 0 else None
         if control not in (None, 'none', 'read'):
             raise ValueError('Invalid Captain tool mode')
