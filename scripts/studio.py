@@ -1278,6 +1278,8 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
                   + ('The inbox may contain the latest event brief and handoffs; use them when relevant. ' if current_event else 'No event has been submitted in this conversation yet. Do not load earlier event briefs, handoffs or conversation transcripts. ') +
                   'This is a conversation, not a new crew mission. Do not claim other agents ran, '
                   'or send invitations or publish anything on the user’s behalf.\n\n' + payload['prompt'])
+        if role == 0:
+            prompt += '\nCommunication style: ' + CREW_CATALOG[0]['collaboration'].get('voice', '')
         prompt += self.conversation_context(owner, role, row['created'], job_id, plans_only=True)
         session = self.crew_chat_session(owner, role) + ('-' + reset['epoch'] if reset['epoch'] else '')
         prompt += PAGE_INSTRUCTIONS

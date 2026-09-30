@@ -1,5 +1,9 @@
 """Short-lived, process-memory credentials. No filesystem persistence."""
 import copy
+import socket
+import ssl
+import errno
+import logging
 import json
 import threading
 import time
@@ -65,6 +69,34 @@ def _reap():
 threading.Thread(target=_reap,daemon=True,name='credential-expiry').start()
 
 
+class CredentialExpired(ValueError):
+    pass
+
+
+TRANSPORT_MESSAGES = {
+    'model-credential-expired': 'The model API session credential has expired. Reconnect the model API.',
+    'model-dns-failed': 'The host could not resolve the model API address. Check network, DNS and VPN connectivity.',
+    'model-connection-timeout': 'The model API connection timed out. The network or model service may be slow; an internet outage is not confirmed.',
+    'model-tls-failed': 'The secure connection to the model API failed. Check certificates and any network proxy.',
+    'model-network-unreachable': 'The host network could not reach the model API. Check the internet connection and VPN.',
+    'model-connection-failed': 'The host could not establish or maintain its connection to the model API. Check network, VPN and service availability.',
+    'model-proxy-failed': 'The local model API connection failed. Check the host runtime logs.',
+}
+
+
+def connection_failure(error):
+    """Fixed, credential-free diagnostics for the model transport only."""
+    reason = error.reason if isinstance(error, urllib.error.URLError) else error
+    status,code=502,'model-proxy-failed'
+    if isinstance(error, CredentialExpired):status,code=401,'model-credential-expired'
+    elif isinstance(reason, socket.gaierror):code='model-dns-failed'
+    elif isinstance(reason, (TimeoutError, socket.timeout)):status,code=504,'model-connection-timeout'
+    elif isinstance(reason, ssl.SSLError):code='model-tls-failed'
+    elif isinstance(reason, OSError) and reason.errno in (errno.ENETUNREACH, errno.ENETDOWN, errno.EHOSTUNREACH):code='model-network-unreachable'
+    elif isinstance(reason, ConnectionError) or isinstance(error, urllib.error.URLError):code='model-connection-failed'
+    return status,code,TRANSPORT_MESSAGES[code]
+
+
 class Proxy(BaseHTTPRequestHandler):
     def log_message(self,*args):pass
     def do_GET(self):self.forward()
@@ -79,7 +111,7 @@ class Proxy(BaseHTTPRequestHandler):
             if prefix!='provider' or provider not in (*settings.PROVIDERS, 'team'):raise ValueError()
             profile=get(settings.secret_key(provider))
             provider = 'nvidia' if provider == 'team' else provider
-            if not profile:raise ValueError()
+            if not profile:raise CredentialExpired()
             base=urllib.parse.urlsplit(profile['baseUrl'])
             path='/'+suffix
             if not path.startswith(base.path.rstrip('/')+'/'):raise ValueError()
@@ -115,13 +147,18 @@ class Proxy(BaseHTTPRequestHandler):
                 self.end_headers();self.wfile.write(body)
             except OSError:pass
             finally:error.close()
-        except Exception:
-            # Do not echo upstream error bodies or credential-bearing URLs.
+        except Exception as error:
+            # Never log exception text: URLs and headers may contain credentials.
+            status,code,message=connection_failure(error)
+            logging.warning('Model transport failure: %s (%s)',code,type(error).__name__)
             if sent:
                 self.close_connection=True
                 return
+            body=json.dumps({'error':{'code':code,'message':code+': '+message}}).encode()
             try:
-                self.send_response(502);self.send_header('Content-Type','application/json');self.end_headers();self.wfile.write(b'{"error":{"message":"Session credential expired or provider request failed. Reconnect in Settings."}}')
+                self.send_response(status);self.send_header('Content-Type','application/json')
+                self.send_header('Content-Length',str(len(body)))
+                self.end_headers();self.wfile.write(body)
             except OSError:pass
 
 

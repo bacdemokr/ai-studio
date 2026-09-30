@@ -142,6 +142,10 @@ def model_failure(state, agent, session, started, output_limit):
                     ' Saved work is preserved. The request was not automatically repeated.'}
             if error:
                 lowered = error.lower()
+                from session_secrets import TRANSPORT_MESSAGES
+                for code,message in TRANSPORT_MESSAGES.items():
+                    if code+':' in lowered:
+                        return {'code':code,'message':message+' Saved work is preserved.'}
                 # Some providers wrap their database saturation in HTTP 401.
                 # Do not misdiagnose that explicit infrastructure error as a bad key.
                 if any(text in lowered for text in ('remaining connection slots are reserved',

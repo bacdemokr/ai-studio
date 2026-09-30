@@ -66,3 +66,22 @@ Agents research, schedule and write. The app coordinates the workflow, validates
 Dylan researches inside OpenShell with NVIDIA Blog reads pre-approved. **Prepare demo** verifies his sandbox and policy before launch.
 
 [Setup & troubleshooting](docs/docker-setup.md) · [Presenter guide](docs/demo-runbook.md) · [Development & tests](docs/development.md)
+
+## Update from the private GitHub repository
+
+The GitHub distribution is `bacdemokr/ai-studio` (private), branch `main`. Authenticate Git with a GitHub account that has repository access, then clone:
+
+```sh
+git clone https://github.com/bacdemokr/ai-studio.git
+cd ai-studio
+./bac start
+```
+
+To install a newer version from an existing clean `main` checkout:
+
+```sh
+./bac update
+./bac start
+```
+
+`update` fetches GitHub `main` and fast-forwards only. It refuses local changes, divergent commits, and development branches. It does not stop running work. `start` recreates the app services and stages the updated source, rebuilding the runtime image if needed. Finish active work before starting; saved data is retained. Source archives without Git metadata must be replaced with a Git clone to use `update`.

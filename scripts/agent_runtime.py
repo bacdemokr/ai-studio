@@ -332,6 +332,7 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
             expertise = member['collaboration']
             files['IDENTITY.md'] = '# Identity\nName: ' + profile['name'] + '\nRole: ' + expertise['title'] + '\nTeam: BaC\n'
             files['SOUL.md'] = ('# Character\nBe clear, practical and honest. Follow the user\'s language and requested format.\n'
+                                '# Communication style\n' + expertise.get('voice', 'Be clear, practical and honest.') + '\n'
                                 '# Expertise\n' + expertise['description'] + '\n'
                                 '# /plan role boundary\n' + expertise.get('scope', '') + '\n'
                                 'This boundary applies to Captain-delegated /plan work; ordinary direct requests and the explicit event pipeline use their own assignment.\n'
@@ -787,6 +788,8 @@ def gateway(path, payload=None, timeout=settings.AGENT_TIMEOUT_SECONDS):
     except urllib.error.HTTPError as error:
         code = error.code
         error.close()
+        if path == '/v1/chat/completions' and code == 504:
+            raise GatewayError('OpenClaw timed out while waiting for the agent (HTTP 504). This alone does not confirm an internet outage. The model service, network or runtime may have stalled. Saved work is preserved.', 'request_failed') from None
         if path == '/v1/chat/completions':
             raise GatewayError(f'OpenClaw returned HTTP {code} while executing the agent request. The model or a tool call may have failed. Saved work is preserved; the request was not automatically repeated. Check the host OpenClaw runtime logs for the underlying error.', 'request_failed') from None
         raise GatewayError(f'OpenClaw rejected the gateway request (HTTP {code}). Check gateway authentication and configuration.', 'unavailable') from None

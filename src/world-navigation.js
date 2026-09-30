@@ -2,7 +2,7 @@
 const studioRooms={
   workshop:{group:workshopRoom,x:0,z:18,title:roomTitles.workshop,verb:'Meet your next agent',number:'01'},
   lounge:{group:loungeRoom,x:0,z:0,title:roomTitles.lounge,verb:'Meet your agents',number:'02'},
-  mission:{group:missionRoom,x:24,z:0,title:roomTitles.mission,verb:'Multi-agent',number:'03'}
+  mission:{group:missionRoom,x:24,z:0,title:roomTitles.mission,verb:'Meet your team',number:'03'}
 };
 Object.entries(studioRooms).forEach(([id,entry])=>{entry.group.position.set(entry.x,0,entry.z);entry.group.visible=true;entry.group.userData.studioRoom=id;});
 let overview=false,journey=null,viewHalfHeight=0;

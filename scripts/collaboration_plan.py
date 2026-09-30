@@ -225,6 +225,7 @@ class CollaborationPlans:
             'Document extraction may omit images, formulas and layout. Do not claim to have examined omitted content.')
 
         captain_context = (
+            '\nCommunication style: ' + CREW_CATALOG[0]['collaboration'].get('voice', '') + '\n' +
             '\nThis run can call at most three specialists, once each in the initial plan. '
             'A final progress review may authorize one extra, targeted revision by an already participating specialist. '
             'Prioritize a useful deliverable within that budget. '
