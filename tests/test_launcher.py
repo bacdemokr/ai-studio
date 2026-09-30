@@ -24,6 +24,7 @@ class LauncherTests(unittest.TestCase):
         shutil.copy2(ROOT/'scripts/setup-key-filter.sh', self.root/'scripts/setup-key-filter.sh')
         (self.root/'compose.yaml').write_text('services: {}\n')
         (self.root/'.env').write_text('BAC_IMAGE=bac-studio:test\n')
+        (self.root/'api.cfg').write_text('fixture-key\n')
         (self.root/'release.json').write_text('{}')
         (self.root/'remove.py').touch(); (self.root/'runtime-lock.json').write_text('{}')
         self.state = self.root/'docker-state.json'
@@ -122,6 +123,7 @@ if action=='connect' and state.get('connection_failure'):sys.exit(1)
 
     def test_ready_defaults_to_qwen_without_docker_or_api_key(self):
         self.enable_local_model();self.configure(offline=True)
+        (self.root/'api.cfg').unlink()
         result=self.run_bac('vllm')
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertEqual(self.calls(),[['local-model','start','--model','qwen'],['local-model','commit']])
@@ -176,12 +178,22 @@ if action=='connect' and state.get('connection_failure'):sys.exit(1)
         self.assertEqual(self.run_bac('start').returncode,0)
         self.assertEqual(sum(a[0]=='load' for a in self.calls()),1)
 
+    def test_missing_or_blank_key_exits_before_docker(self):
+        for content in (None, '', '  \n', 'one two', 'one\ntwo'):
+            path=self.root/'api.cfg'
+            if content is None: path.unlink()
+            else: path.write_text(content)
+            result=self.run_bac('start')
+            self.assertNotEqual(result.returncode,0)
+            self.assertIn('Put a valid inference API key in api.cfg',result.stderr)
+            self.assertEqual(self.calls(),[])
+
     def test_invalid_key_stops_before_service_restart(self):
         self.configure(image=True, invalid_key=True)
         result=self.run_bac('start')
         self.assertNotEqual(result.returncode,0)
         self.assertTrue((self.root/'api.cfg').is_file())
-        self.assertEqual((self.root/'api.cfg').read_text(), '')
+        self.assertEqual((self.root/'api.cfg').read_text(), 'fixture-key\n')
         self.assertFalse(any(a[0] in ('stop','up') for a in self.operations()))
 
     def test_corrupt_or_missing_archive_never_starts(self):

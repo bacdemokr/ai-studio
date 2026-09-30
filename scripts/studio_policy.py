@@ -317,7 +317,7 @@ class PolicyControls:
             self.require_available(db, owner)
             self.require_idle(db, owner)
         else:
-            self.require_event_crew_idle(db, owner)
+            self.require_team_idle(db, owner)
             if owner in self.executing_owners:
                 raise Problem('Wait for the current task to finish before changing access.', 409)
 

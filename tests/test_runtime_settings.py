@@ -79,7 +79,8 @@ class SettingsTests(unittest.TestCase):
             d=self.data('openai');d['baseUrl']=endpoint
             with self.assertRaises(Problem):s.validate(d)
     def test_pending_work_blocks_global_switch(self):
-        owner=self.studio.session()[0]['id'];self.studio.enqueue(owner,{'kind':'crew','preset':True,'brief':{'schema':2}})
+        owner=self.studio.session()[0]['id']
+        self.studio.enqueue(self.studio.crew_owner(owner),{'kind':'crew-chat','crewRole':0,'prompt':'Hello'})
         with self.assertRaises(Problem):s.save(self.studio,self.data())
         self.assertFalse(s.path().exists())
     def test_connect_bypasses_failed_badge_cache_and_seeds_verified_status(self):

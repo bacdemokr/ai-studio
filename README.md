@@ -14,7 +14,7 @@ cd ai-studio
 ./bac start
 ```
 
-Startup checks the NVIDIA inference API key in `api.cfg`. If the file is empty or the API rejects the key, enter a valid key at the hidden terminal prompt. Startup checks access to the configured team models and makes a small inference request before restarting services.
+Startup checks the NVIDIA inference API key in `api.cfg`. If the file is empty or the API rejects the key, startup prints instructions and exits. Edit `api.cfg`, then run `./bac start` again. Startup checks access to the configured team models and makes a small inference request before restarting services.
 
 Open **http://localhost:8080**. **Stage 3 is configured automatically** with the validated key. For **Stages 1 and 2**, connect a model separately in **Settings → Model**.
 
@@ -70,14 +70,19 @@ stop a helper-owned model explicitly before removing Studio.
 
 ### Stage 3: Multi-Agent demo
 
-`api.cfg` sits beside `bac` and contains only your NVIDIA inference API key on one line. You can enter it at the startup prompt or edit the file yourself. To change the key, edit `api.cfg`, then run:
+Scout uses keyless Parallel Search: one focused search and 2–3 useful findings by default, then immediately saves a short cited brief and finishes without follow-up browsing. Fewer findings are acceptable; stale or irrelevant results are reported honestly. No separate search API key is needed. Scout has a 150-second research budget across retries. At the deadline, saved work and completed search/page excerpts are preserved for the team; missing evidence is reported honestly.
+
+For code tasks, a planned Vera review runs before Casey can mark the result complete. Saved-file checks confirm delivery; specialist reviews are static inspections unless actual execution evidence is available. Generated pages run in a restricted preview, so browser storage must be optional.
+
+
+`api.cfg` sits beside `bac` and contains only your NVIDIA inference API key on one line. Edit this file directly; startup never asks you to type a key in the terminal. To change the key, edit `api.cfg`, then run:
 
 ```bash
 ./bac start
 ```
 
 - The validated key is saved on this computer with owner-only file permissions. Refreshing the browser does not require re-entry.
-- Missing or rejected keys prompt again in an interactive terminal. Noninteractive startup exits with instructions.
+- Missing or rejected keys stop startup with instructions to edit `api.cfg`. Empty files are detected before Docker is invoked.
 - Network or API service failures stop startup without replacing your key or restarting running services. Startup never silently falls back to the previous saved key.
 - GitHub tracks an **empty `api.cfg` placeholder**. Startup installs a local Git clean filter that stages an empty file while preserving your working key. Release packages also contain an empty file; the Docker image excludes it.
 
@@ -125,7 +130,6 @@ keep the existing features, and save a self-contained HTML file.
 | Action | Command |
 | --- | --- |
 | Install / start / apply app changes and validate the key | `./bac start` |
-| Download the latest GitHub `main` | `./bac update` |
 | Check status / recent logs | `./bac status` / `./bac logs` |
 | Stop, keeping data | `./bac stop` |
 | **Delete BaC and its data** | **`./bac remove`** |
@@ -133,11 +137,11 @@ keep the existing features, and save a self-contained HTML file.
 To update, finish active work, then run in the repository folder:
 
 ```bash
-./bac update
+git pull --ff-only
 ./bac start
 ```
 
-`update` requires a clean `main` checkout and fast-forwards only. It refuses divergent commits, development branches, and local source changes. It does not stop running work. Your local key stays in `api.cfg` with the Git filter configured.
+Use normal Git commands to update your checkout. Resolve local changes or divergent history before pulling. With the Git key filter configured, your local key stays in `api.cfg`.
 
 `start` recreates services and can interrupt active work. It preserves agents, conversations, and results. App changes reuse the runtime image; dependency changes rebuild it automatically. There is no separate restart command.
 
@@ -156,3 +160,5 @@ restart may interrupt other applications using this same model server.
 Missing-installation errors list the required executable and weights paths, explain
 how to update local-model.json, and remind you that ./bac start still works
 independently. Failed new launches print the final startup-log lines automatically.
+
+Stage 3 uses `/plan` exclusively for team tasks. Mission Control shows only the current plan’s recorded assignments and results; before a plan starts, it shows an empty state. The retired event-planning pipeline and event results no longer appear. Saved historical files are preserved.

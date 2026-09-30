@@ -54,6 +54,11 @@ def role_for(agent):
     return int(match[1]) if match else None
 
 
+def default_model(role):
+    # Captain, programmer and UX designer use Ultra; other specialists use Lightning.
+    return MODELS[0 if role in (0, 5, 7) else 1]
+
+
 def model_for(agent, selected=None):
     role = role_for(agent)
     if role is None:return None
@@ -61,7 +66,7 @@ def model_for(agent, selected=None):
         selected=selected[len('bac-team/'):]
         if valid_model(selected):return 'bac-team/'+selected
     if valid_model(selected) and selected in {m['id'] for m in _catalog}:return 'bac-team/'+selected
-    return 'bac-team/'+MODELS[0 if role == 0 else 1]
+    return 'bac-team/'+default_model(role)
 
 
 def public():
@@ -120,7 +125,7 @@ def configure(studio,data):
 def selections(studio, owner):
     with studio.db() as db:
         saved={r['role']:r['model'] for r in db.execute('SELECT role,model FROM crew_resources WHERE owner=?',(owner,))}
-    return [{'id':saved.get(role) if valid_model(saved.get(role)) else MODELS[0 if role==0 else 1],
+    return [{'id':saved.get(role) if valid_model(saved.get(role)) else default_model(role),
              'role':role} for role in range(9)]
 
 
@@ -134,7 +139,7 @@ def select(studio, owner, data):
         if not db.execute("SELECT 1 FROM agents WHERE id=? AND kind='crew' AND deleting=0",(owner,)).fetchone():
             raise Problem('Team not found.',404)
         studio.require_bac_not_resetting(db,owner)
-        studio.require_event_crew_idle(db,owner)
+        studio.require_team_idle(db,owner)
         if db.execute("SELECT 1 FROM jobs WHERE owner=? AND status IN ('queued','running','waiting','stopping')",(owner,)).fetchone():
             raise Problem('Wait for the current team task to finish before changing models.',409)
         resource=db.execute('SELECT native_id FROM crew_resources WHERE owner=? AND role=?',(owner,role)).fetchone()

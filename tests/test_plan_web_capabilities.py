@@ -41,9 +41,39 @@ class PlanWebCapabilities(unittest.TestCase):
             self.assertIn('exec', tools)
             self.assertNotIn('web_fetch', runtime.tool_allowlist(CREW_CATALOG[0], CREW_CATALOG[0]['role']))
 
-    def test_research_skill_attempts_official_sources_before_asking_for_urls(self):
+    def test_keyless_search_does_not_depend_on_legacy_secret_marker(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(runtime,'root',return_value=Path(directory)):
+            config=runtime.initial_config()
+            config['tools']['web']={'search':{'enabled':True,'provider':'parallel-free'}}
+            config['plugins']['entries']['parallel']={'enabled':True}
+            runtime.save_config(config)
+            self.assertTrue(runtime.search_enabled())
+            config['tools']['web']['search']['enabled']=False
+            runtime.save_config(config)
+            self.assertFalse(runtime.search_enabled())
+
+    def test_captain_and_scout_share_single_search_handoff_contract(self):
+        self.start('/plan Research the latest NVIDIA developments and build a webpage.')
+        self.app.execute(self.app.next_job())
+        captain=self.adapter.calls[0][2]
+        scout=next(prompt for agent,session,prompt in self.adapter.calls if agent.endswith('-r8'))
+        self.assertIn('finish without follow-up searches or page reads',captain)
+        self.assertIn('Current UTC date:',scout)
+        self.assertIn('Immediately write the assigned brief with native write',scout)
+        self.assertIn('Do not run a follow-up search or open result pages',scout)
+        self.assertIn('attributed search excerpts are sufficient evidence',scout)
+        self.assertIn('One relevant supported finding is acceptable',scout)
+        self.assertNotIn('search snippets and home-page navigation are not evidence',scout)
+        self.assertNotIn('then read the relevant result pages',scout)
+
+    def test_research_skill_searches_first_with_bounded_source_fallback(self):
         instruction = runtime.SKILLS['web'][1]
-        self.assertIn('start with a confidently known official homepage', instruction)
+        self.assertIn('use it FIRST: one focused query', instruction)
+        self.assertIn('Immediately save the assigned brief with native write', instruction)
+        self.assertIn('Do not run follow-up searches or open result pages', instruction)
+        self.assertIn('save a short honest failure note and finish', instruction)
+        self.assertIn('check article dates and reporting periods', instruction)
+        self.assertIn('start with a confidently known topic-specific newsroom', instruction)
         self.assertIn('Cite exact URLs successfully read', instruction)
         self.assertIn('A policy denial is not permission to try another route', instruction)
         self.assertNotIn('otherwise ask for a source URL', instruction)

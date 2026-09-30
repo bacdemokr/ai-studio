@@ -19,18 +19,28 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.locator('#studio-open-team-settings').click();
   assert.equal(await page.locator('#studio-team-api-key,#studio-team-connect').count(),0);
   assert.match(await page.locator('.studio-team-api-card').innerText(),/api.cfg/);
-  assert.match(await page.locator('.studio-team-api-card').innerText(),/\.\/bac start/);
+  assert.match(await page.locator('.studio-team-api-card').innerText(),/Key loaded from/);
   assert.equal(await page.locator('.studio-team-api-state').innerText(),'Connected');
-  await page.locator('#studio-team-config-form [data-team-model="0"]').click();await page.locator('.team-model-dialog input').fill('new-model');await page.locator('[data-model-choice="example/new-model"]').click();assert.equal(selectionCalls,0);assert(await page.locator('[data-team-apply-all]').isEnabled());await page.locator('[data-team-apply-all]').click();await page.getByText('Model changes applied. Used from the next request.',{exact:true}).waitFor();assert.equal(selectionCalls,1);assert.equal(personalWrites,0);
+  await page.locator('#studio-team-config-form [data-team-model="0"]').click();assert.equal(await page.locator('dialog[open]').count(),1);assert(await page.locator('#studio-dialog').isVisible());assert(!(await page.locator('#studio-team-config-form').isVisible()));await page.locator('.team-model-dialog input').fill('new-model');await page.locator('[data-model-choice="example/new-model"]').click();assert.equal(selectionCalls,0);assert(await page.locator('[data-team-apply-all]').isEnabled());await page.locator('[data-team-apply-all]').click();await page.getByText('Model changes applied. Used from the next request.',{exact:true}).waitFor();assert.equal(selectionCalls,1);assert.equal(personalWrites,0);
   assert.match(await page.locator('#studio-team-model-status').innerText(),/Model changes applied/);
   assert.match(await page.locator('#studio-team-config-form [data-team-model="0"]').innerText(),/New model/);
   await page.waitForTimeout(1700);
-  await page.locator('#studio-team-config-form [data-team-model="0"]').click();assert(await page.locator('[data-model-apply]').isDisabled());assert.equal(await page.locator('[data-model-choice="example/new-model"]').getAttribute('aria-pressed'),'true');
+  await page.locator('#studio-team-config-form [data-team-model="0"]').click();assert.equal(await page.locator('dialog[open]').count(),1);assert.equal(await page.locator('[data-model-choice="example/new-model"]').getAttribute('aria-pressed'),'true');
   await page.locator('[data-model-choice="nvidia/nvidia/nemotron-3-ultra-nvfp4"]').click();assert.equal(selectionCalls,1);assert(await page.locator('[data-team-apply-all]').isEnabled());assert.match(await page.locator('#studio-team-model-status').innerText(),/Unsaved/);
+  // Repeated navigation stays inside the same native dialog. No scene flash or key write.
+  for(const role of [4,5,6,7,8,0]){
+   await page.locator('#studio-team-config-form [data-team-model="'+role+'"]').click();
+   assert.equal(await page.locator('dialog[open]').count(),1);
+   assert.equal(await page.locator('#studio-dialog').getAttribute('open'),'');
+   await page.locator('.team-model-dialog input').press('Escape');
+   assert(await page.locator('#studio-team-config-form').isVisible());
+  }
   assert.equal(connectionCalls,0);await page.locator('#studio-dialog-close').click();
   await page.locator('#studio-config').click();await page.locator('#studio-settings-reset-tab').click();assert.equal(await page.locator('#studio-settings-reset-panel #studio-bac-reset').count(),0);await page.locator('#studio-dialog-close').click();
   await page.locator('.world-room-map [data-world-room="mission"]').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);await page.locator('[data-campus-agent="0"]').click();
-  await page.locator('#studio-bac-reset').click();await page.getByText('BaC reset.',{exact:true}).waitFor();assert(await page.locator('#studio-bac-reset').isEnabled());
+  await page.locator('#studio-bac-reset').click();await page.getByRole('heading',{name:'Do you really want to reset Stage 3?'}).waitFor();
+  await page.locator('#studio-team-reset-cancel').click();assert(!(await page.locator('#studio-dialog').isVisible()));
+  await page.locator('#studio-bac-reset').click();await page.locator('#studio-team-reset-confirm').click();await page.getByText('BaC reset.',{exact:true}).waitFor();assert(await page.locator('#studio-bac-reset').isEnabled());
   assert.deepEqual(errors,[]);console.log('PASS: CLI-managed key guidance, no browser key writes, model selection, Settings scope and reset.');
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});

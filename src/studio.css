@@ -50,7 +50,7 @@
 #agent-campus.studio-world-open{position:fixed;inset:0;z-index:90;width:100%;height:100%;overflow:hidden;background:#090c10}
 #agent-campus.studio-world-open::backdrop{background:#090c10}
 #agent-campus.studio-world-open #studio-alert{top:12px;bottom:auto}
-#agent-campus.studio-world-open>:not(.campus-layout):not(#studio-dialog):not(#studio-surface):not(#studio-alert){display:none!important}
+#agent-campus.studio-world-open>:not(.campus-layout):not(#studio-dialog):not(#studio-surface):not(#studio-alert):not(#studio-team-total-time){display:none!important}
 #agent-campus .campus-layout.world-expanded{position:absolute;inset:0;z-index:1;margin:0;width:100%;height:100%;max-width:none;border:0;border-radius:0!important;box-shadow:none;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr)}
 #agent-campus .world-expanded .campus-stage{height:100%;min-height:0;overflow:hidden}
 #agent-campus .world-expanded #campus-viewport{height:0!important;min-height:0!important;flex:1 1 0;touch-action:none}

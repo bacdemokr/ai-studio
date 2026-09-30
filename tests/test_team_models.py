@@ -70,6 +70,17 @@ class TeamModelTests(unittest.TestCase):
         self.app.runtime_status=lambda: {'ready':True,'teamReady':False}
         with self.assertRaises(Problem):self.app.enqueue(team_owner,{'kind':'crew-chat','crewRole':0,'prompt':'Hello'})
 
+    def test_defaults_for_cody_and_iris_and_explicit_override(self):
+        owner=self.app.session()[0]['id'];crew=self.app.crew_owner(owner)
+        selections=team.selections(self.app,crew)
+        for role in (0,5,7):
+            self.assertEqual(selections[role]['id'],team.MODELS[0])
+            self.assertEqual(team.model_for(self.app.crew_native_id(crew,role)),'bac-team/'+team.MODELS[0])
+        for role in (4,6,8):
+            self.assertEqual(selections[role]['id'],team.MODELS[1])
+        team.select(self.app,crew,{'role':5,'model':team.MODELS[1]})
+        self.assertEqual(team.selections(self.app,crew)[5]['id'],team.MODELS[1])
+
     def test_role_matching_does_not_capture_personal_agents(self):
         self.assertIsNone(team.model_for('bac-'+'a'*24))
         self.assertIsNone(team.model_for('bac-'+'a'*24+'-r99'))

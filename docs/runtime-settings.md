@@ -17,7 +17,7 @@ Set the city, dates and venue in Plan a BaC. New plans use English automatically
 
 ## Stage 3 connection and models
 
-Run `./bac start` to validate the NVIDIA inference key in `api.cfg`. Empty or rejected keys prompt for hidden input in the terminal. Startup verifies model access and a small inference request, then saves the connection on the host for Stage 3. Browser refreshes do not clear this key. To replace it, edit `api.cfg` and run `./bac start` again.
+Run `./bac start` to validate the NVIDIA inference key in `api.cfg`. Empty or rejected keys stop startup with instructions to edit the file and rerun the command; no key is requested interactively. Startup verifies model access and a small inference request, then saves the connection on the host for Stage 3. Browser refreshes do not clear this key. To replace it, edit `api.cfg` and run `./bac start` again.
 
 Stage 3’s **API & models** panel displays connection status and terminal setup instructions. It has no key-entry form. Choose models for Casey and the specialists, then use the single **Apply changes** button. Model changes apply to the next request.
 

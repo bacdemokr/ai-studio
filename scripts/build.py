@@ -25,7 +25,7 @@ fragment = (ROOT / 'src/bac-planner.html').read_text(encoding='utf-8')
 crew_catalog = json.loads((ROOT / 'src/crew-catalog.json').read_text(encoding='utf-8'))
 fragment = fragment.replace('/* CREW_CATALOG */', json.dumps(crew_catalog).replace('</', '<\\/'))
 campus = (ROOT / 'src/campus.html').read_text(encoding='utf-8')
-studio = (ROOT / 'src/studio.html').read_text(encoding='utf-8').replace('/* STUDIO_CSS */', (ROOT / 'src/studio.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-rooms.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-sound.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-events.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-controls.css').read_text(encoding='utf-8'))
+studio = (ROOT / 'src/studio.html').read_text(encoding='utf-8').replace('/* STUDIO_CSS */', (ROOT / 'src/studio.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-rooms.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-sound.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-artifacts.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-controls.css').read_text(encoding='utf-8'))
 campus = campus.replace('<div class="campus-layout">', studio + '\n<div class="campus-layout">')
 campus = campus.replace('/* CAMPUS_CSS */', (ROOT / 'src/campus.css').read_text(encoding='utf-8'))
 fragment = fragment.replace('<!-- AGENT_CAMPUS -->', campus)
@@ -40,7 +40,7 @@ campus_js = '(function(){const exports={};\n' + vendor + '\nconst THREE=exports;
 fragment = fragment.replace('<!-- CAMPUS_SCRIPT -->', '<script>' + campus_js.replace('</script', '<\\/script') + '</script>')
 studio_js = (ROOT / 'src/studio.js').read_text(encoding='utf-8')
 # Keep assembly explicit and fail on missing/duplicate include markers.
-for module in ('events', 'json', 'compare', 'settings', 'crew', 'telemetry',
+for module in ('json', 'compare', 'settings', 'crew', 'telemetry',
                'world', 'surfaces', 'chat', 'rooms', 'identity', 'safety', 'policies'):
     marker = '/* STUDIO_' + module.upper() + ' */'
     if studio_js.count(marker) != 1:
@@ -55,7 +55,7 @@ page = '''<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Build your agent, explore skills, and plan a BaC event with a crew.">
+<meta name="description" content="Build your agent, explore skills, and collaborate with a team of specialists.">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; frame-src 'self' blob:; base-uri 'none'; form-action 'none'; object-src 'none'">
 <title>NVIDIA Build-a-Claw — Agent Studio</title>
 <style>

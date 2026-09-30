@@ -120,3 +120,37 @@
 .studio-preview-loading{position:absolute;inset:0;display:grid;place-items:center;color:#aabcc7;font-size:15px}
 .studio-preview-loading[hidden]{display:none}
 #studio-dialog.studio-page-preview .studio-page-canvas iframe:not([data-ready=true]){opacity:0;pointer-events:none}
+
+/* Stage 3 should be readable at normal desktop zoom, including large displays. */
+@media(min-width:1100px){
+ #bac-planner #agent-campus[data-room=mission]:not([data-world-overview=true]) .campus-layout{grid-template-columns:minmax(0,1fr) clamp(440px,34vw,640px)!important}
+ #bac-planner #agent-campus #studio-crew-passport .studio-team-actions{padding:16px 24px;gap:10px}
+ #bac-planner #agent-campus #studio-crew-passport .studio-team-actions button{min-height:50px;font-size:17px;padding:12px}
+ #bac-planner #agent-campus #studio-crew-passport .studio-team-connection-bar{padding:16px 24px;font-size:16px}
+ #bac-planner #agent-campus #studio-crew-passport #studio-team-setup{font-size:15px;min-height:42px;padding:10px 14px}
+ #bac-planner #agent-campus #studio-standby>summary{font-size:17px;padding:16px 24px}
+ #bac-planner #agent-campus #studio-standby-count{font-size:14px;min-width:26px;height:26px}
+ #bac-planner #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content{padding:22px 24px;gap:14px;overflow-y:auto}
+ #bac-planner #agent-campus #studio-crew-passport .studio-companion-name{gap:18px}
+ #bac-planner #agent-campus #studio-crew-passport .studio-avatar{width:58px;height:64px}
+ #bac-planner #agent-campus #studio-crew-passport h3{font-size:36px!important}
+ #bac-planner #agent-campus #studio-crew-role{font-size:20px!important}
+ #bac-planner #agent-campus #studio-crew-passport .studio-model-label{font-size:14px;padding:5px 8px}
+ #bac-planner #agent-campus #studio-crew-conversation{font-size:18px;line-height:1.6}
+ #bac-planner #agent-campus #studio-crew-conversation :is(p,.chat-message,.chat-prose){font-size:18px!important;line-height:1.6}
+ #bac-planner #agent-campus #studio-crew-conversation .chat-message>small{font-size:14px}
+ #bac-planner #agent-campus #studio-crew-chat{padding:14px 16px}
+ #bac-planner #agent-campus #studio-crew-prompt{font-size:19px;min-height:100px;line-height:1.5}
+ #bac-planner #agent-campus #studio-crew-chat .studio-compose-actions>button{font-size:16px;min-height:44px;padding:10px 14px}
+ #bac-planner #agent-campus #studio-crew-passport #campus-roster button{font-size:17px;padding:10px 12px}
+ #bac-planner #agent-campus #studio-crew-passport #campus-roster small{font-size:14px}
+}
+
+/* Empty Mission Control describes the current workflow without preset cards. */
+#studio-surface #studio-board:not(.has-plan) .studio-board-intro{display:block;padding:24px 8px}
+#studio-surface #studio-board:not(.has-plan) .studio-kicker{display:none}
+
+/* One viewport-anchored timer across the scene, panels and modal dialogs. */
+#studio-team-total-time{position:fixed;inset:16px 16px auto auto;margin:0;box-sizing:border-box;width:max-content;max-width:calc(100vw - 32px);padding:10px 16px;border:1px solid #76b90088;border-radius:9px;background:#203026;color:#d1eca9;box-shadow:0 4px 18px #0005;font:600 14px/1.4 Arial,sans-serif;font-variant-numeric:tabular-nums;z-index:2147483647;pointer-events:none}
+#studio-team-total-time::backdrop{background:transparent;pointer-events:none}
+#studio-team-total-time[hidden]{display:none}

@@ -107,6 +107,14 @@ settingsButton.onclick=async()=>{
 };
 el('dialog').addEventListener('close',()=>{if(el('api-key'))el('api-key').value='';if(el('telegram-token'))el('telegram-token').value='';});
 
+function confirmTeamReset(sourceButton){
+ if(removingAgent||pendingWrites||changingAgent||data.bacResetting)return;
+ dialog('RESET STAGE 3', '<h3>Do you really want to reset Stage 3?</h3><p>This stops active team work and clears team chats, generated files, and the board.</p><div class="studio-dialog-actions"><button type="button" class="studio-secondary" id="studio-team-reset-cancel" autofocus>Cancel</button><button type="button" class="studio-danger" id="studio-team-reset-confirm">Yes, Reset Stage 3.</button></div>');
+ el('team-reset-cancel').onclick=()=>el('dialog').close();
+ el('team-reset-confirm').onclick=()=>{el('dialog').close();resetStudio('bac',sourceButton);};
+ el('team-reset-cancel').focus();
+}
+
 async function resetStudio(scope,sourceButton=null){
  if(removingAgent||pendingWrites||changingAgent)return;
  removingAgent=true;++refreshVersion;
@@ -172,11 +180,10 @@ function openTeamSettings(){
   <div class="studio-model-scope"><span>STAGE 03</span><h3>Team API &amp; models</h3><p>A dedicated NVIDIA API connection for Casey and the specialists.</p></div>
   <div class="studio-team-api-card"><div class="studio-team-api-heading"><strong>NVIDIA Inference</strong><span class="studio-team-api-state" data-connected="${!!runtime.teamModel}">${runtime.teamModel?(runtime.teamReady?'Connected':'API connected · Runtime offline'):'Not connected'}</span></div>
   <small>inference-api.nvidia.com</small>
-  <p><strong>API key managed on this computer</strong></p>
-  <p>${runtime.teamModel?'The saved key is loaded for Stage 3. No key entry is needed in this browser.':'Add your inference API key to api.cfg in the BaC folder, then run ./bac start in a terminal.'}</p>
-  <small>To change the key, edit <code>api.cfg</code> and run <code>./bac start</code>. Startup validates it before applying. GitHub and release packages contain an empty placeholder.</small></div>
+  <small>${runtime.teamModel?'Key loaded from <code>api.cfg</code>.':'Add a key to <code>api.cfg</code> and run <code>./bac start</code>.'}</small></div>
   <div class="studio-team-models-heading"><h3>Agent models</h3><small>Choose models for your agents, then select Apply changes. No API key re-entry needed.</small></div><p id="studio-team-model-status" role="status" hidden></p>
   <div class="studio-team-setup-models">${available.map(member=>`<div><span><strong>${escape(member.name)}</strong><small>${escape(member.collaboration.title)}</small></span><div class="studio-team-model-controls"><button type="button" class="team-model-trigger" data-team-model="${member.roleIndex}" ${!runtime.teamModel||data.bacResetting||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status))?'disabled':''}><span>${escape(teamModel(member.roleIndex)?.label||'Choose model')}</span><span aria-hidden="true">⌕</span></button></div></div>`).join('')}</div>
   <div class="studio-team-model-save"><button type="button" class="studio-primary" data-team-apply-all disabled>Apply changes</button></div><p class="studio-team-setup-note">Stage 1 &amp; 2 keep using the model selected in Settings.</p></form>`);
+ el('dialog').classList.add('studio-team-settings');
  el('team-config-form').onsubmit=event=>event.preventDefault();
 }

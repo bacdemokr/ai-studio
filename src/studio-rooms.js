@@ -75,9 +75,9 @@ function renderRoomVisibility(){
   syncComposer();
   const workshop=room==='workshop',lounge=room==='lounge',mission=room==='mission';
   el('workshop').hidden=!(workshop||editingInPlace);el('passport').hidden=!lounge||editingInPlace;el('crew-passport').hidden=!mission;el('connections').hidden=!workshop;el('policies').hidden=false;el('policy-panel').hidden=!lounge;
-  el('collection').hidden=!lounge||!data.profile;renderEventPackage();
+  el('collection').hidden=!lounge||!data.profile;
   layout.hidden=false;el('board').hidden=true;
-  el('experiences').hidden=!lounge;el('workspace').hidden=workshop||(mission?!crewMission():(!current()&&!data.files?.length));el('safety-bar').hidden=true;
+  el('experiences').hidden=!lounge;el('workspace').hidden=workshop||(mission?!currentCollaboration():(!current()&&!data.files?.length));el('safety-bar').hidden=true;
   const action=el('room-action');action.hidden=true;
   document.getElementById('campus-roster').hidden=!mission;
   document.getElementById('campus-location').textContent=workshop?'HIRING / MEET YOUR NEXT AGENT':lounge?'LOUNGE / Current Agents: '+(data.agents?.length||0):'Multi-Agent demo';

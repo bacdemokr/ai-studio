@@ -226,3 +226,42 @@ def context_failure(state, agent, session, started):
                 'Saved work is preserved. Narrow the request or start a fresh conversation; '
                 'this request was not automatically repeated.'}
     return None
+
+
+def text_tool_write_path(text):
+    """Recognize a write invocation emitted as prose; never execute its contents."""
+    if not isinstance(text, str) or not re.match(r'^\s*<tool_call>\s*<function=(?:write|edit)>', text):
+        return None
+    match = re.search(r'<parameter=(?:path|file_path)>\s*([^<]+?)\s*</parameter>', text)
+    return match.group(1).strip() if match else ''
+
+
+def unexecuted_write(state, agent, session, started=0):
+    """Detect a hidden text-form write even when the final reply claims success."""
+    path = Path(state)/'agents'/agent/'agent/openclaw-agent.sqlite'
+    if not path.is_file():return False
+    try:
+        with closing(sqlite3.connect(path.resolve().as_uri()+'?mode=ro',uri=True,timeout=.2)) as db:
+            rows = db.execute('''SELECT t.event_json FROM transcript_events t
+                JOIN session_windows s USING(session_id)
+                WHERE s.session_key=? AND t.created_at>=? ORDER BY t.seq''',
+                ('agent:'+agent+':openai-user:'+session,int(started*1000))).fetchall()
+        pending=set();writes={}
+        for raw, in rows:
+            message=json.loads(raw).get('message',{})
+            content=message.get('content',[])
+            if message.get('role')=='assistant':
+                for item in content if isinstance(content,list) else []:
+                    if item.get('type')=='text':
+                        target=text_tool_write_path(item.get('text'))
+                        if target is not None:pending.add(target)
+                    elif item.get('type')=='toolCall' and item.get('name') in ('write','edit'):
+                        args=item.get('arguments') or {}
+                        if isinstance(args,dict):writes[item.get('id')]=args.get('path') or args.get('file_path')
+            elif message.get('role')=='toolResult' and not message.get('isError'):
+                details=message.get('details') or {}
+                if details.get('status') not in ('failed','error','running') and details.get('exitCode',0) in (0,None):
+                    pending.discard(writes.get(message.get('toolCallId')))
+        return bool(pending)
+    except (OSError,ValueError,TypeError,AttributeError,sqlite3.Error):
+        return False

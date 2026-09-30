@@ -11,6 +11,19 @@ from plan_handoff import required_files, missing_files
 from plan_revision import PLAN_TIME_BUDGET_SECONDS, PlanBudgetExceeded, read_revision, effective_outputs, REVISION_INSTRUCTIONS
 
 
+def compact_contributions(outputs):
+    """Keep control prompts small; full evidence remains in mapped files and history."""
+    rows = outputs.values() if isinstance(outputs, dict) else outputs
+    compact = []
+    for output in rows:
+        item = {k: v for k, v in output.items() if k not in ('activity', 'answer', 'task')}
+        for key, limit in (('answer', 2000), ('task', 800)):
+            value = str(output.get(key, ''))
+            item[key] = value[:limit] + ('\n[Summary shortened; inspect the supplied files for details.]' if len(value) > limit else '')
+        compact.append(item)
+    return compact
+
+
 PLAN_COMMAND = re.compile(r'^\s*/plans?(?=\s|$)', re.I)
 
 
@@ -38,7 +51,7 @@ def partial_remaining(value):
 
 
 def read_plan(answer):
-    from studio_events import object_reply
+    from agent_reply import object_reply
     eligible = plan_roles()
     value = object_reply(str(answer))
     summary, tasks = value.get('summary'), value.get('tasks')
@@ -99,7 +112,7 @@ def read_checkpoint(answer, allow_revision=False):
 
 
 def _read_checkpoint(answer, allow_revision=False):
-    from studio_events import object_reply
+    from agent_reply import object_reply
     value = object_reply(str(answer))
     done, reason = value.get('done'), value.get('reason')
     if type(done) is not bool or not isinstance(reason, str) or not 0 < len(reason.strip()) <= 1500:
@@ -146,7 +159,7 @@ class CollaborationPlans:
                 ORDER BY created DESC,rowid DESC LIMIT 12""",
                 (reset, before, exclude, int(plans_only), owner, 'chat' if role is None else 'crew-chat',
                  role, role, '$.collaboration.outputs."' + str(role) + '"', agent['participant'], owner, role)).fetchall()
-        turns, remaining = [], 24000
+        turns, remaining = [], 8000
         for row in rows:
             payload, result = json.loads(row['payload']), json.loads(row['result'] or '{}')
             plan = payload.get('collaboration', {})
@@ -175,6 +188,7 @@ class CollaborationPlans:
         owner, job_id = row['owner'], row['id']
         plan = payload['collaboration']
         deadline = monotonic() + PLAN_TIME_BUDGET_SECONDS
+        research_deadline = None
         plan['timeBudgetSeconds'] = PLAN_TIME_BUDGET_SECONDS
         with self.db() as db:
             roster = self.crew_roster(db, owner, {}, preset=True)
@@ -183,13 +197,19 @@ class CollaborationPlans:
         team = [{'role': i, 'name': m['name'], **m['collaboration'], **collaboration_capabilities(m, m['role'])}
                 for i, m in enumerate(CREW_CATALOG) if i in plan_roles()]
         history = self.conversation_context(origin['owner'], origin['role'], row['created'], job_id)
-        context = (BROWSER_LIMIT + '\n' +
+        context = (BROWSER_LIMIT + '\nCurrent UTC date: ' + time.strftime('%Y-%m-%d', time.gmtime()) + '\n' +
             'This is an explicit /plan collaboration, separate from the event-template pipeline. '
             'Use the current task, supplied conversation context and handoffs. Do not read old event briefs, '
             'contracts, schedules, other conversations or personal agents\' workspaces. '
             'Use your own skills and workspace when needed, within existing permissions. '
             'Do not assume that event tools have a prepared contract for this task. '
             'Do not load EVENT_WORKFLOW.md or event-specific skills unless the current task actually needs them. '
+            'DEMO DEFAULT: deliver a small working prototype, not a production product. '
+            'Unless explicitly requested, omit touch/mobile controls, elaborate animations, sound, extra settings, '
+            'multi-file architecture and optional features. Preserve the core requested behavior and basic keyboard usability. '
+            'Use the fewest specialists needed; a simple game or webpage normally needs Cody only. '
+            'If Iris is needed, save a short spec targeting 60 lines / 600 words with layout, controls and 5-8 essential checks; '
+            'do not invent extra requirements for Cody. Explicit user requirements take precedence over these targets. '
             'Context and output budgets are limited. Work only as deeply as your assignment requires; '
             'Target desktop browsers and presentation mode by default. Do not spend specialist calls or '
             'implementation/review effort on mobile layouts, touch controls or mobile testing unless '
@@ -198,9 +218,50 @@ class CollaborationPlans:
             'avoid exhaustive browsing, repeated reads and optional polish. Read relevant sections or bounded '
             'chunks of large files using available read limits, and expand only to resolve a specific gap. '
             'For a supplied single-page summary, make one web_fetch with maxChars:4000 so navigation does not consume the entire excerpt. '
-            'For broader public-web research, start with maxChars:3000 per web_fetch and make at most three fetch attempts '
+            'For broader public-web research, start with maxChars:3000 per web_fetch and make at most five fetch attempts '
             'for the initial brief, counting failed attempts too. Fetch at most two pages before assessing '
             'whether they answer your assignment; do not launch a broad batch of guessed URLs. '
+            'Scout has a total 150-second research budget, including searches, reading, writing and retries. '
+            'Save a short brief immediately after useful evidence arrives; stop researching once 2-3 facts are available. '
+            'If no relevant evidence is found, say the search failed; never fabricate facts or keep trying for perfection. '
+            'SEARCH-FIRST DEMO: when web_search is available, use one focused search returning at most three results. '
+            'For latest/current requests include the current year or requested period in the query, verify source dates, '
+            'and check reporting periods; ranking does not establish freshness. '
+            'Save only 2-3 directly relevant findings in a brief under 300 words. Use source excerpts with citations; '
+            'identify them as excerpts and never imply full-page verification. Immediately write the assigned brief with native write, '
+            'then return a short handoff and finish. Do not run a follow-up search or open result pages to polish the brief. '
+            'One relevant supported finding is acceptable if fewer than 2-3 are available; never pad the brief. '
+            'If all results are stale, irrelevant or empty, save a short honest failure note and finish. '
+            'Do not chase optional metrics. '
+            'This smaller search-first budget overrides the fetch-only guidance below. If search fails, report it; '
+            'do not silently fall back to repeated direct fetches or another provider. '
+            'SOURCE SELECTION: first identify the requested subject, two relevant questions, and a useful date range. '
+            'When web_search is available, relevant attributed search excerpts are sufficient evidence for this demo; '
+            'do not claim you opened their pages. Home-page navigation is not evidence. In fetch-only mode use a known topic-specific '
+            'newsroom, investor earnings index, publication feed or supplied URL, rather than a generic home page. '
+            'For NVDA earnings use investor earnings releases or filings; for product/AI developments use the '
+            'NVIDIA newsroom or relevant technical articles. Do not guess dated article URLs. '
+            'In fetch-only mode, reserve two of the five fetch attempts for fallback discovery and a relevant article. Stop early once '
+            'one or two useful articles support the brief; five attempts is a ceiling, not a target. '
+            'A 403/404 or other inaccessible page is an expected research limitation, not a failed demo. '
+            'Skip that URL; a failed URL does not prove an entire domain is blocked. Use relevant evidence already retrieved. In fetch-only mode, if no useful evidence is available, try one '
+            'clearly relevant accessible source within the same total attempt budget. Unless the user requires '
+            'official-only sources, reputable independent reporting or a clearly attributed issuer release on '
+            'a newswire is acceptable; do not keep trying blocked official paths. A publisher HTTP error is '
+            'different from an explicit OpenShell policy denial: never route around a policy denial. '
+            'Never bypass access controls. '
+            'QUALITY CHECK: keep a finding only if retrieved source text or an attributed search excerpt directly answers one '
+            'of the requested questions. Exclude unrelated internships, event appearances, menu labels and '
+            'promotional navigation from an earnings/product brief. For each finding record its claim, exact '
+            'source URL, publication/event date when known, and a short supporting fact in your own words. '
+            'Revenue requires a reporting period and currency; price/market cap require an as-of timestamp. '
+            'Distinguish reported facts from your interpretation. Unknown dates stay unknown. '
+            'Prefer a small relevant brief over a longer irrelevant one. If nothing relevant was retrieved, '
+            'state that clearly instead of calling the research complete. '
+            'HANDOFF TO CODY: list supported content to build and unsupported sections to omit. Do not '
+            'fill the page with failed-source tables or unavailable metric cards unless requested. If no '
+            'relevant evidence exists, a clearly labeled layout prototype is acceptable, not a research result. '
+            'Do not spend the brief on failed attempts: lead with supported findings and add one short limitations note. '
             'Never fetch the same exact URL more than twice. A second read is justified only by a concrete missing section '
             'and must change extraction mode or increase maxChars; identical retries do not reveal more content. '
             'If the second read still lacks the needed text, stop and report the observed limitation. '
@@ -215,6 +276,9 @@ class CollaborationPlans:
             'Keep detailed findings and deliverables in artifacts/ when writing is available; hand off key facts, '
             'source references, file paths, limitations and remaining requirements. Preserve critical numbers '
             'and evidence; never silently omit required work to meet a length target. '
+            'For new HTML demos, first save a complete compact working page with native write (target under 6000 characters), '
+            'then add required features through small edits. Never emit XML tool-call markup in ordinary text. '
+            'A saved-file claim requires a successful native write/edit result. '
             'File-writing tool arguments also consume output tokens: keep implementations focused, use targeted '
             'edits or supported smaller writes for large changes, and leave saved files syntactically complete. '
             'If the available budget prevents completion, return useful saved work and explicitly state what remains. '
@@ -253,11 +317,11 @@ class CollaborationPlans:
             'Do not expand a broad topic into surveys of standards, regulation, geography, every industry player, '
             'or the entire technical stack unless the user explicitly requests those dimensions. '
             'Use a recent survey or official research overview to establish context and one directly relevant research source. '
-            'The initial research budget is three total fetch attempts, including discovery pages and failures. '
+            'The initial research budget is five total fetch attempts, including discovery pages and failures. '
             'Never require four or more sources or a source quota that forces further browsing. '
             'A dated, clearly scoped sample is acceptable; do not claim exhaustive coverage or globally newest findings. '
-            'Ask for 3-5 supported findings and citations in a compact saved brief, '
-            'not exhaustive due diligence. Do not add live prices, valuation ratios, analyst ratings or long historical '
+            'Aim for 3-5 supported findings and citations in a compact saved brief; fewer useful findings are enough, '
+            'not exhaustive due diligence. Define the two research questions rather than a list of websites to visit. Do not add live prices, valuation ratios, analyst ratings or long historical '
             'comparisons unless the user specifically requests them. Preserve explicitly requested requirements. '
             'When live market data cannot be verified, use available official facts with dates and label the gap; '
             'do not send the researcher through multiple finance providers merely to fill optional fields. '
@@ -295,10 +359,16 @@ class CollaborationPlans:
             # An invalid sibling HTML file must not become "verified" merely
             # because another page from the same turn passed collection.
             sources = [source_map[path] for path in files if path in source_map]
-            if phase == 'Recovering':
-                sources += plan.get('verifiedSources', {}).get(str(role), [])
-                files = list(dict.fromkeys(plan.get('files', {}).get(str(role), []) + files))
-                pages = list(dict.fromkeys(plan.get('webpages', {}).get(str(role), []) + pages))
+            if phase == 'Recovering' or (plan.get('outputLimitRetry', {}).get('status') == 'working' and plan['outputLimitRetry']['role'] == role):
+                # A repair can replace a source file. Forward its newest snapshot,
+                # not conflicting pre-repair and post-repair copies together.
+                previous = (plan.get('revision', {}).get('files', []) if phase.startswith('Revising')
+                            else plan.get('files', {}).get(str(role), []))
+                replaced = set(sources)
+                retained = [path for path in previous if source_map.get(path) not in replaced]
+                files = list(dict.fromkeys(retained + files))
+                sources = [source_map[path] for path in files if path in source_map]
+                pages = [path for path in files if path.lower().endswith('.html')]
             plan.setdefault('verifiedSources', {})[str(role)] = list(dict.fromkeys(sources))
             if phase.startswith('Revising'):
                 # Preserve the initial snapshot for the trace and failed repair recovery.
@@ -308,14 +378,50 @@ class CollaborationPlans:
                 plan.setdefault('files', {})[str(role)] = files
 
         def invoke(role, instruction, phase):
+            nonlocal research_deadline
+            if role == 8 and research_deadline is None:
+                research_deadline = monotonic() + 150
+                plan['researchBudgetSeconds'] = 150
             with self.agent_lock(roster[role]['id']):
-                return invoke_locked(role, instruction, phase)
+                try:
+                    return invoke_locked(role, instruction, phase)
+                except GatewayError as error:
+                    if error.reason not in ('output-limit', 'tool-call-output-limit', 'unexecuted-tool-call') or plan.get('outputLimitRetry') or self.stop_checkpoint(job_id) or min(deadline, research_deadline if role == 8 else deadline) - monotonic() < 30:
+                        raise
+                    retry = {'role': role, 'phase': phase, 'status': 'working', 'reason': error.reason, 'started': time.time()}
+                    plan['outputLimitRetry'] = retry
+                    save('Casey · Requesting a shorter retry',
+                         roster[role]['name'] + ' could not complete a valid model response or file write. One shorter retry will use saved work.')
+                    try:
+                        answer = invoke_locked(role, instruction +
+                            '\nOUTPUT-LIMIT RECOVERY: Casey requests one concise retry. Inspect the saved files listed below first. '
+                            'Keep completed work; do not repeat successful searches or writes. Finish only the missing core requirement '
+                            'with small targeted edits. Skip optional polish. Save a complete minimal deliverable before writing a '
+                            'short summary (at most 100 words). If the saved deliverable already satisfies the assignment, '
+                            'verify it and return its path. Never claim execution you did not perform. '
+                            'For code: use the native write/edit tools, never print XML <tool_call> markup as text. '
+                            'If the target is missing, write a complete tiny working page first (target under 6000 characters), '
+                            'then use small edits only for essential missing features. Wait for a successful tool result '
+                            'before claiming a save. Do not regenerate a large page in one tool call. '
+                            'For a Captain decision return only the required compact JSON, not prose.', phase, output_retry=True)
+                        retry['status'] = 'recovered' if answer is not None else 'cancelled'
+                        return answer
+                    except Exception as retry_error:
+                        if isinstance(retry_error, GatewayError) and retry_error.reason == 'output-limit':
+                            retry_error.args = ('The model reached its output limit again after one concise retry. Saved work is preserved; no further retry will run.',)
+                        retry['status'] = 'failed'
+                        save('Shorter retry did not finish', 'Saved work is preserved; no further output-limit retry will run.')
+                        raise
+                    finally:
+                        retry['finished'] = time.time()
 
-        def invoke_locked(role, instruction, phase):
+        def invoke_locked(role, instruction, phase, output_retry=False):
             if self.stop_checkpoint(job_id):
                 return None
             if monotonic() >= deadline:
                 raise PlanBudgetExceeded('The collaboration time budget was reached; no further calls were started.')
+            if role == 8 and monotonic() >= research_deadline:
+                raise GatewayError('Scout reached the 150-second research limit. No further research will run.', 'timeout')
             member = dict(roster[role])
             if role == 0:
                 member['_planControl'] = 'read' if phase.startswith('Checking') else 'none'
@@ -329,6 +435,8 @@ class CollaborationPlans:
             # Research recovery retains tool evidence. Code recovery reads saved source
             # in a fresh session so a full/stalled transcript cannot block the repair.
             session = 'bac-plan-' + job_id + '-' + str(role) + '-' + ('working' if phase == 'Recovering' and role != 5 else phase.split()[0].lower())
+            if output_retry:
+                session += '-output-retry'
             pages_before = html_files(self.workspace(owner, role))
             files_before = snapshot_files(self.workspace(owner, role))
             # Only explicitly scoped task inputs and verified outputs cross workspaces.
@@ -371,10 +479,12 @@ class CollaborationPlans:
                     'When replying, link the artifact value, never the temporary readPath.') if handoff_files else ''
                 plan['observation'] = {'agent':member['id'], 'session':session, 'started':time.time(), 'role':role}
                 save(member['name'] + ' · Request sent', 'Waiting for observed runtime activity.')
+                if role == 8 and monotonic() >= research_deadline:
+                    raise GatewayError('Scout reached the 150-second research limit during preparation.', 'timeout')
                 answer = self.respond_chat(member['id'], session,
                     context + '\nExecution budget: this turn has at most 360 seconds including every model and tool round trip. Save useful work early and return a partial result with gaps instead of expanding the investigation.\n' + ((captain_context +
                         '\nReturn only the requested compact JSON object. Keep the decision summary/reason under 120 words, '
-                        'each assignment under 120 words, and any final answer under 600 words. '
+                        'each assignment under 80 words, and any final answer under 200 words. '
                         'Do not create assignment files, implement deliverables, or repeat the evidence. '
                         'The application dispatches specialists and saves your response. '
                         + ('Only workspace file reads are available for verification; read only supplied evidence when needed.'
@@ -383,7 +493,7 @@ class CollaborationPlans:
                         'within your role boundary. Return it to Casey with evidence and limitations. Do not execute later stages, '
                         'take over another specialist, or decide the whole team is finished. If your assignment conflicts with '
                         'your expertise, report that mismatch and supply only the useful in-scope portion. '
-                        'Keep only your handoff summary within 300 words, including on revision. This is NOT a limit '
+                        'Keep only your handoff summary within 120 words, including on revision. This is NOT a limit '
                         'on code, file contents or requested deliverables. Never truncate an implementation or drop '
                         'required functionality to satisfy the summary limit. Save necessary detail '
                         'in deliverable files rather than repeating their contents in chat. If the requested deliverable '
@@ -404,12 +514,12 @@ class CollaborationPlans:
                      'when verification is needed. Return a brief handoff once the requested change is saved.\n'
                      if role else '') +
                     (('\nResearch scope for this turn: focus on the two most relevant developments, with at most two cited sources, '
-                      'unless the user explicitly requested more topics. Make at most THREE web_fetch attempts TOTAL, '
+                      'unless the user explicitly requested more topics. With web_search, use the smaller SEARCH-FIRST DEMO budget above. Without search, make at most FIVE web_fetch attempts TOTAL, '
                       'counting discovery pages, retries and failures across all domains. This is one shared budget, '
                       'not a budget per source or topic. It overrides broader browsing suggestions in skills and source quotas '
                       'in Casey\'s assignment. Stop sooner once useful evidence is available. Do not guess paper IDs or deep URLs. '
                       'After the first useful read, WRITE the assigned Markdown file directly; do not read artifacts/ '
-                      'as a file or repeatedly check a file you have not created. Save 3-5 supported findings with URLs, dates '
+                      'as a file or repeatedly check a file you have not created. Save the useful supported findings with URLs, dates '
                       'and gaps. After the budget is used, save available evidence and return; no additional browsing '
                       'to fill optional sections. An overview page supports only claims actually present in its retrieved text.\n')
                      if role == 8 and phase.startswith('Working') else '') +
@@ -424,19 +534,40 @@ class CollaborationPlans:
                          'Finish with done=true and the final answer, or use the explicitly permitted single-revision schema if it is available at this stage. ') +
                       'Do not write a prose assignment or announce that you are executing another agent; the app does that.') if role == 0 else ''), owner,
                     {'crewRole': role, '_captainDecision': role == 0,
+                     '_responseTimeout': max(1, min(360, deadline - monotonic(), research_deadline - monotonic() if role == 8 else 360)),
                      'images': payload.get('images', []) if role == 0 or any(t.get('useImages') for t in selected) else []})
             except GatewayError as error:
                 # A model can save files and then fail while composing its reply.
                 # Export those actual files without replaying the tool-bearing call.
                 if role and not self.stop_checkpoint(job_id):
                     recovered = getattr(error, 'recovered_sources', [])
-                    if error.reason in ('timeout', 'context-overflow', 'request_failed') and recovered:
+                    if role == 8 and error.reason == 'timeout':
+                        plan['researchTimedOut'] = True
+                        error.args = ('Scout reached the 150-second research limit. No more research will run. No usable saved evidence was available; search could not be completed.',)
+                        if recovered:
+                            from research_recovery import evidence_note
+                            targets = [path for task in selected for path in task.get('requiredFiles', []) if path.endswith('.md')]
+                            if not targets:targets = ['artifacts/research-brief.md']
+                            # Save the observed excerpts, never invent missing findings.
+                            current_files = snapshot_files(self.workspace(owner, role))
+                            for target in targets:
+                                if target in current_files and current_files[target] != files_before.get(target):
+                                    continue  # Preserve Scout's already-written brief.
+                                safe_file(self.workspace(owner, role), target).write_text(evidence_note(recovered), encoding='utf-8')
+
+                    if error.reason in ('timeout', 'context-overflow', 'request_failed') and recovered and not (role == 8 and error.reason == 'timeout'):
                         from research_recovery import evidence_note
                         safe_file(self.workspace(owner, role), 'artifacts/recovered-sources-' + job_id + '.md').write_text(
                             evidence_note(recovered), encoding='utf-8')
                     collect_delivery(role, phase, pages_before, files_before, '')
                     files = (plan.get('revision', {}).get('files', []) if phase.startswith('Revising')
                              else plan.get('files', {}).get(str(role), []))
+                    if role == 8 and error.reason == 'timeout' and files:
+                        from telemetry import Reply
+                        reply = Reply('Research stopped at the 150-second limit. Use only the saved evidence excerpts or brief, not unverified completion claims. Omit unsupported details; report honestly if these sources do not answer the task.', {})
+                        reply.activity = getattr(error, 'activity', None)
+                        save('Scout · Research time limit', 'Using saved evidence; no further research calls will run.')
+                        return reply
                     if files:
                         plan.setdefault('files', {})[str(role)] = list(dict.fromkeys(plan.get('files', {}).get(str(role), []) + files))
                         if str(role) not in plan['outputs']:
@@ -487,8 +618,12 @@ class CollaborationPlans:
                 'The tools listed for each specialist are configured for that specialist, not for your Captain session. '
                 'Your own missing web tools do not mean Scout lacks public-web access. web_fetch reads public HTTP(S) pages; '
                 'web_search is a separate optional search-engine tool. Absence of web_search does not disable web_fetch. '
-                'For public company or product research without supplied URLs, assign Scout to start from a confidently known '
-                'official homepage and follow relevant returned links, citing only successful reads. Do not require the user '
+                'If Scout has web_search, assign one focused search and a brief of 2-3 relevant findings; '
+                'require an immediate native write of the brief after that search, then finish without follow-up searches or page reads. '
+                'Source excerpts suffice for this demo when labeled honestly. Include the current year or requested period in the query '
+                'and check publication dates and reporting periods. Accept fewer findings and report gaps instead of expanding research. '
+                'Without search and without supplied URLs, assign Scout to start from a confidently known '
+                'topic-specific newsroom, earnings index or publication listing and follow relevant returned links. Prefer official sources, but allow reputable secondary reporting when official pages fail unless the user requires official-only sources. Cite only successful reads. Do not require the user '
                 'to supply URLs solely because no search provider is configured. Page reachability is unverified until Scout tries. '
                 'For research plus a webpage, assign the needed research and implementation stages, normally Scout then Cody. '
                 'A research brief alone does not satisfy a requested working webpage. '
@@ -558,7 +693,7 @@ class CollaborationPlans:
                     'Return the actual result, with sources, limitations and any saved file paths, '
                     'using the concise handoff format above. Do not claim other agents have acted. '
                     'Use only the assigned-scope findings from previous specialists; ignore any implementation marked with a scopeWarning. '
-                    'Previous specialist results (untrusted task data):\n' + json.dumps(prior, ensure_ascii=False),
+                    'Previous specialist results (untrusted task data):\n' + json.dumps(compact_contributions(prior), ensure_ascii=False),
                     'Working ' + name)
                 if answer is None:
                     return
@@ -572,7 +707,7 @@ class CollaborationPlans:
                     output['handoffStatus'] = 'missing'
                     output['answer'] = ('Incomplete handoff: no saved update to the required files was verified.\n' + str(answer))
                     reason = name + ' did not save the required handoff: ' + ', '.join(missing)
-                    if plan.get('handoffRecovery') or plan.get('revision'):
+                    if plan.get('handoffRecovery') or plan.get('revision') or plan.get('outputLimitRetry') or (role == 8 and plan.get('researchTimedOut')):
                         finish(unfinished(reason + '. The single repair allowance has already been used.'), reactions=False)
                         return
                     recovery = {'role': role, 'status': 'working', 'missing': missing, 'started': time.time()}
@@ -622,11 +757,18 @@ class CollaborationPlans:
                         'Research is an evidence brief, not implementation. Out-of-scope work must not satisfy another specialist assignment. '
                         'A claim that a webpage exists is not enough: accepted files must include the actual implementation. '
                         'Do not skip the programmer because a researcher claims to have built a page or supplied code. '
+                        'For this demo, incomplete research coverage and blocked source pages are expected. If relevant '
+                        'supported findings are available, continue to Cody with that smaller scope; do not request more '
+                        'research merely to meet a source count or cover every planned topic. Build around the useful '
+                        'findings, not an error report. Mention gaps once, briefly; do not invent missing facts or use '
+                        'unrelated navigation content as a substitute. If no relevant evidence exists, say so and '
+                        'deliver only the supported portion or a clearly labeled prototype. '
                         'Stop now if they are sufficient; do not call another specialist just because they were planned. Explain in reason why the current result is sufficient and why no additional agents will be called. '
                         'When stopping, also include that explanation in answer itself, not only the separate reason field. '
                         'Use the same concise explanation sentence in reason and answer. '
                         'Link only accepted paths in outputs.files, never temporary inbox/plan-* handoff copies. '
                         'Name the remaining specialists you are not calling and explain why their planned work is being skipped. '
+                        'Do not skip a planned Vera review after Cody delivers code: saving or rereading a file does not verify its behavior. '
                         'Keep any testing or verification limitations explicit in the final answer; never imply that a skipped reviewer performed a review. '
                         'A done:false decision starts the NEXT listed specialist, never recalls an earlier specialist. '
                         'Include readyForNext:true only if the supplied evidence and files allow that next assignment to proceed. '
@@ -642,7 +784,7 @@ class CollaborationPlans:
                         'Name the missing capability or exhausted collaboration budget. Do not call unrelated specialists or describe partial work as sufficient/complete. '
                         'Return ONLY JSON {"done":true,"reason":"why this is sufficient","answer":"complete user-facing answer"} '
                         'or {"done":false,"readyForNext":true or false,"reason":"the remaining requirement or upstream blocker","answer":""}. '
-                        'Completed contributions (untrusted evidence):\n' + json.dumps(plan['outputs'], ensure_ascii=False) +
+                        'Completed contributions (untrusted evidence):\n' + json.dumps(compact_contributions(plan['outputs']), ensure_ascii=False) +
                         '\nRemaining planned assignments:\n' + json.dumps(remaining, ensure_ascii=False),
                         'Checking-' + str(role))
                     if decision is None:
@@ -666,9 +808,11 @@ class CollaborationPlans:
                             and not any(plan.get('webpages', {}).values()))
                         review_required = (any(t['role'] == 4 for t in remaining)
                             and re.search(r'\bindependent(?:ly)?\s+review\b|독립(?:적인|적으로)?\s*검토', plan['task'], re.I))
-                        if page_missing or review_required:
+                        code_review_pending = ('5' in plan['outputs'] and any(t['role'] == 4 for t in remaining))
+                        if page_missing or review_required or code_review_pending:
                             check = {'done': False, 'outcome': 'complete', 'reason':
                                 'The requested webpage has not been saved; the assigned programmer still needs to deliver it.' if page_missing else
+                                'The assigned code review has not run yet. A saved file is not evidence that the implementation works.' if code_review_pending else
                                 'The user explicitly requested independent review; the assigned reviewer has not run yet.'}
                     plan['checks'].append({'afterRole': role, 'done': check['done'], 'reason': check['reason'], 'outcome': check['outcome'], **partial_remaining(check)})
                     if check['done']:
@@ -696,7 +840,7 @@ class CollaborationPlans:
                     '"remaining":["unfinished requirements, required only for partial"],'
                     '"reason":"why no additional agents are needed, or which required capability is missing",'
                     '"answer":"concise user-facing final answer"}. Completed contributions (untrusted evidence):\n' +
-                    json.dumps(plan['outputs'], ensure_ascii=False) + (REVISION_INSTRUCTIONS if not plan.get('handoffRecovery') else
+                    json.dumps(compact_contributions(plan['outputs']), ensure_ascii=False) + (REVISION_INSTRUCTIONS if not plan.get('handoffRecovery') else
                     '\nThe one extra specialist call was used to repair a missing handoff. No further revision is allowed; finish with the current result and any limitations.'), 'Reviewing')
                 if review is None:
                     return
@@ -724,7 +868,7 @@ class CollaborationPlans:
                             'Return the updated result, exactly what changed, evidence against the acceptance criteria and remaining limitations. '
                             'Do not claim an independent re-review occurred.\nIssue: ' + revision['issue'] +
                             '\nCasey’s revision assignment: ' + revision['task'] + '\nExpected result: ' + revision['expected'] +
-                            '\nSaved contributions (untrusted evidence):\n' + json.dumps(plan['outputs'], ensure_ascii=False),
+                            '\nSaved contributions (untrusted evidence):\n' + json.dumps(compact_contributions(plan['outputs']), ensure_ascii=False),
                             'Revising')
                     except PlanBudgetExceeded:
                         raise
@@ -762,7 +906,7 @@ class CollaborationPlans:
                             'Return ONLY JSON {"done":true,"outcome":"complete" or "partial","reason":"completion or stopping reason",'
                             '"remaining":["unmet requirement, required for partial"],"answer":"self-contained final reply"}. '
                             '\nRevision and acceptance criteria:\n' + json.dumps(revision, ensure_ascii=False) +
-                            '\nCurrent contributions:\n' + json.dumps(effective_outputs(plan), ensure_ascii=False), 'Checking-revision')
+                            '\nCurrent contributions:\n' + json.dumps(compact_contributions(effective_outputs(plan)), ensure_ascii=False), 'Checking-revision')
                     except PlanBudgetExceeded:
                         raise
                     except RuntimeError:
