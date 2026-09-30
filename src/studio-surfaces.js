@@ -22,6 +22,8 @@ const crewActions=document.createElement('div');crewActions.className='studio-te
 el('crew-passport').prepend(crewActions);crewActions.append(el('room-action'));
 el('crew-passport').append(document.getElementById('campus-roster'));
 const controlButton=document.createElement('button');controlButton.type='button';controlButton.className='studio-secondary';controlButton.dataset.surface='control';controlButton.textContent='Mission Control';crewActions.append(controlButton);
+const teamResetButton=document.createElement('button');teamResetButton.type='button';teamResetButton.id='studio-bac-reset';teamResetButton.className='studio-secondary';teamResetButton.textContent='Reset';teamResetButton.setAttribute('aria-label','Reset Multi-Agent Demo');teamResetButton.title='Stop active team work and clear team chats, files and the board';teamResetButton.onclick=()=>resetStudio('bac',teamResetButton);crewActions.append(teamResetButton);
+const teamResetStatus=document.createElement('p');teamResetStatus.id='studio-team-reset-status';teamResetStatus.className='studio-muted';teamResetStatus.setAttribute('role','status');teamResetStatus.hidden=true;crewActions.after(teamResetStatus);
 const resultsButton=document.createElement('button');resultsButton.type='button';resultsButton.className='studio-primary';resultsButton.dataset.surface='deliverables';resultsButton.textContent='Results';resultsButton.hidden=true;crewActions.append(resultsButton);
 const standbyPanel=document.createElement('details');standbyPanel.id='studio-standby';
 standbyPanel.innerHTML='<summary>Standby specialists <span id="studio-standby-count"></span></summary><div class="studio-standby-content"><ul id="studio-standby-list"></ul></div>';
@@ -44,6 +46,7 @@ standbyPanel.addEventListener('keydown',event=>{
   }
 });
 function syncSurface(){
+  teamResetButton.disabled=!!data.bacResetting||removingAgent;
   resultsButton.hidden=!crewMission();
   el('compare-open').hidden=!comparison;
   if(!activeSurface)return;

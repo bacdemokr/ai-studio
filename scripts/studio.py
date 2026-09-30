@@ -705,9 +705,9 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
                     self.status_cache = (time.monotonic(), value)
         return {**self.status_cache[1], 'instance': self.boot_id}
 
-    def files(self, owner):
+    def files(self, owner, role=None):
         result = []
-        base = self.workspace(owner)
+        base = self.workspace(owner, role)
         for category in ('inbox', 'artifacts'):
             folder = base / category
             if folder.is_symlink():
@@ -767,7 +767,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
         except (Problem, UnicodeError):
             pass
         from team_models import selections
-        return {'teamSelections': selections(self,team), 'profile': self.profile(owner), 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': self.files(owner),
+        return {'crewDocuments': [f for f in self.files(team,0) if f['kind']=='inbox'] if team else [], 'teamSelections': selections(self,team), 'profile': self.profile(owner), 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': self.files(owner),
                 'techRadar': self.heartbeat.status(owner, self.profile(owner) or {}),
                 'memory': memory_text, 'agentId': owner, 'crewOwner': team, 'roundtableTurns': roundtable_turns,
                 'agents': agents, 'agentLimit': MAX_AGENTS, 'assignments': assignments, 'bacResetting': bac_resetting,
@@ -806,7 +806,12 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
                 for key in ('id', 'kind', 'status', 'payload', 'result', 'events', 'created', 'due')}
 
     def upload(self, owner, data):
-        if not self.profile(owner):
+        role = data.get('crewRole')
+        if 'crewRole' in data and (type(role) is not int or role != 0):
+            raise Problem('Documents can be attached to Casey only.')
+        if role is not None:
+            owner = self.crew_owner(owner)
+        if role is None and not self.profile(owner):
             raise Problem('Create your agent first.')
         name = text(data.get('name'), 100, 'File name')
         if '/' in name or '\\' in name:
@@ -818,21 +823,22 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
             raise Problem(str(error)) from None
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
-            self.require_available(db, owner)
+            if role is None:self.require_available(db, owner)
+            else:self.require_bac_not_resetting(db, owner)
             # Native OpenShell mirrors the workspace around tool calls. Do not
             # let its download overwrite a document uploaded mid-execution.
             self.require_idle(db, owner)
-            existing = {file['path'] for file in self.files(owner)}
+            existing = {file['path'] for file in self.files(owner, role)}
             incoming = {'inbox/' + name}
             if extracted is not None:incoming.add('inbox/' + name + '.txt')
             if len(existing | incoming) > 80:
                 raise Problem('Workspace file limit reached.')
-            path = safe_file(self.workspace(owner), 'inbox/' + name)
-            readable = safe_file(self.workspace(owner), 'inbox/' + name + '.txt') if extracted is not None else None
+            path = safe_file(self.workspace(owner, role), 'inbox/' + name)
+            readable = safe_file(self.workspace(owner, role), 'inbox/' + name + '.txt') if extracted is not None else None
             # A binary document and its extracted text form one upload. Never
             # let a separate text upload silently replace that document's view.
             if name.lower().endswith(('.pdf.txt', '.pptx.txt', '.xlsx.txt')):
-                original = safe_file(self.workspace(owner), 'inbox/' + name[:-4])
+                original = safe_file(self.workspace(owner, role), 'inbox/' + name[:-4])
                 if original.exists():
                     raise Problem('This name is reserved for text extracted from an existing document. Rename your text file before uploading.')
             if readable is not None and readable.exists() and not path.exists():

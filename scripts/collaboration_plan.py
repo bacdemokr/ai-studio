@@ -3,6 +3,7 @@ import json
 import re
 import time
 from time import monotonic
+from browser_capability import BROWSER_LIMIT
 from plan_artifacts import snapshot_files, collect_files
 from webpage_artifacts import PAGE_INSTRUCTIONS, html_files, collect_pages
 from plan_inputs import requested_inputs, input_manifest, validate_assignments
@@ -182,7 +183,7 @@ class CollaborationPlans:
         team = [{'role': i, 'name': m['name'], **m['collaboration'], **collaboration_capabilities(m, m['role'])}
                 for i, m in enumerate(CREW_CATALOG) if i in plan_roles()]
         history = self.conversation_context(origin['owner'], origin['role'], row['created'], job_id)
-        context = (
+        context = (BROWSER_LIMIT + '\n' +
             'This is an explicit /plan collaboration, separate from the event-template pipeline. '
             'Use the current task, supplied conversation context and handoffs. Do not read old event briefs, '
             'contracts, schedules, other conversations or personal agents\' workspaces. '
@@ -456,6 +457,10 @@ class CollaborationPlans:
                 'For research plus a webpage, assign the needed research and implementation stages, normally Scout then Cody. '
                 'A research brief alone does not satisfy a requested working webpage. '
                 'Do not promise authenticated access, browser interaction or exhaustive/current search-engine coverage. '
+                'If the current request explicitly requires opening or controlling a browser and no alternative was accepted, '
+                'return tasks:[], outcome:"unavailable" and an answer explaining that this demo cannot open or control '
+                'the PC browser. Offer a manual link or public-page research as an optional next step; do not call Scout '
+                'to attempt the browser task through web_fetch. '
                 'First check whether this pool and its actual tools can fulfill the request. Do not assign loosely related specialists '
                 'when required expertise or capabilities are missing. Instead, select appropriate experts for a useful achievable portion. No agent can install packages, execute arbitrary programs, '
                 'access private services without a configured tool, deploy, send messages, book or purchase. '

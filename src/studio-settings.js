@@ -29,7 +29,7 @@ settingsButton.onclick=async()=>{
   <label for="studio-telegram-token">Bot token (create your bot with <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer">@BotFather</a> and paste its token)</label><input id="studio-telegram-token" type="password" autocomplete="off" spellcheck="false" placeholder="Token from @BotFather (e.g. 123456789:ABCdef...)">
   <label for="studio-telegram-chat">Chat ID (open <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer">@userinfobot</a>, type /start, copy your Id)</label><input id="studio-telegram-chat" autocomplete="off" spellcheck="false" placeholder="Numeric chat ID (e.g. 123456789)">
   <p id="studio-telegram-status" role="status" hidden></p><div id="studio-telegram-controls" hidden><div class="studio-dialog-actions"><button type="button" id="studio-telegram-test" class="studio-secondary">Send test</button><button type="button" id="studio-telegram-disconnect" class="studio-secondary">Disconnect</button></div></div></section>
-  <section id="studio-settings-reset-panel" role="tabpanel" aria-labelledby="studio-settings-reset-tab" class="studio-agent-reset" hidden><div class="studio-reset-row"><div><h3>Lounge agents</h3><p>Remove hired agents and their data.</p></div><button type="button" id="studio-agent-reset" class="studio-secondary" aria-label="Reset Lounge agents" ${(data.agents||[]).length?'':'disabled'}>Reset</button></div><div class="studio-reset-row"><div><h3>BaC (Multi-Agent Demo)</h3><p>Clear the event board and team chats.</p></div><button type="button" id="studio-bac-reset" class="studio-secondary" aria-label="Reset BaC">Reset</button></div><div class="studio-reset-footer"><button type="button" id="studio-reset-all" class="studio-danger">Reset all</button></div></section>
+  <section id="studio-settings-reset-panel" role="tabpanel" aria-labelledby="studio-settings-reset-tab" class="studio-agent-reset" hidden><div class="studio-reset-row"><div><h3>Lounge agents</h3><p>Remove hired agents and their data.</p></div><button type="button" id="studio-agent-reset" class="studio-secondary" aria-label="Reset Lounge agents" ${(data.agents||[]).length?'':'disabled'}>Reset</button></div><div class="studio-reset-footer"><button type="button" id="studio-reset-all" class="studio-danger">Reset all</button></div></section>
   <p id="studio-settings-status" role="status"></p><div class="studio-dialog-actions"><button type="button" id="studio-start-agents" class="studio-secondary" ${runtime.gateway?'hidden':''}>Start agents</button><button type="submit" class="studio-primary" id="studio-save-settings">Connect model</button></div></form>`);
   const form=el('config-form'),modelList=el('model-options'),modelStatus=el('model-status'),loadButton=el('load-models');
   function showTelegram(){el('telegram-status').textContent=telegram.connected?'Connected to @'+telegram.bot+' · chat '+telegram.chatId:telegram.error||'';el('telegram-status').hidden=!telegram.connected&&!telegram.error;el('telegram-controls').hidden=!telegram.connected;el('telegram-test').disabled=!telegram.connected;el('telegram-disconnect').disabled=!telegram.connected;el('telegram-chat').value=telegram.chatId||'';}
@@ -39,7 +39,6 @@ settingsButton.onclick=async()=>{
   el('location-city').value=settings.location?.city||'Zurich';
   el('agent-reset').onclick=()=>resetStudio('lounge');
   el('reset-all').onclick=()=>resetStudio('all');
-  el('bac-reset').onclick=()=>resetStudio('bac');
   let tab='model',generation=0,availableModels=[],hasMoreModels=false,connecting=false;
   const currentForm=()=>el('config-form')===form&&el('dialog').open;
   const modelSearch=el('model-search'),changeModel=el('change-model');
@@ -107,13 +106,13 @@ settingsButton.onclick=async()=>{
 };
 el('dialog').addEventListener('close',()=>{if(el('api-key'))el('api-key').value='';if(el('telegram-token'))el('telegram-token').value='';});
 
-async function resetStudio(scope){
+async function resetStudio(scope,sourceButton=null){
  if(removingAgent||pendingWrites||changingAgent)return;
  removingAgent=true;++refreshVersion;
- const modal=el('dialog'),status=el('settings-status'),blockClose=e=>e.preventDefault();
- const buttons=[...modal.querySelectorAll('button')].map(button=>[button,button.disabled]);
+ const modal=el('dialog'),status=sourceButton?el('team-reset-status'):el('settings-status'),blockClose=e=>e.preventDefault();
+ const buttons=(sourceButton?[sourceButton]:[...modal.querySelectorAll('button')]).map(button=>[button,button.disabled]);
  modal.addEventListener('cancel',blockClose);buttons.forEach(([button])=>button.disabled=true);
- status.textContent='Resetting';
+ status.hidden=false;status.textContent='Resetting…';
  let completed=0,total=0,next=agentId,background=false;
  const originalSelection=agentId;
  try{

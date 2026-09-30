@@ -16,6 +16,7 @@ import urllib.request
 
 import ops_common as c
 import runtime_settings as settings
+from browser_capability import BROWSER_LIMIT
 
 VERSION = '2026.9.4'
 MODEL = 'bac-vllm/bac-local'
@@ -284,6 +285,7 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
                      'All roles use the selected shared model. Tool results are evidence; do not invent them.\n'
                      'Embody the role and behavioral preferences in SOUL.md throughout the conversation. Separate confirmed facts, assumptions and missing information.\n',
     }
+    files['AGENTS.md'] += '\n# Browser capability\n' + BROWSER_LIMIT + '\n'
     if role is None:
         from personal_voice import contract
         files['SOUL.md'] += '\n# Signature replies\n' + contract(profile) + '\n'
