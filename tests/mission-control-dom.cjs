@@ -6,7 +6,7 @@ const source=fs.readFileSync('src/studio-crew.js','utf8');
   const page=await browser.newPage();await page.setContent('<div id="lanes"></div>');
   await page.addScriptTag({content:source.slice(source.indexOf('function updateMissionControlTrace('),source.indexOf('function renderMissionControl('))});
   const row=(key,text)=>'<article data-trace-key="'+key+'">'+text+'</article>';
-  const result=row('avery','<h4>Delivered</h4><details data-trace-details="output-8"><summary>Avery’s result</summary><p>Preserve this selected evidence.</p><button data-preview-file="test.html">Preview</button></details>');
+  const result=row('avery','<h4>Delivered</h4><details data-trace-details="output-8"><summary>Scout’s result</summary><p>Preserve this selected evidence.</p><button data-preview-file="test.html">Preview</button></details>');
   const pending=row('review','Reviewing…'),planned=row('riley','Planned');
   const patch=(html,id='first-job')=>page.evaluate(({html,id})=>updateMissionControlTrace(document.getElementById('lanes'),id,html),{html,id});
   await patch(result+pending+planned);await page.locator('summary').click();await page.locator('button').focus();

@@ -14,9 +14,9 @@ class PlanRoundtableTests(unittest.TestCase):
     def test_guest_reacts_to_repaired_result_without_stale_contribution(self):
         from crew_roundtable import reaction_context
         plan = {'task': 'Calculate total', 'finalAnswer': 'Total is 450',
-                'outputs': {'6': {'name': 'Nora', 'answer': 'Total is 999'}},
+                'outputs': {'6': {'name': 'Ada', 'answer': 'Total is 999'}},
                 'revision': {'role': 6, 'status': 'delivered',
-                             'output': {'name': 'Nora', 'answer': 'Corrected total is 450'}}}
+                             'output': {'name': 'Ada', 'answer': 'Corrected total is 450'}}}
         context = reaction_context({'collaboration': plan})
         self.assertIn('Corrected total is 450', context)
         self.assertNotIn('999', context)
@@ -50,7 +50,7 @@ class PlanRoundtableTests(unittest.TestCase):
         self.assertEqual(set(replies), {self.owner, muse})
         prompt = self.adapter.reaction_calls[-1][2]
         for text in ('Gentle and dreamy', 'Poetry and unexpected metaphors', 'combined proposal',
-                     'Verified contribution from Avery', 'No browsing, file changes', 'not as an assigned specialist'):
+                     'Verified contribution from Scout', 'No browsing, file changes', 'not as an assigned specialist'):
             self.assertIn(text, prompt)
         self.assertIn(replies[self.owner]['answer'], prompt)
         self.assertNotIn('PRIVATE_UPLOAD', prompt)

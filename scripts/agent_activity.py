@@ -8,6 +8,25 @@ import posixpath
 from contextlib import closing
 
 
+HTTP_FAILURES = {400:'Bad request',401:'Authentication required',403:'Access denied',404:'Page not found',
+                 408:'Request timed out',429:'Too many requests',500:'Server error',502:'Bad gateway',
+                 503:'Service unavailable',504:'Gateway timed out'}
+
+
+def web_failure_status(message):
+    # Inspect only a failed web tool result, and expose a status code, never its
+    # raw response body, URL, headers or instructions embedded in the page.
+    details=message.get('details') or {}
+    for key in ('statusCode','httpStatus','status'):
+        value=details.get(key)
+        if type(value) is int and 400<=value<=599:return value
+    content=message.get('content',[])
+    text=' '.join(str(item.get('text','')) for item in content if isinstance(item,dict) and item.get('type')=='text')[:16000] if isinstance(content,list) else ''
+    text=str(details.get('error',''))[:16000]+' '+text
+    match=re.search(r'(?:Web fetch failed\s*\(|HTTP(?:\s+error)?\s+)([45]\d{2})\b',text,re.I)
+    return int(match[1]) if match else None
+
+
 def custom_skill_paths(config, agent, catalog):
     """Only this agent's equipped project skills, at its real workspace paths."""
     if not isinstance(config,dict):return {}
@@ -65,6 +84,9 @@ def collect(state, agent, session, started=0, skill_paths=None):
             elif message.get('role')=='toolResult' and message.get('toolCallId') in calls:
                 call=calls[message['toolCallId']];details=message.get('details') or {}
                 failed=message.get('isError') or details.get('exitCode',0) not in (0,None) or details.get('status') in ('error','failed')
+                if failed and call['tool'] in ('web_fetch','web_search'):
+                    code=web_failure_status(message)
+                    if code:call['httpStatus']=code
                 call['status']='failed' if failed else 'running' if details.get('status')=='running' else 'completed'
         for call in calls.values():
             # Reading a skill is observable; mentioning or equipping one is not use.
@@ -128,6 +150,10 @@ def model_failure(state, agent, session, started, output_limit):
                     'Accumulated context may leave too little room for the answer. '
                     'Saved work is preserved; the request was not automatically repeated.'}
             error = str(message.get('errorMessage', ''))
+            if 'context overflow' in error.lower() or 'prompt too large' in error.lower():
+                return {'code': 'context-overflow', 'message':
+                    'The research exceeded the available context limit. Saved work is preserved. '
+                    'Narrow the research scope or start a fresh request; this request was not automatically repeated.'}
             malformed = error in {
                 'Provider returned an incomplete or malformed tool call',
                 'Provider completed tool call with malformed JSON arguments',
@@ -163,3 +189,27 @@ def model_failure(state, agent, session, started, output_limit):
             return None
     except (OSError, ValueError, TypeError, AttributeError, sqlite3.Error):
         return None
+
+
+def context_failure(state, agent, session, started):
+    """Native precheck failures may never become assistant transcript messages."""
+    from datetime import datetime
+    key = 'sessionKey=agent:' + agent + ':openai-user:' + session
+    try:
+        with (Path(state).parent / 'gateway.log').open('rb') as log:
+            log.seek(0, 2)
+            log.seek(max(0, log.tell() - 2_000_000))
+            lines = log.read().decode('utf-8', errors='replace').splitlines()
+        for line in reversed(lines):
+            if '[agent/embedded] [context-overflow-' not in line or key + ' ' not in line:
+                continue
+            try:stamp = datetime.fromisoformat(line.split(' ', 1)[0].replace('Z', '+00:00')).timestamp()
+            except ValueError:continue
+            if stamp < started:continue
+            return {'code':'context-overflow', 'message':
+                'The research or conversation exceeded the available context limit. '
+                'Saved work is preserved. Narrow the request or start a fresh conversation; '
+                'this request was not automatically repeated.'}
+    except OSError:
+        pass
+    return None

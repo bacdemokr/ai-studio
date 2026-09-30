@@ -5,6 +5,10 @@ import re
 BASE_URL = 'https://inference-api.nvidia.com/v1'
 MODELS = ('nvidia/nvidia/nemotron-3-ultra-nvfp4', 'nvidia/nvidia/nemotron-3.5-lightning')
 LABELS = ('Nemotron 3 Ultra', 'Nemotron 3.5 Lightning')
+_catalog = [{'id':m,'label':label} for m,label in zip(MODELS,LABELS)]
+
+def valid_model(value):
+    return isinstance(value,str) and bool(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}',value))
 
 
 def role_for(agent):
@@ -15,8 +19,10 @@ def role_for(agent):
 def model_for(agent, selected=None):
     role = role_for(agent)
     if role is None:return None
-    if selected in MODELS:return 'bac-team/'+selected
-    if selected in ['bac-team/'+m for m in MODELS]:return selected
+    if isinstance(selected,str) and selected.startswith('bac-team/'):
+        selected=selected[len('bac-team/'):]
+        if valid_model(selected):return 'bac-team/'+selected
+    if valid_model(selected) and selected in {m['id'] for m in _catalog}:return 'bac-team/'+selected
     return 'bac-team/'+MODELS[0 if role == 0 else 1]
 
 
@@ -24,17 +30,22 @@ def public():
     import runtime_settings as settings
     import session_secrets as secrets
     return {'connected':bool(secrets.get(settings.secret_key('team')).get('apiKey')),
-            'models':[{'id':m,'label':label} for m,label in zip(MODELS,LABELS)]}
+            'models':list(_catalog)}
 
 
-def apply(config):
+def apply(config, selected=None):
     import runtime_settings as settings
     import session_secrets as secrets
+    ids=set(MODELS)
+    if valid_model(selected):ids.add(selected.removeprefix('bac-team/'))
+    for agent,entry in config.get('agents',{}).get('entries',{}).items():
+        model=model_for(agent,entry.get('model'))
+        if model:ids.add(model.removeprefix('bac-team/'))
     config.setdefault('models',{}).setdefault('providers',{})['bac-team']={
         'baseUrl':secrets.proxy_url('team',BASE_URL),'apiKey':'session-only','api':'openai-completions',
         'models':[{'id':m,'name':m,'input':['text'],'reasoning':False,'contextWindow':32768,
                    'contextTokens':32768,'maxTokens':settings.MAX_OUTPUT_TOKENS,
-                   'cost':{'input':0,'output':0,'cacheRead':0,'cacheWrite':0}} for m in MODELS]}
+                   'cost':{'input':0,'output':0,'cacheRead':0,'cacheWrite':0}} for m in sorted(ids)]}
     for agent,entry in config.get('agents',{}).get('entries',{}).items():
         model=model_for(agent,entry.get('model'))
         if model:entry.update(model=model,modelPolicy={'allow':[model]})
@@ -42,6 +53,7 @@ def apply(config):
 
 
 def configure(studio,data):
+    global _catalog
     import agent_runtime as runtime
     import runtime_settings as settings
     import session_secrets as secrets
@@ -51,12 +63,13 @@ def configure(studio,data):
                                        'apiKey':data.get('apiKey',''),'_credentialSession':data.get('_credentialSession')})
     if not data.get('apiKey'):raise Problem('Enter the dedicated Multi-Agent Demo API key.')
     available=settings.request(provider,profile,'/models',timeout=25)
-    ids={row.get('id') for row in available.get('data',[]) if isinstance(row,dict)}
+    ids={row.get('id') for row in available.get('data',[]) if isinstance(row,dict) and valid_model(row.get('id'))}
     if not set(MODELS).issubset(ids):raise Problem('The dedicated API key must provide both configured Nemotron models.',502)
     with studio.db() as db:
         db.execute('BEGIN IMMEDIATE')
         if db.execute("SELECT 1 FROM jobs WHERE status IN ('queued','running','waiting','stopping') LIMIT 1").fetchone():
             raise Problem('Finish or cancel pending missions before changing team models.',409)
+        _catalog=[{'id':m,'label':dict(zip(MODELS,LABELS)).get(m,m)} for m in sorted(ids) if valid_model(m)]
         with runtime.config_lock():
             config=copy.deepcopy(c.read_json(runtime.config_path(),None) or runtime.initial_config())
             runtime.save_config(apply(config))
@@ -68,14 +81,14 @@ def configure(studio,data):
 def selections(studio, owner):
     with studio.db() as db:
         saved={r['role']:r['model'] for r in db.execute('SELECT role,model FROM crew_resources WHERE owner=?',(owner,))}
-    return [{'id':saved.get(role) if saved.get(role) in MODELS else MODELS[0 if role==0 else 1],
+    return [{'id':saved.get(role) if valid_model(saved.get(role)) else MODELS[0 if role==0 else 1],
              'role':role} for role in range(9)]
 
 
 def select(studio, owner, data):
-    from studio import Problem
+    from studio import Problem, CREW_CATALOG
     role,model=data.get('role'),data.get('model')
-    if type(role) is not int or role not in (0,2,3,4,5,6,7,8) or model not in MODELS:
+    if type(role) is not int or role not in {i for i,m in enumerate(CREW_CATALOG) if m.get('planEligible',True)} or model not in {m['id'] for m in _catalog}:
         raise Problem('Choose a team member and an available model.')
     with studio.db() as db:
         db.execute('BEGIN IMMEDIATE')

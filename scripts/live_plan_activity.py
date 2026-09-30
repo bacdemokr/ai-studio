@@ -1,5 +1,6 @@
 """Public, observed tool metadata for a currently running collaboration turn."""
 import time
+from agent_activity import HTTP_FAILURES
 from pathlib import PurePosixPath
 from urllib.parse import urlsplit
 
@@ -21,6 +22,9 @@ def snapshot(adapter, observation):
             else:target=''
             calls.append({'tool':tool if tool in ('web_fetch','web_search','read','write','edit','apply_patch','exec') else 'tool',
                           'target':target[:160], 'status':call.get('status') if call.get('status') in ('started','running','completed','failed') else 'started'})
+            code=call.get('httpStatus')
+            if calls[-1]['status']=='failed' and tool in ('web_fetch','web_search') and type(code) is int and 400<=code<=599:
+                calls[-1]['errorLabel']=str(code)+' - '+HTTP_FAILURES.get(code,'HTTP request failed')
         return {'role':observation['role'], 'available':bool(activity.get('available')), 'calls':calls,
                 'elapsed':max(0,int(time.time()-observation['started']))}
     except (OSError, RuntimeError, ValueError, TypeError, KeyError, AttributeError):

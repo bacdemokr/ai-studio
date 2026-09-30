@@ -87,7 +87,7 @@ class PlanEdgeCases(unittest.TestCase):
         self.adapter.fail_role=None;self.adapter.calls.clear()
         self.start('/plan Continue from the completed research.');self.app.execute(self.app.next_job())
         prompt=self.adapter.calls[0][2]
-        self.assertIn('Verified contribution from Avery',prompt)
+        self.assertIn('Verified contribution from Scout',prompt)
         self.assertIn('error',prompt)
 
     def test_webpage_is_handed_to_next_specialist_not_just_its_filename(self):

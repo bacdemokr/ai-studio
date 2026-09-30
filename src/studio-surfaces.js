@@ -24,8 +24,16 @@ el('crew-passport').append(document.getElementById('campus-roster'));
 const controlButton=document.createElement('button');controlButton.type='button';controlButton.className='studio-secondary';controlButton.dataset.surface='control';controlButton.textContent='Mission Control';crewActions.append(controlButton);
 const resultsButton=document.createElement('button');resultsButton.type='button';resultsButton.className='studio-primary';resultsButton.dataset.surface='deliverables';resultsButton.textContent='Results';resultsButton.hidden=true;crewActions.append(resultsButton);
 const standbyPanel=document.createElement('details');standbyPanel.id='studio-standby';
-standbyPanel.innerHTML='<summary>Standby specialists <span id="studio-standby-count"></span></summary><div class="studio-standby-content"><p>Casey assembles the team for your /plan task. Choose a model for each member.</p><ul id="studio-standby-list"></ul></div>';
+standbyPanel.innerHTML='<summary>Standby specialists <span id="studio-standby-count"></span></summary><div class="studio-standby-content"><ul id="studio-standby-list"></ul></div>';
 crewActions.after(standbyPanel);
+function fitStandbyPanel(){
+ if(!standbyPanel.open)return;
+ const top=standbyPanel.querySelector('.studio-standby-content').getBoundingClientRect().top;
+ const composer=el('crew-chat').getBoundingClientRect();
+ standbyPanel.style.setProperty('--standby-space',Math.max(60,Math.min(340,composer.top-top-12))+'px');
+}
+standbyPanel.addEventListener('toggle',fitStandbyPanel);
+window.addEventListener('resize',fitStandbyPanel);
 // Capture outside clicks even when another control stops event propagation.
 document.addEventListener('click',event=>{
   if(standbyPanel.open&&!standbyPanel.contains(event.target))standbyPanel.open=false;

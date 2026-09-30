@@ -25,7 +25,7 @@ class PlanRoleScopeTests(unittest.TestCase):
             if '-checking-8' in session:
                 original(agent, session, prompt, **kwargs)
                 # Even an incorrect model checkpoint cannot accept rejected HTML.
-                return json.dumps({'done': True, 'reason': 'Avery already built everything.', 'answer': 'Done'})
+                return json.dumps({'done': True, 'reason': 'Scout already built everything.', 'answer': 'Done'})
             if session.endswith('-working') and agent.endswith('-r5'):
                 original(agent, session, prompt, **kwargs)
                 workspace = self.adapter.agents[agent]
@@ -76,7 +76,7 @@ class PlanRoleScopeTests(unittest.TestCase):
         def respond(agent, session, prompt, **kwargs):
             result = original(agent, session, prompt, **kwargs)
             if '-checking-' in session:
-                return json.dumps({'done':True, 'reason':'The requested cited brief is complete.', 'answer':'The cited brief is sufficient; Riley is not needed.'})
+                return json.dumps({'done':True, 'reason':'The requested cited brief is complete.', 'answer':'The cited brief is sufficient; Vera is not needed.'})
             return result
         self.adapter.respond = respond
         result = self.start('/plan Research AMD and give me a cited brief.')

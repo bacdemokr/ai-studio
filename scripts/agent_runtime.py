@@ -475,7 +475,8 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
         config['agents']['ownership'] = 'explicit'
         config.setdefault('tools', {}).setdefault('fs', {})['workspaceOnly'] = False
         import team_models
-        team_models.apply(config)
+        team_models.apply(config, selected=profile.get('_teamModel'))
+        settings.apply_context_limits(config)
         model = team_models.model_for(agent_id, profile.get('_teamModel') or config['agents']['entries'].get(agent_id,{}).get('model')) or config['agents']['defaults']['model']['primary']
         entry = {
             'name': profile['name'], 'workspace': str(workspace), 'model': model,
@@ -484,6 +485,9 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
             'tools': {'allow': allow, 'deny': ['web_fetch', 'web_search'] if protected else [] if event_exec or radar_exec else ['exec'],
                       'fs': {'workspaceOnly': protected}},
         }
+        if team_models.role_for(agent_id) == 8:
+            # Use the native per-agent repetition guard, not only prompt advice.
+            entry['tools']['loopDetection'] = {'enabled': True}
         control = profile.get('_planControl')
         if control in ('none', 'read'):
             # Empty allow alone is not a deny-all policy in OpenClaw. These
@@ -505,6 +509,8 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
         patch = {'agents': {'defaults': {'maxConcurrent': 2}, 'ownership': 'explicit',
                             'entries': {agent_id: entry}},
                  'tools': {'fs': {'workspaceOnly': False}}}
+        patch['agents']['defaults']['compaction'] = config['agents']['defaults']['compaction']
+        patch['tools']['web'] = {'fetch': config['tools']['web']['fetch']}
         patch['models'] = {'providers': {'bac-team': config['models']['providers']['bac-team']}}
         replace_paths = [f'agents.entries.{agent_id}.skills',
                          f'agents.entries.{agent_id}.modelPolicy.allow',
@@ -839,14 +845,16 @@ def respond(agent_id, session, prompt, images=None, json_response=False):
         })
     except RuntimeError as error:
         if isinstance(error, GatewayError) and error.reason == 'request_failed':
-            from agent_activity import model_failure
-            failure = model_failure(root() / 'state', agent_id, session, started, settings.MAX_OUTPUT_TOKENS)
+            from agent_activity import model_failure, context_failure
+            failure = (model_failure(root() / 'state', agent_id, session, started, settings.MAX_OUTPUT_TOKENS)
+                       or context_failure(root() / 'state', agent_id, session, started))
             if failure:
                 error = GatewayError(failure['message'], failure['code'])
         error.activity = observed_activity(agent_id, session, started)
-        if isinstance(error, GatewayError) and error.reason == 'timeout':
+        if isinstance(error, GatewayError) and error.reason in ('timeout', 'context-overflow'):
             from research_recovery import recovered_sources
             error.recovered_sources = recovered_sources(root() / 'state', agent_id, session, started)
+        if isinstance(error, GatewayError) and error.reason == 'timeout':
             completed = sum(call.get('status') == 'completed' for call in error.activity.get('calls', []))
             error.args = (f'The agent reached its {settings.AGENT_TIMEOUT_SECONDS}-second time limit. '
                           f'{completed} tool calls completed before the timeout. '

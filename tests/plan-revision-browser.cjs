@@ -28,7 +28,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   const kinds=await page.locator('#studio-lanes [data-trace-kind]').evaluateAll(nodes=>nodes.map(n=>n.dataset.traceKind));
   assert.deepEqual(kinds,['plan','contribution','review','contribution','revision','revision-work','review','response']);
   await page.locator('[data-revision-role="6"] summary').click();
-  assert.match(await page.locator('[data-revision-role="6"]').innerText(),/Nora corrected the total to 450/);
+  assert.match(await page.locator('[data-revision-role="6"]').innerText(),/Ada corrected the total to 450/);
   await page.screenshot({path:'../../work/plan-revision-trace.png'});
   await page.locator('#studio-surface-close').click();
   await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.testFixture);
@@ -40,6 +40,6 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.equal(await page.locator('[data-revision-request]').count(),1);
   assert.equal(await page.locator('[data-revision-role="6"]').count(),1);
   assert.deepEqual(errors,[]);
-  console.log('PASS: existing Nora returns once, no newcomer, repeated paper dispatch, ordered trace and reload history.');
+  console.log('PASS: existing Ada returns once, no newcomer, repeated paper dispatch, ordered trace and reload history.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -53,7 +53,7 @@ class CaptainControlsTests(unittest.TestCase):
         self.assertEqual(job['status'], 'done')
         self.assertEqual(plan['outcome'], 'partial')
         self.assertEqual(plan['calledRoles'], [8])
-        self.assertIn('Verified contribution from Avery', job['result']['answer'])
+        self.assertIn('Verified contribution from Scout', job['result']['answer'])
         self.assertEqual(plan['failure']['reason'], 'malformed-tool-call')
         self.assertEqual(self.adapter.reaction_calls, [])
 
@@ -70,7 +70,7 @@ class CaptainControlsTests(unittest.TestCase):
         self.assertEqual(job['payload']['collaboration']['calledRoles'], [8])
         self.assertEqual(job['payload']['collaboration']['failure']['reason'], 'invalid-decision')
         self.assertEqual(job['payload']['collaboration']['outcome'], 'partial')
-        self.assertIn('Verified contribution from Avery', job['result']['answer'])
+        self.assertIn('Verified contribution from Scout', job['result']['answer'])
 
     def test_native_config_restricts_tools_and_workspace_then_restores(self):
         with tempfile.TemporaryDirectory() as folder, patch.object(runtime, 'root', return_value=Path(folder)):

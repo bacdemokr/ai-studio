@@ -259,7 +259,26 @@ function createScene() {
     if(state.agents[i].included===false||state.agents[i].lane!==1)return false;
     return !state.crewMission||(state.crewMission.activeStages||[]).includes(i)&&(i===0||assignedDocuments.has(i));
   }
-  function renderCrewLabels(){labels.forEach((b,i)=>{const working=crewWorking(i);b.innerHTML=escape(state.agents[i].name)+'<small>'+escape(robots[i].exchange==='leaving'?'Leaving team':robots[i].exchange==='entering'?'Joining team':state.agents[i].included===false?'Available':working?'Working · '+state.agents[i].role:state.agents[i].lane===2?'Waiting for you':state.crewMission?.kind==='plan'&&i>0&&state.agents[i].lane===0?state.agents[i].status+' · '+state.agents[i].role:state.agents[i].role)+'</small>'+(working?'<span class="crew-work-bubble"><i></i>'+escape(state.crewMission?.kind==='plan'?state.agents[i].task:state.crewMission?workLines[i]:'Working on your request…')+'</span>':'');b.setAttribute('aria-pressed',String(activeSelection===i));b.setAttribute('aria-label','Select '+state.agents[i].name);b.classList.toggle('selected',activeSelection===i);b.classList.toggle('excluded',state.agents[i].included===false);b.classList.toggle('waiting',state.agents[i].lane===2);});}
+  let announcedTeamJob=null,teamAnnouncement='',teamAnnouncementUntil=0,teamAnnouncementSeen=false;
+  function renderCrewLabels(){
+    const job=state.crewMission;
+    if(job?.id!==announcedTeamJob){announcedTeamJob=job?.id;teamAnnouncement='';teamAnnouncementUntil=0;teamAnnouncementSeen=false;}
+    if(job?.kind==='plan'&&Array.isArray(job.assignedRoles)&&!teamAnnouncementSeen){
+      teamAnnouncementSeen=true;
+      const names=job.assignedRoles.filter(role=>role>0).map(role=>state.agents[role]?.name).filter(Boolean);
+      if(names.length&&['queued','running','waiting'].includes(job.status)){
+        const list=names.length<2?names[0]:names.slice(0,-1).join(', ')+' and '+names.at(-1);
+        teamAnnouncement='We need '+list+'.';teamAnnouncementUntil=performance.now()+10000;
+      }
+    }
+    const announcement=performance.now()<teamAnnouncementUntil?teamAnnouncement:'';
+    labels.forEach((b,i)=>{
+      const working=crewWorking(i)&&!robots[i].exchange&&state.agents[i].included!==false;
+      const status=robots[i].exchange==='leaving'?'Leaving team':robots[i].exchange==='entering'?'Joining team':state.agents[i].included===false?'Available':state.agents[i].lane===2?'Waiting for you':state.crewMission?.kind==='plan'&&i>0&&state.agents[i].lane===0?state.agents[i].status+' · '+state.agents[i].role:state.agents[i].role;
+      b.innerHTML=escape(state.agents[i].name)+'<small>'+(working?'<span class="crew-working-badge"><span aria-hidden="true" class="crew-working-dot"></span>Working</span><span class="crew-working-role">'+escape(state.agents[i].role)+'</span>':escape(status))+'</small>'+(i===0&&announcement?'<span class="crew-team-bubble">'+escape(announcement)+'</span>':'');
+      b.setAttribute('aria-pressed',String(activeSelection===i));b.setAttribute('aria-label','Select '+state.agents[i].name+(working?', working':''));b.classList.toggle('working',working);b.classList.toggle('selected',activeSelection===i);b.classList.toggle('excluded',state.agents[i].included===false);b.classList.toggle('waiting',state.agents[i].lane===2);
+    });}
+
   function update(next,index){state=next;placeTeam();syncCaptain();syncRoundtable();activeSelection=index;phase=state.phase;dressCrew();const key=[state.jobId,state.phase,state.missionSkill,state.crewMission?.id,state.crewMission?.enabledRoles?.join(),state.agents.map(a=>a.lane).join('')].join(':');if(key!==lastKey){lastKey=key;movement();}renderCrewLabels();}
 
   /* WORLD_PROTECTION */

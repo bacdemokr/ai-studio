@@ -99,7 +99,7 @@ class AdaptivePlanTests(unittest.TestCase):
         result = self.start()
         self.app.execute(self.app.next_job())
         self.assertEqual(self.job(result)['payload']['collaboration']['outcome'], 'partial')
-        self.assertIn('Verified contribution from Avery', self.job(result)['result']['answer'])
+        self.assertIn('Verified contribution from Scout', self.job(result)['result']['answer'])
         self.assertEqual(self.called(), [0,8,0])
         self.assertEqual(set(self.job(result)['payload']['collaboration']['outputs']), {'8'})
 

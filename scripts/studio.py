@@ -1,4 +1,4 @@
-"""Durable participant workspaces and a serial OpenClaw task queue.
+"""Durable participant workspaces and bounded OpenClaw task queues.
 
 This is a trusted workshop LAN application, not a public multi-tenant service.
 Every browser gets an opaque, HttpOnly session; no gateway credentials reach it.
@@ -194,6 +194,9 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
         self.delete_lock = threading.Lock()
         self.deletion_signal = threading.Event()
         self.deletion_worker = None
+        self.execution_lock = threading.RLock()
+        self.executing_jobs = {}
+        self.agent_locks = {}
         self.executing_owners = set()
         self.executing_bac_owners = set()
         from protection_activity import ProtectionActivity
@@ -298,7 +301,9 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
                         # RadarHeartbeat.tick queues preparation only for connected owners.
             self.worker = threading.Thread(target=self.work, daemon=True, name='bac-agent-queue')
             self.deletion_worker = threading.Thread(target=self.clean_deletions, daemon=True, name='bac-cleanup-queue')
+            self.chat_worker = threading.Thread(target=self.work, args=('chat',), daemon=True, name='bac-chat-queue')
             self.worker.start()
+            self.chat_worker.start()
             self.deletion_worker.start()
             self.heartbeat_worker = threading.Thread(target=self.heartbeat.work, daemon=True, name='radar-heartbeat-relay')
             self.heartbeat_worker.start()
@@ -872,6 +877,8 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
                 role = data.get('crewRole')
                 if type(role) is not int or not 0 <= role < len(ROLES):
                     raise Problem('Choose a crew member.')
+                if CREW_CATALOG[role].get('planEligible') is False:
+                    raise Problem('This specialist is no longer available. Ask Casey to assign the current team.')
                 if skill:
                     raise Problem('Crew skills are managed by the role.')
             if skill and skill not in profile['skills']:
@@ -932,6 +939,12 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
                 raise Problem('This agent’s policy is being updated. Please wait.', 409)
             if kind in ('crew','crew-chat'):
                 self.require_bac_not_resetting(db, owner)
+            if kind == 'crew-chat' and role == 0 and db.execute(
+                    "SELECT 1 FROM jobs WHERE owner=? AND kind='crew-chat' AND status IN ('queued','running','waiting','stopping') AND json_type(payload,'$.collaboration')='object' LIMIT 1", (owner,)).fetchone():
+                raise Problem('Casey is coordinating the current plan. Wait for it to finish or stop it before sending a new message.', 409)
+            if kind == 'crew-chat' and db.execute(
+                    "SELECT 1 FROM jobs WHERE owner=? AND kind='crew-chat' AND status IN ('queued','running','waiting','stopping') AND (CASE WHEN json_type(payload,'$.collaboration')='object' THEN status IN ('running','stopping') AND json_extract(payload,'$.collaboration.activeRole')=? ELSE json_extract(payload,'$.crewRole')=? END) LIMIT 1", (owner, role, role)).fetchone():
+                raise Problem('This agent is working. Wait for the current task to finish or stop it before sending a new message.', 409)
             if collaborative:
                 if origin['role'] is None:
                     self.require_available(db, origin['owner'])
@@ -1166,20 +1179,37 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
         with self.db() as db:
             db.execute('UPDATE jobs SET payload=? WHERE id=?', (json.dumps(payload), job_id))
 
+    def agent_lock(self, agent_id):
+        with self.execution_lock:
+            return self.agent_locks.setdefault(agent_id, threading.RLock())
+
+    def refresh_executing(self):
+        self.executing_owners = set().union(*(owners for owners, _ in self.executing_jobs.values()))
+        self.executing_bac_owners = set().union(*(owners for owners, bac in self.executing_jobs.values() if bac))
+
     def execute(self, row):
-        # Keep the deletion fence until post-result work has ended.
-        self.executing_owners = {row['owner']} | {m['key'] for m in job_participants(json.loads(row['payload'])) if m.get('key')}
-        self.executing_bac_owners = set(self.executing_owners) if row['kind'] in ('crew','crew-chat','prepare') else set()
+        payload = json.loads(row['payload'])
+        owners = {row['owner']} | {m['key'] for m in job_participants(payload) if m.get('key')}
+        with self.execution_lock:
+            self.executing_jobs[row['id']] = (owners, row['kind'] in ('crew','crew-chat','prepare'))
+            self.refresh_executing()
         try:
-            return self._execute(row)
+            # Cover preparation, model calls and artifact collection with the same
+            # identity lock used by individual collaboration stages.
+            if row['kind'] == 'crew-chat' and not payload.get('collaboration'):
+                lock = self.agent_lock(self.crew_native_id(row['owner'], payload['crewRole']))
+            else:
+                lock = contextlib.nullcontext()
+            with lock:
+                return self._execute(row)
         except Exception:
-            # A stop can win while native preparation or policy I/O is in
-            # flight. Settle cancellation even when that call then raises.
             if self.stop_checkpoint(row['id']):return
             raise
         finally:
-            self.executing_owners = set()
-            self.executing_bac_owners = set()
+            with self.execution_lock:
+                self.executing_jobs.pop(row['id'], None)
+                self.refresh_executing()
+            self.signal.set()
 
     def _execute(self, row):
         owner, job_id = row['owner'], row['id']
@@ -1601,22 +1631,55 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
         self.event(job_id, 'Your planning package is ready', str(len(enabled)) + ' selected OpenClaw agents completed their work. Drafts are saved.', max(enabled),
                    status='done', result=json.dumps({'answer': result}))
 
-    def next_job(self):
+    @staticmethod
+    def chat_lane(row):
+        payload = json.loads(row['payload'])
+        return row['kind'] in ('chat', 'reminder') or (row['kind'] == 'crew-chat' and not payload.get('collaboration') and not payload.get('reactionRetry'))
+
+    def next_job(self, lane=None):
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
             # Defense in depth for stale queued work after an interrupted edit.
             db.execute("DELETE FROM jobs WHERE status='queued' AND NOT EXISTS (SELECT 1 FROM agents WHERE agents.id=jobs.owner)")
             db.execute("UPDATE jobs SET status='cancelled',updated=? WHERE status='queued' AND owner IN (SELECT id FROM agents WHERE deleting!=0)", (time.time(),))
-            row = db.execute("SELECT * FROM jobs WHERE status='queued' AND due<=? AND NOT (kind IN ('prepare-agent','prepare') AND EXISTS (SELECT 1 FROM agent_policies WHERE owner=jobs.owner AND updating=1)) ORDER BY (kind='prepare-agent' OR (kind='prepare' AND coalesce(json_extract(payload,'$.background'),0)=1)),due,created LIMIT 1", (time.time(),)).fetchone()
+            candidates = db.execute("SELECT * FROM jobs WHERE status='queued' AND due<=? AND NOT (kind IN ('prepare-agent','prepare') AND EXISTS (SELECT 1 FROM agent_policies WHERE owner=jobs.owner AND updating=1)) ORDER BY (kind='prepare-agent' OR (kind='prepare' AND coalesce(json_extract(payload,'$.background'),0)=1)),due,created", (time.time(),)).fetchall()
+            active = db.execute("SELECT * FROM jobs WHERE status IN ('running','stopping')").fetchall()
+            with self.execution_lock:
+                finishing = set(self.executing_jobs)
+            if finishing:
+                active += [r for r in db.execute("SELECT * FROM jobs WHERE id IN (" + ','.join('?' for _ in finishing) + ")", tuple(finishing)) if r['status'] not in ('running','stopping')]
+            row = None
+            for candidate in candidates:
+                if lane is not None and self.chat_lane(candidate) != (lane == 'chat'):
+                    continue
+                cp = json.loads(candidate['payload'])
+                blocked = False
+                for busy in active:
+                    bp = json.loads(busy['payload'])
+                    related = {busy['owner']} | {m['key'] for m in job_participants(bp) if m.get('key')}
+                    candidate_owners = {candidate['owner']} | {m['key'] for m in job_participants(cp) if m.get('key')}
+                    if not candidate_owners.intersection(related):
+                        continue
+                    if candidate['kind'] == busy['kind'] == 'crew-chat' and candidate['owner'] == busy['owner']:
+                        cr = cp.get('crewRole')
+                        br = bp.get('collaboration', {}).get('activeRole', bp.get('crewRole'))
+                        if not cp.get('collaboration') and not bp.get('reactionRetry') and cr != br:
+                            continue
+                    blocked = True
+                    break
+                if not blocked:
+                    row = candidate
+                    break
             if row:
                 db.execute("UPDATE jobs SET status='running',updated=? WHERE id=?", (time.time(), row['id']))
         return row
 
-    def work(self):
+    def work(self, lane='background'):
         while not self.stop.is_set():
-            self.finish_pending_bac_resets()
-            if self.deletion_worker is None:self.finish_pending_deletions()
-            row = self.next_job()
+            if lane == 'background':
+                self.finish_pending_bac_resets()
+                if self.deletion_worker is None:self.finish_pending_deletions()
+            row = self.next_job(lane)
             if row:
                 try:
                     self.execute(row)

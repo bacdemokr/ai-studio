@@ -42,7 +42,7 @@ class RevisionTests(unittest.TestCase):
             self.assertIn('ORIGINAL', pages[0].read_text())
             self.assertIn(self.request['issue'], prompt)
             self.assertIn(self.request['expected'], prompt)
-            self.assertIn('Verified contribution from Riley', prompt)
+            self.assertIn('Verified contribution from Vera', prompt)
         self.on_revision = inspect_inputs
         result = self.start('/plan Build and review a webpage')
         self.app.execute(self.app.next_job())
@@ -50,7 +50,7 @@ class RevisionTests(unittest.TestCase):
         self.assertEqual(plan['calledRoles'], [5, 4])
         self.assertEqual([int(agent.rsplit('-r',1)[1]) for agent,session,_ in self.adapter.calls if session.endswith(('-working','-revising'))], [5,4,5])
         self.assertEqual(plan['revision']['status'], 'delivered')
-        self.assertIn('Verified contribution from Wade', plan['outputs']['5']['answer'])
+        self.assertIn('Verified contribution from Cody', plan['outputs']['5']['answer'])
         self.assertIn('corrected', plan['revision']['output']['answer'])
         original = plan['outputs']['5']['files'][0]
         updated = plan['revision']['output']['files'][0]

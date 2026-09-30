@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync('src/studio-crew.js','utf8');
 const escape=value=>String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
-const context=vm.createContext({escape,messageMarkup:escape,webpageButtons:()=>'',defaultNames:['Casey','Dylan','Alex','Morgan','Riley','Wade','Nora','Quinn','Avery']});
+const context=vm.createContext({escape,messageMarkup:escape,webpageButtons:()=>'',defaultNames:['Casey','Dylan','Alex','Morgan','Vera','Cody','Ada','Iris','Scout']});
 vm.runInContext(source.slice(source.indexOf('function collaborationRoleOrder('),source.indexOf('function renderMissionControl(')),context);
 const render=(plan,status='running',result={})=>context.missionControlTraceMarkup({id:'fixture',status,result,payload:{collaboration:plan}});
 const kinds=html=>[...html.matchAll(/data-trace-kind="([^"]+)"/g)].map(m=>m[1]);
@@ -42,14 +42,14 @@ assert(!render({...base,summary:'<script>bad</script>'}).includes('<script>'));
 // Chat contributions and reviews follow execution order, not numeric role IDs.
 Object.assign(context,{shieldReplyHeld:()=>false,customSkillMarkup:()=>'',imageHistoryMarkup:()=>'',roundtableMarkup:()=>'',window:{BacCrewCatalog:Array.from({length:9},()=>({collaboration:{title:'Specialist'}}))}});
 vm.runInContext(source.slice(source.indexOf('function collaborationRevisionBody('),source.indexOf('function showCollaboration(')),context);
-const chatPlan={...stopped,origin:{role:0},outputs:{8:{name:'Avery',answer:'Research first.'},4:{name:'Riley',answer:'Review second.'}},calledRoles:[8,4],checks:[{afterRole:8,done:false,reason:'Review still needed.'},{afterRole:4,done:true,reason:'Both complete.'}],skippedRoles:[]};
+const chatPlan={...stopped,origin:{role:0},outputs:{8:{name:'Scout',answer:'Research first.'},4:{name:'Vera',answer:'Review second.'}},calledRoles:[8,4],checks:[{afterRole:8,done:false,reason:'Review still needed.'},{afterRole:4,done:true,reason:'Both complete.'}],skippedRoles:[]};
 const chatJob={id:'chat',status:'done',payload:{collaboration:chatPlan,prompt:'/plan Research and review'},result:{answer:'Finished.'}};
 const chat=context.collaborationMarkup(chatJob,0);
 assert(chat.indexOf('Research first.')<chat.indexOf('Review still needed.'));
 assert(chat.indexOf('Review still needed.')<chat.indexOf('Review second.'));
 assert(chat.indexOf('Review second.')<chat.indexOf('Both complete.'));
 const skippedChat=context.collaborationMarkup({...chatJob,payload:{...chatJob.payload,collaboration:stopped}},4);
-assert.match(skippedChat,/Casey did not call Riley for this plan/);
+assert.match(skippedChat,/Casey did not call Vera for this plan/);
 const interrupted={...chatJob,status:'error',result:{error:'App restarted.'},payload:{...chatJob.payload,collaboration:{...chatPlan,finalAnswer:'Saved final answer.'}}};
 assert.match(context.collaborationMarkup(interrupted,0),/Saved final answer/);
 assert.match(context.collaborationHistoryMarkup(interrupted),/Saved final answer/);
@@ -63,7 +63,7 @@ console.log('PASS: trace order, live review/continuation, early finish, uncalled
 
 // The final reply and specialist research are distinct files, not two team responses.
 const responsePath='artifacts/plan-chat.md',briefPath='artifacts/shared-chat-r8-brief.md',htmlPath='artifacts/page-chat-r5.html';
-const withFiles={...chatJob,result:{answer:'Finished.',files:[responsePath,briefPath,htmlPath,responsePath]},payload:{...chatJob.payload,collaboration:{...chatPlan,handoffs:{8:{task:'Research',receivedFrom:[]}},outputs:{8:{name:'Avery',answer:'Research first.',files:[briefPath,briefPath,htmlPath]}}}}};
+const withFiles={...chatJob,result:{answer:'Finished.',files:[responsePath,briefPath,htmlPath,responsePath]},payload:{...chatJob.payload,collaboration:{...chatPlan,handoffs:{8:{task:'Research',receivedFrom:[]}},outputs:{8:{name:'Scout',answer:'Research first.',files:[briefPath,briefPath,htmlPath]}}}}};
 const fileMarkup=context.collaborationMarkup(withFiles,0);
 assert.equal((fileMarkup.match(/>Open team response</g)||[]).length,1);
 assert.equal((fileMarkup.match(/>Open supporting file</g)||[]).length,1);

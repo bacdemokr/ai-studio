@@ -59,7 +59,7 @@ class CollaborationTests(unittest.TestCase):
         job = self.job(result)
         self.assertEqual(job['status'], 'done')
         self.assertEqual([a.rsplit('-r',1)[1] for a,_,_ in self.adapter.calls], ['0','8','0','2','0','3','0'])
-        self.assertIn('Verified contribution from Avery', self.adapter.calls[2][2])
+        self.assertIn('Verified contribution from Scout', self.adapter.calls[2][2])
         self.assertIn('Verified contribution from Alex', self.adapter.calls[4][2])
         self.assertIn('Verified contribution from Morgan', self.adapter.calls[6][2])
         self.assertEqual(len(self.app.state(self.owner)['agents']), 1)
@@ -160,7 +160,7 @@ class CollaborationTests(unittest.TestCase):
         prompt=self.adapter.calls[0][2]
         pool,_=json.JSONDecoder().raw_decode(prompt.split('available pool to match the current request: ',1)[1])
         self.assertNotIn('Dylan',[member['name'] for member in pool])
-        self.assertIn('Avery',[member['name'] for member in pool])
+        self.assertIn('Scout',[member['name'] for member in pool])
         self.assertEqual(self.job(result)['payload']['collaboration']['outputs'],{})
 
     def test_revoke_stays_revoked_and_policy_edits_are_fenced(self):

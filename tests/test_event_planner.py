@@ -104,7 +104,7 @@ class EventPackageTests(unittest.TestCase):
     def test_web_developer_receives_all_handoffs_and_saves_offline_page(self):
         p=self.state['payload']
         self.assertEqual(self.state['status'],'done')
-        self.assertEqual(p['roster'][5]['name'],'Wade')
+        self.assertEqual(p['roster'][5]['name'],'Cody')
         self.assertEqual(p['handoffs']['5']['receivedFrom'],['0','1','2','3','4'])
         self.assertIn('event-page',p['roster'][5]['skills'])
         page=(self.studio.workspace(self.owner)/p['website']['path']).read_text()

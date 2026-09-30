@@ -28,7 +28,7 @@ class DynamicAdapter(PlanAdapter):
             if 'PARTIAL_QA' in task: order=[6,5,4]
             if 'ASSEMBLY_QA' in task: order=[8,5,4]
             if 'REVISION_QA' in task: order=[6,4]
-            if 'SINGLE_QA' in task: order=[3]
+            if 'SINGLE_QA' in task: order=[6]
             if 'SOLO_QA' in task or 'UNSUPPORTED_QA' in task: order=[]
             self.plan = {'summary': 'Choose expertise for this request.', 'tasks': [
                 {'role': role, 'expected': 'Deliver a usable calculator with clear controls.' if role==5 else 'Provide a concise, source-grounded contribution with limitations.', 'task': {2: 'Define requirements.', 5: 'Implement calculator.', 3: 'Draft clear copy.', 4: 'Inspect the supplied work.', 6: 'Interpret the provided table.', 7: 'Design the comparison screen.', 8: 'Research public sources and cite findings.'}[role]}
@@ -37,14 +37,14 @@ class DynamicAdapter(PlanAdapter):
                 unsupported='UNSUPPORTED_QA' in task
                 self.plan.update(outcome='unavailable' if unsupported else 'complete',answer='No deployment tool is available.' if unsupported else 'A short direct answer.',summary='No deployment specialist is available.' if unsupported else 'I can answer this directly; no additional agents are needed.')
         if 'ASSEMBLY_QA' in task and agent.endswith('-r8') and session.endswith('-working'):
-            time.sleep(18)  # Observe all planned members seated while only Avery is running.
+            time.sleep(18)  # Observe all planned members seated while only Scout is running.
         if 'REVISION_QA' in task and agent.endswith('-r6') and session.endswith('-working'):
             time.sleep(25)  # Let the initial team enter and receive its paper before the result.
         if 'REVISION_QA' in task and session.endswith('-revising'):
             time.sleep(10)
-            return 'Nora corrected the total to 450.'
+            return 'Ada corrected the total to 450.'
         if 'REVISION_QA' in task and session.endswith('-reviewing'):
-            return json.dumps({'done':False,'reason':'Riley found an incorrect required total.', 'revision':{
+            return json.dumps({'done':False,'reason':'Vera found an incorrect required total.', 'revision':{
                 'role':6,'evidenceRole':4,'severity':'blocking','issue':'The total should be 450, not 999.',
                 'task':'Correct the total only.','expected':'A total of 450 with the calculation.'}})
         if 'REVISION_QA' in task and session.endswith('-checking-revision'):

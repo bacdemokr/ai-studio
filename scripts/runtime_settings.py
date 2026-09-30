@@ -26,9 +26,13 @@ def apply_context_limits(config):
     fetch = config.setdefault('tools', {}).setdefault('web', {}).setdefault('fetch', {})
     # The native tool clamps even a model-supplied maxChars to maxCharsCap.
     # Preserve stricter host limits, without disabling any access policy.
-    fetch['maxCharsCap'] = min(fetch.get('maxCharsCap', 6000), 6000)
+    fetch['maxCharsCap'] = min(fetch.get('maxCharsCap', 4000), 4000)
     fetch['maxChars'] = min(fetch.get('maxChars', 3000), 3000, fetch['maxCharsCap'])
     compaction = config.setdefault('agents', {}).setdefault('defaults', {}).setdefault('compaction', {})
+    compaction['enabled'] = True
+    # Native default retains 20k recent tokens, almost the whole 24k input
+    # budget of our 32k models. Leave room for summaries, tools and new evidence.
+    compaction['keepRecentTokens'] = min(compaction.get('keepRecentTokens', 8192), 8192)
     compaction['midTurnPrecheck'] = {'enabled': True}
     return config
 

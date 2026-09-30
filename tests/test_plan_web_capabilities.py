@@ -20,10 +20,10 @@ class PlanWebCapabilities(unittest.TestCase):
         prompt = self.adapter.calls[0][2]
         pool = json.JSONDecoder().raw_decode(prompt.split('available pool to match the current request: ', 1)[1])[0]
         members = {member['name']: member for member in pool}
-        self.assertIn('web_fetch', members['Avery']['tools'])
-        self.assertNotIn('web_search', members['Avery']['tools'])
-        self.assertNotIn('web_fetch', members['Wade']['tools'])
-        self.assertIn('write', members['Wade']['tools'])
+        self.assertIn('web_fetch', members['Scout']['tools'])
+        self.assertNotIn('web_search', members['Scout']['tools'])
+        self.assertNotIn('web_fetch', members['Cody']['tools'])
+        self.assertIn('write', members['Cody']['tools'])
         self.assertNotIn('Dylan', members)
         self.assertIn('not for your Captain session', prompt)
         self.assertIn('research brief alone does not satisfy a requested working webpage', prompt)
