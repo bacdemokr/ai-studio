@@ -6,6 +6,10 @@ vm.runInContext(source.slice(source.indexOf('function collaborationRoleOrder('),
 const render=(plan,status='running',result={})=>context.missionControlTraceMarkup({id:'fixture',status,result,payload:{collaboration:plan}});
 const kinds=html=>[...html.matchAll(/data-trace-kind="([^"]+)"/g)].map(m=>m[1]);
 const base={summary:'Research, then review.',tasks:[{role:8,task:'Find sources.',expected:'Cited evidence.'},{role:4,task:'Review evidence.'}],outputs:{},handoffs:{},checks:[]};
+assert.equal(JSON.stringify(context.collaborationTeam({...base,calledRoles:[8]})),'[0,8,4]');
+assert.equal(JSON.stringify(context.collaborationTeam({...base,calledRoles:[8],skippedRoles:[4]})),'[0,8,4]');
+assert.equal(JSON.stringify(context.collaborationTeam({tasks:[],calledRoles:[]})),'[0]');
+assert.equal(JSON.stringify(context.collaborationTeam({calledRoles:[8,4]})),'[0,8,4]');
 assert.deepEqual(kinds(render(base)),['plan','planned','planned']);
 const delivered={...base,calledRoles:[8],activeRole:0,handoffs:{8:{task:'Find sources.',started:1}},outputs:{8:{answer:'Research result.'}}};
 assert.deepEqual(kinds(render(delivered)),['plan','contribution','review','planned']);

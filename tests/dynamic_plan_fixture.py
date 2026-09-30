@@ -21,6 +21,7 @@ class DynamicAdapter(PlanAdapter):
             order = [2, 5, 4] if 'CALCULATOR_QA' in prompt.split('Current user task:')[-1] else [6, 7, 5] if 'DATA_UI_QA' in prompt.split('Current user task:')[-1] else [8, 4] if 'RESEARCH_QA' in prompt.split('Current user task:')[-1] else [3, 4]
             if 'EARLY_QA' in task: order=[8,3,4]
             if 'PARTIAL_QA' in task: order=[6,5,4]
+            if 'ASSEMBLY_QA' in task: order=[8,5,4]
             if 'SINGLE_QA' in task: order=[3]
             if 'SOLO_QA' in task or 'UNSUPPORTED_QA' in task: order=[]
             self.plan = {'summary': 'Choose expertise for this request.', 'tasks': [
@@ -29,6 +30,8 @@ class DynamicAdapter(PlanAdapter):
             if not order:
                 unsupported='UNSUPPORTED_QA' in task
                 self.plan.update(outcome='unavailable' if unsupported else 'complete',answer='No deployment tool is available.' if unsupported else 'A short direct answer.',summary='No deployment specialist is available.' if unsupported else 'I can answer this directly; no additional agents are needed.')
+        if 'ASSEMBLY_QA' in task and agent.endswith('-r8') and session.endswith('-working'):
+            time.sleep(18)  # Observe all planned members seated while only Avery is running.
         answer = super().respond(agent, session, prompt, **kwargs)
         if '-checking-' in session and 'EARLY_QA' in task:
             return json.dumps({'done':True,'reason':'The research answers the request; no additional agents are needed.','answer':'Here are the complete research findings.'})

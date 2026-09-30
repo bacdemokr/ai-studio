@@ -98,6 +98,11 @@ function collaborationRoleOrder(plan){
  return [...new Set([...(plan.calledRoles||[]).map(Number),...handoffs,...tasks,...Object.keys(plan.outputs||{}).map(Number)])]
   .filter(role=>Number.isInteger(role)&&role>0&&defaultNames[role]);
 }
+// Presence follows the approved plan; execution still follows calledRoles/handoffs.
+function collaborationTeam(plan){
+ const selected=Array.isArray(plan.tasks)?plan.tasks.map(task=>task.role):(plan.calledRoles||[]);
+ return [0,...new Set(selected.filter(role=>Number.isInteger(role)&&role>0&&defaultNames[role]))];
+}
 function collaborationAnswer(job){return job.result?.answer||job.payload.collaboration.finalAnswer||'';}
 function missionControlTraceMarkup(job){
  const plan=job.payload.collaboration,active=['queued','running','waiting','stopping'].includes(job.status),tasks=plan.tasks||[],checks=plan.checks||[];

@@ -17,9 +17,25 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.equal(await page.locator('#studio-standby-count').innerText(),'5');
   assert.deepEqual(await page.evaluate(()=>BacCampus.inspect().crewExchange.filter(r=>r.visible).map(r=>r.role)),[0,1,2,3]);
   await page.screenshot({path:'../../work/standby-specialists-preview.png'});
+  await page.locator('#studio-crew-prompt').fill('/plan ASSEMBLY_QA Research AMD, build a webpage and review it.');
+  await page.locator('#studio-crew-send').click();
+  await page.waitForFunction(()=>BacCampus.inspect().selectedTeam.join()==='0,8,5,4');
+  await page.waitForFunction(()=>{const s=BacCampus.inspect();return [8,5,4].every(i=>s.crewExchange[i].visible&&!s.crewExchange[i].phase);},null,{timeout:15000});
+  const assembled=await page.evaluate(()=>BacCampus.inspect());
+  assert.equal(assembled.activeRole,8);
+  for(const role of [5,4]){
+   assert(!assembled.captain.assigned.includes(role));
+   assert(!assembled.captain.pending.some(d=>d.kind==='assignment'&&d.role===role));
+   assert(Math.hypot(...assembled.robots[role].map((v,i)=>v-assembled.crewHomes[role][i]))<.12);
+   assert.match(await page.locator('.campus-agent-label[data-crew-member="'+role+'"] small').innerText(),/Waiting for Casey/);
+   assert.equal(await page.locator('.campus-agent-label[data-crew-member="'+role+'"] .crew-work-bubble').count(),0);
+   assert.equal(await standby.locator('[data-standby-role="'+role+'"]').count(),0);
+  }
+  await page.screenshot({path:'../../work/planned-team-waiting-preview.png'});
+  await page.waitForFunction(()=>!document.querySelector('[data-crew-chat-stop]'),null,{timeout:30000});
   await page.locator('#studio-crew-prompt').fill('/plan CALCULATOR_QA Build and inspect a calculator.');
   await page.locator('#studio-crew-send').click();
-  await page.waitForFunction(()=>document.querySelector('#studio-crew-conversation').textContent.includes('A combined proposal'),null,{timeout:30000});
+  await page.waitForFunction(()=>{const turn=[...document.querySelectorAll('#studio-crew-conversation [data-collaboration-job]')].at(-1);return turn?.textContent.includes('CALCULATOR_QA')&&turn.textContent.includes('A combined proposal')&&!document.querySelector('[data-crew-chat-stop]');},null,{timeout:30000});
   assert.deepEqual(await page.evaluate(()=>BacCampus.inspect().selectedTeam),[0,2,5,4]);
   const homes=await page.evaluate(()=>BacCampus.inspect().crewHomes);
   assert.equal(homes[5][2],-3.5);
@@ -120,7 +136,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
    ['SOLO_QA Answer a simple question.',[0],'No additional agents needed'],
    ['UNSUPPORTED_QA Deploy to my private cloud.',[0],'Required expertise unavailable - no agents called'],
    ['SINGLE_QA Write a short greeting.',[0,3],'Enough to finish - no additional agents will be called'],
-   ['EARLY_QA Research a simple topic.',[0,8],'Enough to finish - no additional agents will be called'],
+   ['EARLY_QA Research a simple topic.',[0,8,3,4],'Enough to finish - no additional agents will be called'],
    ['PARTIAL_QA Build and deploy a dashboard.',[0,6,5,4],'Partial result - stopping here']
   ]){
    await page.locator('#studio-crew-prompt').fill('/plan '+task);
@@ -163,7 +179,12 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
     assert.match(await completion.innerText(),/The research answers the request/);
     assert.match(await completion.innerText(),/Not called: Morgan, Riley/);
     assert.match(await completion.innerText(),/Their planned work was not performed/);
-    assert.deepEqual(await page.evaluate(()=>BacCampus.inspect().crewExchange.filter(r=>r.visible).map(r=>r.role)),[0,8]);
+    await page.waitForFunction(()=>BacCampus.inspect().crewExchange.every(r=>!r.phase));
+    assert.deepEqual(await page.evaluate(()=>BacCampus.inspect().crewExchange.filter(r=>r.visible).map(r=>r.role)),[0,3,4,8]);
+    for(const role of [3,4]){
+     assert.match(await page.locator('.campus-agent-label[data-crew-member="'+role+'"] small').innerText(),/Not started/);
+     assert.equal(await page.locator('.campus-agent-label[data-crew-member="'+role+'"] .crew-work-bubble').count(),0);
+    }
    }
   }
   assert.deepEqual(errors,[]);
