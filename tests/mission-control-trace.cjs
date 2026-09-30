@@ -11,7 +11,7 @@ assert.equal(JSON.stringify(context.collaborationTeam({...base,calledRoles:[8],s
 assert.equal(JSON.stringify(context.collaborationTeam({tasks:[],calledRoles:[]})),'[0]');
 assert.equal(JSON.stringify(context.collaborationTeam({calledRoles:[8,4]})),'[0,8,4]');
 assert.deepEqual(kinds(render(base)),['plan','planned','planned']);
-const delivered={...base,calledRoles:[8],activeRole:0,handoffs:{8:{task:'Find sources.',started:1}},outputs:{8:{answer:'Research result.'}}};
+const delivered={...base,calledRoles:[8],activeRole:0,handoffs:{8:{task:'Find sources.',started:1,receivedFrom:[]}},outputs:{8:{answer:'Research result.'}}};
 assert.deepEqual(kinds(render(delivered)),['plan','contribution','review','planned']);
 assert.match(render(delivered),/Reviewing/);
 assert(!render(delivered).includes('No additional agents will be called.'));
@@ -41,7 +41,7 @@ assert.deepEqual(kinds(legacy),['plan','contribution','review','contribution','r
 assert(!render({...base,summary:'<script>bad</script>'}).includes('<script>'));
 // Chat contributions and reviews follow execution order, not numeric role IDs.
 Object.assign(context,{shieldReplyHeld:()=>false,customSkillMarkup:()=>'',imageHistoryMarkup:()=>'',roundtableMarkup:()=>'',window:{BacCrewCatalog:Array.from({length:9},()=>({collaboration:{title:'Specialist'}}))}});
-vm.runInContext(source.slice(source.indexOf('function collaborationDecisionMarkup('),source.indexOf('function showCollaboration(')),context);
+vm.runInContext(source.slice(source.indexOf('function collaborationRevisionBody('),source.indexOf('function showCollaboration(')),context);
 const chatPlan={...stopped,origin:{role:0},outputs:{8:{name:'Avery',answer:'Research first.'},4:{name:'Riley',answer:'Review second.'}},calledRoles:[8,4],checks:[{afterRole:8,done:false,reason:'Review still needed.'},{afterRole:4,done:true,reason:'Both complete.'}],skippedRoles:[]};
 const chatJob={id:'chat',status:'done',payload:{collaboration:chatPlan,prompt:'/plan Research and review'},result:{answer:'Finished.'}};
 const chat=context.collaborationMarkup(chatJob,0);
@@ -74,3 +74,18 @@ assert.match(context.collaborationMarkup(withFiles,8),/>Open supporting file</);
 assert(!context.collaborationMarkup(withFiles,8).includes('Open team response'));
 assert(!context.collaborationMarkup({...withFiles,result:{files:[briefPath]}},0).includes('Open team response'));
 console.log('PASS: one final-response button; deduplicated supporting files stay with their specialist.');
+
+const revision={role:8,evidenceRole:4,status:'delivered',reason:'A key source was missing.',issue:'Required date lacked evidence.',task:'Verify the missing date only.',expected:'Cited date.',output:{answer:'Date verified from the source.',files:[]}};
+const revisedPlan={...chatPlan,revision,checks:[...chatPlan.checks.filter(check=>!check.done),{afterRole:4,afterRevision:true,done:true,outcome:'partial',reason:'Date verified; webpage update remains.'}],outcome:'partial',remaining:['Update webpage']};
+const revised=render(revisedPlan,'done',{answer:'The source is verified; implementation still needs updating.'});
+assert.deepEqual(kinds(revised),['plan','contribution','review','contribution','revision','revision-work','review','response']);
+assert(revised.indexOf('data-plan-role="4"')<revised.indexOf('data-revision-request'));
+assert(revised.indexOf('data-revision-role="8"')<revised.indexOf('data-after-revision'));
+assert.equal((revised.match(/Date verified; webpage update remains/g)||[]).length,1);
+const revisedJob={...chatJob,payload:{...chatJob.payload,collaboration:revisedPlan}};
+assert.match(context.collaborationMarkup(revisedJob,0),/One targeted revision/);
+const specialist=context.collaborationMarkup(revisedJob,8);
+assert(specialist.indexOf('Research first.')<specialist.indexOf('Date verified from the source.'));
+const working=render({...revisedPlan,checks:[],revision:{...revision,status:'working',output:null},responseReady:false,finalAnswer:null,activeRole:8});
+assert.match(working,/Revising/);assert(!working.includes('Revised result delivered'));
+console.log('PASS: repair request, participating specialist revision and final check retain chronological history.');

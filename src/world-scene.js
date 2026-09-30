@@ -148,7 +148,7 @@ function createScene() {
   const packets=[];for(let i=0;i<4;i++){const packet=box(missionRoom,0,.6,0,.12,.17,.035,0xa5dbef,true);packet.visible=false;packets.push(packet);}
   let packetStart=new THREE.Vector3(),packetEnd=new THREE.Vector3(),packetTime=-20;
   // Dispatch follows active roles; returns follow saved outputs, never elapsed model time.
-  let captainJob=null,documentFlight=null,documentProgress=0;
+  let captainJob=null,captainRevision=null,documentFlight=null,documentProgress=0;
   const seenDeliverables=new Set(),receivedDocuments=new Set(),assignedDocuments=new Set(),documentQueue=[];
   const returnedSheets=[];
   for(let i=1;i<positions.length;i++){
@@ -161,12 +161,22 @@ function createScene() {
   const documentStripe=box(flyingDocument,0,.24,.03,.43,.08,.015,0x76b900,true);
   for(let i=0;i<3;i++)box(flyingDocument,-.03,.07-i*.12,.03,.35-i*.05,.027,.014,0x536b80);
   function syncCaptain(){
-    const job=state.crewMission;if(!job){captainJob=null;documentQueue.length=0;documentFlight=null;seenDeliverables.clear();receivedDocuments.clear();assignedDocuments.clear();returnedSheets.forEach(s=>s.visible=false);flyingDocument.visible=false;return;}
+    const job=state.crewMission;if(!job){captainJob=null;captainRevision=null;documentQueue.length=0;documentFlight=null;seenDeliverables.clear();receivedDocuments.clear();assignedDocuments.clear();returnedSheets.forEach(s=>s.visible=false);flyingDocument.visible=false;return;}
     if(captainJob!==job.id){
-      const initial=captainJob===null;captainJob=job.id;documentQueue.length=0;documentFlight=null;flyingDocument.visible=false;
+      const initial=captainJob===null;captainJob=job.id;captainRevision=null;documentQueue.length=0;documentFlight=null;flyingDocument.visible=false;
       seenDeliverables.clear();receivedDocuments.clear();assignedDocuments.clear();returnedSheets.forEach(s=>s.visible=false);
       // Existing results on first load are already on the desk, not new work.
       if(initial){for(const i of job.completed){seenDeliverables.add(i);if(i>0&&i<positions.length)receivedDocuments.add(i);} }
+    }
+    if(Number.isInteger(job.revisionRole)&&captainRevision!==job.revisionRole){
+      captainRevision=job.revisionRole;
+      // Repeat only this participant's assignment/return animation, not the team entrance.
+      if(!job.completed.includes(captainRevision)){
+        seenDeliverables.delete(captainRevision);receivedDocuments.delete(captainRevision);assignedDocuments.delete(captainRevision);
+        if(returnedSheets[captainRevision])returnedSheets[captainRevision].visible=false;
+        for(let i=documentQueue.length-1;i>=0;i--)if(documentQueue[i].role===captainRevision)documentQueue.splice(i,1);
+        if(documentFlight?.role===captainRevision){documentFlight=null;flyingDocument.visible=false;}
+      }
     }
     for(const i of job.completed){
       if(seenDeliverables.has(i))continue;seenDeliverables.add(i);

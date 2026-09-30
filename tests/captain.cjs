@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),{chromium}=require('playwright');
 (async()=>{const b=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});try{
 const p=await b.newPage({viewport:{width:1500,height:960}}),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.addInitScript(()=>window.setInterval=()=>0);await p.goto(process.env.BASE_URL||'http://127.0.0.1:8080');await p.waitForFunction(()=>window.BacStudio&&BacCampus.inspect().navigation.overview);await p.locator('.world-room-map [data-world-room=mission]').click();await p.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
-const inject=async(completed,activeStages,status='running',options={})=>p.evaluate(({completed,activeStages,status,options})=>{const s=BacDemo.snapshot();s.agents.forEach((a,i)=>{a.lane=activeStages.includes(i)?1:0;a.included=true;if(options.team)a.displayed=options.team.includes(i)});const id=options.id||'visual-fixture';BacCampus.setLive({...s,live:true,phase:1,jobId:id,selected:0,crewMission:{id,kind:options.team?'plan':'event',status,activeStages,enabledRoles:options.team||[0,1,2,3,4,5],completed}});},{completed,activeStages,status,options});
+const inject=async(completed,activeStages,status='running',options={})=>p.evaluate(({completed,activeStages,status,options})=>{const s=BacDemo.snapshot();s.agents.forEach((a,i)=>{a.lane=activeStages.includes(i)?1:0;a.included=true;if(options.team)a.displayed=options.team.includes(i)});const id=options.id||'visual-fixture';BacCampus.setLive({...s,live:true,phase:1,jobId:id,selected:0,crewMission:{id,kind:options.team?'plan':'event',status,activeStages,enabledRoles:options.team||[0,1,2,3,4,5],revisionRole:options.revisionRole,completed}});},{completed,activeStages,status,options});
 const watchDelivery=role=>p.evaluate(role=>{
  window.deliveryWatch={role,seatedAt:null,flightAt:null,sawWalking:false};
  function sample(){const w=window.deliveryWatch,s=BacCampus.inspect(),r=s.crewExchange[role];
@@ -44,5 +44,15 @@ await p.waitForFunction(()=>BacCampus.inspect().captain.pending.some(d=>d.kind==
 await p.evaluate(()=>{const s=BacDemo.snapshot();BacCampus.setLive({...s,crewMission:null});});
 await p.waitForTimeout(1800);c=await p.evaluate(()=>BacCampus.inspect().captain);
 assert.equal(c.job,null);assert.equal(c.pending.length,0);assert.equal(c.inFlight,null);assert.deepEqual(c.assigned,[]);
+// A revision reuses the existing specialist and resets only its paper exchange.
+await inject([0], [5], 'running', {id:'repair-fixture',team:[0,5]});
+await p.waitForFunction(()=>BacCampus.inspect().captain.assigned.includes(5));
+await inject([0,5],[], 'running', {id:'repair-fixture',team:[0,5]});
+await watchDelivery(5);
+await inject([0],[5], 'running', {id:'repair-fixture',team:[0,5],revisionRole:5});
+assert.equal((await p.evaluate(()=>BacCampus.inspect().captain.assigned)).includes(5),false);
+await assertSettledDelivery();
+await p.waitForFunction(()=>BacCampus.inspect().captain.assigned.includes(5));
+assert.deepEqual(await p.evaluate(()=>BacCampus.inspect().selectedTeam),[0,5]);
 assert.deepEqual(errors,[]);console.log('PASS: desk arrival plus 1.5s before dispatch, incoming substitute, receipt-gated work bubbles, returns, cancellation, completion/reset during delay, reduced motion.');
 }finally{await b.close()}})().catch(e=>{console.error(e);process.exitCode=1});

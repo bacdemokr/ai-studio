@@ -11,6 +11,18 @@ class PlanRoundtableTests(unittest.TestCase):
     start = fixture.CollaborationTests.start
     job = fixture.CollaborationTests.job
 
+    def test_guest_reacts_to_repaired_result_without_stale_contribution(self):
+        from crew_roundtable import reaction_context
+        plan = {'task': 'Calculate total', 'finalAnswer': 'Total is 450',
+                'outputs': {'6': {'name': 'Nora', 'answer': 'Total is 999'}},
+                'revision': {'role': 6, 'status': 'delivered',
+                             'output': {'name': 'Nora', 'answer': 'Corrected total is 450'}}}
+        context = reaction_context({'collaboration': plan})
+        self.assertIn('Corrected total is 450', context)
+        self.assertNotIn('999', context)
+        plan['revision']['status'] = 'failed'
+        self.assertIn('999', reaction_context({'collaboration': plan}))
+
     def hire(self, name='Muse', **values):
         return self.app.add_agent(self.owner, dict(name=name, skills=['writer'], purpose='Poetry and unexpected metaphors.',
             tonePrompt='Gentle and dreamy. Never sarcastic.', **values))['agentId']

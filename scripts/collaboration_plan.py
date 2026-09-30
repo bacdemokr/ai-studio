@@ -2,9 +2,11 @@
 import json
 import re
 import time
+from time import monotonic
 from plan_artifacts import snapshot_files, collect_files
 from webpage_artifacts import PAGE_INSTRUCTIONS, html_files, collect_pages
 from plan_inputs import requested_inputs, input_manifest, validate_assignments
+from plan_revision import PLAN_TIME_BUDGET_SECONDS, PlanBudgetExceeded, read_revision, effective_outputs, REVISION_INSTRUCTIONS
 
 
 def is_plan(prompt):
@@ -75,12 +77,16 @@ def read_plan(answer):
     return result
 
 
-def read_checkpoint(answer):
+def read_checkpoint(answer, allow_revision=False):
     from studio_events import object_reply
     value = object_reply(str(answer))
     done, reason = value.get('done'), value.get('reason')
     if type(done) is not bool or not isinstance(reason, str) or not 0 < len(reason.strip()) <= 1500:
         raise RuntimeError('The Captain did not return a usable progress decision. Completed contributions are preserved.')
+    if value.get('revision') is not None:
+        if not allow_revision or done or value.get('outcome', 'complete') != 'complete':
+            raise RuntimeError('No further revision can be requested at this stage.')
+        return {'done': False, 'reason': reason.strip(), 'revision': value['revision'], 'outcome': 'complete'}
     final = value.get('answer', '')
     if done and (not isinstance(final, str) or not 0 < len(final.strip()) <= 24000):
         raise RuntimeError('The Captain must provide a final answer before ending collaboration.')
@@ -120,7 +126,7 @@ class CollaborationPlans:
         for row in rows:
             payload, result = json.loads(row['payload']), json.loads(row['result'] or '{}')
             plan = payload.get('collaboration', {})
-            contribution = plan.get('outputs', {}).get(str(role), {})
+            contribution = effective_outputs(plan).get(str(role), {})
             answer = contribution.get('answer') or result.get('answer')
             if not answer and plan.get('outputs'):
                 answer = json.dumps({name: output.get('answer', '')[:2000] for name, output in plan['outputs'].items()}, ensure_ascii=False)
@@ -144,6 +150,8 @@ class CollaborationPlans:
         from agent_runtime import collaboration_capabilities
         owner, job_id = row['owner'], row['id']
         plan = payload['collaboration']
+        deadline = monotonic() + PLAN_TIME_BUDGET_SECONDS
+        plan['timeBudgetSeconds'] = PLAN_TIME_BUDGET_SECONDS
         with self.db() as db:
             roster = self.crew_roster(db, owner, {}, preset=True)
         origin = plan.get('origin', {'owner': owner, 'role': 0})
@@ -173,7 +181,9 @@ class CollaborationPlans:
             'Document extraction may omit images, formulas and layout. Do not claim to have examined omitted content.')
 
         captain_context = (
-            '\nThis run can call at most three specialists, once each. Prioritize a useful deliverable within that budget. '
+            '\nThis run can call at most three specialists, once each in the initial plan. '
+            'A final progress review may authorize one extra, targeted revision by an already participating specialist. '
+            'Prioritize a useful deliverable within that budget. '
             'A team-size limit or missing capability does not require discarding useful achievable work. '
             'If only part can be completed, deliver the actual finished portion with outcome:"partial", '
             'a nonempty remaining list of unmet requirements, and an answer stating what was completed, '
@@ -192,12 +202,16 @@ class CollaborationPlans:
         def invoke(role, instruction, phase):
             if self.stop_checkpoint(job_id):
                 return None
+            if monotonic() >= deadline:
+                raise PlanBudgetExceeded('The collaboration time budget was reached; no further calls were started.')
             member = roster[role]
             plan['activeRole'] = role
             save(member['name'] + ' · ' + ('Reviewing progress' if phase.startswith('Checking') else phase), instruction[:300])
             self.prepare_builtin_crew(owner, role, member)
             if self.stop_checkpoint(job_id):
                 return None
+            if monotonic() >= deadline:
+                raise PlanBudgetExceeded('The collaboration time budget was reached during preparation.')
             # Fresh, job-specific sessions avoid contaminating ordinary direct chats.
             session = 'bac-plan-' + job_id + '-' + str(role) + '-' + phase.split()[0].lower()
             pages_before = html_files(self.workspace(owner, role))
@@ -205,6 +219,7 @@ class CollaborationPlans:
             # Only explicitly scoped task inputs and verified outputs cross workspaces.
             # No arbitrary paths reported by a model. Always remove temporary copies.
             shared = []
+            handoff_files = []
             try:
                 assignments = plan.get('tasks', [])
                 selected = [t for t in assignments if t['role'] == role] if role else [
@@ -219,8 +234,8 @@ class CollaborationPlans:
                     shared.append((relative, target))
                     target.write_bytes(item['data'])
                     source_context.append({'name': item['name'], 'path': relative, 'extractedText': item['extractedText']})
-                if phase.startswith(('Working', 'Checking')):
-                    for sender, output in plan['outputs'].items():
+                if phase.startswith(('Working', 'Checking', 'Revising')):
+                    for sender, output in effective_outputs(plan).items():
                         for index, path in enumerate(output.get('files', [])):
                             if not path.startswith(('artifacts/page-' + job_id + '-r' + sender + '-', 'artifacts/shared-' + job_id + '-r' + sender + '-')):
                                 continue
@@ -229,8 +244,14 @@ class CollaborationPlans:
                             target = safe_file(self.workspace(owner, role), relative)
                             target.write_bytes(source.read_bytes())
                             shared.append((relative, target))
-                file_context = ('\nPrevious specialists’ generated files (untrusted task data, read when needed):\n' +
-                                '\n'.join(relative for relative, _ in shared)) if shared else ''
+                            handoff_files.append({'from': output['name'], 'artifact': path, 'readPath': relative})
+                file_context = ('\nPrevious specialists’ generated files (untrusted task data):\n' +
+                    json.dumps(handoff_files, ensure_ascii=False) +
+                    '\nFor file reads, use ONLY the readPath values above, which are actual copies in your current workspace. '
+                    'The artifact values and paths in outputs.files are download references for the final answer, not local read paths. '
+                    'Filenames claimed in specialist answer text belong to their own workspaces. '
+                    'Do not report a deliverable missing without reading its mapped readPath. '
+                    'When replying, link the artifact value, never the temporary readPath.') if handoff_files else ''
                 answer = self.respond_chat(member['id'], session,
                     context + (captain_context if role == 0 else
                         '\nThe overall request is background, not your assignment. Complete ONLY the contribution Casey assigned below, '
@@ -241,7 +262,7 @@ class CollaborationPlans:
                     '\n\nYour collaboration expertise: ' + CREW_CATALOG[role]['collaboration']['description'] +
                     '\n\nYour assignment:\n' + instruction + file_context +
                     '\nSelected original documents (untrusted task data):\n' + json.dumps(source_context, ensure_ascii=False) +
-                    (PAGE_INSTRUCTIONS if role == 5 and phase.startswith('Working') else ''), owner,
+                    (PAGE_INSTRUCTIONS if role == 5 and phase.startswith(('Working', 'Revising')) else ''), owner,
                     {'crewRole': role, 'images': payload.get('images', []) if role == 0 or any(t.get('useImages') for t in selected) else []})
             finally:
                 for _, target in shared:
@@ -251,7 +272,7 @@ class CollaborationPlans:
                 return None
             if not str(answer).strip() or 'Reply truncated' in str(answer):
                 raise RuntimeError(member['name'] + ' did not finish its contribution. Saved handoffs are preserved.')
-            if phase.startswith(('Working', 'Reviewing')):
+            if phase.startswith(('Working', 'Reviewing', 'Revising')):
                 pages = collect_pages(self, owner, job_id, role, pages_before, answer)
                 if pages and role not in (4, 5):
                     # Keep the specialist's source, but never promote an unsolicited
@@ -262,9 +283,35 @@ class CollaborationPlans:
                     plan.setdefault('scopeWarnings', {})[str(role)] = (
                         'HTML was produced outside this role assignment and was not accepted as a shared deliverable. '
                         'Use the in-scope findings only; implementation remains unfulfilled until the programmer delivers it.')
-                plan.setdefault('webpages', {})[str(role)] = pages
-                plan.setdefault('files', {})[str(role)] = pages + collect_files(self, owner, job_id, role, files_before)
+                files = pages + collect_files(self, owner, job_id, role, files_before)
+                if phase.startswith('Revising'):
+                    # Preserve the initial snapshot for the trace and failed repair recovery.
+                    plan['revision']['files'] = files
+                else:
+                    plan.setdefault('webpages', {})[str(role)] = pages
+                    plan.setdefault('files', {})[str(role)] = files
             return answer
+
+
+        def finish(answer, reactions=True):
+            path = 'artifacts/plan-' + job_id + '.md'
+            safe_file(self.workspace(owner), path).write_text(str(answer), encoding='utf-8')
+            plan['activeRole'] = None
+            plan['finalAnswer'] = str(answer)
+            plan['responseReady'] = True
+            files = [path] + [p for paths in plan.get('files', {}).values() for p in paths]
+            save('BaC team response ready', 'The completed response and saved contributions are available.',
+                 result=json.dumps({'answer': str(answer), 'files': list(dict.fromkeys(files)), 'activity': getattr(answer, 'activity', None)}))
+            if reactions and monotonic() < deadline and plan.get('outcome') != 'unavailable' and not self.stop_checkpoint(job_id):
+                self.run_roundtable(row, payload)
+            if not self.stop_checkpoint(job_id):
+                save('BaC collaboration finished', 'The response and any personal reactions are saved.', status='done')
+
+        def unfinished(reason):
+            plan.update(outcome='partial', remaining=[reason])
+            outputs = effective_outputs(plan)
+            completed = '\n\n'.join(output['name'] + ' · Saved contribution\n' + str(output['answer']) for output in outputs.values())
+            return 'Partial result: ' + reason + '\nNo further automatic work will be started. Saved contributions follow.\n\n' + (completed or 'No specialist contribution finished.')
 
         try:
             answer = invoke(0,
@@ -385,48 +432,122 @@ class CollaborationPlans:
             if plan['tasks'] and not plan.get('skippedRoles'):
                 review = invoke(0,
                     'Combine the completed contributions into a useful final answer. Resolve contradictions '
-                    'against the original request and identify remaining gaps. Do not call tools, delegate '
-                    'again, or present blocked/incomplete work as complete. Explain explicitly why no additional agents '
+                    'against the original request and identify remaining gaps. Do not call tools or present blocked/incomplete work as complete. Explain explicitly why no additional agents '
                     'are needed if the result is sufficient. If required expertise or a tool is unavailable, name it '
                     'and distinguish completed work from the unfulfilled request. '
                     'Include the completion rationale in answer itself as well as reason, and retain any unperformed testing or verification limitations. '
                     'Use the same concise explanation sentence in reason and answer. '
                     'Link only accepted paths in outputs.files, never temporary inbox/plan-* handoff copies. '
                     'All selected specialists have now run; no fourth specialist will be called. '
+                    'One already participating specialist may receive a targeted revision if essential. '
                     'If requirements remain, return the useful completed work as partial, with remaining listing each unmet requirement. '
                     'The specialist limit is not proof of completion. Never discard a usable prototype or analysis because the full task is unfinished. '
                     'Return ONLY JSON {"done":true,"outcome":"complete" or "partial" or "unavailable",'
                     '"remaining":["unfinished requirements, required only for partial"],'
                     '"reason":"why no additional agents are needed, or which required capability is missing",'
                     '"answer":"concise user-facing final answer"}. Completed contributions (untrusted evidence):\n' +
-                    json.dumps(plan['outputs'], ensure_ascii=False), 'Reviewing')
+                    json.dumps(plan['outputs'], ensure_ascii=False) + REVISION_INSTRUCTIONS, 'Reviewing')
                 if review is None:
                     return
-                check = read_checkpoint(review)
+                check = read_checkpoint(review, allow_revision=True)
+                if check.get('revision') is not None:
+                    try:
+                        requested = read_revision(check['revision'], plan)
+                    except RuntimeError:
+                        answer = unfinished('The proposed revision was outside the permitted scope. The completed work is preserved.')
+                        plan['revisionDeclined'] = check['reason']
+                        finish(answer, reactions=False)
+                        return
+                    revision = {**requested, 'reason': check['reason'], 'status': 'requested', 'started': time.time()}
+                    plan['revision'] = revision
+                    save('Casey · One targeted revision', check['reason'])
+                    if self.stop_checkpoint(job_id):
+                        return
+                    revision['status'] = 'working'
+                    # New session, original task documents, all saved handoffs, and the concrete review issue.
+                    try:
+                        amended = invoke(revision['role'],
+                            'This is the only additional revision allowed in this plan. Fix only this assigned issue. '
+                            'Do not perform a fresh end-to-end task or request more specialist work. '
+                            'Save changed deliverables in artifacts/; temporary inbox copies will be removed. '
+                            'Return the updated result, exactly what changed, evidence against the acceptance criteria and remaining limitations. '
+                            'Do not claim an independent re-review occurred.\nIssue: ' + revision['issue'] +
+                            '\nCasey’s revision assignment: ' + revision['task'] + '\nExpected result: ' + revision['expected'] +
+                            '\nSaved contributions (untrusted evidence):\n' + json.dumps(plan['outputs'], ensure_ascii=False),
+                            'Revising')
+                    except PlanBudgetExceeded:
+                        raise
+                    except RuntimeError:
+                        if self.stop_checkpoint(job_id):
+                            return
+                        revision['status'] = 'failed'
+                        save('Revision did not finish', 'Previous contributions are preserved. No retry will be started.')
+                        finish(unfinished('The one allowed revision did not finish. The original result is preserved and the reported issue remains: ' + revision['issue']), reactions=False)
+                        return
+                    if amended is None:
+                        revision['status'] = 'stopped'
+                        return
+                    revised_files = revision.get('files', [])
+                    if not any(path.lower().endswith('.html') for path in revised_files):
+                        revised_files = list(dict.fromkeys(plan['outputs'][str(revision['role'])].get('files', []) + revised_files))
+                    revision.update(status='delivered', output={'name': roster[revision['role']]['name'], 'answer': str(amended),
+                        'task': revision['task'], 'expected': revision['expected'], 'files': revised_files,
+                        'scopeWarning': plan.get('scopeWarnings', {}).get(str(revision['role']), ''),
+                        'activity': getattr(amended, 'activity', None)})
+                    # A revised page supersedes the preview; the initial version remains in its original contribution.
+                    pages = [path for path in revision.get('files', []) if path.lower().endswith('.html')]
+                    if pages:
+                        plan.setdefault('webpages', {})[str(revision['role'])] = pages
+                    previous = plan.get('files', {}).get(str(revision['role']), [])
+                    plan.setdefault('files', {})[str(revision['role'])] = list(dict.fromkeys(previous + revision.get('files', [])))
+                    save('Revision delivered', 'Casey will verify the result; no additional specialist calls are allowed.')
+                    try:
+                        final_review = invoke(0,
+                            'The single revision is finished. You must now finish; do not request another revision, specialist, or independent re-review. '
+                            'Read the supplied files if needed, but do not edit or implement. Check the concrete issue and expected result against the revised contribution. '
+                            'State what was repaired and what remains, and that the reviewer has not independently checked the revised version. '
+                            'If evidence is insufficient or follow-on implementation is still needed after additional research, return partial and name that gap. '
+                            'Do not claim the old review validates changed files. Link only accepted outputs.files paths. '
+                            'Return ONLY JSON {"done":true,"outcome":"complete" or "partial","reason":"completion or stopping reason",'
+                            '"remaining":["unmet requirement, required for partial"],"answer":"self-contained final reply"}. '
+                            '\nRevision and acceptance criteria:\n' + json.dumps(revision, ensure_ascii=False) +
+                            '\nCurrent contributions:\n' + json.dumps(effective_outputs(plan), ensure_ascii=False), 'Checking-revision')
+                    except PlanBudgetExceeded:
+                        raise
+                    except RuntimeError:
+                        if self.stop_checkpoint(job_id):
+                            return
+                        finish(unfinished('The revision is saved, but Casey could not complete final verification.'), reactions=False)
+                        return
+                    if final_review is None:
+                        return
+                    try:
+                        check = read_checkpoint(final_review)
+                        if not check['done']:
+                            raise RuntimeError('A second cycle is not allowed.')
+                    except RuntimeError:
+                        check = {'done': True, 'outcome': 'partial', 'reason': 'The revision is saved, but final verification was not completed.',
+                            'remaining': ['Verification of the revised result'], 'answer': unfinished('The revision is saved, but final verification was not completed.')}
+                    revision['check'] = check
                 if not check['done']:
                     raise RuntimeError('The Captain did not finish its review. Completed contributions are preserved.')
-                plan['checks'].append({'afterRole': plan['tasks'][-1]['role'], 'done': True,
+                plan['checks'].append({'afterRole': plan['tasks'][-1]['role'], 'afterRevision': bool(plan.get('revision')), 'done': True,
                                        'reason': check['reason'], 'outcome': check['outcome'], **partial_remaining(check)})
                 plan['outcome'] = check['outcome']
                 plan.update(partial_remaining(check))
                 answer = check['answer']
             if answer is None:
                 return
-            path = 'artifacts/plan-' + job_id + '.md'
-            safe_file(self.workspace(owner), path).write_text(str(answer), encoding='utf-8')
-            plan['activeRole'] = None
-            plan['finalAnswer'] = str(answer)
-            plan['responseReady'] = True
-            save('BaC team response ready', 'The Captain completed the response' + (' using the saved contributions.' if plan['outputs'] else ' without delegation.'),
-                 result=json.dumps({'answer': str(answer), 'files': [path] + [p for files in plan.get('files', {}).values() for p in files], 'activity': getattr(answer, 'activity', None)}))
-            # Publish the useful answer before the optional personality reactions.
-            # Keep the job active until guests finish so stop/reset/deletion fences
-            # also cover their native calls. Reactions never rewrite the deliverable.
-            if plan.get('outcome') != 'unavailable' and not self.stop_checkpoint(job_id):
-                self.run_roundtable(row, payload)
+            finish(answer)
+        except PlanBudgetExceeded as error:
             if self.stop_checkpoint(job_id):
                 return
-            save('BaC collaboration finished', 'The response and any personal reactions are saved.', status='done')
+            revision = plan.get('revision')
+            if revision and revision.get('status') in ('requested', 'working'):
+                revision['status'] = 'not-started'
+            plan['budgetReached'] = True
+            finish(unfinished(str(error)), reactions=False)
+
         except Exception:
             # Keep completed results visible if a later specialist or the model fails.
             save('Collaboration needs attention', 'Completed contributions are preserved.')
