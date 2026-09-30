@@ -11,6 +11,21 @@ from plan_handoff import required_files, missing_files
 from plan_revision import PLAN_TIME_BUDGET_SECONDS, PlanBudgetExceeded, read_revision, effective_outputs, REVISION_INSTRUCTIONS
 
 
+SCOUT_COMPLETION_RULE = (
+    '\nSCOUT FINISH RULE — applies to every research task and overrides generic source quotas: '
+    'Before every further research call, identify the specific REQUIRED fact or evidence gap still missing. '
+    'If no required fact is missing, stop browsing immediately. Enough means the user’s requested scope is '
+    'supported, not merely that you found two facts. Do not add topics, sources, extra comparisons or optional metrics. '
+    'One adequate source is enough unless the user explicitly requires multiple sources or a specific unresolved '
+    'reliability/conflict issue needs another source. Never search again only to enrich or polish an adequate answer. '
+    'Collect required source URLs, dates and timestamps while gathering the evidence, BEFORE saving. '
+    'Write the complete assigned brief once, including supported findings and honest gaps, then immediately '
+    'return a handoff under 80 words. A successful write confirms the save. '
+    'After successful write, do not read the brief back, edit it, browse again, or polish it. '
+    'Fix only a failed write or an explicitly identified material factual error; optional formatting is not a reason to continue.\n'
+)
+
+
 def compact_contributions(outputs):
     """Keep control prompts small; full evidence remains in mapped files and history."""
     rows = outputs.values() if isinstance(outputs, dict) else outputs
@@ -221,7 +236,7 @@ class CollaborationPlans:
             'For broader public-web research, start with maxChars:3000 per web_fetch and make at most five fetch attempts '
             'for the initial brief, counting failed attempts too. Fetch at most two pages before assessing '
             'whether they answer your assignment; do not launch a broad batch of guessed URLs. '
-            'Scout has a total 150-second research budget, including searches, reading, writing and retries. '
+            'Scout has a total 150-second research budget, including searches, reading, writing and retries. This is a ceiling, not a target. '
             'Save a short brief immediately after useful evidence arrives; stop researching once 2-3 facts are available. '
             'If no relevant evidence is found, say the search failed; never fabricate facts or keep trying for perfection. '
             'SEARCH-FIRST DEMO: when web_search is available, use one focused search returning at most three results. '
@@ -423,6 +438,8 @@ class CollaborationPlans:
             if role == 8 and monotonic() >= research_deadline:
                 raise GatewayError('Scout reached the 150-second research limit. No further research will run.', 'timeout')
             member = dict(roster[role])
+            if role == 8:
+                member['_researchBrief'] = True
             if role == 0:
                 member['_planControl'] = 'read' if phase.startswith('Checking') else 'none'
             plan['activeRole'] = role
@@ -523,6 +540,7 @@ class CollaborationPlans:
                       'and gaps. After the budget is used, save available evidence and return; no additional browsing '
                       'to fill optional sections. An overview page supports only claims actually present in its retrieved text.\n')
                      if role == 8 and phase.startswith('Working') else '') +
+                    (SCOUT_COMPLETION_RULE if role == 8 else '') +
                     (PAGE_INSTRUCTIONS if role == 5 and phase.startswith(('Working', 'Revising', 'Recovering')) else '') +
                     (('\nDecision output contract: return ONLY a JSON object with summary and tasks (integer role IDs) as specified above.'
                       if phase == 'Planning' else
@@ -618,6 +636,7 @@ class CollaborationPlans:
                 'The tools listed for each specialist are configured for that specialist, not for your Captain session. '
                 'Your own missing web tools do not mean Scout lacks public-web access. web_fetch reads public HTTP(S) pages; '
                 'web_search is a separate optional search-engine tool. Absence of web_search does not disable web_fetch. '
+                'Keep Scout assignments limited to the user’s required facts. Do not add multiple sources, extra topics or verification steps unless needed to answer the request. Stop as soon as those requirements have adequate evidence. '
                 'If Scout has web_search, assign one focused search and a brief of 2-3 relevant findings; '
                 'require an immediate native write of the brief after that search, then finish without follow-up searches or page reads. '
                 'Source excerpts suffice for this demo when labeled honestly. Include the current year or requested period in the query '

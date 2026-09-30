@@ -66,6 +66,42 @@ class PlanWebCapabilities(unittest.TestCase):
         self.assertNotIn('search snippets and home-page navigation are not evidence',scout)
         self.assertNotIn('then read the relevant result pages',scout)
 
+    def test_scout_stops_after_required_evidence_and_single_save(self):
+        self.start('/plan Research the key NVIDIA developments and save an evidence brief.')
+        self.app.execute(self.app.next_job())
+        captain=self.adapter.calls[0][2]
+        scout=next(prompt for agent,session,prompt in self.adapter.calls if agent.endswith('-r8'))
+        self.assertIn('Do not add multiple sources, extra topics',captain)
+        self.assertIn('SCOUT FINISH RULE',scout)
+        self.assertIn('If no required fact is missing, stop browsing immediately',scout)
+        self.assertIn('After successful write, do not read the brief back',scout)
+        self.assertIn('dates and timestamps while gathering the evidence, BEFORE saving',scout)
+        self.assertIn('user’s requested scope is supported',scout)
+        self.assertIn('never search again only',scout.lower())
+
+    def test_research_handoff_disables_edit_but_keeps_input_reads(self):
+        researcher={**CREW_CATALOG[8],'_researchBrief':True}
+        tools=runtime.tool_allowlist(researcher,researcher['role'])
+        self.assertIn('read',tools);self.assertIn('write',tools);self.assertIn('web_fetch',tools)
+        self.assertNotIn('edit',tools)
+        ordinary=runtime.tool_allowlist(CREW_CATALOG[5],CREW_CATALOG[5]['role'])
+        self.assertIn('edit',ordinary)
+
+    def test_existing_scout_switches_to_research_brief_tools(self):
+        member={**CREW_CATALOG[8], 'id':'test-scout'}
+        with patch.object(self.adapter,'register',wraps=self.adapter.register) as register:
+            self.app.prepare_builtin_crew(self.owner,8,dict(member))
+            self.app.prepare_builtin_crew(self.owner,8,{**member,'_researchBrief':True})
+            self.assertEqual(register.call_count,2)
+            profile=register.call_args.args[2]
+            self.assertNotIn('edit',runtime.tool_allowlist(profile,profile['role']))
+            self.app.prepare_builtin_crew(self.owner,8,{**member,'_researchBrief':True})
+            self.assertEqual(register.call_count,2)
+            self.app.prepare_builtin_crew(self.owner,8,dict(member))
+            self.assertEqual(register.call_count,3)
+            profile=register.call_args.args[2]
+            self.assertIn('edit',runtime.tool_allowlist(profile,profile['role']))
+
     def test_research_skill_searches_first_with_bounded_source_fallback(self):
         instruction = runtime.SKILLS['web'][1]
         self.assertIn('use it FIRST: one focused query', instruction)

@@ -1074,12 +1074,13 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
         control = member.get('_planControl') if role == 0 else None
         if control not in (None, 'none', 'read'):
             raise ValueError('Invalid Captain tool mode')
+        mode = 'research-brief' if role == 8 and member.get('_researchBrief') else control
         modes = self.__dict__.setdefault('_crew_tool_modes', {})
-        if agent_id not in self.provisioned or modes.get(agent_id) != control:
+        if agent_id not in self.provisioned or modes.get(agent_id) != mode:
             self.initialize_workspace(owner)
             self.adapter.register(agent_id, self.workspace(owner, role), member, member['role'])
             self.provisioned.add(agent_id)
-            modes[agent_id] = control
+            modes[agent_id] = mode
         if member['protection'] != 'openshell':
             return None
         _, approvals = self.saved_policy(owner, role)
