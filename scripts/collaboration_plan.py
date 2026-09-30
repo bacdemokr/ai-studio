@@ -287,7 +287,9 @@ class CollaborationPlans:
                         'within your role boundary. Return it to Casey with evidence and limitations. Do not execute later stages, '
                         'take over another specialist, or decide the whole team is finished. If your assignment conflicts with '
                         'your expertise, report that mismatch and supply only the useful in-scope portion. '
-                        'Keep your handoff summary within 300 words, including on revision. Save necessary detail '
+                        'Keep only your handoff summary within 300 words, including on revision. This is NOT a limit '
+                        'on code, file contents or requested deliverables. Never truncate an implementation or drop '
+                        'required functionality to satisfy the summary limit. Save necessary detail '
                         'in deliverable files rather than repeating their contents in chat. If the requested deliverable '
                         'must be returned directly in chat, preserve it in full and keep the surrounding summary short.') +
                     '\n\nYour /plan role boundary: ' + CREW_CATALOG[role]['collaboration'].get('scope', '') +
