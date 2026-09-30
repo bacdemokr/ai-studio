@@ -1113,10 +1113,15 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
         # Saved jobs from an older build must not restore an unprotected Dylan.
         member['protection'] = CREW_CATALOG[role].get('protection', 'standard')
         agent_id = member['id']
-        if agent_id not in self.provisioned:
+        control = member.get('_planControl') if role == 0 else None
+        if control not in (None, 'none', 'read'):
+            raise ValueError('Invalid Captain tool mode')
+        modes = self.__dict__.setdefault('_crew_tool_modes', {})
+        if agent_id not in self.provisioned or modes.get(agent_id) != control:
             self.initialize_workspace(owner)
             self.adapter.register(agent_id, self.workspace(owner, role), member, member['role'])
             self.provisioned.add(agent_id)
+            modes[agent_id] = control
         if member['protection'] != 'openshell':
             return None
         _, approvals = self.saved_policy(owner, role)
@@ -1227,11 +1232,12 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
             return
 
     def respond_chat(self, agent_id, session, prompt, owner, payload):
+        options = {'json_response': True} if payload.get('_captainDecision') and payload.get('crewRole') == 0 else {}
         if not payload.get('images'):
-            return self.protected_response(agent_id, session, prompt, owner, payload.get('crewRole'))
+            return self.protected_response(agent_id, session, prompt, owner, payload.get('crewRole'), **options)
         import base64
         images = [{'mime': image['mime'], 'data': base64.b64encode(safe_file(self.workspace(owner), image['path'], True).read_bytes()).decode()} for image in payload['images']]
-        return self.protected_response(agent_id, session, prompt, owner, payload.get('crewRole'), images=images)
+        return self.protected_response(agent_id, session, prompt, owner, payload.get('crewRole'), images=images, **options)
 
     def crew_chat(self, row, payload):
         owner, job_id, role = row['owner'], row['id'], payload['crewRole']

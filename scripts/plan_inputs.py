@@ -46,6 +46,13 @@ def input_manifest(inputs):
 def validate_assignments(tasks, available, has_images):
     allowed = {item['id'] for item in available}
     for task in tasks:
+        if 'inputs' not in task:
+            # Some models mention the provided document ID in their assignment
+            # but omit the structured field. Resolve only those exact IDs from
+            # the already user-scoped manifest, never the entire inbox.
+            text = task.get('task', '') + '\n' + task.get('expected', '')
+            task['inputs'] = [item['id'] for item in available
+                              if re.search(r'(?<![\w-])' + re.escape(item['id']) + r'(?![\w-])', text)]
         if any(key not in allowed for key in task.get('inputs', [])):
             raise RuntimeError('The Captain selected an unavailable document. No specialist was started.')
         if task.get('useImages') and not has_images:

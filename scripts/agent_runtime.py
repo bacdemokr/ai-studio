@@ -410,6 +410,8 @@ def tool_allowlist(profile, role=None):
 
     This describes tool availability, not reachability of any particular URL.
     """
+    if profile.get('_planControl') in ('none', 'read'):
+        return ['read'] if profile['_planControl'] == 'read' else []
     protected = profile.get('protection', 'standard') == 'openshell'
     equipped = list(profile.get('skills', []))
     event_exec = bool(role and not protected and ('event-tools' in equipped or (role == 'Marketing producer' and 'nvidia-webpage' in equipped)))
@@ -479,6 +481,13 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
             'tools': {'allow': allow, 'deny': ['web_fetch', 'web_search'] if protected else [] if event_exec or radar_exec else ['exec'],
                       'fs': {'workspaceOnly': protected}},
         }
+        control = profile.get('_planControl')
+        if control in ('none', 'read'):
+            # Empty allow alone is not a deny-all policy in OpenClaw. These
+            # native policies apply before tool exposure and execution.
+            entry['skills'] = []
+            entry['tools'] = {'allow': allow, 'deny': ['*'] if control == 'none' else [],
+                              'fs': {'workspaceOnly': True}}
         if protected:
             entry['tools']['exec'] = {'host': 'sandbox', 'security': 'full', 'ask': 'off'}
             config['tools']['deny'] = [x for x in config['tools'].get('deny', []) if x != 'exec']
@@ -776,14 +785,14 @@ def gateway(path, payload=None, timeout=settings.AGENT_TIMEOUT_SECONDS):
         code = error.code
         error.close()
         if path == '/v1/chat/completions':
-            raise GatewayError(f'OpenClaw returned HTTP {code} while executing the agent request. The model or a tool call may have failed. Saved work is preserved; the request was not automatically repeated. Check docker compose logs studio for the underlying error.', 'request_failed') from None
+            raise GatewayError(f'OpenClaw returned HTTP {code} while executing the agent request. The model or a tool call may have failed. Saved work is preserved; the request was not automatically repeated. Check the host OpenClaw runtime logs for the underlying error.', 'request_failed') from None
         raise GatewayError(f'OpenClaw rejected the gateway request (HTTP {code}). Check gateway authentication and configuration.', 'unavailable') from None
     except (urllib.error.URLError, OSError) as error:
         reason = 'timeout' if isinstance(getattr(error, 'reason', None), (TimeoutError, socket.timeout)) else 'unavailable'
         raise GatewayError('The OpenClaw gateway did not complete this request. Check ./bac dev runtime check and ./bac dev runtime logs. No sample answer was substituted.', reason) from None
 
 
-def respond(agent_id, session, prompt, images=None):
+def respond(agent_id, session, prompt, images=None, json_response=False):
     expected = _expected_identity.get(agent_id)
     if expected:
         deadline = time.monotonic() + 20
@@ -820,12 +829,18 @@ def respond(agent_id, session, prompt, images=None):
         result = gateway('/v1/chat/completions', {
         'model': 'openclaw/' + agent_id, 'user': session, 'stream': False,
         'messages': [{'role': 'user', 'content': content}],
+        **({'response_format': {'type': 'json_object'}} if json_response else {}),
         })
     except RuntimeError as error:
+        if isinstance(error, GatewayError) and error.reason == 'request_failed':
+            from agent_activity import model_failure
+            failure = model_failure(root() / 'state', agent_id, session, started, settings.MAX_OUTPUT_TOKENS)
+            if failure:
+                error = GatewayError(failure['message'], failure['code'])
         error.activity = observed_activity(agent_id, session, started)
         if images:
             raise RuntimeError('The image request failed. Check that the connected model supports image input and that its vision components are available. The image was not silently omitted. '+str(error)) from None
-        raise
+        raise error
     choices = result.get('choices', [])
     elapsed = time.monotonic() - request_started
     content = choices[0].get('message', {}).get('content') if choices else None

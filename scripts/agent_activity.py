@@ -5,6 +5,7 @@ import shlex
 import re
 import sqlite3
 import posixpath
+from contextlib import closing
 
 
 def custom_skill_paths(config, agent, catalog):
@@ -100,3 +101,38 @@ def heartbeat_failure(state, agent, started):
             return None
     except (OSError,ValueError,TypeError,sqlite3.Error):pass
     return None
+
+
+def model_failure(state, agent, session, started, output_limit):
+    """Diagnose only this invocation; never expose model text, arguments or keys."""
+    path = Path(state) / 'agents' / agent / 'agent/openclaw-agent.sqlite'
+    if not path.is_file():
+        return None
+    try:
+        with closing(sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True, timeout=.2)) as db:
+            rows = db.execute('''SELECT t.event_json FROM transcript_events t
+                JOIN session_windows s USING(session_id)
+                WHERE s.session_key=? AND t.created_at>=?
+                ORDER BY t.created_at DESC,t.seq DESC LIMIT 20''',
+                ('agent:' + agent + ':openai-user:' + session, int(started * 1000))).fetchall()
+        for raw, in rows:
+            message = json.loads(raw).get('message', {})
+            if message.get('role') != 'assistant':
+                continue
+            error = str(message.get('errorMessage', ''))
+            malformed = error in {
+                'Provider returned an incomplete or malformed tool call',
+                'Provider completed tool call with malformed JSON arguments',
+                'Provider completed stream with an incomplete tool call',
+            }
+            if malformed:
+                output = (message.get('usage') or {}).get('output')
+                capped = type(output) is int and output >= output_limit
+                return {'code': 'tool-call-output-limit' if capped else 'malformed-tool-call',
+                    'message': 'The model returned an incomplete or invalid tool call.' +
+                    (f' Its output reached the configured {output_limit:,}-token limit, which may have cut the call short.' if capped else '') +
+                    ' Saved work is preserved. The request was not automatically repeated.'}
+            # Do not diagnose an older error after a later successful response.
+            return None
+    except (OSError, ValueError, TypeError, AttributeError, sqlite3.Error):
+        return None

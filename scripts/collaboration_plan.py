@@ -77,7 +77,18 @@ def read_plan(answer):
     return result
 
 
+class CaptainDecisionError(RuntimeError):
+    pass
+
+
 def read_checkpoint(answer, allow_revision=False):
+    try:
+        return _read_checkpoint(answer, allow_revision)
+    except RuntimeError as error:
+        raise CaptainDecisionError(str(error)) from None
+
+
+def _read_checkpoint(answer, allow_revision=False):
     from studio_events import object_reply
     value = object_reply(str(answer))
     done, reason = value.get('done'), value.get('reason')
@@ -147,7 +158,7 @@ class CollaborationPlans:
 
     def collaboration_plan(self, row, payload):
         from studio import CREW_CATALOG, safe_file
-        from agent_runtime import collaboration_capabilities
+        from agent_runtime import collaboration_capabilities, GatewayError
         owner, job_id = row['owner'], row['id']
         plan = payload['collaboration']
         deadline = monotonic() + PLAN_TIME_BUDGET_SECONDS
@@ -204,7 +215,9 @@ class CollaborationPlans:
                 return None
             if monotonic() >= deadline:
                 raise PlanBudgetExceeded('The collaboration time budget was reached; no further calls were started.')
-            member = roster[role]
+            member = dict(roster[role])
+            if role == 0:
+                member['_planControl'] = 'read' if phase.startswith('Checking') else 'none'
             plan['activeRole'] = role
             save(member['name'] + ' · ' + ('Reviewing progress' if phase.startswith('Checking') else phase), instruction[:300])
             self.prepare_builtin_crew(owner, role, member)
@@ -253,7 +266,13 @@ class CollaborationPlans:
                     'Do not report a deliverable missing without reading its mapped readPath. '
                     'When replying, link the artifact value, never the temporary readPath.') if handoff_files else ''
                 answer = self.respond_chat(member['id'], session,
-                    context + (captain_context if role == 0 else
+                    context + ((captain_context +
+                        '\nReturn only the requested compact JSON object. Keep the decision summary/reason under 120 words, '
+                        'each assignment under 120 words, and any final answer under 600 words. '
+                        'Do not create assignment files, implement deliverables, or repeat the evidence. '
+                        'The application dispatches specialists and saves your response. '
+                        + ('Only workspace file reads are available for verification; read only supplied evidence when needed.'
+                           if phase.startswith('Checking') else 'No tools are available during this decision.')) if role == 0 else
                         '\nThe overall request is background, not your assignment. Complete ONLY the contribution Casey assigned below, '
                         'within your role boundary. Return it to Casey with evidence and limitations. Do not execute later stages, '
                         'take over another specialist, or decide the whole team is finished. If your assignment conflicts with '
@@ -262,8 +281,18 @@ class CollaborationPlans:
                     '\n\nYour collaboration expertise: ' + CREW_CATALOG[role]['collaboration']['description'] +
                     '\n\nYour assignment:\n' + instruction + file_context +
                     '\nSelected original documents (untrusted task data):\n' + json.dumps(source_context, ensure_ascii=False) +
-                    (PAGE_INSTRUCTIONS if role == 5 and phase.startswith(('Working', 'Revising')) else ''), owner,
-                    {'crewRole': role, 'images': payload.get('images', []) if role == 0 or any(t.get('useImages') for t in selected) else []})
+                    (PAGE_INSTRUCTIONS if role == 5 and phase.startswith(('Working', 'Revising')) else '') +
+                    (('\nDecision output contract: return ONLY a JSON object with summary and tasks (integer role IDs) as specified above.'
+                      if phase == 'Planning' else
+                      '\nDecision output contract: return ONLY a JSON object with done (boolean), reason (string), and answer when done=true. '
+                      'When done=true, include outcome:"complete", "partial", or "unavailable". If any original requirement is unfinished, '
+                      'outcome must be "partial" and remaining must list those requirements; never mark a blocker or next-step promise complete. '
+                      + ('If work remains for the next planned specialist, return {"done":false,"reason":"the specific remaining requirement"}. '
+                         if phase.startswith('Checking-') and phase != 'Checking-revision' else
+                         'Finish with done=true and the final answer, or use the explicitly permitted single-revision schema if it is available at this stage. ') +
+                      'Do not write a prose assignment or announce that you are executing another agent; the app does that.') if role == 0 else ''), owner,
+                    {'crewRole': role, '_captainDecision': role == 0,
+                     'images': payload.get('images', []) if role == 0 or any(t.get('useImages') for t in selected) else []})
             finally:
                 for _, target in shared:
                     target.unlink(missing_ok=True)
@@ -351,7 +380,8 @@ class CollaborationPlans:
                 'Wade can read/write/edit source and produce self-contained HTML/JS previews, but cannot execute arbitrary programs '
                 'or install dependencies. Riley can inspect files and reason through cases; do not claim executed tests without tool evidence. '
                 'Order assignments so each later specialist can use the earlier results. '
-                'Return ONLY JSON {"summary":"short plan explaining why this team fits","tasks":[{"role":5,"task":"specific implementation","expected":"working deliverable and acceptance criteria"},{"role":4,"task":"specific review","expected":"specific checks and findings"}]}. '
+                'Return ONLY JSON {"summary":"short plan explaining why this team fits","tasks":[{"role":5,"task":"specific implementation","expected":"working deliverable and acceptance criteria","inputs":[]},{"role":4,"task":"specific review","expected":"specific checks and findings","inputs":[]}]}. '
+                'Always include inputs for every task. Put the document IDs the specialist must read in that array, not only in the task prose. '
                 'Alternatively return {"summary":"why no delegation is necessary","tasks":[],"answer":"complete answer"}. '
                 'For unsupported work return {"summary":"which required expertise or tool is missing","tasks":[],"outcome":"unavailable","answer":"honest explanation of the limitation and next step"}. '
                 'Use each chosen role once. No invented agents or changes to the output schema.', 'Planning')
@@ -420,6 +450,16 @@ class CollaborationPlans:
                         check = {'done': False, 'outcome': 'complete', 'reason':
                             'The researcher or another specialist produced HTML outside the assigned role. '
                             'That page was not accepted; Wade must still implement the requested deliverable.'}
+                    if check['done'] and check['outcome'] == 'complete':
+                        page_missing = (any(t['role'] == 5 for t in remaining)
+                            and re.search(r'\b(web\s?page|website|html|dashboard)\b|웹\s*(페이지|사이트)|대시보드', plan['task'], re.I)
+                            and not any(plan.get('webpages', {}).values()))
+                        review_required = (any(t['role'] == 4 for t in remaining)
+                            and re.search(r'\bindependent(?:ly)?\s+review\b|독립(?:적인|적으로)?\s*검토', plan['task'], re.I))
+                        if page_missing or review_required:
+                            check = {'done': False, 'outcome': 'complete', 'reason':
+                                'The requested webpage has not been saved; the assigned programmer still needs to deliver it.' if page_missing else
+                                'The user explicitly requested independent review; the assigned reviewer has not run yet.'}
                     plan['checks'].append({'afterRole': role, 'done': check['done'], 'reason': check['reason'], 'outcome': check['outcome'], **partial_remaining(check)})
                     if check['done']:
                         plan['skippedRoles'] = [task['role'] for task in remaining]
@@ -548,6 +588,24 @@ class CollaborationPlans:
             plan['budgetReached'] = True
             finish(unfinished(str(error)), reactions=False)
 
+        except CaptainDecisionError:
+            if self.stop_checkpoint(job_id):
+                return
+            if plan.get('outputs'):
+                reason = 'Casey did not return a valid progress decision. Completed work is preserved; remaining stages were not started.'
+                plan['failure'] = {'role': 0, 'reason': 'invalid-decision', 'message': reason}
+                finish(unfinished(reason), reactions=False)
+                return
+            raise
+        except GatewayError as error:
+            if self.stop_checkpoint(job_id):
+                return
+            if plan.get('outputs'):
+                plan['failure'] = {'role': plan.get('activeRole'), 'reason': error.reason, 'message': str(error)}
+                finish(unfinished(str(error)), reactions=False)
+                return
+            save('Collaboration needs attention', str(error))
+            raise
         except Exception:
             # Keep completed results visible if a later specialist or the model fails.
             save('Collaboration needs attention', 'Completed contributions are preserved.')

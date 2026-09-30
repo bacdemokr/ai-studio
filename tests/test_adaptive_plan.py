@@ -97,7 +97,9 @@ class AdaptivePlanTests(unittest.TestCase):
             return 'Enough' if '-checking-' in session else answer
         self.adapter.respond = respond
         result = self.start()
-        with self.assertRaises(RuntimeError): self.app.execute(self.app.next_job())
+        self.app.execute(self.app.next_job())
+        self.assertEqual(self.job(result)['payload']['collaboration']['outcome'], 'partial')
+        self.assertIn('Verified contribution from Avery', self.job(result)['result']['answer'])
         self.assertEqual(self.called(), [0,8,0])
         self.assertEqual(set(self.job(result)['payload']['collaboration']['outputs']), {'8'})
 
