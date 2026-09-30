@@ -107,7 +107,7 @@ teamModelDialog.addEventListener('click',async event=>{
  if(event.target.closest('[data-model-close]')||event.target===teamModelDialog){if(!modelPickerSaving)teamModelDialog.close();return;}
  const choice=event.target.closest('[data-model-choice]');if(!choice||modelPickerSaving)return;
  modelPickerSaving=true;renderModelResults();
- try{await api('team-model',{role:modelPickerRole,model:choice.dataset.modelChoice});await refresh();teamModelDialog.close();}
+ try{await api('team-model',{role:modelPickerRole,model:choice.dataset.modelChoice});await refresh();teamModelDialog.close();if(el('team-config-form')&&el('dialog').open)openTeamSettings();}
  catch(error){const message=teamModelDialog.querySelector('.team-model-error');message.textContent=error.message;message.hidden=false;}
  finally{modelPickerSaving=false;renderModelResults();render();}
 });
@@ -316,7 +316,7 @@ function syncCrewComposer(){
  renderCrewDocuments();
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending;
  el('crew-chat-connection').hidden=!blocked;
- el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping BaC work and resetting…':captainPlanning?'Casey is coordinating the current plan. You can send a new message when it finishes or is stopped.':memberWorking?'This agent is working. You can send a new message when the current task finishes or is stopped.':!(runtime.teamModel??runtime.model)?'Connect the dedicated Multi-Agent Demo API on the host.':'Reconnect the agent runtime in Settings to message your crew.';
+ el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping BaC work and resetting…':captainPlanning?'Casey is coordinating the current plan. You can send a new message when it finishes or is stopped.':memberWorking?'This agent is working. You can send a new message when the current task finishes or is stopped.':!(runtime.teamModel??runtime.model)?'Connect your team API using API & models above.':'Open API & models above to connect the team runtime.';
 }
 function renderCrewPassport(){
  const epoch=data.crewChatReset?.epoch||'';

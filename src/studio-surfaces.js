@@ -25,9 +25,10 @@ const controlButton=document.createElement('button');controlButton.type='button'
 const teamResetButton=document.createElement('button');teamResetButton.type='button';teamResetButton.id='studio-bac-reset';teamResetButton.className='studio-secondary';teamResetButton.textContent='Reset';teamResetButton.setAttribute('aria-label','Reset Multi-Agent Demo');teamResetButton.title='Stop active team work and clear team chats, files and the board';teamResetButton.onclick=()=>resetStudio('bac',teamResetButton);crewActions.append(teamResetButton);
 const teamResetStatus=document.createElement('p');teamResetStatus.id='studio-team-reset-status';teamResetStatus.className='studio-muted';teamResetStatus.setAttribute('role','status');teamResetStatus.hidden=true;crewActions.after(teamResetStatus);
 const resultsButton=document.createElement('button');resultsButton.type='button';resultsButton.className='studio-primary';resultsButton.dataset.surface='deliverables';resultsButton.textContent='Results';resultsButton.hidden=true;crewActions.append(resultsButton);
+const teamConnectionBar=document.createElement('div');teamConnectionBar.className='studio-team-connection-bar';teamConnectionBar.innerHTML='<span><i aria-hidden="true"></i><span id="studio-team-connection-label">Team API</span></span><button type="button" class="studio-secondary" id="studio-team-setup">API &amp; models ↗</button>';crewActions.after(teamConnectionBar);el('team-setup').onclick=openTeamSettings;
 const standbyPanel=document.createElement('details');standbyPanel.id='studio-standby';
 standbyPanel.innerHTML='<summary>Standby specialists <span id="studio-standby-count"></span></summary><div class="studio-standby-content"><ul id="studio-standby-list"></ul></div>';
-crewActions.after(standbyPanel);
+teamConnectionBar.after(standbyPanel);
 function fitStandbyPanel(){
  if(!standbyPanel.open)return;
  const top=standbyPanel.querySelector('.studio-standby-content').getBoundingClientRect().top;
@@ -46,6 +47,8 @@ standbyPanel.addEventListener('keydown',event=>{
   }
 });
 function syncSurface(){
+  teamConnectionBar.dataset.connected=String(!!runtime.teamReady);
+  el('team-connection-label').textContent=runtime.teamReady?'Team API connected':runtime.teamModel?'Team runtime offline':'Team API not connected';
   teamResetButton.disabled=!!data.bacResetting||removingAgent;
   resultsButton.hidden=!crewMission();
   el('compare-open').hidden=!comparison;

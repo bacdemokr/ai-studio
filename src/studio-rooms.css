@@ -564,3 +564,36 @@
 
 #agent-campus .studio-team-actions #studio-bac-reset{flex:0 0 auto;padding-inline:18px;color:#c5d0d8}
 #studio-team-reset-status{margin:8px 22px;font-size:13px}
+/* Separate personal-agent and team model connections. */
+#studio-dialog .studio-model-scope{margin:0 0 22px}
+#studio-dialog .studio-model-scope>span{font-size:11px;font-weight:700;letter-spacing:.14em;color:#9acb61}
+#studio-dialog .studio-model-scope h3{font-size:23px;margin:8px 0}
+#studio-dialog .studio-model-scope p{font-size:14px;color:#afbec9;margin:0;line-height:1.5}
+#studio-dialog .studio-model-link{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 16px;border:1px solid #354954;border-radius:10px;margin-bottom:24px;font-size:13px;color:#afbec9}
+#studio-dialog .studio-model-link button{font-size:13px;white-space:nowrap;padding:8px 12px}
+#agent-campus .studio-team-connection-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 22px;border-bottom:1px solid #2c3f4b;color:#b0c0ca;font-size:12px}
+.studio-team-connection-bar>span{display:flex;align-items:center;gap:8px}
+.studio-team-connection-bar i{width:6px;height:6px;border-radius:50%;background:#8e9aa3}
+.studio-team-connection-bar[data-connected=true] i{background:#76b900;box-shadow:0 0 8px #76b90040}
+#agent-campus .studio-team-connection-bar button{font-size:12px;border:1px solid #3b505c;background:#1b2b35;color:#dce8ef;border-radius:7px;padding:7px 10px;white-space:nowrap}
+#studio-dialog .studio-team-api-card{padding:20px;border:1px solid #405562;border-radius:12px;background:#13232e}
+.studio-team-api-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:8px}
+#studio-dialog .studio-team-api-state{font-size:12px;border-radius:20px;background:#253640;color:#b9c9d3;padding:5px 10px}
+#studio-dialog .studio-team-api-state[data-connected=true]{color:#c1e996;background:#283d22}
+#studio-dialog .studio-team-api-card small{display:block;font-size:12px;line-height:1.6;color:#a5bac7}
+#studio-dialog .studio-team-api-card label{margin-top:20px}
+#studio-dialog .studio-team-api-card .studio-dialog-actions{margin-top:16px}
+#studio-dialog .studio-team-api-card [role=status]{font-size:13px;color:#c2d2dd;margin-bottom:0}
+#studio-dialog .studio-team-models-heading{margin:24px 0 12px}
+#studio-dialog .studio-team-models-heading h3{font-size:17px;margin:0 0 4px}
+#studio-dialog .studio-team-models-heading small,#studio-dialog .studio-team-setup-note{font-size:12px;color:#a5bac7}
+.studio-team-setup-models>div{display:grid;grid-template-columns:minmax(120px,1fr) minmax(220px,1.4fr);gap:18px;align-items:center;padding:12px 0;border-bottom:1px solid #2c414e}
+.studio-team-setup-models>div>span{display:flex;flex-direction:column;gap:4px}
+#studio-dialog .studio-team-setup-models strong{font-size:14px}
+#studio-dialog .studio-team-setup-models small{font-size:12px;color:#a5bac7}
+#studio-dialog .studio-team-setup-models button{font-size:13px;padding:10px 12px;margin:0;min-width:0}
+#studio-dialog .studio-team-setup-models button>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#studio-dialog .studio-team-setup-models .team-model-trigger{display:flex;align-items:center;justify-content:space-between;gap:14px;border:1px solid #425b69;border-radius:8px;background:#1b2e3a;color:#e1ebf1;text-align:left;cursor:pointer;transition:border-color .15s,background .15s}
+#studio-dialog .studio-team-setup-models .team-model-trigger:hover:not(:disabled){background:#253e4b;border-color:#76b900}
+#studio-dialog .studio-team-setup-models .team-model-trigger:focus-visible{outline:2px solid #76b900;outline-offset:2px}
+#studio-dialog .studio-team-setup-models .team-model-trigger:disabled{opacity:.5;cursor:not-allowed}
