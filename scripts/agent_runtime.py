@@ -150,7 +150,7 @@ def gateway_port():
 
 
 def initial_config():
-    return {
+    return settings.apply_context_limits({
         'gateway': {'mode': 'local', 'bind': 'loopback', 'port': gateway_port(),
                     'auth': {'mode': 'token', 'token': secrets.token_urlsafe(40)},
                     'http': {'endpoints': {'chatCompletions': {'enabled': True}}}},
@@ -167,7 +167,7 @@ def initial_config():
         'tools': {'fs': {'workspaceOnly': False}, 'deny': ['exec', 'process', 'browser', 'message',
                    'sessions_spawn', 'sessions_send', 'cron', 'gateway', 'nodes'],
                   'elevated': {'enabled': False}},
-    }
+    })
 
 
 def ensure_openshell():

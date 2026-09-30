@@ -119,6 +119,14 @@ def model_failure(state, agent, session, started, output_limit):
             message = json.loads(raw).get('message', {})
             if message.get('role') != 'assistant':
                 continue
+            # OpenClaw can convert an empty length-stopped native response into
+            # HTTP 500, losing finish_reason in its compatibility response.
+            # Usage may report only one output token, so do not require 8192.
+            if message.get('stopReason') == 'length':
+                return {'code': 'output-limit', 'message':
+                    'The model stopped at a generation length limit before finishing. '
+                    'Accumulated context may leave too little room for the answer. '
+                    'Saved work is preserved; the request was not automatically repeated.'}
             error = str(message.get('errorMessage', ''))
             malformed = error in {
                 'Provider returned an incomplete or malformed tool call',
@@ -136,7 +144,8 @@ def model_failure(state, agent, session, started, output_limit):
                 lowered = error.lower()
                 # Some providers wrap their database saturation in HTTP 401.
                 # Do not misdiagnose that explicit infrastructure error as a bad key.
-                if 'remaining connection slots are reserved' in lowered or 'too many connections' in lowered:
+                if any(text in lowered for text in ('remaining connection slots are reserved',
+                                                     'too many connections', 'too many clients already')):
                     return {'code': 'provider-capacity', 'message':
                         'The model service could not accept the request because its connection capacity was exhausted. '
                         'Saved work is preserved; try again after the service recovers. The request was not automatically repeated.'}

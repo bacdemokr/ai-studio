@@ -20,6 +20,18 @@ import session_secrets as secrets
 MAX_OUTPUT_TOKENS = 8192
 AGENT_TIMEOUT_SECONDS = 360
 
+
+def apply_context_limits(config):
+    """Bound fetched excerpts and check growing tool context before another call."""
+    fetch = config.setdefault('tools', {}).setdefault('web', {}).setdefault('fetch', {})
+    # The native tool clamps even a model-supplied maxChars to maxCharsCap.
+    # Preserve stricter host limits, without disabling any access policy.
+    fetch['maxCharsCap'] = min(fetch.get('maxCharsCap', 6000), 6000)
+    fetch['maxChars'] = min(fetch.get('maxChars', 3000), 3000, fetch['maxCharsCap'])
+    compaction = config.setdefault('agents', {}).setdefault('defaults', {}).setdefault('compaction', {})
+    compaction['midTurnPrecheck'] = {'enabled': True}
+    return config
+
 PROVIDERS = {
     'local': {'label': 'Local / on-prem', 'baseUrl': 'http://127.0.0.1:8000/v1', 'api': 'openai-completions'},
     'nvidia': {'label': 'NVIDIA Inference (Employee only)', 'baseUrl': 'https://inference-api.nvidia.com/v1', 'api': 'openai-completions'},
@@ -236,7 +248,7 @@ def apply_to_config(config, provider, profile):
     for agent in config['agents']['entries'].values():
         agent['model']=ref;agent['modelPolicy']={'allow':[ref]}
         agent['identity']={'theme':'bac-model-'+str(time.time_ns())}
-    return config
+    return apply_context_limits(config)
 
 
 def clean_event(location):
