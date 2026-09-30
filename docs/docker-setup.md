@@ -14,7 +14,7 @@ cd ai-studio
 
 The first start creates `.env` from the supplied example, builds the pinned runtime image and downloads the OpenShell images. Later starts reuse the image unless its dependencies changed.
 
-Startup validates the Stage 3 inference key in `api.cfg` and prompts in the terminal if it is missing or rejected. Stage 3 uses this saved connection automatically; its **API & models** panel lets you choose agent models and save them with **Apply changes**.
+Startup validates the Stage 3 inference key in `api.cfg` and exits with instructions to edit the file if it is missing or rejected. Stage 3 uses this saved connection automatically; its **API & models** panel lets you choose agent models and save them with **Apply changes**.
 
 Open **http://localhost:8080**. For Stages 1 and 2, open **Settings → Model**. Choose **Local / on-prem**, enter the endpoint, **Load models**, then **Connect model**.
 
@@ -29,7 +29,6 @@ The model stays on the host; Linux host networking reaches localhost. BaC instal
 | Action | Command |
 | --- | --- |
 | Install / start / apply updated code | `./bac start` |
-| Fetch GitHub main (Git clones only) | `./bac update` |
 | Check status | `./bac status` |
 | View recent logs | `./bac logs` |
 | Stop, keep data | `./bac stop` |
@@ -42,7 +41,7 @@ The model stays on the host; Linux host networking reaches localhost. BaC instal
 Finish active tasks, then run inside the same repository folder:
 
 ```bash
-./bac update
+git pull --ff-only
 ./bac start
 ```
 
@@ -51,7 +50,7 @@ Keep your local `.env`, `shared` and `backups`; Git excludes them. If Git report
 | Layer | Updates |
 | --- | --- |
 | Runtime image: Python, Node, OpenClaw, OpenShell | Only when dependencies change |
-| App files: UI, server, skills, characters | `./bac update`, then `./bac start` |
+| App files: UI, server, skills, characters | `git pull --ff-only`, then `./bac start` |
 | User data: agents, conversations, results | Preserved separately |
 
 Keep the repository folder: app files are copied into the container at startup, so host edits do not alter a running session. `./bac start` checks compatibility and rebuilds the runtime image only when necessary.
@@ -60,7 +59,7 @@ Keep the repository folder: app files are copied into the container at startup, 
 
 | Message or symptom | Action |
 | --- | --- |
-| Missing or rejected inference key | Enter a valid key at the terminal prompt or in `api.cfg`; run `./bac start` again |
+| Missing or rejected inference key | Put a valid key in `api.cfg`; run `./bac start` again |
 | Inference API unavailable or rate-limited | Check connectivity or wait, then retry; the existing key is not replaced |
 | Docker unavailable | Start Docker; check `docker info` works for your account |
 | Wrong architecture | Use Docker running locally on this PC and its native architecture |
@@ -92,6 +91,6 @@ Backups contain app data and gateway metadata/certificates, not every sandbox's 
 
 ### Inference API key
 
-`./bac start` creates an empty `api.cfg` beside `bac` if needed. Put only your NVIDIA inference API key on its first line, or enter it at the hidden CLI prompt. Startup checks access to the team models and makes a small inference request. Missing or rejected keys prompt again in an interactive terminal; noninteractive startup exits with instructions. Network/service failures stop startup without replacing your key or restarting running services.
+`./bac start` creates an empty `api.cfg` beside `bac` if needed. Put only your NVIDIA inference API key on its first line. There is no interactive key prompt. Startup checks access to the team models and makes a small inference request. Missing or rejected keys stop startup with instructions to edit the file. Empty files are detected before Docker is invoked. Network/service failures stop startup without replacing your key or restarting running services.
 
 A validated key is saved with owner-only file permissions and used for Stage 3 automatically. `api.cfg` is tracked as an empty placeholder and excluded from the Docker image; release packages always include an empty file. `./bac start` installs a local Git clean filter that keeps the key out of commits while preserving it in your working file. After cloning, run `bash scripts/setup-key-filter.sh` before entering a key if you plan to use Git before starting the demo. Startup uses this file, never silently falls back to the previous saved key.

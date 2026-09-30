@@ -86,21 +86,6 @@ class Handler(SimpleHTTPRequestHandler):
         return dict(row), False
 
     def do_GET(self):
-        if self.path.startswith('/survey/'):
-            try:
-                if not self.host_ok():
-                    raise Problem('Use the event host address.', 403)
-                from studio_events import survey_page
-                token=urlparse(self.path).path.removeprefix('/survey/')
-                body=survey_page(token, self.server.studio.survey_definition(token)).encode()
-                self.send_response(200)
-                self.send_header('Content-Type','text/html; charset=utf-8')
-                self.send_header('Content-Length',str(len(body)))
-                self.send_header('Content-Security-Policy', "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'")
-                self.end_headers();self.wfile.write(body)
-            except Problem as error:
-                self.json_response({'error':str(error)},error.status)
-            return
         if self.path == '/health':
             path = Path(self.directory) / 'version.json'
             version = json.loads(path.read_text()) if path.exists() else {'version': 'local-preview'}
@@ -127,11 +112,6 @@ class Handler(SimpleHTTPRequestHandler):
                 self.require_operator()
                 import runtime_settings
                 return self.json_response(runtime_settings.public(row['id']+':'+self.headers.get('X-BaC-Key-Session','missing')))
-            if parsed.path == '/api/event-catalog':
-                import event_planner
-                return self.json_response({'templates':event_planner.TEMPLATES,'topics':event_planner.TOPICS,'harnesses':event_planner.HARNESS})
-            if parsed.path == '/api/survey-report':
-                return self.json_response(studio.survey_report(studio.job_owner(owner, parse_qs(parsed.query).get('id',[''])[0]), parse_qs(parsed.query).get('id',[''])[0]))
             if parsed.path == '/api/telemetry':
                 import telemetry
                 return self.json_response(telemetry.report(studio, owner))
@@ -190,14 +170,6 @@ class Handler(SimpleHTTPRequestHandler):
             origin = self.headers.get('Origin')
             if origin and urlparse(origin).netloc != self.headers.get('Host'):
                 raise Problem('Cross-origin requests are not accepted.', 403)
-            if self.path.startswith('/survey/'):
-                size=int(self.headers.get('Content-Length','0'))
-                if not 0 < size <= 4096:
-                    raise Problem('Invalid survey response.',413)
-                data=json.loads(self.rfile.read(size))
-                if not isinstance(data,dict):
-                    raise Problem('Expected survey answers.')
-                return self.json_response(self.server.studio.survey_answer(self.path.removeprefix('/survey/'),data))
             row, _ = self.participant()
             if not secrets.compare_digest(self.headers.get('X-BaC-CSRF', ''), row['csrf']):
                 raise Problem('Refresh the page to renew your session.', 403)
@@ -237,7 +209,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if self.path == '/api/settings/models':return self.json_response(runtime_settings.models(data))
                 if self.path == '/api/settings/start':return self.json_response(runtime_settings.start_gateway())
                 return self.json_response(runtime_settings.save(studio,data))
-            if self.path in ('/api/prepare-demo','/api/event-plan','/api/survey-replan') or (self.path=='/api/jobs' and data.get('kind')=='crew'):
+            if self.path in ('/api/prepare-demo','/api/event-plan','/api/survey-replan','/api/event-reset') or (self.path=='/api/jobs' and data.get('kind')=='crew'):
                 raise Problem('Plan a BaC has been retired. Send /plan to Casey instead.',410)
             if self.path == '/api/team-model':
                 import team_models
@@ -254,7 +226,6 @@ class Handler(SimpleHTTPRequestHandler):
                 '/api/upload': lambda: studio.upload(owner, data),
                 '/api/decision': lambda: studio.decision(studio.job_owner(owner, data.get('id')), data.get('id'), data.get('action')),
                 '/api/retry-reaction': lambda: studio.retry_reaction(studio.job_owner(owner, data.get('id')), data),
-                '/api/event-reset': lambda: studio.reset_event_board(owner),
                 '/api/reset': lambda: studio.reset_board(owner),
                 '/api/crew-chat-reset': lambda: studio.reset_crew_chats(owner),
                 '/api/bac-reset': lambda: studio.reset_crew_chats(owner, reset_event=True),

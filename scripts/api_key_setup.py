@@ -1,5 +1,4 @@
 """Validate the install-local Stage 3 key before starting services."""
-import getpass
 import json
 import os
 from pathlib import Path
@@ -49,25 +48,12 @@ def validate(key):
     return [{'id': model, 'label': dict(zip(MODELS, LABELS)).get(model, model)} for model in sorted(ids)]
 
 
-def setup(path, interactive=None):
+def setup(path):
     key = path.read_text().strip()
-    interactive = sys.stdin.isatty() if interactive is None else interactive
-    while True:
-        try:
-            models = validate(key)
-            break
-        except InvalidKey as error:
-            print(str(error), flush=True)
-            if not interactive:
-                raise InvalidKey('Put a valid inference API key in api.cfg, then run ./bac start in a terminal.') from None
-            try:
-                key = getpass.getpass('Inference API key (hidden; saved in api.cfg): ').strip()
-            except (EOFError, KeyboardInterrupt):
-                raise InvalidKey('Key setup cancelled. Services were not restarted.') from None
-    # Keep the original file inode: api.cfg is a single-file bind mount.
-    with path.open('w') as stream:
-        os.chmod(path, 0o600)
-        stream.write(key + '\n')
+    try:
+        models = validate(key)
+    except InvalidKey:
+        raise InvalidKey('Put a valid inference API key in api.cfg, then run ./bac start again. Services were not restarted.') from None
     save_connection(key, models)
     # The setup helper runs as root; the studio runs as uid 10001.
     if os.geteuid() == 0:

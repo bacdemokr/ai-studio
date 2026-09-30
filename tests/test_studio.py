@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from studio import Studio, Problem, capacity, safe_file, MAX_AGENTS
+from studio import Studio, Problem, safe_file, MAX_AGENTS
 import agent_runtime
 
 
@@ -372,15 +372,6 @@ class StudioTests(unittest.TestCase):
         self.assertIn('pending availability', self.adapter.calls[3][2])
         self.assertEqual(self.studio.state(self.owner)['jobs'][0]['status'], 'done')
 
-    def test_capacity_rounding_preserves_people_and_exposes_assumptions(self):
-        for count in (1, 3, 17, 121, 2999):
-            brief, calc = capacity({'attendees': count})
-            self.assertEqual(sum(x['attendees'] for x in calc['topics']), count)
-            self.assertTrue(all(x['stations'] * calc['slots'] * brief['groupSize'] >= x['attendees'] for x in calc['topics']))
-        with self.assertRaises(Problem):
-            capacity({'shares': [20, 20, 20]})
-        with self.assertRaises(Problem):
-            capacity({'duration': 30, 'common': 30})
 
     def test_isolation_path_guards_and_input_validation(self):
         other, _ = self.studio.session()

@@ -69,6 +69,36 @@ class CollaborationTests(unittest.TestCase):
         self.assertEqual(len({session for _,session,_ in self.adapter.calls}), 7)
         self.assertEqual(self.app.available_file(self.owner, job['result']['files'][0]).read_text(), job['result']['answer'])
 
+    def test_captain_cannot_skip_planned_code_review_on_saved_file_claim(self):
+        self.adapter.plan={'summary':'Build then review','tasks':[
+            {'role':5,'task':'Implement the game'}, {'role':4,'task':'Review startup and controls'}]}
+        original=self.adapter.respond
+        def respond(agent,session,prompt,**kwargs):
+            if '-checking-' in session:
+                return json.dumps({'done':True,'outcome':'complete','reason':'Cody saved the file.', 'answer':'Ready to play.'})
+            return original(agent,session,prompt,**kwargs)
+        self.adapter.respond=respond
+        result=self.start('/plan Build a browser game');self.app.execute(self.app.next_job())
+        plan=self.job(result)['payload']['collaboration']
+        self.assertEqual(plan['calledRoles'],[5,4])
+        self.assertFalse(plan['checks'][0]['done'])
+        self.assertIn('saved file is not evidence',plan['checks'][0]['reason'])
+
+    def test_partial_code_result_can_stop_without_forcing_review(self):
+        self.adapter.plan={'summary':'Build then review','tasks':[
+            {'role':5,'task':'Implement the game'}, {'role':4,'task':'Review startup and controls'}]}
+        original=self.adapter.respond
+        def respond(agent,session,prompt,**kwargs):
+            if '-checking-' in session:
+                return json.dumps({'done':True,'outcome':'partial','reason':'Implementation is blocked.',
+                    'remaining':['Implementation'], 'answer':'Implementation is blocked.'})
+            return original(agent,session,prompt,**kwargs)
+        self.adapter.respond=respond
+        result=self.start('/plan Build a browser game');self.app.execute(self.app.next_job())
+        plan=self.job(result)['payload']['collaboration']
+        self.assertEqual(plan['calledRoles'],[5])
+        self.assertEqual(plan['outcome'],'partial')
+
     def test_normal_message_only_runs_selected_agent(self):
         self.app.enqueue(self.owner, {'kind':'chat','prompt':'Please plan a workshop'})
         self.app.execute(self.app.next_job())

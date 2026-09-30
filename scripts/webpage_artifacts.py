@@ -8,6 +8,13 @@ PAGE_INSTRUCTIONS = (
     '\nIf the user asks you to create a webpage, produce a complete self-contained HTML '
     'file in artifacts/ with inline CSS and JavaScript, rather than only describing it. '
     'The preview has no network access: use inline SVG or data images and no CDN dependencies. '
+    'It runs in an iframe with sandbox=allow-scripts and an opaque origin. localStorage, sessionStorage '
+    'and other persistence APIs may throw SecurityError: guard reads and writes with try/catch and '
+    'keep an in-memory fallback so optional persistence never prevents startup. Do not require parent-page access. '
+    'For interactive apps, inspect initialization, input-to-state mapping, timing, pause/resume, terminal states '
+    'and restart. A successful write or read verifies file delivery only, not playability or browser execution. '
+    'In the handoff state whether checks were static or actually executed; do not claim runtime verification '
+    'without observed test evidence. '
     'If file writing is unavailable, return the complete document in a fenced html block. '
     'Do not create a webpage unless requested.\n')
 

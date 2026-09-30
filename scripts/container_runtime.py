@@ -133,6 +133,8 @@ def prepare():
         for agent_id, entry in config['agents']['entries'].items():
             if agent_id.startswith('bac-') and 'heartbeat' in entry:
                 entry['heartbeat']['every'] = '0m'
+        from research_search import configure
+        configure(config, runtime.root())
         runtime.save_config(config)
     if 'bac-host' not in config['agents']['entries']:
         runtime.bootstrap_host()

@@ -139,7 +139,7 @@ class AdaptivePlanTests(unittest.TestCase):
         team = self.app.crew_owner(self.owner)
         self.assertEqual(list((self.app.workspace(team,0)/'inbox').glob('plan-*')), [])
         self.assertTrue(any(path.endswith('.py') for path in self.job(result)['result']['files']))
-        self.assertEqual(self.called(), [0,5,0])
+        self.assertEqual(self.called(), [0,5,0,4,0])
 
     def test_invalid_decisions_and_empty_answers_are_rejected(self):
         for value in ({'done':'true','reason':'x','answer':'x'}, {'done':True,'reason':'x'},
