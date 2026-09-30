@@ -563,8 +563,15 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 
 /* Crew selection belongs to the inspector, leaving the scene footer stable across rooms. */
 #agent-campus[data-room=mission]:not([data-world-overview=true]) .campus-layout #studio-crew-passport:not([hidden]){
-  display:grid!important;grid-template-rows:auto auto minmax(0,1fr) auto;overflow:hidden;
+  display:grid!important;grid-template-rows:auto auto auto auto minmax(0,1fr) auto;overflow:hidden;
 }
+/* Keep the flexible conversation row stable when connection/status bars change. */
+#studio-crew-passport>.studio-team-actions{grid-row:1}
+#studio-crew-passport>.studio-team-connection-bar{grid-row:2}
+#studio-crew-passport>#studio-standby{grid-row:3}
+#studio-crew-passport>#studio-team-reset-status{grid-row:4}
+#studio-crew-passport>.studio-crew-passport-content{grid-row:5}
+#studio-crew-passport>#campus-roster{grid-row:6}
 #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content{
   min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;
 }
@@ -888,6 +895,9 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 #studio-dialog .studio-team-models-heading small,#studio-dialog .studio-team-setup-note{font-size:12px;color:#a5bac7}
 .studio-team-setup-models>div{display:grid;grid-template-columns:minmax(120px,1fr) minmax(220px,1.4fr);gap:18px;align-items:center;padding:12px 0;border-bottom:1px solid #2c414e}
 .studio-team-setup-models>div>span{display:flex;flex-direction:column;gap:4px}
+.studio-team-model-controls{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;min-width:0}
+#studio-dialog .studio-team-model-save [data-team-apply-all]{white-space:nowrap;border-radius:8px}
+#studio-dialog .studio-team-model-save [data-team-apply-all]:disabled{opacity:.4;cursor:not-allowed}
 #studio-dialog .studio-team-setup-models strong{font-size:14px}
 #studio-dialog .studio-team-setup-models small{font-size:12px;color:#a5bac7}
 #studio-dialog .studio-team-setup-models button{font-size:13px;padding:10px 12px;margin:0;min-width:0}
@@ -902,6 +912,10 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 #agent-campus .team-model-apply [data-model-apply]{flex-shrink:0;background:#76b900;color:#101b07;border:1px solid #76b900;border-radius:8px;padding:10px 18px;font-weight:700}
 #agent-campus .team-model-apply [data-model-apply]:disabled{opacity:.45;cursor:not-allowed}
 #studio-team-model-status{padding:10px 14px;border-left:3px solid #76b900;background:#203021;color:#cbe6ad;font-size:13px;line-height:1.5}
+
+.studio-team-model-save{display:flex;justify-content:flex-end;padding-top:16px}
+
+#agent-campus .team-model-apply[hidden]{display:none}
 
 .studio-sound{display:flex;align-items:center;gap:3px;flex-shrink:0}
 #agent-campus #campus-sound-toggle{width:auto;min-height:35px;height:auto;padding:4px 9px;font-size:15px;white-space:nowrap;color:#b8c9d7;border:1px solid #526071;background:#191e25;border-radius:3px}
@@ -80708,9 +80722,10 @@ function renderModelResults(){
 }
 root.addEventListener('click',event=>{
  const button=event.target.closest('[data-team-model]');if(!button||button.disabled)return;
- modelPickerRole=Number(button.dataset.teamModel);modelPickerDraft=teamModel(modelPickerRole)?.id;modelPickerOwner=agentId;
+ modelPickerRole=Number(button.dataset.teamModel);modelPickerDraft=button.closest('#studio-team-config-form')?(teamModelDrafts.get(modelPickerRole)||teamModel(modelPickerRole)?.id):teamModel(modelPickerRole)?.id;modelPickerOwner=agentId;
  teamModelDialog.querySelector('#team-model-member').textContent=defaultNames[modelPickerRole]+' · Dedicated team API';
  teamModelDialog.querySelector('input').value='';teamModelDialog.querySelector('.team-model-error').hidden=true;
+ teamModelDialog.querySelector('.team-model-apply').hidden=!!button.closest('#studio-team-config-form');
  renderModelResults();teamModelDialog.showModal();teamModelDialog.querySelector('input').focus();
 });
 teamModelDialog.querySelector('input').addEventListener('input',renderModelResults);
@@ -80719,28 +80734,66 @@ teamModelDialog.addEventListener('click',async event=>{
  if(event.target.closest('[data-model-close]')||event.target===teamModelDialog){if(!modelPickerSaving)teamModelDialog.close();return;}
  if(modelPickerSaving)return;
  const choice=event.target.closest('[data-model-choice]');
- if(choice){modelPickerDraft=choice.dataset.modelChoice;teamModelDialog.querySelector('.team-model-error').hidden=true;renderModelResults();return;}
+ if(choice){
+  modelPickerDraft=choice.dataset.modelChoice;
+  const form=el('team-config-form');
+  if(form&&el('dialog').open){
+   teamModelDrafts.set(modelPickerRole,modelPickerDraft);
+   const trigger=form.querySelector('[data-team-model="'+modelPickerRole+'"]');
+   trigger.querySelector('span').textContent=(runtime.teamModels||[]).find(m=>m.id===modelPickerDraft)?.label||modelPickerDraft;
+   form.querySelector('[data-team-apply-all]').disabled=![...teamModelDrafts].some(([r,id])=>id!==teamModel(r)?.id);
+   const notice=el('team-model-status');notice.hidden=false;notice.textContent='Unsaved model selections. Select Apply changes to save them.';
+   teamModelDialog.close();return;
+  }
+  teamModelDialog.querySelector('.team-model-error').hidden=true;renderModelResults();return;
+ }
  const apply=event.target.closest('[data-model-apply]');if(!apply||apply.disabled)return;
+ await applyTeamModel();
+});
+root.addEventListener('click',async event=>{
+ const button=event.target.closest('[data-team-apply-all]');if(!button||button.disabled||modelPickerSaving)return;
+ const owner=agentId,changes=[...teamModelDrafts].filter(([r,id])=>id!==teamModel(r)?.id);
+ button.textContent='Applying…';
+ for(const [role,model] of changes){
+  modelPickerRole=role;modelPickerDraft=model;modelPickerOwner=owner;
+  if(!await applyTeamModel()){button.textContent='Apply changes';return;}
+ }
+ button.textContent='Apply changes';
+ const notice=el('team-model-status');if(notice){notice.hidden=false;notice.textContent='Model changes applied. Used from the next request.';}
+});
+async function applyTeamModel(){
  const target=modelPickerOwner,role=modelPickerRole,model=modelPickerDraft;
  modelPickerSaving=true;renderModelResults();
+ const form=el('team-config-form');
+ if(form)for(const button of form.querySelectorAll('[data-team-model],[data-team-apply-all]'))button.disabled=true;
  try{
   const result=await api('team-model',{role,model},target);
   if(agentId===target){
+   teamModelDrafts.delete(role);
    // A poll started before this write must not put the previous model back.
    ++refreshVersion;stateCache.delete(target);busy=false;
    data={...data,teamSelections:result.teamSelections};render();
    const form=el('team-config-form');
    if(form&&el('dialog').open){
     for(const trigger of form.querySelectorAll('[data-team-model]')){
-     const current=teamModel(Number(trigger.dataset.teamModel));trigger.querySelector('span').textContent=current?.label||'Choose model';trigger.title=current?.id||'';
+     const index=Number(trigger.dataset.teamModel),draft=teamModelDrafts.get(index);
+     const current=draft?(runtime.teamModels||[]).find(m=>m.id===draft):teamModel(index);trigger.querySelector('span').textContent=current?.label||'Choose model';trigger.title=current?.id||'';
     }
     const notice=el('team-model-status');notice.hidden=false;notice.textContent=defaultNames[role]+' · '+(teamModel(role)?.label||model)+' applied. Used from the next request.';
    }else alert(defaultNames[role]+' model applied. Used from the next request.');
   }
   teamModelDialog.close();
- }catch(error){const message=teamModelDialog.querySelector('.team-model-error');message.textContent=error.message;message.hidden=false;}
- finally{modelPickerSaving=false;renderModelResults();render();}
-});
+  return true;
+ }catch(error){const message=teamModelDialog.open?teamModelDialog.querySelector('.team-model-error'):el('team-model-status');if(message){message.textContent='Some changes may have saved. '+error.message+' Unsaved selections are kept for retry.';message.hidden=false;}return false;}
+ finally{
+  modelPickerSaving=false;renderModelResults();render();
+  if(form&&form.isConnected){
+   const blocked=!runtime.teamModel||data.bacResetting||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
+   for(const button of form.querySelectorAll('[data-team-model]'))button.disabled=!!blocked;
+   form.querySelector('[data-team-apply-all]').disabled=!!blocked||![...teamModelDrafts].some(([r,id])=>id!==teamModel(r)?.id);
+  }
+ }
+}
 
 function eventExpectationMarkup(job,role){
  const p=job?.payload,h=p?.handoffs?.[role],name=p?.roster?.[role]?.name||defaultNames[role];
@@ -82431,20 +82484,22 @@ async function resetStudio(scope,sourceButton=null){
 
 
 let teamConnectionSaving=false;
+const teamModelDrafts=new Map();
 function openTeamSettings(){
  if(teamConnectionSaving)return;
+ teamModelDrafts.clear();
  const canConfigure=!settingsButton.hidden;
  const available=window.BacCrewCatalog.map((member,role)=>({...member,roleIndex:role})).filter(member=>member.planEligible!==false);
  dialog('Multi-Agent setup',`<form id="studio-team-config-form">
   <div class="studio-model-scope"><span>STAGE 03</span><h3>Team API &amp; models</h3><p>A dedicated NVIDIA API connection for Casey and the specialists.</p></div>
   <div class="studio-team-api-card"><div class="studio-team-api-heading"><strong>NVIDIA Inference</strong><span class="studio-team-api-state" data-connected="${!!runtime.teamModel}">${runtime.teamModel?(runtime.teamReady?'Connected':'API connected · Runtime offline'):'Not connected'}</span></div>
   <small>inference-api.nvidia.com</small>
-  <label for="studio-team-api-key">${runtime.teamModel?'Replace API key':'API key'}</label><input id="studio-team-api-key" type="password" autocomplete="off" spellcheck="false" required placeholder="Paste your NVIDIA API key">
-  <small>${canConfigure?'':'Ask the host to connect the team API. '}Session only. The key is kept in memory, never saved to disk. Closing or refreshing this tab clears a key entered here.</small>
+  <label for="studio-team-api-key">${runtime.teamModel?'Replace API key':'API key'}</label><input id="studio-team-api-key" type="password" autocomplete="off" spellcheck="false" required placeholder="${runtime.teamModel?'Saved key is active · enter a new key to replace it':'Paste your NVIDIA API key'}">
+  <small>${canConfigure?'':'Ask the host to connect the team API. '}Saved on this host for Stage 3. Refreshing the page or restarting the demo keeps the team connected.</small>
   <div class="studio-dialog-actions"><button type="submit" id="studio-team-connect" class="studio-primary" ${canConfigure?'':'disabled'}>${runtime.teamModel?'Update API key':'Connect API'}</button></div><p id="studio-team-connect-status" role="status" hidden></p></div>
-  <div class="studio-team-models-heading"><h3>Agent models</h3><small>Choose a model, then select Apply model. No API key re-entry needed.</small></div><p id="studio-team-model-status" role="status" hidden></p>
-  <div class="studio-team-setup-models">${available.map(member=>`<div><span><strong>${escape(member.name)}</strong><small>${escape(member.collaboration.title)}</small></span><button type="button" class="team-model-trigger" data-team-model="${member.roleIndex}" ${!runtime.teamModel||data.bacResetting||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status))?'disabled':''}><span>${escape(teamModel(member.roleIndex)?.label||'Choose model')}</span><span aria-hidden="true">⌕</span></button></div>`).join('')}</div>
-  <p class="studio-team-setup-note">Stage 1 &amp; 2 keep using the model selected in Settings.</p></form>`);
+  <div class="studio-team-models-heading"><h3>Agent models</h3><small>Choose models for your agents, then select Apply changes. No API key re-entry needed.</small></div><p id="studio-team-model-status" role="status" hidden></p>
+  <div class="studio-team-setup-models">${available.map(member=>`<div><span><strong>${escape(member.name)}</strong><small>${escape(member.collaboration.title)}</small></span><div class="studio-team-model-controls"><button type="button" class="team-model-trigger" data-team-model="${member.roleIndex}" ${!runtime.teamModel||data.bacResetting||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status))?'disabled':''}><span>${escape(teamModel(member.roleIndex)?.label||'Choose model')}</span><span aria-hidden="true">⌕</span></button></div></div>`).join('')}</div>
+  <div class="studio-team-model-save"><button type="button" class="studio-primary" data-team-apply-all disabled>Apply changes</button></div><p class="studio-team-setup-note">Stage 1 &amp; 2 keep using the model selected in Settings.</p></form>`);
  const form=el('team-config-form'),key=el('team-api-key'),status=el('team-connect-status'),button=el('team-connect');
  const current=()=>el('team-config-form')===form&&el('dialog').open;
  form.onsubmit=async event=>{

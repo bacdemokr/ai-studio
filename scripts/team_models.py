@@ -1,11 +1,49 @@
-"""Dedicated, session-only NVIDIA models for the built-in BaC team."""
+"""Dedicated NVIDIA models with a host-persisted Stage 3 credential."""
 import copy
+import json
+import os
 import re
+import tempfile
 
 BASE_URL = 'https://inference-api.nvidia.com/v1'
 MODELS = ('nvidia/nvidia/nemotron-3-ultra-nvfp4', 'nvidia/nvidia/nemotron-3.5-lightning')
 LABELS = ('Nemotron 3 Ultra', 'Nemotron 3.5 Lightning')
 _catalog = [{'id':m,'label':label} for m,label in zip(MODELS,LABELS)]
+
+
+def credential_path():
+    import ops_common as c
+    return c.home() / 'credentials' / 'stage3.json'
+
+
+def saved_connection():
+    try:
+        value = json.loads(credential_path().read_text())
+        return value if isinstance(value, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def credentials():
+    import runtime_settings as settings
+    import session_secrets as secrets
+    key = saved_connection().get('apiKey')
+    if isinstance(key, str) and key:
+        return {'baseUrl': BASE_URL, 'apiKey': key, 'model': MODELS[0]}
+    return secrets.get(settings.secret_key('team'))
+
+
+def save_connection(key, models):
+    path = credential_path()
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(path.parent, 0o700)
+    fd, temporary = tempfile.mkstemp(dir=path.parent, prefix='.stage3-')
+    try:
+        with os.fdopen(fd, 'w') as stream:
+            json.dump({'apiKey': key, 'models': models}, stream)
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):os.unlink(temporary)
 
 def valid_model(value):
     return isinstance(value,str) and bool(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}',value))
@@ -27,10 +65,10 @@ def model_for(agent, selected=None):
 
 
 def public():
-    import runtime_settings as settings
-    import session_secrets as secrets
-    return {'connected':bool(secrets.get(settings.secret_key('team')).get('apiKey')),
-            'models':list(_catalog)}
+    models = saved_connection().get('models', _catalog)
+    models = [{'id': m['id'], 'label': m.get('label', m['id'])} for m in models
+              if isinstance(m, dict) and valid_model(m.get('id'))] if isinstance(models, list) else list(_catalog)
+    return {'connected':bool(credentials().get('apiKey')), 'models':models}
 
 
 def apply(config, selected=None):
@@ -73,7 +111,8 @@ def configure(studio,data):
         with runtime.config_lock():
             config=copy.deepcopy(c.read_json(runtime.config_path(),None) or runtime.initial_config())
             runtime.save_config(apply(config))
-        secrets.put(settings.secret_key('team'),profile,data.get('_credentialSession','direct'))
+        save_connection(profile['apiKey'], _catalog)
+        secrets.remove(settings.secret_key('team'))
         studio.provisioned.clear();studio.status_cache=(0,{})
     return public()
 
@@ -88,7 +127,7 @@ def selections(studio, owner):
 def select(studio, owner, data):
     from studio import Problem, CREW_CATALOG
     role,model=data.get('role'),data.get('model')
-    if type(role) is not int or role not in {i for i,m in enumerate(CREW_CATALOG) if m.get('planEligible',True)} or model not in {m['id'] for m in _catalog}:
+    if type(role) is not int or role not in {i for i,m in enumerate(CREW_CATALOG) if m.get('planEligible',True)} or model not in {m['id'] for m in public()['models']}:
         raise Problem('Choose a team member and an available model.')
     with studio.db() as db:
         db.execute('BEGIN IMMEDIATE')

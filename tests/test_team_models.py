@@ -37,20 +37,27 @@ class TeamModelTests(unittest.TestCase):
         self.assertEqual(config['agents']['entries']['bac-personal']['model'],'bac-local/local-test')
         self.assertEqual(config['agents']['entries'][self.cap]['tools'],{'deny':['exec']})
         vault.release('general');self.assertTrue(team.public()['connected'])
-        self.assertEqual(vault.get(settings.secret_key('team'))['apiKey'],self.key)
+        self.assertEqual(team.credentials()['apiKey'],self.key)
         for path in Path(self.temp.name).rglob('*'):
-            if path.is_file():self.assertNotIn(self.key.encode(),path.read_bytes())
-        vault.release('team-session-'+self.temp.name);self.assertFalse(team.public()['connected'])
+            if path.is_file() and path != team.credential_path():self.assertNotIn(self.key.encode(),path.read_bytes())
+        vault.release('team-session-'+self.temp.name);self.assertTrue(team.public()['connected'])
+        self.assertEqual(team.credential_path().stat().st_mode & 0o777,0o600)
+        self.assertEqual(team.credential_path().parent.stat().st_mode & 0o777,0o700)
+        self.assertNotIn(self.key,json.dumps(team.public()))
+        # Simulate a fresh process with neither an in-memory key nor catalog.
+        with patch.object(team,'_catalog',[]):
+            self.assertTrue(team.public()['connected'])
+            self.assertEqual({m['id'] for m in team.public()['models']},set(team.MODELS))
 
     def test_missing_model_and_active_work_do_not_replace_key(self):
         self.configure()
         with patch.object(settings,'request',return_value={'data':[]}):
             with self.assertRaises(Problem):team.configure(self.app,{'apiKey':'other'})
-        self.assertEqual(vault.get(settings.secret_key('team'))['apiKey'],self.key)
+        self.assertEqual(team.credentials()['apiKey'],self.key)
         owner=self.app.session()[0]['id'];self.app.onboard(owner,{'name':'Test','skills':['web']});self.app.enqueue(owner,{'kind':'chat','prompt':'Hello'})
         with patch.object(settings,'request',return_value={'data':[{'id':m} for m in team.MODELS]}):
             with self.assertRaises(Problem):team.configure(self.app,{'apiKey':'other'})
-        self.assertEqual(vault.get(settings.secret_key('team'))['apiKey'],self.key)
+        self.assertEqual(team.credentials()['apiKey'],self.key)
 
     def test_runtime_readiness_and_routing_do_not_follow_local_model(self):
         h=RuntimeHealth();value=h.observe({'gatewayProbe':'ok','model':False,'teamModel':True},1)

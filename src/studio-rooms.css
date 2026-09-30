@@ -264,8 +264,15 @@
 
 /* Crew selection belongs to the inspector, leaving the scene footer stable across rooms. */
 #agent-campus[data-room=mission]:not([data-world-overview=true]) .campus-layout #studio-crew-passport:not([hidden]){
-  display:grid!important;grid-template-rows:auto auto minmax(0,1fr) auto;overflow:hidden;
+  display:grid!important;grid-template-rows:auto auto auto auto minmax(0,1fr) auto;overflow:hidden;
 }
+/* Keep the flexible conversation row stable when connection/status bars change. */
+#studio-crew-passport>.studio-team-actions{grid-row:1}
+#studio-crew-passport>.studio-team-connection-bar{grid-row:2}
+#studio-crew-passport>#studio-standby{grid-row:3}
+#studio-crew-passport>#studio-team-reset-status{grid-row:4}
+#studio-crew-passport>.studio-crew-passport-content{grid-row:5}
+#studio-crew-passport>#campus-roster{grid-row:6}
 #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content{
   min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;
 }
@@ -589,6 +596,9 @@
 #studio-dialog .studio-team-models-heading small,#studio-dialog .studio-team-setup-note{font-size:12px;color:#a5bac7}
 .studio-team-setup-models>div{display:grid;grid-template-columns:minmax(120px,1fr) minmax(220px,1.4fr);gap:18px;align-items:center;padding:12px 0;border-bottom:1px solid #2c414e}
 .studio-team-setup-models>div>span{display:flex;flex-direction:column;gap:4px}
+.studio-team-model-controls{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;min-width:0}
+#studio-dialog .studio-team-model-save [data-team-apply-all]{white-space:nowrap;border-radius:8px}
+#studio-dialog .studio-team-model-save [data-team-apply-all]:disabled{opacity:.4;cursor:not-allowed}
 #studio-dialog .studio-team-setup-models strong{font-size:14px}
 #studio-dialog .studio-team-setup-models small{font-size:12px;color:#a5bac7}
 #studio-dialog .studio-team-setup-models button{font-size:13px;padding:10px 12px;margin:0;min-width:0}
@@ -603,3 +613,7 @@
 #agent-campus .team-model-apply [data-model-apply]{flex-shrink:0;background:#76b900;color:#101b07;border:1px solid #76b900;border-radius:8px;padding:10px 18px;font-weight:700}
 #agent-campus .team-model-apply [data-model-apply]:disabled{opacity:.45;cursor:not-allowed}
 #studio-team-model-status{padding:10px 14px;border-left:3px solid #76b900;background:#203021;color:#cbe6ad;font-size:13px;line-height:1.5}
+
+.studio-team-model-save{display:flex;justify-content:flex-end;padding-top:16px}
+
+#agent-campus .team-model-apply[hidden]{display:none}

@@ -102,9 +102,10 @@ function renderModelResults(){
 }
 root.addEventListener('click',event=>{
  const button=event.target.closest('[data-team-model]');if(!button||button.disabled)return;
- modelPickerRole=Number(button.dataset.teamModel);modelPickerDraft=teamModel(modelPickerRole)?.id;modelPickerOwner=agentId;
+ modelPickerRole=Number(button.dataset.teamModel);modelPickerDraft=button.closest('#studio-team-config-form')?(teamModelDrafts.get(modelPickerRole)||teamModel(modelPickerRole)?.id):teamModel(modelPickerRole)?.id;modelPickerOwner=agentId;
  teamModelDialog.querySelector('#team-model-member').textContent=defaultNames[modelPickerRole]+' · Dedicated team API';
  teamModelDialog.querySelector('input').value='';teamModelDialog.querySelector('.team-model-error').hidden=true;
+ teamModelDialog.querySelector('.team-model-apply').hidden=!!button.closest('#studio-team-config-form');
  renderModelResults();teamModelDialog.showModal();teamModelDialog.querySelector('input').focus();
 });
 teamModelDialog.querySelector('input').addEventListener('input',renderModelResults);
@@ -113,28 +114,66 @@ teamModelDialog.addEventListener('click',async event=>{
  if(event.target.closest('[data-model-close]')||event.target===teamModelDialog){if(!modelPickerSaving)teamModelDialog.close();return;}
  if(modelPickerSaving)return;
  const choice=event.target.closest('[data-model-choice]');
- if(choice){modelPickerDraft=choice.dataset.modelChoice;teamModelDialog.querySelector('.team-model-error').hidden=true;renderModelResults();return;}
+ if(choice){
+  modelPickerDraft=choice.dataset.modelChoice;
+  const form=el('team-config-form');
+  if(form&&el('dialog').open){
+   teamModelDrafts.set(modelPickerRole,modelPickerDraft);
+   const trigger=form.querySelector('[data-team-model="'+modelPickerRole+'"]');
+   trigger.querySelector('span').textContent=(runtime.teamModels||[]).find(m=>m.id===modelPickerDraft)?.label||modelPickerDraft;
+   form.querySelector('[data-team-apply-all]').disabled=![...teamModelDrafts].some(([r,id])=>id!==teamModel(r)?.id);
+   const notice=el('team-model-status');notice.hidden=false;notice.textContent='Unsaved model selections. Select Apply changes to save them.';
+   teamModelDialog.close();return;
+  }
+  teamModelDialog.querySelector('.team-model-error').hidden=true;renderModelResults();return;
+ }
  const apply=event.target.closest('[data-model-apply]');if(!apply||apply.disabled)return;
+ await applyTeamModel();
+});
+root.addEventListener('click',async event=>{
+ const button=event.target.closest('[data-team-apply-all]');if(!button||button.disabled||modelPickerSaving)return;
+ const owner=agentId,changes=[...teamModelDrafts].filter(([r,id])=>id!==teamModel(r)?.id);
+ button.textContent='Applying…';
+ for(const [role,model] of changes){
+  modelPickerRole=role;modelPickerDraft=model;modelPickerOwner=owner;
+  if(!await applyTeamModel()){button.textContent='Apply changes';return;}
+ }
+ button.textContent='Apply changes';
+ const notice=el('team-model-status');if(notice){notice.hidden=false;notice.textContent='Model changes applied. Used from the next request.';}
+});
+async function applyTeamModel(){
  const target=modelPickerOwner,role=modelPickerRole,model=modelPickerDraft;
  modelPickerSaving=true;renderModelResults();
+ const form=el('team-config-form');
+ if(form)for(const button of form.querySelectorAll('[data-team-model],[data-team-apply-all]'))button.disabled=true;
  try{
   const result=await api('team-model',{role,model},target);
   if(agentId===target){
+   teamModelDrafts.delete(role);
    // A poll started before this write must not put the previous model back.
    ++refreshVersion;stateCache.delete(target);busy=false;
    data={...data,teamSelections:result.teamSelections};render();
    const form=el('team-config-form');
    if(form&&el('dialog').open){
     for(const trigger of form.querySelectorAll('[data-team-model]')){
-     const current=teamModel(Number(trigger.dataset.teamModel));trigger.querySelector('span').textContent=current?.label||'Choose model';trigger.title=current?.id||'';
+     const index=Number(trigger.dataset.teamModel),draft=teamModelDrafts.get(index);
+     const current=draft?(runtime.teamModels||[]).find(m=>m.id===draft):teamModel(index);trigger.querySelector('span').textContent=current?.label||'Choose model';trigger.title=current?.id||'';
     }
     const notice=el('team-model-status');notice.hidden=false;notice.textContent=defaultNames[role]+' · '+(teamModel(role)?.label||model)+' applied. Used from the next request.';
    }else alert(defaultNames[role]+' model applied. Used from the next request.');
   }
   teamModelDialog.close();
- }catch(error){const message=teamModelDialog.querySelector('.team-model-error');message.textContent=error.message;message.hidden=false;}
- finally{modelPickerSaving=false;renderModelResults();render();}
-});
+  return true;
+ }catch(error){const message=teamModelDialog.open?teamModelDialog.querySelector('.team-model-error'):el('team-model-status');if(message){message.textContent='Some changes may have saved. '+error.message+' Unsaved selections are kept for retry.';message.hidden=false;}return false;}
+ finally{
+  modelPickerSaving=false;renderModelResults();render();
+  if(form&&form.isConnected){
+   const blocked=!runtime.teamModel||data.bacResetting||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
+   for(const button of form.querySelectorAll('[data-team-model]'))button.disabled=!!blocked;
+   form.querySelector('[data-team-apply-all]').disabled=!!blocked||![...teamModelDrafts].some(([r,id])=>id!==teamModel(r)?.id);
+  }
+ }
+}
 
 function eventExpectationMarkup(job,role){
  const p=job?.payload,h=p?.handoffs?.[role],name=p?.roster?.[role]?.name||defaultNames[role];

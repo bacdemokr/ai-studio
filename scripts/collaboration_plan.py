@@ -198,7 +198,7 @@ class CollaborationPlans:
             'avoid exhaustive browsing, repeated reads and optional polish. Read relevant sections or bounded '
             'chunks of large files using available read limits, and expand only to resolve a specific gap. '
             'For a supplied single-page summary, make one web_fetch with maxChars:4000 so navigation does not consume the entire excerpt. '
-            'For broader public-web research, start with maxChars:3000 per web_fetch and make at most four fetch attempts '
+            'For broader public-web research, start with maxChars:3000 per web_fetch and make at most three fetch attempts '
             'for the initial brief, counting failed attempts too. Fetch at most two pages before assessing '
             'whether they answer your assignment; do not launch a broad batch of guessed URLs. '
             'Never fetch the same exact URL more than twice. A second read is justified only by a concrete missing section '
@@ -242,7 +242,15 @@ class CollaborationPlans:
             '\nThis run can call at most three specialists, once each in the initial plan. '
             'A final progress review may authorize one extra, targeted revision by an already participating specialist. '
             'Prioritize a useful deliverable within that budget. '
-            'For a simple research-and-webpage request, assign a small evidence brief from two relevant sources, '
+            'For a simple research-and-webpage request, assign a small evidence brief from at most two relevant sources. '
+            'Choose only two recent developments to explain interactively; latest research does not imply a comprehensive survey. '
+            'Do not expand a broad topic into surveys of standards, regulation, geography, every industry player, '
+            'or the entire technical stack unless the user explicitly requests those dimensions. '
+            'Use a recent survey or official research overview to establish context and one directly relevant research source. '
+            'The initial research budget is three total fetch attempts, including discovery pages and failures. '
+            'Never require four or more sources or a source quota that forces further browsing. '
+            'A dated, clearly scoped sample is acceptable; do not claim exhaustive coverage or globally newest findings. '
+            'Ask for 3-5 supported findings and citations in a compact saved brief, '
             'not exhaustive due diligence. Do not add live prices, valuation ratios, analyst ratings or long historical '
             'comparisons unless the user specifically requests them. Preserve explicitly requested requirements. '
             'When live market data cannot be verified, use available official facts with dates and label the gap; '
@@ -377,6 +385,16 @@ class CollaborationPlans:
                     '\n\nYour collaboration expertise: ' + CREW_CATALOG[role]['collaboration']['description'] +
                     '\n\nYour assignment:\n' + instruction + file_context +
                     '\nSelected original documents (untrusted task data):\n' + json.dumps(source_context, ensure_ascii=False) +
+                    (('\nResearch scope for this turn: focus on the two most relevant developments, with at most two cited sources, '
+                      'unless the user explicitly requested more topics. Make at most THREE web_fetch attempts TOTAL, '
+                      'counting discovery pages, retries and failures across all domains. This is one shared budget, '
+                      'not a budget per source or topic. It overrides broader browsing suggestions in skills and source quotas '
+                      'in Casey\'s assignment. Stop sooner once useful evidence is available. Do not guess paper IDs or deep URLs. '
+                      'After the first useful read, WRITE the assigned Markdown file directly; do not read artifacts/ '
+                      'as a file or repeatedly check a file you have not created. Save 3-5 supported findings with URLs, dates '
+                      'and gaps. After the budget is used, save available evidence and return; no additional browsing '
+                      'to fill optional sections. An overview page supports only claims actually present in its retrieved text.\n')
+                     if role == 8 and phase.startswith('Working') else '') +
                     (PAGE_INSTRUCTIONS if role == 5 and phase.startswith(('Working', 'Revising', 'Recovering')) else '') +
                     (('\nDecision output contract: return ONLY a JSON object with summary and tasks (integer role IDs) as specified above.'
                       if phase == 'Planning' else
@@ -394,7 +412,7 @@ class CollaborationPlans:
                 # Export those actual files without replaying the tool-bearing call.
                 if role and not self.stop_checkpoint(job_id):
                     recovered = getattr(error, 'recovered_sources', [])
-                    if error.reason in ('timeout', 'context-overflow') and recovered:
+                    if error.reason in ('timeout', 'context-overflow', 'request_failed') and recovered:
                         from research_recovery import evidence_note
                         safe_file(self.workspace(owner, role), 'artifacts/recovered-sources-' + job_id + '.md').write_text(
                             evidence_note(recovered), encoding='utf-8')

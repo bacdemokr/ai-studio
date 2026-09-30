@@ -109,7 +109,11 @@ class Proxy(BaseHTTPRequestHandler):
             if self.headers.get('Authorization')!='Bearer session-only' and self.headers.get('x-api-key')!='session-only':raise ValueError()
             _, prefix, provider, suffix = self.path.split('/',3)
             if prefix!='provider' or provider not in (*settings.PROVIDERS, 'team'):raise ValueError()
-            profile=get(settings.secret_key(provider))
+            if provider == 'team':
+                from team_models import credentials
+                profile = credentials()
+            else:
+                profile=get(settings.secret_key(provider))
             provider = 'nvidia' if provider == 'team' else provider
             if not profile:raise CredentialExpired()
             base=urllib.parse.urlsplit(profile['baseUrl'])

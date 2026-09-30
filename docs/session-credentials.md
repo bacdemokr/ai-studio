@@ -1,6 +1,8 @@
-# Session-only external credentials
+# External credentials
 
-Model API keys are held only in the app process memory. They are never written to host settings, OpenClaw model configuration, browser storage, or job payloads. Model, endpoint, context limit and event preferences remain persistent.
+Stage 1/2 model API keys are held only in the app process memory. They are never written to host settings, OpenClaw model configuration, browser storage, or job payloads. Model, endpoint, context limit and event preferences remain persistent.
+
+Stage 3 uses a host-persisted team credential at `BAC_DATA_DIR/credentials/stage3.json`, with directory mode 0700 and file mode 0600. Its connection survives tab refresh, lease expiry and restart. Only the server-side team proxy reads this key; it is never returned to the browser or placed in agent configuration or prompts. The Stage 3 setup form validates and replaces it. The session-only lifecycle below applies to Stage 1/2 and Telegram.
 
 Connect model makes a fresh authenticated model-list request before replacing the saved connection. During verification the button shows Connecting; a failure keeps the typed key and model and displays the provider error. The password field clears only after successful connection, or when the dialog closes. This checks access to the selected model, without generating a response. Background availability checks cache success for 60 seconds and failure for five seconds; explicit Connect never reuses that cache.
 

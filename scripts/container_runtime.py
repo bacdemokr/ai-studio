@@ -117,6 +117,8 @@ def prepare():
     with runtime.config_lock():
         config = common.read_json(runtime.config_path()) or runtime.initial_config()
         config['gateway']['port'] = runtime.gateway_port()
+        # Keep native diagnostics on the persistent volume across recreation.
+        config.setdefault('logging', {})['file'] = str(runtime.root() / 'gateway-native.log')
         plugins = config.setdefault('plugins', {})
         plugins.setdefault('load', {})['paths'] = [str(plugin)]
         plugins.setdefault('entries', {})['openshell'] = {'enabled': True, 'config': {

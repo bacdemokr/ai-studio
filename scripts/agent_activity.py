@@ -195,21 +195,34 @@ def context_failure(state, agent, session, started):
     """Native precheck failures may never become assistant transcript messages."""
     from datetime import datetime
     key = 'sessionKey=agent:' + agent + ':openai-user:' + session
-    try:
-        with (Path(state).parent / 'gateway.log').open('rb') as log:
-            log.seek(0, 2)
-            log.seek(max(0, log.tell() - 2_000_000))
-            lines = log.read().decode('utf-8', errors='replace').splitlines()
+    for filename in ('gateway.log', 'gateway-native.log'):
+        try:
+            with (Path(state).parent / filename).open('rb') as log:
+                log.seek(0, 2)
+                log.seek(max(0, log.tell() - 2_000_000))
+                lines = log.read().decode('utf-8', errors='replace').splitlines()
+        except OSError:
+            continue
         for line in reversed(lines):
-            if '[agent/embedded] [context-overflow-' not in line or key + ' ' not in line:
+            timestamp = line.split(' ', 1)[0]
+            if filename == 'gateway-native.log':
+                try:
+                    entry = json.loads(line)
+                    if not isinstance(entry, dict):continue
+                    subsystem = json.loads(entry.get('0', '{}'))
+                    if not isinstance(subsystem, dict) or subsystem.get('subsystem') != 'agent/embedded':continue
+                    line = '[agent/embedded] ' + str(entry.get('1', ''))
+                    timestamp = entry.get('time', '')
+                except (ValueError, TypeError):continue
+            # A normal precheck also contains context-overflow in its tag;
+            # only the failure diagnostic is evidence of overflow.
+            if '[agent/embedded] [context-overflow-diag]' not in line or key + ' ' not in line:
                 continue
-            try:stamp = datetime.fromisoformat(line.split(' ', 1)[0].replace('Z', '+00:00')).timestamp()
-            except ValueError:continue
+            try:stamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00')).timestamp()
+            except (ValueError, TypeError, AttributeError):continue
             if stamp < started:continue
             return {'code':'context-overflow', 'message':
                 'The research or conversation exceeded the available context limit. '
                 'Saved work is preserved. Narrow the request or start a fresh conversation; '
                 'this request was not automatically repeated.'}
-    except OSError:
-        pass
     return None
