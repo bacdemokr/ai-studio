@@ -25,7 +25,8 @@ def snapshot_files(workspace):
                 if path.stat().st_size > MAX_BYTES:
                     continue
                 raw = path.read_bytes()
-                raw.decode('utf-8')
+                if not raw.decode('utf-8').strip():
+                    continue
                 found[relative] = (hashlib.sha256(raw).hexdigest(), path.stat().st_mtime_ns)
             except (Problem, OSError, UnicodeError):
                 continue

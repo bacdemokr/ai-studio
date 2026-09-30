@@ -115,10 +115,13 @@ function missionControlTraceMarkup(job){
  called.sort((a,b)=>calledOrder.indexOf(Number(a.role))-calledOrder.indexOf(Number(b.role)));
  for(const task of called){
   const role=task.role,h=plan.handoffs?.[role],output=plan.outputs?.[role],working=active&&plan.activeRole===role;
-  const status=output?'Delivered':working?(job.status==='stopping'?'Stopping':'Working'):active?'Started':'Incomplete';
+  const recovery=plan.handoffRecovery?.role===role?plan.handoffRecovery:null;
+  const missing=output?.handoffStatus==='missing';
+  const status=missing?(working&&recovery?.status==='working'?'Saving missing handoff':'Handoff incomplete'):output?'Delivered':working?(job.status==='stopping'?'Stopping':'Working'):active?'Started':'Incomplete';
   const expected=h?.expected||task.expected;
   const assignment='<strong>Casey’s assignment</strong><div>'+messageMarkup(h?.task||task.task)+'</div>'+(expected?'<div class="mission-expectation"><small>Expected result</small><div>'+messageMarkup(expected)+'</div></div>':'')+(h?'<small class="mission-plan-inputs">Received: '+escape(['Casey’s brief',...(h.receivedFrom||[]).map(i=>defaultNames[Number(i)]+"’s contribution")].join(' · '))+'</small>':'');
-  markup+=row('contribution',defaultNames[role],status,assignment+(output?detail('output-'+role,defaultNames[role]+'’s result',messageMarkup(output.answer||'No response text was saved.')+webpageButtons(output.files,job.id)):''),'data-plan-role="'+role+'"',true,output?'done':working?'working':'');
+  const recoveryNote=recovery?'<p class="mission-plan-inputs">'+escape(recovery.status==='delivered'?'A missing handoff was saved and verified in one repair before continuing.':recovery.status==='working'?'Required files are missing. One repair is using the existing research; later specialists are waiting.':'The required handoff could not be recovered. Later specialists were not started.')+'</p>':'';
+  markup+=row('contribution',defaultNames[role],status,assignment+recoveryNote+(output?detail('output-'+role,defaultNames[role]+'’s result',messageMarkup(output.answer||'No response text was saved.')+webpageButtons(output.files,job.id)):''),'data-plan-role="'+role+'"',true,missing?(working?'working':''):output?'done':working?'working':'');
   const reviews=checks.filter(check=>!check.afterRevision&&Number(check.afterRole)===role);
   for(const check of reviews){
    const status=check.done?(check.outcome==='partial'?'Partial result':check.outcome==='unavailable'?'Capability unavailable':'Enough to finish'):'More work needed';

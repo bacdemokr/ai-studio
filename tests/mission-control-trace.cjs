@@ -89,3 +89,10 @@ assert(specialist.indexOf('Research first.')<specialist.indexOf('Date verified f
 const working=render({...revisedPlan,checks:[],revision:{...revision,status:'working',output:null},responseReady:false,finalAnswer:null,activeRole:8});
 assert.match(working,/Revising/);assert(!working.includes('Revised result delivered'));
 console.log('PASS: repair request, participating specialist revision and final check retain chronological history.');
+
+// A completion claim with no required file must never be labelled Delivered.
+const missingHandoff={...delivered,activeRole:8,outputs:{8:{answer:'Unverified claim',handoffStatus:'missing'}},handoffRecovery:{role:8,status:'working'}};
+assert.match(render(missingHandoff),/Saving missing handoff/);
+assert(!render(missingHandoff).includes('>Delivered<'));
+assert.match(render({...missingHandoff,handoffRecovery:{role:8,status:'failed'}},'done'),/Handoff incomplete/);
+assert.match(render({...delivered,handoffRecovery:{role:8,status:'delivered'}}),/saved and verified in one repair/);
