@@ -1232,12 +1232,18 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
             return
 
     def respond_chat(self, agent_id, session, prompt, owner, payload):
+        from artifact_references import relative_references
+        prompt += ('\nWhen describing saved deliverables, use workspace-relative paths such as '
+                   'artifacts/research-brief.md, not absolute host or container paths. '
+                   'Keep supplied verified artifact download references unchanged. '
+                   'This is a presentation rule, not permission to read other workspaces.')
         options = {'json_response': True} if payload.get('_captainDecision') and payload.get('crewRole') == 0 else {}
-        if not payload.get('images'):
-            return self.protected_response(agent_id, session, prompt, owner, payload.get('crewRole'), **options)
-        import base64
-        images = [{'mime': image['mime'], 'data': base64.b64encode(safe_file(self.workspace(owner), image['path'], True).read_bytes()).decode()} for image in payload['images']]
-        return self.protected_response(agent_id, session, prompt, owner, payload.get('crewRole'), images=images, **options)
+        if payload.get('images'):
+            import base64
+            options['images'] = [{'mime': image['mime'], 'data': base64.b64encode(safe_file(self.workspace(owner), image['path'], True).read_bytes()).decode()} for image in payload['images']]
+        answer = self.protected_response(agent_id, session, prompt, owner, payload.get('crewRole'), **options)
+        return relative_references(answer, self.workspace(owner, payload.get('crewRole')),
+                                   structured=options.get('json_response', False))
 
     def crew_chat(self, row, payload):
         owner, job_id, role = row['owner'], row['id'], payload['crewRole']
