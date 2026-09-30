@@ -150,7 +150,7 @@
 #studio-surface #studio-board:not(.has-plan) .studio-board-intro{display:block;padding:24px 8px}
 #studio-surface #studio-board:not(.has-plan) .studio-kicker{display:none}
 
-/* One viewport-anchored timer across the scene, panels and modal dialogs. */
-#studio-team-total-time{position:fixed;inset:16px 16px auto auto;margin:0;box-sizing:border-box;width:max-content;max-width:calc(100vw - 32px);padding:10px 16px;border:1px solid #76b90088;border-radius:9px;background:#203026;color:#d1eca9;box-shadow:0 4px 18px #0005;font:600 14px/1.4 Arial,sans-serif;font-variant-numeric:tabular-nums;z-index:2147483647;pointer-events:none}
-#studio-team-total-time::backdrop{background:transparent;pointer-events:none}
+/* Keep total process time inline with Casey's identity. */
+#studio-crew-passport .studio-captain-heading{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px}
+#studio-team-total-time{margin:0;color:#b9d88a;font:500 13px/1.4 Arial,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
 #studio-team-total-time[hidden]{display:none}

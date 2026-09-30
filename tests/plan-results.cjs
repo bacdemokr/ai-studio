@@ -5,7 +5,7 @@ const nodes=new Map();
 const el=id=>{if(!nodes.has(id))nodes.set(id,{hidden:false,dataset:{},children:[],querySelector(){return null},append(){},remove(){}});return nodes.get(id);};
 const old={id:'zurich',created:1,kind:'crew',payload:{brief:{schema:2}}};
 const plan={id:'website',created:2,updated:127,status:'done',payload:{prompt:'Make the website visual',collaboration:{finalAnswer:'Updated plots',outputs:{2:{files:['artifacts/index.html','artifacts/handoffs.md']}},webpages:{2:['artifacts/index.html']}}},result:{files:[]}};
-const ctx={data:{crewChats:[plan],crewChatReset:{}},crewMission:()=>old,planResults:el('plan-results'),el,runtime:{},teamConnectionBar:el('connection'),teamResetButton:{},removingAgent:false,resultsButton:{},comparison:null,activeSurface:null,selectedJob:null,board:false,surfaceStore:{append(){}},surfaceDialog:{open:false,showModal(){this.open=true}},surfaceDefinitions:{deliverables:{title:'Results',ids:['plan-results']},control:{title:'Mission Control',ids:['board']}},clearTimeout(){},policyRefreshTimer:null,render(){},selectEventContribution(){ctx.legacySelections++},navigateShowcaseContribution(){ctx.legacyNavigations++},legacySelections:0,legacyNavigations:0,escape:s=>s,messageMarkup:s=>s,collaborationCompletionMarkup:()=>'',webpageButtons:(files,id)=>JSON.stringify({files:files.filter(f=>f.endsWith('.html')),id}),collaborationFileButtons:(files,id)=>JSON.stringify({files:files.filter(f=>!f.endsWith('.html')),id})};
+const ctx={data:{crewChats:[plan],crewChatReset:{}},crewMission:()=>old,planResults:el('plan-results'),el,runtime:{},teamConnectionBar:el('connection'),teamResetButton:{},removingAgent:false,resultsButton:{},comparison:null,activeSurface:null,selectedJob:null,selectedCrewRole:0,board:false,surfaceStore:{append(){}},surfaceDialog:{open:false,showModal(){this.open=true}},surfaceDefinitions:{deliverables:{title:'Results',ids:['plan-results']},control:{title:'Mission Control',ids:['board']}},clearTimeout(){},policyRefreshTimer:null,render(){},selectEventContribution(){ctx.legacySelections++},navigateShowcaseContribution(){ctx.legacyNavigations++},legacySelections:0,legacyNavigations:0,escape:s=>s,messageMarkup:s=>s,collaborationCompletionMarkup:()=>'',webpageButtons:(files,id)=>JSON.stringify({files:files.filter(f=>f.endsWith('.html')),id}),collaborationFileButtons:(files,id)=>JSON.stringify({files:files.filter(f=>!f.endsWith('.html')),id})};
 vm.createContext(ctx);
 vm.runInContext([fn(crew,'collaborationTime'),fn(crew,'collaborationTimeMarkup'),fn(crew,'currentCollaboration'),'function collaborationAnswer(job){return job.result?.answer||job.payload.collaboration.finalAnswer||"";}',fn(surfaces,'renderPlanResults'),fn(surfaces,'syncTeamTotalTime'),fn(surfaces,'syncSurface'),fn(surfaces,'openSurface')].join('\n'),ctx);
 ctx.openSurface('deliverables');
@@ -43,16 +43,11 @@ assert.equal(ctx.collaborationTime({created:100,updated:3761,status:'cancelled'}
 assert.equal(ctx.collaborationTime({status:'done'}),'');
 assert.equal(ctx.collaborationTime({created:100,updated:90,status:'error'}),'Total time: 0s');
 console.log('PASS: total process timing is live while active and frozen for terminal states');
-// The same timer is lifted above newly opened dialogs and hidden after reset.
-let popoverOpen=false,shows=0,hides=0;
+// Inline clock follows Casey and disappears for specialists or reset.
 const clockNode=el('team-total-time');
-clockNode.matches=()=>popoverOpen;
-clockNode.showPopover=()=>{popoverOpen=true;shows++};
-clockNode.hidePopover=()=>{popoverOpen=false;hides++};
 ctx.currentCollaboration=()=>({created:100,updated:225,status:'done'});
-ctx.syncTeamTotalTime();assert.equal(popoverOpen,true);assert.equal(shows,1);
-ctx.syncTeamTotalTime();assert.equal(shows,1,'Timer ticks must not repeatedly reopen the overlay');
-ctx.syncTeamTotalTime(true);assert.equal(shows,2);assert.equal(hides,1);
-ctx.currentCollaboration=()=>null;ctx.syncTeamTotalTime();
-assert.equal(popoverOpen,false);assert.equal(clockNode.hidden,true);
-console.log('PASS: timer stays above dialogs without reopening on every tick, and disappears after reset');
+ctx.syncTeamTotalTime();assert.equal(clockNode.hidden,false);assert.equal(clockNode.textContent,'Total time: 2m 5s');
+ctx.selectedCrewRole=5;ctx.syncTeamTotalTime();assert.equal(clockNode.hidden,true);
+ctx.selectedCrewRole=0;ctx.syncTeamTotalTime();assert.equal(clockNode.hidden,false);
+ctx.currentCollaboration=()=>null;ctx.syncTeamTotalTime();assert.equal(clockNode.hidden,true);
+console.log('PASS: inline timer follows Casey and disappears after reset');

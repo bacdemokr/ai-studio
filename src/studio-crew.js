@@ -379,7 +379,7 @@ function renderCrewPassport(){
  const i=selectedCrewRole,name=defaultNames[i],role=window.BacCrewCatalog[i].collaboration.title;
  const avatar=window.BacCampus?.inspect().crewAvatars?.[i]||{};
  el('crew-number').textContent=String(i+1).padStart(2,'0')+' / '+roles.length;
- el('crew-name').textContent=name;el('crew-role').textContent=role;
+ el('crew-name').textContent=name;syncTeamTotalTime();el('crew-role').textContent=role;
  const model=teamModel(i);el('crew-model').textContent=model?.label||'';el('crew-model').title=model?.id||'';el('crew-model').hidden=!model;
  const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';portrait.style.setProperty('--avatar-accent',appearanceColors[avatar.color]||appearanceColors.green);
  const skills=[];

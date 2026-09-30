@@ -39,7 +39,7 @@ const controlButton=document.createElement('button');controlButton.type='button'
 const teamResetButton=document.createElement('button');teamResetButton.type='button';teamResetButton.id='studio-bac-reset';teamResetButton.className='studio-secondary';teamResetButton.textContent='Reset';teamResetButton.setAttribute('aria-label','Reset Multi-Agent Demo');teamResetButton.title='Stop active team work and clear team chats, files and the board';teamResetButton.onclick=()=>confirmTeamReset(teamResetButton);crewActions.append(teamResetButton);
 const teamResetStatus=document.createElement('p');teamResetStatus.id='studio-team-reset-status';teamResetStatus.className='studio-muted';teamResetStatus.setAttribute('role','status');teamResetStatus.hidden=true;crewActions.after(teamResetStatus);
 const resultsButton=document.createElement('button');resultsButton.type='button';resultsButton.className='studio-primary';resultsButton.dataset.surface='deliverables';resultsButton.textContent='Results';resultsButton.hidden=true;crewActions.append(resultsButton);
-const teamTotalTime=document.createElement('div');teamTotalTime.id='studio-team-total-time';teamTotalTime.hidden=true;teamTotalTime.setAttribute('role','timer');teamTotalTime.title='Total process time, including queueing, planning, specialists and review';teamTotalTime.setAttribute('popover','manual');root.append(teamTotalTime);
+const teamTotalTime=document.createElement('div');teamTotalTime.id='studio-team-total-time';teamTotalTime.hidden=true;teamTotalTime.setAttribute('role','timer');teamTotalTime.title='Total process time, including queueing, planning, specialists and review';el('crew-name').parentElement.classList.add('studio-captain-heading');el('crew-name').after(teamTotalTime);
 const teamConnectionBar=document.createElement('div');teamConnectionBar.className='studio-team-connection-bar';teamConnectionBar.innerHTML='<span><i aria-hidden="true"></i><span id="studio-team-connection-label">Team API</span></span><button type="button" class="studio-secondary" id="studio-team-setup">API &amp; models ↗</button>';crewActions.after(teamConnectionBar);el('team-setup').onclick=openTeamSettings;
 const standbyPanel=document.createElement('details');standbyPanel.id='studio-standby';
 standbyPanel.innerHTML='<summary>Standby specialists <span id="studio-standby-count"></span></summary><div class="studio-standby-content"><ul id="studio-standby-list"></ul></div>';
@@ -61,22 +61,13 @@ standbyPanel.addEventListener('keydown',event=>{
     standbyPanel.open=false;standbyPanel.querySelector('summary').focus();event.stopPropagation();
   }
 });
-// A manual popover stays in the browser top layer, above dialogs and fullscreen.
-function syncTeamTotalTime(raise=false){
+// Total process time belongs beside Casey's name, not over page controls.
+function syncTeamTotalTime(){
   const timer=el('team-total-time'),plan=currentCollaboration();
-  const label=plan?collaborationTime(plan):'';
+  const label=plan&&selectedCrewRole===0?collaborationTime(plan):'';
   if(timer.textContent!==label)timer.textContent=label;
-  if(!label){if(timer.hidePopover&&timer.matches(':popover-open'))timer.hidePopover();timer.hidden=true;return;}
-  timer.hidden=false;
-  if(timer.showPopover){
-    if(raise&&timer.matches(':popover-open'))timer.hidePopover();
-    if(!timer.matches(':popover-open'))timer.showPopover();
-  }
+  timer.hidden=!label;
 }
-new MutationObserver(records=>{
-  if(records.some(record=>record.target.tagName==='DIALOG'))syncTeamTotalTime(true);
-}).observe(root,{subtree:true,attributes:true,attributeFilter:['open']});
-document.addEventListener('fullscreenchange',()=>syncTeamTotalTime(true));
 setInterval(()=>syncTeamTotalTime(),1000);
 function syncSurface(){
   teamConnectionBar.dataset.connected=String(!!runtime.teamReady);
