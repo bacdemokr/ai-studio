@@ -34,7 +34,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.match(await page.locator('.crew-roundtable-log').innerText(),/Personal reactions to the result/);
   await page.waitForFunction(()=>BacCampus.inspect().roundtable?.guests.length===1);
   const captain=await page.locator('#studio-crew-conversation').innerText();
-  assert.match(captain,/Captain’s plan/);assert.match(captain,/Avery · Contribution/);assert.match(captain,/Alex · Contribution/);assert.match(captain,/Morgan · Contribution/);
+  assert.match(captain,/Captain’s plan/);assert.match(captain,/Avery · Contribution/);assert.match(captain,/Alex · Contribution/);assert.match(captain,/Wade · Contribution/);
   await page.locator('.world-room-map [data-world-room=lounge]').click();
   await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
   await page.locator('[data-collaboration-history]').waitFor({state:'visible'});

@@ -10,7 +10,8 @@
     ],
     "collaboration": {
       "title": "Team captain",
-      "description": "Choose the specialists for the current request, define acceptance criteria, and combine their actual contributions."
+      "description": "Choose the specialists for the current request, define acceptance criteria, and combine their actual contributions.",
+      "scope": "Assign distinct specialist-sized tasks and judge each against its expected result. Do not implement specialist deliverables yourself or treat out-of-scope work as completion of another assignment."
     }
   },
   {
@@ -42,7 +43,8 @@
     ],
     "collaboration": {
       "title": "Planner & analyst",
-      "description": "Break down requirements, constraints, calculations and dependencies for any task; propose a practical plan and acceptance criteria."
+      "description": "Break down requirements, constraints, calculations and dependencies for any task; propose a practical plan and acceptance criteria.",
+      "scope": "Return requirements, constraints, calculations and a plan to Casey. Do not implement a webpage or application assigned to the programmer."
     }
   },
   {
@@ -58,7 +60,8 @@
     ],
     "collaboration": {
       "title": "Writer & editor",
-      "description": "Write or edit the requested content in its requested format. LinkedIn posts and event marketing are optional, only when requested."
+      "description": "Write or edit the requested content in its requested format. LinkedIn posts and event marketing are optional, only when requested.",
+      "scope": "Return the requested prose or edited copy to Casey. Do not implement a webpage or application; supply its copy to the programmer when needed."
     }
   },
   {
@@ -70,7 +73,8 @@
     "skills": [],
     "collaboration": {
       "title": "Reviewer",
-      "description": "Independently inspect supplied outputs, source files and assumptions; identify defects and missing requirements. Distinguish static review from executed tests."
+      "description": "Independently inspect supplied outputs, source files and assumptions; identify defects and missing requirements. Distinguish static review from executed tests.",
+      "scope": "Review the supplied deliverable and report findings to Casey. Make minimal corrections only when assigned; do not replace missing implementation with a new application."
     }
   },
   {
@@ -85,7 +89,8 @@
     ],
     "collaboration": {
       "title": "Programmer",
-      "description": "Implement small programs and self-contained HTML/CSS/JavaScript prototypes with file tools. No arbitrary code execution, package installation or deployment is available."
+      "description": "Implement small programs and self-contained HTML/CSS/JavaScript prototypes with file tools. No arbitrary code execution, package installation or deployment is available.",
+      "scope": "Implement only the assigned program or webpage using the supplied evidence and requirements. Preserve source limitations; do not invent research or claim unperformed execution."
     }
   },
   {
@@ -100,7 +105,8 @@
     "description": "Interpret supplied tables, CSV and JSON; compare options and explain trends, units and missing data. Produce small analysis tables or chart specifications. State when calculations are reasoned rather than executed; no arbitrary Python execution or spreadsheet engine is available.",
     "collaboration": {
       "title": "Data analyst",
-      "description": "Interpret supplied tables, CSV and JSON; compare options and explain trends, units and missing data. Produce small analysis tables or chart specifications. State when calculations are reasoned rather than executed; no arbitrary Python execution or spreadsheet engine is available."
+      "description": "Interpret supplied tables, CSV and JSON; compare options and explain trends, units and missing data. Produce small analysis tables or chart specifications. State when calculations are reasoned rather than executed; no arbitrary Python execution or spreadsheet engine is available.",
+      "scope": "Return the requested data analysis, tables and chart specifications to Casey. Do not implement the finished webpage or application."
     }
   },
   {
@@ -115,7 +121,8 @@
     "description": "Turn user requirements into clear screen flows, accessible layouts, interaction states and acceptance criteria. Specify a practical design for Wade to implement; do not claim usability studies or browser tests were performed.",
     "collaboration": {
       "title": "UX designer",
-      "description": "Turn user requirements into clear screen flows, accessible layouts, interaction states and acceptance criteria. Specify a practical design for Wade to implement; do not claim usability studies or browser tests were performed."
+      "description": "Turn user requirements into clear screen flows, accessible layouts, interaction states and acceptance criteria. Specify a practical design for Wade to implement; do not claim usability studies or browser tests were performed.",
+      "scope": "Return design specifications, flows and accessibility guidance to Casey for implementation. Do not build the finished webpage or application."
     }
   },
   {
@@ -123,13 +130,16 @@
     "role": "Researcher",
     "persona": "analyst",
     "id": "general-researcher",
-    "skills": ["web"],
+    "skills": [
+      "web"
+    ],
     "protection": "standard",
     "planOnly": true,
     "description": "Research public web sources, compare evidence and cite findings for the current task.",
     "collaboration": {
       "title": "Researcher",
-      "description": "Read public sources with available web tools and compare evidence. Cite source URLs, distinguish observations from inference, and report unavailable pages honestly. web_fetch is available for public HTTP(S) pages. No search API key is assumed. Without supplied URLs, start from a confidently known official homepage and follow links returned by it; search-engine search is optional and separate. OpenShell is off. Never claim a page was read without a successful tool result."
+      "description": "Read public sources with available web tools and compare evidence. Cite source URLs, distinguish observations from inference, and report unavailable pages honestly. web_fetch is available for public HTTP(S) pages. No search API key is assumed. Without supplied URLs, start from a confidently known official homepage and follow links returned by it; search-engine search is optional and separate. OpenShell is off. Never claim a page was read without a successful tool result.",
+      "scope": "Research only: read sources and return a cited evidence brief, dates, findings and limitations to Casey. Do not create HTML, implement a webpage/application, or perform the programmer or reviewer assignment."
     }
   }
 ]

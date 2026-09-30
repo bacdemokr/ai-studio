@@ -6,10 +6,20 @@ from webpage_artifacts import html_files, collect_pages
 PAGE = '''<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:Arial;background:#f4f8f0;padding:32px}h1{font-size:42px}button{background:#76b900;padding:12px;border:0}</style></head><body><h1>Workshop preview</h1><p>Explore a practical AI workshop.</p><button id="demo" onclick="this.textContent='It works'">Try demo</button><script>try{parent.document.body.dataset.previewEscaped='yes'}catch(e){};fetch('/api/session').catch(()=>{});</script></body></html>'''
 
 class WebpageAdapter(collaboration.PlanAdapter):
+    def __init__(self):
+        super().__init__()
+        self.plan['tasks'][-1] = {'role':5, 'task':'Build the webpage from the research and requirements.'}
+
     def respond(self, agent, session, prompt, **kwargs):
         answer=super().respond(agent,session,prompt,**kwargs)
         role=int(agent.rsplit('-r',1)[1]) if '-r' in agent else None
-        if 'WEBPAGE_FIXTURE' in prompt and role in (None,3):
+        if 'WEBPAGE_FIXTURE' in prompt and session.endswith('-planning'):
+            plan = json.loads(answer)
+            for task in plan['tasks']:
+                if task.get('task') == 'Check a practical sequence and constraints.':
+                    task.update(role=3, task='Write the webpage copy for Wade.')
+            return json.dumps(plan)
+        if 'WEBPAGE_FIXTURE' in prompt and (role in (None,5) or role == 3 and not session.startswith('bac-plan-')):
             path=self.agents[agent]/'artifacts'/'workshop.html'
             path.parent.mkdir(exist_ok=True)
             path.write_text(PAGE)
@@ -51,11 +61,11 @@ class WebpageTests(unittest.TestCase):
     def test_plan_collects_specialist_page_and_retains_original_snapshot(self):
         self.use_pages();result=self.start('/plan WEBPAGE_FIXTURE Build a workshop page')
         self.app.execute(self.app.next_job());job=self.job(result)
-        pages=job['payload']['collaboration']['outputs']['3']['files']
+        pages=job['payload']['collaboration']['outputs']['5']['files']
         self.assertEqual(len(pages),1)
         self.assertIn(pages[0],job['result']['files'])
         team=self.app.crew_owner(self.owner)
-        (self.app.workspace(team,3)/'artifacts/workshop.html').write_text('Changed in a later turn')
+        (self.app.workspace(team,5)/'artifacts/workshop.html').write_text('Changed in a later turn')
         restarted=Studio(self.temp.name,self.adapter,start_worker=False)
         self.assertEqual(restarted.available_file(self.owner,pages[0]).read_text(),PAGE)
 
@@ -79,10 +89,10 @@ class WebpageTests(unittest.TestCase):
         self.assertEqual(self.app.available_file(self.owner,paths[0]).read_text(),PAGE+'<!-- new -->')
 
     def test_completed_page_remains_when_later_specialist_fails(self):
-        self.use_pages();self.adapter.plan['tasks']=[{'role':3,'task':'Build page'},{'role':2,'task':'Review'}]
+        self.use_pages();self.adapter.plan['tasks']=[{'role':5,'task':'Build page'},{'role':2,'task':'Review'}]
         self.adapter.fail_role=2;result=self.start('/plan WEBPAGE_FIXTURE Build a workshop page')
         with self.assertRaises(RuntimeError):self.app.execute(self.app.next_job())
-        pages=self.job(result)['payload']['collaboration']['outputs']['3']['files']
+        pages=self.job(result)['payload']['collaboration']['outputs']['5']['files']
         self.assertEqual(self.app.available_file(self.owner,pages[0]).read_text(),PAGE)
 
     def test_file_and_fenced_copy_create_only_one_preview(self):

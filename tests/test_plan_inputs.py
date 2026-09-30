@@ -130,6 +130,10 @@ class PlanInputs(unittest.TestCase):
                 self.assertIn('Writing source files is not executing or testing them', instructions)
                 self.assertIn('Do not load them for unrelated work', instructions)
                 self.assertIn(member['collaboration']['title'], (workspace / 'IDENTITY.md').read_text())
+                if member['collaboration'].get('scope'):
+                    soul = (workspace / 'SOUL.md').read_text()
+                    self.assertIn(member['collaboration']['scope'], soul)
+                    self.assertIn('Captain-delegated /plan work', soul)
                 for path in (workspace / 'skills').glob('bac-*/SKILL.md'):
                     if path.parent.name in ('bac-event-page', 'bac-nvidia-webpage', 'bac-nvidia-social', 'bac-nvidia-research', 'bac-event-scheduling', 'bac-event-tools'):
                         self.assertIn('SCOPE: Use this skill only', path.read_text())

@@ -91,14 +91,14 @@ class PlanEdgeCases(unittest.TestCase):
         self.assertIn('error',prompt)
 
     def test_webpage_is_handed_to_next_specialist_not_just_its_filename(self):
-        self.adapter.plan['tasks']=[{'role':3,'task':'Write HTML'},{'role':2,'task':'Review the written HTML'}]
+        self.adapter.plan['tasks']=[{'role':5,'task':'Write HTML'},{'role':2,'task':'Review the written HTML'}]
         def respond(agent,session,prompt,**kwargs):
             if session.startswith('bac-roundtable-'):return 'A personal reaction.'
             self.adapter.calls.append((agent,session,prompt))
             if '-checking-' in session:return json.dumps({'done':False,'reason':'Review is required.'})
             if session.endswith('-planning'):return json.dumps(self.adapter.plan)
             if session.endswith('-reviewing'):return json.dumps({'done':True,'reason':'Complete.','answer':'Combined'})
-            if agent.endswith('-r3'):
+            if agent.endswith('-r5'):
                 (self.adapter.agents[agent]/'artifacts'/'index.html').write_text('<html><body>HANDOFF_PAGE_MARKER</body></html>')
                 return 'Saved artifacts/index.html'
             workspace=self.adapter.agents[agent]
@@ -152,13 +152,13 @@ class PlanEdgeCases(unittest.TestCase):
     def test_failed_and_cancelled_handoffs_remove_temporary_page_copies(self):
         for stop in (False,True):
             with self.subTest(stop=stop):
-                self.adapter.plan['tasks']=[{'role':3,'task':'Write HTML'},{'role':2,'task':'Review'}]
+                self.adapter.plan['tasks']=[{'role':5,'task':'Write HTML'},{'role':2,'task':'Review'}]
                 result=self.start();team=self.app.crew_owner(self.owner)
                 original=self.adapter.respond
                 def respond(agent,session,prompt,**kwargs):
                     if '-checking-' in session:return json.dumps({'done':False,'reason':'Review is required.'})
                     if session.endswith('-planning'):return json.dumps(self.adapter.plan)
-                    if agent.endswith('-r3'):
+                    if agent.endswith('-r5'):
                         (self.adapter.agents[agent]/'artifacts'/'index.html').write_text('<html><body>draft</body></html>')
                         return 'Saved a draft'
                     if agent.endswith('-r2'):

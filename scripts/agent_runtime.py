@@ -333,6 +333,8 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
             files['IDENTITY.md'] = '# Identity\nName: ' + profile['name'] + '\nRole: ' + expertise['title'] + '\nTeam: BaC\n'
             files['SOUL.md'] = ('# Character\nBe clear, practical and honest. Follow the user\'s language and requested format.\n'
                                 '# Expertise\n' + expertise['description'] + '\n'
+                                '# /plan role boundary\n' + expertise.get('scope', '') + '\n'
+                                'This boundary applies to Captain-delegated /plan work; ordinary direct requests and the explicit event pipeline use their own assignment.\n'
                                 '# Task scope\nComplete the current assignment using actual available tools. '
                                 'Do not substitute an event or marketing deliverable for a different request. '
                                 'Never invent tool results, citations, testing or other agents\' work.\n')
