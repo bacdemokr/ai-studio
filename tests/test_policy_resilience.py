@@ -104,7 +104,7 @@ class NativePolicyResilienceTests(unittest.TestCase):
         before, after = self.snapshot(), self.snapshot(['weather'])
         with tempfile.TemporaryDirectory() as folder, patch.object(policy, 'configured', return_value=True), \
              patch.object(policy.runtime, 'root', return_value=Path(folder)), \
-             patch.object(policy, 'runtimes', return_value=[{'containerName': name} for name in ('oc-one', 'oc-two')]), \
+             patch.object(policy, 'runtimes', return_value=[{'containerName': name, 'running': True} for name in ('oc-one', 'oc-two')]), \
              patch.object(policy, 'read_policy', side_effect=[before, after, before, before]), \
              patch.object(policy, 'shell', side_effect=[None, subprocess.TimeoutExpired('set', 75)]) as write, \
              patch.object(policy, 'inspect') as inspect:

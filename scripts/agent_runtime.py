@@ -934,9 +934,15 @@ def policy_prepare(agent_id):
         raise RuntimeError('Invalid OpenShell sandbox identity.')
     if name not in agent_policy.sandbox_names():
         config = agent_policy.plugin_config()['config']
+        # Match the pinned native plugin's capability probe. OpenShell 0.0.106
+        # keeps sandboxes after `true` exits, but has no --detach flag. Never
+        # retry creation with different flags after a possibly partial create.
+        help_text = agent_policy.shell('sandbox', 'create', '--help')
+        command = ('--detach', '--', 'sleep', 'infinity') if re.search(
+            r'^\s*--detach(?:\s|$)', help_text, re.M) else ('--', 'true')
         agent_policy.shell('sandbox', 'create', '--name', name, '--from', config.get('from', 'openclaw'),
             '--policy', str(agent_policy.default_path()), '--no-auto-providers',
-            '--detach', '--', 'sleep', 'infinity', timeout=300)
+            *command, timeout=300)
 
 
 def set_radar_heartbeat(agent_id, enabled):

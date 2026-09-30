@@ -99,6 +99,13 @@ def shell(*args, timeout=35):
             command += [flag, config[field]]
     result = subprocess.run(command + list(args), capture_output=True, text=True, timeout=timeout)
     if result.returncode:
+        # Fixed diagnoses only: stderr can contain credentials, policy bodies or
+        # user command content. Never forward the raw subprocess output.
+        detail = result.stderr.lower()
+        if 'unexpected argument' in detail or 'unrecognized option' in detail:
+            raise RuntimeError('The installed OpenShell CLI does not support a requested option. Check the app and OpenShell version compatibility; the protected request was not run.')
+        if 'sandbox ownership check failed' in detail:
+            raise RuntimeError('OpenShell sandbox ownership could not be verified. Creation was not sent; check the agent registration on the host.')
         raise RuntimeError('OpenShell could not complete this request. Check the gateway and policy on the host.')
     return result.stdout
 
@@ -167,6 +174,16 @@ def owned_sandbox_names(agent_id):
     if not valid_agent_id(agent_id):raise RuntimeError('Invalid cleanup identity.')
     if not plugin_config().get('config'):return set()
     return sandbox_names(agent_id)
+
+
+def existing_runtimes(agent_id):
+    """Ignore absent registry remnants only after a successful full inventory."""
+    found = runtimes(agent_id)
+    if any(not row.get('running') for row in found):
+        existing = sandbox_names()
+        # Stopped or unhealthy existing sandboxes still require verification.
+        found = [row for row in found if row.get('running') or row['containerName'] in existing]
+    return found
 
 
 def network_rows(document):
@@ -254,12 +271,7 @@ def inspect(agent_id, protection, approved=()):
         result['status'] = 'awaiting-first-mission'
         return result
     try:
-        found = runtimes(agent_id)
-        if any(not row.get('running') for row in found):
-            existing = sandbox_names()
-            # An absent runtime is awaiting creation, not an unverified live sandbox.
-            # Existing/stopped sandboxes still require normal policy verification.
-            found = [row for row in found if row.get('running') or row['containerName'] in existing]
+        found = existing_runtimes(agent_id)
         if not found:
             result['status'] = 'awaiting-first-mission'
             return result
@@ -294,7 +306,7 @@ def inspect(agent_id, protection, approved=()):
 def apply(agent_id, approved):
     if not configured():
         raise RuntimeError('Run ./bac dev openshell enable on the host first.')
-    found = runtimes(agent_id)
+    found = existing_runtimes(agent_id)
     if not found:
         raise RuntimeError('Run this protected agent once to create its sandbox, then approve access here.')
     directory = runtime.root() / 'policies'
