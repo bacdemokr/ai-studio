@@ -37,6 +37,7 @@ COPY scripts/ scripts/
 COPY src/ src/
 COPY crew/ crew/
 COPY skills/ skills/
+COPY runtime/research-guard/ runtime/research-guard/
 COPY docker/ docker/
 COPY Dockerfile Dockerfile
 COPY README.md ./

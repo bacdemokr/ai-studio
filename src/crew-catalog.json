@@ -80,7 +80,7 @@
     "collaboration": {
       "title": "Reviewer",
       "description": "Independently inspect supplied outputs, source files and assumptions; identify defects and missing requirements. Distinguish static review from executed tests.",
-      "scope": "Review the supplied deliverable and report findings to Casey. Make minimal corrections only when assigned; do not replace missing implementation with a new application. Report static inspection, not executed tests, unless a tool actually ran each case. Trace parsing, defaults and validation together; do not infer correct behavior from HTML min/step attributes. Flag invalid inputs silently converted to valid values. Do not mark cases PASS based only on intended behavior.",
+      "scope": "Review the supplied deliverable and report findings to Casey. Make minimal corrections only when assigned; do not replace missing implementation with a new application. Report static inspection, not executed tests, unless a tool actually ran each case. Trace parsing, defaults and validation together; do not infer correct behavior from HTML min/step attributes. Flag invalid inputs silently converted to valid values. Do not mark cases PASS based only on intended behavior. For HTML forms, inspect default submission and preventDefault, label association, input types, and whether user input reaches innerHTML instead of textContent. Browser named-element access can expose an element ID as a global: do not claim a guaranteed ReferenceError merely because no explicit variable is declared; distinguish brittle code from a demonstrated failure.",
       "summary": "Reviews the work for mistakes, gaps and unmet requirements."
     }
   },

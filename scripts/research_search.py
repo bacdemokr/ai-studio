@@ -13,8 +13,12 @@ def configure(config, runtime_root):
     plugins = config.setdefault('plugins', {})
     paths = plugins.setdefault('load', {}).setdefault('paths', [])
     if str(plugin) not in paths:paths.append(str(plugin))
+    guard = Path(__file__).resolve().parents[1]/'runtime/research-guard'
+    if str(guard) not in paths:paths.append(str(guard))
     plugins.setdefault('entries', {})['parallel'] = {'enabled': True}
+    plugins['entries']['bac-research-guard'] = {'enabled': True}
     if 'allow' in plugins and 'parallel' not in plugins['allow']:plugins['allow'].append('parallel')
+    if 'allow' in plugins and 'bac-research-guard' not in plugins['allow']:plugins['allow'].append('bac-research-guard')
     config.setdefault('tools', {}).setdefault('web', {})['search'] = {
         'enabled': True, 'provider': 'parallel-free', 'maxResults': 3, 'timeoutSeconds': 20}
     return config

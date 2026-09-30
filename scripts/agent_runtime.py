@@ -910,6 +910,9 @@ def respond(agent_id, session, prompt, images=None, json_response=False, timeout
     from telemetry import Reply, measure
     answer=Reply(content, measure(result, root() / 'state', agent_id, session, started, elapsed=elapsed))
     answer.activity = observed_activity(agent_id, session, started)
+    if agent_id.endswith('-r8') and session.startswith('bac-plan-'):
+        from research_recovery import recovered_sources
+        answer.sources = recovered_sources(root() / 'state', agent_id, session, started)
     return answer
 
 

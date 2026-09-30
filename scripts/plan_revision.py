@@ -46,3 +46,16 @@ REVISION_INSTRUCTIONS = (
     '"task":"one bounded repair within this specialist expertise","expected":"how Casey can verify it"}}. '
     'The role numbers are schema examples only; choose from the actual participants. Otherwise finish normally. '
 )
+
+
+def revision_instructions(plan):
+    """Do not suggest an absent reviewer/programmer in the control JSON example."""
+    called = [role for role in plan.get('calledRoles', [])
+              if str(role) in plan.get('outputs', {})]
+    if not called:
+        return ''
+    return REVISION_INSTRUCTIONS.replace('"role":5,"evidenceRole":4',
+        '"role":' + str(called[0]) + ',"evidenceRole":' + str(called[-1])) + (
+        '\nAllowed revision roles and evidenceRole values for this request: ' + str(called) + '. '
+        'Reading an existing brief to compose your final reply is your own work, not a specialist revision. '
+        'Use the supplied readPath if a specific verification is needed; otherwise finish from the contribution.\n')

@@ -135,7 +135,8 @@ class ContainerTests(unittest.TestCase):
         self.assertEqual(result['tools']['web']['search']['provider'], 'parallel-free')
         self.assertEqual(result['tools']['web']['search']['maxResults'], 3)
         self.assertTrue(runtime.search_enabled())
-        self.assertEqual(len(result['plugins']['load']['paths']), 2)
+        self.assertEqual(len(result['plugins']['load']['paths']), 3)
+        self.assertTrue(result['plugins']['entries']['bac-research-guard']['enabled'])
         plugin = result['plugins']['entries']['openshell']['config']
         self.assertEqual(plugin['gateway'], 'bac-demo')
         self.assertEqual(plugin['workspace'], 'default')

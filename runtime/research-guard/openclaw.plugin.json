@@ -1,0 +1,1 @@
+{"id":"bac-research-guard","name":"BaC research bounds","description":"Bound Scout search excerpts and repeated browsing in explicit plan jobs.","activation":{"onStartup":true},"configSchema":{"type":"object","additionalProperties":false,"properties":{}}}

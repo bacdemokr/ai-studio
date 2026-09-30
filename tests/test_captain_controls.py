@@ -22,7 +22,7 @@ class CaptainControlsTests(unittest.TestCase):
             if agent.endswith('-r0'):
                 mode = self.adapter.profiles[agent].get('_planControl')
                 modes.append(mode)
-                expected = 'read' if '-checking-' in session else 'none'
+                expected = 'read' if '-checking-' in session or session.endswith('-reviewing') else 'none'
                 if session.startswith('bac-plan-'):
                     self.assertEqual(mode, expected)
                     self.assertIn('compact JSON', prompt)
@@ -33,7 +33,7 @@ class CaptainControlsTests(unittest.TestCase):
         self.adapter.respond = respond
         result = self.start()
         self.app.execute(self.app.next_job())
-        self.assertEqual(modes, ['none', 'read', 'read', 'none'])
+        self.assertEqual(modes, ['none', 'read', 'read', 'read'])
         team = self.app.crew_owner(self.owner)
         self.app.enqueue(team, {'kind':'crew-chat','crewRole':0,'prompt':'Create a short note.'})
         self.app.execute(self.app.next_job())

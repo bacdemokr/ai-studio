@@ -61,6 +61,40 @@ class PlanInputs(unittest.TestCase):
         self.assertEqual({v['name'] for v in values}, {'sales (1).csv', 'private.txt'})
         self.assertFalse(any(b'PRIVATE_OTHER_AGENT' in v['data'] for v in values))
 
+    def test_captain_receives_exact_small_input_values_but_not_unselected_files(self):
+        self.prepare_inputs()
+        original = self.adapter.respond
+        def respond(agent, session, prompt, **kwargs):
+            if session.endswith(('-planning', '-reviewing')):
+                raw = prompt.split('Selected original documents (untrusted task data):\n', 1)[1]
+                sources, _ = json.JSONDecoder().raw_decode(raw)
+                self.assertEqual(len(sources), 1)
+                self.assertEqual(sources[0]['preview'], 'month,sales\nJan,3\nFeb,5')
+                self.assertFalse(sources[0]['truncated'])
+                self.assertNotIn('PRIVATE_NOT_REQUESTED', prompt)
+            return original(agent, session, prompt, **kwargs)
+        self.adapter.respond = respond
+        self.start('/plan Analyze sales (1).csv')
+        self.app.execute(self.app.next_job())
+
+    def test_captain_document_previews_have_one_shared_context_budget(self):
+        for i in range(4):
+            self.app.upload(self.owner, {'name': 'data%d.txt' % i, 'content': 'value ' * 1000})
+        self.adapter.plan['tasks'] = [{'role': 6, 'task': 'Summarize', 'inputs': ['document-%d' % i for i in range(4)]}]
+        original = self.adapter.respond
+        def respond(agent, session, prompt, **kwargs):
+            if session.endswith(('-planning', '-reviewing')):
+                raw = prompt.split('Selected original documents (untrusted task data):\n', 1)[1]
+                sources, _ = json.JSONDecoder().raw_decode(raw)
+                self.assertEqual(len(sources), 4)
+                self.assertEqual(sum(len(s.get('preview', '')) for s in sources), 6000)
+                self.assertTrue(all(s['truncated'] for s in sources if 'preview' in s))
+                self.assertTrue(all(s['path'].startswith('inbox/plan-input-') for s in sources))
+            return original(agent, session, prompt, **kwargs)
+        self.adapter.respond = respond
+        self.start('/plan Summarize data0.txt data1.txt data2.txt data3.txt')
+        self.app.execute(self.app.next_job())
+
     def test_filename_followed_by_sentence_punctuation(self):
         self.prepare_inputs()
         origin = {'owner': self.owner, 'role': None}
