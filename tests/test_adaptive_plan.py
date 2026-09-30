@@ -30,22 +30,22 @@ class AdaptivePlanTests(unittest.TestCase):
                 self.assertIn('Do not assign loosely related specialists', self.adapter.calls[0][2])
 
     def test_one_specialist_is_enough(self):
-        self.adapter.plan['tasks'] = [{'role': 3, 'task': 'Write a short greeting.'}]
+        self.adapter.plan['tasks'] = [{'role': 7, 'task': 'Write a short greeting.'}]
         result = self.start(); self.app.execute(self.app.next_job())
-        self.assertEqual(self.called(), [0, 3, 0])
-        self.assertEqual(self.job(result)['payload']['collaboration']['calledRoles'], [3])
+        self.assertEqual(self.called(), [0, 7, 0])
+        self.assertEqual(self.job(result)['payload']['collaboration']['calledRoles'], [7])
 
     def test_expected_result_is_validated_saved_and_sent_to_specialist(self):
-        self.adapter.plan['tasks'] = [{'role':3,'task':'Write a greeting.',
+        self.adapter.plan['tasks'] = [{'role':7,'task':'Write a greeting.',
                                      'expected':'One friendly sentence, no invented event details.'}]
         result = self.start(); self.app.execute(self.app.next_job())
         plan = self.job(result)['payload']['collaboration']
-        self.assertEqual(plan['handoffs']['3']['expected'], self.adapter.plan['tasks'][0]['expected'])
+        self.assertEqual(plan['handoffs']['7']['expected'], self.adapter.plan['tasks'][0]['expected'])
         self.assertIn('Expected result and acceptance criteria from Casey:',self.adapter.calls[1][2])
-        self.assertIn(plan['handoffs']['3']['expected'],self.adapter.calls[1][2])
+        self.assertIn(plan['handoffs']['7']['expected'],self.adapter.calls[1][2])
         for expected in ('', None, ['invented'], 'x'*1501):
             with self.subTest(expected=expected), self.assertRaises(RuntimeError):
-                read_plan(json.dumps({'summary':'Write','tasks':[{'role':3,'task':'Write','expected':expected}]}))
+                read_plan(json.dumps({'summary':'Write','tasks':[{'role':7,'task':'Write','expected':expected}]}))
 
     def test_stops_after_first_or_second_result_with_explicit_reason(self):
         original = self.adapter.respond
@@ -64,8 +64,8 @@ class AdaptivePlanTests(unittest.TestCase):
                 self.adapter.respond = respond
                 result = self.start(); self.app.execute(self.app.next_job())
                 plan = self.job(result)['payload']['collaboration']
-                self.assertEqual(self.called(), [0,8,0] if finish_after==1 else [0,8,0,2,0])
-                self.assertEqual(plan['skippedRoles'], [2,3] if finish_after==1 else [3])
+                self.assertEqual(self.called(), [0,8,0] if finish_after==1 else [0,8,0,6,0])
+                self.assertEqual(plan['skippedRoles'], [6,7] if finish_after==1 else [7])
                 self.assertEqual(len(plan['outputs']), finish_after)
                 self.assertIn('no additional agents', plan['checks'][-1]['reason'])
                 checkpoint_prompt=next(prompt for _,session,prompt in self.adapter.calls if '-checking-' in session)
@@ -88,7 +88,7 @@ class AdaptivePlanTests(unittest.TestCase):
         self.assertEqual(self.called(), [0,8,0])
         self.assertEqual(plan['outcome'], 'unavailable')
         self.assertEqual(set(plan['outputs']), {'8'})
-        self.assertEqual(plan['skippedRoles'], [2,3])
+        self.assertEqual(plan['skippedRoles'], [6,7])
 
     def test_bad_checkpoint_never_calls_remaining_specialists(self):
         original = self.adapter.respond

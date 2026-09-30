@@ -17,7 +17,8 @@ def requested_inputs(studio, origin, task):
     for path in sorted(folder.iterdir()):
         if path.suffix.lower() not in ('.txt', '.md', '.csv', '.pdf', '.pptx', '.xlsx'):
             continue
-        if path.name.startswith(('chat-', 'plan-')):
+        # Exclude generated handoff snapshots, not user names such as plan-notes.md.
+        if re.match(r'^(?:plan-input|plan|chat)-[0-9a-f]{24}(?:-|\.)', path.name):
             continue
         if path.name.lower().endswith(('.pdf.txt', '.pptx.txt', '.xlsx.txt')) and path.with_suffix('').exists():
             continue

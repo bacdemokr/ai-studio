@@ -35,7 +35,7 @@ class CrewSelectionTests(unittest.TestCase):
         self.assertEqual(set(self.adapter.stages), {0,2,4})
         p = job['payload']
         self.assertEqual(set(p['outputs']), {'0','2','4'})
-        self.assertEqual([a['name'] for a in p['assignments']], ['Alex','Riley'])
+        self.assertEqual([a['name'] for a in p['assignments']], ['Alex','Vera'])
         self.assertEqual(p['handoffs']['4']['receivedFrom'], ['0','2'])
         for stage in (0,2,4):
             handoff=p['handoffs'][str(stage)]
@@ -53,7 +53,7 @@ class CrewSelectionTests(unittest.TestCase):
         self.assertEqual(job['status'], 'done')
         self.assertEqual(p['handoffs']['5']['receivedFrom'], [])
         self.assertIsNone(p['handoffs']['5']['senderRole'])
-        self.assertEqual(p['handoffs']['5']['sharedState']['selectedCrew'][0]['name'], 'Wade')
+        self.assertEqual(p['handoffs']['5']['sharedState']['selectedCrew'][0]['name'], 'Cody')
         self.assertIn('BaC Captain', p['handoffs']['5']['sharedState']['omittedRoles'])
         self.assertIn('Omitted roles will not run', self.adapter.prompts[5])
         self.assertNotIn('assignments', p)

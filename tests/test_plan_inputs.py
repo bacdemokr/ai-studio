@@ -20,7 +20,7 @@ class PlanInputs(unittest.TestCase):
         for _, _, prompt in self.adapter.calls:
             self.assertIn('Team capabilities (valid at every stage', prompt)
             self.assertIn('web_fetch can attempt public URLs', prompt)
-            self.assertIn('not a general code execution capability', prompt)
+            self.assertIn('No command execution', prompt)
             self.assertIn('Writing source files is not executing or testing them', prompt)
 
     def prepare_inputs(self):
@@ -105,7 +105,7 @@ class PlanInputs(unittest.TestCase):
 
     def test_only_visual_assignee_gets_attached_images(self):
         raw = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a9V8AAAAASUVORK5CYII='
-        self.adapter.plan['tasks'] = [{'role': 7, 'task': 'Inspect design', 'useImages': True}, {'role': 3, 'task': 'Write copy'}]
+        self.adapter.plan['tasks'] = [{'role': 7, 'task': 'Inspect design', 'useImages': True}, {'role': 4, 'task': 'Review copy'}]
         original = self.adapter.respond
         seen = {}
         def respond(agent, session, prompt, **kwargs):
@@ -116,7 +116,7 @@ class PlanInputs(unittest.TestCase):
         self.app.enqueue(self.owner, {'kind': 'chat', 'prompt': '/plan Improve this screenshot and draft copy',
                          'images': [{'dataUrl': 'data:image/png;base64,' + raw}]})
         self.app.execute(self.app.next_job())
-        self.assertEqual(seen, {0: True, 7: True, 3: False})
+        self.assertEqual(seen, {0: True, 7: True, 4: False})
 
     def test_all_crew_definitions_keep_general_capabilities_explicit(self):
         import tempfile

@@ -65,7 +65,7 @@ class RevisionTests(unittest.TestCase):
         self.assertEqual(len(sessions),len(set(sessions)))
 
     def test_any_called_specialist_can_revise_without_a_new_agent(self):
-        for role in (2,3,6,7,8):
+        for role in (5,6,7,8):
             with self.subTest(role=role):
                 self.setUp()
                 self.setup_repair(role)

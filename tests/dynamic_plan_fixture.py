@@ -23,12 +23,12 @@ class DynamicAdapter(PlanAdapter):
         time.sleep(.4)
         task=prompt.split('Current user task:')[-1]
         if session.endswith('-planning'):
-            order = [2, 5, 4] if 'CALCULATOR_QA' in prompt.split('Current user task:')[-1] else [6, 7, 5] if 'DATA_UI_QA' in prompt.split('Current user task:')[-1] else [8, 4] if 'RESEARCH_QA' in prompt.split('Current user task:')[-1] else [3, 4]
-            if 'EARLY_QA' in task: order=[8,3,4]
+            order = [6, 5, 4] if 'CALCULATOR_QA' in prompt.split('Current user task:')[-1] else [6, 7, 5] if 'DATA_UI_QA' in prompt.split('Current user task:')[-1] else [8, 4] if 'RESEARCH_QA' in prompt.split('Current user task:')[-1] else [7, 4]
+            if 'EARLY_QA' in task: order=[8,7,4]
             if 'PARTIAL_QA' in task: order=[6,5,4]
             if 'ASSEMBLY_QA' in task: order=[8,5,4]
             if 'REVISION_QA' in task: order=[6,4]
-            if 'SINGLE_QA' in task: order=[6]
+            if 'SINGLE_QA' in task: order=[7]
             if 'SOLO_QA' in task or 'UNSUPPORTED_QA' in task: order=[]
             self.plan = {'summary': 'Choose expertise for this request.', 'tasks': [
                 {'role': role, 'expected': 'Deliver a usable calculator with clear controls.' if role==5 else 'Provide a concise, source-grounded contribution with limitations.', 'task': {2: 'Define requirements.', 5: 'Implement calculator.', 3: 'Draft clear copy.', 4: 'Inspect the supplied work.', 6: 'Interpret the provided table.', 7: 'Design the comparison screen.', 8: 'Research public sources and cite findings.'}[role]}

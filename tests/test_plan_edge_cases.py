@@ -68,20 +68,20 @@ class PlanEdgeCases(unittest.TestCase):
     def test_specialist_followup_remembers_own_contribution(self):
         self.start();self.app.execute(self.app.next_job());self.adapter.calls.clear()
         team=self.app.crew_owner(self.owner)
-        self.app.enqueue(team,{'kind':'crew-chat','crewRole':2,'prompt':'Explain your last contribution.'})
+        self.app.enqueue(team,{'kind':'crew-chat','crewRole':6,'prompt':'Explain your last contribution.'})
         self.app.execute(self.app.next_job())
         self.assertEqual(len(self.adapter.calls),1)
-        self.assertIn('Verified contribution from Alex',self.adapter.calls[0][2])
+        self.assertIn('Verified contribution from Ada',self.adapter.calls[0][2])
 
     def test_specialist_plan_continuation_has_previous_work(self):
         self.start();self.app.execute(self.app.next_job());self.adapter.calls.clear()
         team=self.app.crew_owner(self.owner)
-        self.app.enqueue(team,{'kind':'crew-chat','crewRole':3,'prompt':'/plan Revise your proposal.'})
+        self.app.enqueue(team,{'kind':'crew-chat','crewRole':7,'prompt':'/plan Revise your proposal.'})
         self.app.execute(self.app.next_job())
-        self.assertIn('Verified contribution from Morgan',self.adapter.calls[0][2])
+        self.assertIn('Verified contribution from Iris',self.adapter.calls[0][2])
 
     def test_failed_plan_followup_includes_completed_work_and_failure(self):
-        first=self.start();self.adapter.fail_role=2
+        first=self.start();self.adapter.fail_role=6
         try:self.app.execute(self.app.next_job())
         except RuntimeError as error:self.app.event(first['id'],'Failed',str(error),status='error',result=json.dumps({'error':str(error)}))
         self.adapter.fail_role=None;self.adapter.calls.clear()
@@ -91,7 +91,7 @@ class PlanEdgeCases(unittest.TestCase):
         self.assertIn('error',prompt)
 
     def test_webpage_is_handed_to_next_specialist_not_just_its_filename(self):
-        self.adapter.plan['tasks']=[{'role':5,'task':'Write HTML'},{'role':2,'task':'Review the written HTML'}]
+        self.adapter.plan['tasks']=[{'role':5,'task':'Write HTML'},{'role':6,'task':'Review the written HTML'}]
         def respond(agent,session,prompt,**kwargs):
             if session.startswith('bac-roundtable-'):return 'A personal reaction.'
             self.adapter.calls.append((agent,session,prompt))
@@ -110,7 +110,7 @@ class PlanEdgeCases(unittest.TestCase):
         self.adapter.respond=respond
         self.start();self.app.execute(self.app.next_job())
         team=self.app.crew_owner(self.owner)
-        self.assertEqual(list((self.app.workspace(team,2)/'inbox').glob('plan-*.html')),[],'Temporary handoffs should not pile up')
+        self.assertEqual(list((self.app.workspace(team,6)/'inbox').glob('plan-*.html')),[],'Temporary handoffs should not pile up')
 
     def test_two_simultaneous_plan_requests_only_accept_one(self):
         def enqueue(_):
@@ -132,7 +132,7 @@ class PlanEdgeCases(unittest.TestCase):
 
     def test_malformed_planner_output_never_runs_specialist(self):
         for value in [None,[],True,{'summary':'x','tasks':[None]}, {'summary':' ','tasks':[]},
-                      {'summary':'x','tasks':[{'role':1.0,'task':'x'}]}, {'summary':'x','tasks':[{'role':2,'task':' '*3}]}]:
+                      {'summary':'x','tasks':[{'role':1.0,'task':'x'}]}, {'summary':'x','tasks':[{'role':6,'task':' '*3}]}]:
             with self.subTest(value=value),self.assertRaises(RuntimeError):fixture.read_plan(json.dumps(value))
 
     def test_image_sent_to_captain_not_unrelated_specialists(self):
@@ -152,7 +152,7 @@ class PlanEdgeCases(unittest.TestCase):
     def test_failed_and_cancelled_handoffs_remove_temporary_page_copies(self):
         for stop in (False,True):
             with self.subTest(stop=stop):
-                self.adapter.plan['tasks']=[{'role':5,'task':'Write HTML'},{'role':2,'task':'Review'}]
+                self.adapter.plan['tasks']=[{'role':5,'task':'Write HTML'},{'role':6,'task':'Review'}]
                 result=self.start();team=self.app.crew_owner(self.owner)
                 original=self.adapter.respond
                 def respond(agent,session,prompt,**kwargs):
@@ -161,7 +161,7 @@ class PlanEdgeCases(unittest.TestCase):
                     if agent.endswith('-r5'):
                         (self.adapter.agents[agent]/'artifacts'/'index.html').write_text('<html><body>draft</body></html>')
                         return 'Saved a draft'
-                    if agent.endswith('-r2'):
+                    if agent.endswith('-r6'):
                         self.assertTrue(list((self.adapter.agents[agent]/'inbox').glob('plan-*.html')))
                         if stop:
                             self.app.decision(team,result['id'],'cancel')
@@ -173,7 +173,7 @@ class PlanEdgeCases(unittest.TestCase):
                 else:
                     with self.assertRaises(RuntimeError):self.app.execute(self.app.next_job())
                     self.app.event(result['id'],'Failed','Fixture',status='error',result='{}')
-                self.assertEqual(list((self.app.workspace(team,2)/'inbox').glob('plan-*.html')),[])
+                self.assertEqual(list((self.app.workspace(team,6)/'inbox').glob('plan-*.html')),[])
                 self.adapter.respond=original
 
     def test_context_limits_do_not_starve_previous_plans_with_direct_turns(self):
@@ -196,7 +196,7 @@ class PlanEdgeCases(unittest.TestCase):
         self.assertEqual(self.adapter.calls,[])
 
     def test_two_three_specialists_and_non_default_order(self):
-        for order in [(5,4),(2,3),(3,2,8),(2,5,4)]:
+        for order in [(5,4),(6,7),(7,6,8),(6,5,4)]:
             with self.subTest(order=order):
                 self.adapter.plan['tasks']=[{'role':role,'task':'Do your part'} for role in order]
                 self.adapter.calls.clear();result=self.start();self.app.execute(self.app.next_job())
@@ -212,7 +212,7 @@ class PlanEdgeCases(unittest.TestCase):
         self.assertEqual(self.job(result)['payload']['collaboration']['outputs'],{})
 
     def test_failure_in_each_specialist_or_final_review_preserves_prior_work(self):
-        for completed, failing in enumerate((8,2,3,0)):
+        for completed, failing in enumerate((8,6,7,0)):
             with self.subTest(failing=failing):
                 result=self.start();original=self.adapter.respond
                 def respond(agent,session,prompt,**kwargs):

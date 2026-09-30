@@ -14,11 +14,11 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.equal(await page.locator('#studio-crew-model').innerText(),'Nemotron 3 Ultra');
   const standby=page.locator('#studio-standby');
   await standby.locator('summary').click();
-  assert.deepEqual(await standby.locator('[data-standby-role]').evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.standbyRole))),[0,2,3,4,5,6,7,8]);
-  assert.equal(await page.locator('#studio-standby-count').innerText(),'8');
+  assert.deepEqual(await standby.locator('[data-standby-role]').evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.standbyRole))),[0,4,5,6,7,8]);
+  assert.equal(await page.locator('#studio-standby-count').innerText(),'6');
   assert.deepEqual(await page.evaluate(()=>BacCampus.inspect().crewExchange.filter(r=>r.visible).map(r=>r.role)),[0]);
   await page.screenshot({path:'../../work/standby-specialists-preview.png'});
-  await standby.locator('p').click();
+  await standby.locator('p').first().click();
   assert.equal(await standby.evaluate(node=>node.open),true);
   await page.locator('#studio-crew-prompt').click();
   assert.equal(await standby.evaluate(node=>node.open),false);
@@ -56,17 +56,17 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.locator('#studio-crew-prompt').fill('/plan CALCULATOR_QA Build and inspect a calculator.');
   await page.locator('#studio-crew-send').click();
   await page.waitForFunction(()=>{const turn=[...document.querySelectorAll('#studio-crew-conversation [data-collaboration-job]')].at(-1);return turn?.textContent.includes('CALCULATOR_QA')&&turn.textContent.includes('A combined proposal')&&!document.querySelector('[data-crew-chat-stop]');},null,{timeout:30000});
-  assert.deepEqual(await page.evaluate(()=>BacCampus.inspect().selectedTeam),[0,2,5,4]);
+  assert.deepEqual(await page.evaluate(()=>BacCampus.inspect().selectedTeam),[0,6,5,4]);
   const homes=await page.evaluate(()=>BacCampus.inspect().crewHomes);
   assert.equal(homes[5][2],-3.5);
-  await page.waitForFunction(()=>{const a=BacCampus.inspect().crewExchange;return a.every(r=>!r.phase)&&a.filter(r=>r.visible).map(r=>r.role).join()==='0,2,4,5';},null,{timeout:20000});
+  await page.waitForFunction(()=>{const a=BacCampus.inspect().crewExchange;return a.every(r=>!r.phase)&&a.filter(r=>r.visible).map(r=>r.role).join()==='0,4,5,6';},null,{timeout:20000});
   assert.equal(await page.locator('[data-campus-agent]').count(),4);
-  assert.deepEqual(await standby.locator('[data-standby-role]').evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.standbyRole))),[0,2,3,4,5,6,7,8]);
+  assert.deepEqual(await standby.locator('[data-standby-role]').evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.standbyRole))),[0,4,5,6,7,8]);
   assert.equal(await standby.getAttribute('open'),null);
   await standby.locator('summary').click();
   await page.locator('[data-surface="control"]').click();
   const control=page.locator('#studio-board');
-  assert.deepEqual(await control.locator('[data-plan-role]').evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.planRole))),[0,2,5,4]);
+  assert.deepEqual(await control.locator('[data-plan-role]').evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.planRole))),[0,6,5,4]);
   const programmerStep=control.locator('[data-plan-role="5"]');
   assert.match(await programmerStep.innerText(),/Casey’s assignment/);
   assert.match(await programmerStep.innerText(),/Expected result/);
@@ -74,7 +74,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   const traceKinds=()=>control.locator('[data-trace-kind]').evaluateAll(nodes=>nodes.map(n=>n.dataset.traceKind));
   assert.deepEqual(await traceKinds(),['plan','contribution','review','contribution','review','contribution','review','response']);
   assert.equal(await control.locator('[data-trace-kind="plan"]').getByText('No additional agents will be called.',{exact:true}).count(),0);
-  assert.deepEqual(await control.locator('[data-after-role]').evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.afterRole))),[2,5,4]);
+  assert.deepEqual(await control.locator('[data-after-role]').evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.afterRole))),[6,5,4]);
   await programmerStep.locator('[data-trace-details] summary').click();
   assert.match(await programmerStep.innerText(),/Verified contribution from Cody/);
   await page.waitForTimeout(2200);
@@ -92,7 +92,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.keyboard.press('Escape');
   await page.locator('#studio-crew-prompt').fill('/plan COPY_QA Write and review a welcome paragraph.');
   await page.locator('#studio-crew-send').click();
-  await page.waitForFunction(()=>JSON.stringify(BacCampus.inspect().selectedTeam)==='[0,3,4]');
+  await page.waitForFunction(()=>JSON.stringify(BacCampus.inspect().selectedTeam)==='[0,7,4]');
   await page.waitForFunction(()=>document.querySelectorAll('[data-crew-chat-stop]').length===0);
   await page.waitForFunction(()=>BacCampus.inspect().crewExchange.every(r=>!r.phase),null,{timeout:20000});
   assert.equal((await page.evaluate(()=>BacCampus.inspect().crewExchange))[5].visible,false);
@@ -100,8 +100,8 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   // Restore the seated team without replaying entrance animation.
   for(let poll=0;poll<8;poll++){
    const scene=await page.evaluate(()=>BacCampus.inspect());
-   assert.deepEqual(scene.selectedTeam,[0,3,4]);
-   assert.deepEqual(scene.crewExchange.filter(r=>r.visible).map(r=>r.role),[0,3,4]);
+   assert.deepEqual(scene.selectedTeam,[0,7,4]);
+   assert.deepEqual(scene.crewExchange.filter(r=>r.visible).map(r=>r.role),[0,4,7]);
    assert.ok(scene.crewExchange.every(r=>!r.phase));
    await page.waitForTimeout(500);
   }
@@ -111,7 +111,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.equal(await page.locator('[data-campus-agent]').count(),3);
   assert.equal(await page.locator('#studio-crew-role').innerText(),'Team captain');
   await page.locator('[data-surface="control"]').click();
-  assert.deepEqual(await control.locator('[data-plan-role]').evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.planRole))),[0,3,4]);
+  assert.deepEqual(await control.locator('[data-plan-role]').evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.planRole))),[0,7,4]);
   assert.deepEqual(await traceKinds(),['plan','contribution','review','contribution','review','response']);
   await page.locator('#studio-board-shared').click();
   assert.equal(await page.locator('#studio-surface').isVisible(),false);
@@ -136,8 +136,8 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.locator('[data-campus-agent="0"]').click();
   await page.locator('#studio-crew-prompt').fill('/plan CALCULATOR_QA Build a calculator.');
   await page.locator('#studio-crew-send').click();
-  await page.waitForFunction(()=>BacCampus.inspect().selectedTeam.join()==='0,2,5,4');
-  assert.deepEqual(await page.evaluate(()=>BacCampus.inspect().crewExchange.filter(r=>r.visible).map(r=>r.role)),[0,2,4,5]);
+  await page.waitForFunction(()=>BacCampus.inspect().selectedTeam.join()==='0,6,5,4');
+  assert.deepEqual(await page.evaluate(()=>BacCampus.inspect().crewExchange.filter(r=>r.visible).map(r=>r.role)),[0,4,5,6]);
   assert.ok(await page.evaluate(()=>BacCampus.inspect().crewExchange.every(r=>!r.phase)));
   await page.waitForFunction(()=>document.querySelectorAll('[data-crew-chat-stop]').length===0);
   await page.locator('#studio-crew-prompt').fill('/plan RESEARCH_QA Compare public sources and review the findings.');
@@ -146,15 +146,15 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.deepEqual(await page.evaluate(()=>BacCampus.inspect().crewExchange.filter(r=>r.visible).map(r=>r.role)),[0,4,8]);
   await page.locator('[data-campus-agent="8"]').click();
   assert.equal(await page.locator('#studio-crew-name').innerText(),'Scout');
-  assert.equal(await page.locator('#studio-crew-role').innerText(),'Researcher');
+  assert.equal(await page.locator('#studio-crew-role').innerText(),'Web Researcher');
   assert.equal(await page.locator('#studio-crew-policy').isVisible(),false);
   await page.waitForFunction(()=>document.querySelector('#studio-crew-conversation').textContent.includes('Verified contribution from Scout'));
   await page.waitForFunction(()=>document.querySelectorAll('[data-crew-chat-stop]').length===0);
   for(const [task,team,notice] of [
    ['SOLO_QA Answer a simple question.',[0],'No additional agents needed'],
    ['UNSUPPORTED_QA Deploy to my private cloud.',[0],'Required expertise unavailable - no agents called'],
-   ['SINGLE_QA Write a short greeting.',[0,3],'Enough to finish - no additional agents will be called'],
-   ['EARLY_QA Research a simple topic.',[0,8,3,4],'Enough to finish - no additional agents will be called'],
+   ['SINGLE_QA Write a short greeting.',[0,7],'Enough to finish - no additional agents will be called'],
+   ['EARLY_QA Research a simple topic.',[0,8,7,4],'Enough to finish - no additional agents will be called'],
    ['PARTIAL_QA Build and deploy a dashboard.',[0,6,5,4],'Partial result - stopping here']
   ]){
    await page.locator('#studio-crew-prompt').fill('/plan '+task);
@@ -169,7 +169,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
    await page.locator('[data-surface="control"]').click();
    assert.equal(await control.locator('[data-plan-role]').count(),task.startsWith('EARLY_QA')?4:team.length);
    if(task.startsWith('EARLY_QA')){
-    assert.match(await control.locator('[data-plan-role="3"]').innerText(),/Not called/);
+    assert.match(await control.locator('[data-plan-role="7"]').innerText(),/Not called/);
     assert.match(await control.locator('[data-plan-role="4"]').innerText(),/Not called/);
     assert.deepEqual(await traceKinds(),['plan','contribution','review','skipped','skipped','response']);
     assert.equal(await control.locator('[data-trace-kind="plan"]').getByText('The research answers the request; no additional agents are needed.',{exact:true}).count(),0);
@@ -195,11 +195,11 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
     assert.match(await turn.innerText(),/Not called - no longer needed/);
     const completion=turn.locator('.chat-agent [data-plan-completion]');
     assert.match(await completion.innerText(),/The research answers the request/);
-    assert.match(await completion.innerText(),/Not called: Morgan, Vera/);
+    assert.match(await completion.innerText(),/Not called: Iris, Vera/);
     assert.match(await completion.innerText(),/Their planned work was not performed/);
     await page.waitForFunction(()=>BacCampus.inspect().crewExchange.every(r=>!r.phase));
-    assert.deepEqual(await page.evaluate(()=>BacCampus.inspect().crewExchange.filter(r=>r.visible).map(r=>r.role)),[0,3,4,8]);
-    for(const role of [3,4]){
+    assert.deepEqual(await page.evaluate(()=>BacCampus.inspect().crewExchange.filter(r=>r.visible).map(r=>r.role)),[0,4,7,8]);
+    for(const role of [7,4]){
      assert.match(await page.locator('.campus-agent-label[data-crew-member="'+role+'"] small').innerText(),/Not started/);
      assert.equal(await page.locator('.campus-agent-label[data-crew-member="'+role+'"] .crew-work-bubble').count(),0);
     }

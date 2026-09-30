@@ -58,7 +58,7 @@ class PartialPlanTests(unittest.TestCase):
         result = self.start(); self.app.execute(self.app.next_job())
         plan = self.job(result)['payload']['collaboration']
         self.assertEqual(plan['calledRoles'], [8])
-        self.assertEqual(plan['skippedRoles'], [2, 3])
+        self.assertEqual(plan['skippedRoles'], [6, 7])
         self.assertEqual(plan['remaining'], ['Private-system validation'])
         self.assertEqual(set(plan['outputs']), {'8'})
 

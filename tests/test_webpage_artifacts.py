@@ -17,9 +17,9 @@ class WebpageAdapter(collaboration.PlanAdapter):
             plan = json.loads(answer)
             for task in plan['tasks']:
                 if task.get('task') == 'Check a practical sequence and constraints.':
-                    task.update(role=3, task='Write the webpage copy for Wade.')
+                    task.update(role=7, task='Write the webpage copy for Wade.')
             return json.dumps(plan)
-        if 'WEBPAGE_FIXTURE' in prompt and (role in (None,5) or role == 3 and not session.startswith('bac-plan-')):
+        if 'WEBPAGE_FIXTURE' in prompt and (role in (None,5) or role == 7 and not session.startswith('bac-plan-')):
             path=self.agents[agent]/'artifacts'/'workshop.html'
             path.parent.mkdir(exist_ok=True)
             path.write_text(PAGE)
@@ -49,7 +49,7 @@ class WebpageTests(unittest.TestCase):
 
     def test_direct_crew_page_is_exported_for_authenticated_download(self):
         self.use_pages();team=self.app.crew_owner(self.owner)
-        result=self.app.enqueue(team,{'kind':'crew-chat','crewRole':3,'prompt':'WEBPAGE_FIXTURE Build a page'})
+        result=self.app.enqueue(team,{'kind':'crew-chat','crewRole':7,'prompt':'WEBPAGE_FIXTURE Build a page'})
         self.app.execute(self.app.next_job());job=self.job(result)
         page=job['result']['files'][0]
         self.assertEqual(self.app.available_file(self.owner,page).read_text(),PAGE)
@@ -89,8 +89,8 @@ class WebpageTests(unittest.TestCase):
         self.assertEqual(self.app.available_file(self.owner,paths[0]).read_text(),PAGE+'<!-- new -->')
 
     def test_completed_page_remains_when_later_specialist_fails(self):
-        self.use_pages();self.adapter.plan['tasks']=[{'role':5,'task':'Build page'},{'role':2,'task':'Review'}]
-        self.adapter.fail_role=2;result=self.start('/plan WEBPAGE_FIXTURE Build a workshop page')
+        self.use_pages();self.adapter.plan['tasks']=[{'role':5,'task':'Build page'},{'role':6,'task':'Review'}]
+        self.adapter.fail_role=6;result=self.start('/plan WEBPAGE_FIXTURE Build a workshop page')
         with self.assertRaises(RuntimeError):self.app.execute(self.app.next_job())
         pages=self.job(result)['payload']['collaboration']['outputs']['5']['files']
         self.assertEqual(self.app.available_file(self.owner,pages[0]).read_text(),PAGE)

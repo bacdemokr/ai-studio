@@ -118,11 +118,11 @@ class CrewProtectionTests(unittest.TestCase):
             with self.assertRaises(Problem):
                 self.studio.prepare_demo(self.owner, {})
             with self.assertRaises(Problem):
-                self.studio.enqueue(self.owner, {'kind':'crew-chat', 'crewRole':1, 'prompt':'Hello'})
+                self.studio.enqueue(self.owner, {'kind':'crew-chat', 'crewRole':8, 'prompt':'Hello'})
             return {'status':'applied'}
         with patch.object(self.adapter, 'policy_apply', side_effect=during_apply):
             self.studio.crew_policy_change(self.owner, {'role':1, 'permission':'host:blogs.nvidia.com', 'allow':False})
-        self.studio.enqueue(self.owner, {'kind':'crew-chat', 'crewRole':1, 'prompt':'Hello'})
+        self.studio.enqueue(self.owner, {'kind':'crew-chat', 'crewRole':8, 'prompt':'Hello'})
         with patch.object(self.adapter, 'policy_status', side_effect=AssertionError('Must reject before native query')):
             with self.assertRaises(Problem):
                 self.studio.crew_policy_change(self.owner, {'role':1, 'retry':True})
@@ -130,7 +130,10 @@ class CrewProtectionTests(unittest.TestCase):
     def test_pending_hosts_are_scoped_to_selected_crew(self):
         import time
         self.studio.prepare_builtin_crew(self.owner, 1, self.members[1])
-        self.studio.enqueue(self.owner, {'kind':'crew-chat', 'crewRole':1, 'prompt':'Read https://developer.nvidia.com'})
+        # A retained pre-retirement job can still have policy history. Do not enable new Dylan requests.
+        job=self.studio.enqueue(self.owner, {'kind':'crew-chat', 'crewRole':8, 'prompt':'Read https://developer.nvidia.com'})
+        with self.studio.db() as db:
+            db.execute("UPDATE jobs SET payload=json_set(payload,'$.crewRole',1) WHERE id=?",(job['id'],))
         self.adapter.policy_logs[self.members[1]['id']] = [{'host':'developer.nvidia.com', 'action':'deny', 'time':time.time()}]
         report = self.studio.crew_policy_report(self.owner, 1)
         self.assertEqual(report['pendingAccess'], [{'host':'developer.nvidia.com', 'reason':'blocked'}])

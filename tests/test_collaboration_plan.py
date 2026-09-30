@@ -11,8 +11,8 @@ class PlanAdapter(Adapter):
         super().__init__()
         self.plan = {'summary': 'Research, check operations, then write the proposal.', 'tasks': [
             {'role': 8, 'task': 'Research current NVIDIA themes.'},
-            {'role': 2, 'task': 'Check a practical sequence and constraints.'},
-            {'role': 3, 'task': 'Write the proposal using both contributions.'}]}
+            {'role': 6, 'task': 'Check a practical sequence and constraints.'},
+            {'role': 7, 'task': 'Write the proposal using both contributions.'}]}
         self.reaction_calls = []
         self.after_call = None
         self.fail_role = None
@@ -58,14 +58,14 @@ class CollaborationTests(unittest.TestCase):
         self.app.execute(self.app.next_job())
         job = self.job(result)
         self.assertEqual(job['status'], 'done')
-        self.assertEqual([a.rsplit('-r',1)[1] for a,_,_ in self.adapter.calls], ['0','8','0','2','0','3','0'])
+        self.assertEqual([a.rsplit('-r',1)[1] for a,_,_ in self.adapter.calls], ['0','8','0','6','0','7','0'])
         self.assertIn('Verified contribution from Scout', self.adapter.calls[2][2])
-        self.assertIn('Verified contribution from Alex', self.adapter.calls[4][2])
-        self.assertIn('Verified contribution from Morgan', self.adapter.calls[6][2])
+        self.assertIn('Verified contribution from Ada', self.adapter.calls[4][2])
+        self.assertIn('Verified contribution from Iris', self.adapter.calls[6][2])
         self.assertEqual(len(self.app.state(self.owner)['agents']), 1)
         self.assertIn('bac-' + self.owner, self.adapter.agents)
         self.assertEqual(len(self.adapter.reaction_calls), 1)
-        self.assertEqual(set(job['payload']['collaboration']['outputs']), {'8','2','3'})
+        self.assertEqual(set(job['payload']['collaboration']['outputs']), {'8','6','7'})
         self.assertEqual(len({session for _,session,_ in self.adapter.calls}), 7)
         self.assertEqual(self.app.available_file(self.owner, job['result']['files'][0]).read_text(), job['result']['answer'])
 
@@ -77,16 +77,25 @@ class CollaborationTests(unittest.TestCase):
 
     def test_normal_crew_chat_only_runs_selected_specialist(self):
         team = self.app.crew_owner(self.owner)
-        self.app.enqueue(team, {'kind':'crew-chat','crewRole':2,'prompt':'Check these dates'})
+        self.app.enqueue(team, {'kind':'crew-chat','crewRole':6,'prompt':'Check these dates'})
         self.app.execute(self.app.next_job())
-        self.assertEqual([a for a,_,_ in self.adapter.calls], [self.app.crew_native_id(team,2)])
+        self.assertEqual([a for a,_,_ in self.adapter.calls], [self.app.crew_native_id(team,6)])
 
     def test_command_in_specialist_chat_still_uses_captain(self):
         team = self.app.crew_owner(self.owner)
-        result = self.app.enqueue(team, {'kind':'crew-chat','crewRole':3,'prompt':'/plan Write a proposal'})
+        result = self.app.enqueue(team, {'kind':'crew-chat','crewRole':7,'prompt':'/plan Write a proposal'})
         self.app.execute(self.app.next_job())
         self.assertEqual(self.job(result)['payload']['crewRole'],0)
         self.assertEqual(self.adapter.calls[0][0],self.app.crew_native_id(team,0))
+
+    def test_removed_specialists_cannot_be_called_directly_or_in_plan(self):
+        team=self.app.crew_owner(self.owner)
+        for role in (1,2,3):
+            with self.subTest(role=role):
+                with self.assertRaisesRegex(Problem,'no longer available'):
+                    self.app.enqueue(team,{'kind':'crew-chat','crewRole':role,'prompt':'Hello'})
+                with self.assertRaisesRegex(RuntimeError,'invalid or duplicate specialist'):
+                    read_plan(json.dumps({'summary':'Invalid retired member','tasks':[{'role':role,'task':'Work'}]}))
 
     def test_parser_and_empty_command(self):
         for command in ['/plan', '  /plan', '\n \t/PLAN', '/plans', ' \n/PLANS']:
@@ -105,7 +114,7 @@ class CollaborationTests(unittest.TestCase):
         self.assertEqual(job['payload']['collaboration']['task'], 'Build a calculator')
 
     def test_invalid_plan_never_dispatches_a_specialist(self):
-        for tasks in [[],[{'role':True,'task':'x'}],[{'role':9,'task':'x'},{'role':2,'task':'y'}], [{'role':1,'task':'x'},{'role':2,'task':'y'}],
+        for tasks in [[],[{'role':True,'task':'x'}],[{'role':9,'task':'x'},{'role':6,'task':'y'}], [{'role':1,'task':'x'},{'role':6,'task':'y'}],
                       [{'role':1,'task':'x'},{'role':1,'task':'y'}]]:
             with self.subTest(tasks=tasks), self.assertRaises(RuntimeError):
                 read_plan(json.dumps({'summary':'Plan','tasks':tasks}))
@@ -126,14 +135,14 @@ class CollaborationTests(unittest.TestCase):
         self.assertEqual(self.job(result)['status'],'cancelled')
 
     def test_failure_preserves_completed_contributions(self):
-        result=self.start();self.adapter.fail_role=2
+        result=self.start();self.adapter.fail_role=6
         with self.assertRaisesRegex(RuntimeError,'policy denial'):self.app.execute(self.app.next_job())
         plan=self.job(result)['payload']['collaboration']
         self.assertEqual(set(plan['outputs']),{'8'})
         self.assertEqual(len(self.adapter.calls),4)
         self.assertNotIn('answer',self.job(result)['result'])
 
-    def test_researcher_is_unprotected_and_dylan_direct_chat_stays_protected(self):
+    def test_researcher_is_unprotected_and_retired_dylan_chat_is_rejected(self):
         result=self.start()
         with patch.object(self.adapter,'policy_status',wraps=self.adapter.policy_status) as policy_status:
             self.app.execute(self.app.next_job())
@@ -145,15 +154,13 @@ class CollaborationTests(unittest.TestCase):
         self.assertNotIn(dylan,self.adapter.profiles)
         self.assertFalse(any(c.args[0]==avery for c in policy_status.call_args_list))
         self.assertEqual(self.job(result)['status'],'done')
-        with patch.object(self.app,'protected_response',wraps=self.app.protected_response) as response:
+        # Retired event characters cannot be reopened through ordinary team chat.
+        with self.assertRaisesRegex(Problem, 'no longer available'):
             self.app.enqueue(team, {'kind':'crew-chat','crewRole':1,'prompt':'Research a demo theme'})
-            self.app.execute(self.app.next_job())
-        self.assertEqual(self.adapter.profiles[dylan]['protection'],'openshell')
-        self.assertTrue(any(c.args[0]==dylan and c.args[3:]==(team,1) for c in response.call_args_list))
 
     def test_dylan_is_not_offered_or_dispatched_even_if_captain_selects_him(self):
         result=self.start()
-        self.adapter.plan['tasks']=[{'role':2,'task':'Plan'}, {'role':1,'task':'Research'}]
+        self.adapter.plan['tasks']=[{'role':6,'task':'Plan'}, {'role':1,'task':'Research'}]
         with self.assertRaisesRegex(RuntimeError,'invalid or duplicate specialist'):
             self.app.execute(self.app.next_job())
         self.assertEqual(len(self.adapter.calls),1)

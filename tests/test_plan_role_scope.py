@@ -54,7 +54,7 @@ class PlanRoleScopeTests(unittest.TestCase):
         self.assertTrue((self.app.workspace(team, 8) / 'artifacts/unassigned.html').exists())
 
     def test_only_programmer_gets_page_creation_instruction(self):
-        for roles in ([8, 5, 4], [2, 3, 6], [7]):
+        for roles in ([8, 5, 4], [4, 7, 6], [7]):
             self.adapter.plan['tasks'] = [{'role': role, 'task': 'Perform your scoped contribution'} for role in roles]
             self.adapter.calls.clear()
             result = self.start('/plan Research AMD and build a webpage.')

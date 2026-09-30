@@ -19,7 +19,7 @@ class CrewChatTests(unittest.TestCase):
 
     def test_roles_have_native_identity_and_separate_persistent_conversations(self):
         self.send(0, 'Help plan my event')
-        self.send(1, 'Suggest a short demo')
+        self.send(8, 'Research a topic')
         self.send(0, 'Make the plan shorter')
         state = self.studio.state(self.owner)
         self.assertEqual(state['jobs'], [])
@@ -27,7 +27,7 @@ class CrewChatTests(unittest.TestCase):
         self.assertTrue(all(j['status'] == 'done' for j in state['crewChats']))
         self.assertEqual(len(self.adapter.agents), 2)
         profiles = list(self.adapter.profiles.values())
-        self.assertEqual([p['name'] for p in profiles], ['Casey', 'Dylan'])
+        self.assertEqual([p['name'] for p in profiles], ['Casey', 'Scout'])
         self.assertIn('Choose the specialists', profiles[0]['purpose'])
         calls = self.adapter.calls
         self.assertEqual(calls[0][1], calls[2][1])
@@ -38,7 +38,7 @@ class CrewChatTests(unittest.TestCase):
         self.assertEqual(self.studio.state(other['id'])['crewChats'], [])
 
     def test_reset_rotates_every_role_session_and_preserves_results(self):
-        for role in range(6):self.send(role, 'Old conversation')
+        for role in (0,4,5,6,7,8):self.send(role, 'Old conversation')
         old_sessions={call[0]:call[1] for call in self.adapter.calls}
         mission=self.studio.enqueue(self.owner, {'kind':'crew','preset':True,'workflow':'showcase','brief':{'schema':2}})
         self.studio.execute(self.studio.next_job())
@@ -55,7 +55,7 @@ class CrewChatTests(unittest.TestCase):
         # The epoch survives a server restart and requires no model call to reset.
         self.studio=Studio(self.temp.name,self.adapter,start_worker=False)
         self.assertEqual(self.studio.state(self.owner)['crewChatReset'],after['crewChatReset'])
-        for role in range(6):
+        for role in (0,4,5,6,7,8):
             self.send(role,'Fresh conversation')
             call=self.adapter.calls[-1]
             self.assertNotEqual(call[1],old_sessions[call[0]])
@@ -133,7 +133,7 @@ class CrewChatTests(unittest.TestCase):
     def test_busy_reset_is_atomic(self):
         self.send(0,'Keep this until reset succeeds')
         for kind in ('crew','crew-chat'):
-            payload={'kind':kind,'preset':True,'brief':{'schema':2}} if kind=='crew' else {'kind':kind,'crewRole':1,'prompt':'Pending'}
+            payload={'kind':kind,'preset':True,'brief':{'schema':2}} if kind=='crew' else {'kind':kind,'crewRole':8,'prompt':'Pending'}
             job=self.studio.enqueue(self.owner,payload)
             for status in ('queued','running','waiting','stopping'):
                 with self.studio.db() as db:db.execute('UPDATE jobs SET status=? WHERE id=?',(status,job['id']))

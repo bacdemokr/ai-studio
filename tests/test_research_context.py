@@ -51,14 +51,14 @@ class ResearchContextTests(unittest.TestCase):
 
     def test_bootstrap_and_reconnect_install_native_limits_without_changing_policy(self):
         config = runtime.initial_config()
-        self.assertEqual(config['tools']['web']['fetch'], {'maxChars':3000, 'maxCharsCap':6000})
+        self.assertEqual(config['tools']['web']['fetch'], {'maxChars':3000, 'maxCharsCap':4000})
         config['tools']['web']['fetch'] = {'enabled':False, 'maxChars':1000, 'maxCharsCap':2000}
         config['agents']['entries']['protected'] = {'tools':{'deny':['web_fetch']}, 'sandbox':{'mode':'all'}}
         config['agents']['defaults']['compaction'] = {'keepRecentTokens':4000}
         profile = {'model':'test-model','baseUrl':'http://127.0.0.1:8000/v1','apiKey':'','contextWindow':32768}
         settings.apply_to_config(config, 'local', profile)
         self.assertEqual(config['tools']['web']['fetch'], {'enabled':False, 'maxChars':1000, 'maxCharsCap':2000})
-        self.assertEqual(config['agents']['defaults']['compaction'], {'keepRecentTokens':4000, 'midTurnPrecheck':{'enabled':True}})
+        self.assertEqual(config['agents']['defaults']['compaction'], {'keepRecentTokens':4000, 'enabled':True, 'midTurnPrecheck':{'enabled':True}})
         self.assertEqual(config['agents']['entries']['protected']['tools'], {'deny':['web_fetch']})
         self.assertEqual(config['agents']['entries']['protected']['sandbox'], {'mode':'all'})
 

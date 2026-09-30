@@ -24,3 +24,12 @@ class CaseyDocumentTests(unittest.TestCase):
         for role in (1,False,'0'):
             with self.assertRaises(Problem):self.app.upload(self.owner,{'crewRole':role,'name':'a.txt','content':'hello'})
         with self.assertRaises(Problem):self.app.upload(self.owner,{'crewRole':0,'name':'../a.txt','content':'hello'})
+
+    def test_user_plan_and_chat_filenames_remain_available(self):
+        for name in ('plan-notes.md','chat-notes.txt'):
+            self.app.upload(self.owner,{'crewRole':0,'name':name,'content':'User supplied evidence'})
+            items=requested_inputs(self.app,{'owner':self.team,'role':0},'Summarize '+name)
+            self.assertEqual([i['name'] for i in items],[name])
+        generated='plan-'+'a'*24+'-r8-0.md'
+        self.app.upload(self.owner,{'crewRole':0,'name':generated,'content':'Old handoff'})
+        self.assertEqual(requested_inputs(self.app,{'owner':self.team,'role':0},generated),[])

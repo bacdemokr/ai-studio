@@ -137,7 +137,7 @@ class PlanHandoffTests(unittest.TestCase):
         self.assertTrue(plan['budgetReached'])
 
     def test_text_only_assignment_remains_valid(self):
-        self.adapter.plan['tasks'] = [{'role':3, 'task':'Write one welcome sentence', 'requiredFiles':[]}]
+        self.adapter.plan['tasks'] = [{'role':7, 'task':'Write one welcome sentence', 'requiredFiles':[]}]
         plan = self.run_plan()['payload']['collaboration']
         self.assertNotIn('handoffRecovery', plan)
 

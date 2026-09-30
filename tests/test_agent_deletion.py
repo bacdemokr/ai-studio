@@ -49,7 +49,7 @@ class DeletionTests(unittest.TestCase):
             if not release.wait(10):raise RuntimeError('test cleanup timed out')
             return original(*args)
         self.studio.deletion_worker = threading.Thread(target=self.studio.clean_deletions)
-        worker = threading.Thread(target=self.studio.work)
+        worker = threading.Thread(target=self.studio.work, args=('chat',))
         with patch.object(self.adapter, 'remove', side_effect=slow_remove):
             self.studio.delete_agent(self.scout, {'name':'Scout'}, enqueue_only=True)
             self.studio.deletion_worker.start()
@@ -165,8 +165,10 @@ class DeletionTests(unittest.TestCase):
             (self.studio.workspace(self.scout) / 'in-flight.txt').write_text('finishing')
             return original(*args, **kwargs)
         with patch.object(self.adapter, 'respond', side_effect=respond), patch.object(self.adapter, 'remove', wraps=self.adapter.remove) as remove:
-            worker = threading.Thread(target=self.studio.work)
-            worker.start()
+            worker = threading.Thread(target=self.studio.work, args=('chat',))
+            cleanup=threading.Thread(target=self.studio.clean_deletions)
+            self.studio.deletion_worker=cleanup
+            cleanup.start();worker.start()
             try:
                 self.assertTrue(entered.wait(5))
                 result = self.studio.delete_agent(self.scout, {'name': 'Scout'})
@@ -184,7 +186,7 @@ class DeletionTests(unittest.TestCase):
                 self.assertEqual(remove.call_count, 1)  # Hiring owns only the personal runtime.
                 self.assertIsNotNone(self.studio.profile(self.owner))
             finally:
-                release.set();self.studio.stop.set();self.studio.signal.set();worker.join(5)
+                release.set();self.studio.stop.set();self.studio.signal.set();self.studio.deletion_signal.set();worker.join(5);cleanup.join(5)
 
     def test_claimed_job_cannot_start_after_deletion_request(self):
         self.studio.enqueue(self.scout, {'kind': 'chat', 'prompt': 'Hello'})
