@@ -897,6 +897,12 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 #studio-dialog .studio-team-setup-models .team-model-trigger:focus-visible{outline:2px solid #76b900;outline-offset:2px}
 #studio-dialog .studio-team-setup-models .team-model-trigger:disabled{opacity:.5;cursor:not-allowed}
 
+#agent-campus .team-model-apply{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid #354b58;margin-top:12px;padding-top:16px}
+#agent-campus .team-model-apply .team-model-selection{font-size:13px;color:#b6c9d5;overflow-wrap:anywhere;min-width:0}
+#agent-campus .team-model-apply [data-model-apply]{flex-shrink:0;background:#76b900;color:#101b07;border:1px solid #76b900;border-radius:8px;padding:10px 18px;font-weight:700}
+#agent-campus .team-model-apply [data-model-apply]:disabled{opacity:.45;cursor:not-allowed}
+#studio-team-model-status{padding:10px 14px;border-left:3px solid #76b900;background:#203021;color:#cbe6ad;font-size:13px;line-height:1.5}
+
 .studio-sound{display:flex;align-items:center;gap:3px;flex-shrink:0}
 #agent-campus #campus-sound-toggle{width:auto;min-height:35px;height:auto;padding:4px 9px;font-size:15px;white-space:nowrap;color:#b8c9d7;border:1px solid #526071;background:#191e25;border-radius:3px}
 #agent-campus #campus-sound-toggle[aria-pressed=true]{color:#d3edb5;border-color:#5f843c;background:#1d2a22}
@@ -80683,20 +80689,26 @@ function renderStandbySpecialists(agents,crew){
 const teamModelDialog=document.createElement('dialog');
 teamModelDialog.className='team-model-dialog';
 teamModelDialog.setAttribute('aria-labelledby','team-model-heading');
-teamModelDialog.innerHTML='<header><div><h3 id="team-model-heading">Choose a model</h3><p id="team-model-member"></p></div><button type="button" data-model-close aria-label="Close model picker">×</button></header><input type="search" aria-label="Search API models" placeholder="Search models or providers…" autocomplete="off"><p class="team-model-count" aria-live="polite"></p><div class="team-model-results"></div><p class="team-model-error" role="alert" hidden></p>';
+teamModelDialog.innerHTML='<header><div><h3 id="team-model-heading">Choose a model</h3><p id="team-model-member"></p></div><button type="button" data-model-close aria-label="Close model picker">×</button></header><input type="search" aria-label="Search API models" placeholder="Search models or providers…" autocomplete="off"><p class="team-model-count" aria-live="polite"></p><div class="team-model-results"></div><p class="team-model-error" role="alert" hidden></p><footer class="team-model-apply"><span class="team-model-selection" role="status"></span><button type="button" class="studio-primary" data-model-apply disabled>Apply model</button></footer>';
 root.append(teamModelDialog);
-let modelPickerRole=0,modelPickerSaving=false;
+let modelPickerRole=0,modelPickerSaving=false,modelPickerDraft=null,modelPickerOwner=null;
 function renderModelResults(){
  const query=teamModelDialog.querySelector('input').value.trim().toLowerCase();
- const selected=teamModel(modelPickerRole)?.id;
+ const selected=modelPickerDraft;
  const models=(runtime.teamModels||[]).filter(m=>(m.id+' '+m.label).toLowerCase().includes(query));
  models.sort((a,b)=>Number(b.id===selected)-Number(a.id===selected));
  teamModelDialog.querySelector('.team-model-count').textContent=models.length?(models.length+' models'+(models.length>40?' · Showing the first 40. Refine your search.':'')):'No matching models';
  teamModelDialog.querySelector('.team-model-results').innerHTML=models.slice(0,40).map(m=>'<button type="button" data-model-choice="'+escape(m.id)+'" aria-pressed="'+(m.id===selected)+'" '+(modelPickerSaving?'disabled':'')+'><span><strong>'+escape(m.label.split('/').at(-1))+'</strong><small>'+escape(m.id)+'</small></span><span aria-hidden="true">'+(m.id===selected?'✓':'')+'</span></button>').join('');
+ const applied=teamModel(modelPickerRole)?.id;
+ const apply=teamModelDialog.querySelector('[data-model-apply]');
+ apply.disabled=modelPickerSaving||!selected||selected===applied;
+ apply.textContent=modelPickerSaving?'Applying…':'Apply model';
+ teamModelDialog.querySelector('.team-model-selection').textContent=modelPickerSaving?'Saving model…':selected===applied?'Current model':(runtime.teamModels||[]).find(m=>m.id===selected)?.label||selected||'Choose a model';
+
 }
 root.addEventListener('click',event=>{
  const button=event.target.closest('[data-team-model]');if(!button||button.disabled)return;
- modelPickerRole=Number(button.dataset.teamModel);
+ modelPickerRole=Number(button.dataset.teamModel);modelPickerDraft=teamModel(modelPickerRole)?.id;modelPickerOwner=agentId;
  teamModelDialog.querySelector('#team-model-member').textContent=defaultNames[modelPickerRole]+' · Dedicated team API';
  teamModelDialog.querySelector('input').value='';teamModelDialog.querySelector('.team-model-error').hidden=true;
  renderModelResults();teamModelDialog.showModal();teamModelDialog.querySelector('input').focus();
@@ -80705,10 +80717,28 @@ teamModelDialog.querySelector('input').addEventListener('input',renderModelResul
 teamModelDialog.addEventListener('cancel',event=>{if(modelPickerSaving)event.preventDefault();});
 teamModelDialog.addEventListener('click',async event=>{
  if(event.target.closest('[data-model-close]')||event.target===teamModelDialog){if(!modelPickerSaving)teamModelDialog.close();return;}
- const choice=event.target.closest('[data-model-choice]');if(!choice||modelPickerSaving)return;
+ if(modelPickerSaving)return;
+ const choice=event.target.closest('[data-model-choice]');
+ if(choice){modelPickerDraft=choice.dataset.modelChoice;teamModelDialog.querySelector('.team-model-error').hidden=true;renderModelResults();return;}
+ const apply=event.target.closest('[data-model-apply]');if(!apply||apply.disabled)return;
+ const target=modelPickerOwner,role=modelPickerRole,model=modelPickerDraft;
  modelPickerSaving=true;renderModelResults();
- try{await api('team-model',{role:modelPickerRole,model:choice.dataset.modelChoice});await refresh();teamModelDialog.close();if(el('team-config-form')&&el('dialog').open)openTeamSettings();}
- catch(error){const message=teamModelDialog.querySelector('.team-model-error');message.textContent=error.message;message.hidden=false;}
+ try{
+  const result=await api('team-model',{role,model},target);
+  if(agentId===target){
+   // A poll started before this write must not put the previous model back.
+   ++refreshVersion;stateCache.delete(target);busy=false;
+   data={...data,teamSelections:result.teamSelections};render();
+   const form=el('team-config-form');
+   if(form&&el('dialog').open){
+    for(const trigger of form.querySelectorAll('[data-team-model]')){
+     const current=teamModel(Number(trigger.dataset.teamModel));trigger.querySelector('span').textContent=current?.label||'Choose model';trigger.title=current?.id||'';
+    }
+    const notice=el('team-model-status');notice.hidden=false;notice.textContent=defaultNames[role]+' · '+(teamModel(role)?.label||model)+' applied. Used from the next request.';
+   }else alert(defaultNames[role]+' model applied. Used from the next request.');
+  }
+  teamModelDialog.close();
+ }catch(error){const message=teamModelDialog.querySelector('.team-model-error');message.textContent=error.message;message.hidden=false;}
  finally{modelPickerSaving=false;renderModelResults();render();}
 });
 
@@ -82411,8 +82441,8 @@ function openTeamSettings(){
   <small>inference-api.nvidia.com</small>
   <label for="studio-team-api-key">${runtime.teamModel?'Replace API key':'API key'}</label><input id="studio-team-api-key" type="password" autocomplete="off" spellcheck="false" required placeholder="Paste your NVIDIA API key">
   <small>${canConfigure?'':'Ask the host to connect the team API. '}Session only. The key is kept in memory, never saved to disk. Closing or refreshing this tab clears a key entered here.</small>
-  <div class="studio-dialog-actions"><button type="submit" id="studio-team-connect" class="studio-primary" ${canConfigure?'':'disabled'}>${runtime.teamModel?'Update connection':'Connect API'}</button></div><p id="studio-team-connect-status" role="status" hidden></p></div>
-  <div class="studio-team-models-heading"><h3>Agent models</h3><small>Search the models available through your team API.</small></div>
+  <div class="studio-dialog-actions"><button type="submit" id="studio-team-connect" class="studio-primary" ${canConfigure?'':'disabled'}>${runtime.teamModel?'Update API key':'Connect API'}</button></div><p id="studio-team-connect-status" role="status" hidden></p></div>
+  <div class="studio-team-models-heading"><h3>Agent models</h3><small>Choose a model, then select Apply model. No API key re-entry needed.</small></div><p id="studio-team-model-status" role="status" hidden></p>
   <div class="studio-team-setup-models">${available.map(member=>`<div><span><strong>${escape(member.name)}</strong><small>${escape(member.collaboration.title)}</small></span><button type="button" class="team-model-trigger" data-team-model="${member.roleIndex}" ${!runtime.teamModel||data.bacResetting||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status))?'disabled':''}><span>${escape(teamModel(member.roleIndex)?.label||'Choose model')}</span><span aria-hidden="true">⌕</span></button></div>`).join('')}</div>
   <p class="studio-team-setup-note">Stage 1 &amp; 2 keep using the model selected in Settings.</p></form>`);
  const form=el('team-config-form'),key=el('team-api-key'),status=el('team-connect-status'),button=el('team-connect');

@@ -597,3 +597,9 @@
 #studio-dialog .studio-team-setup-models .team-model-trigger:hover:not(:disabled){background:#253e4b;border-color:#76b900}
 #studio-dialog .studio-team-setup-models .team-model-trigger:focus-visible{outline:2px solid #76b900;outline-offset:2px}
 #studio-dialog .studio-team-setup-models .team-model-trigger:disabled{opacity:.5;cursor:not-allowed}
+
+#agent-campus .team-model-apply{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid #354b58;margin-top:12px;padding-top:16px}
+#agent-campus .team-model-apply .team-model-selection{font-size:13px;color:#b6c9d5;overflow-wrap:anywhere;min-width:0}
+#agent-campus .team-model-apply [data-model-apply]{flex-shrink:0;background:#76b900;color:#101b07;border:1px solid #76b900;border-radius:8px;padding:10px 18px;font-weight:700}
+#agent-campus .team-model-apply [data-model-apply]:disabled{opacity:.45;cursor:not-allowed}
+#studio-team-model-status{padding:10px 14px;border-left:3px solid #76b900;background:#203021;color:#cbe6ad;font-size:13px;line-height:1.5}

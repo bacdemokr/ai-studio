@@ -175,8 +175,8 @@ function openTeamSettings(){
   <small>inference-api.nvidia.com</small>
   <label for="studio-team-api-key">${runtime.teamModel?'Replace API key':'API key'}</label><input id="studio-team-api-key" type="password" autocomplete="off" spellcheck="false" required placeholder="Paste your NVIDIA API key">
   <small>${canConfigure?'':'Ask the host to connect the team API. '}Session only. The key is kept in memory, never saved to disk. Closing or refreshing this tab clears a key entered here.</small>
-  <div class="studio-dialog-actions"><button type="submit" id="studio-team-connect" class="studio-primary" ${canConfigure?'':'disabled'}>${runtime.teamModel?'Update connection':'Connect API'}</button></div><p id="studio-team-connect-status" role="status" hidden></p></div>
-  <div class="studio-team-models-heading"><h3>Agent models</h3><small>Search the models available through your team API.</small></div>
+  <div class="studio-dialog-actions"><button type="submit" id="studio-team-connect" class="studio-primary" ${canConfigure?'':'disabled'}>${runtime.teamModel?'Update API key':'Connect API'}</button></div><p id="studio-team-connect-status" role="status" hidden></p></div>
+  <div class="studio-team-models-heading"><h3>Agent models</h3><small>Choose a model, then select Apply model. No API key re-entry needed.</small></div><p id="studio-team-model-status" role="status" hidden></p>
   <div class="studio-team-setup-models">${available.map(member=>`<div><span><strong>${escape(member.name)}</strong><small>${escape(member.collaboration.title)}</small></span><button type="button" class="team-model-trigger" data-team-model="${member.roleIndex}" ${!runtime.teamModel||data.bacResetting||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status))?'disabled':''}><span>${escape(teamModel(member.roleIndex)?.label||'Choose model')}</span><span aria-hidden="true">⌕</span></button></div>`).join('')}</div>
   <p class="studio-team-setup-note">Stage 1 &amp; 2 keep using the model selected in Settings.</p></form>`);
  const form=el('team-config-form'),key=el('team-api-key'),status=el('team-connect-status'),button=el('team-connect');

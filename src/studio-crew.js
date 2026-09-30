@@ -83,20 +83,26 @@ function renderStandbySpecialists(agents,crew){
 const teamModelDialog=document.createElement('dialog');
 teamModelDialog.className='team-model-dialog';
 teamModelDialog.setAttribute('aria-labelledby','team-model-heading');
-teamModelDialog.innerHTML='<header><div><h3 id="team-model-heading">Choose a model</h3><p id="team-model-member"></p></div><button type="button" data-model-close aria-label="Close model picker">×</button></header><input type="search" aria-label="Search API models" placeholder="Search models or providers…" autocomplete="off"><p class="team-model-count" aria-live="polite"></p><div class="team-model-results"></div><p class="team-model-error" role="alert" hidden></p>';
+teamModelDialog.innerHTML='<header><div><h3 id="team-model-heading">Choose a model</h3><p id="team-model-member"></p></div><button type="button" data-model-close aria-label="Close model picker">×</button></header><input type="search" aria-label="Search API models" placeholder="Search models or providers…" autocomplete="off"><p class="team-model-count" aria-live="polite"></p><div class="team-model-results"></div><p class="team-model-error" role="alert" hidden></p><footer class="team-model-apply"><span class="team-model-selection" role="status"></span><button type="button" class="studio-primary" data-model-apply disabled>Apply model</button></footer>';
 root.append(teamModelDialog);
-let modelPickerRole=0,modelPickerSaving=false;
+let modelPickerRole=0,modelPickerSaving=false,modelPickerDraft=null,modelPickerOwner=null;
 function renderModelResults(){
  const query=teamModelDialog.querySelector('input').value.trim().toLowerCase();
- const selected=teamModel(modelPickerRole)?.id;
+ const selected=modelPickerDraft;
  const models=(runtime.teamModels||[]).filter(m=>(m.id+' '+m.label).toLowerCase().includes(query));
  models.sort((a,b)=>Number(b.id===selected)-Number(a.id===selected));
  teamModelDialog.querySelector('.team-model-count').textContent=models.length?(models.length+' models'+(models.length>40?' · Showing the first 40. Refine your search.':'')):'No matching models';
  teamModelDialog.querySelector('.team-model-results').innerHTML=models.slice(0,40).map(m=>'<button type="button" data-model-choice="'+escape(m.id)+'" aria-pressed="'+(m.id===selected)+'" '+(modelPickerSaving?'disabled':'')+'><span><strong>'+escape(m.label.split('/').at(-1))+'</strong><small>'+escape(m.id)+'</small></span><span aria-hidden="true">'+(m.id===selected?'✓':'')+'</span></button>').join('');
+ const applied=teamModel(modelPickerRole)?.id;
+ const apply=teamModelDialog.querySelector('[data-model-apply]');
+ apply.disabled=modelPickerSaving||!selected||selected===applied;
+ apply.textContent=modelPickerSaving?'Applying…':'Apply model';
+ teamModelDialog.querySelector('.team-model-selection').textContent=modelPickerSaving?'Saving model…':selected===applied?'Current model':(runtime.teamModels||[]).find(m=>m.id===selected)?.label||selected||'Choose a model';
+
 }
 root.addEventListener('click',event=>{
  const button=event.target.closest('[data-team-model]');if(!button||button.disabled)return;
- modelPickerRole=Number(button.dataset.teamModel);
+ modelPickerRole=Number(button.dataset.teamModel);modelPickerDraft=teamModel(modelPickerRole)?.id;modelPickerOwner=agentId;
  teamModelDialog.querySelector('#team-model-member').textContent=defaultNames[modelPickerRole]+' · Dedicated team API';
  teamModelDialog.querySelector('input').value='';teamModelDialog.querySelector('.team-model-error').hidden=true;
  renderModelResults();teamModelDialog.showModal();teamModelDialog.querySelector('input').focus();
@@ -105,10 +111,28 @@ teamModelDialog.querySelector('input').addEventListener('input',renderModelResul
 teamModelDialog.addEventListener('cancel',event=>{if(modelPickerSaving)event.preventDefault();});
 teamModelDialog.addEventListener('click',async event=>{
  if(event.target.closest('[data-model-close]')||event.target===teamModelDialog){if(!modelPickerSaving)teamModelDialog.close();return;}
- const choice=event.target.closest('[data-model-choice]');if(!choice||modelPickerSaving)return;
+ if(modelPickerSaving)return;
+ const choice=event.target.closest('[data-model-choice]');
+ if(choice){modelPickerDraft=choice.dataset.modelChoice;teamModelDialog.querySelector('.team-model-error').hidden=true;renderModelResults();return;}
+ const apply=event.target.closest('[data-model-apply]');if(!apply||apply.disabled)return;
+ const target=modelPickerOwner,role=modelPickerRole,model=modelPickerDraft;
  modelPickerSaving=true;renderModelResults();
- try{await api('team-model',{role:modelPickerRole,model:choice.dataset.modelChoice});await refresh();teamModelDialog.close();if(el('team-config-form')&&el('dialog').open)openTeamSettings();}
- catch(error){const message=teamModelDialog.querySelector('.team-model-error');message.textContent=error.message;message.hidden=false;}
+ try{
+  const result=await api('team-model',{role,model},target);
+  if(agentId===target){
+   // A poll started before this write must not put the previous model back.
+   ++refreshVersion;stateCache.delete(target);busy=false;
+   data={...data,teamSelections:result.teamSelections};render();
+   const form=el('team-config-form');
+   if(form&&el('dialog').open){
+    for(const trigger of form.querySelectorAll('[data-team-model]')){
+     const current=teamModel(Number(trigger.dataset.teamModel));trigger.querySelector('span').textContent=current?.label||'Choose model';trigger.title=current?.id||'';
+    }
+    const notice=el('team-model-status');notice.hidden=false;notice.textContent=defaultNames[role]+' · '+(teamModel(role)?.label||model)+' applied. Used from the next request.';
+   }else alert(defaultNames[role]+' model applied. Used from the next request.');
+  }
+  teamModelDialog.close();
+ }catch(error){const message=teamModelDialog.querySelector('.team-model-error');message.textContent=error.message;message.hidden=false;}
  finally{modelPickerSaving=false;renderModelResults();render();}
 });
 
