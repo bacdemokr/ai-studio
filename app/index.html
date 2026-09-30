@@ -81433,6 +81433,15 @@ const resultsButton=document.createElement('button');resultsButton.type='button'
 const standbyPanel=document.createElement('details');standbyPanel.id='studio-standby';
 standbyPanel.innerHTML='<summary>Standby specialists <span id="studio-standby-count"></span></summary><div class="studio-standby-content"><p>Casey can call these specialists when your /plan task needs them.</p><ul id="studio-standby-list"></ul></div>';
 crewActions.after(standbyPanel);
+// Capture outside clicks even when another control stops event propagation.
+document.addEventListener('click',event=>{
+  if(standbyPanel.open&&!standbyPanel.contains(event.target))standbyPanel.open=false;
+},true);
+standbyPanel.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&standbyPanel.open){
+    standbyPanel.open=false;standbyPanel.querySelector('summary').focus();event.stopPropagation();
+  }
+});
 function syncSurface(){
   resultsButton.hidden=!crewMission();
   el('compare-open').hidden=!comparison;
