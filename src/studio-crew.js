@@ -242,11 +242,13 @@ function collaborationHistoryMarkup(job){
  return '<article class="chat-turn" data-collaboration-history="'+escape(job.id)+'"><div class="chat-message chat-user"><small>You</small><div>'+messageMarkup(job.payload.prompt)+'</div></div><div class="chat-message chat-agent"><small>Casey · BaC collaboration</small>'+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(answer)+'</div>'+collaborationCompletionMarkup(job.payload.collaboration,collaborationAnswer(job)))+(held?'':collaborationDecisionMarkup(job.payload.collaboration)+webpageButtons(job.result?.files||Object.values(job.payload.collaboration.webpages||{}).flat(),job.id))+'<button type="button" class="studio-secondary" data-open-collaboration>View team conversation</button></div></article>';
 }
 function showCollaboration(){selectedCrewRole=0;setRoom('mission');root.dataset.crewDetails='true';renderCrewPassport();}
+function teamReady(){return runtime.teamReady??runtime.ready;}
+function teamModel(role){return runtime.teamModels?.[role===0?0:1];}
 function syncCrewComposer(){
- const blocked=!runtime.ready||!!data.bacResetting;
+ const blocked=!teamReady()||!!data.bacResetting;
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending;
  el('crew-chat-connection').hidden=!blocked;
- el('crew-chat-connection').textContent=data.bacResetting?'Stopping BaC work and resetting…':!runtime.model?'Connect a model in Settings to message your crew.':'Reconnect the agent runtime in Settings to message your crew.';
+ el('crew-chat-connection').textContent=data.bacResetting?'Stopping BaC work and resetting…':!(runtime.teamModel??runtime.model)?'Connect the dedicated Multi-Agent Demo API on the host.':'Reconnect the agent runtime in Settings to message your crew.';
 }
 function renderCrewPassport(){
  const epoch=data.crewChatReset?.epoch||'';
@@ -259,6 +261,7 @@ function renderCrewPassport(){
  const avatar=window.BacCampus?.inspect().crewAvatars?.[i]||{};
  el('crew-number').textContent=String(i+1).padStart(2,'0')+' / '+roles.length;
  el('crew-name').textContent=name;el('crew-role').textContent=role;
+ const model=teamModel(i);el('crew-model').textContent=model?.label||'';el('crew-model').title=model?.id||'';el('crew-model').hidden=!model;
  const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';portrait.style.setProperty('--avatar-accent',appearanceColors[avatar.color]||appearanceColors.green);
  const skills=currentCollaboration()?[]:window.BacCrewCatalog[i].skills;
  const skillLabels={...titles,'event-tools':'Event tools','event-scheduling':'Presenter scheduling'};

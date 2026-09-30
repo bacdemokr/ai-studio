@@ -76,8 +76,9 @@ class Proxy(BaseHTTPRequestHandler):
         try:
             if self.headers.get('Authorization')!='Bearer session-only' and self.headers.get('x-api-key')!='session-only':raise ValueError()
             _, prefix, provider, suffix = self.path.split('/',3)
-            if prefix!='provider' or provider not in settings.PROVIDERS:raise ValueError()
+            if prefix!='provider' or provider not in (*settings.PROVIDERS, 'team'):raise ValueError()
             profile=get(settings.secret_key(provider))
+            provider = 'nvidia' if provider == 'team' else provider
             if not profile:raise ValueError()
             base=urllib.parse.urlsplit(profile['baseUrl'])
             path='/'+suffix

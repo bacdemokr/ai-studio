@@ -96,10 +96,11 @@ for(const crew of [false,true]){
 let chatSending=false;
 function syncComposer(){
   if(!connected)return;
-  const unavailable=!runtime.ready,blocked=unavailable||!!data.deleting;
-  el('prompt').disabled=blocked;
+  const planning=/^\/plans?(?:\s|$)/i.test(el('prompt').value.trim());
+  const unavailable=!(planning?teamReady():runtime.ready),blocked=unavailable||!!data.deleting;
+  el('prompt').disabled=(!runtime.ready&&!teamReady())||!!data.deleting;
   el('send').disabled=blocked||chatSending||comparisonSending||documentUploadTarget===agentId;
-  el('send-all').disabled=blocked||chatSending||comparisonSending||documentUploadTarget===agentId||(data.agents||[]).length<2;
+  el('send-all').disabled=!runtime.ready||blocked||chatSending||comparisonSending||documentUploadTarget===agentId||(data.agents||[]).length<2;
   el('run-options').disabled=el('send-all').disabled;
   if(el('run-options').disabled)setRunOptions(false);
   el('attach').disabled=!!data.deleting||!data.profile||documentUploadTarget!==null;

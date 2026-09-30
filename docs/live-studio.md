@@ -173,3 +173,9 @@ The 360-second agent limit covers the complete turn, including every model respo
 ### Observed collaboration progress
 
 While a `/plan` invocation is running, Casey's chat and the active specialist's chat show a bounded live list of observed native tool calls and their statuses. The footer reports time since the request, not time spent thinking. When no tool is currently observed running, it says it is waiting for the agent response; missing telemetry is labeled separately. Source content, hidden reasoning, tool arguments, host directories and URL queries are excluded. State polling reads only the authorized job's exact native session and invocation time, never dispatches work, and stops reading after completion or cancellation.
+
+### Dedicated Multi-Agent Demo models
+
+Built-in BaC agents use a separate NVIDIA API connection: Casey uses `nvidia/nvidia/nemotron-3-ultra-nvfp4`; the other built-in specialists use `nvidia/nvidia/nemotron-3.5-lightning`. Settings model selection continues to control personal Lounge agents. Switching that selection cannot change the built-in team's model policies or dedicated credential. There is no fallback to the Settings model when the team API is disconnected.
+
+An authenticated host operator connects the dedicated key through `POST /api/settings/team-model` with `apiKey`, using the same CSRF and credential-session headers as Settings. Both model IDs must be available. Renew that credential session through `/api/credential-session`; ending/expiring it or restarting the app disconnects the team API. The key is never written to disk or bundled with the demo. A private development helper may reconnect it locally; the distributed application never reads a key file. Model badges show the assigned model, not a claim that the API is currently reachable.

@@ -786,6 +786,8 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 
 .plan-live-activity{margin:14px 0;padding:14px 16px;background:#14232c;border-left:3px solid #76b900;font-size:13px}.plan-live-activity strong{color:#c7dbb5}.plan-live-activity ol{list-style:none;padding:0;margin:10px 0;max-height:220px;overflow:auto}.plan-live-activity li{display:flex;justify-content:space-between;gap:12px;padding:5px 0}.plan-live-activity li span{overflow-wrap:anywhere}.plan-live-activity small,.plan-live-activity p{color:#a9bcc5}.plan-live-activity p{margin:8px 0 0}
 
+.studio-model-label{font-size:11px;color:#b7cc99;font-weight:400;letter-spacing:0;display:inline-block;padding:3px 6px;border:1px solid #394b35;border-radius:4px}
+
 .studio-sound{display:flex;align-items:center;gap:3px;flex-shrink:0}
 #agent-campus #campus-sound-toggle{width:auto;min-height:35px;height:auto;padding:4px 9px;font-size:15px;white-space:nowrap;color:#b8c9d7;border:1px solid #526071;background:#191e25;border-radius:3px}
 #agent-campus #campus-sound-toggle[aria-pressed=true]{color:#d3edb5;border-color:#5f843c;background:#1d2a22}
@@ -1119,7 +1121,7 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 <aside id="studio-crew-passport" hidden aria-label="Selected crew member">
   <div class="studio-crew-passport-content">
     <div class="studio-passport-head"><span class="studio-kicker">YOUR CREW</span><span id="studio-crew-number" class="studio-muted"></span></div>
-    <div class="studio-companion-name"><button type="button" id="studio-crew-portrait" class="studio-avatar small studio-identity-open" aria-label="View agent files" title="View agent files"><i aria-hidden="true"></i><i aria-hidden="true"></i></button><div><h3><button type="button" id="studio-crew-name" class="studio-identity-name" title="View agent files" aria-haspopup="dialog"></button></h3><div class="studio-crew-identity"><span id="studio-crew-role" class="studio-muted"></span><div id="studio-crew-skills" class="studio-equipped" aria-label="Equipped skills"></div></div></div></div>
+    <div class="studio-companion-name"><button type="button" id="studio-crew-portrait" class="studio-avatar small studio-identity-open" aria-label="View agent files" title="View agent files"><i aria-hidden="true"></i><i aria-hidden="true"></i></button><div><h3><button type="button" id="studio-crew-name" class="studio-identity-name" title="View agent files" aria-haspopup="dialog"></button></h3><div class="studio-crew-identity"><span id="studio-crew-role" class="studio-muted"></span><span id="studio-crew-model" class="studio-model-label" hidden></span><div id="studio-crew-skills" class="studio-equipped" aria-label="Equipped skills"></div></div></div></div>
     <button type="button" id="studio-crew-policy" class="studio-secondary studio-policy-link" aria-haspopup="dialog" hidden>◇ OpenShell Policy</button>
     <section id="studio-crew-conversation" role="log" aria-live="polite" aria-label="Crew member conversation"></section>
     <form id="studio-crew-chat"><p id="studio-crew-chat-connection" role="status" hidden></p><p id="studio-crew-chat-error" role="alert" hidden></p><label for="studio-crew-prompt">Message this crew member</label><textarea id="studio-crew-prompt" rows="3" maxlength="6000" required></textarea><div class="studio-compose-actions"><button type="submit" id="studio-crew-send" class="studio-primary">Send message</button></div></form>
@@ -80354,10 +80356,10 @@ render();
   modelBadge.onkeydown=e=>{if(modelBadge.dataset.actionable==='true'&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();connectionAction();}};
   function runtimeBadge(){
     syncDemoPreparation();syncEventLaunch();syncCrewComposer();
-    const state=gatewayState(),slow=state==='slow',ready=!!runtime.ready&&!runtime.testFixture;
-    const actionable=!runtime.testFixture&&!runtimeRetrying&&(!runtime.gateway||(!runtime.model&&!settingsButton.hidden));
-    modelBadge.textContent=runtime.testFixture?'TEST FIXTURE · NO REAL MODEL':runtimeRetrying?'Checking connection…':slow?'◷ '+gatewayLabel():!runtime.gateway?'⚠ Agent runtime unavailable · Retry connection':!runtime.model?'○ Model not connected':'● Ready';
-    modelBadge.dataset.warning=String(!runtime.testFixture&&!slow&&!runtime.ready);
+    const state=gatewayState(),slow=state==='slow',modelConnected=room==='mission'?(runtime.teamModel??runtime.model):runtime.model,viewReady=room==='mission'?teamReady():runtime.ready,ready=!!viewReady&&!runtime.testFixture;
+    const actionable=!runtime.testFixture&&!runtimeRetrying&&(!runtime.gateway||(!modelConnected&&!settingsButton.hidden));
+    modelBadge.textContent=runtime.testFixture?'TEST FIXTURE · NO REAL MODEL':runtimeRetrying?'Checking connection…':slow?'◷ '+gatewayLabel():!runtime.gateway?'⚠ Agent runtime unavailable · Retry connection':!modelConnected?(room==='mission'?'○ Team API not connected':'○ Model not connected'):'● Ready';
+    modelBadge.dataset.warning=String(!runtime.testFixture&&!slow&&!viewReady);
     modelBadge.dataset.slow=String(!runtime.testFixture&&slow);
     modelBadge.dataset.ready=String(ready&&!slow);modelBadge.dataset.actionable=String(actionable);
     modelBadge.setAttribute('role',actionable?'button':'status');modelBadge.tabIndex=actionable?0:-1;
@@ -80711,11 +80713,13 @@ function collaborationHistoryMarkup(job){
  return '<article class="chat-turn" data-collaboration-history="'+escape(job.id)+'"><div class="chat-message chat-user"><small>You</small><div>'+messageMarkup(job.payload.prompt)+'</div></div><div class="chat-message chat-agent"><small>Casey · BaC collaboration</small>'+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(answer)+'</div>'+collaborationCompletionMarkup(job.payload.collaboration,collaborationAnswer(job)))+(held?'':collaborationDecisionMarkup(job.payload.collaboration)+webpageButtons(job.result?.files||Object.values(job.payload.collaboration.webpages||{}).flat(),job.id))+'<button type="button" class="studio-secondary" data-open-collaboration>View team conversation</button></div></article>';
 }
 function showCollaboration(){selectedCrewRole=0;setRoom('mission');root.dataset.crewDetails='true';renderCrewPassport();}
+function teamReady(){return runtime.teamReady??runtime.ready;}
+function teamModel(role){return runtime.teamModels?.[role===0?0:1];}
 function syncCrewComposer(){
- const blocked=!runtime.ready||!!data.bacResetting;
+ const blocked=!teamReady()||!!data.bacResetting;
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending;
  el('crew-chat-connection').hidden=!blocked;
- el('crew-chat-connection').textContent=data.bacResetting?'Stopping BaC work and resetting…':!runtime.model?'Connect a model in Settings to message your crew.':'Reconnect the agent runtime in Settings to message your crew.';
+ el('crew-chat-connection').textContent=data.bacResetting?'Stopping BaC work and resetting…':!(runtime.teamModel??runtime.model)?'Connect the dedicated Multi-Agent Demo API on the host.':'Reconnect the agent runtime in Settings to message your crew.';
 }
 function renderCrewPassport(){
  const epoch=data.crewChatReset?.epoch||'';
@@ -80728,6 +80732,7 @@ function renderCrewPassport(){
  const avatar=window.BacCampus?.inspect().crewAvatars?.[i]||{};
  el('crew-number').textContent=String(i+1).padStart(2,'0')+' / '+roles.length;
  el('crew-name').textContent=name;el('crew-role').textContent=role;
+ const model=teamModel(i);el('crew-model').textContent=model?.label||'';el('crew-model').title=model?.id||'';el('crew-model').hidden=!model;
  const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';portrait.style.setProperty('--avatar-accent',appearanceColors[avatar.color]||appearanceColors.green);
  const skills=currentCollaboration()?[]:window.BacCrewCatalog[i].skills;
  const skillLabels={...titles,'event-tools':'Event tools','event-scheduling':'Presenter scheduling'};
@@ -80794,8 +80799,8 @@ el('crew-conversation').addEventListener('click',event=>{if(event.target.closest
       notice.querySelector('button').onclick=async()=>{const action=notice.querySelector('button');action.disabled=true;try{if(agentId!==target)throw new Error('The selected agent changed. Choose a mission again.');await api('profile',{...data.profile,skills:[...new Set([...data.profile.skills,mission.id])]},target);await refresh();notice.remove();if(agentId===target)button.click();}catch(error){notice.querySelector('p').textContent=error.message;action.disabled=false;}};
       notice.scrollIntoView({block:'nearest'});return;
     }el('mission-skill-notice')?.remove();closeSurface();setRoom('lounge');if(mission.id==='radar'){el('radar-monitor')?.scrollIntoView({block:'nearest'});return;}skill=mission.id;const city=runtime.location?.city||'Zurich';el('prompt').value=['weather','writer'].includes(mission.id)?mission.prompt.replaceAll('Zurich',city):mission.prompt;el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===button));if(mission.id==='documents'&&!data.files.some(f=>f.kind==='inbox')){sampleDocument();}el('prompt').focus({preventScroll:true});};
-  el('chat').onsubmit=async e=>{e.preventDefault();if(!runtime.ready||data.deleting||chatSending||comparisonSending||documentUploadTarget===agentId){syncComposer();return;}el('chat-error').hidden=true;if(e.submitter?.id==='studio-send-all')return askAllAgents();const draft=captureChatDraft();chatSending=true;syncComposer();try{const result=await api('jobs',{kind:'chat',prompt:draft.prompt,skill,images:draft.images});selectedJob=result.id;acknowledgeChatDraft(draft);await refresh();if(result.collaboration)stageCollaboration(result);el('conversation').scrollTop=el('conversation').scrollHeight;}catch(error){el('chat-error').textContent=error.message;el('chat-error').hidden=false;}finally{chatSending=false;syncComposer();}};
-  el('prompt').addEventListener('input',()=>{skill=null;});
+  el('chat').onsubmit=async e=>{e.preventDefault();if(!(/^\/plans?(?:\s|$)/i.test(el('prompt').value.trim())?teamReady():runtime.ready)||data.deleting||chatSending||comparisonSending||documentUploadTarget===agentId){syncComposer();return;}el('chat-error').hidden=true;if(e.submitter?.id==='studio-send-all')return askAllAgents();const draft=captureChatDraft();chatSending=true;syncComposer();try{const result=await api('jobs',{kind:'chat',prompt:draft.prompt,skill,images:draft.images});selectedJob=result.id;acknowledgeChatDraft(draft);await refresh();if(result.collaboration)stageCollaboration(result);el('conversation').scrollTop=el('conversation').scrollHeight;}catch(error){el('chat-error').textContent=error.message;el('chat-error').hidden=false;}finally{chatSending=false;syncComposer();}};
+  el('prompt').addEventListener('input',()=>{skill=null;syncComposer();});
   function sampleDocument(){dialog('Upload notes','<h3>Give your agent something to read.</h3><p>Use your own PDF, PPTX, XLSX, CSV, Markdown or text file, or try a clearly labeled sample meeting note.</p><div class="studio-dialog-actions"><button class="studio-secondary" id="studio-own-document">Upload my file</button><button class="studio-primary" id="studio-sample-document">Use sample notes</button></div>');el('own-document').onclick=()=>{el('dialog').close();el('upload').click();};el('sample-document').onclick=async()=>{try{await api('upload',{name:'sample-meeting-notes.md',content:'# Sample meeting notes — fictional demo data\n\nWe agreed to keep the agent demo to 10 minutes.\nDylan will check the weather-demo endpoint by Thursday.\nMorgan will draft a short invitation; no deadline was agreed.\nWe still need someone to confirm the venue.\nDo not send invitations until the venue is confirmed.\n'});el('dialog').close();await refresh();}catch(e){alert(e.message);}};}
   el('attach').onclick=()=>el('upload').click();
   el('upload').onchange=()=>{const files=[...el('upload').files];el('upload').value='';uploadDocuments(files);};
@@ -80994,9 +80999,9 @@ async function prepareDemo(){
 function syncEventLaunch(){
  const form=el('crew-form'),button=el('launch-event');if(!form||!button)return;
  const prepared=matchingPreparation()?.status==='done'&&!demoPreparationError;
- button.disabled=!runtime.ready||eventSubmitting||!eventPreviewValid||!prepared||!form.querySelector('[name=crewRole]:checked');
- button.textContent=!runtime.gateway?gatewayLabel():!runtime.model?'Model not connected':eventSubmitting?'Assigning your brief…':!prepared?'Prepare demo':'Start the event plan';
- const note=el('event-connection');if(note){note.hidden=!!runtime.ready;note.textContent=runtime.gateway?'Connect a model in Settings to run your crew.':gatewayState()==='slow'?'Waiting for the agent runtime. Checking automatically.':'Agent runtime unavailable. Use Retry connection in the status indicator.';}
+ button.disabled=!teamReady()||eventSubmitting||!eventPreviewValid||!prepared||!form.querySelector('[name=crewRole]:checked');
+ button.textContent=!runtime.gateway?gatewayLabel():!(runtime.teamModel??runtime.model)?'Team API not connected':eventSubmitting?'Assigning your brief…':!prepared?'Prepare demo':'Start the event plan';
+ const note=el('event-connection');if(note){note.hidden=!!teamReady();note.textContent=runtime.gateway?'Connect the dedicated Multi-Agent Demo API on the host.':gatewayState()==='slow'?'Waiting for the agent runtime. Checking automatically.':'Agent runtime unavailable. Use Retry connection in the status indicator.';}
 }
 async function updateEventPreview(){
  const form=el('crew-form');if(!form)return;const version=++eventPreviewVersion;eventPreviewValid=false;syncEventLaunch();
@@ -81585,10 +81590,11 @@ for(const crew of [false,true]){
 let chatSending=false;
 function syncComposer(){
   if(!connected)return;
-  const unavailable=!runtime.ready,blocked=unavailable||!!data.deleting;
-  el('prompt').disabled=blocked;
+  const planning=/^\/plans?(?:\s|$)/i.test(el('prompt').value.trim());
+  const unavailable=!(planning?teamReady():runtime.ready),blocked=unavailable||!!data.deleting;
+  el('prompt').disabled=(!runtime.ready&&!teamReady())||!!data.deleting;
   el('send').disabled=blocked||chatSending||comparisonSending||documentUploadTarget===agentId;
-  el('send-all').disabled=blocked||chatSending||comparisonSending||documentUploadTarget===agentId||(data.agents||[]).length<2;
+  el('send-all').disabled=!runtime.ready||blocked||chatSending||comparisonSending||documentUploadTarget===agentId||(data.agents||[]).length<2;
   el('run-options').disabled=el('send-all').disabled;
   if(el('run-options').disabled)setRunOptions(false);
   el('attach').disabled=!!data.deleting||!data.profile||documentUploadTarget!==null;

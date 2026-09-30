@@ -915,7 +915,11 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, EventControls, R
                                 staffingPolicy='awaiting-agent',assumptions='Awaiting Alex’s staffing and schedule decisions.')
                     for topic in calc['topics']:topic.pop('presenters',None)
         # A schedule may be created while offline, but immediate requests must fail visibly.
-        if kind != 'reminder' and not self.runtime_status().get('ready'):
+        readiness = self.runtime_status()
+        team_request = kind == 'crew-chat' or (kind == 'crew' and preset)
+        ready = readiness.get('teamReady', readiness.get('ready')) if team_request else readiness.get('ready')
+        if kind != 'reminder' and not ready:
+            if team_request:raise Problem('Connect the dedicated Multi-Agent Demo API and OpenClaw on the host.', 503)
             raise Problem('Your agent is saved. Start the shared LLM and OpenClaw on the host to run this mission.', 503)
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')

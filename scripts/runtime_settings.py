@@ -248,7 +248,8 @@ def apply_to_config(config, provider, profile):
     for agent in config['agents']['entries'].values():
         agent['model']=ref;agent['modelPolicy']={'allow':[ref]}
         agent['identity']={'theme':'bac-model-'+str(time.time_ns())}
-    return apply_context_limits(config)
+    import team_models
+    return apply_context_limits(team_models.apply(config))
 
 
 def clean_event(location):

@@ -473,7 +473,9 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
         config['agents']['defaults']['maxConcurrent'] = 2
         config['agents']['ownership'] = 'explicit'
         config.setdefault('tools', {}).setdefault('fs', {})['workspaceOnly'] = False
-        model = config['agents']['defaults']['model']['primary']
+        import team_models
+        team_models.apply(config)
+        model = team_models.model_for(agent_id) or config['agents']['defaults']['model']['primary']
         entry = {
             'name': profile['name'], 'workspace': str(workspace), 'model': model,
             'modelPolicy': {'allow': [model]}, 'skills': ['bac-' + x for x in equipped],
@@ -502,6 +504,7 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
         patch = {'agents': {'defaults': {'maxConcurrent': 2}, 'ownership': 'explicit',
                             'entries': {agent_id: entry}},
                  'tools': {'fs': {'workspaceOnly': False}}}
+        patch['models'] = {'providers': {'bac-team': config['models']['providers']['bac-team']}}
         replace_paths = [f'agents.entries.{agent_id}.skills',
                          f'agents.entries.{agent_id}.modelPolicy.allow',
                          f'agents.entries.{agent_id}.tools.allow',
@@ -890,10 +893,13 @@ def status():
         except (RuntimeError, ValueError):
             probe = 'unavailable'
     model = settings.model_available()
+    import team_models
+    team = team_models.public()
     config = c.read_json(config_path(), {})
     from agent_policy import configured as shell_configured
     shell = shell_configured()
     return {'installed': installed, 'gateway': ready, 'gatewayProbe': probe, 'model': model, 'ready': ready and model,
+            'teamModel':team['connected'], 'teamReady':ready and team['connected'], 'teamModels':team['models'],
             'version': VERSION, 'sharedModel': settings.selected_model(), 'provider': settings.read()['provider'], 'location': settings.location(), 'event': settings.event(), 'concurrency': 2,
             'openshell': 'Ready for personal agents' if shell else 'Host setup required', 'openshellReady': shell,
             'search': (root() / 'search-enabled').exists()}

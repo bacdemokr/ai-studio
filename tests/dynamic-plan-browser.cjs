@@ -11,6 +11,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.equal(await page.locator('[data-campus-agent]').count(),4);
   assert.deepEqual(await page.evaluate(()=>BacCampus.inspect().crewExchange.filter(r=>r.visible).map(r=>r.role)),[0,1,2,3]);
   await page.locator('[data-campus-agent="0"]').click();
+  assert.equal(await page.locator('#studio-crew-model').innerText(),'Nemotron 3 Ultra');
   const standby=page.locator('#studio-standby');
   await standby.locator('summary').click();
   assert.deepEqual(await standby.locator('[data-standby-role]').evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.standbyRole))),[4,5,6,7,8]);

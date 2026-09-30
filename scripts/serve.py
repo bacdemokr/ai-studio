@@ -228,9 +228,12 @@ class Handler(SimpleHTTPRequestHandler):
             if self.path == '/api/telegram/test':
                 import telegram_notifications
                 return self.json_response(telegram_notifications.test(row['id'], data['_credentialSession']))
-            if self.path in ('/api/settings','/api/settings/models','/api/settings/start'):
+            if self.path in ('/api/settings','/api/settings/models','/api/settings/start','/api/settings/team-model'):
                 self.require_operator()
                 import runtime_settings
+                if self.path == '/api/settings/team-model':
+                    import team_models
+                    return self.json_response(team_models.configure(studio,data))
                 if self.path == '/api/settings/models':return self.json_response(runtime_settings.models(data))
                 if self.path == '/api/settings/start':return self.json_response(runtime_settings.start_gateway())
                 return self.json_response(runtime_settings.save(studio,data))

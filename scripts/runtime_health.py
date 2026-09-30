@@ -35,6 +35,7 @@ class RuntimeHealth:
             self.failures = 0
             self.failure_since = None
             state, usable = 'unavailable', False
+        if 'teamModel' in value:value['teamReady']=usable and bool(value['teamModel'])
         value.update(gatewayState=state, gateway=usable,
                      ready=usable and bool(value.get('model')))
         return value

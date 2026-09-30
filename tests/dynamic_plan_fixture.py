@@ -16,7 +16,8 @@ class DynamicAdapter(PlanAdapter):
                 {'tool':'write','target':'/private/workspace/artifacts/brief.md','status':'started'}]}
 
     def status(self):
-        return {'ready': True, 'gateway': True, 'model': True, 'testFixture': True}
+        return {'ready': os.environ.get('TEAM_ONLY')!='1', 'gateway': True, 'model': os.environ.get('TEAM_ONLY')!='1', 'testFixture': True,
+                'teamModel':True,'teamReady':True,'teamModels':[{'id':'nvidia/nvidia/nemotron-3-ultra-nvfp4','label':'Nemotron 3 Ultra'}, {'id':'nvidia/nvidia/nemotron-3.5-lightning','label':'Nemotron 3.5 Lightning'}]}
 
     def respond(self, agent, session, prompt, **kwargs):
         time.sleep(.4)

@@ -133,9 +133,9 @@ async function prepareDemo(){
 function syncEventLaunch(){
  const form=el('crew-form'),button=el('launch-event');if(!form||!button)return;
  const prepared=matchingPreparation()?.status==='done'&&!demoPreparationError;
- button.disabled=!runtime.ready||eventSubmitting||!eventPreviewValid||!prepared||!form.querySelector('[name=crewRole]:checked');
- button.textContent=!runtime.gateway?gatewayLabel():!runtime.model?'Model not connected':eventSubmitting?'Assigning your brief…':!prepared?'Prepare demo':'Start the event plan';
- const note=el('event-connection');if(note){note.hidden=!!runtime.ready;note.textContent=runtime.gateway?'Connect a model in Settings to run your crew.':gatewayState()==='slow'?'Waiting for the agent runtime. Checking automatically.':'Agent runtime unavailable. Use Retry connection in the status indicator.';}
+ button.disabled=!teamReady()||eventSubmitting||!eventPreviewValid||!prepared||!form.querySelector('[name=crewRole]:checked');
+ button.textContent=!runtime.gateway?gatewayLabel():!(runtime.teamModel??runtime.model)?'Team API not connected':eventSubmitting?'Assigning your brief…':!prepared?'Prepare demo':'Start the event plan';
+ const note=el('event-connection');if(note){note.hidden=!!teamReady();note.textContent=runtime.gateway?'Connect the dedicated Multi-Agent Demo API on the host.':gatewayState()==='slow'?'Waiting for the agent runtime. Checking automatically.':'Agent runtime unavailable. Use Retry connection in the status indicator.';}
 }
 async function updateEventPreview(){
  const form=el('crew-form');if(!form)return;const version=++eventPreviewVersion;eventPreviewValid=false;syncEventLaunch();
