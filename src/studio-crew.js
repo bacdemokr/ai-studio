@@ -87,45 +87,122 @@ function eventExpectationMarkup(job,role){
  if(!h?.task&&!assignment)return '';
  return '<div class="mission-expectation"><small>Expected contribution</small><div>'+messageMarkup(assignment||h.task)+'</div>'+(assignment&&h?.task?'<details><summary>Full assignment</summary><div>'+messageMarkup(h.task)+'</div></details>':'')+'</div>';
 }
+// Reconstruct the visible trace from saved handoffs, contributions and checkpoints.
+// Planned-but-uncalled roles are never presented as completed execution steps.
+function collaborationRoleOrder(plan){
+ const tasks=(plan.tasks||[]).map(task=>Number(task.role));
+ const handoffs=Object.keys(plan.handoffs||{}).map(Number).sort((a,b)=>{
+  const first=plan.handoffs[a]?.started,last=plan.handoffs[b]?.started;
+  return first&&last?first-last:tasks.indexOf(a)-tasks.indexOf(b);
+ });
+ return [...new Set([...(plan.calledRoles||[]).map(Number),...handoffs,...tasks,...Object.keys(plan.outputs||{}).map(Number)])]
+  .filter(role=>Number.isInteger(role)&&role>0&&defaultNames[role]);
+}
+function collaborationAnswer(job){return job.result?.answer||job.payload.collaboration.finalAnswer||'';}
+function missionControlTraceMarkup(job){
+ const plan=job.payload.collaboration,active=['queued','running','waiting','stopping'].includes(job.status),tasks=plan.tasks||[],checks=plan.checks||[];
+ let sequence=0;
+ const row=(kind,name,status,content,attrs='',recorded=true,state='')=>'<article class="mission-plan-step" data-trace-key="'+escape(kind+':'+attrs)+'" data-trace-kind="'+kind+'" data-step-state="'+state+'" '+attrs+'><header><small>'+(recorded?String(++sequence).padStart(2,'0')+' · '+({plan:'PLAN',contribution:'CONTRIBUTION',review:'REVIEW',response:'RESPONSE',stopped:'STOPPED'}[kind]||kind.toUpperCase()):kind==='skipped'?'NOT CALLED':'PLANNED')+'</small><h4>'+escape(name)+'</h4><span>'+escape(status)+'</span></header><div class="mission-plan-content">'+content+'</div></article>';
+ const detail=(key,label,content)=>'<details class="mission-trace-detail" data-trace-details="'+key+'"><summary>'+escape(label)+'</summary><div class="chat-prose">'+content+'</div></details>';
+ let markup=row('plan','Casey',plan.summary?'Plan ready':active?'Planning':'No plan saved','<strong>Approach</strong><div>'+messageMarkup(plan.summary||(active?'Casey is deciding which expertise this request needs.':'No plan was saved before the work stopped.'))+'</div>','data-plan-role="0"',true,plan.summary?'done':active?'working':'');
+ const called=tasks.filter(task=>plan.handoffs?.[task.role]||plan.outputs?.[task.role]||plan.calledRoles?.includes(task.role));
+ const calledOrder=collaborationRoleOrder(plan);
+ called.sort((a,b)=>calledOrder.indexOf(Number(a.role))-calledOrder.indexOf(Number(b.role)));
+ for(const task of called){
+  const role=task.role,h=plan.handoffs?.[role],output=plan.outputs?.[role],working=active&&plan.activeRole===role;
+  const status=output?'Delivered':working?(job.status==='stopping'?'Stopping':'Working'):active?'Started':'Incomplete';
+  const expected=h?.expected||task.expected;
+  const assignment='<strong>Casey’s assignment</strong><div>'+messageMarkup(h?.task||task.task)+'</div>'+(expected?'<div class="mission-expectation"><small>Expected result</small><div>'+messageMarkup(expected)+'</div></div>':'')+(h?'<small class="mission-plan-inputs">Received: '+escape(['Casey’s brief',...(h.receivedFrom||[]).map(i=>defaultNames[Number(i)]+"’s contribution")].join(' · '))+'</small>':'');
+  markup+=row('contribution',defaultNames[role],status,assignment+(output?detail('output-'+role,defaultNames[role]+'’s result',messageMarkup(output.answer||'No response text was saved.')+webpageButtons(output.files,job.id)):''),'data-plan-role="'+role+'"',true,output?'done':working?'working':'');
+  const reviews=checks.filter(check=>Number(check.afterRole)===role);
+  for(const check of reviews){
+   const status=check.done?(check.outcome==='partial'?'Partial result':check.outcome==='unavailable'?'Capability unavailable':'Enough to finish'):'More work needed';
+   markup+=row('review','Casey',status,'<strong>After '+escape(defaultNames[role])+'’s result</strong><div>'+messageMarkup(check.reason)+'</div>'+(check.done?'<small class="mission-plan-inputs">No additional agents will be called.</small>':''),'data-after-role="'+role+'"',true,'done');
+  }
+  if(output&&!reviews.length&&active&&plan.activeRole===0&&!plan.responseReady&&task===called.at(-1))
+   markup+=row('review','Casey',job.status==='stopping'?'Stopping':'Reviewing','<strong>After '+escape(defaultNames[role])+'’s result</strong><p>Checking the contribution against the request before deciding what comes next.</p>','data-after-role="'+role+'"',true,'working');
+ }
+ for(const task of tasks.filter(task=>!called.includes(task))){
+  const skipped=plan.skippedRoles?.includes(task.role),uncalled=skipped||!active||plan.responseReady;
+  markup+=row(uncalled?'skipped':'planned',defaultNames[task.role],uncalled?'Not called':'Waiting for Casey',detail('assignment-'+task.role,'Planned assignment',messageMarkup(task.task)+(task.expected?'<div class="mission-expectation"><small>Expected result</small>'+messageMarkup(task.expected)+'</div>':''))+'<small class="mission-plan-inputs">'+(skipped?'Casey ended the plan before calling this agent.':uncalled?'This assignment was not started.':'Casey will decide whether this assignment is still needed.')+'</small>','data-plan-role="'+task.role+'"',false,uncalled?'skipped':'planned');
+ }
+ const answer=collaborationAnswer(job);
+ if(answer)markup+=row('response','Casey',plan.outcome==='partial'?'Partial result':plan.outcome==='unavailable'?'Capability unavailable':'Response ready',detail('response','Final team response',messageMarkup(answer)+(plan.outcome==='partial'&&plan.remaining?.length?'<strong>Still needed</strong><ul>'+plan.remaining.map(item=>'<li>'+escape(item)+'</li>').join('')+'</ul>':'')+webpageButtons(Object.values(plan.webpages||{}).flat(),job.id)),'',true,'done');
+ else if(!active)markup+=row('stopped','Casey',job.status==='cancelled'?'Stopped':'Needs attention','<div>'+messageMarkup(job.result?.error||(job.status==='cancelled'?'The work stopped before a final response was ready.':'No final response was saved.'))+'</div>');
+ return markup;
+}
+function updateMissionControlTrace(lanes,jobId,markup){
+ const sameJob=lanes.dataset.traceJob===jobId;
+ if(sameJob&&lanes._traceMarkup===markup)return;
+ const template=document.createElement('template');template.innerHTML=markup;
+ const incoming=[...template.content.children],keys=new Set(incoming.map(node=>node.dataset.traceKey));
+ const old=new Map(sameJob?[...lanes.children].map(node=>[node.dataset.traceKey,node]):[]);
+ if(!sameJob)lanes.replaceChildren();
+ else for(const node of [...lanes.children])if(!keys.has(node.dataset.traceKey))node.remove();
+ let cursor=lanes.firstElementChild;
+ const retained=new Set();
+ for(const fresh of incoming){
+  const previous=old.get(fresh.dataset.traceKey),source=fresh.outerHTML;
+  const node=previous?._traceMarkup===source?previous:fresh;
+  if(previous&&node!==previous){
+   const expanded=new Set([...previous.querySelectorAll('[data-trace-details][open]')].map(item=>item.dataset.traceDetails));
+   for(const item of node.querySelectorAll('[data-trace-details]'))item.open=expanded.has(item.dataset.traceDetails);
+   // Replace in place so later unchanged cards never move through the DOM.
+   if(cursor===previous)cursor=node;
+   previous.replaceWith(node);
+  }
+  node._traceMarkup=source;
+  // Retain unchanged cards, including their focused links/buttons and selection.
+  if(node!==cursor)lanes.insertBefore(node,cursor);
+  cursor=node.nextElementSibling;retained.add(node);
+ }
+ for(const node of [...lanes.children])if(!retained.has(node))node.remove();
+ lanes.dataset.traceJob=jobId;lanes._traceMarkup=markup;
+}
 function renderMissionControl(){
  const job=missionControlPlan(),intro=el('board').querySelector('.studio-board-intro');
  el('lanes').classList.toggle('studio-plan-control',!!job);
  el('board').classList.toggle('has-plan',!!job);
- intro.querySelector('h3').textContent=job?'Casey’s plan & expectations':'Different roles. Shared evidence.';
+ intro.querySelector('h3').textContent=job?'Execution trace':'Different roles. Shared evidence.';
  intro.querySelector('p').textContent=job?job.payload.collaboration.task:'Each specialist receives the brief and previous deliverables. Recorded assignments appear with each stage.';
  el('board-shared').textContent=job?'View team conversation':'Inspect shared state & handoffs';
- if(!job)return;
- const plan=job.payload.collaboration,active=['queued','running','waiting','stopping'].includes(job.status),tasks=plan.tasks||[];
- const captainState=plan.responseReady?(plan.outcome==='unavailable'?'Capability unavailable':'Response ready'):active?(plan.activeRole===0?'Reviewing':'Coordinating'):job.status==='done'?(plan.outcome==='unavailable'?'Capability unavailable':'Response ready'):job.status==='cancelled'?'Stopped':'Needs attention';
- const captain='<article class="mission-plan-step" data-plan-role="0"><header><small>CAPTAIN</small><h4>Casey</h4><span>'+escape(captainState)+'</span></header><div class="mission-plan-content"><strong>Approach</strong><div>'+messageMarkup(plan.summary||'Casey is deciding which expertise this request needs.')+'</div>'+collaborationDecisionMarkup({...plan,checks:(plan.checks||[]).filter(check=>check.done)})+'</div></article>';
- const steps=tasks.map((task,index)=>{
-  const role=task.role,h=plan.handoffs?.[role],output=plan.outputs?.[role],skipped=plan.skippedRoles?.includes(role),working=active&&plan.activeRole===role;
-  const status=skipped?'Not called':output?'Delivered':working?(job.status==='stopping'?'Stopping':'Working'):h?(active?'Started':'Incomplete'):active?'Planned':'Not called';
-  const checks=(plan.checks||[]).filter(check=>check.afterRole===role);
-  return '<article class="mission-plan-step" data-plan-role="'+role+'" data-step-state="'+(skipped?'skipped':output?'done':working?'working':'planned')+'"><header><small>STEP '+(index+1)+'</small><h4>'+escape(defaultNames[role])+'</h4><div>'+escape(window.BacCrewCatalog[role].collaboration.title)+'</div><span>'+escape(status)+'</span></header><div class="mission-plan-content"><strong>Casey’s assignment</strong><div>'+messageMarkup(h?.task||task.task)+'</div>'+((h?.expected||task.expected)?'<div class="mission-expectation"><small>Expected result</small><div>'+messageMarkup(h?.expected||task.expected)+'</div></div>':'')+(h?'<small class="mission-plan-inputs">Received: '+escape(['Casey’s brief',...(h.receivedFrom||[]).map(i=>defaultNames[Number(i)]+"’s contribution")].join(' · '))+'</small>':'')+checks.map(check=>'<div class="mission-expectation"><small>Casey’s review</small><div>'+messageMarkup(check.reason)+'</div></div>').join('')+(skipped?'<small class="mission-plan-inputs">Casey ended the plan before calling this agent.</small>':'')+'</div></article>';
- }).join('');
- el('lanes').innerHTML=captain+steps;
+ if(!job){delete el('lanes').dataset.traceJob;delete el('lanes')._traceMarkup;return;}
+ updateMissionControlTrace(el('lanes'),job.id,missionControlTraceMarkup(job));
 }
 // /plan is a real Captain-led job; contributions come from completed model calls.
 function collaborationDecisionMarkup(plan){
  const checks=plan.checks||[];
- if(plan.summary&&Array.isArray(plan.tasks)&&!plan.tasks.length)return '<div class="chat-message chat-handoff" data-plan-decision><small>Casey · '+(plan.outcome==='unavailable'?'Required expertise unavailable - no agents called':'No additional agents needed')+'</small><div class="chat-prose">'+messageMarkup(plan.summary)+'</div></div>';
- return checks.map(check=>'<div class="chat-message chat-handoff" data-plan-decision><small>Casey · '+(check.done?(check.outcome==='unavailable'?'Required expertise unavailable - no additional agents will be called':'Enough to finish - no additional agents will be called'):'More work needed')+'</small><div class="chat-prose">'+messageMarkup(check.reason)+'</div></div>').join('');
+ if(plan.summary&&Array.isArray(plan.tasks)&&!plan.tasks.length)return '<div class="chat-message chat-handoff" data-plan-decision><small>Casey · '+(plan.outcome==='partial'?'Partial result - no agents called':plan.outcome==='unavailable'?'Required expertise unavailable - no agents called':'No additional agents needed')+'</small><div class="chat-prose">'+messageMarkup(plan.summary)+'</div></div>';
+ return checks.map(check=>'<div class="chat-message chat-handoff" data-plan-decision><small>Casey · '+(check.done?(check.outcome==='partial'?'Partial result - stopping here':check.outcome==='unavailable'?'Required expertise unavailable - no additional agents will be called':'Enough to finish - no additional agents will be called'):'More work needed')+'</small><div class="chat-prose">'+messageMarkup(check.reason)+'</div></div>').join('');
+}
+// Keep the final reply self-contained, including saved plans whose answer omitted
+// the Captain's separately recorded stopping reason. Never invent a rationale.
+function collaborationCompletionMarkup(plan,answer){
+ if(!answer)return '';
+ const decision=(plan.checks||[]).filter(check=>check.done).at(-1)||(plan.outcome==='partial'?{outcome:'partial',reason:plan.summary,remaining:plan.remaining}:null);
+ if(!decision)return '';
+ const skipped=(plan.skippedRoles||[]).map(role=>defaultNames[role]).filter(Boolean);
+ const reason=decision.reason&&!answer.includes(decision.reason)?messageMarkup(decision.reason):'';
+ const remaining=decision.outcome==='partial'?(decision.remaining||plan.remaining||[]):[];
+ if(!reason&&!skipped.length&&!remaining.length)return '';
+ return '<div class="collaboration-completion" data-plan-completion><strong>'+ (decision.outcome==='partial'?'Partial result - what remains':decision.outcome==='unavailable'?'Why the team stopped':'Why this result is sufficient')+'</strong>'+reason+(remaining.length?'<ul>'+remaining.map(item=>'<li>'+escape(item)+'</li>').join('')+'</ul>':'')+(skipped.length?'<p class="studio-muted">Not called: '+escape(skipped.join(', '))+'. Their planned work was not performed.</p>':'')+'</div>';
 }
 function collaborationMarkup(job,role){
  const plan=job.payload.collaboration,pending=['queued','running','waiting','stopping'].includes(job.status);
  const held=shieldReplyHeld(job,role),piece=plan.outputs?.[role],captain=role===0;
- const answer=captain?(job.result?.answer||job.result?.error||''):piece?.answer||'';
- const status=job.status==='cancelled'?'Stopped.':job.status==='stopping'?'Stopping after the current call…':job.events?.at(-1)?.title||'Waiting for the Captain…';
- const summary=captain&&plan.summary?'<div class="chat-message chat-handoff"><small>Captain’s plan</small><div class="chat-prose">'+messageMarkup(plan.summary)+'</div><ol>'+plan.tasks.map(t=>'<li><strong>'+escape(defaultNames[t.role])+' · '+escape(window.BacCrewCatalog[t.role].collaboration.title)+'</strong>: '+escape(t.task)+(plan.skippedRoles?.includes(t.role)?' <small>Not called - '+(plan.outcome==='unavailable'?'required expertise unavailable':'no longer needed')+'</small>':'')+'</li>').join('')+'</ol></div>':'';
- const contributions=captain?Object.values(plan.outputs||{}).map(p=>'<details class="crew-tool-activity"><summary>'+escape(p.name)+' · Contribution</summary>'+customSkillMarkup(p.activity)+'<div class="chat-prose">'+messageMarkup(p.answer)+'</div></details>').join(''):'';
+ const finalAnswer=collaborationAnswer(job),answer=captain?(finalAnswer||job.result?.error||''):piece?.answer||'';
+ const uncalled=!captain&&!piece&&!plan.handoffs?.[role]&&(!pending||plan.responseReady||plan.skippedRoles?.includes(role));
+ const status=uncalled?'Casey did not call '+defaultNames[role]+' for this plan.':job.status==='cancelled'?'Stopped.':job.status==='stopping'?'Stopping after the current call…':job.events?.at(-1)?.title||'Waiting for the Captain…';
+ const summary=captain&&plan.summary?'<div class="chat-message chat-handoff"><small>Captain’s plan</small><div class="chat-prose">'+messageMarkup(plan.summary)+'</div><ol>'+plan.tasks.map(t=>'<li><strong>'+escape(defaultNames[t.role])+' · '+escape(window.BacCrewCatalog[t.role].collaboration.title)+'</strong>: '+escape(t.task)+(plan.skippedRoles?.includes(t.role)?' <small>Not called - '+(plan.outcome==='partial'?'plan ended with unfinished work':plan.outcome==='unavailable'?'required expertise unavailable':'no longer needed')+'</small>':'')+'</li>').join('')+'</ol></div>':'';
+ const outputRoles=collaborationRoleOrder(plan).filter(i=>plan.outputs?.[i]);
+ const contributions=captain?outputRoles.map(i=>{const p=plan.outputs[i];return '<details class="crew-tool-activity" data-contribution-role="'+i+'"><summary>'+escape(p.name)+' · Contribution</summary>'+customSkillMarkup(p.activity)+'<div class="chat-prose">'+messageMarkup(p.answer)+'</div></details>'+collaborationDecisionMarkup({...plan,checks:(plan.checks||[]).filter(check=>Number(check.afterRole)===i)});}).join(''):'';
  const handoff=!captain&&plan.handoffs?.[role]?'<div class="chat-message chat-handoff"><small>Casey → '+escape(defaultNames[role])+'</small><div class="chat-prose">'+messageMarkup(plan.handoffs[role].task)+'</div><small>Received: '+escape(['Captain’s task',...plan.handoffs[role].receivedFrom.map(i=>defaultNames[Number(i)]+"’s contribution")].join(' · '))+'</small></div>':'';
- return '<article class="chat-turn" data-collaboration-job="'+escape(job.id)+'">'+(captain||plan.origin?.role===role?'<div class="chat-message chat-user"><small>You</small><div>'+escape(job.payload.prompt).replace(/\n/g,'<br>')+imageHistoryMarkup(job.payload.images,job.id)+'</div></div>':'')+(held?shieldReplyWait:summary+handoff+contributions+(captain?collaborationDecisionMarkup(plan):'')+'<div class="chat-message chat-agent"><small>'+escape(defaultNames[role])+' · '+(captain?'BaC collaboration':'Specialist contribution')+'</small><div class="chat-prose">'+messageMarkup(answer||status)+'</div></div>')+(pending?'<div class="chat-progress" role="status">'+escape(status)+(job.status!=='stopping'?'<button type="button" data-crew-chat-stop="'+escape(job.id)+'">'+(plan.responseReady?'Stop reactions':'Stop')+'</button>':'')+'</div>':'')+(held?'':webpageButtons(captain?Object.values(plan.webpages||{}).flat():piece?.files,job.id))+(captain?(job.result?.files||[]).filter(path=>!/\.html$/i.test(path)).map(path=>'<button type="button" class="studio-secondary" data-plan-file="'+escape(path)+'" data-plan-job="'+escape(job.id)+'">Open team response</button>').join(''):'')+(captain&&!held?roundtableMarkup(job):'')+'</article>';
+ return '<article class="chat-turn" data-collaboration-job="'+escape(job.id)+'">'+(captain||plan.origin?.role===role?'<div class="chat-message chat-user"><small>You</small><div>'+escape(job.payload.prompt).replace(/\n/g,'<br>')+imageHistoryMarkup(job.payload.images,job.id)+'</div></div>':'')+(held?shieldReplyWait:summary+handoff+contributions+(captain&&!outputRoles.length?collaborationDecisionMarkup(plan):'')+'<div class="chat-message chat-agent"><small>'+escape(defaultNames[role])+' · '+(captain?'BaC collaboration':'Specialist contribution')+'</small><div class="chat-prose">'+messageMarkup(answer||status)+'</div>'+(captain?collaborationCompletionMarkup(plan,finalAnswer):'')+'</div>')+(pending?'<div class="chat-progress" role="status">'+escape(status)+(job.status!=='stopping'?'<button type="button" data-crew-chat-stop="'+escape(job.id)+'">'+(plan.responseReady?'Stop reactions':'Stop')+'</button>':'')+'</div>':'')+(held?'':webpageButtons(captain?Object.values(plan.webpages||{}).flat():piece?.files,job.id))+(captain?(job.result?.files||[]).filter(path=>!/\.html$/i.test(path)).map(path=>'<button type="button" class="studio-secondary" data-plan-file="'+escape(path)+'" data-plan-job="'+escape(job.id)+'">Open team response</button>').join(''):'')+(captain&&!held?roundtableMarkup(job):'')+'</article>';
 }
 function collaborationHistoryMarkup(job){
  const held=shieldReplyHeld(job,0),pending=['queued','running','waiting','stopping'].includes(job.status);
- const answer=job.result?.answer||job.result?.error||(pending?'The BaC team is collaborating…':job.status==='cancelled'?'Stopped.':'No final reply was returned.');
- return '<article class="chat-turn" data-collaboration-history="'+escape(job.id)+'"><div class="chat-message chat-user"><small>You</small><div>'+messageMarkup(job.payload.prompt)+'</div></div><div class="chat-message chat-agent"><small>Casey · BaC collaboration</small>'+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(answer)+'</div>')+(held?'':collaborationDecisionMarkup(job.payload.collaboration)+webpageButtons(job.result?.files||Object.values(job.payload.collaboration.webpages||{}).flat(),job.id))+'<button type="button" class="studio-secondary" data-open-collaboration>View team conversation</button></div></article>';
+ const answer=collaborationAnswer(job)||job.result?.error||(pending?'The BaC team is collaborating…':job.status==='cancelled'?'Stopped.':'No final reply was returned.');
+ return '<article class="chat-turn" data-collaboration-history="'+escape(job.id)+'"><div class="chat-message chat-user"><small>You</small><div>'+messageMarkup(job.payload.prompt)+'</div></div><div class="chat-message chat-agent"><small>Casey · BaC collaboration</small>'+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(answer)+'</div>'+collaborationCompletionMarkup(job.payload.collaboration,collaborationAnswer(job)))+(held?'':collaborationDecisionMarkup(job.payload.collaboration)+webpageButtons(job.result?.files||Object.values(job.payload.collaboration.webpages||{}).flat(),job.id))+'<button type="button" class="studio-secondary" data-open-collaboration>View team conversation</button></div></article>';
 }
 function showCollaboration(){selectedCrewRole=0;setRoom('mission');root.dataset.crewDetails='true';renderCrewPassport();}
 function syncCrewComposer(){

@@ -35,6 +35,14 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.match(await programmerStep.innerText(),/Casey’s assignment/);
   assert.match(await programmerStep.innerText(),/Expected result/);
   assert.match(await programmerStep.innerText(),/Deliver a usable calculator with clear controls/);
+  const traceKinds=()=>control.locator('[data-trace-kind]').evaluateAll(nodes=>nodes.map(n=>n.dataset.traceKind));
+  assert.deepEqual(await traceKinds(),['plan','contribution','review','contribution','review','contribution','review','response']);
+  assert.equal(await control.locator('[data-trace-kind="plan"]').getByText('No additional agents will be called.',{exact:true}).count(),0);
+  assert.deepEqual(await control.locator('[data-after-role]').evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.afterRole))),[2,5,4]);
+  await programmerStep.locator('[data-trace-details] summary').click();
+  assert.match(await programmerStep.innerText(),/Verified contribution from Wade/);
+  await page.waitForTimeout(2200);
+  assert.equal(await programmerStep.locator('[data-trace-details]').getAttribute('open'),'');
   await page.setViewportSize({width:1600,height:1300});
   await page.screenshot({path:'../../work/mission-control-preview.png'});
   await page.setViewportSize({width:390,height:844});
@@ -70,6 +78,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.equal(await page.locator('#studio-crew-role').innerText(),'BaC Captain');
   await page.locator('[data-surface="control"]').click();
   assert.deepEqual(await control.locator('[data-plan-role]').evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.planRole))),[0,3,4]);
+  assert.deepEqual(await traceKinds(),['plan','contribution','review','contribution','review','response']);
   await page.locator('#studio-board-shared').click();
   assert.equal(await page.locator('#studio-surface').isVisible(),false);
   await page.locator('#studio-crew-conversation summary').filter({hasText:'Riley · Contribution'}).last().click();
@@ -111,7 +120,8 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
    ['SOLO_QA Answer a simple question.',[0],'No additional agents needed'],
    ['UNSUPPORTED_QA Deploy to my private cloud.',[0],'Required expertise unavailable - no agents called'],
    ['SINGLE_QA Write a short greeting.',[0,3],'Enough to finish - no additional agents will be called'],
-   ['EARLY_QA Research a simple topic.',[0,8],'Enough to finish - no additional agents will be called']
+   ['EARLY_QA Research a simple topic.',[0,8],'Enough to finish - no additional agents will be called'],
+   ['PARTIAL_QA Build and deploy a dashboard.',[0,6,5,4],'Partial result - stopping here']
   ]){
    await page.locator('#studio-crew-prompt').fill('/plan '+task);
    await page.locator('#studio-crew-send').click();
@@ -127,12 +137,32 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
    if(task.startsWith('EARLY_QA')){
     assert.match(await control.locator('[data-plan-role="3"]').innerText(),/Not called/);
     assert.match(await control.locator('[data-plan-role="4"]').innerText(),/Not called/);
+    assert.deepEqual(await traceKinds(),['plan','contribution','review','skipped','skipped','response']);
+    assert.equal(await control.locator('[data-trace-kind="plan"]').getByText('The research answers the request; no additional agents are needed.',{exact:true}).count(),0);
+    assert.equal(await control.locator('[data-trace-kind="review"]').count(),1);
+    assert.match(await control.locator('[data-after-role="8"]').innerText(),/After Avery’s result/);
+    await control.locator('[data-trace-details="output-8"] summary').click();
+    assert.match(await control.locator('[data-plan-role="8"]').innerText(),/Verified contribution from Avery/);
+    await page.screenshot({path:'../../work/mission-control-trace-preview.png'});
    }
+   if(task.startsWith('SOLO_QA')||task.startsWith('UNSUPPORTED_QA'))assert.deepEqual(await traceKinds(),['plan','response']);
    if(task.startsWith('UNSUPPORTED_QA'))assert.match(await control.innerText(),/Capability unavailable/);
+   if(task.startsWith('PARTIAL_QA')){
+    assert.match(await control.innerText(),/Partial result/);
+    await control.locator('[data-trace-details="response"] summary').click();
+    assert.match(await control.innerText(),/Public deployment/);
+    assert.match(await turn.innerText(),/Partial result - what remains/);
+    assert.match(await turn.innerText(),/Public deployment/);
+    assert(await turn.locator('[data-preview-file]').count());
+   }
    await page.locator('#studio-surface-close').click();
    if(task.startsWith('EARLY_QA')){
     assert.equal(await turn.locator('summary').filter({hasText:'Contribution'}).count(),1);
     assert.match(await turn.innerText(),/Not called - no longer needed/);
+    const completion=turn.locator('.chat-agent [data-plan-completion]');
+    assert.match(await completion.innerText(),/The research answers the request/);
+    assert.match(await completion.innerText(),/Not called: Morgan, Riley/);
+    assert.match(await completion.innerText(),/Their planned work was not performed/);
     assert.deepEqual(await page.evaluate(()=>BacCampus.inspect().crewExchange.filter(r=>r.visible).map(r=>r.role)),[0,8]);
    }
   }

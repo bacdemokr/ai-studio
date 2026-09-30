@@ -126,11 +126,17 @@
 /* The board follows execution dependencies; the paired roles share one stage. */
 #studio-lanes,#studio-surface #studio-lanes{display:flex;flex-direction:column;gap:26px}
 .studio-work-group{position:relative;min-width:0}
-#studio-lanes.studio-plan-control,#studio-surface #studio-lanes.studio-plan-control{display:flex;flex-direction:column;gap:14px;align-items:stretch}
+#studio-lanes.studio-plan-control,#studio-surface #studio-lanes.studio-plan-control{display:flex;flex-direction:column;gap:18px;align-items:stretch;margin-left:6px;padding-left:20px;border-left:1px solid #3c5260}
 #studio-surface #studio-board.has-plan .studio-board-intro{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 #studio-surface #studio-board.has-plan .studio-board-intro h3{font-size:20px;margin:0!important}
 #studio-surface #studio-board.has-plan .studio-board-intro p,#studio-surface #studio-board.has-plan .studio-board-intro .studio-kicker{display:none}
-.mission-plan-step{display:grid;grid-template-columns:180px minmax(0,1fr);border:1px solid #344957;border-radius:8px;background:#15212b;overflow:hidden}
+.mission-plan-step{position:relative;display:grid;grid-template-columns:180px minmax(0,1fr);border:1px solid #344957;border-radius:8px;background:#15212b}
+.mission-plan-step::before{content:'';position:absolute;left:-26px;top:27px;width:9px;height:9px;border:1px solid #6a8292;border-radius:50%;background:#14212a}
+.mission-plan-step[data-step-state=done]::before,.mission-plan-step[data-step-state=working]::before{background:#76b900;border-color:#76b900}
+.mission-plan-step[data-trace-kind=skipped],.mission-plan-step[data-trace-kind=planned]{background:#101b24;border-style:dashed}
+.mission-plan-step[data-trace-kind=skipped]::before,.mission-plan-step[data-trace-kind=planned]::before{width:5px;height:5px;left:-24px;background:#344957}
+.mission-plan-step[data-trace-kind=review]{background:#17272b}
+.mission-plan-step>header{border-radius:8px 0 0 8px}
 .mission-plan-step>header{padding:22px;background:#111c25;border-right:1px solid #344957;font-size:14px;color:#b1c3cf}
 .mission-plan-step h4{margin:8px 0;font-size:24px;color:#eff5f8}
 .mission-plan-step>header>small{font-size:11px;letter-spacing:.12em;color:#9eafb9}
@@ -144,7 +150,12 @@
 .mission-expectation details{margin-top:10px}.mission-expectation summary{cursor:pointer;color:#b8cbd6}
 #studio-lanes .mission-expectation p{display:block}.mission-expectation pre,.mission-plan-content pre{white-space:pre-wrap;overflow-wrap:anywhere}
 .mission-plan-inputs{display:block;margin-top:12px;font-size:12px;color:#9fb2bf}
-@media(max-width:650px){.mission-plan-step{grid-template-columns:minmax(0,1fr)}.mission-plan-step>header{border-right:0;border-bottom:1px solid #344957;padding:16px}.mission-plan-content{padding:16px}}
+.mission-trace-detail{margin-top:16px;border-top:1px solid #344957;padding-top:12px}
+.mission-trace-detail:first-child{margin-top:0;border-top:0;padding-top:0}
+.mission-trace-detail>summary{cursor:pointer;color:#dce8f0;font-size:14px;font-weight:600}
+.mission-trace-detail>.chat-prose{margin-top:12px}
+#studio-lanes .mission-plan-content p{display:block}
+@media(max-width:650px){.mission-plan-step{grid-template-columns:minmax(0,1fr)}.mission-plan-step>header{border-right:0;border-bottom:1px solid #344957;border-radius:8px 8px 0 0;padding:16px}.mission-plan-content{padding:16px}}
 .studio-work-group:not(:last-child)::after{content:'↓';position:absolute;bottom:-25px;left:50%;color:#8ba0b3;font-size:22px}
 .studio-work-group-cards{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
 .studio-work-group.is-parallel{padding:16px;border:1px solid #526779;border-radius:6px;background:#101c26}
@@ -188,3 +199,7 @@
 #agent-campus .chat-handoff details{margin-top:10px;}
 #agent-campus .chat-handoff summary{cursor:pointer;color:#b8d6e7;}
 #agent-campus .chat-handoff pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8em;}
+
+.collaboration-completion{margin-top:14px;padding-top:12px;border-top:1px solid #ffffff18;font-size:13px;line-height:1.6}
+.collaboration-completion>strong{display:block;color:#b8d992;margin-bottom:6px;font-size:12px}
+.collaboration-completion p{margin:5px 0}

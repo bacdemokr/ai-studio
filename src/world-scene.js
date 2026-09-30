@@ -180,7 +180,7 @@ function createScene() {
     for(const role of active){
       if(role<=0||role>=positions.length||job.completed.includes(role)||job.enabledRoles?.includes(role)===false||assignedDocuments.has(role))continue;
       if(documentFlight?.kind==='assignment'&&documentFlight.role===role||documentQueue.some(d=>d.kind==='assignment'&&d.role===role))continue;
-      documentQueue.push({kind:'assignment',role});
+      documentQueue.push({kind:'assignment',role,settledFor:0});
     }
     receivedDocuments.forEach(i=>returnedSheets[i].visible=true);
   }
@@ -188,7 +188,15 @@ function createScene() {
     if(!documentFlight&&!documentQueue.length)return;
     if(reduced.matches||!motion){for(const d of [...documentQueue,...(documentFlight?[documentFlight]:[])]){if(d.kind==='return')receivedDocuments.add(d.role);else assignedDocuments.add(d.role);}documentQueue.length=0;documentFlight=null;flyingDocument.visible=false;receivedDocuments.forEach(i=>returnedSheets[i].visible=true);renderCrewLabels();return;}
     if(!motion||room!=='mission'||overview||journey)return;
+    // Let each recipient settle at its desk before Casey dispatches the paper.
+    // Count all waiting recipients independently, including during other flights.
+    for(const d of documentQueue){
+      if(d.kind!=='assignment')continue;
+      const r=robots[d.role],seated=r?.robot.visible&&!r.exchange&&!r.path.length&&r.robot.position.distanceTo(r.home)<.12;
+      d.settledFor=seated?Math.min(1.5,d.settledFor+dt):0;
+    }
     if(!documentFlight&&documentQueue.length&&!robots[documentQueue[0].role]?.robot.visible)return;
+    if(!documentFlight&&documentQueue[0]?.kind==='assignment'&&documentQueue[0].settledFor<1.5)return;
     if(!documentFlight&&documentQueue.length){documentFlight=documentQueue.shift();documentProgress=0;documentStripe.material=mat(colors[documentFlight.role],true);}
     if(!documentFlight)return;
     documentProgress=Math.min(1,documentProgress+dt/1.65);const t=documentProgress,p=t*t*(3-2*t),d=documentFlight;

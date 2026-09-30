@@ -68,6 +68,9 @@ class AdaptivePlanTests(unittest.TestCase):
                 self.assertEqual(plan['skippedRoles'], [2,3] if finish_after==1 else [3])
                 self.assertEqual(len(plan['outputs']), finish_after)
                 self.assertIn('no additional agents', plan['checks'][-1]['reason'])
+                checkpoint_prompt=next(prompt for _,session,prompt in self.adapter.calls if '-checking-' in session)
+                self.assertIn('include that explanation in answer itself',checkpoint_prompt)
+                self.assertIn('never imply that a skipped reviewer performed a review',checkpoint_prompt)
                 self.assertEqual(self.job(result)['result']['answer'], 'Final grounded answer.')
 
     def test_missing_capability_midway_preserves_work_without_false_success(self):

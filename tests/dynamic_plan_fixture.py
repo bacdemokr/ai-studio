@@ -20,6 +20,7 @@ class DynamicAdapter(PlanAdapter):
         if session.endswith('-planning'):
             order = [2, 5, 4] if 'CALCULATOR_QA' in prompt.split('Current user task:')[-1] else [6, 7, 5] if 'DATA_UI_QA' in prompt.split('Current user task:')[-1] else [8, 4] if 'RESEARCH_QA' in prompt.split('Current user task:')[-1] else [3, 4]
             if 'EARLY_QA' in task: order=[8,3,4]
+            if 'PARTIAL_QA' in task: order=[6,5,4]
             if 'SINGLE_QA' in task: order=[3]
             if 'SOLO_QA' in task or 'UNSUPPORTED_QA' in task: order=[]
             self.plan = {'summary': 'Choose expertise for this request.', 'tasks': [
@@ -31,6 +32,9 @@ class DynamicAdapter(PlanAdapter):
         answer = super().respond(agent, session, prompt, **kwargs)
         if '-checking-' in session and 'EARLY_QA' in task:
             return json.dumps({'done':True,'reason':'The research answers the request; no additional agents are needed.','answer':'Here are the complete research findings.'})
+        if session.endswith('-reviewing') and 'PARTIAL_QA' in task:
+            return json.dumps({'done':True,'outcome':'partial','reason':'The local prototype is ready, but deployment is unavailable.',
+                               'answer':'Preview the local prototype. It has not been deployed.', 'remaining':['Public deployment']})
         if agent.endswith('-r5') and session.endswith('-working'):
             (self.agents[agent] / 'artifacts/calculator.html').write_text('<html><body><h1>Calculator QA</h1></body></html>')
         return answer

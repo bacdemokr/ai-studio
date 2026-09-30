@@ -1,0 +1,58 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const source=fs.readFileSync('src/studio-crew.js','utf8');
+const escape=value=>String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+const context=vm.createContext({escape,messageMarkup:escape,webpageButtons:()=>'',defaultNames:['Casey','Dylan','Alex','Morgan','Riley','Wade','Nora','Quinn','Avery']});
+vm.runInContext(source.slice(source.indexOf('function collaborationRoleOrder('),source.indexOf('function renderMissionControl(')),context);
+const render=(plan,status='running',result={})=>context.missionControlTraceMarkup({id:'fixture',status,result,payload:{collaboration:plan}});
+const kinds=html=>[...html.matchAll(/data-trace-kind="([^"]+)"/g)].map(m=>m[1]);
+const base={summary:'Research, then review.',tasks:[{role:8,task:'Find sources.',expected:'Cited evidence.'},{role:4,task:'Review evidence.'}],outputs:{},handoffs:{},checks:[]};
+assert.deepEqual(kinds(render(base)),['plan','planned','planned']);
+const delivered={...base,calledRoles:[8],activeRole:0,handoffs:{8:{task:'Find sources.',started:1}},outputs:{8:{answer:'Research result.'}}};
+assert.deepEqual(kinds(render(delivered)),['plan','contribution','review','planned']);
+assert.match(render(delivered),/Reviewing/);
+assert(!render(delivered).includes('No additional agents will be called.'));
+const continued={...delivered,checks:[{afterRole:8,done:false,reason:'Independent review remains.'}],activeRole:4,calledRoles:[8,4],handoffs:{...delivered.handoffs,4:{task:'Review evidence.',started:2,receivedFrom:['8']}}};
+const running=render(continued);
+assert.deepEqual(kinds(running),['plan','contribution','review','contribution']);
+assert(running.indexOf('Research result.')<running.indexOf('Independent review remains.'));
+assert(running.indexOf('Independent review remains.')<running.indexOf('data-plan-role="4"'));
+assert.match(running,/Working/);
+const stopped={...delivered,activeRole:null,checks:[{afterRole:8,done:true,reason:'Enough evidence.'}],skippedRoles:[4],finalAnswer:'Final answer.',responseReady:true};
+const complete=render(stopped,'done');
+assert.deepEqual(kinds(complete),['plan','contribution','review','skipped','response']);
+assert.equal(complete.split('Enough evidence.').length-1,1);
+assert(complete.indexOf('Research result.')<complete.indexOf('Enough evidence.'));
+assert.match(complete,/04 · RESPONSE/); // An uncalled role is not an execution step.
+const cancelled=render(delivered,'cancelled');
+assert.deepEqual(kinds(cancelled),['plan','contribution','skipped','stopped']);
+assert(!cancelled.includes('Enough to finish'));
+const failed=render({...continued,activeRole:null},'error',{error:'Runtime failed.'});
+assert.match(failed,/Incomplete/);assert.match(failed,/Runtime failed\./);
+const unavailable=render({...base,tasks:[],outcome:'unavailable',finalAnswer:'No deployment tool.'},'done');
+assert.deepEqual(kinds(unavailable),['plan','response']);assert.match(unavailable,/Capability unavailable/);
+// Legacy saved plans without calledRoles still follow recorded handoff order.
+const legacy=render({...base,tasks:[base.tasks[1],base.tasks[0]],handoffs:continued.handoffs,outputs:{8:{answer:'First'},4:{answer:'Second'}},checks:[{afterRole:'8',done:false,reason:'Review next.'},{afterRole:4,done:true,reason:'Finished.'}],finalAnswer:'Done.'},'done');
+assert(legacy.indexOf('data-plan-role="8"')<legacy.indexOf('data-plan-role="4"'));
+assert.deepEqual(kinds(legacy),['plan','contribution','review','contribution','review','response']);
+assert(!render({...base,summary:'<script>bad</script>'}).includes('<script>'));
+// Chat contributions and reviews follow execution order, not numeric role IDs.
+Object.assign(context,{shieldReplyHeld:()=>false,customSkillMarkup:()=>'',imageHistoryMarkup:()=>'',roundtableMarkup:()=>'',window:{BacCrewCatalog:Array.from({length:9},()=>({collaboration:{title:'Specialist'}}))}});
+vm.runInContext(source.slice(source.indexOf('function collaborationDecisionMarkup('),source.indexOf('function showCollaboration(')),context);
+const chatPlan={...stopped,origin:{role:0},outputs:{8:{name:'Avery',answer:'Research first.'},4:{name:'Riley',answer:'Review second.'}},calledRoles:[8,4],checks:[{afterRole:8,done:false,reason:'Review still needed.'},{afterRole:4,done:true,reason:'Both complete.'}],skippedRoles:[]};
+const chatJob={id:'chat',status:'done',payload:{collaboration:chatPlan,prompt:'/plan Research and review'},result:{answer:'Finished.'}};
+const chat=context.collaborationMarkup(chatJob,0);
+assert(chat.indexOf('Research first.')<chat.indexOf('Review still needed.'));
+assert(chat.indexOf('Review still needed.')<chat.indexOf('Review second.'));
+assert(chat.indexOf('Review second.')<chat.indexOf('Both complete.'));
+const skippedChat=context.collaborationMarkup({...chatJob,payload:{...chatJob.payload,collaboration:stopped}},4);
+assert.match(skippedChat,/Casey did not call Riley for this plan/);
+const interrupted={...chatJob,status:'error',result:{error:'App restarted.'},payload:{...chatJob.payload,collaboration:{...chatPlan,finalAnswer:'Saved final answer.'}}};
+assert.match(context.collaborationMarkup(interrupted,0),/Saved final answer/);
+assert.match(context.collaborationHistoryMarkup(interrupted),/Saved final answer/);
+const partialPlan={...chatPlan,outcome:'partial',remaining:['Browser testing <pending>'],checks:[{afterRole:4,done:true,outcome:'partial',reason:'Prototype saved; no execution tool.',remaining:['Browser testing <pending>']}]};
+const partialJob={...chatJob,payload:{...chatJob.payload,collaboration:partialPlan},result:{answer:'A working draft was saved.'}};
+for(const markup of [render(partialPlan,'done',{answer:'Draft saved.'}),context.collaborationMarkup(partialJob,0),context.collaborationHistoryMarkup(partialJob)]){
+ assert.match(markup,/Partial result/);assert.match(markup,/Browser testing &lt;pending&gt;/);
+ assert(!markup.includes('Why this result is sufficient'));assert(!markup.includes('Enough to finish'));
+}
+console.log('PASS: trace order, live review/continuation, early finish, uncalled roles, cancellation/failure, unsupported work, legacy ordering and escaping.');

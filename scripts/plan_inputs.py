@@ -1,0 +1,52 @@
+"""Task-scoped input snapshots, never a blanket copy of a personal workspace."""
+import re
+
+
+def requested_inputs(studio, origin, task):
+    from studio import safe_file, Problem
+    from document_upload import MAX_FILE
+    base = studio.workspace(origin['owner'], origin.get('role'))
+    folder = base / 'inbox'
+    if base.is_symlink() or folder.is_symlink() or not folder.is_dir():
+        return []
+    # Generic upload references apply only to a personal inbox. Team inboxes also
+    # contain event contracts, so require an explicit filename there.
+    uploaded = origin.get('role') is None and re.search(
+        r'\b(uploaded|attached|supplied)\b|업로드|첨부|올린|올려둔', task, re.I)
+    inputs, total = [], 0
+    for path in sorted(folder.iterdir()):
+        if path.suffix.lower() not in ('.txt', '.md', '.csv', '.pdf', '.pptx', '.xlsx'):
+            continue
+        if path.name.startswith(('chat-', 'plan-')):
+            continue
+        if path.name.lower().endswith(('.pdf.txt', '.pptx.txt', '.xlsx.txt')) and path.with_suffix('').exists():
+            continue
+        named = re.search(r'(?<![\w.-])' + re.escape(path.name) + r'(?![\w-]|\.\w)', task, re.I)
+        if not (named or uploaded):
+            continue
+        source = safe_file(base, 'inbox/' + path.name, True)
+        # Prefer extracted text for binary documents. Never claim this captures
+        # omitted images, formulas or formatting.
+        extracted = path.suffix.lower() in ('.pdf', '.pptx', '.xlsx')
+        if extracted:
+            source = safe_file(base, 'inbox/' + path.name + '.txt', True)
+        raw = source.read_bytes()
+        total += len(raw)
+        if len(raw) > MAX_FILE or total > 30 * 1024 * 1024 or len(inputs) >= 10:
+            raise Problem('Too many document inputs for one /plan. Name up to 10 files totaling 30 MB or less.')
+        inputs.append({'id': 'document-' + str(len(inputs)), 'name': path.name,
+                       'extractedText': extracted, 'suffix': source.suffix, 'data': raw})
+    return inputs
+
+
+def input_manifest(inputs):
+    return [{key: item[key] for key in ('id', 'name', 'extractedText')} for item in inputs]
+
+
+def validate_assignments(tasks, available, has_images):
+    allowed = {item['id'] for item in available}
+    for task in tasks:
+        if any(key not in allowed for key in task.get('inputs', [])):
+            raise RuntimeError('The Captain selected an unavailable document. No specialist was started.')
+        if task.get('useImages') and not has_images:
+            raise RuntimeError('The Captain selected images that were not attached. No specialist was started.')

@@ -129,7 +129,7 @@
     "description": "Research public web sources, compare evidence and cite findings for the current task.",
     "collaboration": {
       "title": "Researcher",
-      "description": "Read public sources with available web tools and compare evidence. Cite source URLs, distinguish observations from inference, and report unavailable pages honestly. No search API key is assumed; use supplied URLs and supported public sources. OpenShell is off. Never claim a page was read without a successful tool result."
+      "description": "Read public sources with available web tools and compare evidence. Cite source URLs, distinguish observations from inference, and report unavailable pages honestly. web_fetch is available for public HTTP(S) pages. No search API key is assumed. Without supplied URLs, start from a confidently known official homepage and follow links returned by it; search-engine search is optional and separate. OpenShell is off. Never claim a page was read without a successful tool result."
     }
   }
 ]
