@@ -23,7 +23,7 @@ from studio_policy import PolicyControls
 from crew_roundtable import RoundtableControls, participants as job_participants
 from crew_ownership import CrewOwnership
 from collaboration_plan import CollaborationPlans, is_plan, plan_task
-from webpage_artifacts import PAGE_INSTRUCTIONS, html_files, collect_pages
+from webpage_artifacts import DEMO_CODING_INSTRUCTIONS, PAGE_INSTRUCTIONS, html_files, collect_pages
 
 CREW_CATALOG = json.loads((Path(__file__).resolve().parents[1] / 'src/crew-catalog.json').read_text())
 ROLES = [(member['name'], member['role'], member['persona']) for member in CREW_CATALOG]
@@ -1261,6 +1261,8 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
         prompt += self.conversation_context(owner, role, row['created'], job_id, plans_only=True)
         session = self.crew_chat_session(owner, role) + ('-' + reset['epoch'] if reset['epoch'] else '')
         prompt += PAGE_INSTRUCTIONS
+        if role == 5:
+            prompt += DEMO_CODING_INSTRUCTIONS
         pages_before = html_files(self.workspace(owner, role))
         answer = self.respond_chat(agent_id, session, prompt, owner, payload)
         pages = collect_pages(self, owner, job_id, role, pages_before, answer)

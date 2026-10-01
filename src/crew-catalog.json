@@ -88,7 +88,7 @@
     "name": "Cody",
     "role": "Event web developer",
     "persona": "maker",
-    "description": "Turns the shared event plan into a polished landing page you can open and download.",
+    "description": "Builds compact desktop webpages and small apps you can open and download.",
     "id": "event-web-developer",
     "skills": [
       "event-page",
@@ -97,7 +97,7 @@
     "collaboration": {
       "title": "Programmer",
       "description": "Implement small programs and self-contained HTML/CSS/JavaScript prototypes with file tools. No arbitrary code execution, package installation or deployment is available.",
-      "scope": "Implement only the assigned program or webpage using the supplied evidence and requirements. Preserve source limitations; do not invent research or claim unperformed execution.",
+      "scope": "Implement only the assigned desktop program or webpage using the supplied evidence and requirements. Prioritize a small usable demo with core functionality; omit mobile support and optional polish. Save the complete implementation and return once required behavior is covered, fixing only concrete defects. Preserve source limitations; do not invent research or claim unperformed execution.",
       "summary": "Builds webpages and small apps by writing code."
     }
   },

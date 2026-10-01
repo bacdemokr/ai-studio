@@ -5,7 +5,7 @@ import time
 from time import monotonic
 from browser_capability import BROWSER_LIMIT
 from plan_artifacts import snapshot_files, collect_files
-from webpage_artifacts import PAGE_INSTRUCTIONS, html_files, collect_pages
+from webpage_artifacts import DEMO_CODING_INSTRUCTIONS, PAGE_INSTRUCTIONS, html_files, collect_pages
 from plan_inputs import requested_inputs, input_manifest, validate_assignments
 from plan_handoff import required_files, missing_files
 from plan_revision import PLAN_TIME_BUDGET_SECONDS, PlanBudgetExceeded, read_revision, effective_outputs, revision_instructions
@@ -232,15 +232,15 @@ class CollaborationPlans:
             'Do not assume that event tools have a prepared contract for this task. '
             'Do not load EVENT_WORKFLOW.md or event-specific skills unless the current task actually needs them. '
             'DEMO DEFAULT: deliver a small working prototype, not a production product. '
-            'Unless explicitly requested, omit touch/mobile controls, elaborate animations, sound, extra settings, '
+            'Do not build mobile layouts, mobile breakpoints, touch controls or mobile tests for this desktop demo. '
+            'Unless explicitly requested, omit elaborate animations, sound, extra settings, '
             'multi-file architecture and optional features. Preserve the core requested behavior and basic keyboard usability. '
             'Use the fewest specialists needed; a simple game or webpage normally needs Cody only. '
             'If Iris is needed, save a short spec targeting 60 lines / 600 words with layout, controls and 5-8 essential checks; '
             'do not invent extra requirements for Cody. Explicit user requirements take precedence over these targets. '
             'Context and output budgets are limited. Work only as deeply as your assignment requires; '
             'Target desktop browsers and presentation mode by default. Do not spend specialist calls or '
-            'implementation/review effort on mobile layouts, touch controls or mobile testing unless '
-            'the current user request explicitly requires mobile support. Preserve keyboard accessibility '
+            'implementation/review effort on mobile layouts, touch controls or mobile testing. Preserve keyboard accessibility '
             'and usability across desktop window sizes. '
             'avoid exhaustive browsing, repeated reads and optional polish. Read relevant sections or bounded '
             'chunks of large files using available read limits, and expand only to resolve a specific gap. '
@@ -307,8 +307,9 @@ class CollaborationPlans:
             'Keep detailed findings and deliverables in artifacts/ when writing is available; hand off key facts, '
             'source references, file paths, limitations and remaining requirements. Preserve critical numbers '
             'and evidence; never silently omit required work to meet a length target. '
-            'For new HTML demos, first save a complete compact working page with native write (target under 6000 characters), '
-            'then add required features through small edits. Never emit XML tool-call markup in ordinary text. '
+            'For new HTML demos, aim for one complete compact implementation with native write. '
+            'About 6000 characters is a soft target for simple pages, never a hard limit or reason to drop requested features. '
+            'Prefer one usable implementation over a skeleton followed by repeated expansion. Never emit XML tool-call markup in ordinary text. '
             'A saved-file claim requires a successful native write/edit result. '
             'File-writing tool arguments also consume output tokens: keep implementations focused, use targeted '
             'edits or supported smaller writes for large changes, and leave saved files syntactically complete. '
@@ -599,11 +600,14 @@ class CollaborationPlans:
                      'Report returned location, time, units and exact URL. WMO codes: 0 clear, 1 mainly clear, 2 partly cloudy, 3 overcast. '
                      'Do not call an overnight low a current temperature. If geocoding or current observations fail, report the gap. '
                      if role == 8 and re.search(r'\bweather\b', plan['task'], re.I) else '') +
-                    (PAGE_INSTRUCTIONS if role == 5 and phase.startswith(('Working', 'Revising', 'Recovering')) else '') +
+                    (PAGE_INSTRUCTIONS + DEMO_CODING_INSTRUCTIONS if role == 5 and phase.startswith(('Working', 'Revising', 'Recovering')) else '') +
                     ('\nStatic review: distinguish a demonstrated defect from a portability risk. '
                      'For browser HTML, named element IDs can be exposed on window, so a missing explicit declaration alone '
                      'does not prove ReferenceError. A button inside a form defaults to submission; a missing action does '
-                     'not prevent submission or reload. Check preventDefault and use textContent for untrusted plain-text '
+                     'not prevent submission or reload. For this demo focus on missing requested behavior, broken controls, '
+                     'incorrect content and concrete safety/accessibility defects. Do not request mobile support, cosmetic '
+                     'polish, architectural refactoring or optional features as required revisions. '
+                     'Check preventDefault and use textContent for untrusted plain-text '
                      'input rather than innerHTML. Do not present action="#" as a fix for an unwanted submission. '
                      if role == 4 else '') +
                     (('\nDecision output contract: return ONLY a JSON object with summary and tasks (integer role IDs) as specified above.'
@@ -804,7 +808,12 @@ class CollaborationPlans:
                 'If no useful portion is possible because a required specialist or capability is unavailable, return tasks:[], outcome:"unavailable", '
                 'and explain the missing expertise/tool and what would be needed. Do not pretend the request was completed. '
                 'Select only from the available pool, for capabilities rather than a fixed sequence. '
-                'For a working webpage or code prototype, select Cody. For research choose Scout; '
+                'For a working webpage or code prototype, select Cody. Give Cody a compact desktop-only assignment '
+                'with the essential user-visible behavior and saved output. Do not expand a simple request into a product spec '
+                'or impose a hard code-length limit. Let Cody choose a straightforward layout without a separate design pass '
+                'unless the user asks for design work or the task actually needs it. Stop after required work is delivered; '
+                'do not commission a second version just for polish. Preserve explicitly requested independent review. '
+                'For research choose Scout; '
                 'for independent checking choose Vera. Do not assign retired or unlisted agents. '
                 'Choose Ada for interpreting supplied data, comparisons and chart specifications; choose Iris for interface design, '
                 'user flows and accessibility. Do not add either unless the requested outcome benefits from that expertise. '

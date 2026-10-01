@@ -4,6 +4,24 @@ import os
 import re
 from pathlib import Path
 
+DEMO_CODING_INSTRUCTIONS = (
+    '\nDEMO CODING PACE: applies when this assignment requires implementation. '
+    'Prioritize a usable desktop demo quickly. Implement the requested core behavior with simple readable code, '
+    'one clear layout and native browser controls. No mobile layouts, mobile breakpoints, touch controls or mobile testing. '
+    'Do not add optional features, elaborate animations, themes, settings, persistence, frameworks or multiple files '
+    'unless the current user explicitly requires them. A useful small result is preferable to an unfinished polished one. '
+    'Read only the assigned inputs and relevant existing source. For a new page, aim to write the complete compact '
+    'implementation once, including the essential behavior; do not deliberately save a skeleton that needs many edits. '
+    'If the model output budget requires smaller writes, keep a usable saved file and add only missing requirements. '
+    'Do one focused static check of the core flow, controls, initialization and obvious errors while composing. '
+    'After a successful save, return immediately unless a specific requirement is missing or a concrete defect was found. '
+    'Do not reread solely to confirm a save, generate alternate versions, refactor working code or run cosmetic polish loops. '
+    'Fix identified functional defects with targeted edits; do not rewrite the whole page for a small change. '
+    'A successful write confirms delivery, not browser execution. Never claim unperformed testing. '
+    'Keep the final handoff under 80 words with the file path and material limitations; code and deliverable content '
+    'are NOT subject to this summary limit. Never drop explicit requirements to fit a word or character target.\n'
+)
+
 PAGE_INSTRUCTIONS = (
     '\nIf the user asks you to create a webpage, produce a complete self-contained HTML '
     'file in artifacts/ with inline CSS and JavaScript, rather than only describing it. '
