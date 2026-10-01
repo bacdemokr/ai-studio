@@ -171,6 +171,9 @@ class ContainerTests(unittest.TestCase):
         self.assertTrue((destination/'src/assets/build-a-claw-workshop.png').stat().st_mode & 0o004)
         self.assertTrue((destination/'src/studio.js').exists())
         self.assertIn('.:/opt/bac/source:ro', compose)
+        for name in ('index.mjs', 'openclaw.plugin.json'):
+            self.assertEqual((destination/'runtime/research-guard'/name).read_bytes(),
+                             (release.ROOT/'runtime/research-guard'/name).read_bytes())
         self.assertEqual((destination/'remove.py').read_bytes(), (release.ROOT/'scripts/container_remove.py').read_bytes())
         with self.assertRaisesRegex(ValueError, 'not overwritten'):
             release.bundle('bac-studio:0.1.0-rc.1', '0.1.0-rc.1', destination)

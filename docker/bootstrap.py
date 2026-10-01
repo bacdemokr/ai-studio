@@ -22,7 +22,8 @@ def check(source=SOURCE, manifest=MANIFEST):
     expected = json.loads(manifest.read_text())
     if fingerprint(source) != expected:
         raise RuntimeError('App requires a different runtime image. Use the matching release image, or rebuild from source with ./bac start.')
-    for name in ('scripts/container_runtime.py', 'scripts/build.py', 'src/studio.js', 'crew', 'skills'):
+    for name in ('scripts/container_runtime.py', 'scripts/build.py', 'src/studio.js', 'crew', 'skills',
+                 'runtime/research-guard/index.mjs', 'runtime/research-guard/openclaw.plugin.json'):
         if not (source / name).exists():
             raise RuntimeError('Incomplete app bundle: missing ' + name)
 
@@ -30,7 +31,7 @@ def check(source=SOURCE, manifest=MANIFEST):
 def stage(source=SOURCE, app=APP, manifest=MANIFEST):
     check(source, manifest)
     # Snapshot once per container start: patches never mix files in a running server.
-    for name in ('scripts', 'src', 'crew', 'skills', 'docker'):
+    for name in ('scripts', 'src', 'crew', 'skills', 'docker', 'runtime'):
         target = app / name
         if target.exists():
             shutil.rmtree(target)

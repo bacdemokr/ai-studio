@@ -69,7 +69,8 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 '''
 if args.check:
     required = ['scripts/serve.py', 'scripts/studio.py', 'scripts/container_runtime.py',
-                'scripts/agent_runtime.py', 'skills/bac-event-page/SKILL.md']
+                'scripts/agent_runtime.py', 'skills/bac-event-page/SKILL.md',
+                'runtime/research-guard/index.mjs', 'runtime/research-guard/openclaw.plugin.json']
     runtime_source = (ROOT / 'scripts/agent_runtime.py').read_text()
     required += ['skills/bac-' + name + '/SKILL.md'
                  for name in re.findall(r"project_skill\('([^']+)'\)", runtime_source)]
