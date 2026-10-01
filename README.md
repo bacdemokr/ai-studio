@@ -69,6 +69,13 @@ A newly launched model is stopped if readiness fails. Logs remain in the user
 journal; model files are preserved. Changing a managed model's launch settings
 requires `./bac vllm --stop` first.
 
+If the service launch record is missing or its invocation ID has changed,
+`./bac vllm` can still reuse the endpoint after checking the configured model,
+context limit and successful inference. It does not adopt or stop that service.
+If the endpoint is not ready, inspect `./bac vllm --status` and `./bac vllm --logs`
+and retry when loading finishes. `--restart` refuses an active service with an
+unmatched launch record before signalling any processes.
+
 Machine-specific configuration and service identity under `.local-model/` are
 ignored by Git. Do not put API credentials in this unauthenticated local model
 configuration. BaC removal does not delete the external weights or vLLM runtime;

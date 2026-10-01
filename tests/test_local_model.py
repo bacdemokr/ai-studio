@@ -109,6 +109,63 @@ class ModelTests(unittest.TestCase):
         with patch.object(self.model,'properties',return_value={'InvocationID':'new','ActiveState':'active'}),patch.object(lm.subprocess,'run') as run:
             self.model.stop();run.assert_not_called()
 
+    def test_unrecorded_or_changed_service_can_be_reused_without_ownership(self):
+        _, calls = self.server()
+        for receipt in ({}, {'unit': self.model.unit, 'invocation_id': 'old', 'spec': self.spec}):
+            with self.subTest(receipt=bool(receipt)):
+                self.model.state_path.unlink(missing_ok=True)
+                if receipt: lm.write(self.model.state_path, receipt)
+                with patch.object(self.model, 'properties', return_value={'InvocationID': 'new', 'ActiveState': 'active'}), \
+                     patch.object(lm.subprocess, 'run') as run:
+                    self.model.start()
+                    self.assertEqual(self.model.state(), receipt)
+                    self.assertFalse((self.model.directory/'attempt.json').exists())
+                    self.model.stop()
+                    run.assert_not_called()
+                self.assertTrue((self.model.directory/'connection.json').exists())
+        self.assertTrue(any(call[0] == 'POST' for call in calls))
+
+    def test_unrecorded_service_wrong_model_is_rejected_without_stopping(self):
+        self.server(wrong=True)
+        with patch.object(self.model, 'properties', return_value={'InvocationID': 'new', 'ActiveState': 'active'}), \
+             patch.object(lm.subprocess, 'run') as run:
+            with self.assertRaisesRegex(RuntimeError, 'does not expose'):
+                self.model.start()
+            run.assert_not_called()
+        self.assertFalse((self.model.directory/'connection.json').exists())
+        self.assertFalse(self.model.state_path.exists())
+
+    def test_unrecorded_service_not_ready_reports_recovery_without_launching(self):
+        with patch.object(self.model, 'properties', return_value={'InvocationID': 'new', 'ActiveState': 'activating'}), \
+             patch.object(self.model, 'probe', side_effect=OSError('not listening')), \
+             patch.object(lm.subprocess, 'run') as run:
+            with self.assertRaisesRegex(RuntimeError, 'if the model is still loading'):
+                self.model.start()
+            run.assert_not_called()
+
+    def test_unrecorded_service_failed_inference_is_not_stopped(self):
+        with patch.object(self.model, 'properties', return_value={'InvocationID': 'new', 'ActiveState': 'active'}), \
+             patch.object(self.model, 'probe'), \
+             patch.object(self.model, 'wait', side_effect=RuntimeError('inference failed')) as wait, \
+             patch.object(self.model, 'stop') as stop, patch.object(lm.subprocess, 'run') as run:
+            with self.assertRaisesRegex(RuntimeError, 'inference failed'):
+                self.model.start()
+            self.assertFalse(wait.call_args.args[1])
+            stop.assert_not_called(); run.assert_not_called()
+        self.assertFalse((self.model.directory/'connection.json').exists())
+
+    def test_restart_with_stale_identity_refuses_before_signalling_processes(self):
+        lm.write(self.model.state_path, {'unit': self.model.unit, 'invocation_id': 'old'})
+        with patch.object(self.model, 'properties', return_value={'InvocationID': 'new', 'ActiveState': 'active'}), \
+             patch.object(lm.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0)) as run, \
+             patch.object(self.model, 'stop') as stop, patch.object(self.model, 'stop_configured_process') as external, \
+             patch.object(self.model, 'start') as start:
+            with self.assertRaisesRegex(RuntimeError, 'before stopping anything'):
+                self.model.restart()
+            stop.assert_not_called(); external.assert_not_called(); start.assert_not_called()
+            self.assertEqual(run.call_count, 1)
+            self.assertEqual(run.call_args.args[0], ['systemctl', '--user', 'show-environment'])
+
     def test_owned_start_is_reused_and_configuration_change_requires_stop(self):
         lm.write(self.model.state_path,{'unit':self.model.unit,'invocation_id':'owned','spec':self.spec})
         with patch.object(self.model,'properties',return_value={'InvocationID':'owned','ActiveState':'active'}),patch.object(self.model,'wait') as wait,patch.object(lm.subprocess,'run') as run:

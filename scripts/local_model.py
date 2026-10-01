@@ -194,13 +194,22 @@ class Model:
         props = self.properties()
         managed = self.owned(state, props)
         active = props.get('ActiveState') in ('active', 'activating', 'deactivating')
-        if active and not managed:
-            raise RuntimeError('The model service name belongs to another invocation; refusing to control it.')
         if managed and active and state.get('spec') != spec:
             raise RuntimeError('A different model configuration is running. Run ./bac vllm --stop before switching.')
         newly_started = False
         if managed and active:
             print('Reusing the Studio-owned model service.', flush=True)
+        elif active:
+            # A missing/stale receipt does not prevent read-only reuse. Do not
+            # adopt the invocation or acquire permission to stop it by probing.
+            try:
+                self.probe(spec)
+            except (OSError, ValueError, RuntimeError) as exc:
+                raise RuntimeError(
+                    'An existing model service has no matching local launch record, and the configured model API is not ready or does not match. '
+                    'Nothing was stopped. Run ./bac vllm --status and ./bac vllm --logs; '
+                    'if the model is still loading, retry ./bac vllm after it is ready.\n' + str(exc)) from None
+            print('Reusing the verified model API without taking ownership of the existing service; it will be left running.', flush=True)
         elif self.listening(spec):
             # An external listener must already identify itself; never adopt or stop it.
             self.probe(spec)
@@ -346,6 +355,13 @@ class Model:
         props = self.properties()
         if self.owned(state, props):
             self.stop()
+        elif props.get('ActiveState') in ('active', 'activating', 'deactivating'):
+            # Killing a matching process cannot establish ownership of its
+            # systemd unit and may race its replacement or remaining workers.
+            raise RuntimeError(
+                'An existing model service has no matching local launch record. '
+                'Restart was cancelled before stopping anything. Run ./bac vllm to reuse the model '
+                'after it is ready, or inspect ./bac vllm --status and ./bac vllm --logs.')
         else:
             self.stop_configured_process(spec)
         deadline = time.monotonic() + 15
