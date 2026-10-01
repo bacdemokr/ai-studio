@@ -330,6 +330,11 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
             raise Problem('This agent’s policy is being updated. Please wait.', 409)
         return row
 
+    @staticmethod
+    def require_manual_chat(profile):
+        if 'radar' in (profile or {}).get('skills', []):
+            raise Problem('Tech Radar runs automatically. Manual chat is disabled.', 409)
+
     def require_idle(self, db, owner):
         if owner in self.executing_owners or db.execute("SELECT 1 FROM jobs WHERE owner=? AND status IN ('queued','running','waiting','stopping') AND NOT (kind='prepare-agent' AND status='queued')", (owner,)).fetchone():
             raise Problem('Finish or cancel this agent’s pending missions before changing it.', 409)
@@ -806,8 +811,8 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
             raise Problem('Event planning has been retired. Send /plan to Casey instead.', 410)
         # Automatic Tech Radar heartbeats use their own delivery path. Reject
         # manual requests before /plan can redirect them to the team workspace.
-        if data.get('kind', 'chat') in ('chat', 'reminder') and 'radar' in (self.profile(owner) or {}).get('skills', []):
-            raise Problem('Tech Radar runs automatically. Manual chat is disabled.', 409)
+        if data.get('kind', 'chat') in ('chat', 'reminder'):
+            self.require_manual_chat(self.profile(owner))
         collaborative = data.get('kind', 'chat') in ('chat', 'crew-chat') and is_plan(data.get('prompt'))
         if collaborative:
             if data.get('kind', 'chat') == 'chat':
@@ -867,7 +872,9 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
             if profile or not preset:
-                self.require_available(db, lead or owner)
+                available = self.require_available(db, lead or owner)
+                if kind in ('chat', 'reminder'):
+                    self.require_manual_chat(json.loads(available['profile']))
             elif not db.execute('SELECT 1 FROM agents WHERE id=? AND deleting=0', (owner,)).fetchone():
                 raise Problem('Open a new studio session.', 404)
             if db.execute('SELECT 1 FROM agent_policies WHERE owner=? AND (CASE WHEN ? THEN role>=0 ELSE role=-1 END) AND updating=1', (owner, preset)).fetchone():
@@ -882,7 +889,8 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
                 raise Problem('This agent is working. Wait for the current task to finish or stop it before sending a new message.', 409)
             if collaborative:
                 if origin['role'] is None:
-                    self.require_available(db, origin['owner'])
+                    original = self.require_available(db, origin['owner'])
+                    self.require_manual_chat(json.loads(original['profile']))
                 self.require_team_idle(db, owner)
                 payload['roundtable'] = self.capture_roundtable(db, owner)
             # An immediate personal request can do the same preparation itself.

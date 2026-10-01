@@ -94,6 +94,24 @@ class StudioTests(unittest.TestCase):
             with self.studio.db() as db:
                 self.assertEqual(db.execute('SELECT count(*) FROM jobs').fetchone()[0], before)
 
+    def test_switching_to_radar_during_submission_cannot_enqueue_manual_work(self):
+        original = self.studio.profile(self.owner)
+        radar = {**original, 'skills': ['radar']}
+        def become_radar():
+            with self.studio.db() as db:
+                db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(radar), self.owner))
+            return {'ready': True, 'teamReady': True}
+        for kind, prompt in [('chat', 'Hi'), ('reminder', 'Check later'), ('chat', '/plan summarize this')]:
+            with self.subTest(kind=kind, prompt=prompt):
+                with self.studio.db() as db:
+                    db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(original), self.owner))
+                    before = db.execute('SELECT count(*) FROM jobs').fetchone()[0]
+                with patch.object(self.studio, 'runtime_status', side_effect=become_radar):
+                    with self.assertRaisesRegex(Problem, 'Manual chat is disabled'):
+                        self.studio.enqueue(self.owner, {'kind': kind, 'prompt': prompt})
+                with self.studio.db() as db:
+                    self.assertEqual(db.execute('SELECT count(*) FROM jobs').fetchone()[0], before)
+
     def tearDown(self):
         self.temp.cleanup()
 

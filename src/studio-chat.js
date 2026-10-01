@@ -13,7 +13,7 @@ function renderDocuments(){
  panel.innerHTML='<small>Documents · '+escape(data.profile?.name||'')+'</small><ul>'+documents.map(file=>'<li title="'+escape(file.path.slice(6))+'"><span aria-hidden="true">▤</span><span>'+escape(file.path.slice(6))+'</span><small>'+escape(file.size<1024*1024?Math.max(1,Math.ceil(file.size/1024))+' KB':(file.size/1024/1024).toFixed(1)+' MB')+'</small></li>').join('')+'</ul>'+(busy?'<p role="status">Adding '+escape(documentUploadName)+'…</p>':'');
 }
 async function uploadDocuments(files){
- if(!files.length||documentUploadTarget!==null)return;
+ if(!files.length||documentUploadTarget!==null||radarChatDisabled())return;
  if(!data.profile||data.deleting){alert('Choose an available agent before adding documents.');return;}
  const target=agentId,revision=dialogRevision,errors=[];documentUploadTarget=target;pendingWrites++;renderDocuments();syncComposer();
  try{
@@ -56,13 +56,14 @@ async function stopChat(id,crew=false){
 const documentDropZone=el('companion');
 for(const eventName of ['dragenter','dragover'])documentDropZone.addEventListener(eventName,event=>{
  if(![...event.dataTransfer.types].includes('Files'))return;
- event.preventDefault();event.dataTransfer.dropEffect=data.deleting||documentUploadTarget!==null?'none':'copy';
- documentDropZone.classList.toggle('document-drag-over',!data.deleting&&documentUploadTarget===null);
+ event.preventDefault();event.dataTransfer.dropEffect=radarChatDisabled()||data.deleting||documentUploadTarget!==null?'none':'copy';
+ documentDropZone.classList.toggle('document-drag-over',!radarChatDisabled()&&!data.deleting&&documentUploadTarget===null);
 });
 documentDropZone.addEventListener('dragleave',event=>{if(!documentDropZone.contains(event.relatedTarget))documentDropZone.classList.remove('document-drag-over');});
 documentDropZone.addEventListener('drop',event=>{
  if(![...event.dataTransfer.types].includes('Files'))return;
  event.preventDefault();documentDropZone.classList.remove('document-drag-over');
+ if(radarChatDisabled()||data.deleting)return;
  const files=[...event.dataTransfer.files],images=files.filter(file=>file.type.startsWith('image/'));
  if(images.length)addChatImages(images);
  uploadDocuments(files.filter(file=>!file.type.startsWith('image/')));
@@ -125,6 +126,7 @@ function syncComposer(){
   el('run-options').disabled=el('send-all').disabled;
   if(el('run-options').disabled)setRunOptions(false);
   el('attach').disabled=radar||!!data.deleting||!data.profile||documentUploadTarget!==null;
+  el('schedule').disabled=radar||!!data.deleting;
   el('chat-connection').hidden=!blocked;
   el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':radar?'Tech Radar runs automatically. Manual chat is disabled.':!runtime.gateway?(gatewayState()==='slow'?'Waiting for the agent runtime to respond. Checking automatically.':'Agent runtime unavailable. Retry the connection to continue.'):'Model not connected. Connect a model to start chatting.';
   el('chat-connect').hidden=radar||!unavailable||(runtime.gateway&&settingsButton.hidden);
