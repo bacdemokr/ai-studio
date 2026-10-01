@@ -149,7 +149,7 @@ attached CSV. Use only the supplied data and include a clear comparison chart.
 
 **Heartbeat:** hire **Tech Radar** to share one previously unshared technical article every 30 seconds, with a source link. Pause or resume in the agent panel. Tech Radar is automatic-only: manual chat and attachments are disabled, and group chat requests exclude it. [Heartbeat and Telegram details](docs/heartbeat.md).
 
-**Settings → Location** sets the default city (Zurich). **Settings → Reset** contains Lounge agents reset. The **Reset button beside Mission Control** stops active Stage 3 work and clears team chats, plan files, and attached team documents after confirmation; personal agents and model settings are preserved. **Settings → Telegram** optionally relays new Heartbeat summaries while the connected tab stays open.
+**Settings → Location** sets the default city (Zurich). **Settings → Reset** offers **Remove agents** for Stages 1 & 2, **Reset Stage 3** for team work and data, and **Reset all** for both. Reset all stops and clears Stage 3 before removing hired agents; model and connection settings are preserved. The **Reset button beside Mission Control** stops active Stage 3 work and clears team chats, plan files, and attached team documents after confirmation; personal agents and model settings are preserved. **Settings → Telegram** optionally relays new Heartbeat summaries while the connected tab stays open.
 
 ### Review and bounded rework
 

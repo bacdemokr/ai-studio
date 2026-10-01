@@ -17,7 +17,7 @@ with tempfile.TemporaryDirectory() as d:
  await p.route('**/api/delete-agent',r=>{if(step===1&&fail){fail=false;return r.fulfill({status:503,json:{error:'Cleanup needs retry.'}})}assert.equal(r.request().postDataJSON().name,fixture.states[step].agents[0].name);return r.fulfill({json:fixture.results[step++]})});
  let bacCalls=0,bacBusy=false,bacPending=0;await p.route('**/api/bac-reset',r=>{bacCalls++;if(bacPending>0){return r.fulfill({json:{reset:false,resetting:true}});}return bacBusy?r.fulfill({status:409,json:{error:'BaC is still running. Nothing was reset.'}}):r.fulfill({json:{reset:true}});});
  await p.goto(process.env.BAC_TEST_URL||'http://127.0.0.1:8080');await p.waitForFunction(()=>window.BacStudio);
- async function openReset(){await p.locator('#studio-config').click();await p.locator('#studio-settings-reset-tab').click();assert.equal(await p.locator('#studio-settings-reset-panel button').count(),1);}
+ async function openReset(){await p.locator('#studio-config').click();await p.locator('#studio-settings-reset-tab').click();assert.equal(await p.locator('#studio-settings-reset-panel button').count(),3);}
  await p.route('**/api/jobs',r=>r.fulfill({json:{id:'fixture-compare'}}));
  await p.evaluate(()=>BacStudio.setRoom('lounge'));await p.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
  await p.locator('#studio-prompt').fill('Old comparison');
@@ -31,7 +31,7 @@ with tempfile.TemporaryDirectory() as d:
  assert.equal(step,2);assert(await p.locator('#studio-compare-open').evaluate(e=>e.hidden),'Reset must clear previous comparison before another agent is hired');assert(await p.locator('#studio-agent-reset').isDisabled());assert.equal(await p.evaluate(()=>BacStudio.inspect().profile),null);
  assert(!(await p.locator('#studio-dialog').evaluate(e=>e.open)),'Bulk cleanup must release the modal');await p.reload();await p.waitForFunction(()=>window.BacStudio);assert.equal(await p.evaluate(()=>BacCampus.inspect().residents.length),0);
  assert.equal(bacCalls,0,'Lounge reset must not reset the team');
- await openReset();assert.equal(await p.locator('#studio-reset-all').count(),0);assert(await p.locator('#studio-agent-reset').isDisabled());
+ await openReset();assert(await p.locator('#studio-reset-all').isVisible());assert(await p.locator('#studio-agent-reset').isDisabled());
  assert.deepEqual(errors,[]);console.log('PASS: Lounge reset, inline partial failure/retry, zero agents, comparison cleanup and no team reset. Disposable data and mocked HTTP only.');
 
  }finally{await b.close()}

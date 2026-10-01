@@ -50,7 +50,7 @@ python3 -B tests/fixture_settings.py
 node tests/settings.cjs
 ```
 
-Settings has Lounge model, Location, Telegram and Reset tabs. Settings → Reset removes hired Lounge agents and their data. The separate Reset button beside Mission Control stops Stage 3 work and clears team data after confirmation. Switching tabs preserves model drafts. Load models displays a visible list (manual model IDs remain supported); missing keys, empty responses and errors appear next to the model controls.
+Settings has Lounge model, Location, Telegram and Reset tabs. Settings → Reset provides Remove agents (Stages 1 & 2), Reset Stage 3 (stop work and clear team data), and Reset all (Stage 3 first, then hired agents). Model and connection settings are preserved. The separate Reset button beside Mission Control stops Stage 3 work and clears team data after confirmation. Switching tabs preserves model drafts. Load models displays a visible list (manual model IDs remain supported); missing keys, empty responses and errors appear next to the model controls.
 
 ## Location
 

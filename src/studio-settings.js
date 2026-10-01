@@ -29,7 +29,11 @@ settingsButton.onclick=async()=>{
   <label for="studio-telegram-token">Bot token (create your bot with <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer">@BotFather</a> and paste its token)</label><input id="studio-telegram-token" type="password" autocomplete="off" spellcheck="false" placeholder="Token from @BotFather (e.g. 123456789:ABCdef...)">
   <label for="studio-telegram-chat">Chat ID (open <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer">@userinfobot</a>, type /start, copy your Id)</label><input id="studio-telegram-chat" autocomplete="off" spellcheck="false" placeholder="Numeric chat ID (e.g. 123456789)">
   <p id="studio-telegram-status" role="status" hidden></p><div id="studio-telegram-controls" hidden><div class="studio-dialog-actions"><button type="button" id="studio-telegram-test" class="studio-secondary">Send test</button><button type="button" id="studio-telegram-disconnect" class="studio-secondary">Disconnect</button></div></div></section>
-  <section id="studio-settings-reset-panel" role="tabpanel" aria-labelledby="studio-settings-reset-tab" class="studio-agent-reset" hidden><div class="studio-reset-row"><div><h3>Lounge agents</h3><p>Remove hired agents and their data.</p></div><button type="button" id="studio-agent-reset" class="studio-secondary" aria-label="Reset Lounge agents" ${(data.agents||[]).length?'':'disabled'}>Reset</button></div></section>
+  <section id="studio-settings-reset-panel" role="tabpanel" aria-labelledby="studio-settings-reset-tab" class="studio-agent-reset" hidden>
+   <div class="studio-reset-row"><div><small class="studio-reset-stage">STAGES 01 / 02</small><h3>Hiring &amp; Agent lounge</h3><p>Remove hired agents and their chats, files, and workspaces.</p></div><button type="button" id="studio-agent-reset" class="studio-secondary" aria-label="Remove Stage 1 and 2 agents" ${(data.agents||[]).length?'':'disabled'}>Remove agents</button></div>
+   <div class="studio-reset-row"><div><small class="studio-reset-stage">STAGE 03</small><h3>Multi-Agent demo</h3><p>Stop active team work and clear team chats, documents, files, and the board.</p></div><button type="button" id="studio-settings-bac-reset" class="studio-secondary" aria-label="Reset Stage 3">Reset Stage 3</button></div>
+   <div class="studio-reset-footer"><p>Reset all stages. Model and connection settings are kept.</p><button type="button" id="studio-reset-all" class="studio-danger">Reset all</button></div>
+  </section>
   <p id="studio-settings-status" role="status"></p><div class="studio-dialog-actions"><button type="button" id="studio-start-agents" class="studio-secondary" ${runtime.gateway?'hidden':''}>Start agents</button><button type="submit" class="studio-primary" id="studio-save-settings">Connect model</button></div></form>`);
   const form=el('config-form'),modelList=el('model-options'),modelStatus=el('model-status'),loadButton=el('load-models');
   function showTelegram(){el('telegram-status').textContent=telegram.connected?'Connected to @'+telegram.bot+' · chat '+telegram.chatId:telegram.error||'';el('telegram-status').hidden=!telegram.connected&&!telegram.error;el('telegram-controls').hidden=!telegram.connected;el('telegram-test').disabled=!telegram.connected;el('telegram-disconnect').disabled=!telegram.connected;el('telegram-chat').value=telegram.chatId||'';}
@@ -39,6 +43,8 @@ settingsButton.onclick=async()=>{
   el('telegram-test').onclick=()=>telegramAction('test');el('telegram-disconnect').onclick=()=>telegramAction('disconnect');
   el('location-city').value=settings.location?.city||'Zurich';
   el('agent-reset').onclick=()=>resetStudio('lounge');
+  el('settings-bac-reset').onclick=()=>resetStudio('bac');
+  el('reset-all').onclick=()=>resetStudio('all');
   let tab='model',generation=0,availableModels=[],hasMoreModels=false,connecting=false;
   const currentForm=()=>el('config-form')===form&&el('dialog').open;
   const modelSearch=el('model-search'),changeModel=el('change-model');
@@ -121,12 +127,12 @@ async function resetStudio(scope,sourceButton=null){
  const buttons=(sourceButton?[sourceButton]:[...modal.querySelectorAll('button')]).map(button=>[button,button.disabled]);
  modal.addEventListener('cancel',blockClose);buttons.forEach(([button])=>button.disabled=true);
  status.hidden=false;status.textContent='Resetting…';
- let completed=0,total=0,next=agentId,background=false;
+ let completed=0,total=0,next=agentId,background=false,teamCleared=false;
  const originalSelection=agentId;
  try{
   const latest=await api('state',undefined,'');
   const agents=scope==='bac'?[]:latest.agents||[];total=agents.length;
-  if(scope==='bac'){
+  if(scope==='bac'||scope==='all'){
    let reset=await api('bac-reset',{},latest.agentId);
    while(reset.resetting){
     status.textContent='Stopping BaC work and resetting…';
@@ -134,7 +140,7 @@ async function resetStudio(scope,sourceButton=null){
     const snapshot=await api('state',undefined,'');
     reset={resetting:!!snapshot.bacResetting};
    }
-   selectedJob=null;
+   selectedJob=null;teamCleared=true;
   }
   // Persist every request first. Closing Settings or reloading must not lose
   // the remainder of a bulk deletion while the native runtime drains it.
@@ -156,10 +162,10 @@ async function resetStudio(scope,sourceButton=null){
    clearTimeout(comparisonTimer);comparison=null;comparePanel.replaceChildren();delete comparePanel.dataset.batch;
    if(!changingAgent&&(agentId===originalSelection||agents.some(a=>a.key===agentId))){openAgentState(state);fillCreator(true);setRoom('workshop');}
   }
-  status.textContent=scope==='bac'?'BaC reset.':'Lounge agents reset.';
+  status.textContent=scope==='all'?'All stages reset.':scope==='bac'?'Stage 3 reset.':'Lounge agents reset.';
   if(background)alert('Cleanup complete. '+completed+' agents removed.');
  }catch(error){
-  status.textContent=(completed?`${completed} / ${total} removed. `:'')+error.message;
+  status.textContent=(scope==='all'&&teamCleared?'Stage 3 was reset. ':'')+(completed?`${completed} / ${total} removed. `:'')+error.message;
   if(background)alert(status.textContent);
   try{const state=await api('state',undefined,'');if(state.agentId===agentId){data=state;render();}else openAgentState(state);}catch{}
  }finally{

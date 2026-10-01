@@ -6,7 +6,7 @@ On Ubuntu or DGX Spark, put the NVIDIA inference key in `api.cfg` beside `bac`, 
 
 Rehearse one real personal-agent task and one `/plan` task with the target models. If demonstrating OpenShell, also rehearse a protected file read and website approval on that host. Use a desktop browser and Enter for presentation mode. Keep previous results available, but identify them as previous runs.
 
-Use **Reset beside Mission Control** to stop active Stage 3 work and clear team chats, attached team documents, generated files and the current plan after confirmation. **Settings → Reset → Lounge agents** removes hired agents and their data. Download anything needed before resetting. A normal `./bac start` preserves saved demo data.
+Use **Reset beside Mission Control** to stop active Stage 3 work and clear team chats, attached team documents, generated files and the current plan after confirmation. **Settings → Reset → Remove agents** removes Stage 1 & 2 agents and their data. **Reset Stage 3** stops team work and clears its data; **Reset all** does both, resetting Stage 3 first. Model and connection settings are preserved. Download anything needed before resetting. A normal `./bac start` preserves saved demo data.
 
 ## Hiring and Lounge
 
