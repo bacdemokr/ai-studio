@@ -401,7 +401,8 @@ function renderCrewPassport(){
  const key=agentId+':'+i,switched=key!==crewChatKey;
  if(switched){if(crewChatKey)crewDrafts.set(crewChatKey,el('crew-prompt').value);crewChatKey=key;el('crew-prompt').value=crewDrafts.get(key)??defaultCrewPrompt(i);el('crew-chat-error').hidden=true;}
  renderImageDrafts(true);
- el('crew-prompt').placeholder='Message '+name+'… or /plan a task with the BaC team';syncCrewComposer();
+ el('crew-prompt').placeholder='Message '+name+'…'+(i===0?' or /plan a task with the BaC team':'');
+ el('crew-prompt').dataset.planEnabled=String(i===0);syncCrewComposer();
  const turns=(data.crewChats||[]).filter(j=>j.payload.crewRole===i||(j.payload.collaboration&&(j.payload.collaboration.origin?.role===i||j.payload.collaboration.handoffs?.[i]||j.payload.collaboration.tasks?.some(t=>t.role===i)||j.payload.collaboration.activeRole===i))).map(j=>({...j,direct:true}));
  turns.sort((a,b)=>a.created-b.created);
  const signature=JSON.stringify([key,[...pendingChatStops],turns.map(j=>[j.id,j.status,j.result,j.payload.collaboration?.liveActivity?{...j.payload.collaboration,liveActivity:{...j.payload.collaboration.liveActivity,elapsed:0}}:j.payload.collaboration,j.events?.at(-1),shieldReplyHeld(j,i)])]);

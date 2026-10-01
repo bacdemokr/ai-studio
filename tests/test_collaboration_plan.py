@@ -111,12 +111,14 @@ class CollaborationTests(unittest.TestCase):
         self.app.execute(self.app.next_job())
         self.assertEqual([a for a,_,_ in self.adapter.calls], [self.app.crew_native_id(team,6)])
 
-    def test_command_in_specialist_chat_still_uses_captain(self):
+    def test_command_in_specialist_chat_is_rejected(self):
         team = self.app.crew_owner(self.owner)
-        result = self.app.enqueue(team, {'kind':'crew-chat','crewRole':7,'prompt':'/plan Write a proposal'})
-        self.app.execute(self.app.next_job())
-        self.assertEqual(self.job(result)['payload']['crewRole'],0)
-        self.assertEqual(self.adapter.calls[0][0],self.app.crew_native_id(team,0))
+        for role in (4,5,6,7,8):
+            for command in ('/plan', ' \n/PLANS'):
+                with self.subTest(role=role, command=command), self.assertRaisesRegex(Problem, 'Send /plan to Casey'):
+                    self.app.enqueue(team, {'kind':'crew-chat','crewRole':role,'prompt':command+' Write a proposal'})
+        self.assertIsNone(self.app.next_job())
+        self.assertEqual(self.adapter.calls, [])
 
     def test_removed_specialists_cannot_be_called_directly_or_in_plan(self):
         team=self.app.crew_owner(self.owner)

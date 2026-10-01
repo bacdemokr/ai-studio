@@ -821,6 +821,8 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
             origin_role = data.get('crewRole') if data.get('kind') == 'crew-chat' else None
             if data.get('kind') == 'crew-chat' and (type(origin_role) is not int or not 0 <= origin_role < len(ROLES)):
                 raise Problem('Choose a crew member.')
+            if data.get('kind') == 'crew-chat' and origin_role != 0:
+                raise Problem('Send /plan to Casey. Specialists accept direct messages only.')
             origin = {'owner': owner, 'role': origin_role}
             task = text(plan_task(data['prompt']), 5995, 'Task after /plan')
             owner = self.crew_owner(owner)

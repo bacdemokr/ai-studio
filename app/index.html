@@ -80937,7 +80937,8 @@ function renderCrewPassport(){
  const key=agentId+':'+i,switched=key!==crewChatKey;
  if(switched){if(crewChatKey)crewDrafts.set(crewChatKey,el('crew-prompt').value);crewChatKey=key;el('crew-prompt').value=crewDrafts.get(key)??defaultCrewPrompt(i);el('crew-chat-error').hidden=true;}
  renderImageDrafts(true);
- el('crew-prompt').placeholder='Message '+name+'… or /plan a task with the BaC team';syncCrewComposer();
+ el('crew-prompt').placeholder='Message '+name+'…'+(i===0?' or /plan a task with the BaC team':'');
+ el('crew-prompt').dataset.planEnabled=String(i===0);syncCrewComposer();
  const turns=(data.crewChats||[]).filter(j=>j.payload.crewRole===i||(j.payload.collaboration&&(j.payload.collaboration.origin?.role===i||j.payload.collaboration.handoffs?.[i]||j.payload.collaboration.tasks?.some(t=>t.role===i)||j.payload.collaboration.activeRole===i))).map(j=>({...j,direct:true}));
  turns.sort((a,b)=>a.created-b.created);
  const signature=JSON.stringify([key,[...pendingChatStops],turns.map(j=>[j.id,j.status,j.result,j.payload.collaboration?.liveActivity?{...j.payload.collaboration,liveActivity:{...j.payload.collaboration.liveActivity,elapsed:0}}:j.payload.collaboration,j.events?.at(-1),shieldReplyHeld(j,i)])]);
@@ -81659,11 +81660,13 @@ for(const id of ['prompt','crew-prompt']){
  option.innerHTML='<strong>/plan</strong><span>Collaborate with the BaC team</span><small>↵</small>';menu.append(option);
  input.setAttribute('aria-controls',menu.id);input.setAttribute('aria-autocomplete','list');
  const close=()=>{menu.hidden=true;input.removeAttribute('aria-activedescendant');};
- const update=()=>{const value=input.value.trimStart();const show=!input.disabled&&/^\/(?:p(?:l(?:a(?:ns?)?)?)?)?$/i.test(value)&&input.selectionStart===input.value.length;
+ const enabled=()=>id!=='crew-prompt'||input.dataset.planEnabled==='true';
+ const update=()=>{const value=input.value.trimStart();const show=enabled()&&!input.disabled&&/^\/(?:p(?:l(?:a(?:ns?)?)?)?)?$/i.test(value)&&input.selectionStart===input.value.length;
   menu.hidden=!show;if(show)input.setAttribute('aria-activedescendant',option.id);else input.removeAttribute('aria-activedescendant');};
- const choose=()=>{input.value='/plan ';close();input.focus({preventScroll:true});input.setSelectionRange(input.value.length,input.value.length);input.dispatchEvent(new Event('input',{bubbles:true}));};
+ const choose=()=>{if(!enabled()){close();return;}input.value='/plan ';close();input.focus({preventScroll:true});input.setSelectionRange(input.value.length,input.value.length);input.dispatchEvent(new Event('input',{bubbles:true}));};
  input.addEventListener('input',update);input.addEventListener('focus',update);input.addEventListener('click',update);
  input.addEventListener('keydown',event=>{
+  if(!enabled()){close();return;}
   if(menu.hidden||event.isComposing)return;
   if(['Enter','Tab','Escape','ArrowDown','ArrowUp'].includes(event.key)&&!event.shiftKey){
    event.preventDefault();event.stopImmediatePropagation();
@@ -81673,7 +81676,7 @@ for(const id of ['prompt','crew-prompt']){
  option.addEventListener('pointerdown',event=>event.preventDefault());option.addEventListener('click',choose);
  anchor.addEventListener('focusout',event=>{if(!anchor.contains(event.relatedTarget))close();});
  input.form.addEventListener('submit',close);
- new MutationObserver(()=>{if(input.disabled)close();}).observe(input,{attributes:true,attributeFilter:['disabled']});
+ new MutationObserver(()=>{if(input.disabled||!enabled())close();}).observe(input,{attributes:true,attributeFilter:['disabled','data-plan-enabled']});
 }
 
   // Three places in one studio: creation, a growing personal collection, and crew work.

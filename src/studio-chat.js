@@ -244,11 +244,13 @@ for(const id of ['prompt','crew-prompt']){
  option.innerHTML='<strong>/plan</strong><span>Collaborate with the BaC team</span><small>↵</small>';menu.append(option);
  input.setAttribute('aria-controls',menu.id);input.setAttribute('aria-autocomplete','list');
  const close=()=>{menu.hidden=true;input.removeAttribute('aria-activedescendant');};
- const update=()=>{const value=input.value.trimStart();const show=!input.disabled&&/^\/(?:p(?:l(?:a(?:ns?)?)?)?)?$/i.test(value)&&input.selectionStart===input.value.length;
+ const enabled=()=>id!=='crew-prompt'||input.dataset.planEnabled==='true';
+ const update=()=>{const value=input.value.trimStart();const show=enabled()&&!input.disabled&&/^\/(?:p(?:l(?:a(?:ns?)?)?)?)?$/i.test(value)&&input.selectionStart===input.value.length;
   menu.hidden=!show;if(show)input.setAttribute('aria-activedescendant',option.id);else input.removeAttribute('aria-activedescendant');};
- const choose=()=>{input.value='/plan ';close();input.focus({preventScroll:true});input.setSelectionRange(input.value.length,input.value.length);input.dispatchEvent(new Event('input',{bubbles:true}));};
+ const choose=()=>{if(!enabled()){close();return;}input.value='/plan ';close();input.focus({preventScroll:true});input.setSelectionRange(input.value.length,input.value.length);input.dispatchEvent(new Event('input',{bubbles:true}));};
  input.addEventListener('input',update);input.addEventListener('focus',update);input.addEventListener('click',update);
  input.addEventListener('keydown',event=>{
+  if(!enabled()){close();return;}
   if(menu.hidden||event.isComposing)return;
   if(['Enter','Tab','Escape','ArrowDown','ArrowUp'].includes(event.key)&&!event.shiftKey){
    event.preventDefault();event.stopImmediatePropagation();
@@ -258,5 +260,5 @@ for(const id of ['prompt','crew-prompt']){
  option.addEventListener('pointerdown',event=>event.preventDefault());option.addEventListener('click',choose);
  anchor.addEventListener('focusout',event=>{if(!anchor.contains(event.relatedTarget))close();});
  input.form.addEventListener('submit',close);
- new MutationObserver(()=>{if(input.disabled)close();}).observe(input,{attributes:true,attributeFilter:['disabled']});
+ new MutationObserver(()=>{if(input.disabled||!enabled())close();}).observe(input,{attributes:true,attributeFilter:['disabled','data-plan-enabled']});
 }
