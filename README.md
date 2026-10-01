@@ -134,7 +134,7 @@ Keyless local servers need no API key. Provider keys entered in these settings a
 2. **Agent lounge:** chat with a hired agent, inspect files, or approve OpenShell access.
 3. **Multi-Agent demo:** message Casey or use `/plan` with a concrete task. Add documents when needed. Casey selects the specialists needed for the request.
 
-Multi-Agent chats start with `/plan ` and restore it after a successful send. Delete the prefix to send a direct message; existing drafts stay intact when switching characters.
+Casey's chat starts with `/plan ` and restores it after a successful send. Delete the prefix to send a direct message. Specialists start with an empty input and clear it after sending; existing drafts stay intact when switching characters.
 
 The room starts with Casey. The selected specialists join together and execute in assignment order. The pool is Scout (Web Researcher), Ada (Data analyst), Iris (UX designer), Cody (Programmer), and Vera (Reviewer). The old Plan a BaC event-template flow and Dylan, Alex, and Morgan are retired.
 
