@@ -804,6 +804,10 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
     def enqueue(self, owner, data, source='web', due=0, lead=None):
         if data.get('kind') in ('crew', 'prepare'):
             raise Problem('Event planning has been retired. Send /plan to Casey instead.', 410)
+        # Automatic Tech Radar heartbeats use their own delivery path. Reject
+        # manual requests before /plan can redirect them to the team workspace.
+        if data.get('kind', 'chat') in ('chat', 'reminder') and 'radar' in (self.profile(owner) or {}).get('skills', []):
+            raise Problem('Tech Radar runs automatically. Manual chat is disabled.', 409)
         collaborative = data.get('kind', 'chat') in ('chat', 'crew-chat') and is_plan(data.get('prompt'))
         if collaborative:
             if data.get('kind', 'chat') == 'chat':

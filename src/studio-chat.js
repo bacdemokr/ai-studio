@@ -114,22 +114,23 @@ for(const crew of [false,true]){
  input.addEventListener('paste',event=>{const images=[...event.clipboardData.items].filter(item=>item.kind==='file'&&item.type.startsWith('image/')).map(item=>item.getAsFile()).filter(Boolean);if(images.length){event.preventDefault();addChatImages(images,crew)}});
 }
 let chatSending=false;
+function radarChatDisabled(profile=data.profile){return !!profile?.skills?.includes('radar');}
 function syncComposer(){
   if(!connected)return;
   const planning=/^\/plans?(?:\s|$)/i.test(el('prompt').value.trim());
-  const unavailable=!(planning?teamReady():runtime.ready),blocked=unavailable||!!data.deleting;
-  el('prompt').disabled=(!runtime.ready&&!teamReady())||!!data.deleting;
+  const radar=radarChatDisabled(),unavailable=!(planning?teamReady():runtime.ready),blocked=radar||unavailable||!!data.deleting;
+  el('prompt').disabled=radar||(!runtime.ready&&!teamReady())||!!data.deleting;
   el('send').disabled=blocked||chatSending||comparisonSending||documentUploadTarget===agentId;
-  el('send-all').disabled=!runtime.ready||blocked||chatSending||comparisonSending||documentUploadTarget===agentId||(data.agents||[]).length<2;
+  el('send-all').disabled=!runtime.ready||blocked||chatSending||comparisonSending||documentUploadTarget===agentId||(data.agents||[]).filter(agent=>!radarChatDisabled(agent)).length<2;
   el('run-options').disabled=el('send-all').disabled;
   if(el('run-options').disabled)setRunOptions(false);
-  el('attach').disabled=!!data.deleting||!data.profile||documentUploadTarget!==null;
+  el('attach').disabled=radar||!!data.deleting||!data.profile||documentUploadTarget!==null;
   el('chat-connection').hidden=!blocked;
-  el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':!runtime.gateway?(gatewayState()==='slow'?'Waiting for the agent runtime to respond. Checking automatically.':'Agent runtime unavailable. Retry the connection to continue.'):'Model not connected. Connect a model to start chatting.';
-  el('chat-connect').hidden=!unavailable||(runtime.gateway&&settingsButton.hidden);
+  el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':radar?'Tech Radar runs automatically. Manual chat is disabled.':!runtime.gateway?(gatewayState()==='slow'?'Waiting for the agent runtime to respond. Checking automatically.':'Agent runtime unavailable. Retry the connection to continue.'):'Model not connected. Connect a model to start chatting.';
+  el('chat-connect').hidden=radar||!unavailable||(runtime.gateway&&settingsButton.hidden);
   el('chat-connect').textContent=!runtime.gateway?'Retry connection':'Connect model';
   el('chat-connect').disabled=runtimeRetrying;
-  el('prompt').placeholder=data.deleting?'This agent is paused for deletion…':!runtime.gateway?'Waiting for the agent runtime…':!runtime.model?'Connect a model to message your agent…':'Message your agent… or /plan a task with the BaC team';
+  el('prompt').placeholder=data.deleting?'This agent is paused for deletion…':radar?'Automatic Tech Radar updates only':!runtime.gateway?'Waiting for the agent runtime…':!runtime.model?'Connect a model to message your agent…':'Message your agent… or /plan a task with the BaC team';
   el('equipped').querySelectorAll('button').forEach(button=>button.disabled=blocked);
 }
 el('chat-connect').onclick=connectionAction;

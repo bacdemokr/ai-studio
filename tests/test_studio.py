@@ -80,6 +80,20 @@ class StudioTests(unittest.TestCase):
         # General chat fixtures exclude the independent background monitor.
         self.studio.onboard(self.owner, {'name': 'Jinny', 'persona': 'maker', 'skills': [s for s in agent_runtime.SKILLS if s != 'radar']})
 
+    def test_tech_radar_manual_requests_rejected_before_plan_routing(self):
+        profile = {**self.studio.profile(self.owner), 'skills': ['radar', 'web']}
+        with patch.object(self.studio, 'profile', return_value=profile), \
+             patch.object(self.studio, 'crew_owner') as route:
+            with self.studio.db() as db:
+                before = db.execute('SELECT count(*) FROM jobs').fetchone()[0]
+            for request in ({'prompt': 'Hi'}, {'kind': 'chat', 'prompt': '/plan research this'},
+                            {'kind': 'reminder', 'prompt': 'Check later', 'delay': 60}):
+                with self.subTest(request=request), self.assertRaisesRegex(Problem, 'Manual chat is disabled'):
+                    self.studio.enqueue(self.owner, request)
+            route.assert_not_called()
+            with self.studio.db() as db:
+                self.assertEqual(db.execute('SELECT count(*) FROM jobs').fetchone()[0], before)
+
     def tearDown(self):
         self.temp.cleanup()
 
