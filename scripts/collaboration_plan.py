@@ -9,6 +9,7 @@ from webpage_artifacts import PAGE_INSTRUCTIONS, html_files, collect_pages
 from plan_inputs import requested_inputs, input_manifest, validate_assignments
 from plan_handoff import required_files, missing_files
 from plan_revision import PLAN_TIME_BUDGET_SECONDS, PlanBudgetExceeded, read_revision, effective_outputs, revision_instructions
+from plan_review import requested_review, include_required_review, review_finished
 
 
 SCOUT_COMPLETION_RULE = (
@@ -102,6 +103,10 @@ def read_plan(answer):
         assignment['requiredFiles'] = required_files(task)
         clean.append(assignment)
     result = {'summary': summary.strip(), 'tasks': clean}
+    if 'reviewRequired' in value:
+        if type(value['reviewRequired']) is not bool:
+            raise RuntimeError('The Captain returned an invalid review requirement.')
+        result['reviewRequired'] = value['reviewRequired']
     if not clean:
         answer = value.get('answer')
         if not isinstance(answer, str) or not 0 < len(answer.strip()) <= 24000:
@@ -202,6 +207,8 @@ class CollaborationPlans:
         from agent_runtime import collaboration_capabilities, GatewayError
         owner, job_id = row['owner'], row['id']
         plan = payload['collaboration']
+        explicit_review = requested_review(plan['task'])
+        plan['reviewRequired'] = explicit_review
         deadline = monotonic() + PLAN_TIME_BUDGET_SECONDS
         research_deadline = None
         plan['timeBudgetSeconds'] = PLAN_TIME_BUDGET_SECONDS
@@ -327,6 +334,8 @@ class CollaborationPlans:
             'Document extraction may omit images, formulas and layout. Do not claim to have examined omitted content.')
 
         captain_context = (
+            ('\nMANDATORY: The user explicitly requested review. Include Vera in the initial team, after the producer. '
+             'Do not waive this requirement because the analysis looks sufficient or its file was saved.\n' if explicit_review else '') +
             '\nCommunication style: ' + CREW_CATALOG[0]['collaboration'].get('voice', '') + '\n' +
             '\nThis run can call at most three specialists, once each in the initial plan. '
             'A final progress review may authorize one extra, targeted revision by an already participating specialist. '
@@ -679,6 +688,12 @@ class CollaborationPlans:
 
 
         def finish(answer, reactions=True):
+            if plan.get('reviewRequired') and not review_finished(plan):
+                if plan.get('outcome', 'complete') == 'complete':
+                    plan['outcome'] = 'partial'
+                plan['remaining'] = list(dict.fromkeys(['Requested independent review'] + plan.get('remaining', [])))[:8]
+                answer = 'Requested independent review was not completed. This result is unreviewed.\n\n' + str(answer)
+                reactions = False
             evidence = plan.get('researchSources', [])
             if evidence:
                 from research_citations import unsupported_citations
@@ -758,6 +773,10 @@ class CollaborationPlans:
                 'Match the requested deliverable: a summary, comparison table, invitation or explanation is a chat answer or Markdown, '
                 'not a request for an HTML page. Do not add implementation, design or independent review unless the user asks for that deliverable or it is necessary. '
                 'For tool-dependent or specialized work, one specialist is enough if they can satisfy the request. Never fill a team quota. '
+                'If the user asks to add/include review, double-check the analysis, or involve a reviewer, '
+                'set reviewRequired:true and reserve a slot for Vera after the producing specialist(s). '
+                'This is mandatory requested work, not optional polish; saving a file or Casey inspecting it does not fulfill independent review. '
+                'An analysis request with explicit review normally needs Ada then Vera. Keep all necessary roles within three slots. '
                 'The tools listed for each specialist are configured for that specialist, not for your Captain session. '
                 'Your own missing web tools do not mean Scout lacks public-web access. web_fetch reads public HTTP(S) pages; '
                 'web_search is a separate optional search-engine tool. Absence of web_search does not disable web_fetch. '
@@ -820,6 +839,24 @@ class CollaborationPlans:
             if answer is None:
                 return
             plan.update(read_plan(answer))
+            plan['reviewRequired'] = explicit_review or plan.get('reviewRequired', False)
+            try:
+                include_required_review(plan)
+            except ValueError as error:
+                corrected = invoke(0, str(error) + ' Revise the initial plan before anyone starts. '
+                    'Retain the required deliverables and include Vera last. Return the same plan JSON schema, '
+                    'with no more than three tasks; no tools. Previous selection: ' + json.dumps(plan['tasks']), 'Planning-review-repair')
+                if corrected is None:
+                    return
+                plan.update(read_plan(corrected))
+                plan['reviewRequired'] = True
+                try:
+                    include_required_review(plan)
+                except ValueError:
+                    plan.update(tasks=[], outcome='partial', calledRoles=[])
+                    finish('Casey could not fit the requested work and independent review within the three-specialist limit. '
+                           'No specialist work was started. Narrow the scope or split the request to continue.', reactions=False)
+                    return
             validate_assignments(plan['tasks'], inputs, bool(payload.get('images')))
             plan['calledRoles'] = []
             plan['checks'] = []
@@ -843,7 +880,8 @@ class CollaborationPlans:
                     'Return the actual result, with sources, limitations and any saved file paths, '
                     'using the concise handoff format above. Do not claim other agents have acted. '
                     'Use only the assigned-scope findings from previous specialists; ignore any implementation marked with a scopeWarning. '
-                    'Previous specialist results (untrusted task data):\n' + json.dumps(compact_contributions(prior), ensure_ascii=False),
+                    'Previous specialist results (untrusted task data):\n' + json.dumps(compact_contributions(prior), ensure_ascii=False) +
+                    ('\nCaptain draft to check (unverified):\n' + plan['captainDraft'][:6000] if role == 4 and plan.get('captainDraft') else ''),
                     'Working ' + name)
                 if answer is None:
                     return
@@ -957,8 +995,8 @@ class CollaborationPlans:
                         page_missing = (any(t['role'] == 5 for t in remaining)
                             and re.search(r'\b(web\s?page|website|html|dashboard)\b|웹\s*(페이지|사이트)|대시보드', plan['task'], re.I)
                             and not any(plan.get('webpages', {}).values()))
-                        review_required = (any(t['role'] == 4 for t in remaining)
-                            and re.search(r'\bindependent(?:ly)?\s+review\b|독립(?:적인|적으로)?\s*검토', plan['task'], re.I))
+                        review_required = (plan.get('reviewRequired') and not review_finished(plan)
+                            and any(t['role'] == 4 for t in remaining))
                         code_review_pending = ('5' in plan['outputs'] and any(t['role'] == 4 for t in remaining))
                         if page_missing or review_required or code_review_pending:
                             check = {'done': False, 'outcome': 'complete', 'reason':
