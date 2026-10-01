@@ -66,16 +66,13 @@
 #studio-dialog .studio-settings-tabs{gap:24px;margin-bottom:0}
 #studio-dialog .studio-settings-tabs button{font-size:15px;font-weight:500;padding:12px 0;border-bottom-width:2px}
 #studio-dialog #studio-settings-model-panel{padding-top:20px}
-#studio-dialog .studio-reset-row{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:27px 0;border-bottom:1px solid #293640}
+#studio-dialog .studio-reset-row{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:27px 0}
 #studio-dialog .studio-reset-row>div{min-width:0}
 #studio-dialog .studio-reset-row h3{font-size:17px;line-height:1.4;letter-spacing:0;font-weight:600;margin:0 0 5px}
 #studio-dialog .studio-reset-row p{font-size:14px;line-height:1.5;color:#99a9b6;margin:0}
 #studio-dialog #studio-settings-reset-panel button{box-sizing:border-box;flex-shrink:0;min-width:112px;height:40px;padding:0 18px;border-radius:5px;font-size:14px;line-height:1;font-weight:600;white-space:nowrap}
 #studio-dialog .studio-reset-row button{background:#1a252e;border:1px solid #41515e;color:#e5edf2}
 #studio-dialog .studio-reset-row button:hover:not(:disabled){background:#26343f;border-color:#738696}
-#studio-dialog .studio-reset-footer{display:flex;justify-content:flex-end;padding-top:22px}
-#studio-dialog #studio-reset-all{background:#b6443e;border-color:#ce5b54}
-#studio-dialog #studio-reset-all:hover{background:#c65049}
 #studio-dialog #studio-settings-status:empty{display:none}
 #studio-config-form>.studio-dialog-actions:has(#studio-save-settings[hidden]){display:none}
 @media(max-width:520px){

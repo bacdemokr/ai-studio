@@ -1041,16 +1041,13 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 #studio-dialog .studio-settings-tabs{gap:24px;margin-bottom:0}
 #studio-dialog .studio-settings-tabs button{font-size:15px;font-weight:500;padding:12px 0;border-bottom-width:2px}
 #studio-dialog #studio-settings-model-panel{padding-top:20px}
-#studio-dialog .studio-reset-row{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:27px 0;border-bottom:1px solid #293640}
+#studio-dialog .studio-reset-row{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:27px 0}
 #studio-dialog .studio-reset-row>div{min-width:0}
 #studio-dialog .studio-reset-row h3{font-size:17px;line-height:1.4;letter-spacing:0;font-weight:600;margin:0 0 5px}
 #studio-dialog .studio-reset-row p{font-size:14px;line-height:1.5;color:#99a9b6;margin:0}
 #studio-dialog #studio-settings-reset-panel button{box-sizing:border-box;flex-shrink:0;min-width:112px;height:40px;padding:0 18px;border-radius:5px;font-size:14px;line-height:1;font-weight:600;white-space:nowrap}
 #studio-dialog .studio-reset-row button{background:#1a252e;border:1px solid #41515e;color:#e5edf2}
 #studio-dialog .studio-reset-row button:hover:not(:disabled){background:#26343f;border-color:#738696}
-#studio-dialog .studio-reset-footer{display:flex;justify-content:flex-end;padding-top:22px}
-#studio-dialog #studio-reset-all{background:#b6443e;border-color:#ce5b54}
-#studio-dialog #studio-reset-all:hover{background:#c65049}
 #studio-dialog #studio-settings-status:empty{display:none}
 #studio-config-form>.studio-dialog-actions:has(#studio-save-settings[hidden]){display:none}
 @media(max-width:520px){
@@ -82090,7 +82087,7 @@ settingsButton.onclick=async()=>{
   <label for="studio-telegram-token">Bot token (create your bot with <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer">@BotFather</a> and paste its token)</label><input id="studio-telegram-token" type="password" autocomplete="off" spellcheck="false" placeholder="Token from @BotFather (e.g. 123456789:ABCdef...)">
   <label for="studio-telegram-chat">Chat ID (open <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer">@userinfobot</a>, type /start, copy your Id)</label><input id="studio-telegram-chat" autocomplete="off" spellcheck="false" placeholder="Numeric chat ID (e.g. 123456789)">
   <p id="studio-telegram-status" role="status" hidden></p><div id="studio-telegram-controls" hidden><div class="studio-dialog-actions"><button type="button" id="studio-telegram-test" class="studio-secondary">Send test</button><button type="button" id="studio-telegram-disconnect" class="studio-secondary">Disconnect</button></div></div></section>
-  <section id="studio-settings-reset-panel" role="tabpanel" aria-labelledby="studio-settings-reset-tab" class="studio-agent-reset" hidden><div class="studio-reset-row"><div><h3>Lounge agents</h3><p>Remove hired agents and their data.</p></div><button type="button" id="studio-agent-reset" class="studio-secondary" aria-label="Reset Lounge agents" ${(data.agents||[]).length?'':'disabled'}>Reset</button></div><div class="studio-reset-footer"><button type="button" id="studio-reset-all" class="studio-danger">Reset all</button></div></section>
+  <section id="studio-settings-reset-panel" role="tabpanel" aria-labelledby="studio-settings-reset-tab" class="studio-agent-reset" hidden><div class="studio-reset-row"><div><h3>Lounge agents</h3><p>Remove hired agents and their data.</p></div><button type="button" id="studio-agent-reset" class="studio-secondary" aria-label="Reset Lounge agents" ${(data.agents||[]).length?'':'disabled'}>Reset</button></div></section>
   <p id="studio-settings-status" role="status"></p><div class="studio-dialog-actions"><button type="button" id="studio-start-agents" class="studio-secondary" ${runtime.gateway?'hidden':''}>Start agents</button><button type="submit" class="studio-primary" id="studio-save-settings">Connect model</button></div></form>`);
   const form=el('config-form'),modelList=el('model-options'),modelStatus=el('model-status'),loadButton=el('load-models');
   function showTelegram(){el('telegram-status').textContent=telegram.connected?'Connected to @'+telegram.bot+' · chat '+telegram.chatId:telegram.error||'';el('telegram-status').hidden=!telegram.connected&&!telegram.error;el('telegram-controls').hidden=!telegram.connected;el('telegram-test').disabled=!telegram.connected;el('telegram-disconnect').disabled=!telegram.connected;el('telegram-chat').value=telegram.chatId||'';}
@@ -82100,7 +82097,6 @@ settingsButton.onclick=async()=>{
   el('telegram-test').onclick=()=>telegramAction('test');el('telegram-disconnect').onclick=()=>telegramAction('disconnect');
   el('location-city').value=settings.location?.city||'Zurich';
   el('agent-reset').onclick=()=>resetStudio('lounge');
-  el('reset-all').onclick=()=>resetStudio('all');
   let tab='model',generation=0,availableModels=[],hasMoreModels=false,connecting=false;
   const currentForm=()=>el('config-form')===form&&el('dialog').open;
   const modelSearch=el('model-search'),changeModel=el('change-model');
@@ -82188,7 +82184,7 @@ async function resetStudio(scope,sourceButton=null){
  try{
   const latest=await api('state',undefined,'');
   const agents=scope==='bac'?[]:latest.agents||[];total=agents.length;
-  if(scope!=='lounge'){
+  if(scope==='bac'){
    let reset=await api('bac-reset',{},latest.agentId);
    while(reset.resetting){
     status.textContent='Stopping BaC work and resetting…';
@@ -82218,7 +82214,7 @@ async function resetStudio(scope,sourceButton=null){
    clearTimeout(comparisonTimer);comparison=null;comparePanel.replaceChildren();delete comparePanel.dataset.batch;
    if(!changingAgent&&(agentId===originalSelection||agents.some(a=>a.key===agentId))){openAgentState(state);fillCreator(true);setRoom('workshop');}
   }
-  status.textContent=scope==='all'?'Reset complete.':scope==='bac'?'BaC reset.':'Lounge agents reset.';
+  status.textContent=scope==='bac'?'BaC reset.':'Lounge agents reset.';
   if(background)alert('Cleanup complete. '+completed+' agents removed.');
  }catch(error){
   status.textContent=(completed?`${completed} / ${total} removed. `:'')+error.message;

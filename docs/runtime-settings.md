@@ -50,7 +50,7 @@ python3 -B tests/fixture_settings.py
 node tests/settings.cjs
 ```
 
-Settings has Model and Reset tabs. Reset offers Lounge Agent Reset (removes hired agents) and BaC Reset (clears the event board and crew chats together), plus Reset all to perform both. Each button starts immediately and shows progress inline; controls are disabled until it finishes. Switching tabs preserves model drafts. Load models displays a visible list (manual model IDs remain supported); missing keys, empty responses and errors appear next to the model controls. Event details belong to Plan a BaC.
+Settings has Lounge model, Location, Telegram and Reset tabs. Settings → Reset removes hired Lounge agents and their data. The separate Reset button beside Mission Control stops Stage 3 work and clears team data after confirmation. Switching tabs preserves model drafts. Load models displays a visible list (manual model IDs remain supported); missing keys, empty responses and errors appear next to the model controls.
 
 ## Location
 
