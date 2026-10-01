@@ -83,8 +83,8 @@ function clearChatImages(crew=false){chatImageDrafts.delete(imageKey(crew));rend
 function captureChatDraft(crew=false){return {crew,key:imageKey(crew),roleKey:agentId+':'+selectedCrewRole,prompt:el((crew?'crew-':'')+'prompt').value,images:pendingImages(crew).slice()};}
 function acknowledgeChatDraft(draft){
  const current=imageKey(draft.crew)===draft.key;
- if(current){const input=el((draft.crew?'crew-':'')+'prompt');if(input.value===draft.prompt)input.value='';if(draft.crew)crewDrafts.set(draft.roleKey,input.value);}
- else if(draft.crew&&crewDrafts.get(draft.roleKey)===draft.prompt)crewDrafts.set(draft.roleKey,'');
+ if(current){const input=el((draft.crew?'crew-':'')+'prompt');if(input.value===draft.prompt)input.value=draft.crew?defaultCrewPrompt:'';if(draft.crew)crewDrafts.set(draft.roleKey,input.value);}
+ else if(draft.crew&&crewDrafts.get(draft.roleKey)===draft.prompt)crewDrafts.set(draft.roleKey,defaultCrewPrompt);
  const remaining=(chatImageDrafts.get(draft.key)||[]).filter(image=>!draft.images.includes(image));
  if(remaining.length)chatImageDrafts.set(draft.key,remaining);else chatImageDrafts.delete(draft.key);
  if(current)renderImageDrafts(draft.crew);
