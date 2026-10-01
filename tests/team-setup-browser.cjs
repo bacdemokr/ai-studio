@@ -40,7 +40,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.locator('.world-room-map [data-world-room="mission"]').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);await page.locator('[data-campus-agent="0"]').click();
   await page.locator('#studio-bac-reset').click();await page.getByRole('heading',{name:'Do you really want to reset Stage 3?'}).waitFor();
   await page.locator('#studio-team-reset-cancel').click();assert(!(await page.locator('#studio-dialog').isVisible()));
-  await page.locator('#studio-bac-reset').click();await page.locator('#studio-team-reset-confirm').click();await page.getByText('BaC reset.',{exact:true}).waitFor();assert(await page.locator('#studio-bac-reset').isEnabled());
+  await page.locator('#studio-bac-reset').click();await page.locator('#studio-team-reset-confirm').click();await page.getByText('Stage 3 reset.',{exact:true}).waitFor();assert(await page.locator('#studio-bac-reset').isEnabled());
   assert.deepEqual(errors,[]);console.log('PASS: CLI-managed key guidance, no browser key writes, model selection, Settings scope and reset.');
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});

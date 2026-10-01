@@ -136,7 +136,7 @@ Keyless local servers need no API key. Provider keys entered in these settings a
 
 Casey's chat starts with `/plan ` and restores it after a successful send. Delete the prefix to send a direct message. Specialists accept direct messages only, without `/plan` hints or suggestions; send team tasks to Casey. Their inputs start empty and clear after sending; existing drafts stay intact when switching characters.
 
-The room starts with Casey. The selected specialists join together and execute in assignment order. The pool is Scout (Web Researcher), Ada (Data analyst), Iris (UX designer), Cody (Programmer), and Vera (Reviewer). The old Plan a BaC event-template flow and Dylan, Alex, and Morgan are retired. Coding tasks prioritize a compact, usable desktop demo: no mobile layouts or touch controls, no optional polish loops, and no extra design pass unless needed. Cody aims to save the core implementation in one pass and returns once required work is delivered. Explicitly requested independent review is still required.
+The room starts with Casey. The selected specialists join together and execute in assignment order. The pool is Scout (Web Researcher), Ada (Data analyst), Iris (UX designer), Cody (Programmer), and Vera (Reviewer). The old Plan a BaC event-template flow and Dylan, Alex, and Morgan are retired. Coding tasks prioritize a compact, usable desktop demo: no mobile layouts or touch controls, no optional polish loops, and no extra design pass unless needed. Cody aims to save the core implementation in one pass and returns once required work is delivered. Explicitly requested independent review is still required. Casey reserves a repair for an observed defect, not a repeated save/read confirmation.
 
 **Mission Control** shows assignments, expected results, contributions, and Casey’s decisions in execution order. **Results** shows the current plan’s response and saved files, with previews for generated HTML pages. While a plan is running, Casey’s composer and the working specialist’s composer are disabled. Stop immediately shows a pending state and prevents duplicate clicks while cancellation is being sent; an in-flight runtime call may still need to settle. Partial and failed work remains visible rather than being presented as complete.
 
@@ -166,7 +166,9 @@ calculations, units, reporting periods, and conclusions before the final answer.
 - No new specialist joins during a repair, and no automatic second specialist review follows it. Casey checks the revised contribution and states what remains unverified. If review or required work cannot finish, the result is partial or unavailable.
 - A plan has a 600-second dispatch budget. This is not a guaranteed wall-clock finish time: cancellation and timeouts may need to wait for an in-flight runtime call. Saved work is retained.
 
-Saved-file checks prove delivery, not correctness. Specialist reviews are static inspections unless actual execution evidence is available. Generated pages run in a restricted preview, so browser storage must be optional.
+Saved-file checks prove delivery, not correctness. Specialist reviews are static inspections unless actual execution evidence is available. Generated pages run in a restricted preview, so browser storage must be optional. Local JavaScript form handlers and validation work; network requests, actual form submissions and parent-page access stay blocked. Offline demos must not promise emails, bookings or remote saves.
+
+Static review uses bounded source excerpts: at most eight reads, 120 lines per read, and 18,000 retained source characters per plan. Duplicate reads are blocked. Vera must disclose unread sections or unverified requirements; reaching the limit does not certify the whole artifact. This reduces repeated-read context overflow without limiting Cody’s saved code length.
 
 ### Research limits
 

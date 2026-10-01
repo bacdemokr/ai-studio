@@ -12,6 +12,10 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.deepEqual(await page.evaluate(()=>BacCampus.inspect().crewExchange.filter(r=>r.visible).map(r=>r.role)),[0]);
   await page.locator('[data-campus-agent="0"]').click();
   assert.equal(await page.locator('#studio-crew-model').innerText(),'Nemotron 3 Ultra');
+  assert.equal(await page.locator('#studio-crew-prompt').inputValue(),'/plan ');
+  assert(await page.locator('#studio-crew-send').isDisabled());
+  await page.locator('#studio-crew-prompt').fill('');await page.waitForTimeout(1200);
+  assert.equal(await page.locator('#studio-crew-prompt').inputValue(),'','cleared prefix must stay cleared');
   const standby=page.locator('#studio-standby');
   await standby.locator('summary').click();
   assert.deepEqual(await standby.locator('[data-standby-role]').evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.standbyRole))),[0,4,5,6,7,8]);
@@ -88,11 +92,15 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.setViewportSize({width:1600,height:1050});
   await page.locator('[data-campus-agent="5"]').click();
   assert.equal(await page.locator('#studio-crew-role').innerText(),'Programmer');
+  assert.equal(await page.locator('#studio-crew-prompt').inputValue(),'');
+  assert.doesNotMatch(await page.locator('#studio-crew-prompt').getAttribute('placeholder'),/plan/);
+  assert.equal(await page.locator('#studio-crew-prompt').getAttribute('data-plan-enabled'),'false');
   assert.match(await page.locator('#studio-crew-conversation').innerText(),/Casey → Cody/);
   await page.locator('[data-preview-file]').first().click();
   await page.waitForFunction(()=>document.querySelector('#studio-app-frame')?.dataset.ready==='true');
   assert.match(await page.frameLocator('#studio-app-frame').locator('body').innerText(),/Calculator QA/);
   await page.keyboard.press('Escape');
+  await page.locator('[data-campus-agent="0"]').click();
   await page.locator('#studio-crew-prompt').fill('/plan COPY_QA Write and review a welcome paragraph.');
   await page.locator('#studio-crew-send').click();
   await page.waitForFunction(()=>JSON.stringify(BacCampus.inspect().selectedTeam)==='[0,7,4]');
@@ -153,6 +161,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.equal(await page.locator('#studio-crew-policy').isVisible(),false);
   await page.waitForFunction(()=>document.querySelector('#studio-crew-conversation').textContent.includes('Verified contribution from Scout'));
   await page.waitForFunction(()=>document.querySelectorAll('[data-crew-chat-stop]').length===0);
+  await page.locator('[data-campus-agent="0"]').click();
   for(const [task,team,notice] of [
    ['SOLO_QA Answer a simple question.',[0],'No additional agents needed'],
    ['UNSUPPORTED_QA Deploy to my private cloud.',[0],'Required expertise unavailable - no agents called'],

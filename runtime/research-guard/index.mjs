@@ -1,12 +1,40 @@
-// Restrict only this app's plan researcher. Never change OpenShell policies or other agents.
+// Bound this app's plan research and static review. Never change OpenShell policies.
 const sessions = new Map();
+const reviews = new Map();
 const TTL = 15 * 60 * 1000;
+function reviewState(ctx) {
+  if (!/^bac-[a-f0-9]{24}-r4$/.test(ctx.agentId || '')) return null;
+  const match = (ctx.sessionKey || '').match(/:openai-user:bac-plan-([a-f0-9]{24})-4-(?:working|revising)(?:-output-retry)?$/);
+  if (!match) return null;
+  const now = Date.now(), key = ctx.agentId + ':' + match[1];
+  for (const [k, v] of reviews) if (now - v.updated > TTL) reviews.delete(k);
+  if (!reviews.has(key)) {
+    if (reviews.size >= 1000) reviews.delete(reviews.keys().next().value);
+    reviews.set(key, {reads: 0, chars: 0, ranges: new Set(), calls: new Map(), results: new Map(), updated: now});
+  }
+  const state = reviews.get(key);state.updated = now;return state;
+}
 function keyFor(ctx) {
   if (!/^bac-[a-f0-9]{24}-r8$/.test(ctx.agentId || '')) return null;
   const match = (ctx.sessionKey || '').match(/:openai-user:bac-plan-([a-f0-9]{24})-8-(?:working|revising)(?:-output-retry)?$/);
   return match ? ctx.agentId + ':' + match[1] : null;
 }
 export function beforeTool(event, ctx) {
+  const review = event.toolName === 'read' && reviewState(ctx);
+  if (review) {
+    const id = event.toolCallId || ctx.toolCallId;
+    if (id && review.calls.has(id)) return review.calls.get(id);
+    const params = event.params || {}, offset = Math.max(1, Math.floor(Number(params.offset) || 1));
+    const limit = Math.min(120, Math.max(1, Math.floor(Number(params.limit) || 120)));
+    const path = String(params.path || params.file_path || '').replace(/\\/g, '/').replace(/^.*\/(inbox|artifacts)\//, '$1/').replace(/^\.\//, '');
+    const range = JSON.stringify([path, offset, limit]);
+    const result = review.reads >= 8 || review.chars >= 18000 || review.ranges.has(range)
+      ? {block: true, blockReason: 'Review read budget reached or this source range was already read. Use the evidence already returned. Do not repeat reads or guess source paths. Finish the review now; explicitly report any unread portion and unverified requirements. A limited review is not a full verification.'}
+      : {params: {...params, offset, limit}};
+    if (!result.block) {review.reads++;review.ranges.add(range);}
+    if (id) review.calls.set(id, result);
+    return result;
+  }
   const key = keyFor(ctx);
   if (!key || !['web_search', 'web_fetch'].includes(event.toolName)) return;
   const now = Date.now();
@@ -36,6 +64,22 @@ function excerpt(value, limit) {
   return wrapped ? wrapped[1] + wrapped[2].slice(0, limit) + note + wrapped[3] : value.slice(0, limit) + note;
 }
 export function persistResult(event, ctx) {
+  const review = (event.toolName || ctx.toolName) === 'read' && reviewState(ctx);
+  if (review && !event.message?.isError && Array.isArray(event.message?.content)) {
+    const id = event.message.toolCallId || event.toolCallId;
+    if (id && review.results.has(id)) return review.results.get(id);
+    let remaining = Math.min(5000, Math.max(0, 18000 - review.chars)), truncated = false;
+    const content = event.message.content.map(block => {
+      if (block.type !== 'text' || typeof block.text !== 'string') return block;
+      const text = block.text.slice(0, remaining);remaining -= text.length;review.chars += text.length;
+      if (text.length === block.text.length) return block;
+      truncated = true;
+      return {...block, text: text + '\n[Review excerpt shortened. Some source was omitted. Use a focused, unread offset/limit range if budget remains; otherwise report limited coverage. Never claim the entire file was verified.]'};
+    });
+    const result = truncated ? {message: {...event.message, content, details: {truncated: true, reviewCoverageLimited: true}}} : undefined;
+    if (id) review.results.set(id, result);
+    return result;
+  }
   if (!keyFor(ctx) || (event.toolName || ctx.toolName) !== 'web_search' || event.message?.isError) return;
   const blocks = event.message?.content;
   if (!Array.isArray(blocks)) return;

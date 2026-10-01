@@ -9,7 +9,13 @@ async function waitForAgentRuntime(requireModel=false){
   throw new Error(requireModel?'The model was verified, but the agent runtime has not applied the connection. Retry Connect model.':'Model settings are saved, but the agent runtime is not ready. Try Start agents again.');
 }
 const settingsButton=document.createElement('button');settingsButton.id='studio-config';settingsButton.className='studio-config';settingsButton.type='button';settingsButton.textContent='⚙';settingsButton.title='Settings';settingsButton.setAttribute('aria-label','Settings');settingsButton.hidden=true;document.querySelector('#bac-planner .topbar').append(settingsButton);
-let settingsOpenRequest=0;
+let settingsOpenRequest=0,resetInProgress=false;
+function syncResetButtons(){
+ for(const id of ['agent-reset','settings-bac-reset','reset-all']){
+  const button=el(id);if(button)button.disabled=resetInProgress||(id==='agent-reset'&&!(data.agents||[]).length);
+ }
+ if(resetInProgress&&el('settings-status'))el('settings-status').textContent='Reset in progress. Agent cleanup is still running.';
+}
 settingsButton.onclick=async()=>{
  const request=++settingsOpenRequest,revision=dialogRevision;
  const currentOpen=()=>request===settingsOpenRequest&&revision===dialogRevision;
@@ -45,6 +51,7 @@ settingsButton.onclick=async()=>{
   el('agent-reset').onclick=()=>resetStudio('lounge');
   el('settings-bac-reset').onclick=()=>resetStudio('bac');
   el('reset-all').onclick=()=>resetStudio('all');
+  syncResetButtons();
   let tab='model',generation=0,availableModels=[],hasMoreModels=false,connecting=false;
   const currentForm=()=>el('config-form')===form&&el('dialog').open;
   const modelSearch=el('model-search'),changeModel=el('change-model');
@@ -54,7 +61,7 @@ settingsButton.onclick=async()=>{
   function filterModels(){const query=modelSearch.value.trim().toLowerCase();const matches=availableModels.filter(m=>(m.id+' '+(m.name||'')).toLowerCase().includes(query));modelList.replaceChildren(...matches.map(m=>new Option(!m.name||m.name===m.id?m.id:m.name+' · '+m.id,m.id)));modelList.value=el('model').value;modelList.hidden=!matches.length;modelStatus.dataset.state=matches.length?'ready':'empty';modelStatus.textContent=(query?`${matches.length} of ${availableModels.length} models`:`${availableModels.length} models`)+(matches.length?'':' · No matches')+(hasMoreModels?' · More IDs can be entered manually.':'');}
   modelSearch.oninput=filterModels;
   modelSearch.onkeydown=e=>{if(e.key==='Enter')e.preventDefault();if(e.key==='ArrowDown'&&!modelList.hidden){e.preventDefault();modelList.focus();}};
-  function selectTab(next){if(connecting)return;tab=next;form.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===tab;b.setAttribute('aria-selected',active);b.tabIndex=active?0:-1;});el('settings-model-panel').hidden=tab!=='model';el('settings-location-panel').hidden=tab!=='location';el('settings-reset-panel').hidden=tab!=='reset';el('settings-telegram-panel').hidden=tab!=='telegram';el('save-settings').textContent=tab==='telegram'?'Connect Telegram':tab==='location'?'Save location':'Connect model';el('save-settings').hidden=tab==='reset';el('start-agents').hidden=tab!=='model'||!!runtime.gateway;el('settings-status').textContent='';}
+  function selectTab(next){if(connecting)return;tab=next;form.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===tab;b.setAttribute('aria-selected',active);b.tabIndex=active?0:-1;});el('settings-model-panel').hidden=tab!=='model';el('settings-location-panel').hidden=tab!=='location';el('settings-reset-panel').hidden=tab!=='reset';el('settings-telegram-panel').hidden=tab!=='telegram';el('save-settings').textContent=tab==='telegram'?'Connect Telegram':tab==='location'?'Save location':'Connect model';el('save-settings').hidden=tab==='reset';el('start-agents').hidden=tab!=='model'||!!runtime.gateway;el('settings-status').textContent='';if(tab==='reset')syncResetButtons();}
   form.querySelectorAll('[data-settings-tab]').forEach(b=>{b.onclick=()=>selectTab(b.dataset.settingsTab);b.onkeydown=e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const tabs=['model','location','telegram','reset'];selectTab(e.key==='Home'?tabs[0]:e.key==='End'?tabs.at(-1):tabs[(tabs.indexOf(tab)+(e.key==='ArrowLeft'?-1:1)+tabs.length)%tabs.length]);el('settings-'+tab+'-tab').focus();}};});
 
   const input=()=>({provider:el('provider').value,apiKey:el('api-key').value.trim(),baseUrl:el('endpoint').value.trim(),model:el('model').value.trim(),contextWindow:Number(el('model-context').value)});
@@ -113,7 +120,7 @@ settingsButton.onclick=async()=>{
 el('dialog').addEventListener('close',()=>{if(el('api-key'))el('api-key').value='';if(el('telegram-token'))el('telegram-token').value='';});
 
 function confirmTeamReset(sourceButton){
- if(removingAgent||pendingWrites||changingAgent||data.bacResetting)return;
+ if(resetInProgress||removingAgent||pendingWrites||changingAgent||data.bacResetting)return;
  dialog('RESET STAGE 3', '<h3>Do you really want to reset Stage 3?</h3><p>This stops active team work and clears team chats, attached documents, generated files, and the board.</p><div class="studio-dialog-actions"><button type="button" class="studio-secondary" id="studio-team-reset-cancel" autofocus>Cancel</button><button type="button" class="studio-danger" id="studio-team-reset-confirm">Yes, Reset Stage 3.</button></div>');
  el('team-reset-cancel').onclick=()=>el('dialog').close();
  el('team-reset-confirm').onclick=()=>{el('dialog').close();resetStudio('bac',sourceButton);};
@@ -121,8 +128,8 @@ function confirmTeamReset(sourceButton){
 }
 
 async function resetStudio(scope,sourceButton=null){
- if(removingAgent||pendingWrites||changingAgent)return;
- removingAgent=true;++refreshVersion;
+ if(resetInProgress||removingAgent||pendingWrites||changingAgent)return;
+ resetInProgress=true;removingAgent=true;++refreshVersion;
  const modal=el('dialog'),status=sourceButton?el('team-reset-status'):el('settings-status'),blockClose=e=>e.preventDefault();
  const buttons=(sourceButton?[sourceButton]:[...modal.querySelectorAll('button')]).map(button=>[button,button.disabled]);
  modal.addEventListener('cancel',blockClose);buttons.forEach(([button])=>button.disabled=true);
@@ -169,9 +176,12 @@ async function resetStudio(scope,sourceButton=null){
   if(background)alert(status.textContent);
   try{const state=await api('state',undefined,'');if(state.agentId===agentId){data=state;render();}else openAgentState(state);}catch{}
  }finally{
-  removingAgent=false;modal.removeEventListener('cancel',blockClose);
+  // Background cleanup has released this lock; a newer individual deletion may own it now.
+  if(!background)removingAgent=false;
+  resetInProgress=false;modal.removeEventListener('cancel',blockClose);
   buttons.forEach(([button,disabled])=>button.disabled=disabled);
-  if(el('agent-reset'))el('agent-reset').disabled=!(data.agents||[]).length;
+  if(background&&el('settings-status')&&el('settings-status')!==status)el('settings-status').textContent=status.textContent;
+  syncResetButtons();
   refresh();
  }
 }

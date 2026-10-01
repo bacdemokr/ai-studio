@@ -26,7 +26,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.match(await page.locator('[data-revision-role="6"]').innerText(),/Revising/);
   await page.waitForFunction(()=>document.querySelector('[data-after-revision]')?.textContent.includes('total is now correct'),null,{timeout:20000});
   const kinds=await page.locator('#studio-lanes [data-trace-kind]').evaluateAll(nodes=>nodes.map(n=>n.dataset.traceKind));
-  assert.deepEqual(kinds,['plan','contribution','review','contribution','revision','revision-work','review','response']);
+  assert.deepEqual(kinds,['user','plan','contribution','review','contribution','revision','revision-work','review','response']);
   await page.locator('[data-revision-role="6"] summary').click();
   assert.match(await page.locator('[data-revision-role="6"]').innerText(),/Ada corrected the total to 450/);
   await page.screenshot({path:'../../work/plan-revision-trace.png'});

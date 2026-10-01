@@ -80,7 +80,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.locator('#studio-app-frame[data-ready=true]').waitFor();
   await frame.locator('#demo').click();await frame.locator('#demo').filter({hasText:'It works'}).waitFor();assert.equal(await frame.locator('#demo').innerText(),'It works');
   assert.equal(await page.evaluate(()=>document.body.dataset.previewEscaped),undefined);
-  assert.equal(await page.locator('#studio-app-frame').getAttribute('sandbox'),'allow-scripts');
+  assert.equal(await page.locator('#studio-app-frame').getAttribute('sandbox'),'allow-scripts allow-forms');
   await page.locator('[data-preview-width="mobile"]').click();
   assert.ok((await page.locator('#studio-app-frame').boundingBox()).width<=390);
   await page.locator('[data-preview-width="desktop"]').click();

@@ -1,4 +1,7 @@
 """Casey delegates only when necessary and stops on explicit evidence-based decisions."""
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import json
 import unittest
 from collaboration_plan import read_plan, read_checkpoint

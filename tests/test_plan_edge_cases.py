@@ -73,12 +73,12 @@ class PlanEdgeCases(unittest.TestCase):
         self.assertEqual(len(self.adapter.calls),1)
         self.assertIn('Verified contribution from Ada',self.adapter.calls[0][2])
 
-    def test_specialist_plan_continuation_has_previous_work(self):
+    def test_captain_plan_continuation_has_previous_team_response(self):
         self.start();self.app.execute(self.app.next_job());self.adapter.calls.clear()
         team=self.app.crew_owner(self.owner)
-        self.app.enqueue(team,{'kind':'crew-chat','crewRole':7,'prompt':'/plan Revise your proposal.'})
+        self.app.enqueue(team,{'kind':'crew-chat','crewRole':0,'prompt':'/plan Revise the proposal.'})
         self.app.execute(self.app.next_job())
-        self.assertIn('Verified contribution from Iris',self.adapter.calls[0][2])
+        self.assertIn('A combined proposal grounded in the three saved contributions.',self.adapter.calls[0][2])
 
     def test_failed_plan_followup_includes_completed_work_and_failure(self):
         first=self.start();self.adapter.fail_role=6
