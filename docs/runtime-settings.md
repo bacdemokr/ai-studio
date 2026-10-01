@@ -1,6 +1,6 @@
 # Studio settings
 
-Open the small Settings gear at the top right on localhost. Select a provider, enter its API key, load the available model IDs and choose a text model that supports tool calling. These settings apply to hired agents in Stages 1 and 2. Stage 3 has a separate connection and per-agent models. Each agent retains its own persona, tools, memory and protection settings. Pending missions must finish or be cancelled before shared settings change.
+Open the small Settings gear at the top right on localhost and select **Lounge model**. Select a provider, enter its API key, load the available model IDs and choose a text model that supports tool calling. These settings apply to hired agents in Stages 1 and 2. Stage 3 has a separate connection and per-agent models. Each agent retains its own persona, tools, memory and protection settings. Pending missions must finish or be cancelled before shared settings change.
 
 | Provider | Default base URL | Native OpenClaw API |
 | --- | --- | --- |
@@ -13,7 +13,7 @@ NVIDIA keys come from [key management](https://inference.nvidia.com/key-manageme
 
 The context limit defaults to 32,768 tokens and must match the chosen model server. It declares capacity to OpenClaw; it does not configure Ollama’s server-side `num_ctx`. Model listing checks access without generating a completion; it does not guarantee that every listed model supports the agent's tool calls. The readiness check currently requires the selected ID to appear in the model list. Anthropic lists up to 1,000 models; the dialog indicates if more exist.
 
-Set the city, dates and venue in Plan a BaC. New plans use English automatically, with no language input. There is no separate Event tab in Settings. Existing saved host defaults remain readable for compatibility; old language preferences do not override new plans.
+Set the default city in Settings → Location. Supply dates, venue and other task-specific requirements in your `/plan` message. The old Plan a BaC form is retired. Existing saved event defaults remain readable for compatibility.
 
 ## Stage 3 connection and models
 

@@ -16,7 +16,7 @@ The first start creates `.env` from the supplied example, builds the pinned runt
 
 Startup validates the Stage 3 inference key in `api.cfg` and exits with instructions to edit the file if it is missing or rejected. Stage 3 uses this saved connection automatically; its **API & models** panel lets you choose agent models and save them with **Apply changes**.
 
-Open **http://localhost:8080**. For Stages 1 and 2, open **Settings → Model**. Choose **Local / on-prem**, enter the endpoint, **Load models**, then **Connect model**.
+Open **http://localhost:8080**. For Stages 1 and 2, open **Settings → Lounge model**. Choose **Local / on-prem**, enter the endpoint, **Load models**, then **Connect model**.
 
 - Ollama on this PC: `http://127.0.0.1:11434/v1`
 - Another compatible server: its URL ending in `/v1`, for example `http://127.0.0.1:8000/v1`

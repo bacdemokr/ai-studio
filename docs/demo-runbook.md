@@ -2,38 +2,69 @@
 
 ## Before the demo
 
-On Spark, run `./bac start`, open the localhost SSH tunnel and connect the model in Settings. Do one real personal task and one complete event before the audience arrives. If demonstrating OpenShell, rehearse a protected file read and the approval flow on that host. Keep previous real Results available; do not present a sample or a stale result as a new successful run.
+On Ubuntu or DGX Spark, put the NVIDIA inference key in `api.cfg` beside `bac`, then run `./bac start`. Startup validates the key and prepares the Stage 3 connection. Open localhost:8080, directly or through an SSH tunnel. For Stages 1 and 2, connect a model separately in **Settings → Lounge model**. If using local Qwen, prepare its existing installation with `./bac vllm` first; starting Studio does not start the model server.
 
-Use Settings → Reset → BaC to clear the event board and team conversations between demonstrations. Lounge Agent Reset removes hired agents; Reset all combines both. Agents and saved files otherwise survive refreshes and server restarts.
+Rehearse one real personal-agent task and one `/plan` task with the target models. If demonstrating OpenShell, also rehearse a protected file read and website approval on that host. Use a desktop browser and Enter for presentation mode. Keep previous results available, but identify them as previous runs.
+
+Use **Reset beside Mission Control** to stop active Stage 3 work and clear team chats, attached team documents, generated files and the current plan after confirmation. **Settings → Reset → Lounge agents** removes hired agents and their data; **Reset all** resets both. Download anything needed before resetting. A normal `./bac start` preserves saved demo data.
 
 ## Hiring and Lounge
 
-Let the audience choose a character, interests, tone and skills. Create contrasting agents and try a short weather, document or research task. Compare how each persona approaches the same question. A weather specialist may care about arrival conditions; a skeptical agent may focus on weak evidence.
+Let the audience choose a character, tone, role and skills. Try a short weather, document or research task and compare how different personas respond. Documents belong to the selected personal agent; other hired agents cannot read them. Add documents with the button or drag them into the chat. Supported formats are PDF, PPTX, XLSX, TXT, Markdown and CSV, up to 10 MB per file.
 
-Show the actual reply and any written artifact. Click the name or portrait to inspect `SOUL.md` and equipped custom `SKILL.md` files. A Custom skill badge means the runtime actually read that file for the reply. Equipped skill chips alone do not prove execution.
+Show the actual reply and any saved artifact. A Custom skill badge means the runtime read that skill file for the reply; an equipped skill chip alone does not prove execution.
 
-If using OpenShell, start with a destination or supported file request that needs permission, approve the request, then retry. The approval UI reflects actual host checks. Unavailable paths are not solved by granting access. DNS failures also need a network fix, not another approval. See the [OpenShell verification guide](openshell-verification.md) for repeatable checks.
+For OpenShell, approve a blocked website through **OpenShell Policy**, then resend the request. Individual approval, pending-request Approve all, and Pre-approve common tasks Approve all have separate scopes. DNS failures and unavailable pages are not solved by granting more permissions. A permission is active only after verification.
 
 ## Multi-Agent demo
 
-Choose an event template, check its date/venue, set 3–6 themes, and launch. Casey is required. Dylan runs in OpenShell with NVIDIA Blog reads pre-approved; the other crew members use standard runtimes. Personal guests keep their own setting.
+The room starts with Casey. Use **API & models** to select models for individual team members, then **Apply changes**. These settings are separate from the Lounge model. Start a team task with `/plan`; a normal message goes to the selected agent directly.
 
-Prepare the selected production crew before launch; this does not send a model request. Choose available personal guests for closing reactions, or proceed with none. Busy guests are excluded. Guest runtime and protection checks happen when their reaction runs; a failed guest check skips that reaction without blocking the event package. Errors preparing a selected production role block launch and remain visible. Preparation uses the shared queue, so a running Lounge request is not interrupted.
+Casey answers directly when appropriate or chooses up to three specialists:
 
-- Casey writes the shared brief and priorities.
-- Dylan chooses research queries and proposes sourced, clearly named booth demos.
-- Alex works in parallel using Booth-1, Booth-2, etc. He writes the presenter schedule and breaks, favoring topic continuity. The app binds Dylan’s final names to those IDs.
-- Morgan receives their outputs and writes the actual event HTML plus a LinkedIn-style draft using the project skills.
-- Hired agents briefly react in their saved tone/interests, show a small completion bubble, and return to the lounge. Read the full reactions in chat/Results.
+| Specialist | Contribution |
+| --- | --- |
+| Scout | Public web research with source links and access limitations |
+| Ada | Supplied-data analysis, calculations and interpretations |
+| Iris | Interface design, user flows and usability guidance |
+| Cody | Implementation of webpages and small code prototypes |
+| Vera | Independent review of supplied work and concrete defects |
 
-Open Mission Control to show task order and handoffs. Open Results to show each saved contribution: Dylan’s demo proposal, Alex’s timetable, Morgan’s webpage and social post. The contributor links scroll through one page. Expand the proposal’s research details or scheduling decisions when explaining the choices; source and export JSON previews and downloads sit beside each contribution. Expand Activity to inspect observed searches, file reads and writes.
+The selected specialists enter together and work in assignment order. The old event-template form and Dylan, Alex and Morgan are retired. There is no fixed research/schedule/LinkedIn workflow.
 
-Explain the boundary plainly: agents research, choose, schedule and write; the app dispatches the known graph, checks files and renders validated data. This is a bounded demonstration, not an autonomous event organizer or a claim that multiple agents speed up one GPU.
+For a compact data-analysis demo, attach a table to Casey and try:
+
+```text
+/plan Analyze this table and summarize the three most important findings.
+Add an independent review of the calculations and conclusions before finishing.
+```
+
+For an implementation demo:
+
+```text
+/plan Build a self-contained desktop HTML savings calculator. Include amount,
+interest rate and years, validate the inputs, and show the estimated total.
+```
+
+Use **Mission Control** to show the trace: Casey's plan, each assignment and expected result, delivered contributions, subsequent decisions, and final response. **Results** shows the current plan's answer and saved files. Use **Preview webpage** for HTML output. Previewing a page does not prove it was tested, and a saved-file check does not prove its calculations are correct.
+
+Explain the limits plainly:
+
+- Explicitly requested review is required; Casey cannot skip it because the producer saved a file. Code reviews are static unless real execution evidence exists.
+- Intermediate checkpoints decide whether to continue or return a partial result. General content rework is not repeated at every stage.
+- At final synthesis, one already participating specialist may receive one targeted repair for a concrete unmet requirement. An earlier file/output recovery uses that allowance. No new specialist or automatic second specialist review follows a repair.
+- Scout performs a short, bounded search and reports stale, blocked or missing evidence. Source excerpts are not full-page verification.
+- The team cannot open or control the PC's browser, make purchases, deploy a site, or claim tool execution it did not perform.
+- Hired agents may give short personal reactions afterward. These are opinions, not independent reviews.
+
+Casey and the working specialist cannot receive another message while their plan work is active. Stop requests cancellation; a running runtime call may still need to settle. The plan's 600-second dispatch budget is not a guaranteed wall-clock completion time.
 
 ## If something fails
 
-Keep completed contributions and the actual failure visible. Inspect Activity, saved files and Download evidence. Check the relevant service logs. A deliberate retry may repeat file writes, so inspect existing output first. Never mask a failed real run with a generated success message.
+Keep saved contributions and the failure visible. Inspect observed Activity, Mission Control, and saved files. Run `./bac logs` for service errors. Inspect existing artifacts before retrying: a new request can repeat writes. Do not replace a failed real run with a sample success.
 
-Stop waits for the active model call boundary; it does not instantly cancel GPU work. After an app/gateway interruption, verify whether the previous call is still finishing before retrying. API keys may need reconnecting after a restart.
+If required review or another requirement could not finish, describe the result as partial or unavailable. After the single repair, Casey states what changed and what remains unverified.
 
-The [Docker guide](docker-setup.md) contains installation and recovery commands. The [runtime guide](live-studio.md) explains persisted state and access boundaries.
+`./bac start` restarts the app services while preserving data; there is no `./bac restart`. `./bac vllm --restart` is separate and restarts the configured local model server. Stage 3 reloads the validated `api.cfg` connection at startup. API-key providers for Stages 1 and 2 need reconnecting after refresh or restart; keyless local endpoints need no key re-entry.
+
+[Installation and recovery](docker-setup.md) · [Model settings](runtime-settings.md) · [Runtime details](live-studio.md)
