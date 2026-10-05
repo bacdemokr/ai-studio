@@ -98,7 +98,6 @@
 .world-room-paper li:before{content:counter(guide-step,decimal-leading-zero);position:absolute;left:12px;top:12px;display:grid;place-items:center;width:25px;height:25px;border-radius:7px;background:#eaf0df;color:#47652a;font-size:12px;font-weight:700;line-height:1}
 .world-room-paper-note{margin:0;padding:14px 16px;border-radius:10px;background:#e9eee4;color:#4b6054}
 #agent-campus .world-term-paper-body p{margin:0 0 18px}#agent-campus .world-term-paper-body p:last-child{margin-bottom:0}
-.world-room-paper footer{margin-top:22px;color:#647568;font-size:10px;font-weight:600;letter-spacing:1.2px}
 #agent-campus .world-campus-room{position:absolute;transform:translate(-50%,-100%);padding:12px 17px;border:1px solid #58768b;background:#102031f5;color:#eaf6ff;border-radius:5px;white-space:nowrap;box-shadow:0 5px 24px #0005;text-align:left}
 .world-campus-room>span{display:block;font-size:14px;color:#a7bfce;margin-bottom:7px}.world-campus-room>b{font-size:19px}
 #agent-campus .world-campus-room[aria-current=location]{border-color:#96d52b;background:#1b2c23f5}

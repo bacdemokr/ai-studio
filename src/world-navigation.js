@@ -25,10 +25,10 @@ const termGuides={
   skill:{title:'Skill : What is it',body:['A skill is a reusable set of instructions that teaches an agent how to approach a particular kind of work.','Equipping a skill makes that guidance available to the agent. It does not bypass permissions or guarantee that the skill was used in every answer.','Runtime activity and result evidence show what the agent actually read or used while completing a task.']}
 };
 const roomPaper=document.createElement('aside');roomPaper.className='world-room-paper';roomPaper.hidden=true;roomPaper.setAttribute('role','dialog');roomPaper.setAttribute('aria-modal','false');roomPaper.setAttribute('aria-labelledby','world-room-paper-title');
-roomPaper.innerHTML='<button type="button" class="world-room-paper-close" aria-label="Close room information">×</button><small></small><h2 id="world-room-paper-title"></h2><p class="world-room-paper-intro"></p><ol></ol><p class="world-room-paper-note"></p><footer>BUILD-A-CLAW · STUDIO NOTES</footer>';
+roomPaper.innerHTML='<button type="button" class="world-room-paper-close" aria-label="Close room information">×</button><small></small><h2 id="world-room-paper-title"></h2><p class="world-room-paper-intro"></p><ol></ol><p class="world-room-paper-note"></p>';
 navigationLayer.append(roomPaper);
 const termPaper=document.createElement('aside');termPaper.className='world-room-paper world-term-paper';termPaper.hidden=true;termPaper.setAttribute('role','dialog');termPaper.setAttribute('aria-modal','false');termPaper.setAttribute('aria-labelledby','world-term-paper-title');
-termPaper.innerHTML='<button type="button" class="world-room-paper-close" aria-label="Close definition">×</button><small>FIELD NOTES / GLOSSARY</small><h2 id="world-term-paper-title"></h2><div class="world-term-paper-body"></div><footer>BUILD-A-CLAW · STUDIO NOTES</footer>';
+termPaper.innerHTML='<button type="button" class="world-room-paper-close" aria-label="Close definition">×</button><small>FIELD NOTES / GLOSSARY</small><h2 id="world-term-paper-title"></h2><div class="world-term-paper-body"></div>';
 navigationLayer.append(termPaper);
 let roomInfoReturn=null,termInfoReturn=null;
 function closeTermInfo(restoreFocus=true){

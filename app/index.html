@@ -399,7 +399,6 @@ body{margin:0;padding:0;width:100%;max-width:none}
 .world-room-paper li:before{content:counter(guide-step,decimal-leading-zero);position:absolute;left:12px;top:12px;display:grid;place-items:center;width:25px;height:25px;border-radius:7px;background:#eaf0df;color:#47652a;font-size:12px;font-weight:700;line-height:1}
 .world-room-paper-note{margin:0;padding:14px 16px;border-radius:10px;background:#e9eee4;color:#4b6054}
 #agent-campus .world-term-paper-body p{margin:0 0 18px}#agent-campus .world-term-paper-body p:last-child{margin-bottom:0}
-.world-room-paper footer{margin-top:22px;color:#647568;font-size:10px;font-weight:600;letter-spacing:1.2px}
 #agent-campus .world-campus-room{position:absolute;transform:translate(-50%,-100%);padding:12px 17px;border:1px solid #58768b;background:#102031f5;color:#eaf6ff;border-radius:5px;white-space:nowrap;box-shadow:0 5px 24px #0005;text-align:left}
 .world-campus-room>span{display:block;font-size:14px;color:#a7bfce;margin-bottom:7px}.world-campus-room>b{font-size:19px}
 #agent-campus .world-campus-room[aria-current=location]{border-color:#96d52b;background:#1b2c23f5}
@@ -79945,10 +79944,10 @@ const termGuides={
   skill:{title:'Skill : What is it',body:['A skill is a reusable set of instructions that teaches an agent how to approach a particular kind of work.','Equipping a skill makes that guidance available to the agent. It does not bypass permissions or guarantee that the skill was used in every answer.','Runtime activity and result evidence show what the agent actually read or used while completing a task.']}
 };
 const roomPaper=document.createElement('aside');roomPaper.className='world-room-paper';roomPaper.hidden=true;roomPaper.setAttribute('role','dialog');roomPaper.setAttribute('aria-modal','false');roomPaper.setAttribute('aria-labelledby','world-room-paper-title');
-roomPaper.innerHTML='<button type="button" class="world-room-paper-close" aria-label="Close room information">×</button><small></small><h2 id="world-room-paper-title"></h2><p class="world-room-paper-intro"></p><ol></ol><p class="world-room-paper-note"></p><footer>BUILD-A-CLAW · STUDIO NOTES</footer>';
+roomPaper.innerHTML='<button type="button" class="world-room-paper-close" aria-label="Close room information">×</button><small></small><h2 id="world-room-paper-title"></h2><p class="world-room-paper-intro"></p><ol></ol><p class="world-room-paper-note"></p>';
 navigationLayer.append(roomPaper);
 const termPaper=document.createElement('aside');termPaper.className='world-room-paper world-term-paper';termPaper.hidden=true;termPaper.setAttribute('role','dialog');termPaper.setAttribute('aria-modal','false');termPaper.setAttribute('aria-labelledby','world-term-paper-title');
-termPaper.innerHTML='<button type="button" class="world-room-paper-close" aria-label="Close definition">×</button><small>FIELD NOTES / GLOSSARY</small><h2 id="world-term-paper-title"></h2><div class="world-term-paper-body"></div><footer>BUILD-A-CLAW · STUDIO NOTES</footer>';
+termPaper.innerHTML='<button type="button" class="world-room-paper-close" aria-label="Close definition">×</button><small>FIELD NOTES / GLOSSARY</small><h2 id="world-term-paper-title"></h2><div class="world-term-paper-body"></div>';
 navigationLayer.append(termPaper);
 let roomInfoReturn=null,termInfoReturn=null;
 function closeTermInfo(restoreFocus=true){
