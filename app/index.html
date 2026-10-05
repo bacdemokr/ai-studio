@@ -7,8 +7,9 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; frame-src 'self' blob:; base-uri 'none'; form-action 'none'; object-src 'none'">
 <title>NVIDIA Build-a-Claw — Agent Studio</title>
 <style>
-:root{color-scheme:dark;background:#0c0c0c}
-body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
+:root{color-scheme:dark;background:#0c0c0c;--browser-viewport-height:100vh}
+@supports(height:100dvh){:root{--browser-viewport-height:100dvh}}
+body{margin:0;padding:0;width:100%;max-width:none}
 </style>
 </head><body>
 <div id="bac-planner" lang="en" aria-label="Virtual multi-agent crew" data-view="board">
@@ -34,10 +35,11 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 
 <section id="agent-campus" data-boot="loading" aria-busy="true" data-part="campus" aria-label="3D agent campus">
 <style>#bac-planner .campus-nav-tag{font-size:15px;padding:2px 5px;background:#191e25;color:#b2bdca;margin-left:5px;border:1px solid #36414d;border-radius:2px}
-#agent-campus{--campus-green:#76b900;background:#090c10}
+#agent-campus{--campus-green:#76b900;--demo-top-gap:clamp(12px,2.4vh,30px);background:#090c10}
+@supports(height:100dvh){#agent-campus{--demo-top-gap:clamp(12px,2.4dvh,30px)}}
 #agent-campus .campus-eyebrow{font-size:15px;letter-spacing:1.7px;font-weight:600;color:#d4dce6;display:flex;gap:8px;align-items:center}
 #agent-campus .campus-eyebrow>span:first-child:empty{width:6px;height:6px;background:#96d52b;border-radius:50%;box-shadow:0 0 10px #76b90066}
-#agent-campus .campus-layout{display:grid;grid-template-columns:minmax(0,1fr) 292px;margin:0 32px;border:1px solid #252d36;border-radius:7px;overflow:hidden;background:#101419}
+#agent-campus .campus-layout{display:grid;grid-template-columns:minmax(0,1fr) 292px;margin:var(--demo-top-gap) 32px 0;border:1px solid #252d36;border-radius:7px;overflow:hidden;background:#101419}
 #agent-campus .campus-stage{position:relative;min-width:0;background:radial-gradient(ellipse at 50% 40%,#191e25,#090c10 80%)}
 #agent-campus .campus-stage-top{position:absolute;top:19px;left:22px;right:22px;z-index:2;display:flex;justify-content:space-between;gap:12px;pointer-events:none}
 #agent-campus .campus-location{font-size:15px;font-weight:600;letter-spacing:2px;color:#d4dce6}
@@ -69,7 +71,7 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 @media(min-width:1450px){#campus-viewport{height:540px}}
 @media(max-width:1080px){#agent-campus .campus-layout{grid-template-columns:minmax(0,1fr) 245px}#campus-viewport{height:440px}#agent-campus .campus-sim{font-size:14px}}
 @media(max-width:800px){#agent-campus .campus-layout{grid-template-columns:1fr}}
-@media(max-width:560px){#agent-campus .campus-layout{margin:0 12px}#agent-campus .campus-stage-top{top:14px;left:12px;right:12px;display:block}#agent-campus .campus-location{font-size:14px}#agent-campus .campus-sim{display:block;border:0;padding:6px 0;background:none;letter-spacing:.5px}#campus-viewport{height:350px}#agent-campus .campus-agent-label{font-size:14px;padding:3px 5px}#agent-campus .campus-agent-label small{font-size:14px}#agent-campus .campus-roster button{font-size:15px;padding:12px 5px}#agent-campus .campus-roster small{font-size:14px}}
+@media(max-width:560px){#agent-campus .campus-layout{margin:var(--demo-top-gap) 12px 0}#agent-campus .campus-stage-top{top:14px;left:12px;right:12px;display:block}#agent-campus .campus-location{font-size:14px}#agent-campus .campus-sim{display:block;border:0;padding:6px 0;background:none;letter-spacing:.5px}#campus-viewport{height:350px}#agent-campus .campus-agent-label{font-size:14px;padding:3px 5px}#agent-campus .campus-agent-label small{font-size:14px}#agent-campus .campus-roster button{font-size:15px;padding:12px 5px}#agent-campus .campus-roster small{font-size:14px}}
 
 .world-protection-layer{position:absolute;inset:0;pointer-events:none;z-index:8;overflow:hidden}
 .world-protection-hit{position:absolute;transform:translate(-50%,-100%);padding:10px 16px;border:1px solid #78ddec;border-top:2px solid #ffbe78;border-radius:10px;background:linear-gradient(135deg,rgba(15,35,46,.97),rgba(10,24,34,.97));color:#e1fbff;box-shadow:0 0 0 4px #70dfff0a,0 8px 28px #0008,0 0 24px #54caff29;max-width:260px;text-align:center;line-height:1.45}
@@ -94,7 +96,7 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 .studio-enabled .campus-bottom-grid,.studio-enabled .campus-discover,.studio-enabled>.foot{display:none!important}
 .studio-enabled .campus-layout{grid-template-columns:minmax(0,1fr) 365px!important;border-radius:3px!important}
 .studio-enabled .campus-inspector{display:none!important}
-.studio-enabled #campus-viewport{height:535px}
+.studio-enabled #campus-viewport{height:clamp(480px,65dvh,820px)}
 .studio-enabled .campus-stage{display:flex;flex-direction:column;justify-content:center;background:radial-gradient(ellipse at 45% 44%,#252d36,#090c10 80%)}
 .studio-enabled .campus-roster{margin-top:auto}
 .studio-enabled .campus-stage-top{align-items:center}
@@ -116,8 +118,8 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 #studio-board{margin:0 32px;border:1px solid #36414d;background:#101419;padding:26px}.studio-board-intro h3{font-size:33px;margin:10px 0!important}.studio-board-intro p{color:#b2bdca;font-size:17px;margin-bottom:25px!important}#studio-lanes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.studio-lane{position:relative;min-height:230px;background:#191e25;border:1px solid #36414d;padding:17px;border-radius:4px}.studio-lane:not(:last-child):after{content:'→';position:absolute;right:-13px;top:40px;z-index:1;color:#b2bdca}.studio-lane[data-state=running]{border-color:#96d52b;background:#252d36;box-shadow:0 0 25px #76b90020}.studio-lane[data-state=done]{border-top:3px solid #76b900}.studio-lane[data-state=waiting]{border-color:#c8a051}.studio-lane>span{color:#b2bdca;font-size:15px}.studio-lane h4{font-size:29px;margin:20px 0 4px}.studio-lane strong{font-size:15px;color:#d4dce6}.studio-lane p{font-size:16px;color:#b2bdca;line-height:1.6;margin:15px 0!important}.studio-lane button{border:1px solid #526071;background:#252d36;color:#d4dce6;padding:8px;font-size:14px;border-radius:3px}
 .studio-alert{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);width:min(680px,calc(100vw - 48px));z-index:100;background:#191e25;border:1px solid #8e9bab;color:#f0e8bf;box-shadow:0 15px 60px #0008;padding:16px 18px;display:flex;gap:20px;align-items:center;font-size:17px;line-height:1.5;border-radius:4px}.studio-alert button{margin-left:auto;border:0;background:none;color:#ece7c9;font-size:29px}#studio-dialog{box-sizing:border-box;color:#f2f5f9;width:min(850px,calc(100vw - 32px));max-height:90vh;overflow:auto;background:#101419;border:1px solid #526071;border-radius:5px;padding:25px;box-shadow:0 25px 100px #000b}#studio-dialog::backdrop{background:#090c10c9;backdrop-filter:blur(6px)}.studio-dialog-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:19px}.studio-dialog-heading button{background:none;border:0;color:#d4dce6;font-size:30px;padding:0 5px}#studio-dialog h3{font-size:34px;letter-spacing:-.8px;margin:0 0 12px}#studio-dialog p{color:#b2bdca;font-size:17px;line-height:1.7;margin:12px 0}#studio-dialog pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:50vh;overflow:auto;font-size:16px;background:#090c10;border:1px solid #252d36;padding:18px;line-height:1.8;color:#d4dce6}#studio-dialog code{color:#d4dce6}#studio-dialog iframe{width:100%;height:460px;border:1px solid #36414d;background:white;border-radius:3px}.studio-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0 14px}.studio-form-grid .wide{grid-column:1/-1}.studio-dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}.studio-runtime-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:19px 0}.studio-runtime-grid>div{border:1px solid #36414d;background:#191e25;padding:15px}.studio-runtime-grid b{display:block;font-size:17px}.studio-runtime-grid small{display:block;color:#b2bdca;font-size:15px;line-height:1.7;margin-top:7px}.studio-app-preview{margin-top:16px;padding:13px;border:1px solid #526071;background:#191e25;border-radius:3px}.studio-app-preview strong{font-size:18px;display:block;margin-bottom:9px}.studio-waiting{border:1px solid #9c8443;background:#332f1b;color:#e6d6a0;padding:15px;border-radius:4px;font-size:17px;line-height:1.6;margin-bottom:15px}.studio-waiting button{margin:12px 9px 0 0}
 @media(max-width:1100px){.studio-enabled .campus-layout{grid-template-columns:minmax(0,1fr) 320px!important}.studio-missions{grid-template-columns:repeat(3,1fr)}.studio-view-caption{display:none}}
-@media(max-width:800px){.studio-enabled .campus-layout{grid-template-columns:1fr!important}#studio-passport{border-left:0;border-top:1px solid #252d36}.studio-enabled #campus-viewport{height:420px}.studio-workspace{grid-template-columns:1fr}#studio-lanes{grid-template-columns:1fr 1fr}.studio-lane:not(:last-child):after{display:none}.studio-lane{min-height:160px}.studio-form-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:560px){.studio-viewbar,.studio-experiences,.studio-workspace,#studio-board{margin-left:12px;margin-right:12px}.studio-enabled #campus-viewport{height:430px}.studio-missions{grid-template-columns:1fr 1fr}.studio-section-heading>.studio-muted{display:none}.studio-section-heading h3{font-size:26px}.studio-runtime-grid{grid-template-columns:1fr}.studio-form-grid{grid-template-columns:1fr 1fr}.studio-workspace-main,.studio-evidence{padding:17px}.studio-empty-art{padding:22px 0}.studio-empty-art>span{display:none}}
+@media(max-width:800px){.studio-enabled .campus-layout{grid-template-columns:1fr!important}#studio-passport{border-left:0;border-top:1px solid #252d36}.studio-enabled #campus-viewport{height:clamp(340px,calc(var(--browser-viewport-height,100dvh) - 280px),620px)}.studio-workspace{grid-template-columns:1fr}#studio-lanes{grid-template-columns:1fr 1fr}.studio-lane:not(:last-child):after{display:none}.studio-lane{min-height:160px}.studio-form-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.studio-viewbar,.studio-experiences,.studio-workspace,#studio-board{margin-left:12px;margin-right:12px}.studio-enabled #campus-viewport{height:clamp(320px,calc(var(--browser-viewport-height,100dvh) - 240px),560px)}.studio-missions{grid-template-columns:1fr 1fr}.studio-section-heading>.studio-muted{display:none}.studio-section-heading h3{font-size:26px}.studio-runtime-grid{grid-template-columns:1fr}.studio-form-grid{grid-template-columns:1fr 1fr}.studio-workspace-main,.studio-evidence{padding:17px}.studio-empty-art{padding:22px 0}.studio-empty-art>span{display:none}}
 @media(prefers-reduced-motion:reduce){.studio-mission{transition:none}.studio-mission:hover{transform:none}}
 .studio-collection{margin:0 32px 22px;padding:18px 20px;background:#101419;border:1px solid #252d36;border-radius:5px}.studio-collection-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px}.studio-collection-heading p{margin:7px 0 0;color:#b2bdca;font-size:17px}.studio-agent-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:9px;margin-bottom:12px}#agent-campus .studio-agent-card{display:flex;align-items:center;gap:13px;text-align:left;min-width:0;padding:12px 14px;border:1px solid #36414d;border-radius:4px;background:#101419;color:#f2f5f9}.studio-agent-card>span:nth-child(2){min-width:0;flex:1}.studio-agent-card strong{display:block;font-size:19px;overflow-wrap:anywhere}.studio-agent-card small{display:block;font-size:15px;color:#b2bdca;margin-top:5px}.studio-agent-card em{font-style:normal;font-size:14px;color:#8e9bab;letter-spacing:1px}.studio-agent-card .studio-avatar.tiny{margin:0;width:36px;height:39px;min-width:36px;border-radius:10px;gap:7px}.studio-avatar.tiny i{height:6px;width:4px}.studio-agent-card[data-personality=maker] .studio-avatar{background:linear-gradient(135deg,#355456,#1e3336);border-color:#679396}.studio-agent-card[data-personality=analyst] .studio-avatar{background:linear-gradient(135deg,#444054,#262332);border-color:#837799}#agent-campus .studio-agent-card[aria-pressed=true]{background:#191e25;border-color:#96d52b;box-shadow:inset 0 2px #96d52b}.studio-agent-card[aria-pressed=true] em{color:#d4dce6}#studio-collection-note{font-size:15px}.studio-crew-assignments{border:1px solid #36414d;border-radius:4px;padding:16px 18px;margin:22px 0}.studio-crew-assignments .studio-form-grid{grid-template-columns:1fr 1fr}.studio-crew-assignments legend{font-size:17px;color:#d4dce6;padding:0 8px}.studio-crew-assignments small{font-size:16px;color:#b2bdca;line-height:1.7;display:block;margin-top:12px}
 @media(max-width:560px){.studio-collection{margin:0 12px 18px;padding:15px 12px}.studio-agent-list{grid-template-columns:1fr}.studio-collection-heading p{font-size:15px}.studio-collection-heading button{font-size:15px;white-space:nowrap}.studio-crew-assignments .studio-form-grid{grid-template-columns:1fr}.studio-crew-assignments{padding:12px}}
@@ -153,9 +155,9 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 @media(max-width:800px){#agent-campus .world-hotspot b{font-size:14px;letter-spacing:.2px}#agent-campus .world-hotspot{padding:0}.world-hotspot small{max-width:130px;white-space:normal}}
 @media(max-width:560px){#agent-campus .world-expanded .campus-scene-bottom{flex-wrap:wrap;gap:8px;padding:8px 12px}#agent-campus .world-expanded .campus-roster button{padding:8px 5px}#agent-campus .world-expanded .campus-stage-top{top:max(12px,env(safe-area-inset-top,0px))}}
 
-.studio-enabled #campus-viewport{flex:1;min-height:535px}
-@media(max-width:800px){.studio-enabled #campus-viewport{min-height:420px}}
-@media(max-width:560px){.studio-enabled #campus-viewport{min-height:430px}}
+.studio-enabled #campus-viewport{flex:1;min-height:clamp(480px,65dvh,820px)}
+@media(max-width:800px){.studio-enabled #campus-viewport{min-height:clamp(340px,calc(var(--browser-viewport-height,100dvh) - 280px),620px)}}
+@media(max-width:560px){.studio-enabled #campus-viewport{min-height:clamp(320px,calc(var(--browser-viewport-height,100dvh) - 240px),560px)}}
 .studio-safety-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 32px 16px;padding-top:2px}.studio-safety-bar>span{font-size:14px;letter-spacing:1.5px;color:#8e9bab;margin-right:auto}.studio-safety-bar button,.studio-mission-controls button{background:#101419;border:1px solid #36414d;border-radius:3px;color:#d4dce6;padding:7px 10px;font-size:15px}.studio-safety-bar button:hover,.studio-mission-controls button:hover{border-color:#8e9bab;color:#f2f5f9}.studio-mission-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}.studio-mission-controls>span{font-size:14px;color:#8e9bab;letter-spacing:1px;margin-right:auto}.studio-mission-controls>strong{font-size:15px;color:#dfbf7a}.studio-shared-summary{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0}.studio-shared-summary span{font-size:16px;background:#191e25;padding:8px 10px;border:1px solid #36414d}.studio-handoff-list{list-style:none;padding:0;counter-reset:handoff}.studio-handoff-list>li{position:relative;border-left:2px solid #8e9bab;padding:14px 18px;margin-left:12px;background:#191e25;margin-bottom:10px}.studio-handoff-list>li:before{counter-increment:handoff;content:counter(handoff);position:absolute;left:-13px;top:12px;background:#96d52b;color:#101419;width:22px;height:22px;border-radius:50%;text-align:center;line-height:22px;font-size:16px}.studio-handoff-list b{font-size:18px}.studio-handoff-list small{font-size:15px;color:#b2bdca;overflow-wrap:anywhere}.studio-handoff-list details{margin:12px 0;font-size:16px}.studio-handoff-list summary{cursor:pointer;color:#b2bdca}.studio-handoff-list code{overflow-wrap:anywhere}.studio-recovery-actions{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0}.studio-security-tabs{display:flex;gap:8px;margin:22px 0 17px}.studio-security-tabs button{border:1px solid #36414d;background:#191e25;color:#d4dce6;padding:10px 13px;border-radius:3px;font-size:17px}.studio-security-tabs [aria-pressed=true]{border-color:#96d52b;background:#252d36;color:#f2f5f9}.studio-security-label{border:1px solid #8c7342;background:#322d1e;color:#e9d2a0;padding:10px 13px;font-size:14px;letter-spacing:1px}.studio-security-label.captured{background:#191e25;border-color:#8e9bab;color:#d4dce6}.studio-boundary{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:24px 0;padding:25px 18px;background:radial-gradient(ellipse at center,#252d36,#101419);border:1px solid #36414d;border-radius:4px}.studio-boundary>div{flex:1;text-align:center;min-width:0}.studio-boundary>div>span{display:grid;place-items:center;font-size:37px;color:#d4dce6;height:67px;width:67px;border:1px solid #8e9bab;background:#252d36;box-shadow:0 7px 0 #101419;border-radius:14px;margin:0 auto 18px}.studio-boundary b{display:block;font-size:17px}.studio-boundary small{display:block;font-size:14px;color:#b2bdca;margin-top:8px;overflow-wrap:anywhere}.studio-boundary>i{font-size:29px;font-style:normal;color:#8e9bab}.studio-boundary .studio-boundary-gate>span{border-radius:4px;width:85px}.studio-boundary[data-verdict=denied] .studio-boundary-gate>span{border-color:#d8956b;color:#ffbd97;background:#543127}.studio-boundary[data-verdict=denied] .studio-boundary-gate small{color:#efb98a}.studio-boundary[data-verdict=allowed] .studio-boundary-gate>span{color:#d4dce6;box-shadow:0 7px 0 #101419,0 0 28px #96d52b33}.studio-security-story{border-left:2px solid #96d52b;padding:5px 0 5px 18px}.studio-security-story>span{font-size:14px;color:#b2bdca;letter-spacing:2px}.studio-security-story h4{font-size:27px;margin:10px 0}.studio-boundary-notes{border-top:1px solid #36414d;margin-top:26px;padding-top:18px;font-size:17px;color:#d4dce6}.studio-boundary-notes summary{cursor:pointer}.studio-proof-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:22px 0}.studio-proof-steps article{min-width:0;padding:16px;border:1px solid #526071;background:#191e25}.studio-proof-steps strong{font-size:16px;display:block;line-height:1.7}.studio-proof-steps b{font-size:19px;display:block;color:#b2bdca;margin:17px 0 8px}.studio-proof-steps small{display:block;overflow-wrap:anywhere;font-size:15px;color:#b2bdca}.studio-proof-steps details{margin-top:15px;font-size:15px}.studio-proof-steps [data-passed=true]{border-color:#96d52b}.studio-proof-steps [data-passed=true] b{color:#d4dce6}.studio-proof-error{border-left:2px solid #e6ae78;padding-left:12px}.studio-proof-steps summary{cursor:pointer}
 @media(max-width:560px){.studio-safety-bar{margin-left:12px;margin-right:12px}.studio-safety-bar>span{width:100%;margin:4px 0}.studio-safety-bar button{font-size:14px}.studio-proof-steps{grid-template-columns:1fr}.studio-boundary{padding:19px 7px;gap:3px}.studio-boundary>div>span{width:43px;height:50px;font-size:29px}.studio-boundary .studio-boundary-gate>span{width:53px}.studio-boundary b{font-size:14px}.studio-boundary small{font-size:14px}.studio-boundary>i{font-size:21px}}
 
@@ -376,11 +378,31 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 #agent-campus .world-room-map button{position:absolute;display:flex;align-items:center;gap:8px;border:0;background:#0d1824;color:#a7bdce;padding:0 6px 0 0;font-size:15px;white-space:nowrap}
 .world-room-map i{display:grid;place-items:center;width:26px;height:26px;border:1px solid #5f7d93;border-radius:50%;font-size:14px;font-style:normal;color:#a7c0d3}
 #agent-campus .world-room-map button.selected{color:#edffda}.world-room-map .selected i{background:#76b900;border-color:#96d52b;color:#101b0a;box-shadow:0 0 12px #76b90040}
+#agent-campus .world-navigation .world-room-info{position:absolute;z-index:7;display:grid;place-items:center;box-sizing:border-box;width:40px;height:40px;padding:0;transform:translate(-50%,-50%);border:2px solid #b7d3e6;border-radius:50%;background:#122536e8;color:#f1f8fd;box-shadow:0 4px 16px #0008,0 0 0 3px #12253680;font-family:Georgia,"Times New Roman",serif;font-size:25px;font-weight:700;font-style:italic;line-height:1}
+#agent-campus .world-navigation .world-room-info:hover,#agent-campus .world-navigation .world-room-info:focus-visible{border-color:#96d52b;background:#223d2a;color:#e4ffb7;box-shadow:0 4px 16px #0008,0 0 0 4px #76b90055;outline:0}
+.world-room-paper{pointer-events:auto;position:absolute;z-index:12;box-sizing:border-box;top:18px;right:18px;bottom:42px;width:clamp(310px,33.333%,520px);padding:36px 34px 27px 46px;overflow:auto;overscroll-behavior:contain;color:#29271f;background:linear-gradient(90deg,transparent 35px,#b24a3b30 36px,#b24a3b30 37px,transparent 38px),repeating-linear-gradient(0deg,#f4ecd8 0,#f4ecd8 27px,#9e937c45 28px,#f4ecd8 29px);border:1px solid #d0c3a7;box-shadow:-8px 12px 35px #0008,2px 1px 0 #fff8 inset;font-family:"Courier New",Courier,monospace;transform:rotate(.15deg);transition:right .16s ease}
+.world-room-paper[hidden]{display:none}
+.world-navigation[data-term-open=true]>.world-room-paper:not(.world-term-paper){right:46px}
+.world-term-paper{z-index:13;top:42px;right:18px;bottom:18px;transform:rotate(-.12deg)}
+.world-room-paper:before{content:'';position:absolute;left:8px;top:0;bottom:0;width:14px;background:radial-gradient(circle,#b5a98f 0 3px,transparent 3.5px) center 8px/14px 25px repeat-y;opacity:.72}
+#agent-campus .world-room-paper-close{position:absolute;top:10px;right:12px;width:34px;height:34px;padding:0;border:0;background:transparent;color:#29271f;font-family:Arial,sans-serif;font-size:31px;line-height:30px}
+#agent-campus .world-room-paper-close:hover,#agent-campus .world-room-paper-close:focus-visible{color:#762f26;outline:2px solid #762f26;outline-offset:1px}
+.world-room-paper small{display:block;margin:0 38px 27px 0;color:#685f4f;font-size:12px;font-weight:700;letter-spacing:1.4px}
+.world-room-paper h2{margin:0 0 25px;color:#222018;font-family:Georgia,"Times New Roman",serif;font-size:clamp(32px,3vw,46px);font-weight:500;line-height:1}
+.world-room-paper p,.world-room-paper li{font-size:15px;line-height:1.8}
+.world-room-paper-intro{margin:0 0 20px;font-weight:700}
+.world-room-paper .world-paper-term{display:inline;padding:0;border:0;border-radius:0;background:transparent;color:inherit;font:inherit;font-weight:inherit;line-height:inherit;text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px}
+#agent-campus .world-room-paper .world-paper-term:hover,#agent-campus .world-room-paper .world-paper-term:focus-visible{color:#762f26;outline:1px dashed #762f26;outline-offset:2px}
+.world-room-paper ol{margin:0 0 21px;padding-left:25px}
+.world-room-paper li{padding-left:5px;margin:0 0 8px}
+.world-room-paper-note{margin:0;padding:15px 0 0;border-top:1px dashed #716956}
+.world-term-paper-body p{margin:0 0 20px}
+.world-room-paper footer{margin-top:27px;color:#716956;font-size:11px;letter-spacing:1px;text-align:right}
 #agent-campus .world-campus-room{position:absolute;transform:translate(-50%,-100%);padding:12px 17px;border:1px solid #58768b;background:#102031f5;color:#eaf6ff;border-radius:5px;white-space:nowrap;box-shadow:0 5px 24px #0005;text-align:left}
 .world-campus-room>span{display:block;font-size:14px;color:#a7bfce;margin-bottom:7px}.world-campus-room>b{font-size:19px}
 #agent-campus .world-campus-room[aria-current=location]{border-color:#96d52b;background:#1b2c23f5}
 #agent-campus .world-campus-room:hover{border-color:#96d52b}
-@media(max-width:700px){.world-room-map{left:10px;bottom:10px;max-width:calc(100% - 20px);padding:9px 10px}.world-room-map>div{width:280px;height:58px}.world-room-map .world-map-caption{display:none}#agent-campus .world-room-map [data-world-room=mission]{left:170px}#agent-campus .world-room-map [data-world-room=workshop]{top:36px}.world-room-map i{width:22px;height:22px;font-size:13px}#agent-campus .world-room-map button{font-size:14px}.world-map-caption{font-size:14px;margin-bottom:8px}#agent-campus .world-overview-button{left:12px;top:112px;padding:7px 9px;font-size:15px}.world-journey{top:161px;font-size:15px}#agent-campus .world-campus-room{padding:8px 9px}.world-campus-room>span{display:none}.world-campus-room>b{font-size:14px}}
+@media(max-width:700px){.world-room-map{left:10px;bottom:10px;max-width:calc(100% - 20px);padding:9px 10px}.world-room-map>div{width:280px;height:58px}.world-room-map .world-map-caption{display:none}#agent-campus .world-room-map [data-world-room=mission]{left:170px}#agent-campus .world-room-map [data-world-room=workshop]{top:36px}.world-room-map i{width:22px;height:22px;font-size:13px}#agent-campus .world-room-map button{font-size:14px}.world-map-caption{font-size:14px;margin-bottom:8px}#agent-campus .world-overview-button{left:12px;top:112px;padding:7px 9px;font-size:15px}.world-journey{top:161px;font-size:15px}#agent-campus .world-campus-room{padding:8px 9px}#agent-campus .world-navigation .world-room-info{width:34px;height:34px;font-size:21px}.world-room-paper{top:10px;right:10px;bottom:38px;width:calc(100% - 20px);padding:34px 25px 25px 42px}.world-navigation[data-term-open=true]>.world-room-paper:not(.world-term-paper){right:38px;width:calc(100% - 48px)}.world-term-paper{top:38px;right:10px;bottom:10px;width:calc(100% - 48px)}.world-room-paper h2{font-size:34px}.world-campus-room>span{display:none}.world-campus-room>b{font-size:14px}}
 @media(max-width:700px){.world-navigation[data-overview=true][data-travelling=false] .world-journey{display:none}#agent-campus .world-overview-button{left:auto;right:12px;font-size:0}#agent-campus .world-overview-button:after{content:'⌑ Studio map';font-size:15px}#agent-campus .world-overview-button[aria-pressed=true]:after{content:'↙ Return to room'}}
 
 /* A speaking agent carries a readable bubble; everyone else keeps a quiet label. */
@@ -444,7 +466,7 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 /* Compact, viewport-bounded rooms: long forms must never stretch the scene. */
 @media(min-width:801px){
   #agent-campus[data-room]:not([data-world-overview=true]) .campus-layout:not(.world-expanded){
-    --room-panel-height:clamp(360px,calc(100dvh - 260px),660px);
+    --room-panel-height:clamp(360px,calc(var(--browser-viewport-height,100dvh) - 240px),960px);
     grid-template-columns:minmax(0,1fr) 445px!important;align-items:start;
   }
   #agent-campus[data-room]:not([data-world-overview=true]) .campus-layout:not(.world-expanded) .campus-stage{
@@ -760,7 +782,25 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 #studio-dialog #studio-identity-source{flex:1;min-height:0;max-height:none;border:0;margin:0;padding:20px;background:none;font-size:13px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere;border-radius:0;tab-size:2}
 #studio-dialog #studio-identity-source code{font:inherit;color:#d9e3e9}
 #studio-dialog #studio-identity-unavailable{font-size:15px;padding:20px;margin:0}
+.studio-code-intro{flex:none;margin:0 0 16px;color:#a9bbc6;font-size:14px}
+.studio-code-intro a{color:#9fd4ef;text-decoration-color:#5a9fbe;text-underline-offset:3px}
+.studio-code-intro a:hover{color:#d9f3ff;text-decoration-color:#9fd4ef}
+.studio-code-intro a:after{content:' ↗';font-size:12px}
+#studio-dialog.studio-agent-code{width:min(1320px,calc(100vw - 32px))}
+.studio-code-layout{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;min-height:0;flex:1}
+.studio-code-panel{display:flex;min-width:0;min-height:0;flex-direction:column;border:1px solid #344955;border-radius:8px;overflow:hidden;background:#0d151c}
+.studio-code-panel>header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:14px 15px;border-bottom:1px solid #344955;background:#111d25}
+.studio-code-panel>header div{min-width:0}
+.studio-code-panel>header small{display:block;color:#8ca5b4;font-size:10px;letter-spacing:.7px}
+#studio-dialog .studio-code-panel h4{margin:8px 0 0;font-size:17px;overflow-wrap:anywhere}
+.studio-code-panel>header span{color:#9fb2be;font-size:12px}
+.studio-code-panel>header .studio-code-question{display:block;margin-top:7px;color:#d4e1e8;font-size:13px;font-style:italic;line-height:1.45}
+.studio-code-panel>header button{flex:none;padding:6px 9px;font-size:12px}
+#studio-dialog .studio-code-panel pre{flex:1;min-height:0;max-height:none;margin:0;padding:16px;border:0;border-radius:0;background:transparent;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;tab-size:2}
+#studio-dialog .studio-code-panel code{font:inherit;color:#d9e3e9}
+.studio-code-panel>p{margin:0;padding:18px;color:#aebec7;font-size:14px;line-height:1.6}
 @media(max-width:650px){#studio-dialog.studio-agent-documents{padding:16px}.studio-identity-layout{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);gap:12px}.studio-identity-files{display:flex;gap:18px;overflow-x:auto;padding:0;max-height:150px}.studio-identity-files section{flex:none;display:flex;align-items:flex-start;gap:5px;padding-top:23px;position:relative}.studio-identity-files section+section{margin:0}.studio-identity-files h4{position:absolute;top:0;left:0;margin:0}.studio-identity-files button{width:150px;margin:0}.studio-identity-heading{margin-bottom:12px}.studio-identity-document>header{padding:12px}#studio-dialog #studio-identity-source{padding:14px}.studio-identity-document header small{font-size:11px}}
+@media(max-width:900px){.studio-code-layout{grid-template-columns:1fr;overflow:auto}.studio-code-panel{min-height:260px;overflow:visible}.studio-code-panel>pre{min-height:180px}}
 
 /* Keep the full demo name readable within the studio map and room cards. */
 #agent-campus .world-room-map [data-world-room=mission]{right:0;text-align:left}
@@ -1173,7 +1213,7 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
   <div class="studio-passport-head"><span class="studio-kicker">YOUR AGENT / YOUR RULES</span><span class="studio-spark">✦</span></div>
   <div id="studio-lounge-empty"><div class="studio-avatar"><i></i><i></i></div><h3>Room for your first agent.</h3></div>
   <div id="studio-companion" hidden>
-    <div class="studio-companion-name"><button type="button" id="studio-portrait" class="studio-avatar small studio-identity-open" aria-label="View agent files" title="View agent files"><i aria-hidden="true"></i><i aria-hidden="true"></i></button><div><div class="studio-agent-title"><h3><button type="button" id="studio-agent-name" class="studio-identity-name" title="View agent files" aria-haspopup="dialog"></button></h3><div class="studio-agent-actions"><button id="studio-edit-agent" class="studio-secondary">Edit agent</button><button id="studio-delete-agent" class="studio-danger-link">Delete agent</button></div></div><span id="studio-personality" class="studio-muted"></span><div id="studio-agent-skills" aria-label="Equipped skills"></div></div><span class="studio-online-dot"></span></div>
+    <div class="studio-companion-name"><button type="button" id="studio-portrait" class="studio-avatar small studio-identity-open" aria-label="View agent files" title="View agent files"><i aria-hidden="true"></i><i aria-hidden="true"></i></button><div><div class="studio-agent-title"><h3><button type="button" id="studio-agent-name" class="studio-identity-name" title="View agent files" aria-haspopup="dialog"></button></h3><div class="studio-agent-actions"><button id="studio-edit-agent" class="studio-secondary">Edit agent</button><button id="studio-agent-code" class="studio-secondary" aria-haspopup="dialog">Code</button><button id="studio-delete-agent" class="studio-danger-link">Delete agent</button></div></div><span id="studio-personality" class="studio-muted"></span><div id="studio-agent-skills" aria-label="Equipped skills"></div></div><span class="studio-online-dot"></span></div>
 
     <button type="button" id="studio-agent-policy" class="studio-secondary studio-policy-link" hidden>◇ OpenShell Policy</button>
     <div class="studio-agent-state" hidden><span class="studio-kicker" id="studio-task-state">READY FOR A MISSION</span><p id="studio-task-summary">Choose a mission below, or ask for something of your own.</p></div>
@@ -78724,6 +78764,13 @@ const api = window.BacDemo;
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const colors = [0x76b900, 0x55bfff, 0xf4b34f, 0xff8873, 0xb49aff, 0xcbddea, 0x55bfff, 0xb49aff, 0x55bfff];
 const hex = i => '#' + colors[i].toString(16);
+function syncBrowserViewport(){
+  const height=window.visualViewport?.height||window.innerHeight;
+  document.documentElement.style.setProperty('--browser-viewport-height',Math.round(height)+'px');
+}
+syncBrowserViewport();
+window.addEventListener('resize',syncBrowserViewport);
+window.visualViewport?.addEventListener('resize',syncBrowserViewport);
 let snapshot = api.snapshot(), selected = 0, sceneView = null;
 function choose(i) {
   if(!snapshot.agents[i])return;
@@ -79629,6 +79676,62 @@ const journeyNote=document.createElement('div');journeyNote.className='world-jou
 const roomMap=document.createElement('nav');roomMap.className='world-room-map';roomMap.setAttribute('aria-label','Connected studio rooms');
 roomMap.innerHTML='<span class="world-map-caption">STUDIO MAP</span><div><svg viewBox="0 0 320 66" aria-hidden="true"><path d="M13 53 V13 H207"/></svg>'+['lounge','mission','workshop'].map(id=>'<button type="button" data-world-room="'+id+'"><i>'+studioRooms[id].number+'</i><span>'+studioRooms[id].title+'</span></button>').join('')+'</div>';
 navigationLayer.append(roomMap);
+const roomGuides={
+  workshop:{label:'ROOM 01 / QUICK GUIDE',title:'Hiring',anchor:new THREE.Vector3(-.85,2.12,-3.92),intro:'Create a personal <button type="button" class="world-paper-term" data-paper-term="agent">agent</button> with a recognizable identity and a clear job to do.',points:['Choose its appearance, name, working style and voice.','Choose each <button type="button" class="world-paper-term" data-paper-term="skill">skill</button> that fits the role you want it to perform.','Choose whether OpenShell protection should isolate its tools and file access.'],note:'Hiring saves an independent profile and workspace. The agent starts working only when you give it a mission.'},
+  lounge:{label:'ROOM 02 / QUICK GUIDE',title:'Agent Lounge',anchor:new THREE.Vector3(3.75,2.12,-5.78),intro:'Meet your hired agents and give each one work in its own context.',points:['Select an agent to open its conversation, memory and files.','Run a suggested mission or write a request of your own.','Review visible activity, results and OpenShell policy decisions before trusting the outcome.'],note:'Each agent keeps its own persona, skills and workspace. Ready and Busy describe observed work, not model capability.'},
+  mission:{label:'ROOM 03 / QUICK GUIDE',title:'BaC Planning',anchor:new THREE.Vector3(2.45,4.02,-6.98),intro:'Turn one event brief into a coordinated plan created by a team of specialist agents.',points:['Describe the event, location, audience and constraints, then choose the specialists and workflow you need.','The Captain shares the same versioned brief while specialists work on demo design, operations and communications. Independent stages can run in parallel before their results are handed forward.','Review each handoff and its evidence, answer any checkpoint that needs your decision, then inspect the completed deliverables and event package.'],note:'Nothing is presented as completed until the corresponding agent has produced an output. You remain in control of starting, reviewing and sharing the plan.'}
+};
+const termGuides={
+  agent:{title:'Agent : a definition',body:['An agent is a software worker powered by a language model and configured for a particular purpose.','In Build-a-Claw, each agent combines an identity, instructions, selected skills, memory and a separate workspace. It can reason about a request and use the tools allowed by its runtime policy.','An agent is not a person or an independent authority. It acts when you give it work, and you remain responsible for reviewing its actions and results.']},
+  skill:{title:'Skill : What is it',body:['A skill is a reusable set of instructions that teaches an agent how to approach a particular kind of work.','Equipping a skill makes that guidance available to the agent. It does not bypass permissions or guarantee that the skill was used in every answer.','Runtime activity and result evidence show what the agent actually read or used while completing a task.']}
+};
+const roomPaper=document.createElement('aside');roomPaper.className='world-room-paper';roomPaper.hidden=true;roomPaper.setAttribute('role','dialog');roomPaper.setAttribute('aria-modal','false');roomPaper.setAttribute('aria-labelledby','world-room-paper-title');
+roomPaper.innerHTML='<button type="button" class="world-room-paper-close" aria-label="Close room information">×</button><small></small><h2 id="world-room-paper-title"></h2><p class="world-room-paper-intro"></p><ol></ol><p class="world-room-paper-note"></p><footer>BUILD-A-CLAW · STUDIO NOTES</footer>';
+navigationLayer.append(roomPaper);
+const termPaper=document.createElement('aside');termPaper.className='world-room-paper world-term-paper';termPaper.hidden=true;termPaper.setAttribute('role','dialog');termPaper.setAttribute('aria-modal','false');termPaper.setAttribute('aria-labelledby','world-term-paper-title');
+termPaper.innerHTML='<button type="button" class="world-room-paper-close" aria-label="Close definition">×</button><small>FIELD NOTES / GLOSSARY</small><h2 id="world-term-paper-title"></h2><div class="world-term-paper-body"></div><footer>BUILD-A-CLAW · STUDIO NOTES</footer>';
+navigationLayer.append(termPaper);
+let roomInfoReturn=null,termInfoReturn=null;
+function closeTermInfo(restoreFocus=true){
+  if(termPaper.hidden)return;
+  termPaper.hidden=true;navigationLayer.dataset.termOpen='false';
+  const target=termInfoReturn;termInfoReturn=null;
+  if(restoreFocus)target?.focus({preventScroll:true});
+}
+function closeRoomInfo(){
+  if(roomPaper.hidden)return;
+  closeTermInfo(false);
+  roomPaper.hidden=true;
+  const target=roomInfoReturn;roomInfoReturn=null;
+  target?.focus({preventScroll:true});
+}
+function openRoomInfo(id,trigger){
+  const guide=roomGuides[id];if(!guide)return;
+  closeTermInfo(false);
+  roomInfoReturn=trigger;roomPaper.querySelector('small').textContent=guide.label;
+  roomPaper.querySelector('h2').textContent=guide.title;
+  roomPaper.querySelector('.world-room-paper-intro').innerHTML=guide.intro;
+  roomPaper.querySelector('ol').innerHTML=guide.points.map(point=>'<li>'+point+'</li>').join('');
+  roomPaper.querySelector('.world-room-paper-note').textContent=guide.note;
+  roomPaper.hidden=false;roomPaper.querySelector('.world-room-paper-close').focus({preventScroll:true});
+}
+function openTermInfo(id,trigger){
+  const guide=termGuides[id];if(!guide)return;
+  termInfoReturn=trigger;termPaper.querySelector('h2').textContent=guide.title;
+  termPaper.querySelector('.world-term-paper-body').innerHTML=guide.body.map(paragraph=>'<p>'+paragraph+'</p>').join('');
+  termPaper.hidden=false;navigationLayer.dataset.termOpen='true';
+  termPaper.querySelector('.world-room-paper-close').focus({preventScroll:true});
+}
+roomPaper.querySelector('.world-room-paper-close').onclick=closeRoomInfo;
+roomPaper.onclick=e=>{const term=e.target.closest('[data-paper-term]');if(term)openTermInfo(term.dataset.paperTerm,term);};
+roomPaper.onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();closeRoomInfo();}};
+termPaper.querySelector('.world-room-paper-close').onclick=()=>closeTermInfo();
+termPaper.onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();closeTermInfo();}};
+const roomInfoMarkers=Object.keys(roomGuides).map(id=>{
+  const node=document.createElement('button');node.type='button';node.className='world-room-info';node.dataset.roomInfo=id;
+  node.textContent='I';node.setAttribute('aria-label','About '+studioRooms[id].title);node.title='About '+studioRooms[id].title;
+  node.onclick=()=>openRoomInfo(id,node);navigationLayer.append(node);return {id,node};
+});
 function goToRoom(next){
   const restoreFocus=navigationLayer.contains(document.activeElement);
   root.dispatchEvent(new CustomEvent('bac:world-room',{detail:{room:next}}));
@@ -79697,8 +79800,9 @@ function refreshNavigation(){
   hotspotLayer.hidden=room!=='mission'||overview||!!journey;el('labels').hidden=room!=='mission'||overview||!!journey;residentLayer.hidden=room!=='lounge'||overview||!!journey;
   overviewButton.textContent=overview?'↙ Return to '+studioRooms[room].title:'⌑ See the whole studio';overviewButton.setAttribute('aria-pressed',String(overview));
   overviewButton.setAttribute('aria-label',overview?'Return to '+studioRooms[room].title:'See the whole studio');
-  roomMap.querySelectorAll('button').forEach(b=>{b.setAttribute('aria-current',b.dataset.worldRoom===room?'location':'false');b.classList.toggle('selected',b.dataset.worldRoom===room);});
+  roomMap.querySelectorAll('[data-world-room]').forEach(b=>{b.setAttribute('aria-current',b.dataset.worldRoom===room?'location':'false');b.classList.toggle('selected',b.dataset.worldRoom===room);});
   overviewLabels.forEach(r=>{r.node.hidden=!overview||!!journey;r.node.setAttribute('aria-current',r.id===room?'location':'false');});
+  roomInfoMarkers.forEach(marker=>marker.node.hidden=!!journey||overview||marker.id!==room);
   journeyNote.hidden=!journey&&!overview;
   if(!journey&&overview)journeyNote.textContent='Three connected rooms. Choose where to go.';
 }
@@ -79764,6 +79868,13 @@ function animateNavigation(now){
     positionLabel(r.node,r.group.localToWorld(new THREE.Vector3(0,r.id==='workshop'?1:4.5,r.id==='workshop'?3:-1.7)));
     const controlsBottom=Math.max(overviewButton.offsetTop+overviewButton.offsetHeight,journeyNote.offsetHeight?journeyNote.offsetTop+journeyNote.offsetHeight:0);
     r.node.style.top=Math.max(controlsBottom+12+r.node.offsetHeight,parseFloat(r.node.style.top))+'px';
+  });
+  roomInfoMarkers.forEach(marker=>{
+    if(marker.node.hidden)return;
+    positionLabel(marker.node,studioRooms[marker.id].group.localToWorld(roomGuides[marker.id].anchor.clone()));
+    const half=marker.node.offsetWidth/2;
+    marker.node.style.left=THREE.MathUtils.clamp(parseFloat(marker.node.style.left),half+12,viewport.clientWidth-half-12)+'px';
+    marker.node.style.top=THREE.MathUtils.clamp(parseFloat(marker.node.style.top),half+12,viewport.clientHeight-half-12)+'px';
   });
   // Highlight only the bridge for the current trip, in the direction of travel.
   corridors.forEach(c=>{
@@ -80417,7 +80528,7 @@ render();
   }
   el('agent-list').onclick=e=>{const b=e.target.closest('[data-agent-key]');if(b)switchAgent(b.dataset.agentKey);};
   let dialogRevision=0;
-  function dialog(kicker, html) {dialogRevision++;el('dialog').classList.remove('studio-agent-documents','studio-team-settings');el('dialog').classList.toggle('studio-page-preview',['EVENT PAGE','WEBPAGE PREVIEW'].includes(kicker));el('dialog-kicker').textContent=kicker;el('dialog-body').innerHTML=html;if(!el('dialog').open)el('dialog').showModal();}
+  function dialog(kicker, html) {dialogRevision++;el('dialog').classList.remove('studio-agent-documents','studio-team-settings','studio-agent-code');el('dialog').classList.toggle('studio-page-preview',['EVENT PAGE','WEBPAGE PREVIEW'].includes(kicker));el('dialog-kicker').textContent=kicker;el('dialog-body').innerHTML=html;if(!el('dialog').open)el('dialog').showModal();}
   el('dialog').addEventListener('close',()=>{dialogRevision++;});
   el('dialog-close').onclick=()=>el('dialog').close();
   el('dialog').addEventListener('click',e=>{if(e.target===el('dialog')&&!removingAgent){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
@@ -81884,18 +81995,35 @@ fillCreator(true);setRoom('workshop');window.BacCampus?.overview({instant:true})
 
   // Inspect saved OpenClaw files. Opening this panel never prepares or edits an agent.
 let identityRequest=0;
-async function openAgentDocuments(role=null){
+async function openAgentDocuments(role=null,codeView=false){
  const target=agentId,request=++identityRequest;
  const name=role===null?data.profile?.name:defaultNames[role];
  if(!name||!target)return;
- dialog('AGENT FILES','<section id="studio-identity-viewer"><h3>'+escape(name)+'</h3><p role="status">Loading agent files…</p></section>');
+ dialog(codeView?'AGENT CODE':'AGENT FILES','<section id="studio-identity-viewer"><h3>'+escape(name)+'</h3><p role="status">Loading agent files…</p></section>');
  el('dialog').classList.add('studio-agent-documents');
+ el('dialog').classList.toggle('studio-agent-code',codeView);
  const host=el('identity-viewer');
  const current=()=>request===identityRequest&&el('dialog').open&&el('identity-viewer')===host&&agentId===target;
  try{
   const result=await api('agent-documents'+(role===null?'':'?role='+role),undefined,target);
   if(!current())return;
   const documents=result.documents||[];
+  if(codeView){
+   const definitions=[
+    {filename:'AGENTS.md',label:'Operation role',question:'What am I authorized and expected to do?'},
+    {filename:'IDENTITY.md',label:'Identity',question:'Who am I?'},
+    {filename:'SOUL.md',label:'Character and boundaries',question:'How do I behave?'}
+   ];
+   const core=definitions.map(definition=>({...definition,...(documents.find(doc=>doc.group==='agent'&&doc.filename===definition.filename)||{status:'missing'})}));
+   host.innerHTML='<div class="studio-identity-heading"><div><h3>'+escape(result.name)+'</h3><p>'+escape(result.description)+'</p></div><span>Read only</span></div><p class="studio-code-intro"><a href="https://docs.openclaw.ai/cli/agents" target="_blank" rel="noopener noreferrer">The three OpenClaw definitions that shape how this agent works.</a></p><div class="studio-code-layout">'+core.map((doc,index)=>'<article class="studio-code-panel" data-status="'+escape(doc.status)+'"><header><div><small>0'+(index+1)+' / AGENT DEFINITION: '+escape(doc.label).toUpperCase()+'</small><span class="studio-code-question">“'+escape(doc.question)+'”</span><h4>'+escape(doc.filename)+'</h4></div><button type="button" class="studio-secondary" data-code-copy="'+index+'" '+(doc.status==='ready'?'':'disabled')+'>Copy</button></header>'+(doc.status==='ready'?'<pre tabindex="0"><code>'+escape(doc.content||'')+'</code></pre>':'<p role="status">'+(doc.status==='missing'?'This file has not been created yet. It will appear when this agent’s runtime is prepared.':'This saved file could not be opened.')+'</p>')+'</article>').join('')+'</div>';
+   host.querySelector('.studio-code-layout').onclick=async event=>{
+    const button=event.target.closest('[data-code-copy]');if(!button)return;
+    const doc=core[Number(button.dataset.codeCopy)];if(doc?.status!=='ready')return;
+    try{await navigator.clipboard.writeText(doc.content);if(current())button.textContent='Copied';}
+    catch{if(current())button.textContent='Select text to copy';}
+   };
+   return;
+  }
   host.innerHTML='<div class="studio-identity-heading"><div><h3>'+escape(result.name)+'</h3><p>'+escape(result.description)+'</p></div><span>Read only</span></div><div class="studio-identity-layout"><nav aria-label="Agent documents" class="studio-identity-files">'+['agent','skill'].map(group=>{
    const items=documents.map((doc,index)=>({doc,index})).filter(({doc})=>doc.group===group);
    return items.length?'<section><h4>'+(group==='agent'?'OpenClaw files':'Custom skills')+'</h4>'+items.map(({doc,index})=>'<button type="button" data-identity-document="'+index+'" aria-pressed="false" data-status="'+escape(doc.status)+'"><strong>'+escape(group==='skill'?doc.title:doc.filename)+'</strong><small>'+escape(group==='skill'?'SKILL.md':doc.title)+'</small></button>').join('')+'</section>':'';
@@ -81925,6 +82053,7 @@ async function openAgentDocuments(role=null){
  }catch(error){if(current())host.innerHTML='<h3>'+escape(name)+'</h3><p role="alert">'+escape(error.message)+'</p>';}
 }
 for(const id of ['portrait','agent-name'])el(id).onclick=()=>openAgentDocuments();
+el('agent-code').onclick=()=>openAgentDocuments(null,true);
 for(const id of ['crew-portrait','crew-name'])el(id).onclick=()=>openAgentDocuments(selectedCrewRole);
 el('dialog').addEventListener('close',()=>{if(!el('dialog').open)identityRequest++;});
 

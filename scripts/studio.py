@@ -412,6 +412,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
                 raise Problem('This studio supports up to %d personal agents per attendee.' % MAX_AGENTS, 409)
             profile['name'] = self.unique_agent_name(db, participant, profile['name'])
             self.initialize_workspace(owner)
+            runtime.write_workspace(self.workspace(owner), profile)
             db.execute('INSERT INTO agents (id,participant,profile,created) VALUES (?,?,?,?)',
                        (owner, participant, json.dumps(profile), time.time()))
             self.queue_agent_preparation(db, owner, profile)
@@ -457,15 +458,17 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
         profile = self.agent_profile(owner, data)
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
-            selected = db.execute("SELECT participant,deleting FROM agents WHERE id=? AND kind='personal'", (owner,)).fetchone()
+            selected = db.execute("SELECT participant,profile,deleting FROM agents WHERE id=? AND kind='personal'", (owner,)).fetchone()
             if not selected:raise Problem('Agent not found. Refresh the studio before hiring.', 404)
             if selected['deleting']:raise Problem('Agent deletion is pending.', 409)
+            if selected['profile']:raise Problem('Your agent was already created in another tab.', 409)
             participant = selected['participant']
             profile['name'] = self.unique_agent_name(db, participant, profile['name'], owner)
+            self.initialize_workspace(owner)
+            runtime.write_workspace(self.workspace(owner), profile)
             changed = db.execute("UPDATE agents SET profile=? WHERE id=? AND profile IS NULL AND kind='personal'", (json.dumps(profile), owner)).rowcount
             if changed:
                 db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
-                self.initialize_workspace(owner)
                 self.queue_agent_preparation(db, owner, profile)
         if not changed:
             raise Problem('Your agent was already created in another tab.', 409)
@@ -505,6 +508,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
                 self.require_idle(db, owner)
                 participant = db.execute('SELECT participant FROM agents WHERE id=?', (owner,)).fetchone()['participant']
                 profile['name'] = self.unique_agent_name(db, participant, profile['name'], owner)
+                runtime.write_workspace(self.workspace(owner), profile)
                 db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(profile), owner))
                 db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
                 self.provisioned.discard(profile['id'])

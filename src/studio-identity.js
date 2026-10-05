@@ -1,17 +1,34 @@
 // Inspect saved OpenClaw files. Opening this panel never prepares or edits an agent.
 let identityRequest=0;
-async function openAgentDocuments(role=null){
+async function openAgentDocuments(role=null,codeView=false){
  const target=agentId,request=++identityRequest;
  const name=role===null?data.profile?.name:defaultNames[role];
  if(!name||!target)return;
- dialog('AGENT FILES','<section id="studio-identity-viewer"><h3>'+escape(name)+'</h3><p role="status">Loading agent files…</p></section>');
+ dialog(codeView?'AGENT CODE':'AGENT FILES','<section id="studio-identity-viewer"><h3>'+escape(name)+'</h3><p role="status">Loading agent files…</p></section>');
  el('dialog').classList.add('studio-agent-documents');
+ el('dialog').classList.toggle('studio-agent-code',codeView);
  const host=el('identity-viewer');
  const current=()=>request===identityRequest&&el('dialog').open&&el('identity-viewer')===host&&agentId===target;
  try{
   const result=await api('agent-documents'+(role===null?'':'?role='+role),undefined,target);
   if(!current())return;
   const documents=result.documents||[];
+  if(codeView){
+   const definitions=[
+    {filename:'AGENTS.md',label:'Operation role',question:'What am I authorized and expected to do?'},
+    {filename:'IDENTITY.md',label:'Identity',question:'Who am I?'},
+    {filename:'SOUL.md',label:'Character and boundaries',question:'How do I behave?'}
+   ];
+   const core=definitions.map(definition=>({...definition,...(documents.find(doc=>doc.group==='agent'&&doc.filename===definition.filename)||{status:'missing'})}));
+   host.innerHTML='<div class="studio-identity-heading"><div><h3>'+escape(result.name)+'</h3><p>'+escape(result.description)+'</p></div><span>Read only</span></div><p class="studio-code-intro"><a href="https://docs.openclaw.ai/cli/agents" target="_blank" rel="noopener noreferrer">The three OpenClaw definitions that shape how this agent works.</a></p><div class="studio-code-layout">'+core.map((doc,index)=>'<article class="studio-code-panel" data-status="'+escape(doc.status)+'"><header><div><small>0'+(index+1)+' / AGENT DEFINITION: '+escape(doc.label).toUpperCase()+'</small><span class="studio-code-question">“'+escape(doc.question)+'”</span><h4>'+escape(doc.filename)+'</h4></div><button type="button" class="studio-secondary" data-code-copy="'+index+'" '+(doc.status==='ready'?'':'disabled')+'>Copy</button></header>'+(doc.status==='ready'?'<pre tabindex="0"><code>'+escape(doc.content||'')+'</code></pre>':'<p role="status">'+(doc.status==='missing'?'This file has not been created yet. It will appear when this agent’s runtime is prepared.':'This saved file could not be opened.')+'</p>')+'</article>').join('')+'</div>';
+   host.querySelector('.studio-code-layout').onclick=async event=>{
+    const button=event.target.closest('[data-code-copy]');if(!button)return;
+    const doc=core[Number(button.dataset.codeCopy)];if(doc?.status!=='ready')return;
+    try{await navigator.clipboard.writeText(doc.content);if(current())button.textContent='Copied';}
+    catch{if(current())button.textContent='Select text to copy';}
+   };
+   return;
+  }
   host.innerHTML='<div class="studio-identity-heading"><div><h3>'+escape(result.name)+'</h3><p>'+escape(result.description)+'</p></div><span>Read only</span></div><div class="studio-identity-layout"><nav aria-label="Agent documents" class="studio-identity-files">'+['agent','skill'].map(group=>{
    const items=documents.map((doc,index)=>({doc,index})).filter(({doc})=>doc.group===group);
    return items.length?'<section><h4>'+(group==='agent'?'OpenClaw files':'Custom skills')+'</h4>'+items.map(({doc,index})=>'<button type="button" data-identity-document="'+index+'" aria-pressed="false" data-status="'+escape(doc.status)+'"><strong>'+escape(group==='skill'?doc.title:doc.filename)+'</strong><small>'+escape(group==='skill'?'SKILL.md':doc.title)+'</small></button>').join('')+'</section>':'';
@@ -41,5 +58,6 @@ async function openAgentDocuments(role=null){
  }catch(error){if(current())host.innerHTML='<h3>'+escape(name)+'</h3><p role="alert">'+escape(error.message)+'</p>';}
 }
 for(const id of ['portrait','agent-name'])el(id).onclick=()=>openAgentDocuments();
+el('agent-code').onclick=()=>openAgentDocuments(null,true);
 for(const id of ['crew-portrait','crew-name'])el(id).onclick=()=>openAgentDocuments(selectedCrewRole);
 el('dialog').addEventListener('close',()=>{if(!el('dialog').open)identityRequest++;});

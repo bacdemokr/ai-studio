@@ -6,6 +6,13 @@ const api = window.BacDemo;
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const colors = [0x76b900, 0x55bfff, 0xf4b34f, 0xff8873, 0xb49aff, 0xcbddea, 0x55bfff, 0xb49aff, 0x55bfff];
 const hex = i => '#' + colors[i].toString(16);
+function syncBrowserViewport(){
+  const height=window.visualViewport?.height||window.innerHeight;
+  document.documentElement.style.setProperty('--browser-viewport-height',Math.round(height)+'px');
+}
+syncBrowserViewport();
+window.addEventListener('resize',syncBrowserViewport);
+window.visualViewport?.addEventListener('resize',syncBrowserViewport);
 let snapshot = api.snapshot(), selected = 0, sceneView = null;
 function choose(i) {
   if(!snapshot.agents[i])return;

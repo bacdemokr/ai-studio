@@ -59,8 +59,9 @@ page = '''<!doctype html>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; frame-src 'self' blob:; base-uri 'none'; form-action 'none'; object-src 'none'">
 <title>NVIDIA Build-a-Claw — Agent Studio</title>
 <style>
-:root{color-scheme:dark;background:#0c0c0c}
-body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
+:root{color-scheme:dark;background:#0c0c0c;--browser-viewport-height:100vh}
+@supports(height:100dvh){:root{--browser-viewport-height:100dvh}}
+body{margin:0;padding:0;width:100%;max-width:none}
 </style>
 </head><body>
 '''+fragment+'''
