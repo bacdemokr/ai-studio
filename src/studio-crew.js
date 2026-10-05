@@ -341,15 +341,21 @@ function showCollaboration(){selectedCrewRole=0;setRoom('mission');root.dataset.
 function teamReady(){return runtime.teamReady??runtime.ready;}
 function teamModel(role){const id=data.teamSelections?.find(row=>row.role===role)?.id;return runtime.teamModels?.find(model=>model.id===id)||(id?{id,label:id}:runtime.teamModels?.[[0,5,7].includes(role)?0:1]);}
 let crewDocumentUpload=false;
-const excludedCrewDocuments=new Set();
+const crewDocumentSelections=new Map();
+function excludedCrewDocuments(){
+ const epoch=data.crewChatReset?.epoch||'';
+ let selection=crewDocumentSelections.get(selectedScenario);
+ if(!selection||selection.epoch!==epoch){selection={epoch,excluded:new Set()};crewDocumentSelections.set(selectedScenario,selection);}
+ return selection.excluded;
+}
 function renderCrewDocuments(){
- const files=data.crewDocuments||[],paths=new Set(files.map(f=>f.path));
+ const files=data.crewDocuments||[],paths=new Set(files.map(f=>f.path)),excluded=excludedCrewDocuments();
  const docs=files.filter(f=>/\.(pdf|pptx|xlsx|txt|md|csv)$/i.test(f.path)&&!/^(?:plan-input|plan|chat)-[0-9a-f]{24}(?:-|\.)/.test(f.path.split('/').at(-1))&&!(/\.(pdf|pptx|xlsx)\.txt$/i.test(f.path)&&paths.has(f.path.slice(0,-4))));
  const box=el('crew-documents');box.hidden=selectedCrewRole!==0||(!docs.length&&!crewDocumentUpload);
- box.innerHTML=docs.map(f=>'<label><input type="checkbox" data-crew-document="'+escape(f.path)+'" '+(excludedCrewDocuments.has(f.path)?'':'checked')+' '+(crewDocumentUpload?'disabled':'')+'><span>'+escape(f.path.slice(6))+'</span></label>').join('')+(crewDocumentUpload?'<small role="status">Adding document…</small>':'');
- return docs.filter(f=>!excludedCrewDocuments.has(f.path));
+ box.innerHTML=docs.map(f=>'<label><input type="checkbox" data-crew-document="'+escape(f.path)+'" '+(excluded.has(f.path)?'':'checked')+' '+(crewDocumentUpload?'disabled':'')+'><span>'+escape(f.path.slice(6))+'</span></label>').join('')+(crewDocumentUpload?'<small role="status">Adding document…</small>':'');
+ return docs.filter(f=>!excluded.has(f.path));
 }
-el('crew-documents').addEventListener('change',event=>{const path=event.target.dataset.crewDocument;if(path){if(event.target.checked)excludedCrewDocuments.delete(path);else excludedCrewDocuments.add(path);}});
+el('crew-documents').addEventListener('change',event=>{const path=event.target.dataset.crewDocument;if(path){const excluded=excludedCrewDocuments();if(event.target.checked)excluded.delete(path);else excluded.add(path);}});
 el('crew-document-add').onclick=()=>el('crew-document-input').click();
 el('crew-document-input').onchange=async event=>{await uploadCrewDocuments([...event.target.files]);event.target.value='';};
 async function uploadCrewDocuments(files){

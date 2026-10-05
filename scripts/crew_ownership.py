@@ -34,7 +34,8 @@ class CrewOwnership:
                 busy=bool(team and db.execute("SELECT 1 FROM jobs WHERE owner=? AND status IN ('queued','running','waiting','stopping') LIMIT 1",(team['owner'],)).fetchone())
                 reset=self.crew_chat_reset_state(db,team['owner'])['at'] if team else 0
                 if latest and latest['updated']<reset:latest=None
-                result.append(dict(id=scenario,hasWork=bool(latest),busy=busy,status=latest['status'] if latest else None,updated=latest['updated'] if latest else None))
+                saved_files = (self.files(team['owner']) + self.files(team['owner'], 0)) if team and not latest else []
+                result.append(dict(id=scenario,hasWork=bool(latest or saved_files),busy=busy,status=latest['status'] if latest else None,updated=latest['updated'] if latest else max((f['updated'] for f in saved_files), default=None)))
         return result
 
     def initialize_crew_ownership(self):
@@ -112,7 +113,7 @@ class CrewOwnership:
         if not row:raise Problem('Mission not found.',404)
         return row['owner']
 
-    def available_file(self, selected, name):
+    def available_file(self, selected, name, scenario=None):
         """Find generated team artifacts within the authenticated account."""
         from studio import safe_file, Problem
         path = safe_file(self.workspace(selected),name)
@@ -121,7 +122,13 @@ class CrewOwnership:
         # agent's memory, identity or personal inbox.
         if name.startswith('artifacts/'):
             with self.db() as db:
-                teams = [r['owner'] for r in db.execute('SELECT owner FROM crew_contexts WHERE participant=(SELECT participant FROM agents WHERE id=?) ORDER BY owner', (selected,))]
+                query = 'SELECT owner FROM crew_contexts WHERE participant=(SELECT participant FROM agents WHERE id=?)'
+                values = [selected]
+                if scenario is not None:
+                    from scenarios import validate
+                    query += ' AND scenario=?'
+                    values.append(validate(scenario))
+                teams = [r['owner'] for r in db.execute(query + ' ORDER BY owner', values)]
             matches = [safe_file(self.workspace(team),name,True) for team in teams if safe_file(self.workspace(team),name).is_file()]
             if len(matches)==1:return matches[0]
         raise Problem('File is not available.',404)

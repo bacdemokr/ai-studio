@@ -169,7 +169,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if not (name.startswith(('inbox/', 'artifacts/')) or name in ('MEMORY.md', 'IDENTITY.md', 'SOUL.md', 'AGENTS.md')):
                     raise Problem('File is not available.', 404)
                 job_id = parse_qs(parsed.query).get('job',[''])[0]
-                path = safe_file(studio.workspace(studio.job_owner(owner,job_id)),name,True) if job_id else studio.available_file(owner, name)
+                path = safe_file(studio.workspace(studio.job_owner(owner,job_id)),name,True) if job_id else studio.available_file(owner, name, scenario)
                 if path.suffix.lower() in ('.png','.jpg','.webp'):
                     mime={'.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp'}[path.suffix.lower()]
                     return self.json_response({'path':name,'encoding':'base64','content':base64.b64encode(path.read_bytes()).decode(),'mime':mime})
@@ -247,6 +247,8 @@ class Handler(SimpleHTTPRequestHandler):
             if self.path == '/api/team-model':
                 import team_models
                 return self.json_response(team_models.select(studio,studio.crew_owner(owner, scenario),data))
+            if self.path == '/api/bac-reset' and data.get('scope', 'scenario') not in ('scenario', 'all'):
+                raise Problem('Choose whether to reset this scenario or all scenarios.')
             routes = {
                 '/api/prepare-demo': lambda: studio.prepare_demo(studio.crew_owner(owner, scenario), data),
                 '/api/event-plan': lambda: studio.event_plan(data),
