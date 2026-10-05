@@ -18,8 +18,14 @@ navigationLayer.append(roomMap);
 const roomGuides={
   workshop:{label:'ROOM 01 / QUICK GUIDE',title:'Hiring',anchor:new THREE.Vector3(-.85,2.12,-3.92),intro:'Create a personal <button type="button" class="world-paper-term" data-paper-term="agent">agent</button> with a recognizable identity and a clear job to do.',points:['Choose its appearance, name, working style and voice.','Choose each <button type="button" class="world-paper-term" data-paper-term="skill">skill</button> that fits the role you want it to perform.','Choose whether OpenShell protection should isolate its tools and file access.'],note:'Hiring saves an independent profile and workspace. Agents can respond to your requests; Tech Radar can also run scheduled Heartbeat updates.'},
   lounge:{label:'ROOM 02 / QUICK GUIDE',title:'Agent Lounge',anchor:new THREE.Vector3(3.75,2.12,-5.78),intro:'Meet your hired agents and give each one work in its own context.',points:['Select an agent to open its conversation, memory and files.','Run a suggested mission or write a request of your own.','Review visible activity, results and OpenShell policy decisions before trusting the outcome.'],note:'Each agent keeps its own persona, skills and workspace. Ready and Busy describe observed work, not model capability.'},
-  mission:{label:'ROOM 03 / QUICK GUIDE',title:'Multi-Agent demo',anchor:new THREE.Vector3(2.45,4.02,-6.98),intro:'Choose how your team works together.',points:['Event Brief uses Casey, Dylan, Alex and Morgan to prepare demos, staffing and an event page.','Open Task lets Casey choose specialists for your /plan request.','Each space keeps its own conversations and results. Click its floor or Studio Map entry to continue.'],note:'Model responses and saved contributions appear in Mission Control. Access is enforced by the runtime and OpenShell policies.'},
+  mission:{label:'STAGE 03 / QUICK GUIDE',anchor:new THREE.Vector3(2.45,4.02,-6.98)},
 };
+function roomGuide(id){
+  const guide=roomGuides[id];if(id!=='mission')return guide;
+  const scenario=scenarioFloors.find(item=>item.id===activeScenario);
+  if(!scenario)return null;
+  return {...guide,title:scenario.title,intro:escape(scenario.guide?.intro||scenario.description),points:(scenario.guide?.points||[]).map(point=>escape(point)),note:scenario.guide?.note||''};
+}
 const termGuides={
   agent:{title:'Agent : a definition',body:['An agent is a software worker powered by a language model and configured for a particular purpose.','In Build-a-Claw, each agent combines an identity, instructions, selected skills, memory and a separate workspace. It can reason about a request and use the tools allowed by its runtime policy.','An agent is not a person or an independent authority. It can respond to requests or run configured scheduled work. Review its actions and results.']},
   skill:{title:'Skill : What is it',body:['A skill is a reusable set of instructions that teaches an agent how to approach a particular kind of work.','Equipping a skill makes that guidance available to the agent. It does not bypass permissions or guarantee that the skill was used in every answer.','Runtime activity and result evidence show what the agent actually read or used while completing a task.']}
@@ -45,13 +51,15 @@ function closeRoomInfo(restoreFocus=true){
   if(restoreFocus)target?.focus({preventScroll:true});
 }
 function openRoomInfo(id,trigger){
-  const guide=roomGuides[id];if(!guide)return;
+  const guide=roomGuide(id);if(!guide)return;
   closeTermInfo(false);
   roomInfoReturn=trigger;roomPaper.querySelector('small').textContent=guide.label;
   roomPaper.querySelector('h2').textContent=guide.title;
   roomPaper.querySelector('.world-room-paper-intro').innerHTML=guide.intro;
   roomPaper.querySelector('ol').innerHTML=guide.points.map(point=>'<li>'+point+'</li>').join('');
+  roomPaper.querySelector('ol').hidden=!guide.points.length;
   roomPaper.querySelector('.world-room-paper-note').textContent=guide.note;
+  roomPaper.querySelector('.world-room-paper-note').hidden=!guide.note;
   roomPaper.hidden=false;roomPaper.querySelector('.world-room-paper-close').focus({preventScroll:true});
 }
 function openTermInfo(id,trigger){
@@ -173,7 +181,11 @@ function refreshNavigation(){
   overviewButton.setAttribute('aria-label',scenarioGallery?'See the whole studio':overview?'Return to '+studioRooms[room].title:'See the whole studio');
   roomMap.querySelectorAll('[data-world-room]').forEach(b=>{b.setAttribute('aria-current',b.dataset.worldRoom===room?'location':'false');b.classList.toggle('selected',b.dataset.worldRoom===room);});
   overviewLabels.forEach(r=>{r.node.hidden=!overview||!!journey||(scenarioGallery&&!r.scenario);r.node.setAttribute('aria-current',r.scenario?room==='mission'&&r.scenario===activeScenario?'location':'false':r.id===room?'location':'false');});
-  roomInfoMarkers.forEach(marker=>marker.node.hidden=!!journey||overview||marker.id!==room);
+  roomInfoMarkers.forEach(marker=>{
+    marker.node.hidden=!!journey||overview||marker.id!==room;
+    const title='About '+(roomGuide(marker.id)?.title||studioRooms[marker.id].title);
+    marker.node.title=title;marker.node.setAttribute('aria-label',title);
+  });
   journeyNote.hidden=!journey&&!overview;
   if(!journey&&overview)journeyNote.textContent=scenarioGallery?'Choose a space to begin or continue.':'Choose a space in your studio.';
 }
