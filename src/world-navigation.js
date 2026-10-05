@@ -69,7 +69,7 @@ termPaper.onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagatio
 root.addEventListener('pointerdown',e=>{if(!roomPaper.hidden&&!e.target.closest('.world-room-paper,[data-room-info]'))closeRoomInfo(false);},true);
 const roomInfoMarkers=Object.keys(roomGuides).map(id=>{
   const node=document.createElement('button');node.type='button';node.className='world-room-info';node.dataset.roomInfo=id;
-  node.textContent='I';node.setAttribute('aria-label','About '+studioRooms[id].title);node.title='About '+studioRooms[id].title;
+  node.textContent='i';node.setAttribute('aria-label','About '+studioRooms[id].title);node.title='About '+studioRooms[id].title;
   node.onclick=()=>openRoomInfo(id,node);navigationLayer.append(node);return {id,node};
 });
 function goToRoom(next){
