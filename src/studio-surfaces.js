@@ -33,14 +33,14 @@ const loungeActions=document.createElement('div');loungeActions.className='studi
 el('passport').append(loungeActions);
 for(const node of [el('companion').querySelector('.studio-agent-extras'),el('companion').querySelector('.studio-native-note')])surfaceStore.append(node);
 const crewActions=document.createElement('div');crewActions.className='studio-team-actions';crewActions.setAttribute('aria-label','Team actions');
-el('crew-passport').prepend(crewActions);crewActions.append(el('room-action'));
+el('crew-passport').prepend(crewActions);crewActions.append(el('room-action'));el('room-action').classList.add('studio-team-start');
 el('crew-passport').append(document.getElementById('campus-roster'));
 const controlButton=document.createElement('button');controlButton.type='button';controlButton.className='studio-secondary';controlButton.dataset.surface='control';controlButton.textContent='Mission Control';crewActions.append(controlButton);
-const teamResetButton=document.createElement('button');teamResetButton.type='button';teamResetButton.id='studio-bac-reset';teamResetButton.className='studio-secondary';teamResetButton.textContent='Reset';teamResetButton.setAttribute('aria-label','Reset Multi-Agent Demo');teamResetButton.title='Stop active team work and clear team chats, attached documents, generated files and the board';teamResetButton.onclick=()=>confirmTeamReset(teamResetButton);crewActions.append(teamResetButton);
+const teamResetButton=document.createElement('button');teamResetButton.type='button';teamResetButton.id='studio-bac-reset';teamResetButton.className='studio-team-utility';teamResetButton.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7a6 6 0 1 1-.2 5M4 3v4h4"/></svg><span>Reset</span>';teamResetButton.setAttribute('aria-label','Reset current scenario');teamResetButton.title='Stop this scenario’s work and clear its chats, documents and results';teamResetButton.onclick=()=>confirmTeamReset(teamResetButton);
 const teamResetStatus=document.createElement('p');teamResetStatus.id='studio-team-reset-status';teamResetStatus.className='studio-muted';teamResetStatus.setAttribute('role','status');teamResetStatus.hidden=true;crewActions.after(teamResetStatus);
-const resultsButton=document.createElement('button');resultsButton.type='button';resultsButton.className='studio-primary';resultsButton.dataset.surface='deliverables';resultsButton.textContent='Results';resultsButton.hidden=true;crewActions.append(resultsButton);
+const resultsButton=document.createElement('button');resultsButton.type='button';resultsButton.className='studio-secondary';resultsButton.dataset.surface='deliverables';resultsButton.textContent='Results';resultsButton.hidden=true;crewActions.append(resultsButton);
 const teamTotalTime=document.createElement('div');teamTotalTime.id='studio-team-total-time';teamTotalTime.hidden=true;teamTotalTime.setAttribute('role','timer');teamTotalTime.title='Total process time, including queueing, planning, specialists and review';el('crew-name').parentElement.classList.add('studio-captain-heading');el('crew-name').after(teamTotalTime);
-const teamConnectionBar=document.createElement('div');teamConnectionBar.className='studio-team-connection-bar';teamConnectionBar.innerHTML='<span><i aria-hidden="true"></i><span id="studio-team-connection-label">Team API</span></span><button type="button" class="studio-secondary" id="studio-team-setup">API &amp; models ↗</button>';crewActions.after(teamConnectionBar);el('team-setup').onclick=openTeamSettings;
+const teamConnectionBar=document.createElement('div');teamConnectionBar.className='studio-team-connection-bar';teamConnectionBar.innerHTML='<span class="studio-team-connection-state" role="status"><i aria-hidden="true"></i><span id="studio-team-connection-label">Team API</span></span><div class="studio-team-utilities"><button type="button" class="studio-team-utility" id="studio-team-setup" aria-haspopup="dialog"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h3m4 0h7M3 14h7m4 0h3"/><circle cx="8" cy="6" r="2"/><circle cx="12" cy="14" r="2"/></svg><span>API &amp; models</span></button></div>';teamConnectionBar.querySelector('.studio-team-utilities').append(teamResetButton);crewActions.after(teamConnectionBar);el('team-setup').onclick=openTeamSettings;
 const standbyPanel=document.createElement('details');standbyPanel.id='studio-standby';
 standbyPanel.innerHTML='<summary>Standby specialists <span id="studio-standby-count"></span></summary><div class="studio-standby-content"><ul id="studio-standby-list"></ul></div>';
 teamConnectionBar.after(standbyPanel);
@@ -71,7 +71,7 @@ function syncTeamTotalTime(){
 setInterval(()=>syncTeamTotalTime(),1000);
 function syncSurface(){
   teamConnectionBar.dataset.connected=String(!!runtime.teamReady);
-  el('team-connection-label').textContent=runtime.teamReady?'Team API connected':runtime.teamModel?'Team runtime offline':'Team API not connected';
+  el('team-connection-label').textContent=runtime.teamReady?'API connected':runtime.teamModel?'Runtime offline':'API not connected';
   teamResetButton.disabled=!!data.bacResetting||removingAgent;
   const plan=currentCollaboration();
   syncTeamTotalTime();

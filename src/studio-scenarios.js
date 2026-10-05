@@ -3,10 +3,12 @@
 const scenarioSelector=document.createElement('section');scenarioSelector.id='studio-scenarios';scenarioSelector.hidden=true;scenarioSelector.setAttribute('aria-labelledby','studio-scenarios-title');
 scenarioSelector.innerHTML='<div class="scenario-heading"><span class="studio-kicker">STAGE 03</span><h2 id="studio-scenarios-title">Multi-Agent spaces</h2></div><div class="scenario-cards"></div>';
 layout.append(scenarioSelector);
-const scenarioButton=document.createElement('button');scenarioButton.type='button';scenarioButton.className='studio-secondary studio-scenario-back';scenarioButton.textContent='← Scenarios';crewActions.prepend(scenarioButton);
+// The scene and Studio Map provide navigation. Keep a back control only when WebGL is unavailable.
+const scenarioButton=document.createElement('button');scenarioButton.type='button';scenarioButton.className='studio-secondary studio-scenario-back';scenarioButton.textContent='← Scenarios';scenarioButton.hidden=true;crewActions.prepend(scenarioButton);
 scenarioButton.onclick=()=>{if(scenarioSwitching||pendingWrites||crewChatSending||crewDocumentUpload){alert('Wait for the current save to finish.');return;}closeSurface();scenarioChoosing=true;setRoom('mission');};
 function renderScenarioSelector(){
  const visible=room==='mission'&&scenarioChoosing&&['fallback','lost'].includes(root.dataset.renderer);
+ scenarioButton.hidden=room!=='mission'||scenarioChoosing||!['fallback','lost'].includes(root.dataset.renderer);
  scenarioSelector.hidden=!visible;root.dataset.scenarioChoosing=String(room==='mission'&&scenarioChoosing);
  root.dataset.scenario=selectedScenario;
  if(!scenarioSwitching)window.BacCampus?.setScenario(selectedScenario);
