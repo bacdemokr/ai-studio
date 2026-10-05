@@ -67,35 +67,3 @@ class ResearchFailureTests(unittest.TestCase):
             self.assertEqual(fetch.call_count,2)
         research=json.loads((self.work/self.contract['files']['research']).read_text())
         self.assertEqual(research['sources'][0]['article'],'saved article')
-
-    def test_workflow_does_not_request_deliverable_repair_after_failed_retry(self):
-        adapter=AgentToolsAdapter();studio=Studio(self.work/'studio',adapter,start_worker=False)
-        owner=studio.session()[0]['id'];original=adapter.respond;dylan_calls=[]
-        def respond(agent,session,prompt):
-            if not agent.endswith('-r1'):return original(agent,session,prompt)
-            dylan_calls.append(prompt);workspace=Path(adapter.agents[agent])
-            run(workspace,'search',['AI']);run(workspace,'search',['AI'])
-            return Reply('Research failed twice. Please check OpenShell Policy.',{})
-        adapter.respond=respond
-        studio.enqueue(owner,{'kind':'crew','preset':True,'workflow':'showcase','executionMode':agent_workflow.MODE,'brief':{'schema':2,'themeCount':3}})
-        with patch('nvidia_research.search_one',side_effect=RuntimeError('HTTP 403')):
-            with self.assertRaisesRegex(RuntimeError,'after one retry'):
-                studio.execute(studio.next_job())
-        self.assertEqual(len(dylan_calls),1)
-        self.assertFalse(any('Repair your actual' in p for p in dylan_calls))
-
-    def test_workflow_preserves_one_retry_across_model_turns(self):
-        adapter=AgentToolsAdapter();studio=Studio(self.work/'studio',adapter,start_worker=False)
-        owner=studio.session()[0]['id'];original=adapter.respond;calls=[]
-        def respond(agent,session,prompt):
-            if not agent.endswith('-r1'):return original(agent,session,prompt)
-            calls.append(prompt)
-            run(Path(adapter.agents[agent]),'search',['AI'])
-            return Reply('Research is unavailable.',{})
-        adapter.respond=respond
-        studio.enqueue(owner,{'kind':'crew','preset':True,'workflow':'showcase','executionMode':agent_workflow.MODE,'brief':{'schema':2,'themeCount':3}})
-        with patch('nvidia_research.search_one',side_effect=RuntimeError('HTTP 403')):
-            with self.assertRaisesRegex(RuntimeError,'after one retry'):
-                studio.execute(studio.next_job())
-        self.assertEqual(len(calls),2)
-        self.assertIn("Retry the failed research command once only",calls[1])

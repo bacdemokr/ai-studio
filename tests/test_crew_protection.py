@@ -116,13 +116,13 @@ class CrewProtectionTests(unittest.TestCase):
     def test_policy_change_fences_new_work_and_rejects_active_crew(self):
         def during_apply(agent_id, approved):
             with self.assertRaises(Problem):
-                self.studio.prepare_demo(self.owner, {})
+                self.studio.enqueue(self.owner, {'kind':'crew-chat','crewRole':0,'prompt':'/plan Help'})
             with self.assertRaises(Problem):
-                self.studio.enqueue(self.owner, {'kind':'crew-chat', 'crewRole':1, 'prompt':'Hello'})
+                self.studio.enqueue(self.owner, {'kind':'crew-chat', 'crewRole':8, 'prompt':'Hello'})
             return {'status':'applied'}
         with patch.object(self.adapter, 'policy_apply', side_effect=during_apply):
             self.studio.crew_policy_change(self.owner, {'role':1, 'permission':'host:blogs.nvidia.com', 'allow':False})
-        self.studio.enqueue(self.owner, {'kind':'crew-chat', 'crewRole':1, 'prompt':'Hello'})
+        self.studio.enqueue(self.owner, {'kind':'crew-chat', 'crewRole':8, 'prompt':'Hello'})
         with patch.object(self.adapter, 'policy_status', side_effect=AssertionError('Must reject before native query')):
             with self.assertRaises(Problem):
                 self.studio.crew_policy_change(self.owner, {'role':1, 'retry':True})
@@ -130,7 +130,10 @@ class CrewProtectionTests(unittest.TestCase):
     def test_pending_hosts_are_scoped_to_selected_crew(self):
         import time
         self.studio.prepare_builtin_crew(self.owner, 1, self.members[1])
-        self.studio.enqueue(self.owner, {'kind':'crew-chat', 'crewRole':1, 'prompt':'Read https://developer.nvidia.com'})
+        # A retained pre-retirement job can still have policy history. Do not enable new Dylan requests.
+        job=self.studio.enqueue(self.owner, {'kind':'crew-chat', 'crewRole':8, 'prompt':'Read https://developer.nvidia.com'})
+        with self.studio.db() as db:
+            db.execute("UPDATE jobs SET payload=json_set(payload,'$.crewRole',1) WHERE id=?",(job['id'],))
         self.adapter.policy_logs[self.members[1]['id']] = [{'host':'developer.nvidia.com', 'action':'deny', 'time':time.time()}]
         report = self.studio.crew_policy_report(self.owner, 1)
         self.assertEqual(report['pendingAccess'], [{'host':'developer.nvidia.com', 'reason':'blocked'}])
@@ -171,12 +174,6 @@ class CrewProtectionTests(unittest.TestCase):
             self.assertTrue({'web_fetch','web_search'} <= set(entry['tools']['deny']))
             self.assertTrue((workspace/'skills/bac-event-tools/scripts/research_http.py').exists())
 
-    def test_legacy_host_research_is_rejected_for_protected_dylan(self):
-        self.studio.enqueue(self.owner, {'kind':'crew','preset':True,'workflow':'showcase',
-                                        'brief':{'schema':2,'themeCount':3}})
-        with patch('nvidia_research.discover', side_effect=AssertionError('Host bypass')):
-            with self.assertRaisesRegex(RuntimeError, 'No host research was performed'):
-                self.studio.execute(self.studio.next_job())
 
     def test_l7_denial_without_arrow_is_visible_in_policy_evidence(self):
         import agent_policy as policy

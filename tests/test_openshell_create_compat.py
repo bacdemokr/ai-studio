@@ -1,8 +1,10 @@
 """Match native sandbox creation across OpenShell CLI capabilities."""
 import json
 import subprocess
+import tempfile
 import unittest
 from unittest.mock import patch
+from pathlib import Path
 
 import agent_policy as policy
 import agent_runtime as runtime
@@ -53,6 +55,35 @@ class CreateCompatibilityTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):runtime.policy_prepare('bac-'+'a'*24)
         self.assertEqual(calls.call_args.args, ('sandbox','create','--help'))
         self.assertEqual(calls.call_count, 1)
+
+    def test_cli_diagnosis_does_not_expose_stderr(self):
+        for stderr, expected in [("unexpected argument '--detach' SECRET", 'version compatibility'),
+                                 ('BaC sandbox ownership check failed SECRET', 'ownership'),
+                                 ('unknown failure SECRET', 'gateway and policy')]:
+            with self.subTest(stderr=stderr), patch.object(policy,'plugin_config',return_value={'config':{}}), \
+                 patch.object(policy.subprocess,'run',return_value=subprocess.CompletedProcess([],2,'',stderr)):
+                with self.assertRaises(RuntimeError) as raised:policy.shell('sandbox','list')
+                self.assertIn(expected,str(raised.exception))
+                self.assertNotIn('SECRET',str(raised.exception))
+
+    def test_policy_apply_ignores_only_confirmed_absent_registry_entries(self):
+        rows = [{'containerName':'oc-live','running':True}, {'containerName':'oc-stale','running':False}]
+        with tempfile.TemporaryDirectory() as folder, \
+             patch.object(runtime,'root',return_value=Path(folder)), \
+             patch.object(policy,'configured',return_value=True), \
+             patch.object(policy,'runtimes',return_value=rows), \
+             patch.object(policy,'sandbox_names',return_value={'oc-live'}) as inventory, \
+             patch.object(policy,'read_policy',return_value={'policy_source':'sandbox','loaded':True,'policy':policy.policy_document()}) as read, \
+             patch.object(policy,'inspect',return_value={'status':'applied'}):
+            self.assertEqual(policy.apply('bac-'+'a'*24,[])['status'],'applied')
+            read.assert_called_once_with('oc-live')
+            inventory.side_effect=RuntimeError('gateway unavailable')
+            with self.assertRaises(RuntimeError):policy.apply('bac-'+'a'*24,[])
+            self.assertEqual(read.call_count,1)
+            inventory.side_effect=None
+            inventory.return_value={'oc-live','oc-stale'}
+            policy.apply('bac-'+'a'*24,[])
+            self.assertEqual(read.call_args.args,('oc-stale',))
 
 
 if __name__ == '__main__':unittest.main()

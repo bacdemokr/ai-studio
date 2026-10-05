@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from studio import Studio, Problem, capacity, safe_file, MAX_AGENTS
+from studio import Studio, Problem, safe_file, MAX_AGENTS
 import agent_runtime
 
 
@@ -80,6 +80,38 @@ class StudioTests(unittest.TestCase):
         # General chat fixtures exclude the independent background monitor.
         self.studio.onboard(self.owner, {'name': 'Jinny', 'persona': 'maker', 'skills': [s for s in agent_runtime.SKILLS if s != 'radar']})
 
+    def test_tech_radar_manual_requests_rejected_before_plan_routing(self):
+        profile = {**self.studio.profile(self.owner), 'skills': ['radar', 'web']}
+        with patch.object(self.studio, 'profile', return_value=profile), \
+             patch.object(self.studio, 'crew_owner') as route:
+            with self.studio.db() as db:
+                before = db.execute('SELECT count(*) FROM jobs').fetchone()[0]
+            for request in ({'prompt': 'Hi'}, {'kind': 'chat', 'prompt': '/plan research this'},
+                            {'kind': 'reminder', 'prompt': 'Check later', 'delay': 60}):
+                with self.subTest(request=request), self.assertRaisesRegex(Problem, 'Manual chat is disabled'):
+                    self.studio.enqueue(self.owner, request)
+            route.assert_not_called()
+            with self.studio.db() as db:
+                self.assertEqual(db.execute('SELECT count(*) FROM jobs').fetchone()[0], before)
+
+    def test_switching_to_radar_during_submission_cannot_enqueue_manual_work(self):
+        original = self.studio.profile(self.owner)
+        radar = {**original, 'skills': ['radar']}
+        def become_radar():
+            with self.studio.db() as db:
+                db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(radar), self.owner))
+            return {'ready': True, 'teamReady': True}
+        for kind, prompt in [('chat', 'Hi'), ('reminder', 'Check later'), ('chat', '/plan summarize this')]:
+            with self.subTest(kind=kind, prompt=prompt):
+                with self.studio.db() as db:
+                    db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(original), self.owner))
+                    before = db.execute('SELECT count(*) FROM jobs').fetchone()[0]
+                with patch.object(self.studio, 'runtime_status', side_effect=become_radar):
+                    with self.assertRaisesRegex(Problem, 'Manual chat is disabled'):
+                        self.studio.enqueue(self.owner, {'kind': kind, 'prompt': prompt})
+                with self.studio.db() as db:
+                    self.assertEqual(db.execute('SELECT count(*) FROM jobs').fetchone()[0], before)
+
     def tearDown(self):
         self.temp.cleanup()
 
@@ -110,41 +142,6 @@ class StudioTests(unittest.TestCase):
             db.execute("UPDATE jobs SET status='done',kind='crew' WHERE id=?", (job['id'],))
         self.assertIsNone(latest())
 
-    def test_appearance_persists_and_follows_custom_crew_assignments(self):
-        appearance = {'body': 'rover', 'color': 'coral', 'accessory': 'glasses'}
-        created = self.studio.add_agent(self.owner, {'name': 'Rover', 'persona': 'analyst',
-                                       'skills': ['documents'], 'avatar': appearance})
-        key = created['agentId']
-        restarted = Studio(self.temp.name, self.adapter, start_worker=False)
-        self.assertEqual(restarted.profile(key)['avatar'], appearance)
-        self.assertEqual(next(a for a in restarted.state(self.owner)['agents'] if a['key'] == key)['avatar'], appearance)
-        restarted.configure(key, {'name': 'Rover II', 'persona': 'maker', 'skills': ['writer']})
-        self.assertEqual(restarted.profile(key)['avatar'], appearance)
-        job = restarted.enqueue(self.owner, {'kind': 'crew', 'brief': {}, 'members': {'1': key}})
-        self.assertEqual(restarted.state(self.owner)['jobs'][0]['payload']['roster'][1]['avatar'], appearance)
-
-    def test_voice_persists_reprovisions_and_follows_crew(self):
-        created = self.studio.add_agent(self.owner, {'name': 'Skeptic', 'persona': 'analyst',
-                         'skills': ['documents'], 'tone': 'cynical', 'verbosity': 'verbose'})
-        key = created['agentId']
-        restarted = Studio(self.temp.name, self.adapter, start_worker=False)
-        for profile in (restarted.profile(key), next(a for a in restarted.state(self.owner)['agents'] if a['key'] == key)):
-            self.assertEqual((profile['tone'], profile['verbosity']), ('cynical', 'verbose'))
-        restarted.ensure_agent(key, restarted.profile(key))
-        native_id = created['profile']['id']
-        self.assertIn(native_id, restarted.provisioned)
-        # Older clients that omit the new settings must not overwrite them.
-        restarted.configure(key, {'name': 'Skeptic II', 'persona': 'maker', 'skills': ['writer']})
-        self.assertNotIn(native_id, restarted.provisioned)
-        self.assertEqual(restarted.profile(key)['tone'], 'cynical')
-        self.assertEqual(restarted.profile(key)['verbosity'], 'verbose')
-        restarted.enqueue(self.owner, {'kind': 'crew', 'brief': {}, 'members': {'1': key}})
-        roster = restarted.state(self.owner)['jobs'][0]['payload']['roster']
-        self.assertEqual((roster[1]['tone'], roster[1]['verbosity']), ('cynical', 'verbose'))
-        self.assertEqual((roster[2]['tone'], roster[2]['verbosity']), ('kind', 'balanced'))
-        restarted.execute(restarted.next_job())
-        self.assertEqual(self.adapter.profiles[native_id]['tone'], 'cynical')
-        self.assertEqual(self.adapter.profiles[native_id]['verbosity'], 'verbose')
 
     def test_legacy_voice_defaults_and_invalid_voice_rejection(self):
         profile = self.studio.profile(self.owner)
@@ -287,25 +284,6 @@ class StudioTests(unittest.TestCase):
         again = Studio(self.temp.name, self.adapter, start_worker=False)
         self.assertEqual(again.profile(self.owner)['name'], 'Renamed')
 
-    def test_custom_agents_receive_crew_handoffs_in_their_own_workspaces(self):
-        scout = self.add_agent()
-        writer = self.add_agent('Echo')
-        job = self.studio.enqueue(self.owner, {'kind': 'crew', 'brief': {}, 'members': {'1': scout, '3': writer}})
-        with self.assertRaises(Problem):
-            self.studio.configure(scout, {'name': 'Changed', 'skills': ['writer'], 'persona': 'guide'})
-        self.run_next()
-        evidence = self.studio.evidence(self.owner, job['id'])['mission']
-        self.assertEqual(evidence['status'], 'done')
-        self.assertEqual(evidence['payload']['roster'][1]['name'], 'Scout')
-        self.assertEqual(self.adapter.calls[1][0], 'bac-' + scout)
-        self.assertEqual(self.adapter.calls[3][0], 'bac-' + writer)
-        self.assertEqual(len(set(c[0] for c in self.adapter.calls)), 5)
-        self.assertIn('Operations planner', (self.studio.workspace(writer) / 'inbox/handoffs.md').read_text())
-        self.assertEqual(evidence['payload']['handoffs']['3']['receivedFrom'], ['0', '1', '2'])
-        self.assertEqual(self.studio.profile(scout)['skills'], ['documents', 'web'])
-        self.assertEqual(self.studio.state(scout)['agents'][1]['pending'], 0)
-        self.studio.configure(scout, {'name': 'Scout 2', 'skills': ['web'], 'persona': 'guide'})
-        self.assertEqual(self.studio.evidence(self.owner, job['id'])['mission']['payload']['roster'][1]['name'], 'Scout')
 
     def test_collection_access_and_crew_assignments_are_account_scoped(self):
         scout = self.add_agent()
@@ -352,35 +330,6 @@ class StudioTests(unittest.TestCase):
         self.assertTrue(any(f['path'].endswith('.html') for f in state['files']))
         self.assertEqual(state['profile']['name'], 'Jinny')
 
-    def test_crew_handoffs_wait_for_concrete_equipment_decision(self):
-        job = self.studio.enqueue(self.owner, {'kind': 'crew', 'brief': {'spark': 0, 'workstation': 0}})
-        self.run_next()
-        state = self.studio.state(self.owner)['jobs'][0]
-        self.assertEqual(state['status'], 'waiting')
-        self.assertEqual(len(self.adapter.calls), 3)
-        # Marketing cannot run before the participant approves the actual shortfall.
-        other, _ = self.studio.session()
-        with self.assertRaises(Problem):
-            self.studio.decision(other['id'], job['id'], 'approve-equipment')
-        self.studio.decision(self.owner, job['id'], 'approve-equipment')
-        with self.assertRaises(Problem):
-            self.studio.decision(self.owner, job['id'], 'approve-equipment')
-        self.run_next()
-        self.assertEqual(len(self.adapter.calls), 5)
-        self.assertEqual(len(set(call[0] for call in self.adapter.calls)), 5)
-        self.assertIn(self.adapter.calls[0][0], self.adapter.calls[3][2])
-        self.assertIn('pending availability', self.adapter.calls[3][2])
-        self.assertEqual(self.studio.state(self.owner)['jobs'][0]['status'], 'done')
-
-    def test_capacity_rounding_preserves_people_and_exposes_assumptions(self):
-        for count in (1, 3, 17, 121, 2999):
-            brief, calc = capacity({'attendees': count})
-            self.assertEqual(sum(x['attendees'] for x in calc['topics']), count)
-            self.assertTrue(all(x['stations'] * calc['slots'] * brief['groupSize'] >= x['attendees'] for x in calc['topics']))
-        with self.assertRaises(Problem):
-            capacity({'shares': [20, 20, 20]})
-        with self.assertRaises(Problem):
-            capacity({'duration': 30, 'common': 30})
 
     def test_isolation_path_guards_and_input_validation(self):
         other, _ = self.studio.session()
@@ -468,25 +417,6 @@ class StudioTests(unittest.TestCase):
             self.assertEqual([c.args[0] for c in calls], ['/v1/models', '/v1/models', '/v1/chat/completions'])
             self.assertEqual(calls[-1].args[1]['user'], 'stable-user')
 
-    def test_running_stop_keeps_completed_work_and_never_starts_next_role(self):
-        job = self.studio.enqueue(self.owner, {'kind': 'crew', 'brief': {}})
-        original = self.adapter.respond
-        def stop_during_call(*args):
-            self.assertEqual(self.studio.decision(self.owner, job['id'], 'cancel')['status'], 'stopping')
-            with self.assertRaises(Problem):
-                self.studio.reset_board(self.owner)
-            return original(*args)
-        with patch.object(self.adapter, 'respond', side_effect=stop_during_call):
-            self.run_next()
-        state = self.studio.state(self.owner)
-        self.assertEqual(state['jobs'][0]['status'], 'cancelled')
-        self.assertEqual(len(self.adapter.calls), 1)
-        self.assertTrue(state['files'])
-        handoff = state['jobs'][0]['payload']['handoffs']['0']
-        self.assertEqual(handoff['receivedFrom'], [])
-        self.assertEqual(handoff['sharedState']['brief']['city'], 'Zurich')
-        self.assertEqual(len(handoff['outputSHA256']), 64)
-        self.assertIsNone(self.studio.next_job())
 
     def test_stop_solo_discards_answer_after_cancellation(self):
         job = self.studio.enqueue(self.owner, {'prompt': 'Make a draft'})

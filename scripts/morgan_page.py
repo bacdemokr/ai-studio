@@ -233,7 +233,6 @@ def validate(workspace,job,payload):
     protected_text=Inspect();protected_text.feed(original)
     paragraphs=[t for t in parser.paragraphs if len(t)>100 and t not in protected_text.paragraphs and t not in parser.source_paragraphs]
     if len(paragraphs)!=len(set(paragraphs)):errors.append('Remove duplicated promotional paragraphs; each section needs a distinct purpose.')
-    if '@media' not in html:errors.append('Keep responsive CSS for narrow screens.')
     if not re.search(r'</html>\s*$',html,re.I):errors.append('Complete the document through its closing html tag.')
     program_text=' '.join(' '.join(parser.section_text.get('program',[])).split()) if assembled else visible
     for topic in payload['capacity']['topics']:

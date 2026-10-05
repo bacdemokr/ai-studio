@@ -13,9 +13,9 @@ function renderDocuments(){
  panel.innerHTML='<small>Documents · '+escape(data.profile?.name||'')+'</small><ul>'+documents.map(file=>'<li title="'+escape(file.path.slice(6))+'"><span aria-hidden="true">▤</span><span>'+escape(file.path.slice(6))+'</span><small>'+escape(file.size<1024*1024?Math.max(1,Math.ceil(file.size/1024))+' KB':(file.size/1024/1024).toFixed(1)+' MB')+'</small></li>').join('')+'</ul>'+(busy?'<p role="status">Adding '+escape(documentUploadName)+'…</p>':'');
 }
 async function uploadDocuments(files){
- if(!files.length||documentUploadTarget!==null)return;
+ if(!files.length||documentUploadTarget!==null||radarChatDisabled())return;
  if(!data.profile||data.deleting){alert('Choose an available agent before adding documents.');return;}
- const target=agentId,errors=[];documentUploadTarget=target;pendingWrites++;renderDocuments();syncComposer();
+ const target=agentId,revision=dialogRevision,errors=[];documentUploadTarget=target;pendingWrites++;renderDocuments();syncComposer();
  try{
   for(const file of files){
    const binary=/\.(pdf|pptx|xlsx)$/i.test(file.name),limit=10*1024*1024;
@@ -31,18 +31,39 @@ async function uploadDocuments(files){
    }catch(error){errors.push(file.name+': '+error.message);}
   }
  }finally{pendingWrites--;documentUploadTarget=null;documentUploadName='';renderDocuments();syncComposer();}
- if(errors.length)dialog('Document upload','<p>'+errors.map(escape).join('<br>')+'</p>');
+ if(errors.length){
+  if(agentId===target&&dialogRevision===revision)dialog('Document upload','<p>'+errors.map(escape).join('<br>')+'</p>');
+  else alert(errors.join('\n'));
+ }
+}
+// Keep cancellation pending independently of DOM nodes replaced by polling.
+const pendingChatStops=new Set();
+function chatStopButton(id,crew=false,stopping=false,label='Stop'){
+ const pending=stopping||pendingChatStops.has(agentId+':'+id);
+ return '<button type="button" '+(crew?'data-crew-chat-stop':'data-chat-stop')+'="'+escape(id)+'" '+(pending?'disabled':'')+'>'+(pending?'Stopping…':label)+'</button>';
+}
+async function stopChat(id,crew=false){
+ const owner=agentId,role=selectedCrewRole,key=owner+':'+id;
+ if(pendingChatStops.has(key))return;
+ if(crew)el('crew-chat-error').hidden=true;
+ pendingChatStops.add(key);render();
+ try{await api('decision',{id,action:'cancel'},owner);await refresh();}
+ catch(error){
+  if(crew&&agentId===owner&&selectedCrewRole===role){el('crew-chat-error').textContent=error.message;el('crew-chat-error').hidden=false;}
+  else alert(error.message);
+ }finally{pendingChatStops.delete(key);render();}
 }
 const documentDropZone=el('companion');
 for(const eventName of ['dragenter','dragover'])documentDropZone.addEventListener(eventName,event=>{
  if(![...event.dataTransfer.types].includes('Files'))return;
- event.preventDefault();event.dataTransfer.dropEffect=data.deleting||documentUploadTarget!==null?'none':'copy';
- documentDropZone.classList.toggle('document-drag-over',!data.deleting&&documentUploadTarget===null);
+ event.preventDefault();event.dataTransfer.dropEffect=radarChatDisabled()||data.deleting||documentUploadTarget!==null?'none':'copy';
+ documentDropZone.classList.toggle('document-drag-over',!radarChatDisabled()&&!data.deleting&&documentUploadTarget===null);
 });
 documentDropZone.addEventListener('dragleave',event=>{if(!documentDropZone.contains(event.relatedTarget))documentDropZone.classList.remove('document-drag-over');});
 documentDropZone.addEventListener('drop',event=>{
  if(![...event.dataTransfer.types].includes('Files'))return;
  event.preventDefault();documentDropZone.classList.remove('document-drag-over');
+ if(radarChatDisabled()||data.deleting)return;
  const files=[...event.dataTransfer.files],images=files.filter(file=>file.type.startsWith('image/'));
  if(images.length)addChatImages(images);
  uploadDocuments(files.filter(file=>!file.type.startsWith('image/')));
@@ -59,11 +80,11 @@ const imageKey=crew=>agentId+(crew?':crew:'+selectedCrewRole:':personal');
 function pendingImages(crew=false){return chatImageDrafts.get(imageKey(crew))||[];}
 function clearChatImages(crew=false){chatImageDrafts.delete(imageKey(crew));renderImageDrafts(crew);}
 // Acknowledgement clears only the submitted draft, not later typing or attachments.
-function captureChatDraft(crew=false){return {crew,key:imageKey(crew),roleKey:agentId+':'+selectedCrewRole,prompt:el((crew?'crew-':'')+'prompt').value,images:pendingImages(crew).slice()};}
+function captureChatDraft(crew=false){return {crew,crewRole:selectedCrewRole,key:imageKey(crew),roleKey:agentId+':'+selectedCrewRole,prompt:el((crew?'crew-':'')+'prompt').value,images:pendingImages(crew).slice()};}
 function acknowledgeChatDraft(draft){
  const current=imageKey(draft.crew)===draft.key;
- if(current){const input=el((draft.crew?'crew-':'')+'prompt');if(input.value===draft.prompt)input.value='';if(draft.crew)crewDrafts.set(draft.roleKey,input.value);}
- else if(draft.crew&&crewDrafts.get(draft.roleKey)===draft.prompt)crewDrafts.set(draft.roleKey,'');
+ if(current){const input=el((draft.crew?'crew-':'')+'prompt');if(input.value===draft.prompt)input.value=draft.crew?defaultCrewPrompt(draft.crewRole):'';if(draft.crew)crewDrafts.set(draft.roleKey,input.value);}
+ else if(draft.crew&&crewDrafts.get(draft.roleKey)===draft.prompt)crewDrafts.set(draft.roleKey,defaultCrewPrompt(draft.crewRole));
  const remaining=(chatImageDrafts.get(draft.key)||[]).filter(image=>!draft.images.includes(image));
  if(remaining.length)chatImageDrafts.set(draft.key,remaining);else chatImageDrafts.delete(draft.key);
  if(current)renderImageDrafts(draft.crew);
@@ -94,21 +115,24 @@ for(const crew of [false,true]){
  input.addEventListener('paste',event=>{const images=[...event.clipboardData.items].filter(item=>item.kind==='file'&&item.type.startsWith('image/')).map(item=>item.getAsFile()).filter(Boolean);if(images.length){event.preventDefault();addChatImages(images,crew)}});
 }
 let chatSending=false;
+function radarChatDisabled(profile=data.profile){return !!profile?.skills?.includes('radar');}
 function syncComposer(){
   if(!connected)return;
-  const unavailable=!runtime.ready,blocked=unavailable||!!data.deleting;
-  el('prompt').disabled=blocked;
+  const planning=/^\/plans?(?:\s|$)/i.test(el('prompt').value.trim());
+  const radar=radarChatDisabled(),unavailable=!(planning?teamReady():runtime.ready),blocked=radar||unavailable||!!data.deleting;
+  el('prompt').disabled=radar||(!runtime.ready&&!teamReady())||!!data.deleting;
   el('send').disabled=blocked||chatSending||comparisonSending||documentUploadTarget===agentId;
-  el('send-all').disabled=blocked||chatSending||comparisonSending||documentUploadTarget===agentId||(data.agents||[]).length<2;
+  el('send-all').disabled=!runtime.ready||blocked||chatSending||comparisonSending||documentUploadTarget===agentId||(data.agents||[]).filter(agent=>!radarChatDisabled(agent)).length<2;
   el('run-options').disabled=el('send-all').disabled;
   if(el('run-options').disabled)setRunOptions(false);
-  el('attach').disabled=!!data.deleting||!data.profile||documentUploadTarget!==null;
+  el('attach').disabled=radar||!!data.deleting||!data.profile||documentUploadTarget!==null;
+  el('schedule').disabled=radar||!!data.deleting;
   el('chat-connection').hidden=!blocked;
-  el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':!runtime.gateway?(gatewayState()==='slow'?'Waiting for the agent runtime to respond. Checking automatically.':'Agent runtime unavailable. Retry the connection to continue.'):'Model not connected. Connect a model to start chatting.';
-  el('chat-connect').hidden=!unavailable||(runtime.gateway&&settingsButton.hidden);
+  el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':radar?'Manual chat is disabled because Tech Radar is dedicated to displaying Heartbeat updates.':!runtime.gateway?(gatewayState()==='slow'?'Waiting for the agent runtime to respond. Checking automatically.':'Agent runtime unavailable. Retry the connection to continue.'):'Model not connected. Connect a model to start chatting.';
+  el('chat-connect').hidden=radar||!unavailable||(runtime.gateway&&settingsButton.hidden);
   el('chat-connect').textContent=!runtime.gateway?'Retry connection':'Connect model';
   el('chat-connect').disabled=runtimeRetrying;
-  el('prompt').placeholder=data.deleting?'This agent is paused for deletion…':!runtime.gateway?'Waiting for the agent runtime…':!runtime.model?'Connect a model to message your agent…':'Message your agent…';
+  el('prompt').placeholder=data.deleting?'This agent is paused for deletion…':radar?'Heartbeat updates only':!runtime.gateway?'Waiting for the agent runtime…':!runtime.model?'Connect a model to message your agent…':'Message your agent… or /plan a task with the BaC team';
   el('equipped').querySelectorAll('button').forEach(button=>button.disabled=blocked);
 }
 el('chat-connect').onclick=connectionAction;
@@ -163,23 +187,25 @@ root.addEventListener('bac:protection-reveal',()=>{if(connected)render();});
 let conversationSignature='',conversationOwner=null;
 function renderConversation(){
   renderImageDrafts();renderDocuments();syncComposer();const log=el('conversation');if(!log)return;
-  const jobs=[...data.jobs.filter(j=>j.kind!=='crew'),...(data.roundtableTurns||[])].sort((a,b)=>a.created-b.created);
-  const signature=JSON.stringify([agentId,data.profile?.name,jobs.map(j=>[j.id,j.status,j.result,j.events?.at(-1),shieldReplyHeld(j)])]);
+  const jobs=[...data.jobs.filter(j=>j.kind!=='crew'),...(data.crewChats||[]).filter(j=>j.payload.collaboration?.origin?.owner===agentId&&j.payload.collaboration.origin.role===null),...(data.roundtableTurns||[])].sort((a,b)=>a.created-b.created);
+  const signature=JSON.stringify([agentId,data.profile?.name,[...pendingChatStops],jobs.map(j=>[j.id,j.status,j.result,j.events?.at(-1),shieldReplyHeld(j)])]);
   if(conversationOwner!==agentId)el('chat-error').hidden=true;
   if(signature===conversationSignature)return;
   const follow=conversationOwner!==agentId||log.scrollHeight-log.scrollTop-log.clientHeight<70,top=log.scrollTop;
   conversationSignature=signature;conversationOwner=agentId;
   log.innerHTML=(data.jobs.length>=30?'<small class="chat-history-note">Recent conversations · up to 30 missions</small>':'')+(jobs.length?jobs.map(j=>{
+    if(j.payload.collaboration)return collaborationHistoryMarkup(j);
     const held=shieldReplyHeld(j),result=held?{}:j.result||{},pending=['queued','running','waiting','stopping'].includes(j.status);
     const status={queued:'Waiting to start…',running:j.events?.at(-1)?.title==='Preparing OpenShell'?'Preparing your protected runtime…':'Working on your request…',waiting:'Waiting for a decision.',stopping:'Stopping after the current model call…',cancelled:'Stopped.'}[j.status];
-    return '<article class="chat-turn" data-chat-turn="'+escape(j.id)+'">'+(j.kind==='heartbeat'?'':'<div class="chat-message chat-user"><small>'+escape(j.payload.sender||'You')+'</small><div>'+escape(j.payload.prompt||'').replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images,j.id)+'</div></div>')+'<div class="chat-message chat-agent"><small>'+escape(j.result?.systemNotice?'System':data.profile?.name||'Agent')+(j.kind==='heartbeat'?' · Heartbeat':'')+' · '+escape(new Date(j.created*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))+'</small>'+(j.kind==='heartbeat'?'<small class="heartbeat-delivery">'+escape(result.telegram==='sent'?'Sent to Telegram':result.telegram==='failed'?'Telegram delivery failed. Your summary is saved here.':['pending','sending'].includes(result.telegram)?'Telegram delivery unconfirmed':'')+'</small>':'')+customSkillMarkup(result.activity)+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(result.answer||result.error||(pending?'':status||'No text reply was returned.'))+'</div>')+(!held&&pending?'<div class="chat-progress" role="status">'+escape(status)+(j.status!=='stopping'?'<button type="button" data-chat-stop="'+escape(j.id)+'">Stop</button>':'')+'</div>':'')+(!held&&result.source?'<small class="heartbeat-source">'+'Technical discovery · '+'Published '+escape(result.source.published)+' · Feed excerpt<br><a href="'+escape(result.source.url)+'" target="_blank" rel="noopener noreferrer">'+escape(result.source.title)+'</a></small>':'')+(result.files||[]).filter(f=>!f.endsWith('.md')||!result.answer).map(f=>'<details class="chat-file"><summary data-chat-file="'+escape(f)+'">'+escape(f.split('/').pop())+'</summary><div class="chat-file-body"></div></details>').join('')+'</div></article>';
+    return '<article class="chat-turn" data-chat-turn="'+escape(j.id)+'">'+(j.kind==='heartbeat'?'':'<div class="chat-message chat-user"><small>'+escape(j.payload.sender||'You')+'</small><div>'+escape(j.payload.prompt||'').replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images,j.id)+'</div></div>')+'<div class="chat-message chat-agent"><small>'+escape(j.result?.systemNotice?'System':data.profile?.name||'Agent')+(j.kind==='heartbeat'?' · Heartbeat':'')+' · '+escape(new Date(j.created*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))+'</small>'+(j.kind==='heartbeat'?'<small class="heartbeat-delivery">'+escape(result.telegram==='sent'?'Sent to Telegram':result.telegram==='failed'?'Telegram delivery failed. Your summary is saved here.':['pending','sending'].includes(result.telegram)?'Telegram delivery unconfirmed':'')+'</small>':'')+customSkillMarkup(result.activity)+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(result.answer||result.error||(pending?'':status||'No text reply was returned.'))+'</div>')+(!held&&pending?'<div class="chat-progress" role="status">'+escape(status)+(j.status!=='stopping'?chatStopButton(j.id):'')+'</div>':'')+(!held&&result.source?'<small class="heartbeat-source">'+'Technical discovery · '+'Published '+escape(result.source.published)+' · Feed excerpt<br><a href="'+escape(result.source.url)+'" target="_blank" rel="noopener noreferrer">'+escape(result.source.title)+'</a></small>':'')+webpageButtons(result.files,j.id)+(result.files||[]).filter(f=>!/\.html$/i.test(f)&&(!f.endsWith('.md')||!result.answer)).map(f=>'<details class="chat-file"><summary data-chat-file="'+escape(f)+'">'+escape(f.split('/').pop())+'</summary><div class="chat-file-body"></div></details>').join('')+'</div></article>';
   }).join(''):'<p class="chat-empty">Start a conversation. Your questions and replies will stay here.</p>');
   loadChatImages(log,agentId);
   if(follow)log.scrollTop=log.scrollHeight;else log.scrollTop=top;
 }
 el('conversation').addEventListener('click',async event=>{
+  if(event.target.closest('[data-open-collaboration]')){showCollaboration();return;}
   const stop=event.target.closest('[data-chat-stop]');
-  if(stop){stop.disabled=true;try{await api('decision',{id:stop.dataset.chatStop,action:'cancel'});await refresh();}catch(error){stop.disabled=false;alert(error.message);}return;}
+  if(stop){if(!stop.disabled)await stopChat(stop.dataset.chatStop);return;}
   const item=event.target.closest('[data-chat-file]');if(!item||item.dataset.loaded)return;
   const owner=agentId,body=item.nextElementSibling;item.dataset.loaded='true';body.textContent='Loading…';
   try{
@@ -208,3 +234,31 @@ el('run-control').addEventListener('keydown',e=>{
 });
 document.addEventListener('pointerdown',e=>{if(!el('run-control').contains(e.target))setRunOptions(false);});
 el('chat').addEventListener('submit',()=>setRunOptions(false));
+
+// Suggestions only complete an explicit slash prefix; Enter selects before sending.
+for(const id of ['prompt','crew-prompt']){
+ const input=el(id),anchor=document.createElement('div'),menu=document.createElement('div'),option=document.createElement('button');
+ anchor.className='studio-command-anchor';input.before(anchor);anchor.append(input,menu);
+ menu.className='studio-command-menu';menu.id=input.id+'-commands';menu.hidden=true;menu.setAttribute('role','listbox');menu.setAttribute('aria-label','Commands');
+ option.type='button';option.id=menu.id+'-plan';option.setAttribute('role','option');option.setAttribute('aria-selected','true');
+ option.innerHTML='<strong>/plan</strong><span>Collaborate with the BaC team</span><small>↵</small>';menu.append(option);
+ input.setAttribute('aria-controls',menu.id);input.setAttribute('aria-autocomplete','list');
+ const close=()=>{menu.hidden=true;input.removeAttribute('aria-activedescendant');};
+ const enabled=()=>id!=='crew-prompt'||input.dataset.planEnabled==='true';
+ const update=()=>{const value=input.value.trimStart();const show=enabled()&&!input.disabled&&/^\/(?:p(?:l(?:a(?:ns?)?)?)?)?$/i.test(value)&&input.selectionStart===input.value.length;
+  menu.hidden=!show;if(show)input.setAttribute('aria-activedescendant',option.id);else input.removeAttribute('aria-activedescendant');};
+ const choose=()=>{if(!enabled()){close();return;}input.value='/plan ';close();input.focus({preventScroll:true});input.setSelectionRange(input.value.length,input.value.length);input.dispatchEvent(new Event('input',{bubbles:true}));};
+ input.addEventListener('input',update);input.addEventListener('focus',update);input.addEventListener('click',update);
+ input.addEventListener('keydown',event=>{
+  if(!enabled()){close();return;}
+  if(menu.hidden||event.isComposing)return;
+  if(['Enter','Tab','Escape','ArrowDown','ArrowUp'].includes(event.key)&&!event.shiftKey){
+   event.preventDefault();event.stopImmediatePropagation();
+   if(event.key==='Enter'||event.key==='Tab')choose();else if(event.key==='Escape')close();
+  }
+ },true);
+ option.addEventListener('pointerdown',event=>event.preventDefault());option.addEventListener('click',choose);
+ anchor.addEventListener('focusout',event=>{if(!anchor.contains(event.relatedTarget))close();});
+ input.form.addEventListener('submit',close);
+ new MutationObserver(()=>{if(input.disabled||!enabled())close();}).observe(input,{attributes:true,attributeFilter:['disabled','data-plan-enabled']});
+}

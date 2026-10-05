@@ -1,4 +1,4 @@
-<div id="bac-planner" lang="en" aria-label="Virtual BaC planning crew" data-view="board">
+<div id="bac-planner" lang="en" aria-label="Virtual multi-agent crew" data-view="board">
 <style>
 #bac-planner{font:19px/1.5 Arial,Helvetica,sans-serif;color:var(--ink);background:var(--paper);overflow:hidden}
 #bac-planner *{box-sizing:border-box}
@@ -28,7 +28,7 @@
     snapshot: () => ({phase:-1,revision:0,brief:null,calc:null,gap:false,policy:null,selected:0,
       flow:['Your crew is ready','', ''], agents:window.BacCrewCatalog.map((member,i)=>({
         ...member,zone:member.role,tone:['lime','blue','sand','rose','purple','blue'][i],
-        skills:[],status:'Ready',lane:0,task:member.description,permission:''
+        displayed:i<4,skills:[],status:'Ready',lane:0,task:member.description,permission:''
       }))})
 
   };

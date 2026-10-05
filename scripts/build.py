@@ -25,7 +25,7 @@ fragment = (ROOT / 'src/bac-planner.html').read_text(encoding='utf-8')
 crew_catalog = json.loads((ROOT / 'src/crew-catalog.json').read_text(encoding='utf-8'))
 fragment = fragment.replace('/* CREW_CATALOG */', json.dumps(crew_catalog).replace('</', '<\\/'))
 campus = (ROOT / 'src/campus.html').read_text(encoding='utf-8')
-studio = (ROOT / 'src/studio.html').read_text(encoding='utf-8').replace('/* STUDIO_CSS */', (ROOT / 'src/studio.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-rooms.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-sound.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-events.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-controls.css').read_text(encoding='utf-8'))
+studio = (ROOT / 'src/studio.html').read_text(encoding='utf-8').replace('/* STUDIO_CSS */', (ROOT / 'src/studio.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-rooms.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-sound.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-artifacts.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-controls.css').read_text(encoding='utf-8'))
 campus = campus.replace('<div class="campus-layout">', studio + '\n<div class="campus-layout">')
 campus = campus.replace('/* CAMPUS_CSS */', (ROOT / 'src/campus.css').read_text(encoding='utf-8'))
 fragment = fragment.replace('<!-- AGENT_CAMPUS -->', campus)
@@ -33,13 +33,14 @@ vendor = (ROOT / 'src/vendor/three-r180.cjs').read_text(encoding='utf-8')
 workshop_art = 'data:image/png;base64,' + base64.b64encode((ROOT / 'src/assets/build-a-claw-workshop.png').read_bytes()).decode('ascii')
 world_scene = (ROOT / 'src/world-scene.js').read_text(encoding='utf-8').replace('__WORKSHOP_ART_DATA_URL__', workshop_art)
 world_scene = world_scene.replace('/* AGENT_CHARACTER */', (ROOT / 'src/agent-character.js').read_text(encoding='utf-8')).replace('/* WORLD_ROOMS */', (ROOT / 'src/world-rooms.js').read_text(encoding='utf-8').replace('/* LOUNGE_LIFE */', (ROOT / 'src/world-lounge.js').read_text(encoding='utf-8'))).replace('/* WORLD_NAVIGATION */', (ROOT / 'src/world-navigation.js').read_text(encoding='utf-8'))
+world_scene = world_scene.replace('/* WORLD_CREW_EXCHANGE */', (ROOT / 'src/world-crew-exchange.js').read_text(encoding='utf-8'))
 world_scene = world_scene.replace('/* WORLD_PROTECTION */', (ROOT / 'src/world-protection.js').read_text(encoding='utf-8'))
 world_scene = world_scene.replace('/* WORLD_ROUNDTABLE */', (ROOT / 'src/world-roundtable.js').read_text(encoding='utf-8'))
 campus_js = '(function(){const exports={};\n' + vendor + '\nconst THREE=exports;\n' + (ROOT / 'src/campus.js').read_text(encoding='utf-8').replace('/* STUDIO_SOUND */', (ROOT / 'src/studio-sound.js').read_text(encoding='utf-8')).replace('/* WORLD_SCENE */', world_scene) + '\n})();'
 fragment = fragment.replace('<!-- CAMPUS_SCRIPT -->', '<script>' + campus_js.replace('</script', '<\\/script') + '</script>')
 studio_js = (ROOT / 'src/studio.js').read_text(encoding='utf-8')
 # Keep assembly explicit and fail on missing/duplicate include markers.
-for module in ('events', 'json', 'compare', 'settings', 'crew', 'telemetry',
+for module in ('json', 'compare', 'settings', 'crew', 'telemetry',
                'world', 'surfaces', 'chat', 'rooms', 'identity', 'safety', 'policies'):
     marker = '/* STUDIO_' + module.upper() + ' */'
     if studio_js.count(marker) != 1:
@@ -54,7 +55,7 @@ page = '''<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Build your agent, explore skills, and plan a BaC event with a crew.">
+<meta name="description" content="Build your agent, explore skills, and collaborate with a team of specialists.">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; frame-src 'self' blob:; base-uri 'none'; form-action 'none'; object-src 'none'">
 <title>NVIDIA Build-a-Claw — Agent Studio</title>
 <style>
@@ -68,7 +69,8 @@ body{margin:0;padding:0;max-width:1600px;margin-inline:auto}
 '''
 if args.check:
     required = ['scripts/serve.py', 'scripts/studio.py', 'scripts/container_runtime.py',
-                'scripts/agent_runtime.py', 'skills/bac-event-page/SKILL.md']
+                'scripts/agent_runtime.py', 'skills/bac-event-page/SKILL.md',
+                'runtime/research-guard/index.mjs', 'runtime/research-guard/openclaw.plugin.json']
     runtime_source = (ROOT / 'scripts/agent_runtime.py').read_text()
     required += ['skills/bac-' + name + '/SKILL.md'
                  for name in re.findall(r"project_skill\('([^']+)'\)", runtime_source)]

@@ -50,6 +50,11 @@ class TwelveAgentTests(unittest.TestCase):
         return {'name': 'Agent %02d' % i, 'skills': ['radar', 'weather'],
                 'protection': 'openshell' if i % 2 == 0 else 'standard'}
 
+    def enable_manual_chat(self, owners):
+        # Capacity/lifecycle tests use normal agents; Radar remains automatic-only.
+        for owner in owners:
+            self.studio.configure(owner, {**self.studio.profile(owner), 'skills': ['weather']})
+
     def drain(self):
         while (row := self.studio.next_job()) is not None:
             self.studio.execute(row)
@@ -79,6 +84,7 @@ class TwelveAgentTests(unittest.TestCase):
         self.assertNotIn(victim, [a['key'] for a in agents])
 
     def test_concurrent_requests_keep_three_slot_limit_and_every_agent_can_run(self):
+        self.enable_manual_chat(self.owners)
         def submit(owner):
             try: return self.studio.enqueue(owner, {'prompt': 'Hello ' + owner})
             except Problem as error: return error.status
@@ -113,6 +119,7 @@ class TwelveAgentTests(unittest.TestCase):
             self.assertEqual(self.studio.policy_report(owner)['mode'], 'standard')
 
     def test_location_updates_twelve_personal_and_one_shared_team_without_losing_notes(self):
+        self.enable_manual_chat([self.owner])
         team = self.studio.crew_owner(self.owner)
         for owner in self.owners:
             (self.studio.workspace(owner) / 'MEMORY.md').write_text('private ' + owner)
@@ -127,6 +134,7 @@ class TwelveAgentTests(unittest.TestCase):
         self.assertEqual(self.studio.state(self.owner)['jobs'][0]['status'], 'queued')
 
     def test_restart_interrupts_running_work_without_replaying_it_and_keeps_queue(self):
+        self.enable_manual_chat(self.owners[:3])
         for owner in self.owners[:3]:
             self.studio.enqueue(owner, {'prompt': 'Hello'})
         running = self.studio.next_job()
@@ -244,6 +252,7 @@ class TwelveAgentTests(unittest.TestCase):
         self.assertTrue(all(owner not in message for owner in retired for message in delivered))
 
     def test_running_deletion_fences_one_agent_while_other_eleven_survive(self):
+        self.enable_manual_chat([self.owner, self.owners[-1]])
         self.drain()
         victim = self.owners[-1]
         self.studio.enqueue(victim, {'prompt': 'Hello'})

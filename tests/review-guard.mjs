@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import {beforeTool,persistResult} from '../runtime/research-guard/index.mjs';
+const agentId='bac-'+'b'.repeat(24)+'-r4';let n=0;
+const ctx=()=>({agentId,sessionKey:'agent:'+agentId+':openai-user:bac-plan-'+String(++n).padStart(24,'0')+'-4-working'});
+const read=(offset=1,limit=9999)=>({toolName:'read',params:{path:'inbox/source.html',offset,limit}});
+let c=ctx(),first={...read(),toolCallId:'read-1'};
+assert.equal(beforeTool(first,c).params.limit,120);
+assert.deepEqual(beforeTool(first,c),{params:{path:'inbox/source.html',offset:1,limit:120}},'same hook call remains idempotent');
+assert(beforeTool(read(),c).block,'a second full read is blocked');
+assert(beforeTool({...read(),params:{path:'/workspace/inbox/source.html'}},c).block,'absolute alias cannot repeat the source');
+assert.equal(beforeTool(read(121,40),c).params.limit,40,'unread range remains accessible');
+assert.equal(beforeTool(read(),{...c,sessionKey:'ordinary-chat'}),undefined);
+assert.equal(beforeTool(read(),{...c,agentId:agentId.replace('-r4','-r5')}),undefined,'Cody writing remains unaffected');
+assert.equal(beforeTool({toolName:'write',params:{}},c),undefined);
+c=ctx();for(let i=0;i<8;i++)assert(beforeTool(read(1+i*120),c).params);assert(beforeTool(read(1001),c).block);
+assert(beforeTool(read(1001),{...c,sessionKey:c.sessionKey+'-output-retry'}).block);
+assert(beforeTool(read(1001),{...c,sessionKey:c.sessionKey.replace('working','revising')}).block);
+c=ctx();let retained=0;
+for(let i=0;i<4;i++){
+ const message={role:'toolResult',toolCallId:'result-'+i,content:[{type:'text',text:'X'.repeat(9000)}],details:{lineCount:9000}};
+ const event={toolName:'read',message},bounded=persistResult(event,c);assert(bounded.message.details.reviewCoverageLimited);
+ retained+=bounded.message.content[0].text.split('\n[')[0].length;
+ assert.match(bounded.message.content[0].text,/Some source was omitted/);
+ assert.deepEqual(persistResult(event,c),bounded,'duplicate persistence must retain bounded content');
+}
+assert.equal(retained,18000);assert(beforeTool(read(),c).block);
+const failed={toolName:'read',message:{isError:true,content:[{type:'text',text:'Missing file'}]}};
+assert.equal(persistResult(failed,c),undefined,'native read failures stay intact');
+assert.equal(persistResult({toolName:'read',message:{content:[{type:'text',text:'full source'}]}},{...c,agentId:'other'}),undefined);
+console.log('PASS: reviewer read ranges, duplicate and total budgets, honest truncation, retry scope and unrelated-agent isolation.');

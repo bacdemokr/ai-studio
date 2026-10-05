@@ -117,6 +117,8 @@ def prepare():
     with runtime.config_lock():
         config = common.read_json(runtime.config_path()) or runtime.initial_config()
         config['gateway']['port'] = runtime.gateway_port()
+        # Keep native diagnostics on the persistent volume across recreation.
+        config.setdefault('logging', {})['file'] = str(runtime.root() / 'gateway-native.log')
         plugins = config.setdefault('plugins', {})
         plugins.setdefault('load', {})['paths'] = [str(plugin)]
         plugins.setdefault('entries', {})['openshell'] = {'enabled': True, 'config': {
@@ -131,6 +133,8 @@ def prepare():
         for agent_id, entry in config['agents']['entries'].items():
             if agent_id.startswith('bac-') and 'heartbeat' in entry:
                 entry['heartbeat']['every'] = '0m'
+        from research_search import configure
+        configure(config, runtime.root())
         runtime.save_config(config)
     if 'bac-host' not in config['agents']['entries']:
         runtime.bootstrap_host()

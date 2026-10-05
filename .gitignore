@@ -13,3 +13,7 @@ shared/*
 backups/
 release/
 image-metadata.json
+
+# Machine-specific host model configuration and service identity
+local-model.json
+.local-model/

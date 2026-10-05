@@ -23,7 +23,8 @@ async function pollComparison(schedule=true){
   if(schedule&&batch.rows.some(comparisonPending)){clearTimeout(comparisonTimer);comparisonTimer=setTimeout(pollComparison,2500);}
 }
 async function askAllAgents(){
-  if(comparisonSending||!runtime.ready||data.deleting)return;
+  if(comparisonSending||!runtime.ready||data.deleting||radarChatDisabled())return;
+  if(/^\/plans?(?:\s|$)/i.test(el('prompt').value.trim())){el('chat-error').textContent='Use Run this agent for /plan. The Captain will coordinate one BaC team task.';el('chat-error').hidden=false;return;}
   comparisonSending=true;syncComposer();
   try{
     // Refresh before deciding: the cached comparison may lag behind completed jobs.
@@ -33,7 +34,7 @@ async function askAllAgents(){
         clearTimeout(comparisonTimer);comparisonTimer=setTimeout(pollComparison,2500);return;
       }
     }
-    const prompt=el('prompt').value.trim(),agents=(data.agents||[]).map(a=>({...a}));if((!prompt&&!pendingImages().length)||agents.length<2)return;
+    const prompt=el('prompt').value.trim(),agents=(data.agents||[]).filter(a=>!radarChatDisabled(a)).map(a=>({...a}));if((!prompt&&!pendingImages().length)||agents.length<2)return;
     const draft=captureChatDraft(),images=draft.images;
     clearTimeout(comparisonTimer);
     const batch=comparison={id:String(Date.now()),prompt,rows:agents.map(a=>({...a,status:'Waiting for queue',answer:'',job:null}))};drawComparison();

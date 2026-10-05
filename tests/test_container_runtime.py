@@ -107,10 +107,10 @@ class ContainerTests(unittest.TestCase):
     def test_prepare_preserves_model_and_agent_config_across_image_updates(self):
         common.initialize()
         runtime.root().mkdir()
-        for package in ('openclaw', '@openclaw/openshell-sandbox'):
+        for package in ('openclaw', '@openclaw/openshell-sandbox', '@openclaw/parallel-plugin'):
             directory = container.IMAGE_RUNTIME/'package/node_modules'/package
             directory.mkdir(parents=True)
-            (directory/'package.json').write_text(json.dumps({'version': runtime.VERSION}))
+            (directory/'package.json').write_text(json.dumps({'version': '2026.7.1' if package == '@openclaw/parallel-plugin' else runtime.VERSION}))
         (container.IMAGE_RUNTIME/'node').mkdir()
         container.CLIENT_CERTS.mkdir()
         for name in ('ca.crt', 'tls.crt', 'tls.key'):
@@ -132,6 +132,11 @@ class ContainerTests(unittest.TestCase):
         self.assertEqual(result['agents']['entries']['bac-existing']['heartbeat'], {'every': '0m', 'target': 'none'})
         self.assertEqual(result['models']['providers']['test'], config['models']['providers']['test'])
         self.assertEqual(result['gateway']['port'], 28689)
+        self.assertEqual(result['tools']['web']['search']['provider'], 'parallel-free')
+        self.assertEqual(result['tools']['web']['search']['maxResults'], 3)
+        self.assertTrue(runtime.search_enabled())
+        self.assertEqual(len(result['plugins']['load']['paths']), 3)
+        self.assertTrue(result['plugins']['entries']['bac-research-guard']['enabled'])
         plugin = result['plugins']['entries']['openshell']['config']
         self.assertEqual(plugin['gateway'], 'bac-demo')
         self.assertEqual(plugin['workspace'], 'default')
@@ -166,6 +171,9 @@ class ContainerTests(unittest.TestCase):
         self.assertTrue((destination/'src/assets/build-a-claw-workshop.png').stat().st_mode & 0o004)
         self.assertTrue((destination/'src/studio.js').exists())
         self.assertIn('.:/opt/bac/source:ro', compose)
+        for name in ('index.mjs', 'openclaw.plugin.json'):
+            self.assertEqual((destination/'runtime/research-guard'/name).read_bytes(),
+                             (release.ROOT/'runtime/research-guard'/name).read_bytes())
         self.assertEqual((destination/'remove.py').read_bytes(), (release.ROOT/'scripts/container_remove.py').read_bytes())
         with self.assertRaisesRegex(ValueError, 'not overwritten'):
             release.bundle('bac-studio:0.1.0-rc.1', '0.1.0-rc.1', destination)

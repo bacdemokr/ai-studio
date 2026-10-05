@@ -66,16 +66,20 @@
 #studio-dialog .studio-settings-tabs{gap:24px;margin-bottom:0}
 #studio-dialog .studio-settings-tabs button{font-size:15px;font-weight:500;padding:12px 0;border-bottom-width:2px}
 #studio-dialog #studio-settings-model-panel{padding-top:20px}
-#studio-dialog .studio-reset-row{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:27px 0;border-bottom:1px solid #293640}
+#studio-dialog .studio-reset-row{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:27px 0}
 #studio-dialog .studio-reset-row>div{min-width:0}
+#studio-dialog .studio-reset-row+.studio-reset-row{border-top:1px solid #293640}
+#studio-dialog .studio-reset-stage{display:block;margin:0 0 8px;color:#9ac44e;font-size:11px;font-weight:600;letter-spacing:.12em}
+#studio-dialog .studio-reset-footer{display:flex;align-items:center;justify-content:space-between;gap:24px;padding-top:22px;border-top:1px solid #293640}
+#studio-dialog .studio-reset-footer p{margin:0;color:#99a9b6;font-size:13px;line-height:1.5}
+#studio-dialog #studio-reset-all{background:#a43e38;border-color:#c0544c;color:#fff}
+#studio-dialog #studio-reset-all:hover:not(:disabled){background:#b44740}
+
 #studio-dialog .studio-reset-row h3{font-size:17px;line-height:1.4;letter-spacing:0;font-weight:600;margin:0 0 5px}
 #studio-dialog .studio-reset-row p{font-size:14px;line-height:1.5;color:#99a9b6;margin:0}
 #studio-dialog #studio-settings-reset-panel button{box-sizing:border-box;flex-shrink:0;min-width:112px;height:40px;padding:0 18px;border-radius:5px;font-size:14px;line-height:1;font-weight:600;white-space:nowrap}
 #studio-dialog .studio-reset-row button{background:#1a252e;border:1px solid #41515e;color:#e5edf2}
 #studio-dialog .studio-reset-row button:hover:not(:disabled){background:#26343f;border-color:#738696}
-#studio-dialog .studio-reset-footer{display:flex;justify-content:flex-end;padding-top:22px}
-#studio-dialog #studio-reset-all{background:#b6443e;border-color:#ce5b54}
-#studio-dialog #studio-reset-all:hover{background:#c65049}
 #studio-dialog #studio-settings-status:empty{display:none}
 #studio-config-form>.studio-dialog-actions:has(#studio-save-settings[hidden]){display:none}
 @media(max-width:520px){
@@ -93,3 +97,64 @@
 .heartbeat-delivery { display:block; }
 
 .heartbeat-source { display:block;margin-top:.8rem;line-height:1.5;overflow-wrap:anywhere; }
+
+.studio-command-anchor{position:relative;min-width:0}
+.studio-command-anchor textarea{box-sizing:border-box;width:100%}
+.studio-command-menu{position:absolute;bottom:calc(100% + 6px);left:0;right:0;z-index:8;padding:5px;background:#152630;border:1px solid #425966;border-radius:10px;box-shadow:0 8px 24px #0006}
+.studio-command-menu[hidden]{display:none}
+#agent-campus .studio-command-menu button{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border:0;border-radius:6px;background:#243b45;color:#eef5f8;text-align:left;font-size:14px}
+.studio-command-menu strong{color:#b4ed64;font-size:15px}
+.studio-command-menu span{flex:1}
+.studio-command-menu small{color:#a0b5c0}
+.studio-command-menu button:hover{background:#304b56}
+
+.chat-webpages{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+#agent-campus .chat-webpages button{display:flex;align-items:center;gap:16px;border:1px solid #76b900;background:#20331c;color:#e9f8db;border-radius:6px;font-size:14px;padding:10px 14px}
+.chat-webpages button span{color:#b1e871}
+.studio-page-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex:none;margin-bottom:14px}
+.studio-page-toolbar [role=group]{display:flex;gap:4px;padding:3px;background:#0b131b;border:1px solid #324653;border-radius:7px}
+#studio-dialog .studio-page-toolbar button{font-size:14px;padding:8px 14px;border-radius:4px;line-height:1.3}
+#studio-dialog [data-preview-width]{background:transparent;border:0;color:#afc0ca}
+#studio-dialog [data-preview-width][aria-pressed=true]{background:#304653;color:#fff}
+.studio-page-canvas{display:flex;justify-content:center;flex:1;min-height:0;background:#080e13;border:1px solid #30424d;overflow:hidden}
+#studio-dialog.studio-page-preview .studio-page-canvas #studio-app-frame{flex:none;box-sizing:border-box;height:100%;border:0;border-radius:0;width:100%;background:white}
+#studio-dialog.studio-page-preview .studio-page-canvas[data-width=mobile] #studio-app-frame{width:390px;max-width:100%}
+
+.studio-page-canvas{position:relative}
+.studio-preview-loading{position:absolute;inset:0;display:grid;place-items:center;color:#aabcc7;font-size:15px}
+.studio-preview-loading[hidden]{display:none}
+#studio-dialog.studio-page-preview .studio-page-canvas iframe:not([data-ready=true]){opacity:0;pointer-events:none}
+
+/* Stage 3 should be readable at normal desktop zoom, including large displays. */
+@media(min-width:1100px){
+ #bac-planner #agent-campus[data-room=mission]:not([data-world-overview=true]) .campus-layout{grid-template-columns:minmax(0,1fr) clamp(440px,34vw,640px)!important}
+ #bac-planner #agent-campus #studio-crew-passport .studio-team-actions{padding:16px 24px;gap:10px}
+ #bac-planner #agent-campus #studio-crew-passport .studio-team-actions button{min-height:50px;font-size:17px;padding:12px}
+ #bac-planner #agent-campus #studio-crew-passport .studio-team-connection-bar{padding:16px 24px;font-size:16px}
+ #bac-planner #agent-campus #studio-crew-passport #studio-team-setup{font-size:15px;min-height:42px;padding:10px 14px}
+ #bac-planner #agent-campus #studio-standby>summary{font-size:17px;padding:16px 24px}
+ #bac-planner #agent-campus #studio-standby-count{font-size:14px;min-width:26px;height:26px}
+ #bac-planner #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content{padding:22px 24px;gap:14px;overflow-y:auto}
+ #bac-planner #agent-campus #studio-crew-passport .studio-companion-name{gap:18px}
+ #bac-planner #agent-campus #studio-crew-passport .studio-avatar{width:58px;height:64px}
+ #bac-planner #agent-campus #studio-crew-passport h3{font-size:36px!important}
+ #bac-planner #agent-campus #studio-crew-role{font-size:20px!important}
+ #bac-planner #agent-campus #studio-crew-passport .studio-model-label{font-size:14px;padding:5px 8px}
+ #bac-planner #agent-campus #studio-crew-conversation{font-size:18px;line-height:1.6}
+ #bac-planner #agent-campus #studio-crew-conversation :is(p,.chat-message,.chat-prose){font-size:18px!important;line-height:1.6}
+ #bac-planner #agent-campus #studio-crew-conversation .chat-message>small{font-size:14px}
+ #bac-planner #agent-campus #studio-crew-chat{padding:14px 16px}
+ #bac-planner #agent-campus #studio-crew-prompt{font-size:19px;min-height:100px;line-height:1.5}
+ #bac-planner #agent-campus #studio-crew-chat .studio-compose-actions>button{font-size:16px;min-height:44px;padding:10px 14px}
+ #bac-planner #agent-campus #studio-crew-passport #campus-roster button{font-size:17px;padding:10px 12px}
+ #bac-planner #agent-campus #studio-crew-passport #campus-roster small{font-size:14px}
+}
+
+/* Empty Mission Control describes the current workflow without preset cards. */
+#studio-surface #studio-board:not(.has-plan) .studio-board-intro{display:block;padding:24px 8px}
+#studio-surface #studio-board:not(.has-plan) .studio-kicker{display:none}
+
+/* Keep total process time inline with Casey's identity. */
+#studio-crew-passport .studio-captain-heading{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px}
+#studio-team-total-time{margin:0;color:#b9d88a;font:500 13px/1.4 Arial,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+#studio-team-total-time[hidden]{display:none}

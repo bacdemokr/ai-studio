@@ -1,6 +1,6 @@
 # Runtime usage panel
 
-The scene footer contains a compact CPU / RAM / Context meter (highest last-reported utilization among agents in the current room). Expand it for per-agent context bars; it remains available in native fullscreen. BaC Planning shows crew snapshots; Hiring and the lounge show personal runs. Tooltips include the observed model and timestamp when available.
+The scene footer contains a compact CPU / RAM / Context meter (highest last-reported utilization among agents in the current room). Expand it for per-agent context bars; it remains available in native fullscreen. Multi-Agent demo shows crew snapshots; Hiring and the lounge show personal runs. Tooltips include the observed model and timestamp when available.
 
 - Cumulative usage (expanded panel): sum of Gateway-reported `usage.total_tokens` for captured responses, including input and output. Persisted in each job's payload, scoped to the requesting participant. This is **recorded app activity**, not a provider billing meter: old jobs, failed/lost responses and provider-unreported usage are not reconstructed. Board resets retain recorded measurements; deleting an agent removes its jobs and measurements.
 - Context: latest fresh OpenClaw session prompt-token snapshot, divided by that session's resolved context budget. A snapshot updates after a response; it is not a live generation counter. Different agents can use one model while maintaining distinct sessions. Splitting context does not guarantee lower aggregate token usage.

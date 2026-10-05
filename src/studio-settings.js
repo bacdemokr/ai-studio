@@ -9,7 +9,13 @@ async function waitForAgentRuntime(requireModel=false){
   throw new Error(requireModel?'The model was verified, but the agent runtime has not applied the connection. Retry Connect model.':'Model settings are saved, but the agent runtime is not ready. Try Start agents again.');
 }
 const settingsButton=document.createElement('button');settingsButton.id='studio-config';settingsButton.className='studio-config';settingsButton.type='button';settingsButton.textContent='⚙';settingsButton.title='Settings';settingsButton.setAttribute('aria-label','Settings');settingsButton.hidden=true;document.querySelector('#bac-planner .topbar').append(settingsButton);
-let settingsOpenRequest=0;
+let settingsOpenRequest=0,resetInProgress=false;
+function syncResetButtons(){
+ for(const id of ['agent-reset','settings-bac-reset','reset-all']){
+  const button=el(id);if(button)button.disabled=resetInProgress||(id==='agent-reset'&&!(data.agents||[]).length);
+ }
+ if(resetInProgress&&el('settings-status'))el('settings-status').textContent='Reset in progress. Agent cleanup is still running.';
+}
 settingsButton.onclick=async()=>{
  const request=++settingsOpenRequest,revision=dialogRevision;
  const currentOpen=()=>request===settingsOpenRequest&&revision===dialogRevision;
@@ -20,8 +26,8 @@ settingsButton.onclick=async()=>{
   try{telegram=await api('telegram');}
   catch(error){telegram={connected:false,error:error.message};}
   if(!currentOpen())return;
-  dialog('Settings',`<form id="studio-config-form" novalidate><nav class="studio-settings-tabs" role="tablist" aria-label="Settings"><button type="button" role="tab" id="studio-settings-model-tab" data-settings-tab="model" aria-controls="studio-settings-model-panel" aria-selected="true">Model</button><button type="button" role="tab" id="studio-settings-location-tab" data-settings-tab="location" aria-controls="studio-settings-location-panel" aria-selected="false" tabindex="-1">Location</button><button type="button" role="tab" id="studio-settings-telegram-tab" data-settings-tab="telegram" aria-controls="studio-settings-telegram-panel" aria-selected="false" tabindex="-1">Telegram</button><button type="button" role="tab" id="studio-settings-reset-tab" data-settings-tab="reset" aria-controls="studio-settings-reset-panel" aria-selected="false" tabindex="-1">Reset</button></nav>
-  <section id="studio-settings-model-panel" role="tabpanel" aria-labelledby="studio-settings-model-tab"><label for="studio-provider">Provider</label><select id="studio-provider">${Object.entries(settings.providers).map(([id,p])=>`<option value="${id}">${escape(p.label)}</option>`).join('')}</select><label for="studio-api-key">API key</label><input id="studio-api-key" type="password" autocomplete="off" spellcheck="false"><small id="studio-key-note"></small><div class="studio-settings-model"><label for="studio-model">Model</label><button type="button" id="studio-load-models" class="studio-secondary">Load models ↻</button></div><button type="button" id="studio-change-model" class="studio-secondary" aria-expanded="false" aria-controls="studio-model-options" hidden>Change model</button><p id="studio-model-status" role="status" aria-live="polite"></p><input id="studio-model-search" type="search" aria-label="Search models" placeholder="Search models…" autocomplete="off" spellcheck="false" hidden><select id="studio-model-options" size="6" aria-label="Available models" hidden></select><input id="studio-model" autocomplete="off" placeholder="Load models to choose, or enter a model ID" required><small>Choose a text model with tool calling.</small><details id="studio-connection-options"><summary>Connection options</summary><label for="studio-endpoint">API endpoint</label><input id="studio-endpoint" type="url" aria-describedby="studio-endpoint-note" required><small id="studio-endpoint-note" hidden>vLLM on this PC: <code>http://127.0.0.1:8000/v1</code>. Use your server’s port, then select a model with Load models.</small><label for="studio-model-context">Context limit · tokens</label><input id="studio-model-context" type="number" min="8192" max="2000000" step="1" required></details><small>Keys stay in memory for this tab only. Closing or refreshing clears them.</small></section>
+  dialog('Settings',`<form id="studio-config-form" novalidate><nav class="studio-settings-tabs" role="tablist" aria-label="Settings"><button type="button" role="tab" id="studio-settings-model-tab" data-settings-tab="model" aria-controls="studio-settings-model-panel" aria-selected="true">Lounge model</button><button type="button" role="tab" id="studio-settings-location-tab" data-settings-tab="location" aria-controls="studio-settings-location-panel" aria-selected="false" tabindex="-1">Location</button><button type="button" role="tab" id="studio-settings-telegram-tab" data-settings-tab="telegram" aria-controls="studio-settings-telegram-panel" aria-selected="false" tabindex="-1">Telegram</button><button type="button" role="tab" id="studio-settings-reset-tab" data-settings-tab="reset" aria-controls="studio-settings-reset-panel" aria-selected="false" tabindex="-1">Reset</button></nav>
+  <section id="studio-settings-model-panel" role="tabpanel" aria-labelledby="studio-settings-model-tab"><div class="studio-model-scope"><span>STAGES 01 / 02</span><h3>Hiring &amp; Agent lounge</h3><p>Choose a local model or API for your hired agents.</p></div><div class="studio-model-link"><span>Multi-Agent Demo has its own API connection.</span><button type="button" id="studio-open-team-settings" class="studio-secondary">Set up Stage 03 ↗</button></div><label for="studio-provider">Provider</label><select id="studio-provider">${Object.entries(settings.providers).map(([id,p])=>`<option value="${id}">${escape(p.label)}</option>`).join('')}</select><label for="studio-api-key">API key</label><input id="studio-api-key" type="password" autocomplete="off" spellcheck="false"><small id="studio-key-note"></small><div class="studio-settings-model"><label for="studio-model">Model</label><button type="button" id="studio-load-models" class="studio-secondary">Load models ↻</button></div><button type="button" id="studio-change-model" class="studio-secondary" aria-expanded="false" aria-controls="studio-model-options" hidden>Change model</button><p id="studio-model-status" role="status" aria-live="polite"></p><input id="studio-model-search" type="search" aria-label="Search models" placeholder="Search models…" autocomplete="off" spellcheck="false" hidden><select id="studio-model-options" size="6" aria-label="Available models" hidden></select><input id="studio-model" autocomplete="off" placeholder="Load models to choose, or enter a model ID" required><small>Choose a text model with tool calling.</small><details id="studio-connection-options"><summary>Connection options</summary><label for="studio-endpoint">API endpoint</label><input id="studio-endpoint" type="url" aria-describedby="studio-endpoint-note" required><small id="studio-endpoint-note" hidden>vLLM on this PC: <code>http://127.0.0.1:8000/v1</code>. Use your server’s port, then select a model with Load models.</small><label for="studio-model-context">Context limit · tokens</label><input id="studio-model-context" type="number" min="8192" max="2000000" step="1" required></details><small>Keys stay in memory for this tab only. Closing or refreshing clears them.</small></section>
 
   <section id="studio-settings-location-panel" role="tabpanel" aria-labelledby="studio-settings-location-tab" hidden><label for="studio-location-city">City</label><input id="studio-location-city" autocomplete="address-level2" maxlength="80" required aria-describedby="studio-location-note"><small id="studio-location-note">Default city in every agent’s USER.md for weather and local requests.</small></section>
   <section id="studio-settings-telegram-panel" role="tabpanel" aria-labelledby="studio-settings-telegram-tab" hidden>
@@ -29,17 +35,23 @@ settingsButton.onclick=async()=>{
   <label for="studio-telegram-token">Bot token (create your bot with <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer">@BotFather</a> and paste its token)</label><input id="studio-telegram-token" type="password" autocomplete="off" spellcheck="false" placeholder="Token from @BotFather (e.g. 123456789:ABCdef...)">
   <label for="studio-telegram-chat">Chat ID (open <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer">@userinfobot</a>, type /start, copy your Id)</label><input id="studio-telegram-chat" autocomplete="off" spellcheck="false" placeholder="Numeric chat ID (e.g. 123456789)">
   <p id="studio-telegram-status" role="status" hidden></p><div id="studio-telegram-controls" hidden><div class="studio-dialog-actions"><button type="button" id="studio-telegram-test" class="studio-secondary">Send test</button><button type="button" id="studio-telegram-disconnect" class="studio-secondary">Disconnect</button></div></div></section>
-  <section id="studio-settings-reset-panel" role="tabpanel" aria-labelledby="studio-settings-reset-tab" class="studio-agent-reset" hidden><div class="studio-reset-row"><div><h3>Lounge agents</h3><p>Remove hired agents and their data.</p></div><button type="button" id="studio-agent-reset" class="studio-secondary" aria-label="Reset Lounge agents" ${(data.agents||[]).length?'':'disabled'}>Reset</button></div><div class="studio-reset-row"><div><h3>BaC (Multi-Agent Demo)</h3><p>Clear the event board and team chats.</p></div><button type="button" id="studio-bac-reset" class="studio-secondary" aria-label="Reset BaC">Reset</button></div><div class="studio-reset-footer"><button type="button" id="studio-reset-all" class="studio-danger">Reset all</button></div></section>
+  <section id="studio-settings-reset-panel" role="tabpanel" aria-labelledby="studio-settings-reset-tab" class="studio-agent-reset" hidden>
+   <div class="studio-reset-row"><div><small class="studio-reset-stage">STAGES 01 / 02</small><h3>Hiring &amp; Agent lounge</h3><p>Remove hired agents and their chats, files, and workspaces.</p></div><button type="button" id="studio-agent-reset" class="studio-secondary" aria-label="Remove Stage 1 and 2 agents" ${(data.agents||[]).length?'':'disabled'}>Remove agents</button></div>
+   <div class="studio-reset-row"><div><small class="studio-reset-stage">STAGE 03</small><h3>Multi-Agent demo</h3><p>Stop active team work and clear team chats, documents, files, and the board.</p></div><button type="button" id="studio-settings-bac-reset" class="studio-secondary" aria-label="Reset Stage 3">Reset Stage 3</button></div>
+   <div class="studio-reset-footer"><p>Reset all stages. Model and connection settings are kept.</p><button type="button" id="studio-reset-all" class="studio-danger">Reset all</button></div>
+  </section>
   <p id="studio-settings-status" role="status"></p><div class="studio-dialog-actions"><button type="button" id="studio-start-agents" class="studio-secondary" ${runtime.gateway?'hidden':''}>Start agents</button><button type="submit" class="studio-primary" id="studio-save-settings">Connect model</button></div></form>`);
   const form=el('config-form'),modelList=el('model-options'),modelStatus=el('model-status'),loadButton=el('load-models');
   function showTelegram(){el('telegram-status').textContent=telegram.connected?'Connected to @'+telegram.bot+' · chat '+telegram.chatId:telegram.error||'';el('telegram-status').hidden=!telegram.connected&&!telegram.error;el('telegram-controls').hidden=!telegram.connected;el('telegram-test').disabled=!telegram.connected;el('telegram-disconnect').disabled=!telegram.connected;el('telegram-chat').value=telegram.chatId||'';}
   showTelegram();
+  el('open-team-settings').onclick=openTeamSettings;
   async function telegramAction(action){if(connecting)return;connecting=true;el('settings-status').textContent='Connecting';try{const result=await api(action==='test'?'telegram/test':'telegram',action==='test'?{}:{disconnect:true});if(!currentForm())return;if(action==='test')el('settings-status').textContent='Test message sent.';else{telegram=result;showTelegram();el('settings-status').textContent='';}}catch(error){if(currentForm())el('settings-status').textContent=error.message;}finally{connecting=false;}}
   el('telegram-test').onclick=()=>telegramAction('test');el('telegram-disconnect').onclick=()=>telegramAction('disconnect');
   el('location-city').value=settings.location?.city||'Zurich';
   el('agent-reset').onclick=()=>resetStudio('lounge');
+  el('settings-bac-reset').onclick=()=>resetStudio('bac');
   el('reset-all').onclick=()=>resetStudio('all');
-  el('bac-reset').onclick=()=>resetStudio('bac');
+  syncResetButtons();
   let tab='model',generation=0,availableModels=[],hasMoreModels=false,connecting=false;
   const currentForm=()=>el('config-form')===form&&el('dialog').open;
   const modelSearch=el('model-search'),changeModel=el('change-model');
@@ -49,7 +61,7 @@ settingsButton.onclick=async()=>{
   function filterModels(){const query=modelSearch.value.trim().toLowerCase();const matches=availableModels.filter(m=>(m.id+' '+(m.name||'')).toLowerCase().includes(query));modelList.replaceChildren(...matches.map(m=>new Option(!m.name||m.name===m.id?m.id:m.name+' · '+m.id,m.id)));modelList.value=el('model').value;modelList.hidden=!matches.length;modelStatus.dataset.state=matches.length?'ready':'empty';modelStatus.textContent=(query?`${matches.length} of ${availableModels.length} models`:`${availableModels.length} models`)+(matches.length?'':' · No matches')+(hasMoreModels?' · More IDs can be entered manually.':'');}
   modelSearch.oninput=filterModels;
   modelSearch.onkeydown=e=>{if(e.key==='Enter')e.preventDefault();if(e.key==='ArrowDown'&&!modelList.hidden){e.preventDefault();modelList.focus();}};
-  function selectTab(next){if(connecting)return;tab=next;form.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===tab;b.setAttribute('aria-selected',active);b.tabIndex=active?0:-1;});el('settings-model-panel').hidden=tab!=='model';el('settings-location-panel').hidden=tab!=='location';el('settings-reset-panel').hidden=tab!=='reset';el('settings-telegram-panel').hidden=tab!=='telegram';el('save-settings').textContent=tab==='telegram'?'Connect Telegram':tab==='location'?'Save location':'Connect model';el('save-settings').hidden=tab==='reset';el('start-agents').hidden=tab!=='model'||!!runtime.gateway;el('settings-status').textContent='';}
+  function selectTab(next){if(connecting)return;tab=next;form.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===tab;b.setAttribute('aria-selected',active);b.tabIndex=active?0:-1;});el('settings-model-panel').hidden=tab!=='model';el('settings-location-panel').hidden=tab!=='location';el('settings-reset-panel').hidden=tab!=='reset';el('settings-telegram-panel').hidden=tab!=='telegram';el('save-settings').textContent=tab==='telegram'?'Connect Telegram':tab==='location'?'Save location':'Connect model';el('save-settings').hidden=tab==='reset';el('start-agents').hidden=tab!=='model'||!!runtime.gateway;el('settings-status').textContent='';if(tab==='reset')syncResetButtons();}
   form.querySelectorAll('[data-settings-tab]').forEach(b=>{b.onclick=()=>selectTab(b.dataset.settingsTab);b.onkeydown=e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const tabs=['model','location','telegram','reset'];selectTab(e.key==='Home'?tabs[0]:e.key==='End'?tabs.at(-1):tabs[(tabs.indexOf(tab)+(e.key==='ArrowLeft'?-1:1)+tabs.length)%tabs.length]);el('settings-'+tab+'-tab').focus();}};});
 
   const input=()=>({provider:el('provider').value,apiKey:el('api-key').value.trim(),baseUrl:el('endpoint').value.trim(),model:el('model').value.trim(),contextWindow:Number(el('model-context').value)});
@@ -107,19 +119,27 @@ settingsButton.onclick=async()=>{
 };
 el('dialog').addEventListener('close',()=>{if(el('api-key'))el('api-key').value='';if(el('telegram-token'))el('telegram-token').value='';});
 
-async function resetStudio(scope){
- if(removingAgent||pendingWrites||changingAgent)return;
- removingAgent=true;++refreshVersion;
- const modal=el('dialog'),status=el('settings-status'),blockClose=e=>e.preventDefault();
- const buttons=[...modal.querySelectorAll('button')].map(button=>[button,button.disabled]);
+function confirmTeamReset(sourceButton){
+ if(resetInProgress||removingAgent||pendingWrites||changingAgent||data.bacResetting)return;
+ dialog('RESET STAGE 3', '<h3>Do you really want to reset Stage 3?</h3><p>This stops active team work and clears team chats, attached documents, generated files, and the board.</p><div class="studio-dialog-actions"><button type="button" class="studio-secondary" id="studio-team-reset-cancel" autofocus>Cancel</button><button type="button" class="studio-danger" id="studio-team-reset-confirm">Yes, Reset Stage 3.</button></div>');
+ el('team-reset-cancel').onclick=()=>el('dialog').close();
+ el('team-reset-confirm').onclick=()=>{el('dialog').close();resetStudio('bac',sourceButton);};
+ el('team-reset-cancel').focus();
+}
+
+async function resetStudio(scope,sourceButton=null){
+ if(resetInProgress||removingAgent||pendingWrites||changingAgent)return;
+ resetInProgress=true;removingAgent=true;++refreshVersion;
+ const modal=el('dialog'),status=sourceButton?el('team-reset-status'):el('settings-status'),blockClose=e=>e.preventDefault();
+ const buttons=(sourceButton?[sourceButton]:[...modal.querySelectorAll('button')]).map(button=>[button,button.disabled]);
  modal.addEventListener('cancel',blockClose);buttons.forEach(([button])=>button.disabled=true);
- status.textContent='Resetting';
- let completed=0,total=0,next=agentId,background=false;
+ status.hidden=false;status.textContent='Resetting…';
+ let completed=0,total=0,next=agentId,background=false,teamCleared=false;
  const originalSelection=agentId;
  try{
   const latest=await api('state',undefined,'');
   const agents=scope==='bac'?[]:latest.agents||[];total=agents.length;
-  if(scope!=='lounge'){
+  if(scope==='bac'||scope==='all'){
    let reset=await api('bac-reset',{},latest.agentId);
    while(reset.resetting){
     status.textContent='Stopping BaC work and resetting…';
@@ -127,7 +147,7 @@ async function resetStudio(scope){
     const snapshot=await api('state',undefined,'');
     reset={resetting:!!snapshot.bacResetting};
    }
-   selectedJob=null;demoPreparationId='';
+   selectedJob=null;teamCleared=true;
   }
   // Persist every request first. Closing Settings or reloading must not lose
   // the remainder of a bulk deletion while the native runtime drains it.
@@ -149,16 +169,40 @@ async function resetStudio(scope){
    clearTimeout(comparisonTimer);comparison=null;comparePanel.replaceChildren();delete comparePanel.dataset.batch;
    if(!changingAgent&&(agentId===originalSelection||agents.some(a=>a.key===agentId))){openAgentState(state);fillCreator(true);setRoom('workshop');}
   }
-  status.textContent=scope==='all'?'Reset complete.':scope==='bac'?'BaC reset.':'Lounge agents reset.';
+  status.textContent=scope==='all'?'All stages reset.':scope==='bac'?'Stage 3 reset.':'Lounge agents reset.';
   if(background)alert('Cleanup complete. '+completed+' agents removed.');
  }catch(error){
-  status.textContent=(completed?`${completed} / ${total} removed. `:'')+error.message;
+  status.textContent=(scope==='all'&&teamCleared?'Stage 3 was reset. ':'')+(completed?`${completed} / ${total} removed. `:'')+error.message;
   if(background)alert(status.textContent);
   try{const state=await api('state',undefined,'');if(state.agentId===agentId){data=state;render();}else openAgentState(state);}catch{}
  }finally{
-  removingAgent=false;modal.removeEventListener('cancel',blockClose);
+  // Background cleanup has released this lock; a newer individual deletion may own it now.
+  if(!background)removingAgent=false;
+  resetInProgress=false;modal.removeEventListener('cancel',blockClose);
   buttons.forEach(([button,disabled])=>button.disabled=disabled);
-  if(el('agent-reset'))el('agent-reset').disabled=!(data.agents||[]).length;
+  if(background&&el('settings-status')&&el('settings-status')!==status)el('settings-status').textContent=status.textContent;
+  syncResetButtons();
   refresh();
  }
+}
+
+
+const teamModelDrafts=new Map();
+let teamModelDraftOwner=null;
+function openTeamSettings(){
+ if(!modelPickerSaving||teamModelDraftOwner!==agentId)teamModelDrafts.clear();
+ teamModelDraftOwner=agentId;
+ const available=window.BacCrewCatalog.map((member,role)=>({...member,roleIndex:role})).filter(member=>member.planEligible!==false);
+ dialog('Multi-Agent setup',`<form id="studio-team-config-form">
+  <div class="studio-model-scope"><span>STAGE 03</span><h3>Team API &amp; models</h3><p>A dedicated NVIDIA API connection for Casey and the specialists.</p></div>
+  <div class="studio-team-api-card"><div class="studio-team-api-heading"><strong>NVIDIA Inference</strong><span class="studio-team-api-state" data-connected="${!!runtime.teamModel}">${runtime.teamModel?(runtime.teamReady?'Connected':'API connected · Runtime offline'):'Not connected'}</span></div>
+  <small>inference-api.nvidia.com</small>
+  <small>${runtime.teamModel?'Key loaded from <code>api.cfg</code>.':'Add a key to <code>api.cfg</code> and run <code>./bac start</code>.'}</small></div>
+  <div class="studio-team-models-heading"><h3>Agent models</h3><small>Choose models for your agents, then select Apply changes. No API key re-entry needed.</small></div><p id="studio-team-model-status" role="status" hidden></p>
+  <div class="studio-team-setup-models">${available.map(member=>`<div><span><strong>${escape(member.name)}</strong><small>${escape(member.collaboration.title)}</small></span><div class="studio-team-model-controls"><button type="button" class="team-model-trigger" data-team-model="${member.roleIndex}" ${!runtime.teamModel||data.bacResetting||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status))?'disabled':''}><span>${escape(teamModel(member.roleIndex)?.label||'Choose model')}</span><span aria-hidden="true">⌕</span></button></div></div>`).join('')}</div>
+  <div class="studio-team-model-save"><button type="button" class="studio-primary" data-team-apply-all disabled>Apply changes</button></div><p class="studio-team-setup-note">Stage 1 &amp; 2 keep using the model selected in Settings.</p></form>`);
+ el('dialog').classList.add('studio-team-settings');
+ el('team-config-form').onsubmit=event=>event.preventDefault();
+ syncTeamModelForm();
+ if(modelPickerSaving){const notice=el('team-model-status');notice.hidden=false;notice.textContent='Applying model changes…';}
 }

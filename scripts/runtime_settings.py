@@ -20,6 +20,22 @@ import session_secrets as secrets
 MAX_OUTPUT_TOKENS = 8192
 AGENT_TIMEOUT_SECONDS = 360
 
+
+def apply_context_limits(config):
+    """Bound fetched excerpts and check growing tool context before another call."""
+    fetch = config.setdefault('tools', {}).setdefault('web', {}).setdefault('fetch', {})
+    # The native tool clamps even a model-supplied maxChars to maxCharsCap.
+    # Preserve stricter host limits, without disabling any access policy.
+    fetch['maxCharsCap'] = min(fetch.get('maxCharsCap', 4000), 4000)
+    fetch['maxChars'] = min(fetch.get('maxChars', 3000), 3000, fetch['maxCharsCap'])
+    compaction = config.setdefault('agents', {}).setdefault('defaults', {}).setdefault('compaction', {})
+    compaction['enabled'] = True
+    # Native default retains 20k recent tokens, almost the whole 24k input
+    # budget of our 32k models. Leave room for summaries, tools and new evidence.
+    compaction['keepRecentTokens'] = min(compaction.get('keepRecentTokens', 8192), 8192)
+    compaction['midTurnPrecheck'] = {'enabled': True}
+    return config
+
 PROVIDERS = {
     'local': {'label': 'Local / on-prem', 'baseUrl': 'http://127.0.0.1:8000/v1', 'api': 'openai-completions'},
     'nvidia': {'label': 'NVIDIA Inference (Employee only)', 'baseUrl': 'https://inference-api.nvidia.com/v1', 'api': 'openai-completions'},
@@ -233,10 +249,12 @@ def apply_to_config(config, provider, profile):
                    'cost':{'input':0,'output':0,'cacheRead':0,'cacheWrite':0}}]}
     config['agents']['defaults']['model']={'primary':ref,'fallbacks':[]}
     config['agents']['defaults']['timeoutSeconds']=AGENT_TIMEOUT_SECONDS
-    for agent in config['agents']['entries'].values():
+    import team_models
+    for agent_id,agent in config['agents']['entries'].items():
+        if team_models.role_for(agent_id) is not None:continue
         agent['model']=ref;agent['modelPolicy']={'allow':[ref]}
         agent['identity']={'theme':'bac-model-'+str(time.time_ns())}
-    return config
+    return apply_context_limits(team_models.apply(config))
 
 
 def clean_event(location):

@@ -4,15 +4,15 @@ const root = document.getElementById('agent-campus');
 const el = name => document.getElementById('campus-' + name);
 const api = window.BacDemo;
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const colors = [0x76b900, 0x55bfff, 0xf4b34f, 0xff8873, 0xb49aff, 0xcbddea];
+const colors = [0x76b900, 0x55bfff, 0xf4b34f, 0xff8873, 0xb49aff, 0xcbddea, 0x55bfff, 0xb49aff, 0x55bfff];
 const hex = i => '#' + colors[i].toString(16);
 let snapshot = api.snapshot(), selected = 0, sceneView = null;
 function choose(i) {
-  if(!snapshot.agents[i]||i>=4)return;
+  if(!snapshot.agents[i])return;
   selected=i;render();root.dispatchEvent(new CustomEvent('bac:live-select',{detail:i}));
 }
 function render() {
-  el('roster').innerHTML=snapshot.agents.slice(0,4).map((agent,i)=>`<button data-campus-agent="${i}" data-lane="${agent.lane}" data-included="${agent.included!==false}" aria-pressed="${i===selected}"><b>${escape(agent.name)}</b><small>${escape(agent.role)}</small></button>`).join('');
+  el('roster').innerHTML=snapshot.agents.map((agent,i)=>agent.displayed===false?'':`<button data-campus-agent="${i}" data-lane="${agent.lane}" data-included="${agent.included!==false}" aria-pressed="${i===selected}"><b>${escape(agent.name)}</b><small>${escape(agent.role)}</small></button>`).join('');
   sceneView?.update(snapshot,selected);
 }
 el('roster').addEventListener('click',event=>{

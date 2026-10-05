@@ -15,7 +15,7 @@
     memory:['Remember what matters','A preference → a saved note used next time','Try: remember my diet, then suggest a meal'],
     weather:['Live weather','A city → timestamped weather and a forecast','Try: choose a time for an outdoor break']
   };
-  const roles = window.BacCrewCatalog.map(({name,role,description})=>[name,role,description]);
+  const roles = window.BacCrewCatalog.map(({name,collaboration})=>[name,collaboration.title,collaboration.description]);
   const defaultNames=roles.map(r=>r[0]);
   const personaLabels={guide:'Helper',maker:'Creator',analyst:'Researcher'};
   function toneSummary(profile){
@@ -28,7 +28,7 @@
   function voiceSummary(p){return (p.tonePrompt||tones[p.tone]?.[0]||'Kind')+' · '+(verbosityLabels[p.verbosity]||'Balanced')+' answers';}
   const missions = [
     {id:'radar',icon:'◷',title:'Discover something new',sub:'One unread technical article at a time',tag:'HEARTBEAT',color:'#99c8e3',prompt:''},
-    {id:'builder',icon:'⌘',title:'Make something playable',sub:'An idea → a tiny working app',tag:'CREATE',color:'#b4dc83',prompt:'Build a polished reaction-time game as a single self-contained HTML file. Use a dark NVIDIA-inspired style, green action buttons, keyboard and touch controls, and a personal best score. Explain how to play. Save it in artifacts/.'},
+    {id:'builder',icon:'⌘',title:'Make something playable',sub:'An idea → a tiny working app',tag:'CREATE',color:'#b4dc83',prompt:'Build a polished reaction-time game as a single self-contained HTML file. Use a dark NVIDIA-inspired style, green action buttons, keyboard and mouse controls, and a personal best score. Target desktop browsers; mobile support is not required. Explain how to play. Save it in artifacts/.'},
     {id:'weather',icon:'☀',title:'Do I need an umbrella?',sub:'Live weather → one practical decision',tag:'EXPLORE',color:'#e8cd80',prompt:'Check the current weather in Zurich. For a short walk now, do I need an umbrella or a jacket? Give the observation time, temperature and precipitation, then one practical recommendation. Keep it to 4 short bullets and cite your sources. Do not generate a file.'},
     {id:'documents',icon:'▤',title:'Find three takeaways',sub:'PDF or PPTX → 3 key points with sources',tag:'UNDERSTAND',color:'#99c8e3',prompt:'Read the most recently uploaded document in inbox/. For PDF or PPTX use its .txt companion. Give exactly 3 numbered takeaways, under 150 words. Include any next step within point 3. Cite the filename and page or slide number for each takeaway, or quote the source if it has no page markers. Do not infer missing images, charts or numbers. No generated file.'},
     {id:'web',icon:'⌕',title:'Find recent papers',sub:'arXiv → dates, sources and a comparison',tag:'RESEARCH',color:'#adbbe8',prompt:'Find three recent arXiv preprints about retrieval-augmented generation using the arXiv API in your research skill. Sort by submission date. Include title, publication date, authors and abstract URL. Use one compact table with one sentence per paper, then suggest one to read first. Keep the comparison under 180 words; no generated file. State the query and retrieval date, and label them as preprints. If access fails, say so instead of inventing papers.'},
@@ -91,7 +91,7 @@
     if(workspaceWrite)pendingWrites++;
     try {
     let response;
-    try {response=await fetch('/api/'+path,options);} catch {if(controller?.signal.aborted)throw new Error('The studio took too long to respond. Please try again.');throw new Error('Cannot reach the studio. Check ./bac status; use ./bac restart to restart its services.');}
+    try {response=await fetch('/api/'+path,options);} catch {if(controller?.signal.aborted)throw new Error('The studio took too long to respond. Please try again.');throw new Error('Cannot reach the studio. Check ./bac status; use ./bac start to restart its services.');}
     if(response.status===304&&cached)return cached.value;
     let result;
     try {result=await response.json();} catch {if(controller?.signal.aborted)throw new Error('The studio took too long to respond. Please try again.');throw new Error('The app server did not return a valid response. Refresh after updating the app.');}
@@ -120,7 +120,7 @@
     try{
       const state=await api('state',undefined,next);
       openAgentState(state);
-    }catch(error){alert(error.message);}finally{changingAgent=false;busy=false;warmCrewOnOpen();}
+    }catch(error){alert(error.message);}finally{changingAgent=false;busy=false;}
   }
   function renderCollection(){
     el('collection').hidden=!data.profile;
@@ -131,7 +131,7 @@
   }
   el('agent-list').onclick=e=>{const b=e.target.closest('[data-agent-key]');if(b)switchAgent(b.dataset.agentKey);};
   let dialogRevision=0;
-  function dialog(kicker, html) {dialogRevision++;el('dialog').classList.remove('studio-agent-documents');el('dialog').classList.toggle('studio-page-preview',kicker==='EVENT PAGE');el('dialog-kicker').textContent=kicker;el('dialog-body').innerHTML=html;if(!el('dialog').open)el('dialog').showModal();}
+  function dialog(kicker, html) {dialogRevision++;el('dialog').classList.remove('studio-agent-documents','studio-team-settings');el('dialog').classList.toggle('studio-page-preview',['EVENT PAGE','WEBPAGE PREVIEW'].includes(kicker));el('dialog-kicker').textContent=kicker;el('dialog-body').innerHTML=html;if(!el('dialog').open)el('dialog').showModal();}
   el('dialog').addEventListener('close',()=>{dialogRevision++;});
   el('dialog-close').onclick=()=>el('dialog').close();
   el('dialog').addEventListener('click',e=>{if(e.target===el('dialog')&&!removingAgent){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
@@ -154,26 +154,24 @@
   modelBadge.onclick=e=>{e.stopPropagation();if(modelBadge.dataset.actionable==='true')connectionAction();};
   modelBadge.onkeydown=e=>{if(modelBadge.dataset.actionable==='true'&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();connectionAction();}};
   function runtimeBadge(){
-    syncDemoPreparation();syncEventLaunch();syncCrewComposer();
-    const state=gatewayState(),slow=state==='slow',ready=!!runtime.ready&&!runtime.testFixture;
-    const actionable=!runtime.testFixture&&!runtimeRetrying&&(!runtime.gateway||(!runtime.model&&!settingsButton.hidden));
-    modelBadge.textContent=runtime.testFixture?'TEST FIXTURE · NO REAL MODEL':runtimeRetrying?'Checking connection…':slow?'◷ '+gatewayLabel():!runtime.gateway?'⚠ Agent runtime unavailable · Retry connection':!runtime.model?'○ Model not connected':'● Ready';
-    modelBadge.dataset.warning=String(!runtime.testFixture&&!slow&&!runtime.ready);
+    syncCrewComposer();
+    const state=gatewayState(),slow=state==='slow',modelConnected=room==='mission'?(runtime.teamModel??runtime.model):runtime.model,viewReady=room==='mission'?teamReady():runtime.ready,ready=!!viewReady&&!runtime.testFixture;
+    const actionable=!runtime.testFixture&&!runtimeRetrying&&(!runtime.gateway||(!modelConnected&&!settingsButton.hidden));
+    modelBadge.textContent=runtime.testFixture?'TEST FIXTURE · NO REAL MODEL':runtimeRetrying?'Checking connection…':slow?'◷ '+gatewayLabel():!runtime.gateway?'⚠ Agent runtime unavailable · Retry connection':!modelConnected?(room==='mission'?'○ Team API not connected':'○ Model not connected'):'● Ready';
+    modelBadge.dataset.warning=String(!runtime.testFixture&&!slow&&!viewReady);
     modelBadge.dataset.slow=String(!runtime.testFixture&&slow);
     modelBadge.dataset.ready=String(ready&&!slow);modelBadge.dataset.actionable=String(actionable);
     modelBadge.setAttribute('role',actionable?'button':'status');modelBadge.tabIndex=actionable?0:-1;
     modelBadge.setAttribute('aria-live','polite');
     modelBadge.title=runtimeRetrying?'Checking the local agent runtime':!runtime.gateway?'Retry connection':slow?'Checking automatically. Tasks already running are not cancelled.':actionable?'Open model settings':'Agent runtime ready';
-    if(roomsReady)renderRooms();syncComposer();syncDemoPreparation();
+    if(roomsReady)renderRooms();syncComposer();
   }
 
   function current(){return data.jobs.find(j=>j.id===selectedJob)||data.jobs[0];}
-  function crewMission(){return current()?.kind==='crew'?current():data.jobs.find(j=>j.kind==='crew');}
   function render() {
     const profile=data.profile, job=current();
     window.BacCampus?.observeProtection(data.protectionEvents||[]);
-    if(profile)roles[0][0]=profile.name;
-    renderCollection();syncDemoPreparation();
+    renderCollection();
     el('onboarding').hidden=false;el('companion').hidden=!profile;el('lounge-empty').hidden=!!profile;
     if(profile){el('agent-name').textContent=profile.name;el('personality').textContent=toneSummary(profile);el('personality').title=profile.tonePrompt||toneSummary(profile);el('agent-skills').innerHTML=profile.skills.map(s=>'<span class="studio-skill-badge" title="'+escape(capabilities[s]?.[1]||titles[s]||s)+'"><i aria-hidden="true">'+escape(missions.find(m=>m.id===s)?.icon||'◇')+'</i>'+escape(titles[s]||capabilities[s]?.[0]||s)+'</span>').join('');el('agent-skills').hidden=!profile.skills.length;el('equipped').innerHTML=profile.skills.map(s=>{const c=capabilities[s];return c?'<button type="button" data-try-skill="'+s+'"><strong>'+escape(c[0])+'</strong><small>'+escape(c[1])+'</small></button>':'<span>'+escape(titles[s])+'</span>';}).join('');el('memory').hidden=!profile.skills.includes('memory');}
     const personalJobs=data.jobs.filter(j=>!['crew','crew-chat','prepare'].includes(j.kind));
@@ -223,39 +221,39 @@
       }
     }
     if(!job){resultKey='';el('result-title').textContent='Results';el('result').textContent='';el('events').innerHTML='<li><b>No mission on this board.</b><small>Real handoffs and results will appear here.</small></li>';el('read-aloud').hidden=true;}
-    renderCrew();renderSafety();renderRooms();renderEventPackage();renderConversation();
+    renderCrew();renderSafety();renderRooms();renderConversation();
     root.dispatchEvent(new Event('bac:state-rendered'));
   }
   el('assigned-crew').onclick=async()=>{const a=data.assignments?.[0];if(!a)return;await switchAgent(a.lead);if(agentId===a.lead){selectedJob=a.job;render();showBoard(true);}};
   function renderCrew(){
     window.BacSound?.observeJobs(agentId,data.jobs);
-    const crew=crewMission(), stage=crew?.payload.stage??-1;
-    roles.forEach((r,i)=>r[0]=crew?.payload.roster?.[i]?.name||(i===0&&room!=='mission'?data.profile?.name:null)||defaultNames[i]);
-    const groups=crewGroups(crew).map(group=>group.filter(i=>i<4)).filter(group=>group.length);el('lanes').style.setProperty('--crew-groups',groups.length);
-    el('lanes').innerHTML=groups.map(group=>`<section class="studio-work-group ${group.length>1?'is-parallel':''}">${group.length>1?'<div class="studio-parallel-caption">In parallel <span>Both finish before the next handoff</span></div>':''}<div class="studio-work-group-cards">${group.map(i=>{const [name,role,description]=roles[i],done=!!crew?.payload.outputs?.[i],working=['running','stopping'].includes(crew?.status)&&(crew?.payload.activeStages||[stage]).includes(i),waiting=crew?.status==='waiting'&&i===2;return `<article class="studio-lane" data-state="${waiting?'waiting':done?'done':working?'running':'ready'}"><span>${waiting?'NEEDS YOU':done?'DELIVERED':working?(crew?.status==='stopping'?'STOPPING':'WORKING'):crew?'WAITING':'READY'}</span><h4>${escape(name)}</h4><strong>${escape(role)}</strong><p>${escape(description)}</p>${hasCrewDeliverable(crew,i)?'<button data-role-output="'+i+'">Open deliverable</button>':''}</article>`;}).join('')}</div></section>`).join('');
-    const active=room==='mission'?(crew&&['running','stopping','waiting'].includes(crew.status)?crew:null):data.jobs.find(j=>['running','stopping'].includes(j.status))||data.jobs.find(j=>j.status==='waiting');
+    renderMissionControl();
+    const active=room==='mission'?null:data.jobs.find(j=>['running','stopping'].includes(j.status))||data.jobs.find(j=>j.status==='waiting');
     const s=window.BacDemo.snapshot();
-    const a=roles.map(([name,role,description],i)=>({...s.agents[i],name,role,persona:description,skills:i===0?['Shared brief']:i===1?['Demo design']:i===2?['Capacity planning']:i===3?['Campaign writing']:i===4?['Evidence review']:['Event page studio'],lane:0,status:'Ready',task:description,permission:'Scoped workspace',included:(crew?.payload.enabledRoles||[0,1,2,3]).includes(i)}));
-    crew?.payload.roster?.forEach((m,i)=>{a[i].persona=m.purpose||personas[m.persona];a[i].skills=m.skills.map(x=>titles[x]);a[i].avatar=m.avatar;a[i].protection=m.protection;});
+    const a=roles.map(([name,role,description],i)=>({...s.agents[i],name,role,persona:description,skills:[],lane:0,status:'Ready',task:description,permission:'Scoped workspace',displayed:i===0,included:i===0}));
     let phase=-1,selected=0,flow=['Your campus is ready','Choose a mission or launch a crew.','Start'];
-    if(active?.kind==='crew'){
-      selected=active.status==='waiting'?2:Math.min(roles.length-1,active.payload.stage);phase=active.status==='waiting'?2:selected;
-      a[selected].lane=active.status==='waiting'?2:0;a[selected].status=active.status==='waiting'?'Decision required':active.status==='stopping'?'Stopping after active call':'Running in OpenClaw';a[selected].task=active.events.at(-1)?.detail||roles[selected][2];
-      const simultaneous=active.status==='waiting'?[2]:(active.payload.activeStages||[selected]);
-      simultaneous.forEach(i=>{if(a[i]){a[i].lane=active.status==='waiting'?2:1;a[i].status='Running in OpenClaw';}});
-      flow=[simultaneous.map(i=>roles[i][0]).join(' + ')+(simultaneous.length>1?' · Working in parallel':' · '+a[selected].status),a[selected].task,'Open mission'];
-    }else if(active){
+    if(active){
       phase=0;a[0].name=data.profile?.name||'My agent';a[0].role='Your personal agent';a[0].persona=personas[data.profile?.persona]||'';a[0].skills=(data.profile?.skills||[]).map(x=>titles[x]);a[0].lane=1;a[0].status=active.status==='stopping'?'Stopping after active call':'Running in OpenClaw';a[0].task=active.payload.prompt;flow=[a[0].name+' is working',active.payload.prompt,'Open mission'];
     }else if(data.profile&&room!=='mission'){a[0].name=data.profile.name;a[0].role='Your personal agent';a[0].persona=personas[data.profile.persona];a[0].skills=data.profile.skills.map(x=>titles[x]);}
-    if(data.profile&&!crew&&room!=='mission')a[0].avatar=data.profile.avatar;
+    if(data.profile&&room!=='mission')a[0].avatar=data.profile.avatar;
     if(active?.payload.roundtable?.status==='reviewing')flow=['Your agents’ roundtable','The package is ready. Your agents are sharing their personal takes.','Open mission'];
-    const b=crew?.payload.brief;
-    window.BacCampus?.setLive({...s,live:true,crewMission:crew?{id:crew.id,status:crew.status,failed:Object.keys(crew.payload.stageErrors||{}).length>0,activeStages:['running','stopping'].includes(crew.status)?(crew.payload.activeStages||[crew.payload.stage]):[],count:crew.payload.roster?.length||5,enabledRoles:crew.payload.enabledRoles||roles.map((_,i)=>i),roundtable:crew.payload.roundtable,completed:Object.keys(crew.payload.outputs||{}).map(Number)}:null,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected:room==='mission'?selectedCrewRole:selected,flow,gap:active?.status==='waiting',brief:b?{...b,location:b.city}:null,calc:crew?.payload.capacity||null,policy:null});
-    document.getElementById('campus-motion-status').textContent=active?flow[0]:'Meet your specialists · give the lead an event brief';
+    const collaboration=currentCollaboration(),planning=collaboration&&!collaboration.payload.collaboration.responseReady&&['running','stopping'].includes(collaboration.status)?collaboration:null;
+    if(collaboration){
+      const plan=collaboration.payload.collaboration,chosen=collaborationTeam(plan),ended=plan.responseReady||!['queued','running','waiting','stopping'].includes(collaboration.status);
+      a.forEach((agent,i)=>{const expertise=window.BacCrewCatalog[i].collaboration;agent.name=defaultNames[i];agent.role=expertise.title;agent.persona=expertise.description;agent.skills=[];agent.lane=0;agent.included=chosen.includes(i);agent.displayed=chosen.includes(i);agent.task=plan.tasks?.find(t=>t.role===i)?.task||expertise.description;agent.status=plan.outputs?.[i]?(plan.outputs[i].incomplete?'Partial result':'Done'):i===0?'Selected':!agent.included?'Ready':ended?(plan.handoffs?.[i]?(collaboration.status==='error'?'Error':collaboration.status==='cancelled'?'Stopped':'Not completed'):'Not started'):plan.handoffs?.[i]?'Selected':'Waiting for Casey';});
+    }
+    if(!a[selectedCrewRole]?.displayed)selectedCrewRole=0;
+    renderStandbySpecialists(a);
+    a.forEach((agent,i)=>{agent.protection=window.BacCrewCatalog[i].protection||'standard';});
+    if(planning){const role=planning.payload.collaboration.activeRole??0;phase=role;a[role].lane=1;a[role].status=planning.status==='stopping'?'Stopping':'Collaborating';a[role].task=planning.events?.at(-1)?.title||'Working with the BaC team';flow=[a[role].name+' · '+a[role].status,a[role].task,'Open mission'];}
+    const planRoundtable=collaboration?.payload.collaboration.tasks&&collaboration.payload.collaboration.outcome!=='unavailable'?collaboration.payload.roundtable:null;
+    if(planRoundtable?.status==='reviewing'&&['running','stopping'].includes(collaboration.status))flow=['Your agents’ take','The result is ready. Your agents are sharing their personal reactions.','Open mission'];
+    window.BacCampus?.setLive({...s,live:true,crewMission:collaboration?{id:collaboration.id,kind:'plan',status:collaboration.status,assignedRoles:collaboration.payload.collaboration.tasks?.map(task=>task.role),roundtable:planRoundtable,activeStages:planning?[planning.payload.collaboration.activeRole??0]:[],count:roles.length,enabledRoles:collaborationTeam(collaboration.payload.collaboration),revisionRole:collaboration.payload.collaboration.revision?.role,completed:Object.keys(collaboration.payload.collaboration.outputs||{}).map(Number).filter(role=>!(collaboration.payload.collaboration.revision?.role===role&&['requested','working'].includes(collaboration.payload.collaboration.revision.status)))}:null,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected:room==='mission'?selectedCrewRole:selected,flow,gap:active?.status==='waiting',brief:null,calc:null,policy:null});
+    document.getElementById('campus-motion-status').textContent=planning||active?flow[0]:'Meet your specialists · use /plan to assemble a team';
     renderCrewPassport();
   }
   /* STUDIO_CREW */
-  async function refresh(){if(changingAgent||removingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion&&target===agentId&&!changingAgent&&state!==data){data=state;render();}}catch(error){if(version===refreshVersion){if(error.status===404){try{const state=await api('state',undefined,'');if(version===refreshVersion&&!changingAgent){el('dialog').close();openAgentState(state);alert('This agent was deleted in another tab. Your collection is up to date.');}}catch(recovery){alert(recovery.message);}}else if(!document.hidden)alert(error.message);}}finally{if(version===refreshVersion)busy=false;warmCrewOnOpen();}}
+  async function refresh(){if(changingAgent||removingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion&&target===agentId&&!changingAgent&&state!==data){data=state;render();}}catch(error){if(version===refreshVersion){if(error.status===404){try{const state=await api('state',undefined,'');if(version===refreshVersion&&!changingAgent){el('dialog').close();openAgentState(state);alert('This agent was deleted in another tab. Your collection is up to date.');}}catch(recovery){alert(recovery.message);}}else if(!document.hidden)alert(error.message);}}finally{if(version===refreshVersion)busy=false;}}
   el('equipped').onclick=e=>{const button=e.target.closest('[data-try-skill]');if(button)el('missions').querySelector('[data-studio-mission="'+button.dataset.trySkill+'"]')?.click();};
   el('missions').onclick=e=>{const button=e.target.closest('[data-studio-mission]');if(!button)return;const mission=missions.find(m=>m.id===button.dataset.studioMission);if(!data.profile){alert('Hire an agent first.');agentForm(true);el('name').focus();return;}if(!data.profile.skills.includes(mission.id)){
       let notice=el('mission-skill-notice');if(!notice){notice=document.createElement('div');notice.id='studio-mission-skill-notice';notice.className='studio-mission-skill-notice';el('missions').before(notice);}
@@ -263,25 +261,17 @@
       notice.querySelector('button').onclick=async()=>{const action=notice.querySelector('button');action.disabled=true;try{if(agentId!==target)throw new Error('The selected agent changed. Choose a mission again.');await api('profile',{...data.profile,skills:[...new Set([...data.profile.skills,mission.id])]},target);await refresh();notice.remove();if(agentId===target)button.click();}catch(error){notice.querySelector('p').textContent=error.message;action.disabled=false;}};
       notice.scrollIntoView({block:'nearest'});return;
     }el('mission-skill-notice')?.remove();closeSurface();setRoom('lounge');if(mission.id==='radar'){el('radar-monitor')?.scrollIntoView({block:'nearest'});return;}skill=mission.id;const city=runtime.location?.city||'Zurich';el('prompt').value=['weather','writer'].includes(mission.id)?mission.prompt.replaceAll('Zurich',city):mission.prompt;el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===button));if(mission.id==='documents'&&!data.files.some(f=>f.kind==='inbox')){sampleDocument();}el('prompt').focus({preventScroll:true});};
-  el('chat').onsubmit=async e=>{e.preventDefault();if(!runtime.ready||data.deleting||chatSending||comparisonSending||documentUploadTarget===agentId){syncComposer();return;}el('chat-error').hidden=true;if(e.submitter?.id==='studio-send-all')return askAllAgents();const draft=captureChatDraft();chatSending=true;syncComposer();try{const result=await api('jobs',{kind:'chat',prompt:draft.prompt,skill,images:draft.images});selectedJob=result.id;acknowledgeChatDraft(draft);await refresh();el('conversation').scrollTop=el('conversation').scrollHeight;}catch(error){el('chat-error').textContent=error.message;el('chat-error').hidden=false;}finally{chatSending=false;syncComposer();}};
-  el('prompt').addEventListener('input',()=>{skill=null;});
+  el('chat').onsubmit=async e=>{e.preventDefault();if(radarChatDisabled()||!(/^\/plans?(?:\s|$)/i.test(el('prompt').value.trim())?teamReady():runtime.ready)||data.deleting||chatSending||comparisonSending||documentUploadTarget===agentId){syncComposer();return;}el('chat-error').hidden=true;if(e.submitter?.id==='studio-send-all')return askAllAgents();const draft=captureChatDraft();chatSending=true;syncComposer();try{const result=await api('jobs',{kind:'chat',prompt:draft.prompt,skill,images:draft.images});selectedJob=result.id;acknowledgeChatDraft(draft);await refresh();if(result.collaboration)stageCollaboration(result);el('conversation').scrollTop=el('conversation').scrollHeight;}catch(error){el('chat-error').textContent=error.message;el('chat-error').hidden=false;}finally{chatSending=false;syncComposer();}};
+  el('prompt').addEventListener('input',()=>{skill=null;syncComposer();});
   function sampleDocument(){dialog('Upload notes','<h3>Give your agent something to read.</h3><p>Use your own PDF, PPTX, XLSX, CSV, Markdown or text file, or try a clearly labeled sample meeting note.</p><div class="studio-dialog-actions"><button class="studio-secondary" id="studio-own-document">Upload my file</button><button class="studio-primary" id="studio-sample-document">Use sample notes</button></div>');el('own-document').onclick=()=>{el('dialog').close();el('upload').click();};el('sample-document').onclick=async()=>{try{await api('upload',{name:'sample-meeting-notes.md',content:'# Sample meeting notes — fictional demo data\n\nWe agreed to keep the agent demo to 10 minutes.\nDylan will check the weather-demo endpoint by Thursday.\nMorgan will draft a short invitation; no deadline was agreed.\nWe still need someone to confirm the venue.\nDo not send invitations until the venue is confirmed.\n'});el('dialog').close();await refresh();}catch(e){alert(e.message);}};}
   el('attach').onclick=()=>el('upload').click();
   el('upload').onchange=()=>{const files=[...el('upload').files];el('upload').value='';uploadDocuments(files);};
   el('refresh-files').onclick=refresh;
   el('memory').onclick=()=>{dialog('PERSISTENT MEMORY',`<h3>What ${escape(data.profile.name)} remembers.</h3><p>This is the actual MEMORY.md in your agent’s workspace. Ask your agent to remember, correct or forget a preference.</p><pre>${escape(data.memory||'No saved preferences yet.')}</pre><p>Try refreshing this page, then ask “What do you remember about me?”</p><button class="studio-primary" id="studio-recall">Ask my agent</button>`);el('recall').onclick=()=>{el('dialog').close();el('prompt').value='What do you remember about my preferences? Read MEMORY.md and apply my preferred response style.';skill='memory';el('prompt').focus();};};
   el('schedule').onclick=()=>{dialog('PERSISTENT FOLLOW-UP',`<h3>Give it something to come back to.</h3><p>The app keeps this task across refreshes and app restarts. It runs through OpenClaw when due; the result appears in this workspace. The server must stay on.</p><form id="studio-schedule-form"><label for="studio-followup">Task</label><textarea id="studio-followup" rows="3" required>Read my saved preferences and suggest one useful next task for me to try.</textarea><label for="studio-delay">Run in</label><select id="studio-delay"><option value="60">1 minute · demo</option><option value="300">5 minutes</option><option value="3600">1 hour</option></select><div class="studio-dialog-actions"><button class="studio-primary">Schedule follow-up</button></div></form>`);el('schedule-form').onsubmit=async e=>{e.preventDefault();try{const job=await api('jobs',{kind:'reminder',prompt:el('followup').value,delay:Number(el('delay').value)});selectedJob=job.id;el('dialog').close();await refresh();}catch(error){alert(error.message);}};};
-  function crewAssignments(){
-    return `<fieldset class="studio-crew-assignments"><legend>Choose your crew</legend><div class="studio-crew-toggles">${roles.slice(0,4).map((r,i)=>`<label><input type="checkbox" name="crewRole" value="${i}" checked ${i===0?'disabled':''}><span>${avatarBadge(window.BacCampus?.inspect().crewAvatars?.[i]||{})}<strong>${escape(defaultNames[i])}${i===0?'<em class="crew-required">Required</em>':''}</strong><small>${escape(r[1])}</small></span></label>`).join('')}</div><small id="studio-crew-selection-note">4 selected</small></fieldset>`;
-  }
-  function crewGroups(crew){
-    const enabled=crew?.payload.enabledRoles||[0,1,2,3];
-    const groups=crew?.payload.workflow==='showcase'||!crew?[[0],[1,2],[3]]:crew.payload.brief?.schema===2?[[0],[1,2],[3],[4],[5]]:roles.map((_,i)=>[i]);
-    return groups.map(g=>g.filter(i=>enabled.includes(i))).filter(g=>g.length);
-  }
   /* STUDIO_JSON */
-  /* STUDIO_EVENTS */
-  root.addEventListener('bac:world-skill',async e=>{const id=e.detail;if(id==='crew')crewForm();else if(id==='security')securityLab();else if(id==='runtime')setup();else{el('missions').querySelector('[data-studio-mission="'+id+'"]')?.click();}});
+  function downloadBytes(content,mime,name){const url=URL.createObjectURL(new Blob([content],{type:mime})),link=document.createElement('a');link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+  root.addEventListener('bac:world-skill',async e=>{const id=e.detail;if(id==='crew'){setRoom('mission');el('crew-prompt').focus();}else if(id==='security')securityLab();else if(id==='runtime')setup();else{el('missions').querySelector('[data-studio-mission="'+id+'"]')?.click();}});
   /* STUDIO_WORLD */
   /* STUDIO_TELEMETRY */
   /* STUDIO_POLICIES */
@@ -290,13 +280,34 @@
   /* STUDIO_ROOMS */
   /* STUDIO_IDENTITY */
   function showBoard(value){setRoom('mission');if(value)openSurface('control');else closeSurface();}
-  el('lanes').onclick=e=>{const b=e.target.closest('[data-role-output]');if(!b)return;const role=Number(b.dataset.roleOutput);if(hasCrewDeliverable(crewMission(),role))openSurface('deliverables',role);};
   root.addEventListener('bac:live-select',e=>{
     if(room!=='mission'||!Number.isInteger(e.detail)||!roles[e.detail])return;
     selectedCrewRole=e.detail;root.dataset.crewDetails='true';
     renderCrewPassport();
   });
-  async function openFile(path){const target=agentId;try{const file=await api('file?path='+encodeURIComponent(path));if(target!==agentId)return;if(file.encoding==='base64'){downloadBytes(Uint8Array.from(atob(file.content),c=>c.charCodeAt(0)),file.mime,path.split('/').pop());return;}const html=path.endsWith('.html'),eventPage=path.endsWith('-event-page.html');dialog(html?(path.endsWith('-event-page.html')?'EVENT PAGE':path.endsWith('-invitation.html')?'INVITATION DRAFT':'PLAY YOUR MINI APP'):'WORKSPACE FILE',`${eventPage?'':'<h3>'+escape(path.split('/').pop())+'</h3>'}${html?(eventPage?'':'<p>Interactive preview · scripts run in an isolated frame with network access blocked.</p>')+'<iframe id="studio-app-frame" title="Generated page preview" sandbox="allow-scripts"></iframe>':'<pre>'+escape(file.content)+'</pre>'}<div class="studio-dialog-actions"><button class="studio-primary" id="studio-download">Download file ↓</button></div>`);const protection='<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\'; style-src \'unsafe-inline\'; img-src data:; connect-src \'none\'; form-action \'none\'; base-uri \'none\'">';if(html)el('app-frame').srcdoc=protection+file.content;el('download').onclick=()=>{const blob=new Blob([(html?protection:'')+file.content],{type:html?'text/html':'text/plain'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=path.split('/').pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};}catch(error){alert(error.message);}}
+  async function openFile(path,jobId=''){
+    const target=agentId,revision=dialogRevision;
+    try{
+      const file=await api('file?path='+encodeURIComponent(path)+(jobId?'&job='+encodeURIComponent(jobId):''));
+      if(target!==agentId||revision!==dialogRevision)return;
+      if(file.encoding==='base64'){downloadBytes(Uint8Array.from(atob(file.content),c=>c.charCodeAt(0)),file.mime,path.split('/').pop());return;}
+      const html=/\.html$/i.test(path),eventPage=path.endsWith('-event-page.html');
+      dialog(html?(eventPage?'EVENT PAGE':'WEBPAGE PREVIEW'):'WORKSPACE FILE',
+        (html?'<div class="studio-page-toolbar"><div role="group" aria-label="Preview width"><button type="button" data-preview-width="desktop" aria-pressed="true">Desktop</button><button type="button" data-preview-width="mobile" aria-pressed="false">Mobile</button></div><button class="studio-primary" id="studio-download">Download HTML</button></div><div class="studio-page-canvas"><span class="studio-preview-loading" role="status">Loading preview…</span><iframe id="studio-app-frame" title="Generated page preview" sandbox="allow-scripts allow-forms"></iframe></div>':
+        '<h3>'+escape(path.split('/').pop())+'</h3><pre>'+escape(file.content)+'</pre><div class="studio-dialog-actions"><button class="studio-primary" id="studio-download">Download file</button></div>'));
+      const protection='<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\'; style-src \'unsafe-inline\'; img-src data: blob:; font-src data:; connect-src \'none\'; form-action \'none\'; base-uri \'none\'">';
+      if(html){
+        const frame=el('app-frame');
+        frame.onload=()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{if(!frame.isConnected)return;frame.dataset.ready='true';frame.previousElementSibling.hidden=true;}));
+        frame.srcdoc=protection+file.content;
+        el('dialog-body').querySelectorAll('[data-preview-width]').forEach(button=>button.onclick=()=>{
+          el('dialog-body').querySelector('.studio-page-canvas').dataset.width=button.dataset.previewWidth;
+          el('dialog-body').querySelectorAll('[data-preview-width]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
+        });
+      }
+      el('download').onclick=()=>{const blob=new Blob([(html?protection:'')+file.content],{type:html?'text/html':'text/plain'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=path.split('/').pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+    }catch(error){alert(error.message);}
+  }
   root.addEventListener('click',async e=>{const file=e.target.closest('[data-studio-file]');if(file){openFile(file.dataset.studioFile);return;}const history=e.target.closest('[data-studio-job]');if(history){selectedJob=history.dataset.studioJob;render();return;}const choice=e.target.closest('[data-decision]');if(choice){try{await api('decision',{id:current().id,action:choice.dataset.decision});await refresh();}catch(error){alert(error.message);}}});
   el('read-aloud').onclick=()=>{if(!('speechSynthesis' in window)){alert('This browser does not support speech playback.');return;}window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance((current()?.result.answer||'').slice(0,4000));utterance.lang='en-US';window.speechSynthesis.speak(utterance);el('read-aloud').textContent='Browser voice · playing';utterance.onend=()=>el('read-aloud').textContent='▷ Hear the answer';};
   /* STUDIO_SAFETY */
@@ -307,7 +318,7 @@
     board=false;layout.hidden=false;window.BacCampus?.overview();
     window.scrollTo({top:0,left:0,behavior:'smooth'});
   };
-  async function boot(){try{const session=await api('session');csrf=session.csrf;settingsButton.hidden=!session.canConfigure;runtime=session.runtime;data=session;agentId=session.agentId;connected=true;runtimeBadge();render();let saved;try{saved=sessionStorage.getItem('bac-selected-agent');}catch{}if(saved&&saved!==agentId&&session.agents.some(a=>a.key===saved))await switchAgent(saved);else rememberSelection();crewStartupReady=true;warmCrewOnOpen();delete root.dataset.boot;root.setAttribute('aria-busy','false');}catch(error){connected=false;runtimeBadge();alert(error.message);el('create').disabled=true;root.dataset.boot='error';root.setAttribute('aria-busy','false');root.querySelector('.studio-boot-status span').textContent='Could not open the studio. Please try again.';root.querySelector('.studio-boot-status button').hidden=false;}}
-  boot();setInterval(()=>{if(!document.hidden&&!busy)refresh();},1500);setInterval(async()=>{if(connected&&!document.hidden){try{const nextRuntime=await api('runtime');if(runtime.instance&&nextRuntime.instance!==runtime.instance){demoPreparationId=null;if(!nextRuntime.model)alert('Server restarted. Your agents and results are saved; reconnect the model to continue.');}runtime=nextRuntime;runtimeBadge();}catch{}}},10000);
+  async function boot(){try{const session=await api('session');csrf=session.csrf;settingsButton.hidden=!session.canConfigure;runtime=session.runtime;data=session;agentId=session.agentId;connected=true;runtimeBadge();render();let saved;try{saved=sessionStorage.getItem('bac-selected-agent');}catch{}if(saved&&saved!==agentId&&session.agents.some(a=>a.key===saved))await switchAgent(saved);else rememberSelection();delete root.dataset.boot;root.setAttribute('aria-busy','false');}catch(error){connected=false;runtimeBadge();alert(error.message);el('create').disabled=true;root.dataset.boot='error';root.setAttribute('aria-busy','false');root.querySelector('.studio-boot-status span').textContent='Could not open the studio. Please try again.';root.querySelector('.studio-boot-status button').hidden=false;}}
+  boot();setInterval(()=>{if(!document.hidden&&!busy)refresh();},1500);setInterval(async()=>{if(connected&&!document.hidden){try{const nextRuntime=await api('runtime');if(runtime.instance&&nextRuntime.instance!==runtime.instance){if(!nextRuntime.model)alert('Server restarted. Your agents and results are saved; reconnect the model to continue.');}runtime=nextRuntime;runtimeBadge();}catch{}}},10000);
   window.BacStudio={refresh,inspect:()=>({profile:data.profile,agentId,agents:data.agents,jobs:data.jobs,runtime,board,room}),showBoard,setRoom};
 })();

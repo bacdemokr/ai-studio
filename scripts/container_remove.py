@@ -122,7 +122,7 @@ def project_data(installation, release=False):
             raise RuntimeError('Cannot verify this BaC release folder; nothing removed.')
         paths = list(installation.iterdir())
     else:
-        paths = [installation / name for name in ('shared', 'backups', '.env')]
+        paths = [installation / name for name in ('shared', 'backups', '.env', 'api.cfg')]
     # Never traverse a symlink or a nested mounted filesystem during uninstall.
     for path in paths:
         if path.is_symlink() or not path.is_dir():

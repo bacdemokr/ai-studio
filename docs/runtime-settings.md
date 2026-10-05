@@ -1,6 +1,6 @@
 # Studio settings
 
-Open the small Settings gear at the top right on localhost. Select a provider, enter its API key, load the available model IDs and choose a text model that supports tool calling. Save applies that model to all existing and newly provisioned agents. Each agent retains its own persona, tools, memory and protection settings. Pending missions must finish or be cancelled before shared settings change.
+Open the small Settings gear at the top right on localhost and select **Lounge model**. Select a provider, enter its API key, load the available model IDs and choose a text model that supports tool calling. These settings apply to hired agents in Stages 1 and 2. Stage 3 has a separate connection and per-agent models. Each agent retains its own persona, tools, memory and protection settings. Pending missions must finish or be cancelled before shared settings change.
 
 | Provider | Default base URL | Native OpenClaw API |
 | --- | --- | --- |
@@ -13,15 +13,23 @@ NVIDIA keys come from [key management](https://inference.nvidia.com/key-manageme
 
 The context limit defaults to 32,768 tokens and must match the chosen model server. It declares capacity to OpenClaw; it does not configure Ollama’s server-side `num_ctx`. Model listing checks access without generating a completion; it does not guarantee that every listed model supports the agent's tool calls. The readiness check currently requires the selected ID to appear in the model list. Anthropic lists up to 1,000 models; the dialog indicates if more exist.
 
-Set the city, dates and venue in Plan a BaC. New plans use English automatically, with no language input. There is no separate Event tab in Settings. Existing saved host defaults remain readable for compatibility; old language preferences do not override new plans.
+Set the default city in Settings → Location. Supply dates, venue and other task-specific requirements in your `/plan` message. The old Plan a BaC form is retired. Existing saved event defaults remain readable for compatibility.
+
+## Stage 3 connection and models
+
+Run `./bac start` to validate the NVIDIA inference key in `api.cfg`. Empty or rejected keys stop startup with instructions to edit the file and rerun the command; no key is requested interactively. Startup verifies model access and a small inference request, then saves the connection on the host for Stage 3. Browser refreshes do not clear this key. To replace it, edit `api.cfg` and run `./bac start` again.
+
+Stage 3’s **API & models** panel displays connection status and terminal setup instructions. It has no key-entry form. Choose models for Casey and the specialists, then use the single **Apply changes** button. Model changes apply to the next request.
+
+The Git clean filter installed by startup keeps the tracked `api.cfg` empty while preserving its local contents. Configure it with `bash scripts/setup-key-filter.sh` before editing the key if you plan to use Git before the first startup. Release packages contain an empty placeholder.
 
 ## Storage and access
 
-Non-secret preferences live at `$BAC_DATA_DIR/host-settings.json`. API keys exist only in the app process memory, leased to the owning browser document. OpenClaw uses a loopback proxy with a non-secret placeholder; real provider credentials are never written to native config. Reload, tab closure, lease expiry or server restart requires reconnecting. See [session credentials](session-credentials.md).
+Non-secret preferences live at `$BAC_DATA_DIR/host-settings.json`. Stages 1 and 2 API keys exist only in the app process memory, leased to the owning browser document. OpenClaw uses a loopback proxy with a non-secret placeholder; real provider credentials are never written to native config. Reload, tab closure, lease expiry or server restart requires reconnecting. See [session credentials](session-credentials.md).
 
 The Settings API requires an existing browser session, CSRF protection for writes, a loopback peer and a localhost Host header. LAN participants do not see the button and cannot call these routes. For a remote host, forward port 8080 through SSH. Treat the local operating-system account as trusted. Hosted inference sends model requests to the selected provider; OpenShell controls for agent tools remain separate.
 
-For the Docker release, `./bac start` prepares the runtime and `./bac restart` restarts it. For host/development installations only, install once with `./bac dev setup`; Linux user services use `./bac dev start --model external`, and copied/edited source or macOS uses `./bac dev preview`. Save starts the installed runtime if it is offline. Start agents can start it explicitly. On Linux with systemd, Settings starts the same managed gateway service as the CLI. Without systemd (including macOS), the gateway runs as a detached process and logs to `$BAC_DATA_DIR/openclaw/gateway.log`; the app never installs runtime software from a browser request.
+For the Docker release, `./bac start` prepares the runtime or refreshes existing services while preserving saved data. For host/development installations only, install once with `./bac dev setup`; Linux user services use `./bac dev start --model external`, and copied/edited source or macOS uses `./bac dev preview`. Save starts the installed runtime if it is offline. Start agents can start it explicitly. On Linux with systemd, Settings starts the same managed gateway service as the CLI. Without systemd (including macOS), the gateway runs as a detached process and logs to `$BAC_DATA_DIR/openclaw/gateway.log`; the app never installs runtime software from a browser request.
 
 ## Evidence and focused checks
 
@@ -42,7 +50,7 @@ python3 -B tests/fixture_settings.py
 node tests/settings.cjs
 ```
 
-Settings has Model and Reset tabs. Reset offers Lounge Agent Reset (removes hired agents) and BaC Reset (clears the event board and crew chats together), plus Reset all to perform both. Each button starts immediately and shows progress inline; controls are disabled until it finishes. Switching tabs preserves model drafts. Load models displays a visible list (manual model IDs remain supported); missing keys, empty responses and errors appear next to the model controls. Event details belong to Plan a BaC.
+Settings has Lounge model, Location, Telegram and Reset tabs. Settings → Reset provides Remove agents (Stages 1 & 2), Reset Stage 3 (stop work and clear team data), and Reset all (Stage 3 first, then hired agents). Model and connection settings are preserved. The separate Reset button beside Mission Control stops Stage 3 work and clears team data after confirmation. Switching tabs preserves model drafts. Load models displays a visible list (manual model IDs remain supported); missing keys, empty responses and errors appear next to the model controls.
 
 ## Location
 

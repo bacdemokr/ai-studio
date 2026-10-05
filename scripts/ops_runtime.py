@@ -64,9 +64,13 @@ def setup():
     if not manifest.exists() or c.read_json(manifest).get('version') != r.VERSION:
         print('Installing OpenClaw ' + r.VERSION + '. This is independent from your LLM.', flush=True)
         c.run([r.root() / 'node/bin/npm', 'install', '--prefix', package, '--omit=dev', '--no-audit', '--no-fund', 'openclaw@' + r.VERSION], env=r.environment())
+    from research_search import PACKAGE, VERSION, configure
+    plugin_manifest = package/'node_modules'/PACKAGE/'package.json'
+    if not plugin_manifest.exists() or c.read_json(plugin_manifest).get('version') != VERSION:
+        c.run([r.root()/'node/bin/npm', 'install', '--prefix', package, '--omit=dev', '--no-audit', '--no-fund', PACKAGE+'@'+VERSION], env=r.environment())
     with r.config_lock():
-        if not r.config_path().exists():
-            r.save_config(r.initial_config())
+        config = c.read_json(r.config_path()) or r.initial_config()
+        r.save_config(configure(config, r.root()))
     r.bootstrap_host()
     print(r.cli('config', 'validate'))
     print('OpenClaw is installed. Choose a model in the app settings, then start the agent runtime.')

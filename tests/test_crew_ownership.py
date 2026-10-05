@@ -6,7 +6,8 @@ import tempfile
 import threading
 import unittest
 from unittest.mock import patch
-from test_studio import Studio, Adapter, Problem
+from test_studio import Studio, Problem
+from test_collaboration_plan import PlanAdapter as Adapter
 from serve import create_server
 
 
@@ -55,7 +56,7 @@ class OwnershipTests(unittest.TestCase):
         old_path.rename(self.studio.directory/'workspaces'/resource['workspace_name'])
         with self.studio.db() as db:
             db.execute('UPDATE crew_resources SET native_id=:native_id,workspace_name=:workspace_name,chat_session=:chat_session WHERE owner=:owner AND role=:role',resource)
-        job=self.studio.enqueue(team,{'kind':'crew','preset':True,'brief':{'schema':2}})['id']
+        job=self.studio.enqueue(team,{'kind':'crew-chat','crewRole':0,'prompt':'/plan Write a short brief'})['id']
         self.finish()
         before=self.studio.evidence(team,job)['mission']
         paths={p['path']:(self.studio.workspace(team)/p['path']).read_bytes() for p in self.studio.files(team) if p['kind']=='artifacts'}
@@ -71,25 +72,22 @@ class OwnershipTests(unittest.TestCase):
             self.assertEqual(remove.call_count,1)
         self.assertEqual(self.studio.crew_policy_report(team,1)['requested'],[])
         self.assertTrue(native_path.exists())
-        self.assertEqual(self.studio.survey_report(team,job)['total'],0)
         self.assertEqual(self.studio.evidence(team,job)['mission'],before)
         for relative,value in paths.items():self.assertEqual(self.studio.available_file(fresh,relative).read_bytes(),value)
         outsider=self.studio.session()[0]['id']
         with self.assertRaises(Problem):self.studio.job_owner(outsider,job)
         with self.assertRaises(Problem):self.studio.available_file(outsider,next(iter(paths)))
 
-    def test_delete_only_stops_crew_when_personal_agent_is_an_actual_guest(self):
+    def test_personal_deletion_does_not_cancel_independent_team_chat(self):
         team=self.studio.crew_owner(self.owner)
-        job=self.studio.enqueue(team,{'kind':'crew','preset':True,'workflow':'showcase','brief':{'schema':2},'guestKeys':[]})['id']
+        job=self.studio.enqueue(team,{'kind':'crew-chat','crewRole':0,'prompt':'Write a short brief'})['id']
         self.studio.delete_agent(self.owner,{'name':'Personal'})
         self.assertEqual(self.studio.evidence(team,job)['mission']['status'],'queued')
         self.finish()
         self.assertEqual(self.studio.evidence(team,job)['mission']['status'],'done')
         fresh=self.studio.resolve_agent(self.person['id'])
-        self.studio.onboard(fresh,{'name':'Guest','skills':['weather']})
-        job=self.studio.enqueue(team,{'kind':'crew','preset':True,'workflow':'showcase','brief':{'schema':2},'guestKeys':[fresh]})['id']
-        self.studio.delete_agent(fresh,{'name':'Guest'})
-        self.assertEqual(self.studio.evidence(team,job)['mission']['status'],'cancelled')
+        self.assertEqual(self.studio.crew_owner(fresh),team)
+        self.assertEqual(self.studio.job_owner(fresh,job),team)
 
     def test_only_one_team_per_account_and_no_automatic_import(self):
         import sqlite3
@@ -141,13 +139,10 @@ class OwnershipTests(unittest.TestCase):
         team=self.studio.crew_owner(self.owner)
         self.assertEqual(self.studio.state(self.owner)['crewOwner'],team)
 
-    def test_custom_crew_uses_shared_storage_with_explicit_personal_lead(self):
+    def test_retired_personal_lead_cannot_replace_team_captain(self):
         team=self.studio.crew_owner(self.owner)
-        job=self.studio.enqueue(team,{'kind':'crew','brief':{'schema':2}},lead=self.owner)['id']
-        self.finish()
-        mission=self.studio.evidence(team,job)['mission']
-        self.assertEqual(mission['status'],'done')
-        self.assertEqual(mission['payload']['roster'][0]['key'],self.owner)
+        with self.assertRaisesRegex(Problem,'retired'):
+            self.studio.enqueue(team,{'kind':'crew','brief':{'schema':2}},lead=self.owner)
         self.assertFalse(list(self.studio.workspace(self.owner).parent.glob(self.owner+'-*')))
 
     def test_http_uses_team_for_chat_preparation_policy_and_files_after_switch(self):
@@ -162,10 +157,12 @@ class OwnershipTests(unittest.TestCase):
                 conn.request('POST' if data is not None else 'GET','/api/'+path,body=json.dumps(data) if data is not None else None,headers=headers)
                 r=conn.getresponse();return r.status,json.loads(r.read())
             finally:conn.close()
-        self.assertEqual(request('prepare-demo',{'background':True})[0],200)
+        self.assertEqual(request('prepare-demo',{'background':True})[0],410)
+        self.assertEqual(request('jobs',{'kind':'crew','preset':True})[0],410)
+        self.assertEqual(request('team-model',{'role':0,'model':'nvidia/nvidia/nemotron-3.5-lightning'})[0],200)
         team=self.studio.crew_owner(self.owner)
         self.finish()
-        self.assertEqual(request('state',owner=second)[1]['preparation']['status'],'done')
+        self.assertEqual(request('state',owner=second)[1]['teamSelections'][0]['id'],'nvidia/nvidia/nemotron-3.5-lightning')
         self.assertEqual(request('crew-policy',{'role':1,'permission':'host:blogs.nvidia.com','allow':False})[0],200)
         self.assertEqual(request('crew-policy?role=1',owner=second)[1]['requested'],[])
         status,job=request('jobs',{'kind':'crew-chat','crewRole':0,'prompt':'Hello'})

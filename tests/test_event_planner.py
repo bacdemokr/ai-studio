@@ -11,7 +11,6 @@ from xml.etree import ElementTree as ET
 sys.path[:0]=[str(Path(__file__).resolve().parents[1]/'scripts'),str(Path(__file__).resolve().parent)]
 import event_planner as planner
 from studio import Studio,Problem
-from studio_events import survey_page
 from test_studio import Adapter
 
 class PlanningTests(unittest.TestCase):
@@ -86,77 +85,6 @@ class EventPackageTests(unittest.TestCase):
         self.studio.execute(self.studio.next_job())
         self.state=self.studio.state(self.owner)['jobs'][0]
 
-    def test_package_files_native_web_skill_and_limited_shared_context(self):
-        self.assertEqual(self.state['status'],'done')
-        p=self.state['payload'];self.assertEqual(len(p['handoffs']),6)
-        self.assertEqual(len(p['assignments']),5)
-        self.assertTrue(all(a['input']==p['handoffs']['0']['output'] for a in p['assignments']))
-        self.assertIn('web',p['roster'][3]['skills'])
-        self.assertNotIn('web',p['roster'][1]['skills'])
-        files=p['packageFiles'];self.assertTrue(any(f.endswith('.xlsx') for f in files))
-        self.assertTrue(any(f.endswith('.eml') for f in files))
-        mail=BytesParser(policy=policy.default).parsebytes((self.studio.workspace(self.owner)/next(f for f in files if f.endswith('.eml'))).read_bytes())
-        self.assertEqual(mail['X-Unsent'],'1');self.assertIsNone(mail['To']);self.assertIn('DRAFT',mail.get_body().get_content())
-        self.assertLessEqual(len(p['handoffs']['2']['sharedState']['capacity']['schedule']),24)
-        self.assertIn('venueResearch',p['handoffs']['3']['sharedState'])
 
-
-    def test_web_developer_receives_all_handoffs_and_saves_offline_page(self):
-        p=self.state['payload']
-        self.assertEqual(self.state['status'],'done')
-        self.assertEqual(p['roster'][5]['name'],'Wade')
-        self.assertEqual(p['handoffs']['5']['receivedFrom'],['0','1','2','3','4'])
-        self.assertIn('event-page',p['roster'][5]['skills'])
-        page=(self.studio.workspace(self.owner)/p['website']['path']).read_text()
-        self.assertIn('Build something worth sharing.',page)
-        self.assertIn(p['brief']['city'],page)
-        self.assertIn('Registration details coming soon',page)
-        self.assertNotIn('<script',page)
-        self.assertIn(p['website']['path'],p['packageFiles'])
-        from event_page import render_page
-        malicious={'headline':'<img src=x onerror=alert(1)>','intro':'Intro','highlight':'Hi'}
-        escaped=render_page(p['brief'],p['capacity'],p.get('campaign'),malicious)
-        self.assertIn('&lt;img',escaped)
-        self.assertNotIn('<img src=x',escaped)
-        with self.assertRaises(ValueError): render_page(p['brief'],p['capacity'],None,{})
-
-    def test_producer_refines_export_without_changing_calculated_capacity(self):
-        p=self.state['payload'];before=[(r['booth'],r['start'],r['attendees']) for r in p['capacity']['schedule']]
-        answer='```json\n'+json.dumps({'demos':[{'topic':'agents','title':'Build a travel companion','presenterExpertise':'Agent memory and tools'},{'topic':'unknown','title':'Ignore me'}]})+'\n```'
-        self.studio.event_stage_files(self.owner,self.job,p,1,answer)
-        self.studio.event_stage_files(self.owner,self.job,p,2,'Rota reviewed')
-        self.assertEqual(before,[(r['booth'],r['start'],r['attendees']) for r in p['capacity']['schedule']])
-        self.assertEqual(p['capacity']['topics'][0]['demo'],'Build a travel companion')
-        self.assertEqual(p['capacity']['booths'][0]['presenterExpertise'],'Agent memory and tools')
-        self.assertIn('1 of 2',p['capacity']['demoSource'])
-        artifact=next(f for f in p['packageFiles'] if f.endswith('.xlsx'))
-        with ZipFile(self.studio.workspace(self.owner)/artifact) as z:
-            self.assertIn('Build a travel companion',z.read('xl/worksheets/sheet%d.xml' % (p['brief']['days']+2)).decode())
-
-    def test_survey_is_anonymous_persistent_owner_scoped_and_replans(self):
-        token=self.state['payload']['survey']['path'].split('/')[-1]
-        self.studio.survey_answer(token,{'visitor':'a'*32,'topic':'agents','experience':'new','rating':5})
-        self.studio.survey_answer(token,{'visitor':'a'*32,'topic':'multiagent','experience':'new','rating':4})
-        restarted=Studio(self.temp.name,self.adapter,start_worker=False)
-        report=restarted.survey_report(restarted.job_owner(self.owner,self.job),self.job);self.assertEqual(report['total'],1);self.assertEqual(report['rating'],4)
-        self.assertEqual([t['count'] for t in report['topics']],[0,1])
-        other=restarted.session()[0]['id']
-        with self.assertRaises(Problem):restarted.survey_report(other,self.job)
-        with self.assertRaises(Problem):restarted.survey_replan(other,{'id':self.job})
-        with self.assertRaises(Problem):restarted.survey_answer(token,{'visitor':'b'*32,'topic':'bad','experience':'new','rating':5})
-        new=restarted.survey_replan(restarted.job_owner(self.owner,self.job),{'id':self.job});self.assertNotEqual(new['id'],self.job)
-        state=restarted.state(self.owner)['jobs'][0];self.assertEqual(state['payload']['brief']['topicWeights'],[0,1]);self.assertEqual(state['payload']['brief']['attendees'],120)
-        self.assertEqual(state['payload']['source'],'survey:'+self.job)
-        page=survey_page(token,{**restarted.survey_definition(token),'title':'<script>bad()</script>'})
-        self.assertIn('&lt;script&gt;',page);self.assertNotIn('<script>bad()',page)
-
-    def test_deletion_revokes_survey_and_removes_responses(self):
-        self.studio.onboard(self.owner,{'name':'Test','persona':'guide','skills':['writer']})
-        token=self.state['payload']['survey']['path'].split('/')[-1]
-        self.studio.survey_answer(token,{'visitor':'a'*32,'topic':'agents','experience':'new','rating':5})
-        self.studio.delete_agent(self.owner,{'name':'Test'})
-        with self.assertRaises(Problem):self.studio.survey_definition(token)
-        with self.studio.db() as db:
-            self.assertEqual(db.execute('SELECT count(*) FROM survey_responses').fetchone()[0],0)
-
-if __name__=='__main__':unittest.main()
+if __name__ == '__main__':
+    unittest.main()

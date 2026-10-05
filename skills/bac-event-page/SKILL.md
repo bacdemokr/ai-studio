@@ -5,7 +5,7 @@ description: Compose a Build-a-Claw event landing page from the Captain's shared
 
 # Event landing page
 
-Read `inbox/shared-brief.json` and `inbox/handoffs.md`. Use the organizer's city, language, selected topics, demo concepts and schedule. The runtime renders your copy into a responsive, self-contained HTML page and saves it in the shared event package.
+Read `inbox/shared-brief.json` and `inbox/handoffs.md`. Use the organizer's city, language, selected topics, demo concepts and schedule. The runtime renders your copy into a self-contained HTML page for desktop browsers and saves it in the shared event package.
 
 Use the GTC event-page pattern: a strong headline, short overview, topic cards, an agenda and venue information. Do not copy the GTC event's dates, speakers or claims into this event. Keep unconfirmed details clearly provisional. No registration, booking, email sending or publishing is authorized.
 

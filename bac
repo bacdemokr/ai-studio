@@ -7,8 +7,10 @@ usage() {
   cat <<'HELP'
 BaC Agent Studio
 
+  ./bac vllm     Start or reuse Qwen and wait for successful inference
+  ./bac vllm --model gemma   Prepare another configured model
+  ./bac vllm --restart | --status | --logs | --stop   Manage the local model
   ./bac start     Install / start / apply updated app files
-  ./bac restart   Restart the studio and its agent services
   ./bac status    Check service status
   ./bac logs      Show recent errors and activity
   ./bac stop      Stop services; keep saved data
@@ -22,6 +24,41 @@ die() { echo "BaC: $*" >&2; exit 1; }
 command_name=${1:-help}
 case "$command_name" in
   help|-h|--help) usage; exit 0 ;;
+  vllm|ready)
+    command -v python3 >/dev/null || die 'Local model preparation requires Python 3.9 or newer.'
+    [[ -f scripts/local_model.py ]] || die 'The local model helper is missing.'
+    model=qwen
+    action=start
+    if [[ $# -eq 3 && $2 == --model ]]; then
+      model=$3
+      [[ $model == qwen || $model == gemma ]] || die 'Use ./bac vllm --model qwen|gemma.'
+    elif [[ $# -eq 2 ]]; then
+      case $2 in
+        --restart) action=restart ;;
+        --stop) action=stop ;;
+        --status) action=status ;;
+        --logs) action=logs ;;
+        *) die 'Use ./bac vllm [--model qwen|gemma | --restart | --status | --logs | --stop].' ;;
+      esac
+    elif [[ $# -ne 1 ]]; then
+      die 'Use ./bac vllm [--model qwen|gemma | --restart | --status | --logs | --stop].'
+    fi
+    mkdir -p .local-model
+    exec 8>.local-model/launcher.lock
+    if [[ $action == start || $action == restart || $action == stop ]]; then
+      flock -n 8 || die 'Another local model operation is running.'
+    fi
+    if [[ $action == start ]]; then
+      python3 scripts/local_model.py start --model "$model"
+      python3 scripts/local_model.py commit
+      echo 'Local model ready. Run ./bac start, then select Local in Settings → Model.'
+    elif [[ $action == restart ]]; then
+      python3 scripts/local_model.py restart --model "$model"
+    else
+      python3 scripts/local_model.py "$action"
+    fi
+    exit 0
+    ;;
   dev)
     shift
     [[ -f scripts/manage.py ]] || die 'Development commands require the source checkout.'
@@ -34,10 +71,20 @@ case "$command_name" in
     fi
     exec python3 scripts/manage.py "$@"
     ;;
-  start|restart|status|logs|stop|remove) ;;
+  start|status|logs|stop|remove) ;;
   *) usage >&2; die "Unknown command: $command_name. Old host commands now use ./bac dev COMMAND." ;;
 esac
 [[ $# -eq 1 ]] || die "Use ./bac $command_name without extra arguments."
+if [[ $command_name == start ]]; then
+  bash scripts/setup-key-filter.sh
+  [[ ! -L api.cfg ]] || die 'api.cfg must be a regular file, not a symlink.'
+  if [[ ! -e api.cfg ]]; then (umask 077; touch api.cfg); fi
+  [[ -f api.cfg ]] || die 'api.cfg must be a regular file.'
+  chmod 600 api.cfg
+  if ! LC_ALL=C awk 'NF {if (NF != 1) bad=1; count++} END {exit (bad || count != 1)}' api.cfg; then
+    die 'Put a valid inference API key in api.cfg, then run ./bac start again.'
+  fi
+fi
 [[ $(uname -s) == Linux ]] || die 'Docker deployment targets Ubuntu. For the existing Mac source preview use ./bac dev preview.'
 command -v docker >/dev/null || die 'Install Docker Engine and its Compose plugin, then run ./bac start again.'
 docker compose version >/dev/null 2>&1 || die 'Docker Compose is missing. Install the Docker Compose plugin.'
@@ -90,7 +137,7 @@ ensure_image() {
   esac
   [[ $actual == "$expected" ]] || die "This image is $actual; use the $expected release folder for this PC."
   studio_image=$image
-  if [[ $command_name == start || $command_name == restart ]]; then
+  if [[ $command_name == start ]]; then
     if ! docker run --rm --pull never --network none --entrypoint python3 \
       --mount "type=bind,src=$PWD,dst=/opt/bac/source,readonly" \
       "$image" /opt/bac/bootstrap.py --check; then
@@ -116,13 +163,19 @@ resource_files() {
 }
 
 case "$command_name" in
-  start|restart)
+  start)
     resource_files
     ensure_image
     echo 'Checking app files before restarting services…'
     docker run --rm --pull never --network none --entrypoint python3 \
       --mount "type=bind,src=$PWD,dst=/opt/bac/source,readonly" \
       "$studio_image" /opt/bac/source/scripts/build.py --check
+    echo 'Checking the inference API key in api.cfg…'
+    if ! compose run --rm --no-deps -T --user 0 --entrypoint python3 \
+      -v "$PWD/api.cfg:/run/bac-api.cfg:ro" studio \
+      /opt/bac/source/scripts/api_key_setup.py /run/bac-api.cfg; then
+      exit 1
+    fi
     # Record before provisioning so failed starts and later version changes are
     # both covered by remove. This helper needs no Docker socket or network.
     docker run --rm --pull never --network none --user 0 --entrypoint python3 \
@@ -131,10 +184,8 @@ case "$command_name" in
       --mount "type=bind,src=$PWD/$lock,dst=/runtime-lock.json,readonly" \
       "$studio_image" /resources.py --record /runtime-lock.json "$studio_image"
     mkdir -p shared
-    if [[ $command_name == restart || $command_name == start ]]; then
-      echo 'Restarting BaC services. Active work may stop; saved data is kept.'
-      compose stop studio openshell
-    fi
+    echo 'Restarting BaC services. Active work may stop; saved data is kept.'
+    compose stop studio openshell
     echo 'Starting the studio and checking readiness…'
     compose up -d --force-recreate --no-build --pull missing --wait --wait-timeout 180
     # The generated config contains the effective port even with .env overrides.

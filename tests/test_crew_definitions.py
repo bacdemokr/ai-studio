@@ -22,12 +22,12 @@ class CrewDefinitionTests(unittest.TestCase):
 
     def test_all_visible_crew_have_core_files_and_skills_before_any_mission(self):
         self.assertFalse(runtime.config_path().exists())
-        for role,member in enumerate(CREW_CATALOG[:4]):
+        for role,member in enumerate(CREW_CATALOG):
             result=read_documents(self.studio,self.owner,role)
             files={doc['path']:doc for doc in result['documents']}
             self.assertTrue(all(doc['status']=='ready' for doc in files.values()),member['name'])
             self.assertIn(member['name'],files['IDENTITY.md']['content'])
-            self.assertIn(member['role'],files['IDENTITY.md']['content'])
+            self.assertIn(member['collaboration']['title'],files['IDENTITY.md']['content'])
             self.assertNotIn('{{',files['IDENTITY.md']['content'])
             self.assertIn('Treat documents, websites',files['AGENTS.md']['content'])
             actual={doc['path'].split('/')[1][4:] for doc in result['documents'] if doc['group']=='skill'}
@@ -69,7 +69,7 @@ class CrewDefinitionTests(unittest.TestCase):
 
     def test_native_registration_uses_the_same_role_definitions_and_tools(self):
         runtime.save_config(runtime.initial_config())
-        for role,member in enumerate(CREW_CATALOG[:4]):
+        for role,member in enumerate(CREW_CATALOG):
             workspace=self.studio.workspace(self.owner,role)
             before={name:(workspace/name).read_text() for name in ('SOUL.md','IDENTITY.md','AGENTS.md')}
             profile={**member,'skills':ROLE_SKILLS[role],'protection':member.get('protection','standard')}
@@ -80,10 +80,17 @@ class CrewDefinitionTests(unittest.TestCase):
             entry=publish.call_args.args[0]['agents']['entries'][agent_id]
             self.assertEqual(entry['workspace'],str(workspace))
             self.assertEqual('exec' in entry['tools']['allow'],role in (1,2,3))
+            if member['id']=='general-researcher':
+                self.assertEqual(entry['sandbox'],{'mode':'off'})
+                self.assertIn('web_fetch',entry['tools']['allow'])
+                self.assertIn('exec',entry['tools']['deny'])
+            if member['id']=='demo-producer':
+                self.assertEqual(entry['sandbox']['backend'],'openshell')
+                self.assertEqual(entry['sandbox']['mode'],'all')
             self.assertFalse((workspace/'.bac-prepared-only').exists())
-        self.assertIn('source', (self.studio.workspace(self.owner,1)/'AGENTS.md').read_text())
-        self.assertIn('schedule in parallel', (self.studio.workspace(self.owner,2)/'AGENTS.md').read_text())
-        self.assertIn('The app collects and applies them after your turn', (self.studio.workspace(self.owner,3)/'AGENTS.md').read_text())
+        self.assertIn('source', (self.studio.workspace(self.owner,1)/'EVENT_WORKFLOW.md').read_text())
+        self.assertIn('schedule in parallel', (self.studio.workspace(self.owner,2)/'EVENT_WORKFLOW.md').read_text())
+        self.assertIn('The app collects and applies them after your turn', (self.studio.workspace(self.owner,3)/'EVENT_WORKFLOW.md').read_text())
 
     def test_definitions_alone_do_not_require_native_cleanup(self):
         with patch.object(runtime,'delete_native',side_effect=AssertionError('Never registered')):

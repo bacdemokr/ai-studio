@@ -109,3 +109,11 @@ Protected tool runs sample their own native OpenShell network logs in the backgr
 The Approved websites panel manages HTTPS network destinations only. File-grant APIs, path preflight, protected-copy import, host write-back and file-approval shield events have been removed. Native OpenShell workspace isolation remains. Use uploads for input documents and workspace artifacts for results.
 
 On upgrade, the app removes old `file:` approvals and only its managed `inbox/approved-<hash>.txt` transfer copies (including quarantined directory copies). Original host files, ordinary uploads and event artifacts are preserved. OpenClaw mirror mode replaces the remote workspace from the cleaned local workspace before the next protected run. Existing chat history remains historical data; runtime instructions explicitly state that file grants are no longer available.
+
+## CLI capability compatibility
+
+Sandbox preparation probes `sandbox create --help` before sending a create request. It uses `--detach -- sleep infinity` only when advertised; otherwise it uses `-- true`, matching the pinned OpenClaw plugin. OpenShell 0.0.106 keeps the sandbox after that initial command exits ([upstream implementation](https://github.com/NVIDIA/OpenShell/blob/v0.0.106/crates/openshell-cli/src/main.rs#L2839)). Creation is never retried with different arguments after a failure. Both paths retain the ownership label, default-deny policy and `--no-auto-providers`.
+
+Policy inspection and application use the same inventory filtering: registry entries confirmed absent by a successful complete inventory are excluded, while stopped/existing sandboxes still require verification. An unavailable inventory remains a failure. This does not delete registry records or sandbox data.
+
+On 2026-09-30, the development host's selected CLI was 0.0.106. A protected Orbit sandbox was prepared through the fallback, verified Ready with a loaded policy, and executed a harmless command. Unapproved `www.google.com` returned 403; restoring the user's already-saved exact `google.com` grant returned HTTP 301 without following the redirect. No extra destination was approved. CLI capability and stale-registry behavior also have failure-injection regression tests.

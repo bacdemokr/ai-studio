@@ -4,22 +4,8 @@
   const percent=n=>typeof n==='number'?n.toFixed(1)+'%':'—';
   const speed=n=>typeof n==='number'&&Number.isFinite(n)?n.toFixed(1)+' tok/s':'—';
   let telemetryBusy=false, telemetrySnapshot=null;
-  function missionUsage(mission, history){
-    if(!mission)return [];
-    const payload=mission.payload, enabled=payload.enabledRoles;
-    return (payload.roster||[]).flatMap((member,stage)=>{
-      if(enabled&&!enabled.includes(stage))return [];
-      const measured=payload.metrics?.[stage];
-      const cumulative=history.find(a=>a.crew&&a.agent===(measured?.agent||member.id));
-      const working=['running','stopping'].includes(mission.status)&&(payload.activeStages||[payload.stage]).includes(stage);
-      const status=payload.outputs?.[stage]?'Completed':working?'Working':measured?'Last reported':['error','cancelled','done'].includes(mission.status)?'Not run':'Waiting';
-      // Only this mission supplies context/speed. Historical totals are independent.
-      return [{...measured,name:member.name,crew:true,status,context:measured?.context??null,limit:measured?.limit??null,
-        total:cumulative?.total??0,calls:cumulative?.calls??0}];
-    });
-  }
   function renderTelemetry(snapshot){
-    const records=room==='mission'?missionUsage(crewMission(),snapshot.agents):snapshot.agents.filter(a=>!a.crew);
+    const records=room==='mission'?snapshot.agents.filter(a=>a.crew):snapshot.agents.filter(a=>!a.crew);
       const knownRecords=records.filter(a=>typeof a.context==='number'&&typeof a.limit==='number'&&a.limit>0);
       const highest=knownRecords.reduce((best,a)=>!best||a.context/a.limit>best.context/best.limit?a:best,null);
       const summary=meter.querySelector('summary');

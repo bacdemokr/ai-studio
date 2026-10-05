@@ -1,0 +1,1 @@
+{"id":"bac-research-guard","name":"BaC research and review bounds","description":"Bound Scout browsing and Vera source reads in explicit plan jobs.","activation":{"onStartup":true},"configSchema":{"type":"object","additionalProperties":false,"properties":{}}}

@@ -1,9 +1,8 @@
 // One persistent floor plan. Room changes move the camera, never swap worlds.
-function roomTitleMarkup(title){return title.replace(' (BaC Planning)','<br>(BaC Planning)');}
 const studioRooms={
   workshop:{group:workshopRoom,x:0,z:18,title:roomTitles.workshop,verb:'Meet your next agent',number:'01'},
   lounge:{group:loungeRoom,x:0,z:0,title:roomTitles.lounge,verb:'Meet your agents',number:'02'},
-  mission:{group:missionRoom,x:24,z:0,title:roomTitles.mission,verb:'Multi-agent',number:'03'}
+  mission:{group:missionRoom,x:24,z:0,title:roomTitles.mission,verb:'Meet your team',number:'03'}
 };
 Object.entries(studioRooms).forEach(([id,entry])=>{entry.group.position.set(entry.x,0,entry.z);entry.group.visible=true;entry.group.userData.studioRoom=id;});
 let overview=false,journey=null,viewHalfHeight=0;
@@ -12,7 +11,7 @@ const navigationLayer=document.createElement('div');navigationLayer.className='w
 const overviewButton=document.createElement('button');overviewButton.type='button';overviewButton.className='world-overview-button';overviewButton.dataset.worldOverview='';overviewButton.textContent='⌑ See the whole studio';overviewButton.setAttribute('aria-pressed','false');navigationLayer.append(overviewButton);
 const journeyNote=document.createElement('div');journeyNote.className='world-journey';journeyNote.setAttribute('role','status');journeyNote.setAttribute('aria-live','polite');journeyNote.hidden=true;navigationLayer.append(journeyNote);
 const roomMap=document.createElement('nav');roomMap.className='world-room-map';roomMap.setAttribute('aria-label','Connected studio rooms');
-roomMap.innerHTML='<span class="world-map-caption">STUDIO MAP</span><div><svg viewBox="0 0 320 66" aria-hidden="true"><path d="M13 53 V13 H207"/></svg>'+['lounge','mission','workshop'].map(id=>'<button type="button" data-world-room="'+id+'"><i>'+studioRooms[id].number+'</i><span>'+roomTitleMarkup(studioRooms[id].title)+'</span></button>').join('')+'</div>';
+roomMap.innerHTML='<span class="world-map-caption">STUDIO MAP</span><div><svg viewBox="0 0 320 66" aria-hidden="true"><path d="M13 53 V13 H207"/></svg>'+['lounge','mission','workshop'].map(id=>'<button type="button" data-world-room="'+id+'"><i>'+studioRooms[id].number+'</i><span>'+studioRooms[id].title+'</span></button>').join('')+'</div>';
 navigationLayer.append(roomMap);
 function goToRoom(next){
   const restoreFocus=navigationLayer.contains(document.activeElement);
@@ -68,7 +67,7 @@ doorway('lounge','mission',8.8,3);doorway('mission','lounge',-10.6,3);
 doorway('lounge','workshop',0,6.1,Math.PI/2);doorway('workshop','lounge',0,-4.05,Math.PI/2);
 Object.entries(studioRooms).forEach(([id,r])=>{
   const node=document.createElement('button');node.type='button';node.className='world-campus-room';node.dataset.worldRoom=id;
-  node.innerHTML='<span>'+r.number+' / '+r.verb+'</span><b>'+roomTitleMarkup(r.title)+'</b>';node.onclick=()=>goToRoom(id);navigationLayer.append(node);overviewLabels.push({id,node,group:r.group});
+  node.innerHTML='<span>'+r.number+' / '+r.verb+'</span><b>'+r.title+'</b>';node.onclick=()=>goToRoom(id);navigationLayer.append(node);overviewLabels.push({id,node,group:r.group});
 });
 function roomHeight(id){
   const aspect=viewport.clientWidth/Math.max(1,viewport.clientHeight);
@@ -162,7 +161,7 @@ function animateNavigation(now){
 }
 function navigationTargets(){
   if(overview)return Object.values(studioRooms).map(r=>r.group);
-  return room==='mission'?hitTargets:roomHitTargets();
+  return room==='mission'?hitTargets.filter(o=>robots[o.userData.agent]?.robot.visible):roomHitTargets();
 }
 function selectNavigationObject(object){
   for(let node=object;node;node=node.parent){
