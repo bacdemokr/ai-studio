@@ -17,8 +17,9 @@
   };
   let roles = window.BacCrewCatalog.map(({name,collaboration})=>[name,collaboration.title,collaboration.description]);
   const defaultNames=roles.map(r=>r[0]);
+  const stageScenarios=/* STAGE_SCENARIOS */;
   let selectedScenario='plan',scenarioChoosing=true,scenarioSwitching=false;
-  try{const saved=sessionStorage.getItem('bac-stage3-scenario');if(['plan','event-brief'].includes(saved))selectedScenario=saved;}catch{}
+  try{const saved=sessionStorage.getItem('bac-stage3-scenario');if(stageScenarios.some(s=>s.id===saved))selectedScenario=saved;}catch{}
   function scenarioRoles(){roles=window.BacCrewCatalog.map(member=>[member.name,...(selectedScenario==='event-brief'?[member.role,member.description]:[member.collaboration.title,member.collaboration.description])]);}
   function crewDraftKey(role){return selectedScenario+':'+agentId+':'+role;}
   scenarioRoles();

@@ -65,10 +65,13 @@ function setRoom(next,options={}){
   if(!roomCopy[next])return;
   const before=options.fromWorld&&!worldOpen?worldViewport.getBoundingClientRect().top:null;
   if(next!==room){closeSurface();if(next==='mission'&&!options.resume)scenarioChoosing=true;}
+  if(next==='mission'&&options.fromWorld&&!options.resume){closeSurface();scenarioChoosing=true;}
   if(next!=='mission')scenarioChoosing=true;
   editingInPlace=false;room=next;if(next!=='mission')board=false;
   root.dataset.room=next;worldViewport.setAttribute('aria-label',roomCopy[next]+'. Drag to orbit, scroll to zoom. Press Enter to toggle full screen.');if(roomsReady)try{sessionStorage.setItem('bac-studio-room',next);}catch{}
-  if(next==='mission')renderCrew();renderRoomVisibility();window.BacCampus?.setRoom(next,{instant:!roomsReady});
+  if(next==='mission')renderCrew();renderRoomVisibility();
+  if(next==='mission'&&scenarioChoosing)window.BacCampus?.scenarios({instant:!roomsReady});
+  else window.BacCampus?.setRoom(next,{instant:!roomsReady});
   if(openPolicies)openSurface('policies');
   if(before!==null)window.scrollBy(0,worldViewport.getBoundingClientRect().top-before);
 }
@@ -80,10 +83,10 @@ function renderRoomVisibility(){
   el('collection').hidden=!lounge||!data.profile;
   layout.hidden=false;el('board').hidden=true;
   el('experiences').hidden=!lounge;el('workspace').hidden=workshop||(mission?!currentCollaboration():(!current()&&!data.files?.length));el('safety-bar').hidden=true;
-  const action=el('room-action');action.hidden=!mission||selectedScenario!=='event-brief';action.textContent='Plan an event';action.onclick=crewForm;action.disabled=!!data.bacResetting||data.scenarios?.find(s=>s.id==='event-brief')?.busy;
+  const action=el('room-action');action.hidden=!mission||scenarioChoosing||selectedScenario!=='event-brief';action.textContent='Plan an event';action.onclick=crewForm;action.disabled=!!data.bacResetting||data.scenarios?.find(s=>s.id==='event-brief')?.busy;
   document.getElementById('campus-roster').hidden=!mission||scenarioChoosing;
   renderScenarioSelector();
-  document.getElementById('campus-location').textContent=workshop?'HIRING / MEET YOUR NEXT AGENT':lounge?'LOUNGE / Current Agents: '+(data.agents?.length||0):'Multi-Agent demo';
+  document.getElementById('campus-location').textContent=workshop?'HIRING / MEET YOUR NEXT AGENT':lounge?'LOUNGE / Current Agents: '+(data.agents?.length||0):'03 / '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'Multi-Agent demo');
   syncSurface();
   if(workshop)document.getElementById('campus-motion-status').textContent='';
   if(lounge)document.getElementById('campus-motion-status').textContent='';

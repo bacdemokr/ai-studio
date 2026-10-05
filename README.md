@@ -132,11 +132,11 @@ Keyless local servers need no API key. Provider keys entered in these settings a
 
 1. **Hiring:** choose a character, role, tone, and skills.
 2. **Agent lounge:** chat with a hired agent, inspect files, or approve OpenShell access.
-3. **Multi-Agent demo:** choose **Event Brief** or **Plan**. The scenario picker appears each time you enter Stage 3. Cards show **Continue** when previous work is available. **Scenarios** returns to the picker without clearing either workspace.
+3. **Multi-Agent demo:** enter the **Event Brief** or **Open Task** floor directly from the studio overview or Studio Map. Both spaces branch directly off the Lounge concourse as equal choices, with their own signs and accent colors. Entering Stage 3 or choosing **Scenarios** shows the spaces together; signs show **Continue** when work is saved. Switching spaces never clears either workspace.
 
 **Event Brief** restores the fixed Casey, Dylan, Alex and Morgan crew. Open **Plan an event**, enter event details, prepare the crew, and launch. The team produces researched demo ideas, an operations timetable and an event webpage. Dylan retains his OpenShell protection.
 
-**Plan** uses the Zurich collaboration flow: message Casey with `/plan` and a concrete task, optionally attaching documents. Casey selects the needed specialists. Each scenario has its own team identities, chat history, model selections, documents and results. They share the Stage 3 API connection and hired-agent collection. Choosing another scenario does not cancel active work.
+**Open Task** uses the Zurich Plan collaboration flow: message Casey with `/plan` and a concrete task, optionally attaching documents. Casey selects the needed specialists. Each scenario has its own team identities, chat history, model selections, documents and results. They share the Stage 3 API connection and hired-agent collection. Choosing another scenario does not cancel active work.
 
 Casey's chat starts with `/plan ` and restores it after a successful send. Delete the prefix to send a direct message. Specialists accept direct messages only, without `/plan` hints or suggestions; send team tasks to Casey. Their inputs start empty and clear after sending; existing drafts stay intact when switching characters.
 
@@ -210,4 +210,6 @@ Use normal Git commands to update your checkout. Resolve local changes or diverg
 
 ### Scenario preview provenance
 
-This preview starts from the frozen Zurich snapshot (`feba7df`). The viewport improvements, room information guides and side-by-side agent definition viewer adapt Benjamin Bayart’s contributions (`ee717f3`, `8993a20`, `09b4794`, `3c54aba`); the Stage 3 picker also takes inspiration from his scenario cards. The fixed Event Brief workflow is restored from `archive/bac-planning` (`94198b6`). Startup retains the overview and does not delete agents. There is no `./bac restart` command. Existing Zurich team ownership migrates to Plan without changing native identities; Event Brief creates a separate team when first used.
+This preview starts from the frozen Zurich snapshot (`feba7df`). The viewport improvements, room information guides and side-by-side agent definition viewer adapt Benjamin Bayart’s contributions (`ee717f3`, `8993a20`, `09b4794`, `3c54aba`); the initial Stage 3 picker took inspiration from his scenario cards; scenarios now appear as separate 3D floors. The fixed Event Brief workflow is restored from `archive/bac-planning` (`94198b6`). Startup retains the overview and does not delete agents. There is no `./bac restart` command. Existing Zurich team ownership migrates to Plan without changing native identities; Event Brief creates a separate team when first used.
+
+Scenario presentation lives in `src/stage-scenarios.json`, shared by the scene, navigation and accessible fallback. Floors branch in pairs from a common concourse and use automatic overview framing, so three or four scenarios fit without hard-coded camera coordinates. New scenarios also require an explicit backend workflow and ownership identifier; adding a visual entry alone does not enable a new workflow.

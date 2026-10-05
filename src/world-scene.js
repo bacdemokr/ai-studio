@@ -1,5 +1,6 @@
 // A miniature agent workshop: role workbenches around one shared brief.
 function createScene() {
+  const scenarioDefinitions=/* STAGE_SCENARIOS */;
   const roomTitles={workshop:'Hiring',lounge:'Agent lounge',mission:'Multi-Agent demo'};
   const viewport=el('viewport');
   const scene=new THREE.Scene();
@@ -43,17 +44,17 @@ function createScene() {
   const missionRoom=new THREE.Group();scene.add(missionRoom);
   // Wider floor with clear aisles around the Captain and specialist workstations.
   box(missionRoom,0,-.42,0,21.6,.75,15,0x151b23);
-  box(missionRoom,0,-.025,0,21.45,.07,14.85,0x2a333e);
-  box(missionRoom,0,-.3,7.51,20.9,.075,.025,0x76b900,true);
+  const missionFloor=box(missionRoom,0,-.025,0,21.45,.07,14.85,0x2a333e);missionFloor.userData.scenarioFloor=true;
+  const missionAccent=box(missionRoom,0,-.3,7.51,20.9,.075,.025,0x76b900,true);missionAccent.userData.scenarioAccent=true;
   for(let x=-10;x<=10;x++)box(missionRoom,x,.02,0,.014,.008,14.6,0x3a4653);
   for(let z=-7;z<=7;z++)box(missionRoom,0,.02,z,21.4,.008,.014,0x3a4653);
   box(missionRoom,0,.65,-7.25,21.6,1.35,.18,0x1e2732);
-  for(const [z,length] of [[-2.725,9.05],[5.725,3.05]])box(missionRoom,-10.65,.65,z,.15,1.35,length,0x1e2732);
+  for(const [z,length] of [[-4.225,6.05],[4.225,6.05]])box(missionRoom,-10.65,.65,z,.15,1.35,length,0x1e2732);
   box(missionRoom,0,1.36,-7.25,21.6,.055,.24,0x63778b);
-  for(const [z,length] of [[-2.725,9.05],[5.725,3.05]])box(missionRoom,-10.65,1.36,z,.22,.055,length,0x63778b);
+  for(const [z,length] of [[-4.225,6.05],[4.225,6.05]])box(missionRoom,-10.65,1.36,z,.22,.055,length,0x63778b);
   // A framed workshop display keeps the supplied illustration inside the 3D space.
   box(missionRoom,-.6,2.4,-7.17,5.8,3.8,.14,0x0c121b);
-  displayTitle(missionRoom,roomTitles.mission,-.6,4.0,-7.06,5.1,.48);
+  const missionTitle=displayTitle(missionRoom,roomTitles.mission,-.6,4.0,-7.06,5.1,.48);missionTitle.userData.scenarioTitle=true;
   const artworkWidth=5.22,artworkHeight=artworkWidth*508/904;
   box(missionRoom,-.6,2.175,-7.075,artworkWidth+.14,artworkHeight+.14,.025,0x343f4c);
   const artworkTexture=new THREE.TextureLoader().load('__WORKSHOP_ART_DATA_URL__');
@@ -112,6 +113,9 @@ function createScene() {
     const route=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:colors[routes.length],transparent:true,opacity:.2}));missionRoom.add(route);routes.push(route);
   });
   const brand=sign(missionRoom,'NVIDIA',-3.5,.075,6.7,2.8,.62,'#aebdce');brand.rotation.x=-Math.PI/2;
+  // Only the selected space uses the live rig. Other floors are quiet scenery,
+  // not duplicate agents or model executions.
+  const missionShell=missionRoom.clone(true);
   const robots=[];const hitTargets=[];const labels=[];
   positions.forEach((_,i)=>{
     const rig=createCharacter(avatarDefaults[i]),robot=rig.group;robot.position.copy(homes[i]);robot.visible=i===0;if(i===0)robot.scale.setScalar(1.12);missionRoom.add(robot);
@@ -221,6 +225,7 @@ function createScene() {
   }
   let room='mission';
   /* WORLD_ROOMS */
+  /* WORLD_SCENARIOS */
   /* WORLD_NAVIGATION */
   /* WORLD_ROUNDTABLE */
   const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
@@ -279,7 +284,7 @@ function createScene() {
       b.setAttribute('aria-pressed',String(activeSelection===i));b.setAttribute('aria-label','Select '+state.agents[i].name+(working?', working':''));b.classList.toggle('working',working);b.classList.toggle('selected',activeSelection===i);b.classList.toggle('excluded',state.agents[i].included===false);b.classList.toggle('waiting',state.agents[i].lane===2);
     });}
 
-  function update(next,index){state=next;placeTeam();syncCaptain();syncRoundtable();activeSelection=index;phase=state.phase;dressCrew();const key=[state.jobId,state.phase,state.missionSkill,state.crewMission?.id,state.crewMission?.enabledRoles?.join(),state.agents.map(a=>a.lane).join('')].join(':');if(key!==lastKey){lastKey=key;movement();}renderCrewLabels();}
+  function update(next,index){state=next;placeTeam();if(scenarioMoved)settleCrewExchange();syncCaptain();syncRoundtable();activeSelection=index;phase=state.phase;dressCrew();const key=[state.jobId,state.phase,state.missionSkill,state.crewMission?.id,state.crewMission?.enabledRoles?.join(),state.agents.map(a=>a.lane).join('')].join(':');if(key!==lastKey){lastKey=key;movement();}renderCrewLabels();}
 
   /* WORLD_PROTECTION */
 
@@ -310,6 +315,6 @@ function createScene() {
     animateProtection(now);
     renderer.render(scene,camera);
   }
-  motionButton();resize();update(snapshot,0);requestAnimationFrame(animate);root.dataset.renderer='webgl';
-  return {resize,update,setRoom,setCollection,observeProtection,protectionReplyDelay,setDraft,welcomeAgent,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',protectionHits:[...protectionHits.values()].map(h=>({id:h.event.id,owner:h.event.owner,role:h.event.role,action:h.event.action,globeRotation:h.earth?.rotation.y,visible:h.group.visible,animated:motion&&h.phase!=='blocked',phase:h.phase})),roundtable:roundtableInfo(),arrival:arrival?{key:arrival.key,avatar:{...arrival.rig.appearance},phase:arrival.time<1.8?'loading':'walking',position:arrival.rig.group.position.toArray()}:null,room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,draftShield:!!draftRig?.body.getObjectByName('openshell-shield'),crewExchange:robots.map((r,role)=>({role,visible:r.robot.visible,phase:r.exchange,wanted:r.wanted})),deskAssignments:[...deskAssignments],crewHomes:robots.map(r=>r.home.toArray()),selectedTeam:state.crewMission?.enabledRoles||[0],crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,captain:{position:robots[0].robot.position.toArray(),job:captainJob,received:[...receivedDocuments],assigned:[...assignedDocuments],pending:documentQueue.map(d=>({...d})),inFlight:documentFlight?{...documentFlight}:null},robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
+  setScenario('plan');motionButton();resize();update(snapshot,0);requestAnimationFrame(animate);root.dataset.renderer='webgl';
+  return {resize,update,setRoom,setScenario,setScenarioStatus,scenarios:showScenarios,setCollection,observeProtection,protectionReplyDelay,setDraft,welcomeAgent,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',protectionHits:[...protectionHits.values()].map(h=>({id:h.event.id,owner:h.event.owner,role:h.event.role,action:h.event.action,globeRotation:h.earth?.rotation.y,visible:h.group.visible,animated:motion&&h.phase!=='blocked',phase:h.phase})),roundtable:roundtableInfo(),arrival:arrival?{key:arrival.key,avatar:{...arrival.rig.appearance},phase:arrival.time<1.8?'loading':'walking',position:arrival.rig.group.position.toArray()}:null,room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,draftShield:!!draftRig?.body.getObjectByName('openshell-shield'),crewExchange:robots.map((r,role)=>({role,visible:r.robot.visible,phase:r.exchange,wanted:r.wanted})),deskAssignments:[...deskAssignments],crewHomes:robots.map(r=>r.home.toArray()),selectedTeam:state.crewMission?.enabledRoles||[0],crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,captain:{position:robots[0].robot.position.toArray(),job:captainJob,received:[...receivedDocuments],assigned:[...assignedDocuments],pending:documentQueue.map(d=>({...d})),inFlight:documentFlight?{...documentFlight}:null},robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
 }

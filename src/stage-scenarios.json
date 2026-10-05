@@ -1,0 +1,24 @@
+[
+  {
+    "id": "event-brief",
+    "title": "Event Brief",
+    "eyebrow": "A guided team demo",
+    "description": "Plan an event with a dedicated crew.",
+    "team": "Casey · Dylan · Alex · Morgan",
+    "action": "Open Event Brief",
+    "accent": "#69c7f3",
+    "floor": "#263341",
+    "residents": [0, 1, 2, 3]
+  },
+  {
+    "id": "plan",
+    "title": "Open Task",
+    "eyebrow": "Your task, the right team",
+    "description": "Bring a task. Casey assembles the team.",
+    "team": "Casey + specialists for your /plan request",
+    "action": "Open Task",
+    "accent": "#a1d65e",
+    "floor": "#2a3834",
+    "residents": [0]
+  }
+]
