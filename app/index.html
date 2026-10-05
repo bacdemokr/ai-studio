@@ -79077,7 +79077,7 @@ const studioSound=createStudioSound();window.BacSound=studioSound;
 
 // A miniature agent workshop: role workbenches around one shared brief.
 function createScene() {
-  const scenarioDefinitions=[{"id": "event-brief", "title": "Event Brief", "eyebrow": "A guided team demo", "description": "Plan an event with a dedicated crew.", "team": "Casey \u00b7 Dylan \u00b7 Alex \u00b7 Morgan", "action": "Open Event Brief", "accent": "#69c7f3", "floor": "#263341", "residents": [0, 1, 2, 3]}, {"id": "plan", "title": "Open Task", "eyebrow": "Your task, the right team", "description": "Bring a task. Casey assembles the team.", "team": "Casey + specialists for your /plan request", "action": "Open Task", "accent": "#a1d65e", "floor": "#2a3834", "residents": [0]}];
+  const scenarioDefinitions=[{"id": "event-brief", "title": "Event Brief", "eyebrow": "A guided team demo", "description": "Plan an event with a dedicated crew.", "team": "Casey \u00b7 Dylan \u00b7 Alex \u00b7 Morgan", "action": "Open Event Brief", "accent": "#69c7f3", "floor": "#263341", "residents": [0, 1, 2, 3]}, {"id": "plan", "title": "Open Task", "eyebrow": "Your task, the right team", "description": "Bring a task. Casey assembles the team.", "team": "Casey + specialists for your /plan request", "action": "Open Task", "accent": "#a1d65e", "floor": "#2a333e", "residents": [0]}];
   const roomTitles={workshop:'Hiring',lounge:'Agent lounge',mission:'Multi-Agent demo'};
   const viewport=el('viewport');
   const scene=new THREE.Scene();
@@ -80724,7 +80724,7 @@ render();
   };
   let roles = window.BacCrewCatalog.map(({name,collaboration})=>[name,collaboration.title,collaboration.description]);
   const defaultNames=roles.map(r=>r[0]);
-  const stageScenarios=[{"id": "event-brief", "title": "Event Brief", "eyebrow": "A guided team demo", "description": "Plan an event with a dedicated crew.", "team": "Casey \u00b7 Dylan \u00b7 Alex \u00b7 Morgan", "action": "Open Event Brief", "accent": "#69c7f3", "floor": "#263341", "residents": [0, 1, 2, 3]}, {"id": "plan", "title": "Open Task", "eyebrow": "Your task, the right team", "description": "Bring a task. Casey assembles the team.", "team": "Casey + specialists for your /plan request", "action": "Open Task", "accent": "#a1d65e", "floor": "#2a3834", "residents": [0]}];
+  const stageScenarios=[{"id": "event-brief", "title": "Event Brief", "eyebrow": "A guided team demo", "description": "Plan an event with a dedicated crew.", "team": "Casey \u00b7 Dylan \u00b7 Alex \u00b7 Morgan", "action": "Open Event Brief", "accent": "#69c7f3", "floor": "#263341", "residents": [0, 1, 2, 3]}, {"id": "plan", "title": "Open Task", "eyebrow": "Your task, the right team", "description": "Bring a task. Casey assembles the team.", "team": "Casey + specialists for your /plan request", "action": "Open Task", "accent": "#a1d65e", "floor": "#2a333e", "residents": [0]}];
   let selectedScenario='plan',scenarioChoosing=true,scenarioSwitching=false;
   try{const saved=sessionStorage.getItem('bac-stage3-scenario');if(stageScenarios.some(s=>s.id===saved))selectedScenario=saved;}catch{}
   function scenarioRoles(){roles=window.BacCrewCatalog.map(member=>[member.name,...(selectedScenario==='event-brief'?[member.role,member.description]:[member.collaboration.title,member.collaboration.description])]);}
