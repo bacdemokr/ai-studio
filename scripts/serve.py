@@ -86,6 +86,21 @@ class Handler(SimpleHTTPRequestHandler):
         return dict(row), False
 
     def do_GET(self):
+        if self.path.startswith('/survey/'):
+            try:
+                if not self.host_ok():
+                    raise Problem('Use the event host address.', 403)
+                from studio_events import survey_page
+                token=urlparse(self.path).path.removeprefix('/survey/')
+                body=survey_page(token, self.server.studio.survey_definition(token)).encode()
+                self.send_response(200)
+                self.send_header('Content-Type','text/html; charset=utf-8')
+                self.send_header('Content-Length',str(len(body)))
+                self.send_header('Content-Security-Policy', "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'")
+                self.end_headers();self.wfile.write(body)
+            except Problem as error:
+                self.json_response({'error':str(error)},error.status)
+            return
         if self.path == '/health':
             path = Path(self.directory) / 'version.json'
             version = json.loads(path.read_text()) if path.exists() else {'version': 'local-preview'}
@@ -99,12 +114,20 @@ class Handler(SimpleHTTPRequestHandler):
             studio = self.server.studio
             row, new = self.participant(create=parsed.path == '/api/session')
             owner = studio.resolve_agent(row['id'], self.headers.get('X-BaC-Agent'))
+            from scenarios import validate as validate_scenario
+            scenario = validate_scenario(self.headers.get('X-BaC-Scenario', 'plan'))
             if parsed.path in ('/api/session', '/api/state'):
                 studio.heartbeat.presence(row['id'], self.headers.get('X-BaC-Key-Session', ''))
             if parsed.path == '/api/session':
-                return self.json_response({'csrf': row['csrf'], 'canConfigure': self.is_operator(), 'runtime': studio.runtime_status(), **studio.state(owner)}, cookie=row['token'] if new else None)
+                return self.json_response({'csrf': row['csrf'], 'canConfigure': self.is_operator(), 'runtime': studio.runtime_status(), **studio.state(owner, scenario)}, cookie=row['token'] if new else None)
             if parsed.path == '/api/state':
-                return self.json_response(studio.state(owner), conditional=True)
+                return self.json_response(studio.state(owner, scenario), conditional=True)
+            if parsed.path == '/api/event-catalog':
+                import event_planner
+                return self.json_response({'templates':event_planner.TEMPLATES,'topics':event_planner.TOPICS,'harnesses':event_planner.HARNESS})
+            if parsed.path == '/api/survey-report':
+                job_id=parse_qs(parsed.query).get('id',[''])[0]
+                return self.json_response(studio.survey_report(studio.job_owner(owner,job_id),job_id))
             if parsed.path == '/api/telegram':
                 import telegram_notifications
                 return self.json_response(telegram_notifications.public(row['id'], row['id']+':'+self.headers.get('X-BaC-Key-Session','missing')))
@@ -127,7 +150,7 @@ class Handler(SimpleHTTPRequestHandler):
                 values = query.get('role', [])
                 if set(query) != {'role'} or len(values) != 1 or not values[0].isascii() or not values[0].isdecimal():
                     raise Problem('Choose one valid crew member.')
-                return self.json_response(studio.crew_policy_report(studio.crew_owner(owner), int(values[0])))
+                return self.json_response(studio.crew_policy_report(studio.crew_owner(owner, scenario), int(values[0])))
             if parsed.path == '/api/evidence':
                 return self.json_response(studio.evidence(studio.job_owner(owner, parse_qs(parsed.query).get('id',[''])[0]), parse_qs(parsed.query).get('id',[''])[0]))
             if parsed.path == '/api/agent-documents':
@@ -140,7 +163,7 @@ class Handler(SimpleHTTPRequestHandler):
                     value=query['role'][0]
                     if not value.isascii() or not value.isdecimal():raise Problem('Choose a valid crew member.')
                     role=int(value)
-                return self.json_response(read_documents(studio,studio.crew_owner(owner) if role is not None else owner,role))
+                return self.json_response(read_documents(studio,studio.crew_owner(owner, scenario) if role is not None else owner,role))
             if parsed.path == '/api/file':
                 name = parse_qs(parsed.query).get('path', [''])[0]
                 if not (name.startswith(('inbox/', 'artifacts/')) or name in ('MEMORY.md', 'IDENTITY.md', 'SOUL.md', 'AGENTS.md')):
@@ -170,6 +193,14 @@ class Handler(SimpleHTTPRequestHandler):
             origin = self.headers.get('Origin')
             if origin and urlparse(origin).netloc != self.headers.get('Host'):
                 raise Problem('Cross-origin requests are not accepted.', 403)
+            if self.path.startswith('/survey/'):
+                size=int(self.headers.get('Content-Length','0'))
+                if not 0 < size <= 4096:
+                    raise Problem('Invalid survey response.',413)
+                data=json.loads(self.rfile.read(size))
+                if not isinstance(data,dict):
+                    raise Problem('Expected survey answers.')
+                return self.json_response(self.server.studio.survey_answer(self.path.removeprefix('/survey/'),data))
             row, _ = self.participant()
             if not secrets.compare_digest(self.headers.get('X-BaC-CSRF', ''), row['csrf']):
                 raise Problem('Refresh the page to renew your session.', 403)
@@ -184,6 +215,8 @@ class Handler(SimpleHTTPRequestHandler):
                 raise Problem('Expected a JSON object.')
             studio = self.server.studio
             owner = studio.resolve_agent(row['id'], self.headers.get('X-BaC-Agent'))
+            from scenarios import validate as validate_scenario
+            scenario = validate_scenario(self.headers.get('X-BaC-Scenario', 'plan'))
             lease = self.headers.get('X-BaC-Key-Session','')
             if not lease or len(lease)>100:lease='missing'
             data['_credentialSession']=row['id']+':'+lease
@@ -209,26 +242,29 @@ class Handler(SimpleHTTPRequestHandler):
                 if self.path == '/api/settings/models':return self.json_response(runtime_settings.models(data))
                 if self.path == '/api/settings/start':return self.json_response(runtime_settings.start_gateway())
                 return self.json_response(runtime_settings.save(studio,data))
-            if self.path in ('/api/prepare-demo','/api/event-plan','/api/survey-replan','/api/event-reset') or (self.path=='/api/jobs' and data.get('kind')=='crew'):
-                raise Problem('Plan a BaC has been retired. Send /plan to Casey instead.',410)
+            if (self.path in ('/api/prepare-demo','/api/event-plan','/api/survey-replan') or (self.path=='/api/jobs' and data.get('kind')=='crew')) and scenario != 'event-brief':
+                raise Problem('Choose Event Brief to use the event workflow.',409)
             if self.path == '/api/team-model':
                 import team_models
-                return self.json_response(team_models.select(studio,studio.crew_owner(owner),data))
+                return self.json_response(team_models.select(studio,studio.crew_owner(owner, scenario),data))
             routes = {
+                '/api/prepare-demo': lambda: studio.prepare_demo(studio.crew_owner(owner, scenario), data),
+                '/api/event-plan': lambda: studio.event_plan(data),
+                '/api/survey-replan': lambda: studio.survey_replan(studio.crew_owner(owner, scenario), data),
                 '/api/heartbeat': lambda: studio.heartbeat.control(owner, data),
                 '/api/agents': lambda: studio.add_agent(row['id'], data),
                 '/api/onboard': lambda: studio.onboard(owner, data),
                 '/api/profile': lambda: studio.configure(owner, data),
                 '/api/delete-agent': lambda: studio.delete_agent(owner, data, enqueue_only=True),
                 '/api/agent-policy': lambda: studio.policy_change(owner, data),
-                '/api/crew-policy': lambda: studio.crew_policy_change(studio.crew_owner(owner), data),
-                '/api/jobs': lambda: studio.enqueue(studio.crew_owner(owner) if data.get('kind') in ('crew','crew-chat') else owner, data, lead=owner if data.get('kind')=='crew' and data.get('preset') is not True else None),
-                '/api/upload': lambda: studio.upload(owner, data),
+                '/api/crew-policy': lambda: studio.crew_policy_change(studio.crew_owner(owner, scenario), data),
+                '/api/jobs': lambda: studio.enqueue(studio.crew_owner(owner, scenario) if data.get('kind') in ('crew','crew-chat') else owner, data, lead=owner if data.get('kind')=='crew' and data.get('preset') is not True else None),
+                '/api/upload': lambda: studio.upload(studio.crew_owner(owner, scenario) if 'crewRole' in data else owner, data),
                 '/api/decision': lambda: studio.decision(studio.job_owner(owner, data.get('id')), data.get('id'), data.get('action')),
                 '/api/retry-reaction': lambda: studio.retry_reaction(studio.job_owner(owner, data.get('id')), data),
                 '/api/reset': lambda: studio.reset_board(owner),
-                '/api/crew-chat-reset': lambda: studio.reset_crew_chats(owner),
-                '/api/bac-reset': lambda: studio.reset_crew_chats(owner, reset_event=True),
+                '/api/crew-chat-reset': lambda: studio.reset_crew_chats(studio.crew_owner(owner, scenario)),
+                '/api/bac-reset': lambda: studio.reset_crew_chats(owner if data.get('scope')=='all' else studio.crew_owner(owner, scenario), reset_event=True),
             }
             if self.path not in routes:
                 raise Problem('Not found.', 404)

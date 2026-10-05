@@ -23,6 +23,7 @@ from studio_policy import PolicyControls
 from crew_roundtable import RoundtableControls, participants as job_participants
 from crew_ownership import CrewOwnership
 from collaboration_plan import CollaborationPlans, is_plan, plan_task
+from event_scenario import EventScenario
 from webpage_artifacts import DEMO_CODING_INSTRUCTIONS, PAGE_INSTRUCTIONS, html_files, collect_pages
 
 CREW_CATALOG = json.loads((Path(__file__).resolve().parents[1] / 'src/crew-catalog.json').read_text())
@@ -117,7 +118,7 @@ def safe_file(directory, relative, exists=False):
     return result
 
 
-class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableControls):
+class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, RoundtableControls):
     def __init__(self, directory=None, adapter=runtime, start_worker=True, recover=False):
         self.directory = Path(directory) if directory else c.initialize() / 'studio'
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -679,11 +680,16 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
                     continue
         return result[:100]
 
-    def state(self, owner):
-        team = self.existing_crew_owner(owner)
+    def state(self, owner, scenario='plan'):
+        from scenarios import validate
+        validate(scenario)
+        team = self.existing_crew_owner(owner, scenario)
         with self.db() as db:
             jobs = [self.public_job(r) for r in db.execute("SELECT * FROM jobs WHERE owner=? AND kind NOT IN ('crew','crew-chat','prepare','prepare-agent') AND created >= (SELECT reset_at FROM agents WHERE id=?) ORDER BY created DESC LIMIT 30", (owner, owner))]
-            crew_chats = [self.public_job(r) for role in range(len(ROLES)) for r in db.execute("SELECT * FROM jobs WHERE (owner=? OR owner IN (SELECT owner FROM crew_contexts WHERE participant=(SELECT participant FROM agents WHERE id=?))) AND kind='crew-chat' AND json_extract(payload,'$.crewRole')=? ORDER BY created DESC LIMIT 30", (owner, owner, role))]
+            crew_chats = [self.public_job(r) for role in range(len(ROLES)) for r in db.execute("SELECT * FROM jobs WHERE (owner=? OR owner=?) AND kind='crew-chat' AND json_extract(payload,'$.crewRole')=? ORDER BY created DESC LIMIT 30", (team, owner if scenario=='plan' else team, role))]
+            if scenario == 'event-brief' and team:
+                reset = self.crew_chat_reset_state(db, team)
+                jobs += [self.public_job(r) for r in db.execute("SELECT * FROM jobs WHERE owner=? AND kind='crew' AND created>=? ORDER BY created DESC LIMIT 30",(team,reset['at']))]
             collection = db.execute('SELECT id,profile,deleting FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?) AND profile IS NOT NULL ORDER BY created,id', (owner,)).fetchall()
             active = [dict(j, payload=json.loads(j['payload'])) for j in db.execute("SELECT id,owner,status,payload,kind,due FROM jobs WHERE status IN ('queued','running','waiting','stopping') AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) ORDER BY created", (owner,))]
             agents = [{'key': r['id'], **json.loads(r['profile']), 'deleting': bool(r['deleting']), 'deletionWaiting': r['deleting'] == 2,
@@ -700,8 +706,8 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
                 agent['avatar'] = avatar_for(agent['key'], agent.get('avatar'))
                 agent.setdefault('tone', 'kind')
                 agent.setdefault('verbosity', 'balanced')
-            bac_resetting = bool(db.execute("SELECT 1 FROM metadata m JOIN agents a ON m.key='bac-reset-pending:'||a.participant WHERE a.id=?",(owner,)).fetchone())
-            crew_chat_reset = self.crew_chat_reset_state(db, owner)
+            bac_resetting = bool(db.execute("SELECT 1 FROM metadata m JOIN agents a ON (m.key='bac-reset-pending:'||a.participant OR m.key='bac-reset-pending:'||a.id) WHERE a.id=?",(team or owner,)).fetchone())
+            crew_chat_reset = self.crew_chat_reset_state(db, team or owner)
             roundtable_turns = self.roundtable_history(db, owner)
             names = {a['key']: a['name'] for a in agents}
             assignments = [{'job': j['id'], 'lead': j['owner'], 'name': names.get(j['owner'], 'BaC Captain'), 'role': m['role'], 'status': j['status']}
@@ -720,7 +726,8 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
         except (Problem, UnicodeError):
             pass
         from team_models import selections
-        return {'crewDocuments': [f for f in self.files(team,0) if f['kind']=='inbox'] if team else [], 'teamSelections': selections(self,team), 'profile': self.profile(owner), 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': self.files(owner),
+        return {'scenario':scenario, 'scenarios':self.scenario_status(owner), 'preparation':self.demo_preparation(team) if team and scenario=='event-brief' else None,
+                'crewDocuments': [f for f in self.files(team,0) if f['kind']=='inbox'] if team else [], 'teamSelections': selections(self,team), 'profile': self.profile(owner), 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': self.files(owner),
                 'techRadar': self.heartbeat.status(owner, self.profile(owner) or {}),
                 'memory': memory_text, 'agentId': owner, 'crewOwner': team, 'roundtableTurns': roundtable_turns,
                 'agents': agents, 'agentLimit': MAX_AGENTS, 'assignments': assignments, 'bacResetting': bac_resetting,
@@ -811,13 +818,18 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
             raise Problem('The team is busy. Finish or stop its current work first.', 409)
 
     def enqueue(self, owner, data, source='web', due=0, lead=None):
-        if data.get('kind') in ('crew', 'prepare'):
-            raise Problem('Event planning has been retired. Send /plan to Casey instead.', 410)
+        if data.get('kind') == 'crew':
+            return self.enqueue_event(owner, data, source, due, lead)
+        if data.get('kind') == 'prepare':
+            raise Problem('Use Event Brief preparation to prepare this team.')
         # Automatic Tech Radar heartbeats use their own delivery path. Reject
         # manual requests before /plan can redirect them to the team workspace.
         if data.get('kind', 'chat') in ('chat', 'reminder'):
             self.require_manual_chat(self.profile(owner))
         collaborative = data.get('kind', 'chat') in ('chat', 'crew-chat') and is_plan(data.get('prompt'))
+        event_scenario = self.crew_scenario(owner) == 'event-brief'
+        if collaborative and event_scenario:
+            raise Problem('Choose Plan mode to send /plan tasks. This conversation belongs to Event Brief.')
         if collaborative:
             if data.get('kind', 'chat') == 'chat':
                 with self.db() as db:
@@ -852,7 +864,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
             role = data.get('crewRole')
             if type(role) is not int or not 0 <= role < len(ROLES):
                 raise Problem('Choose a crew member.')
-            if CREW_CATALOG[role].get('planEligible') is False:
+            if (event_scenario and role not in range(4)) or (not event_scenario and CREW_CATALOG[role].get('planEligible') is False):
                 raise Problem('This specialist is no longer available. Ask Casey to assign the current team.')
             if skill:
                 raise Problem('Crew skills are managed by the role.')
@@ -887,6 +899,8 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
                 raise Problem('This agent’s policy is being updated. Please wait.', 409)
             if kind in ('crew','crew-chat'):
                 self.require_bac_not_resetting(db, owner)
+            if kind == 'crew-chat' and event_scenario and db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind IN ('crew','prepare') AND status IN ('queued','running','waiting','stopping')",(owner,)).fetchone():
+                raise Problem('The event team is working. Wait for it to finish before messaging.',409)
             if kind == 'crew-chat' and role == 0 and db.execute(
                     "SELECT 1 FROM jobs WHERE owner=? AND kind='crew-chat' AND status IN ('queued','running','waiting','stopping') AND json_type(payload,'$.collaboration')='object' LIMIT 1", (owner,)).fetchone():
                 raise Problem('Casey is coordinating the current plan. Wait for it to finish or stop it before sending a new message.', 409)
@@ -977,7 +991,8 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
         account = db.execute('SELECT participant FROM agents WHERE id=?', (owner,)).fetchone()
         if not account:
             raise Problem('Agent not found.', 404)
-        saved = db.execute('SELECT value FROM metadata WHERE key=?', ('crew-chat-reset:' + account['participant'],)).fetchone()
+        saved = db.execute("SELECT value FROM metadata WHERE key IN (?,?) ORDER BY CAST(json_extract(value,'$.at') AS REAL) DESC LIMIT 1",
+                           ('crew-chat-reset:'+owner,'crew-chat-reset:'+account['participant'])).fetchone()
         return json.loads(saved['value']) if saved else {'at': 0, 'epoch': ''}
 
     def reset_crew_chats(self, owner, reset_event=False, *, pending_only=False):
@@ -991,11 +1006,13 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
             account = db.execute('SELECT participant FROM agents WHERE id=?', (owner,)).fetchone()
             if not account:
                 raise Problem('Agent not found.', 404)
-            owners = [r['id'] for r in db.execute('SELECT id FROM agents WHERE participant=?', (account['participant'],))]
+            scoped = bool(db.execute('SELECT 1 FROM crew_contexts WHERE owner=?',(owner,)).fetchone())
+            owners = [owner] if scoped else [r['id'] for r in db.execute('SELECT id FROM agents WHERE participant=?', (account['participant'],))]
             slots = ','.join('?' for _ in owners)
             kinds = "('crew','crew-chat','prepare')" if reset_event else "('crew','crew-chat')"
             active = db.execute("SELECT id,status FROM jobs WHERE owner IN (" + slots + ") AND kind IN " + kinds + " AND status IN ('queued','running','waiting','stopping')", owners).fetchall()
-            pending_key = 'bac-reset-pending:' + account['participant']
+            reset_scope = owner if scoped else account['participant']
+            pending_key = 'bac-reset-pending:' + reset_scope
             if pending_only and not db.execute('SELECT 1 FROM metadata WHERE key=?',(pending_key,)).fetchone():
                 return {'reset':True}
             if reset_event:
@@ -1013,7 +1030,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
                 raise Problem('Finish or stop the active BaC work before resetting. Nothing was reset.', 409)
             if reset_event:
                 # Only explicitly owned team workspaces; personal artifacts and uploads survive.
-                teams = [r['owner'] for r in db.execute('SELECT owner FROM crew_contexts WHERE participant=?', (account['participant'],))]
+                teams = [owner] if scoped else [r['owner'] for r in db.execute('SELECT owner FROM crew_contexts WHERE participant=?', (account['participant'],))]
                 workspaces = {self.workspace(team) for team in teams}
                 for team in teams:
                     workspaces.update(self.workspace(team, role) for role in range(len(ROLES)))
@@ -1038,16 +1055,16 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
             reset = {'at': time.time(), 'epoch': secrets.token_hex(12)}
             removed = db.execute("DELETE FROM jobs WHERE owner IN (" + slots + ") AND kind='crew-chat'", owners).rowcount
             db.execute('INSERT OR REPLACE INTO metadata (key,value) VALUES (?,?)',
-                       ('crew-chat-reset:' + account['participant'], json.dumps(reset)))
+                       ('crew-chat-reset:' + reset_scope, json.dumps(reset)))
             if reset_event:
                 db.execute('INSERT OR REPLACE INTO metadata (key,value) VALUES (?,?)',
-                           ('event-board-reset:' + account['participant'], str(reset['at'])))
+                           ('event-board-reset:' + reset_scope, str(reset['at'])))
                 db.execute("DELETE FROM jobs WHERE owner IN (" + slots + ") AND kind='prepare'", owners)
         return {'reset': True, 'removed': removed, 'crewChatReset': reset}
 
     def finish_pending_bac_resets(self):
         with self.db() as db:
-            pending = db.execute("SELECT a.id FROM metadata m JOIN agents a ON m.key='bac-reset-pending:'||a.participant GROUP BY a.participant").fetchall()
+            pending = db.execute("SELECT DISTINCT a.id FROM metadata m JOIN agents a ON m.value=a.id WHERE m.key LIKE 'bac-reset-pending:%'").fetchall()
         for row in pending:
             try:
                 self.reset_crew_chats(row['id'], reset_event=True, pending_only=True)
@@ -1055,7 +1072,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
                 if error.status != 404:raise
 
     def require_bac_not_resetting(self, db, owner):
-        if db.execute("SELECT 1 FROM metadata m JOIN agents a ON m.key='bac-reset-pending:'||a.participant WHERE a.id=?",(owner,)).fetchone():
+        if db.execute("SELECT 1 FROM metadata m JOIN agents a ON (m.key='bac-reset-pending:'||a.participant OR m.key='bac-reset-pending:'||a.id) WHERE a.id=?",(owner,)).fetchone():
             raise Problem('BaC is stopping its current work and resetting. Please wait.',409)
 
     def reset_board(self, owner):
@@ -1186,8 +1203,10 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
             return self.collaboration_plan(row, payload)
         if row['kind'] == 'crew-chat':
             return self.crew_chat(row, payload)
-        if row['kind'] in ('crew', 'prepare'):
-            raise Problem('Event planning has been retired. Send /plan to Casey instead.', 410)
+        if row['kind'] == 'crew':
+            return self.crew(row, payload)
+        if row['kind'] == 'prepare':
+            return self.prepare_demo_run(row, payload)
         if profile.get('protection') == 'openshell':
             self.event(job_id, 'Preparing OpenShell', 'Checking the protected runtime and agent sandbox configuration.')
         agent_id = self.ensure_agent(owner, profile)
@@ -1246,7 +1265,8 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
             member = self.crew_roster(db, owner, {}, preset=True)[role]
             reset = self.crew_chat_reset_state(db, owner)
             current_event = db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind='crew' AND created>=?", (owner, reset['at'])).fetchone()
-        member['purpose'] = CREW_CATALOG[role]['collaboration']['description']
+        event_scenario = self.crew_scenario(owner) == 'event-brief'
+        member['purpose'] = CREW_CATALOG[role]['description'] if event_scenario else CREW_CATALOG[role]['collaboration']['description']
         agent_id = member['id']
         report = self.prepare_builtin_crew(owner, role, member)
         if report:

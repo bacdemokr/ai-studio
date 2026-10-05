@@ -1,5 +1,5 @@
 // Each specialist has a durable direct conversation, separate from crew execution.
-const defaultCrewPrompt=role=>role===0?'/plan ':'';
+const defaultCrewPrompt=role=>selectedScenario==='plan'&&role===0?'/plan ':'';
 const crewDrafts=new Map();let crewChatKey='',crewChatSignature='',crewChatSending=false,crewResetEpoch='';
 // Shared by Lounge, crew chat, event replies and roundtable reactions.
 function customSkillMarkup(activity){
@@ -25,12 +25,13 @@ function webpageButtons(files,jobId){
 }
 root.addEventListener('click',event=>{const page=event.target.closest('[data-preview-file]');if(page)openFile(page.dataset.previewFile,page.dataset.previewJob);});
 // The latest saved plan owns the visible team, including after a refresh.
-function stageCollaboration(job){
- render();
- showCollaboration();
+async function stageCollaboration(job){
+ if(selectedScenario!=='plan')await chooseScenario('plan');
+ scenarioChoosing=false;render();showCollaboration();scenarioChoosing=false;renderRoomVisibility();
 }
 // Keep this visit’s chosen team visible until a newer plan or reset.
 function currentCollaboration(){
+ if(selectedScenario!=='plan')return null;
  const latest=(data.crewChats||[]).filter(j=>j.payload.collaboration&&j.created>=(data.crewChatReset?.at||0)).sort((a,b)=>b.created-a.created)[0];
  return latest||null;
 }
@@ -57,7 +58,7 @@ teamModelDialog.innerHTML='<header><div><h3 id="team-model-heading">Choose a mod
 let modelPickerRole=0,modelPickerSaving=false,modelPickerDraft=null,modelPickerOwner=null,modelPickerForm=null,modelPickerSettingsScroll=0;
 function syncTeamModelForm(){
  const form=el('team-config-form');if(!form)return;
- const blocked=modelPickerSaving||!runtime.teamModel||data.bacResetting||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
+ const blocked=modelPickerSaving||!runtime.teamModel||data.bacResetting||(selectedScenario==='event-brief'&&data.scenarios?.find(s=>s.id==='event-brief')?.busy)||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
  for(const trigger of form.querySelectorAll('[data-team-model]')){
   const role=Number(trigger.dataset.teamModel),draft=teamModelDrafts.get(role);
   const model=draft?(runtime.teamModels||[]).find(m=>m.id===draft):teamModel(role);
@@ -271,6 +272,7 @@ function updateMissionControlTrace(lanes,jobId,markup){
  lanes.dataset.traceJob=jobId;lanes._traceMarkup=markup;
 }
 function renderMissionControl(){
+ if(selectedScenario==='event-brief')return;
  const job=missionControlPlan(),intro=el('board').querySelector('.studio-board-intro');
  el('lanes').classList.toggle('studio-plan-control',!!job);
  el('board').classList.toggle('has-plan',!!job);
@@ -372,21 +374,23 @@ for(const type of ['dragover','drop'])el('crew-chat').addEventListener(type,even
 function syncCrewComposer(){
  const captainPlanning=selectedCrewRole===0&&(data.crewChats||[]).some(j=>j.payload?.collaboration&&['queued','running','waiting','stopping'].includes(j.status));
  const memberWorking=(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status)&&(j.payload?.collaboration?(['running','stopping'].includes(j.status)&&j.payload.collaboration.activeRole===selectedCrewRole):j.payload?.crewRole===selectedCrewRole));
- const blocked=!teamReady()||!!data.bacResetting||captainPlanning||memberWorking||crewDocumentUpload;
- el('crew-document-add').hidden=selectedCrewRole!==0;el('crew-document-add').disabled=blocked;
+ const eventWorking=selectedScenario==='event-brief'&&[...(data.jobs||[]),...(data.preparation?[data.preparation]:[])].some(j=>['crew','prepare'].includes(j.kind)&&['queued','running','waiting','stopping'].includes(j.status));
+ const blocked=scenarioChoosing||scenarioSwitching||!teamReady()||!!data.bacResetting||captainPlanning||memberWorking||eventWorking||crewDocumentUpload;
+ el('crew-document-add').hidden=selectedCrewRole!==0||selectedScenario==='event-brief';el('crew-document-add').disabled=blocked;
  renderCrewDocuments();
  const commandOnly=/^\s*\/plans?\s*$/i.test(el('crew-prompt').value);
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending||commandOnly;
  el('crew-chat-connection').hidden=!blocked;
- el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping BaC work and resetting…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(runtime.teamModel??runtime.model)?'Add your key to api.cfg, then run ./bac start.':'Run ./bac start on this computer to connect the team runtime.';
+ el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping BaC work and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(runtime.teamModel??runtime.model)?'Add your key to api.cfg, then run ./bac start.':'Run ./bac start on this computer to connect the team runtime.';
 }
 function renderCrewPassport(){
- const epoch=data.crewChatReset?.epoch||'';
+ const epoch=selectedScenario+':'+(data.crewChatReset?.epoch||'');
  if(epoch!==crewResetEpoch){
-  crewResetEpoch=epoch;crewDrafts.clear();crewChatKey='';crewChatSignature='';el('crew-prompt').value=defaultCrewPrompt(selectedCrewRole);
-  for(const key of chatImageDrafts.keys())if(key.includes(':crew:'))chatImageDrafts.delete(key);
+  const resetChanged=crewResetEpoch.split(':')[0]===selectedScenario;crewResetEpoch=epoch;if(resetChanged)for(const key of crewDrafts.keys())if(key.startsWith(selectedScenario+':'))crewDrafts.delete(key);crewChatKey='';crewChatSignature='';el('crew-prompt').value=defaultCrewPrompt(selectedCrewRole);
+  for(const key of chatImageDrafts.keys())if(key.includes(':crew:')&&key.includes(':'+selectedScenario+':'))chatImageDrafts.delete(key);
  }
  if(room!=='mission')return;
+ if(selectedScenario==='event-brief')return renderEventCrewPassport();
  const i=selectedCrewRole,name=defaultNames[i],role=window.BacCrewCatalog[i].collaboration.title;
  const avatar=window.BacCampus?.inspect().crewAvatars?.[i]||{};
  el('crew-number').textContent=String(i+1).padStart(2,'0')+' / '+roles.length;
@@ -398,7 +402,7 @@ function renderCrewPassport(){
  el('crew-policy').hidden=window.BacCrewCatalog[i].protection!=='openshell';
  syncPolicyBadges();
  const markup=skills.map(s=>'<span>'+escape(skillLabels[s]||s)+'</span>').join('');if(el('crew-skills').innerHTML!==markup)el('crew-skills').innerHTML=markup;
- const key=agentId+':'+i,switched=key!==crewChatKey;
+ const key=crewDraftKey(i),switched=key!==crewChatKey;
  if(switched){if(crewChatKey)crewDrafts.set(crewChatKey,el('crew-prompt').value);crewChatKey=key;el('crew-prompt').value=crewDrafts.get(key)??defaultCrewPrompt(i);el('crew-chat-error').hidden=true;}
  renderImageDrafts(true);
  el('crew-prompt').placeholder='Message '+name+'…'+(i===0?' or /plan a task with the BaC team':'');
@@ -423,7 +427,7 @@ function renderCrewPassport(){
 el('crew-policy').onclick=()=>openPolicy(selectedCrewRole);
 el('crew-chat').onsubmit=async e=>{
  e.preventDefault();syncCrewComposer();if(el('crew-send').disabled)return;
- const owner=agentId,index=selectedCrewRole,key=owner+':'+index,draft=captureChatDraft(true);
+ const owner=agentId,index=selectedCrewRole,key=crewDraftKey(index),draft=captureChatDraft(true);
  let requestPrompt=draft.prompt;
  if(index===0){const docs=renderCrewDocuments();if(docs.length)requestPrompt+='\n\nAttached documents (use these files):\n'+docs.map(f=>f.path.slice(6)).join('\n');}
  crewChatSending=true;syncCrewComposer();el('crew-chat-error').hidden=true;

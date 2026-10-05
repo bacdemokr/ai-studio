@@ -1,0 +1,27 @@
+#studio-scenarios{grid-column:1/-1;align-self:center;width:min(980px,calc(100% - 80px));margin:40px auto;padding:36px 0;color:#e9f1f5;z-index:8}
+#studio-scenarios .scenario-heading{margin-bottom:32px}
+#studio-scenarios .studio-kicker{color:#a7d774;letter-spacing:.18em;font-size:12px}
+#studio-scenarios h2{font-size:34px;letter-spacing:-.025em;margin:10px 0}
+#studio-scenarios .scenario-heading p{color:#9fb1bc;font-size:16px;margin:0}
+.scenario-cards{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+#agent-campus .scenario-card{display:flex;flex-direction:column;align-items:flex-start;text-align:left;color:#e9f1f5;padding:30px;border:1px solid #354c59;border-radius:20px;background:linear-gradient(145deg,#1b2e39,#101e28);font:inherit;cursor:pointer;box-shadow:0 18px 45px #0003;transition:border-color .16s,transform .16s,background .16s}
+#agent-campus .scenario-card:hover{transform:translateY(-3px);border-color:#8ab949;background:linear-gradient(145deg,#253a35,#14242e)}
+#agent-campus .scenario-card:focus-visible{outline:3px solid #9cce66;outline-offset:5px}
+#agent-campus .scenario-card:disabled{opacity:.55;cursor:wait;transform:none}
+.scenario-icon{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:#97c86518;color:#b2de80;font-size:26px;margin-bottom:26px;border:1px solid #93c55840}
+.scenario-card small{font-size:12px;letter-spacing:.07em;color:#acc0cc}
+#agent-campus .scenario-card h3{font-size:28px;margin:8px 0 12px;letter-spacing:-.025em}
+.scenario-card p{font-size:16px;line-height:1.65;color:#bbcad2;margin:0 0 28px;max-width:36ch}
+.scenario-team{font-size:12px;color:#91a7b4;margin-top:auto;padding-bottom:22px}
+.scenario-card-footer{display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px;border-top:1px solid #34505b;padding-top:20px}
+.scenario-card-footer strong{font-size:15px;color:#c8e9a8}
+.scenario-saved{font-size:12px;color:#9fb9c4}
+#agent-campus[data-scenario-choosing=true] .campus-layout{position:relative;grid-template-columns:1fr!important;background:#0e1922}
+#agent-campus[data-scenario-choosing=true] .campus-stage{display:none!important}
+#agent-campus[data-scenario-choosing=true] #studio-crew-passport{display:none!important}
+#agent-campus .studio-scenario-back{font-size:12px;min-height:34px;flex-basis:100%;text-align:left;border-color:transparent;background:transparent;color:#a9bdc8;padding:4px 0}
+
+#agent-campus[data-scenario-choosing=true] .campus-layout{min-height:740px}
+#agent-campus .scenario-return{background:transparent;border-color:transparent;color:#a9bdc8;padding:0;margin:0 0 38px;font-size:13px}
+#agent-campus.studio-world-open[data-scenario-choosing=true] .campus-layout.world-expanded{display:grid;grid-template-columns:1fr!important;grid-template-rows:1fr!important;overflow:auto}
+#agent-campus[data-scenario-choosing=true] #studio-scenarios{grid-row:1;min-height:0}

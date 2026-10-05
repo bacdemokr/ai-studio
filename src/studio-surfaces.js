@@ -26,7 +26,7 @@ const surfaceDefinitions={
   control:{title:'Mission Control',ids:['board']},
   deliverables:{title:'Results',ids:['plan-results']}
 };
-for(const id of ['board','workspace','experiences','policy-panel','connections'])surfaceStore.append(el(id));
+for(const id of ['event-package','board','workspace','experiences','policy-panel','connections'])surfaceStore.append(el(id));
 el('passport').prepend(el('collection'));
 el('collection-note').hidden=true;
 const loungeActions=document.createElement('div');loungeActions.className='studio-panel-actions';loungeActions.innerHTML='<button type="button" class="studio-secondary" id="studio-compare-open" data-surface="compare" hidden>Compare replies</button>';
@@ -75,8 +75,10 @@ function syncSurface(){
   teamResetButton.disabled=!!data.bacResetting||removingAgent;
   const plan=currentCollaboration();
   syncTeamTotalTime();
-  resultsButton.hidden=!plan;
-  if(activeSurface==='deliverables')renderPlanResults(plan);
+  standbyPanel.hidden=selectedScenario==='event-brief';
+  const event=crewMission();resultsButton.hidden=selectedScenario==='event-brief'?!event:!plan;
+  surfaceDefinitions.deliverables.ids=selectedScenario==='event-brief'?['event-package']:['plan-results'];
+  if(activeSurface==='deliverables'){if(selectedScenario==='event-brief')renderEventPackage();else renderPlanResults(plan);}
   el('compare-open').hidden=!comparison;
   if(!activeSurface)return;
   for(const id of surfaceDefinitions[activeSurface].ids){
@@ -92,6 +94,7 @@ surfaceDialog.addEventListener('close',()=>{
   el('policy-panel').open=false;clearTimeout(policyRefreshTimer);policyRefreshTimer=null;activeSurface=null;board=false;
 });
 function openSurface(name,contribution='all'){
+  if(name==='deliverables'&&selectedScenario==='event-brief')selectEventContribution(contribution);
   const definition=surfaceDefinitions[name];if(!definition)return;
   if(name!=='policies'){el('policy-panel').open=false;clearTimeout(policyRefreshTimer);policyRefreshTimer=null;}
   el('mission-skill-notice')?.remove();

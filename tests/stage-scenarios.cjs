@@ -1,0 +1,35 @@
+// Runs against an explicitly disposable fixture server, never the user's preview.
+const assert=require('node:assert/strict'),{chromium}=require('playwright');
+(async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});try{
+ const page=await browser.newPage({viewport:{width:1500,height:1000}}),errors=[];page.on('pageerror',e=>{errors.push(e.message);console.log('PAGEERROR',e.message)});
+ await page.goto(process.env.BASE_URL||'http://127.0.0.1:8083');await page.waitForFunction(()=>window.BacStudio&&window.BacCampus?.inspect().navigation?.overview);
+ await page.evaluate(async()=>{const session=await (await fetch('/api/session')).json();await fetch('/api/onboard',{method:'POST',headers:{'Content-Type':'application/json','X-BaC-CSRF':session.csrf},body:JSON.stringify({name:'Scenario fixture guest',skills:['weather']})});await BacStudio.refresh();});
+ await page.locator('.world-campus-room[data-world-room=mission]').click();
+ await page.locator('#studio-scenarios').waitFor({state:'visible'});
+ const bounds=await page.locator('button[data-scenario=plan]').boundingBox();assert(bounds.y+bounds.height<1000,'Cards must fit desktop viewport');
+ await page.screenshot({path:'/tmp/stage3-selector.png'});
+ const choose=async id=>{if(!await page.locator('#studio-scenarios').isVisible())await page.locator('.studio-scenario-back').click();await page.locator('button[data-scenario="'+id+'"]').click();await page.locator('#studio-crew-passport').waitFor({state:'visible'});};
+ await choose('plan');assert.equal(await page.locator('#studio-crew-prompt').inputValue(),'/plan ');
+ await page.locator('#studio-crew-prompt').fill('plan hello');await page.locator('#studio-crew-send').click();await page.waitForFunction(()=>document.querySelector('#studio-crew-conversation').textContent.includes('Fixture reply'));
+ await page.locator('#studio-crew-prompt').fill('/plan keep this draft');
+ await choose('event-brief');assert.equal(await page.locator('#studio-crew-prompt').inputValue(),'');assert(!await page.locator('#studio-crew-conversation').textContent().then(s=>s.includes('plan hello')));
+ assert.equal(await page.locator('#studio-standby').isVisible(),false);
+ await page.locator('#studio-crew-prompt').fill('event hello');await page.locator('#studio-crew-send').click();await page.waitForFunction(()=>document.querySelector('#studio-crew-conversation').textContent.includes('Fixture reply: event hello'));
+ await page.locator('#studio-room-action').click();await page.waitForFunction(()=>document.querySelector('#studio-launch-event')&&!document.querySelector('#studio-launch-event').disabled);await page.locator('#studio-launch-event').click();
+ await page.waitForFunction(()=>document.querySelector('#studio-crew-conversation').textContent.includes('Morgan'));
+ await page.waitForFunction(()=>!document.querySelector('#studio-room-action').disabled,{},{timeout:30000});
+ await page.locator('button[data-surface=deliverables]').click();await page.locator('#studio-event-package .event-showcase-preview').waitFor({state:'visible'});
+ await page.screenshot({path:'/tmp/stage3-event-results.png'});await page.locator('#studio-surface-close').click();
+ await choose('plan');assert.equal(await page.locator('#studio-crew-prompt').inputValue(),'/plan keep this draft');assert((await page.locator('#studio-crew-conversation').textContent()).includes('plan hello'));assert(!(await page.locator('#studio-crew-conversation').textContent()).includes('event hello'));
+ await choose('event-brief');assert((await page.locator('#studio-crew-conversation').textContent()).includes('event hello'));
+ await page.locator('#studio-scenarios').evaluate(()=>{}); // Ensure switching didn't replace the selector node.
+ await page.locator('button[data-world-room=lounge]').first().click();await page.locator('button[data-world-room=mission]').first().click();await page.locator('#studio-scenarios').waitFor({state:'visible'});
+ assert((await page.locator('button[data-scenario=event-brief]').textContent()).includes('Continue'));
+ await choose('event-brief');await page.reload();await page.waitForFunction(()=>window.BacCampus?.inspect().navigation?.overview);await page.locator('.world-campus-room[data-world-room=mission]').click();await page.locator('#studio-scenarios').waitFor({state:'visible'});
+ assert((await page.locator('button[data-scenario=event-brief]').textContent()).includes('Continue'));
+ await choose('event-brief');assert((await page.locator('#studio-crew-conversation').textContent()).includes('event hello'));
+ await page.locator('#studio-bac-reset').click();await page.locator('#studio-team-reset-confirm').click();
+ await page.waitForFunction(()=>!document.querySelector('#studio-crew-conversation').textContent.includes('event hello'));
+ await choose('plan');assert((await page.locator('#studio-crew-conversation').textContent()).includes('plan hello'));
+ assert.deepEqual(errors,[]);console.log('PASS: desktop picker, direct chat/history and draft isolation, complete Event Brief results, repeated entry, reload/continue and scenario-only Reset.');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

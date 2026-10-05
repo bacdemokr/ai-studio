@@ -15,8 +15,13 @@
     memory:['Remember what matters','A preference → a saved note used next time','Try: remember my diet, then suggest a meal'],
     weather:['Live weather','A city → timestamped weather and a forecast','Try: choose a time for an outdoor break']
   };
-  const roles = window.BacCrewCatalog.map(({name,collaboration})=>[name,collaboration.title,collaboration.description]);
+  let roles = window.BacCrewCatalog.map(({name,collaboration})=>[name,collaboration.title,collaboration.description]);
   const defaultNames=roles.map(r=>r[0]);
+  let selectedScenario='plan',scenarioChoosing=true,scenarioSwitching=false;
+  try{const saved=sessionStorage.getItem('bac-stage3-scenario');if(['plan','event-brief'].includes(saved))selectedScenario=saved;}catch{}
+  function scenarioRoles(){roles=window.BacCrewCatalog.map(member=>[member.name,...(selectedScenario==='event-brief'?[member.role,member.description]:[member.collaboration.title,member.collaboration.description])]);}
+  function crewDraftKey(role){return selectedScenario+':'+agentId+':'+role;}
+  scenarioRoles();
   const personaLabels={guide:'Helper',maker:'Creator',analyst:'Researcher'};
   function toneSummary(profile){
     const custom=(profile.tonePrompt||'').trim().replace(/\s+/g,' ');
@@ -80,8 +85,8 @@
     // Presence renewals belong to the tab, not an editable agent workspace.
     const workspaceWrite=payload!==undefined&&path!=='credential-session';
     if(workspaceWrite&&changingAgent)throw new Error('Wait for your agent’s workspace to open.');
-    const headers={'X-BaC-Key-Session':credentialSession,...(target?{'X-BaC-Agent':target}:{})};
-    const conditional=path==='state'&&payload===undefined,cached=conditional?stateCache.get(target):null;
+    const headers={'X-BaC-Scenario':selectedScenario,'X-BaC-Key-Session':credentialSession,...(target?{'X-BaC-Agent':target}:{})};
+    const cacheKey=selectedScenario+':'+target,conditional=path==='state'&&payload===undefined,cached=conditional?stateCache.get(cacheKey):null;
     if(cached)headers['If-None-Match']=cached.etag;
     const options = payload===undefined ? {headers} : {method:'POST',headers:{...headers,'Content-Type':'application/json','X-BaC-CSRF':csrf},body:JSON.stringify(payload)};
     const readTimeout=payload===undefined?(['session','state'].includes(path)?30000:/^(?:agent-policy|crew-policy)(?:\?|$)/.test(path)?45000:0):0;
@@ -97,7 +102,7 @@
     try {result=await response.json();} catch {if(controller?.signal.aborted)throw new Error('The studio took too long to respond. Please try again.');throw new Error('The app server did not return a valid response. Refresh after updating the app.');}
     if(!response.ok){const error=new Error(result.error||'The request could not be completed.');error.status=response.status;throw error;}
     if(conditional&&response.headers.get('ETag')){
-      stateCache.set(target,{etag:response.headers.get('ETag'),value:result});
+      stateCache.set(cacheKey,{etag:response.headers.get('ETag'),value:result});
       if(stateCache.size>16)stateCache.delete(stateCache.keys().next().value);
     }
     return result;
@@ -226,6 +231,7 @@
   }
   el('assigned-crew').onclick=async()=>{const a=data.assignments?.[0];if(!a)return;await switchAgent(a.lead);if(agentId===a.lead){selectedJob=a.job;render();showBoard(true);}};
   function renderCrew(){
+    if(selectedScenario==='event-brief')return renderEventCrew();
     window.BacSound?.observeJobs(agentId,data.jobs);
     renderMissionControl();
     const active=room==='mission'?null:data.jobs.find(j=>['running','stopping'].includes(j.status))||data.jobs.find(j=>j.status==='waiting');
@@ -271,11 +277,14 @@
   el('schedule').onclick=()=>{dialog('PERSISTENT FOLLOW-UP',`<h3>Give it something to come back to.</h3><p>The app keeps this task across refreshes and app restarts. It runs through OpenClaw when due; the result appears in this workspace. The server must stay on.</p><form id="studio-schedule-form"><label for="studio-followup">Task</label><textarea id="studio-followup" rows="3" required>Read my saved preferences and suggest one useful next task for me to try.</textarea><label for="studio-delay">Run in</label><select id="studio-delay"><option value="60">1 minute · demo</option><option value="300">5 minutes</option><option value="3600">1 hour</option></select><div class="studio-dialog-actions"><button class="studio-primary">Schedule follow-up</button></div></form>`);el('schedule-form').onsubmit=async e=>{e.preventDefault();try{const job=await api('jobs',{kind:'reminder',prompt:el('followup').value,delay:Number(el('delay').value)});selectedJob=job.id;el('dialog').close();await refresh();}catch(error){alert(error.message);}};};
   /* STUDIO_JSON */
   function downloadBytes(content,mime,name){const url=URL.createObjectURL(new Blob([content],{type:mime})),link=document.createElement('a');link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-  root.addEventListener('bac:world-skill',async e=>{const id=e.detail;if(id==='crew'){setRoom('mission');el('crew-prompt').focus();}else if(id==='security')securityLab();else if(id==='runtime')setup();else{el('missions').querySelector('[data-studio-mission="'+id+'"]')?.click();}});
+  root.addEventListener('bac:world-skill',async e=>{const id=e.detail;if(id==='crew'){setRoom('mission');if(!scenarioChoosing)el('crew-prompt').focus();}else if(id==='security')securityLab();else if(id==='runtime')setup();else{el('missions').querySelector('[data-studio-mission="'+id+'"]')?.click();}});
   /* STUDIO_WORLD */
   /* STUDIO_TELEMETRY */
   /* STUDIO_POLICIES */
+  /* STUDIO_EVENTS */
+  /* STUDIO_EVENT-TEAM */
   /* STUDIO_SURFACES */
+  /* STUDIO_SCENARIOS */
   /* STUDIO_CHAT */
   /* STUDIO_ROOMS */
   /* STUDIO_IDENTITY */

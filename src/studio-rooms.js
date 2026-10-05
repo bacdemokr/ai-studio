@@ -64,7 +64,8 @@ function setRoom(next,options={}){
   const openPolicies=next==='policies';if(openPolicies)next='lounge';
   if(!roomCopy[next])return;
   const before=options.fromWorld&&!worldOpen?worldViewport.getBoundingClientRect().top:null;
-  if(next!==room)closeSurface();
+  if(next!==room){closeSurface();if(next==='mission'&&!options.resume)scenarioChoosing=true;}
+  if(next!=='mission')scenarioChoosing=true;
   editingInPlace=false;room=next;if(next!=='mission')board=false;
   root.dataset.room=next;worldViewport.setAttribute('aria-label',roomCopy[next]+'. Drag to orbit, scroll to zoom. Press Enter to toggle full screen.');if(roomsReady)try{sessionStorage.setItem('bac-studio-room',next);}catch{}
   if(next==='mission')renderCrew();renderRoomVisibility();window.BacCampus?.setRoom(next,{instant:!roomsReady});
@@ -75,12 +76,13 @@ function renderRoomVisibility(){
   if(el('compare'))el('compare').hidden=room!=='lounge'||!comparison;
   syncComposer();
   const workshop=room==='workshop',lounge=room==='lounge',mission=room==='mission';
-  el('workshop').hidden=!(workshop||editingInPlace);el('passport').hidden=!lounge||editingInPlace;el('crew-passport').hidden=!mission;el('connections').hidden=!workshop;el('policies').hidden=false;el('policy-panel').hidden=!lounge;
+  el('workshop').hidden=!(workshop||editingInPlace);el('passport').hidden=!lounge||editingInPlace;el('crew-passport').hidden=!mission||scenarioChoosing;el('connections').hidden=!workshop;el('policies').hidden=false;el('policy-panel').hidden=!lounge;
   el('collection').hidden=!lounge||!data.profile;
   layout.hidden=false;el('board').hidden=true;
   el('experiences').hidden=!lounge;el('workspace').hidden=workshop||(mission?!currentCollaboration():(!current()&&!data.files?.length));el('safety-bar').hidden=true;
-  const action=el('room-action');action.hidden=true;
-  document.getElementById('campus-roster').hidden=!mission;
+  const action=el('room-action');action.hidden=!mission||selectedScenario!=='event-brief';action.textContent='Plan an event';action.onclick=crewForm;action.disabled=!!data.bacResetting||data.scenarios?.find(s=>s.id==='event-brief')?.busy;
+  document.getElementById('campus-roster').hidden=!mission||scenarioChoosing;
+  renderScenarioSelector();
   document.getElementById('campus-location').textContent=workshop?'HIRING / MEET YOUR NEXT AGENT':lounge?'LOUNGE / Current Agents: '+(data.agents?.length||0):'Multi-Agent demo';
   syncSurface();
   if(workshop)document.getElementById('campus-motion-status').textContent='';

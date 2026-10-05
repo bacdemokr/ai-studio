@@ -132,11 +132,15 @@ Keyless local servers need no API key. Provider keys entered in these settings a
 
 1. **Hiring:** choose a character, role, tone, and skills.
 2. **Agent lounge:** chat with a hired agent, inspect files, or approve OpenShell access.
-3. **Multi-Agent demo:** message Casey or use `/plan` with a concrete task. Add documents when needed. Casey selects the specialists needed for the request.
+3. **Multi-Agent demo:** choose **Event Brief** or **Plan**. The scenario picker appears each time you enter Stage 3. Cards show **Continue** when previous work is available. **Scenarios** returns to the picker without clearing either workspace.
+
+**Event Brief** restores the fixed Casey, Dylan, Alex and Morgan crew. Open **Plan an event**, enter event details, prepare the crew, and launch. The team produces researched demo ideas, an operations timetable and an event webpage. Dylan retains his OpenShell protection.
+
+**Plan** uses the Zurich collaboration flow: message Casey with `/plan` and a concrete task, optionally attaching documents. Casey selects the needed specialists. Each scenario has its own team identities, chat history, model selections, documents and results. They share the Stage 3 API connection and hired-agent collection. Choosing another scenario does not cancel active work.
 
 Casey's chat starts with `/plan ` and restores it after a successful send. Delete the prefix to send a direct message. Specialists accept direct messages only, without `/plan` hints or suggestions; send team tasks to Casey. Their inputs start empty and clear after sending; existing drafts stay intact when switching characters.
 
-The room starts with Casey. The selected specialists join together and execute in assignment order. The pool is Scout (Web Researcher), Ada (Data analyst), Iris (UX designer), Cody (Programmer), and Vera (Reviewer). The old Plan a BaC event-template flow and Dylan, Alex, and Morgan are retired. Coding tasks prioritize a compact, usable desktop demo: no mobile layouts or touch controls, no optional polish loops, and no extra design pass unless needed. Cody aims to save the core implementation in one pass and returns once required work is delivered. Explicitly requested independent review is still required. Casey reserves a repair for an observed defect, not a repeated save/read confirmation.
+The room starts with Casey. The selected specialists join together and execute in assignment order. The pool is Scout (Web Researcher), Ada (Data analyst), Iris (UX designer), Cody (Programmer), and Vera (Reviewer). Dylan, Alex and Morgan appear only in Event Brief; they are not in the Plan specialist pool. Coding tasks prioritize a compact, usable desktop demo: no mobile layouts or touch controls, no optional polish loops, and no extra design pass unless needed. Cody aims to save the core implementation in one pass and returns once required work is delivered. Explicitly requested independent review is still required. Casey reserves a repair for an observed defect, not a repeated save/read confirmation.
 
 **Mission Control** shows assignments, expected results, contributions, and Casey’s decisions in execution order. **Results** shows the current plan’s response and saved files, with previews for generated HTML pages. While a plan is running, Casey’s composer and the working specialist’s composer are disabled. Stop immediately shows a pending state and prevents duplicate clicks while cancellation is being sent; an in-flight runtime call may still need to settle. Partial and failed work remains visible rather than being presented as complete.
 
@@ -149,7 +153,7 @@ attached CSV. Use only the supplied data and include a clear comparison chart.
 
 **Heartbeat:** hire **Tech Radar** to share one previously unshared technical article every 30 seconds, with a source link. Pause or resume in the agent panel. Tech Radar is automatic-only: manual chat and attachments are disabled, and group chat requests exclude it. [Heartbeat and Telegram details](docs/heartbeat.md).
 
-**Settings → Location** sets the default city (Zurich). **Settings → Reset** offers **Remove agents** for Stages 1 & 2, **Reset Stage 3** for team work and data, and **Reset all** for both. Reset all stops and clears Stage 3 before removing hired agents; model and connection settings are preserved. The **Reset button beside Mission Control** stops active Stage 3 work and clears team chats, plan files, and attached team documents after confirmation; personal agents and model settings are preserved. **Settings → Telegram** optionally relays new Heartbeat summaries while the connected tab stays open.
+**Settings → Location** sets the default city (Zurich). **Settings → Reset** offers **Remove agents** for Stages 1 & 2, **Reset scenario** for the selected Stage 3 scenario, and **Reset all** for both. Reset all stops and clears both Stage 3 scenarios before removing hired agents; model and connection settings are preserved. The **Reset button beside Mission Control** stops work and clears data only in the selected scenario after confirmation; the other scenario, personal agents and model settings are preserved. **Settings → Telegram** optionally relays new Heartbeat summaries while the connected tab stays open.
 
 ### Review and bounded rework
 
@@ -203,3 +207,7 @@ Use normal Git commands to update your checkout. Resolve local changes or diverg
 `remove` asks you to type `remove` once. It deletes BaC containers, data, shared files, backups, recorded project images, local settings, and `api.cfg`. A source checkout keeps its code; an installed release folder is removed. Other projects and your model server remain.
 
 [Setup & troubleshooting](docs/docker-setup.md) · [Model settings](docs/runtime-settings.md) · [Development & tests](docs/development.md)
+
+### Scenario preview provenance
+
+This preview starts from the frozen Zurich snapshot (`feba7df`). The viewport improvements, room information guides and side-by-side agent definition viewer adapt Benjamin Bayart’s contributions (`ee717f3`, `8993a20`, `09b4794`, `3c54aba`); the Stage 3 picker also takes inspiration from his scenario cards. The fixed Event Brief workflow is restored from `archive/bac-planning` (`94198b6`). Startup retains the overview and does not delete agents. There is no `./bac restart` command. Existing Zurich team ownership migrates to Plan without changing native identities; Event Brief creates a separate team when first used.

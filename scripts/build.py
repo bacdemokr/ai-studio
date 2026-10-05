@@ -25,7 +25,7 @@ fragment = (ROOT / 'src/bac-planner.html').read_text(encoding='utf-8')
 crew_catalog = json.loads((ROOT / 'src/crew-catalog.json').read_text(encoding='utf-8'))
 fragment = fragment.replace('/* CREW_CATALOG */', json.dumps(crew_catalog).replace('</', '<\\/'))
 campus = (ROOT / 'src/campus.html').read_text(encoding='utf-8')
-studio = (ROOT / 'src/studio.html').read_text(encoding='utf-8').replace('/* STUDIO_CSS */', (ROOT / 'src/studio.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-rooms.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-sound.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-artifacts.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-controls.css').read_text(encoding='utf-8'))
+studio = (ROOT / 'src/studio.html').read_text(encoding='utf-8').replace('/* STUDIO_CSS */', (ROOT / 'src/studio.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-rooms.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-sound.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-artifacts.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-controls.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-events.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'src/studio-scenarios.css').read_text(encoding='utf-8'))
 campus = campus.replace('<div class="campus-layout">', studio + '\n<div class="campus-layout">')
 campus = campus.replace('/* CAMPUS_CSS */', (ROOT / 'src/campus.css').read_text(encoding='utf-8'))
 fragment = fragment.replace('<!-- AGENT_CAMPUS -->', campus)
@@ -41,7 +41,7 @@ fragment = fragment.replace('<!-- CAMPUS_SCRIPT -->', '<script>' + campus_js.rep
 studio_js = (ROOT / 'src/studio.js').read_text(encoding='utf-8')
 # Keep assembly explicit and fail on missing/duplicate include markers.
 for module in ('json', 'compare', 'settings', 'crew', 'telemetry',
-               'world', 'surfaces', 'chat', 'rooms', 'identity', 'safety', 'policies'):
+               'events', 'event-team', 'scenarios', 'world', 'surfaces', 'chat', 'rooms', 'identity', 'safety', 'policies'):
     marker = '/* STUDIO_' + module.upper() + ' */'
     if studio_js.count(marker) != 1:
         raise ValueError('Expected one include marker: ' + marker)

@@ -76,11 +76,11 @@ function restorePersonalDraft(next,agents){
  for(const owner of personalDrafts.keys())if(!live.has(owner))personalDrafts.delete(owner);
  el('prompt').value=personalDrafts.get(next)||'';
 }
-const imageKey=crew=>agentId+(crew?':crew:'+selectedCrewRole:':personal');
+const imageKey=crew=>agentId+(crew?':crew:'+selectedScenario+':'+selectedCrewRole:':personal');
 function pendingImages(crew=false){return chatImageDrafts.get(imageKey(crew))||[];}
 function clearChatImages(crew=false){chatImageDrafts.delete(imageKey(crew));renderImageDrafts(crew);}
 // Acknowledgement clears only the submitted draft, not later typing or attachments.
-function captureChatDraft(crew=false){return {crew,crewRole:selectedCrewRole,key:imageKey(crew),roleKey:agentId+':'+selectedCrewRole,prompt:el((crew?'crew-':'')+'prompt').value,images:pendingImages(crew).slice()};}
+function captureChatDraft(crew=false){return {crew,crewRole:selectedCrewRole,key:imageKey(crew),roleKey:crewDraftKey(selectedCrewRole),prompt:el((crew?'crew-':'')+'prompt').value,images:pendingImages(crew).slice()};}
 function acknowledgeChatDraft(draft){
  const current=imageKey(draft.crew)===draft.key;
  if(current){const input=el((draft.crew?'crew-':'')+'prompt');if(input.value===draft.prompt)input.value=draft.crew?defaultCrewPrompt(draft.crewRole):'';if(draft.crew)crewDrafts.set(draft.roleKey,input.value);}

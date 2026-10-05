@@ -37,7 +37,7 @@ settingsButton.onclick=async()=>{
   <p id="studio-telegram-status" role="status" hidden></p><div id="studio-telegram-controls" hidden><div class="studio-dialog-actions"><button type="button" id="studio-telegram-test" class="studio-secondary">Send test</button><button type="button" id="studio-telegram-disconnect" class="studio-secondary">Disconnect</button></div></div></section>
   <section id="studio-settings-reset-panel" role="tabpanel" aria-labelledby="studio-settings-reset-tab" class="studio-agent-reset" hidden>
    <div class="studio-reset-row"><div><small class="studio-reset-stage">STAGES 01 / 02</small><h3>Hiring &amp; Agent lounge</h3><p>Remove hired agents and their chats, files, and workspaces.</p></div><button type="button" id="studio-agent-reset" class="studio-secondary" aria-label="Remove Stage 1 and 2 agents" ${(data.agents||[]).length?'':'disabled'}>Remove agents</button></div>
-   <div class="studio-reset-row"><div><small class="studio-reset-stage">STAGE 03</small><h3>Multi-Agent demo</h3><p>Stop active team work and clear team chats, documents, files, and the board.</p></div><button type="button" id="studio-settings-bac-reset" class="studio-secondary" aria-label="Reset Stage 3">Reset Stage 3</button></div>
+   <div class="studio-reset-row"><div><small class="studio-reset-stage">STAGE 03</small><h3>${selectedScenario==='event-brief'?'Event Brief':'Plan'}</h3><p>Stop this scenario’s work and clear its chats, documents and results. The other scenario is preserved.</p></div><button type="button" id="studio-settings-bac-reset" class="studio-secondary" aria-label="Reset Stage 3">Reset scenario</button></div>
    <div class="studio-reset-footer"><p>Reset all stages. Model and connection settings are kept.</p><button type="button" id="studio-reset-all" class="studio-danger">Reset all</button></div>
   </section>
   <p id="studio-settings-status" role="status"></p><div class="studio-dialog-actions"><button type="button" id="studio-start-agents" class="studio-secondary" ${runtime.gateway?'hidden':''}>Start agents</button><button type="submit" class="studio-primary" id="studio-save-settings">Connect model</button></div></form>`);
@@ -121,7 +121,7 @@ el('dialog').addEventListener('close',()=>{if(el('api-key'))el('api-key').value=
 
 function confirmTeamReset(sourceButton){
  if(resetInProgress||removingAgent||pendingWrites||changingAgent||data.bacResetting)return;
- dialog('RESET STAGE 3', '<h3>Do you really want to reset Stage 3?</h3><p>This stops active team work and clears team chats, attached documents, generated files, and the board.</p><div class="studio-dialog-actions"><button type="button" class="studio-secondary" id="studio-team-reset-cancel" autofocus>Cancel</button><button type="button" class="studio-danger" id="studio-team-reset-confirm">Yes, Reset Stage 3.</button></div>');
+ dialog('RESET SCENARIO', '<h3>Reset '+(selectedScenario==='event-brief'?'Event Brief':'Plan')+'?</h3><p>This stops this scenario’s work and clears its chats, documents and results. The other scenario and your hired agents are preserved.</p><div class="studio-dialog-actions"><button type="button" class="studio-secondary" id="studio-team-reset-cancel" autofocus>Cancel</button><button type="button" class="studio-danger" id="studio-team-reset-confirm">Reset scenario</button></div>');
  el('team-reset-cancel').onclick=()=>el('dialog').close();
  el('team-reset-confirm').onclick=()=>{el('dialog').close();resetStudio('bac',sourceButton);};
  el('team-reset-cancel').focus();
@@ -140,7 +140,7 @@ async function resetStudio(scope,sourceButton=null){
   const latest=await api('state',undefined,'');
   const agents=scope==='bac'?[]:latest.agents||[];total=agents.length;
   if(scope==='bac'||scope==='all'){
-   let reset=await api('bac-reset',{},latest.agentId);
+   let reset=await api('bac-reset',{scope:scope==='all'?'all':'scenario'},latest.agentId);
    while(reset.resetting){
     status.textContent='Stopping BaC work and resetting…';
     await new Promise(resolve=>setTimeout(resolve,1000));
@@ -192,14 +192,14 @@ let teamModelDraftOwner=null;
 function openTeamSettings(){
  if(!modelPickerSaving||teamModelDraftOwner!==agentId)teamModelDrafts.clear();
  teamModelDraftOwner=agentId;
- const available=window.BacCrewCatalog.map((member,role)=>({...member,roleIndex:role})).filter(member=>member.planEligible!==false);
+ const available=window.BacCrewCatalog.map((member,role)=>({...member,roleIndex:role})).filter(member=>selectedScenario==='event-brief'?member.roleIndex<4:member.planEligible!==false);
  dialog('Multi-Agent setup',`<form id="studio-team-config-form">
   <div class="studio-model-scope"><span>STAGE 03</span><h3>Team API &amp; models</h3><p>A dedicated NVIDIA API connection for Casey and the specialists.</p></div>
   <div class="studio-team-api-card"><div class="studio-team-api-heading"><strong>NVIDIA Inference</strong><span class="studio-team-api-state" data-connected="${!!runtime.teamModel}">${runtime.teamModel?(runtime.teamReady?'Connected':'API connected · Runtime offline'):'Not connected'}</span></div>
   <small>inference-api.nvidia.com</small>
   <small>${runtime.teamModel?'Key loaded from <code>api.cfg</code>.':'Add a key to <code>api.cfg</code> and run <code>./bac start</code>.'}</small></div>
   <div class="studio-team-models-heading"><h3>Agent models</h3><small>Choose models for your agents, then select Apply changes. No API key re-entry needed.</small></div><p id="studio-team-model-status" role="status" hidden></p>
-  <div class="studio-team-setup-models">${available.map(member=>`<div><span><strong>${escape(member.name)}</strong><small>${escape(member.collaboration.title)}</small></span><div class="studio-team-model-controls"><button type="button" class="team-model-trigger" data-team-model="${member.roleIndex}" ${!runtime.teamModel||data.bacResetting||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status))?'disabled':''}><span>${escape(teamModel(member.roleIndex)?.label||'Choose model')}</span><span aria-hidden="true">⌕</span></button></div></div>`).join('')}</div>
+  <div class="studio-team-setup-models">${available.map(member=>`<div><span><strong>${escape(member.name)}</strong><small>${escape(selectedScenario==='event-brief'?member.role:member.collaboration.title)}</small></span><div class="studio-team-model-controls"><button type="button" class="team-model-trigger" data-team-model="${member.roleIndex}" ${!runtime.teamModel||data.bacResetting||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status))?'disabled':''}><span>${escape(teamModel(member.roleIndex)?.label||'Choose model')}</span><span aria-hidden="true">⌕</span></button></div></div>`).join('')}</div>
   <div class="studio-team-model-save"><button type="button" class="studio-primary" data-team-apply-all disabled>Apply changes</button></div><p class="studio-team-setup-note">Stage 1 &amp; 2 keep using the model selected in Settings.</p></form>`);
  el('dialog').classList.add('studio-team-settings');
  el('team-config-form').onsubmit=event=>event.preventDefault();

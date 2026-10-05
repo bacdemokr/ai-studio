@@ -99,7 +99,7 @@ class OwnershipTests(unittest.TestCase):
         with self.studio.db() as db:
             self.assertEqual(db.execute('SELECT count(*) FROM crew_contexts').fetchone()[0],1)
             with self.assertRaises(sqlite3.IntegrityError):
-                db.execute('INSERT INTO crew_contexts VALUES (?,?)',('other',self.person['id']))
+                db.execute('INSERT INTO crew_contexts(owner,participant) VALUES (?,?)',('other',self.person['id']))
         self.assertFalse(hasattr(self.studio,'crew_aliases'))
         self.assertFalse(hasattr(self.studio,'migrate_legacy_crew'))
 
@@ -141,7 +141,7 @@ class OwnershipTests(unittest.TestCase):
 
     def test_retired_personal_lead_cannot_replace_team_captain(self):
         team=self.studio.crew_owner(self.owner)
-        with self.assertRaisesRegex(Problem,'retired'):
+        with self.assertRaisesRegex(Problem,'Choose Event Brief'):
             self.studio.enqueue(team,{'kind':'crew','brief':{'schema':2}},lead=self.owner)
         self.assertFalse(list(self.studio.workspace(self.owner).parent.glob(self.owner+'-*')))
 
@@ -157,8 +157,8 @@ class OwnershipTests(unittest.TestCase):
                 conn.request('POST' if data is not None else 'GET','/api/'+path,body=json.dumps(data) if data is not None else None,headers=headers)
                 r=conn.getresponse();return r.status,json.loads(r.read())
             finally:conn.close()
-        self.assertEqual(request('prepare-demo',{'background':True})[0],410)
-        self.assertEqual(request('jobs',{'kind':'crew','preset':True})[0],410)
+        self.assertEqual(request('prepare-demo',{'background':True})[0],409)
+        self.assertEqual(request('jobs',{'kind':'crew','preset':True})[0],409)
         self.assertEqual(request('team-model',{'role':0,'model':'nvidia/nvidia/nemotron-3.5-lightning'})[0],200)
         team=self.studio.crew_owner(self.owner)
         self.finish()

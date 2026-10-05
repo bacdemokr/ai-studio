@@ -132,7 +132,8 @@ def selections(studio, owner):
 def select(studio, owner, data):
     from studio import Problem, CREW_CATALOG
     role,model=data.get('role'),data.get('model')
-    if type(role) is not int or role not in {i for i,m in enumerate(CREW_CATALOG) if m.get('planEligible',True)} or model not in {m['id'] for m in public()['models']}:
+    eligible = set(range(4)) if studio.crew_scenario(owner)=='event-brief' else {i for i,m in enumerate(CREW_CATALOG) if m.get('planEligible',True)}
+    if type(role) is not int or role not in eligible or model not in {m['id'] for m in public()['models']}:
         raise Problem('Choose a team member and an available model.')
     with studio.db() as db:
         db.execute('BEGIN IMMEDIATE')
