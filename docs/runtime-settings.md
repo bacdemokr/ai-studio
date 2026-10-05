@@ -13,7 +13,7 @@ NVIDIA keys come from [key management](https://inference.nvidia.com/key-manageme
 
 The context limit defaults to 32,768 tokens and must match the chosen model server. It declares capacity to OpenClaw; it does not configure Ollama’s server-side `num_ctx`. Model listing checks access without generating a completion; it does not guarantee that every listed model supports the agent's tool calls. The readiness check currently requires the selected ID to appear in the model list. Anthropic lists up to 1,000 models; the dialog indicates if more exist.
 
-Set the default city in Settings → Location. Supply dates, venue and other task-specific requirements in your `/plan` message. The old Plan a BaC form is retired. Existing saved event defaults remain readable for compatibility.
+Set the default city in Settings → Location. Supply task-specific requirements in Casey's Open Task `/plan` message. Event Brief uses its own Plan an event form for dates, venue and event requirements.
 
 ## Stage 3 connection and models
 

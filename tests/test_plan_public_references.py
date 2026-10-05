@@ -10,7 +10,7 @@ class PublicReferencesTests(unittest.TestCase):
     job=fixture.CollaborationTests.job
 
     def test_final_answer_and_saved_response_use_real_downloads_and_upload_name(self):
-        self.app.upload(self.owner,{'name':'sales (1).csv','content':'value\n3'})
+        self.app.upload(self.app.crew_owner(self.owner),{'crewRole':0,'name':'sales (1).csv','content':'value\n3'})
         self.adapter.plan={'summary':'Summarize upload','tasks':[{
             'role':6,'task':'Read sales','inputs':['document-0'],'requiredFiles':['artifacts/summary.md']}]}
         original=self.adapter.respond

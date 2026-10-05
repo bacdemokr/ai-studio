@@ -115,12 +115,22 @@ for(const crew of [false,true]){
  input.addEventListener('paste',event=>{const images=[...event.clipboardData.items].filter(item=>item.kind==='file'&&item.type.startsWith('image/')).map(item=>item.getAsFile()).filter(Boolean);if(images.length){event.preventDefault();addChatImages(images,crew)}});
 }
 let chatSending=false;
+const isPlanCommand=value=>/^\s*\/plans?(?:\s|$)/i.test(value);
+const planLocationHint='Use /plan with Casey in Open Task. Lounge agents and other teammates accept direct messages only.';
+const eventPlanLocationHint='Use Plan an event for Event Brief, or send /plan to Casey in Open Task.';
+function clearPlanLocationHint(crew=false){
+ const prefix=crew?'crew-':'',notice=el(prefix+'chat-error');
+ if(!isPlanCommand(el(prefix+'prompt').value)&&[planLocationHint,eventPlanLocationHint].includes(notice.textContent))notice.hidden=true;
+}
+function rejectLoungePlan(){
+ if(!isPlanCommand(el('prompt').value))return false;
+ el('chat-error').textContent=planLocationHint;el('chat-error').hidden=false;return true;
+}
 function radarChatDisabled(profile=data.profile){return !!profile?.skills?.includes('radar');}
 function syncComposer(){
   if(!connected)return;
-  const planning=/^\/plans?(?:\s|$)/i.test(el('prompt').value.trim());
-  const radar=radarChatDisabled(),unavailable=!(planning?teamReady():runtime.ready),blocked=radar||unavailable||!!data.deleting;
-  el('prompt').disabled=radar||(!runtime.ready&&!teamReady())||!!data.deleting;
+  const radar=radarChatDisabled(),unavailable=!runtime.ready,blocked=radar||unavailable||!!data.deleting;
+  el('prompt').disabled=blocked;
   el('send').disabled=blocked||chatSending||comparisonSending||documentUploadTarget===agentId;
   el('send-all').disabled=!runtime.ready||blocked||chatSending||comparisonSending||documentUploadTarget===agentId||(data.agents||[]).filter(agent=>!radarChatDisabled(agent)).length<2;
   el('run-options').disabled=el('send-all').disabled;
@@ -132,7 +142,7 @@ function syncComposer(){
   el('chat-connect').hidden=radar||!unavailable||(runtime.gateway&&settingsButton.hidden);
   el('chat-connect').textContent=!runtime.gateway?'Retry connection':'Connect model';
   el('chat-connect').disabled=runtimeRetrying;
-  el('prompt').placeholder=data.deleting?'This agent is paused for deletion…':radar?'Heartbeat updates only':!runtime.gateway?'Waiting for the agent runtime…':!runtime.model?'Connect a model to message your agent…':'Message your agent… or /plan a task with the BaC team';
+  el('prompt').placeholder=data.deleting?'This agent is paused for deletion…':radar?'Heartbeat updates only':!runtime.gateway?'Waiting for the agent runtime…':!runtime.model?'Connect a model to message your agent…':'Message your agent…';
   el('equipped').querySelectorAll('button').forEach(button=>button.disabled=blocked);
 }
 el('chat-connect').onclick=connectionAction;
@@ -236,7 +246,7 @@ document.addEventListener('pointerdown',e=>{if(!el('run-control').contains(e.tar
 el('chat').addEventListener('submit',()=>setRunOptions(false));
 
 // Suggestions only complete an explicit slash prefix; Enter selects before sending.
-for(const id of ['prompt','crew-prompt']){
+for(const id of ['crew-prompt']){
  const input=el(id),anchor=document.createElement('div'),menu=document.createElement('div'),option=document.createElement('button');
  anchor.className='studio-command-anchor';input.before(anchor);anchor.append(input,menu);
  menu.className='studio-command-menu';menu.id=input.id+'-commands';menu.hidden=true;menu.setAttribute('role','listbox');menu.setAttribute('aria-label','Commands');
@@ -244,7 +254,7 @@ for(const id of ['prompt','crew-prompt']){
  option.innerHTML='<strong>/plan</strong><span>Collaborate with the BaC team</span><small>↵</small>';menu.append(option);
  input.setAttribute('aria-controls',menu.id);input.setAttribute('aria-autocomplete','list');
  const close=()=>{menu.hidden=true;input.removeAttribute('aria-activedescendant');};
- const enabled=()=>id!=='crew-prompt'||input.dataset.planEnabled==='true';
+ const enabled=()=>selectedScenario==='plan'&&selectedCrewRole===0&&input.dataset.planEnabled==='true';
  const update=()=>{const value=input.value.trimStart();const show=enabled()&&!input.disabled&&/^\/(?:p(?:l(?:a(?:ns?)?)?)?)?$/i.test(value)&&input.selectionStart===input.value.length;
   menu.hidden=!show;if(show)input.setAttribute('aria-activedescendant',option.id);else input.removeAttribute('aria-activedescendant');};
  const choose=()=>{if(!enabled()){close();return;}input.value='/plan ';close();input.focus({preventScroll:true});input.setSelectionRange(input.value.length,input.value.length);input.dispatchEvent(new Event('input',{bubbles:true}));};

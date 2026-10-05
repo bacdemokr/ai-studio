@@ -121,6 +121,23 @@ class ScenarioBoundaryTests(unittest.TestCase):
         self.assertTrue(self.app.state(self.owner)['crewChats'])
         self.assertEqual(self.app.state(self.owner, 'event-brief')['crewChats'], [])
 
+    def test_http_plan_requires_open_task_captain_even_with_scenario_header(self):
+        self.app.onboard(self.owner, {'name':'Guest','skills':['web']})
+        self.server()
+        for scenario in self.teams:
+            for kind in ('chat','reminder'):
+                with self.subTest(scenario=scenario, kind=kind):
+                    status, result=self.request('jobs', scenario, {'kind':kind,'prompt':'  /plans\nBuild a page'})
+                    self.assertEqual(status, 400)
+                    self.assertIn('Casey in Open Task', str(result))
+        for scenario, role in (('event-brief',0),('event-brief',1),('plan',5),('plan',8)):
+            self.assertEqual(self.request('jobs', scenario, {'kind':'crew-chat','crewRole':role,'prompt':'/plan Build a page'})[0], 400)
+        with self.app.db() as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM jobs').fetchone()[0], 0)
+        status, result=self.request('jobs', 'plan', {'kind':'crew-chat','crewRole':0,'prompt':'  /plans\nBuild a page'})
+        self.assertEqual(status, 200)
+        self.assertTrue(result['collaboration'])
+
     def test_http_same_named_artifacts_require_the_requested_scenario(self):
         self.server()
         for scenario in self.teams: self.saved(scenario)

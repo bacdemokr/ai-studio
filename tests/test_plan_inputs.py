@@ -24,8 +24,8 @@ class PlanInputs(unittest.TestCase):
             self.assertIn('Writing source files is not executing or testing them', prompt)
 
     def prepare_inputs(self):
-        self.app.upload(self.owner, {'name': 'sales (1).csv', 'content': 'month,sales\nJan,3\nFeb,5'})
-        self.app.upload(self.owner, {'name': 'private.txt', 'content': 'PRIVATE_NOT_REQUESTED'})
+        self.app.upload(self.app.crew_owner(self.owner), {'crewRole': 0, 'name': 'sales (1).csv', 'content': 'month,sales\nJan,3\nFeb,5'})
+        self.app.upload(self.app.crew_owner(self.owner), {'crewRole': 0, 'name': 'private.txt', 'content': 'PRIVATE_NOT_REQUESTED'})
         self.adapter.plan['tasks'] = [
             {'role': 6, 'task': 'Analyze sales', 'inputs': ['document-0']},
             {'role': 4, 'task': 'Independently check sales', 'inputs': ['document-0']}]
@@ -50,14 +50,14 @@ class PlanInputs(unittest.TestCase):
         team = self.app.crew_owner(self.owner)
         for role in (0, 6, 4):
             self.assertEqual(list(self.app.workspace(team, role).glob('inbox/plan-input-*')), [])
-        self.assertTrue((self.app.workspace(self.owner) / 'inbox/sales (1).csv').exists())
+        self.assertTrue((self.app.workspace(team, 0) / 'inbox/sales (1).csv').exists())
 
     def test_other_agents_files_are_never_candidates(self):
         self.prepare_inputs()
         other = self.app.session()[0]['id']
         self.app.onboard(other, {'name': 'Other', 'skills': ['web']})
         self.app.upload(other, {'name': 'outsider.txt', 'content': 'PRIVATE_OTHER_AGENT'})
-        values = requested_inputs(self.app, {'owner': self.owner, 'role': None}, 'Use uploaded documents')
+        values = requested_inputs(self.app, {'owner': self.app.crew_owner(self.owner), 'role': 0}, 'Use sales (1).csv and private.txt')
         self.assertEqual({v['name'] for v in values}, {'sales (1).csv', 'private.txt'})
         self.assertFalse(any(b'PRIVATE_OTHER_AGENT' in v['data'] for v in values))
 
@@ -79,7 +79,7 @@ class PlanInputs(unittest.TestCase):
 
     def test_captain_document_previews_have_one_shared_context_budget(self):
         for i in range(4):
-            self.app.upload(self.owner, {'name': 'data%d.txt' % i, 'content': 'value ' * 1000})
+            self.app.upload(self.app.crew_owner(self.owner), {'crewRole': 0, 'name': 'data%d.txt' % i, 'content': 'value ' * 1000})
         self.adapter.plan['tasks'] = [{'role': 6, 'task': 'Summarize', 'inputs': ['document-%d' % i for i in range(4)]}]
         original = self.adapter.respond
         def respond(agent, session, prompt, **kwargs):
@@ -97,7 +97,7 @@ class PlanInputs(unittest.TestCase):
 
     def test_filename_followed_by_sentence_punctuation(self):
         self.prepare_inputs()
-        origin = {'owner': self.owner, 'role': None}
+        origin = {'owner': self.app.crew_owner(self.owner), 'role': 0}
         for task in ('Read sales (1).csv.', 'Read "sales (1).csv".', 'Read inbox/sales (1).csv, please.'):
             with self.subTest(task=task):
                 self.assertEqual([v['name'] for v in requested_inputs(self.app, origin, task)], ['sales (1).csv'])
@@ -168,7 +168,7 @@ class PlanInputs(unittest.TestCase):
                 seen[int(agent.rsplit('-r', 1)[1])] = bool(kwargs.get('images'))
             return original(agent, session, prompt, **kwargs)
         self.adapter.respond = respond
-        self.app.enqueue(self.owner, {'kind': 'chat', 'prompt': '/plan Improve this screenshot and draft copy',
+        self.app.enqueue(self.app.crew_owner(self.owner), {'kind': 'crew-chat', 'crewRole': 0, 'prompt': '/plan Improve this screenshot and draft copy',
                          'images': [{'dataUrl': 'data:image/png;base64,' + raw}]})
         self.app.execute(self.app.next_job())
         self.assertEqual(seen, {0: True, 7: True, 4: False})

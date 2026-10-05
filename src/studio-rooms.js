@@ -70,6 +70,7 @@ function setRoom(next,options={}){
   editingInPlace=false;room=next;if(next!=='mission')board=false;
   root.dataset.room=next;worldViewport.setAttribute('aria-label',roomCopy[next]+'. Drag to orbit, scroll to zoom. Press Enter to toggle full screen.');if(roomsReady)try{sessionStorage.setItem('bac-studio-room',next);}catch{}
   if(next==='mission')renderCrew();renderRoomVisibility();
+  runtimeBadge();
   if(next==='mission'&&scenarioChoosing)window.BacCampus?.scenarios({instant:!roomsReady});
   else window.BacCampus?.setRoom(next,{instant:!roomsReady});
   if(openPolicies)openSurface('policies');

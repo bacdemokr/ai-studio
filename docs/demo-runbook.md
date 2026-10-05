@@ -18,7 +18,7 @@ For OpenShell, approve a blocked website through **OpenShell Policy**, then rese
 
 ## Multi-Agent demo
 
-The room starts with Casey. Use **API & models** to select models for individual team members, then **Apply changes**. These settings are separate from the Lounge model. Start a team task with `/plan`; a normal message goes to the selected agent directly.
+Open Task starts with Casey. Use **API & models** to select models for individual team members, then **Apply changes**. These settings are separate from the Lounge model. Start a team task with `/plan` in Casey's Open Task chat; a normal message goes to the selected agent directly. Lounge and other team members do not accept `/plan`.
 
 Casey answers directly when appropriate or chooses up to three specialists:
 
@@ -30,7 +30,7 @@ Casey answers directly when appropriate or chooses up to three specialists:
 | Cody | Implementation of webpages and small code prototypes |
 | Vera | Independent review of supplied work and concrete defects |
 
-The selected specialists enter together and work in assignment order. The old event-template form and Dylan, Alex and Morgan are retired. There is no fixed research/schedule/LinkedIn workflow.
+The selected specialists enter together and work in assignment order. Event Brief separately retains its fixed team of Casey, Dylan, Alex and Morgan and the Plan an event form. Open Task does not use that fixed workflow.
 
 For a compact data-analysis demo, attach a table to Casey and try:
 

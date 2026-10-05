@@ -384,7 +384,7 @@ function syncCrewComposer(){
  const blocked=scenarioChoosing||scenarioSwitching||!teamReady()||!!data.bacResetting||captainPlanning||memberWorking||eventWorking||crewDocumentUpload;
  el('crew-document-add').hidden=selectedCrewRole!==0||selectedScenario==='event-brief';el('crew-document-add').disabled=blocked;
  renderCrewDocuments();
- const commandOnly=/^\s*\/plans?\s*$/i.test(el('crew-prompt').value);
+ const commandOnly=selectedScenario==='plan'&&selectedCrewRole===0&&/^\s*\/plans?\s*$/i.test(el('crew-prompt').value);
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending||commandOnly;
  el('crew-chat-connection').hidden=!blocked;
  el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping BaC work and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(runtime.teamModel??runtime.model)?'Add your key to api.cfg, then run ./bac start.':'Run ./bac start on this computer to connect the team runtime.';
@@ -434,6 +434,10 @@ el('crew-policy').onclick=()=>openPolicy(selectedCrewRole);
 el('crew-chat').onsubmit=async e=>{
  e.preventDefault();syncCrewComposer();if(el('crew-send').disabled)return;
  const owner=agentId,index=selectedCrewRole,key=crewDraftKey(index),draft=captureChatDraft(true);
+ if(isPlanCommand(draft.prompt)&&(selectedScenario!=='plan'||index!==0)){
+  el('crew-chat-error').textContent=selectedScenario==='event-brief'?eventPlanLocationHint:planLocationHint;
+  el('crew-chat-error').hidden=false;return;
+ }
  let requestPrompt=draft.prompt;
  if(index===0){const docs=renderCrewDocuments();if(docs.length)requestPrompt+='\n\nAttached documents (use these files):\n'+docs.map(f=>f.path.slice(6)).join('\n');}
  crewChatSending=true;syncCrewComposer();el('crew-chat-error').hidden=true;
@@ -441,7 +445,7 @@ el('crew-chat').onsubmit=async e=>{
  catch(error){if(crewChatKey===key){el('crew-chat-error').textContent=error.message;el('crew-chat-error').hidden=false;}}
  finally{crewChatSending=false;syncCrewComposer();}
 };
-el('crew-prompt').addEventListener('input',syncCrewComposer);
+el('crew-prompt').addEventListener('input',()=>{clearPlanLocationHint(true);syncCrewComposer();});
 el('crew-prompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();if(!el('crew-send').disabled)el('crew-chat').requestSubmit(el('crew-send'));}});
 el('crew-conversation').onclick=async e=>{const file=e.target.closest('[data-plan-file]');if(file){await openFile(file.dataset.planFile,file.dataset.planJob);return;}const button=e.target.closest('[data-crew-chat-stop]');if(!button||button.disabled)return;await stopChat(button.dataset.crewChatStop,true);};
 

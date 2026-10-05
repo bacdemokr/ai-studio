@@ -101,7 +101,8 @@ class StudioTests(unittest.TestCase):
             with self.studio.db() as db:
                 db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(radar), self.owner))
             return {'ready': True, 'teamReady': True}
-        for kind, prompt in [('chat', 'Hi'), ('reminder', 'Check later'), ('chat', '/plan summarize this')]:
+        # /plan is rejected before runtime preparation; test actual direct-chat races.
+        for kind, prompt in [('chat', 'Hi'), ('reminder', 'Check later')]:
             with self.subTest(kind=kind, prompt=prompt):
                 with self.studio.db() as db:
                     db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(original), self.owner))

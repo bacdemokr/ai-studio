@@ -822,23 +822,21 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
             return self.enqueue_event(owner, data, source, due, lead)
         if data.get('kind') == 'prepare':
             raise Problem('Use Event Brief preparation to prepare this team.')
-        # Automatic Tech Radar heartbeats use their own delivery path. Reject
-        # manual requests before /plan can redirect them to the team workspace.
+        # Automatic Tech Radar heartbeats use their own delivery path.
         if data.get('kind', 'chat') in ('chat', 'reminder'):
             self.require_manual_chat(self.profile(owner))
-        collaborative = data.get('kind', 'chat') in ('chat', 'crew-chat') and is_plan(data.get('prompt'))
+        if data.get('kind', 'chat') in ('chat', 'reminder') and is_plan(data.get('prompt')):
+            raise Problem('Send /plan to Casey in Open Task. Lounge agents accept direct messages only.')
+        collaborative = data.get('kind') == 'crew-chat' and is_plan(data.get('prompt'))
         event_scenario = self.crew_scenario(owner) == 'event-brief'
         if collaborative and event_scenario:
-            raise Problem('Choose Plan mode to send /plan tasks. This conversation belongs to Event Brief.')
+            raise Problem('Use Plan an event for Event Brief, or send /plan to Casey in Open Task.')
         if collaborative:
-            if data.get('kind', 'chat') == 'chat':
-                with self.db() as db:
-                    self.require_available(db, owner)
-            origin_role = data.get('crewRole') if data.get('kind') == 'crew-chat' else None
-            if data.get('kind') == 'crew-chat' and (type(origin_role) is not int or not 0 <= origin_role < len(ROLES)):
+            origin_role = data.get('crewRole')
+            if type(origin_role) is not int or not 0 <= origin_role < len(ROLES):
                 raise Problem('Choose a crew member.')
-            if data.get('kind') == 'crew-chat' and origin_role != 0:
-                raise Problem('Send /plan to Casey. Specialists accept direct messages only.')
+            if origin_role != 0:
+                raise Problem('Send /plan to Casey in Open Task. Specialists accept direct messages only.')
             origin = {'owner': owner, 'role': origin_role}
             task = text(plan_task(data['prompt']), 5995, 'Task after /plan')
             owner = self.crew_owner(owner)
