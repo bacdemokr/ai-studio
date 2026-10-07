@@ -188,7 +188,8 @@ Scout has a 150-second research budget across retries. At the deadline, saved wo
 
 | Action | Command |
 | --- | --- |
-| Install / start / apply app changes and validate the key | `./bac start` |
+| Install / start fresh, clearing agents, work, context and usage history | `./bac start` |
+| Start or apply app changes while preserving runtime data | `./bac start --keep-data` |
 | Check status / recent logs | `./bac status` / `./bac logs` |
 | Stop, keeping data | `./bac stop` |
 | Stop services, sandboxes and this installation’s local model | `./bac stop --all` |
@@ -198,12 +199,12 @@ To update, finish active work, then run in the repository folder:
 
 ```bash
 git pull --ff-only
-./bac start
+./bac start --keep-data
 ```
 
 Use normal Git commands to update your checkout. Resolve local changes or divergent history before pulling. With the Git key filter configured, your local key stays in `api.cfg`.
 
-`start` recreates services and can interrupt active work. It preserves agents, conversations, and results. App changes reuse the runtime image; dependency changes rebuild it automatically. There is no `./bac restart` or `./bac update` command. Use `git pull --ff-only` followed by `./bac start` for app updates; `./bac vllm --restart` restarts only the local model server.
+By default, `start` recreates services and clears agents, conversations, results, context and recorded usage. Project files, `api.cfg`, shared host files, images and the separately managed local model are preserved. Use `./bac start --keep-data` when applying app changes without clearing runtime data. There is no `./bac restart` or `./bac update` command. Use `git pull --ff-only` followed by `./bac start --keep-data` for a non-destructive app update; `./bac vllm --restart` restarts only the local model server.
 
 `remove` asks you to type `remove` once. It deletes BaC containers, data, shared files, backups, recorded project images, local settings, and `api.cfg`. A source checkout keeps its code; an installed release folder is removed. Other projects and your model server remain.
 
@@ -211,7 +212,7 @@ Use normal Git commands to update your checkout. Resolve local changes or diverg
 
 ### Scenario preview provenance
 
-This preview starts from the frozen Zurich snapshot (`feba7df`). The viewport improvements, room information guides and side-by-side agent definition viewer adapt Benjamin Bayart’s contributions (`ee717f3`, `8993a20`, `09b4794`, `3c54aba`); the initial Stage 3 picker took inspiration from his scenario cards; scenarios now appear as separate 3D floors. The fixed Event Brief workflow is restored from `archive/bac-planning` (`94198b6`). Startup retains the overview and does not delete agents. There is no `./bac restart` command. Existing Zurich team ownership migrates to Plan without changing native identities; Event Brief creates a separate team when first used.
+This preview starts from the frozen Zurich snapshot (`feba7df`). The viewport improvements, room information guides and side-by-side agent definition viewer adapt Benjamin Bayart’s contributions (`ee717f3`, `8993a20`, `09b4794`, `3c54aba`); the initial Stage 3 picker took inspiration from his scenario cards; scenarios now appear as separate 3D floors. The fixed Event Brief workflow is restored from `archive/bac-planning` (`94198b6`). Default startup clears runtime data; `./bac start --keep-data` retains agents and previous work. There is no `./bac restart` command. Existing Zurich team ownership migrates to Plan without changing native identities; Event Brief creates a separate team when first used.
 
 Scenario presentation lives in `src/stage-scenarios.json`, shared by the scene, navigation and accessible fallback. Floors branch in pairs from a common concourse and use automatic overview framing, so three or four scenarios fit without hard-coded camera coordinates. Selecting a space moves the camera directly to it with a gentle zoom out and back in; it does not stop at intermediate rooms. New selections replace an in-progress move, and reduced-motion settings skip the animation. New scenarios also require an explicit backend workflow and ownership identifier; adding a visual entry alone does not enable a new workflow.
 

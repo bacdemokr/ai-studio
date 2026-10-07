@@ -25,8 +25,9 @@ class KeySetupTests(unittest.TestCase):
 
     def test_valid_file_is_preserved_and_configured(self):
         self.path.write_text('fixture-valid\n')
-        with patch.object(api, 'validate', return_value=[]), patch.object(api, 'save_connection') as save, patch.object(api.os, 'geteuid', return_value=1000):
+        with patch.object(api, 'validate', return_value=[]), patch.object(api.c, 'initialize') as initialize, patch.object(api, 'save_connection') as save, patch.object(api.os, 'geteuid', return_value=1000):
             api.setup(self.path)
+        initialize.assert_called_once_with()
         save.assert_called_once_with('fixture-valid', [], source='api.cfg')
         self.assertEqual(self.path.read_text(), 'fixture-valid\n')
 
@@ -50,7 +51,7 @@ class KeySetupTests(unittest.TestCase):
                 with self.assertRaises(expected): api.request('fixture', '/models')
 
     def test_optional_validation_allows_settings_without_replacing_key(self):
-        for error in (api.InvalidKey('Invalid'),api.ServiceUnavailable('Offline'),OSError('Unreadable')):
+        for error in (api.InvalidKey('Invalid'),api.ServiceUnavailable('Offline'),OSError('Unreadable'),RuntimeError('Unmanaged data')):
             with patch.object(api,'setup',side_effect=error),patch.object(api,'save_connection') as save:
                 self.assertEqual(api.main([str(self.path),'--optional']),0)
                 self.assertEqual(api.main([str(self.path)]),1)

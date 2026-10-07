@@ -242,14 +242,28 @@ if action=='connect' and state.get('connection_failure'):sys.exit(1)
         self.assertTrue((self.root/'.env').exists())
         self.assertIn(['build'],self.operations())
 
-    def test_start_stops_both_services_then_waits_without_deleting_data(self):
+    def test_keep_data_start_stops_both_services_then_waits_without_deleting_data(self):
         self.configure(image=True)
         sentinel=self.root/'shared/keep.txt';sentinel.parent.mkdir();sentinel.write_text('keep')
-        result=self.run_bac('start')
+        result=self.run_bac('start','--keep-data')
         self.assertEqual(result.returncode,0,result.stderr)
         ops=self.operations();stop=ops.index(['stop','studio','openshell'])
         self.assertEqual(ops[stop+1][0],'up')
         self.assertFalse(any(a[0] in ('down','build','pull') for a in ops))
+        self.assertEqual(sentinel.read_text(),'keep')
+
+    def test_default_start_clears_runtime_before_recreating_services_and_key(self):
+        self.configure(image=True)
+        sentinel=self.root/'shared/keep.txt';sentinel.parent.mkdir();sentinel.write_text('keep')
+        result=self.run_bac('start')
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn('Starting fresh',result.stdout)
+        helpers=[call for call in self.calls() if '--fresh' in call]
+        self.assertEqual(len(helpers),1)
+        self.assertIn('com.nvidia.bac.cleanup=true',helpers[0])
+        self.assertEqual(sum(a[0]=='run' for a in self.operations()),2)
+        self.assertFalse(any(a[0]=='stop' for a in self.operations()))
+        self.assertTrue(any(a[0]=='up' for a in self.operations()))
         self.assertEqual(sentinel.read_text(),'keep')
 
     def test_failed_readiness_is_not_reported_as_ready(self):

@@ -6,6 +6,7 @@ import sys
 import urllib.error
 import urllib.request
 
+import ops_common as c
 from team_models import BASE_URL, MODELS, LABELS, valid_model, save_connection, credential_path
 
 
@@ -54,6 +55,7 @@ def setup(path):
         models = validate(key)
     except InvalidKey:
         raise InvalidKey('Put a valid inference API key in api.cfg, then run ./bac start again. Services were not restarted.') from None
+    c.initialize()
     save_connection(key, models, source='api.cfg')
     # The setup helper runs as root; the studio runs as uid 10001.
     if os.geteuid() == 0:
@@ -68,7 +70,7 @@ def main(arguments=None):
     optional = '--optional' in arguments[1:]
     try:
         setup(Path(arguments[0]))
-    except (InvalidKey, ServiceUnavailable, OSError) as error:
+    except (InvalidKey, ServiceUnavailable, OSError, RuntimeError) as error:
         if optional:
             print('NVIDIA API was not configured from api.cfg. Any previously saved connection is preserved. '
                   'Studio will start; configure Local or External Endpoint in Settings.', file=sys.stderr)
