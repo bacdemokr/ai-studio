@@ -40,7 +40,7 @@ function renderEventCrew(){
     const crew=crewMission(), stage=crew?.payload.stage??-1;
     if(selectedCrewRole>3)selectedCrewRole=0;
     el('board').classList.remove('has-plan');el('lanes').classList.remove('studio-plan-control');delete el('lanes').dataset.traceJob;delete el('lanes')._traceMarkup;
-    const intro=el('board').querySelector('.studio-board-intro');intro.querySelector('h3').textContent='Event Brief';intro.querySelector('p').textContent='Casey briefs the fixed team. Dylan and Alex prepare their contributions, then Morgan assembles the event page.';intro.querySelector('[data-mission-total]').textContent='';
+    const intro=el('board').querySelector('.studio-board-intro');intro.querySelector('h3').textContent='Event Brief';intro.querySelector('p').textContent='Riley briefs the fixed team. Dylan and Alex prepare their contributions, then Morgan assembles the event page.';intro.querySelector('[data-mission-total]').textContent='';
     syncDemoPreparation();
     roles.forEach((r,i)=>r[0]=crew?.payload.roster?.[i]?.name||(i===0&&room!=='mission'?data.profile?.name:null)||defaultNames[i]);
     const groups=crewGroups(crew).map(group=>group.filter(i=>i<4)).filter(group=>group.length);el('lanes').style.setProperty('--crew-groups',groups.length);

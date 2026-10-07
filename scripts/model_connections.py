@@ -181,7 +181,7 @@ def prepare(studio,member,preference='auto',stage='team'):
     source,value=resolve(preference,stage)
     if not value:raise Problem('Model not connected. Configure a Local model or API in Settings.',503)
     # Copy only the sanitized runtime provider, never a credential, into agent instructions.
-    if source=='api' and value['_provider']=='nvidia' and stage=='team':
+    if source=='api' and value['_provider']=='nvidia' and stage=='team' and member.get('_scenario')!='event-brief':
         import team_models
         selected=member.get('_teamModel')
         if selected:

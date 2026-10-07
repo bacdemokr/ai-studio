@@ -149,7 +149,14 @@ def configure(studio,data):
     return public()
 
 
-def selections(studio, owner):
+def selections(studio, owner, scenario=None):
+    if (scenario or studio.crew_scenario(owner)) == 'event-brief':
+        from scenario_models import connection
+        saved = connection(studio, owner)
+        model = (saved.get('model') if saved.get('shared') else
+                 saved.get('local', {}).get('model') if saved.get('provider') == 'local' else
+                 credentials().get('model') or MODELS[0])
+        return [{'id':model, 'role':role} for role in range(9)]
     with studio.db() as db:
         saved={r['role']:r['model'] for r in db.execute('SELECT role,model FROM crew_resources WHERE owner=?',(owner,))}
     return [{'id':saved.get(role) if valid_model(saved.get(role)) else default_model(role),
@@ -158,8 +165,10 @@ def selections(studio, owner):
 
 def select(studio, owner, data):
     from studio import Problem, CREW_CATALOG
+    if studio.crew_scenario(owner)=='event-brief':
+        raise Problem('Event Brief uses the model selected in Settings > Model for the whole team.')
     role,model=data.get('role'),data.get('model')
-    eligible = set(range(4)) if studio.crew_scenario(owner)=='event-brief' else {i for i,m in enumerate(CREW_CATALOG) if m.get('planEligible',True)}
+    eligible = {i for i,m in enumerate(CREW_CATALOG) if m.get('planEligible',True)}
     if type(role) is not int or role not in eligible or model not in {m['id'] for m in available_models()}:
         raise Problem('Choose a team member and an available model.')
     with studio.db() as db:

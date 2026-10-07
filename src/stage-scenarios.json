@@ -5,16 +5,16 @@
     "title": "Event Brief",
     "eyebrow": "A guided team demo",
     "description": "Plan an event with a dedicated crew.",
-    "team": "Casey · Dylan · Alex · Morgan",
+    "team": "Riley · Dylan · Alex · Morgan",
     "action": "Open Event Brief",
     "accent": "#69c7f3",
     "floor": "#263341",
     "residents": [0, 1, 2, 3],
     "guide": {
-      "intro": "Turn an event brief into a coordinated plan with Casey, Dylan, Alex and Morgan.",
+      "intro": "Turn an event brief into a coordinated plan with Riley, Dylan, Alex and Morgan.",
       "points": [
         "Choose Plan an event and enter your audience, goals and event details.",
-        "Prepare the demo, then start the event plan. Casey coordinates the fixed crew's contributions.",
+        "Prepare the demo, then start the event plan. Riley coordinates the fixed crew's contributions.",
         "Follow the team's progress and open the results to review demo ideas, staffing and the event webpage."
       ],
       "note": "Your event conversations and results stay saved when you switch spaces."

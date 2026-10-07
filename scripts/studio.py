@@ -387,8 +387,10 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
             number += 1
 
     def initialize_crew_workspaces(self, owner):
+        from scenarios import crew_member
+        scenario = self.crew_scenario(owner)
         for role, member in enumerate(CREW_CATALOG):
-            profile = {**member, 'skills':list(ROLE_SKILLS[role]), 'protection':member.get('protection','standard')}
+            profile = {**crew_member(member, scenario), '_scenario':scenario, 'skills':list(ROLE_SKILLS[role]), 'protection':member.get('protection','standard')}
             runtime.write_workspace(self.workspace(owner, role), profile, member['role'], overwrite=False)
 
     def initialize_workspace(self, owner):
@@ -751,7 +753,7 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
         return {'scenario':scenario, 'scenarios':self.scenario_status(owner), 'preparation':self.demo_preparation(team) if team and scenario=='event-brief' else None,
                 'teamConnection': connection(self, team), 'fileWorkspaces': file_workspaces,
                 'hasFiles': bool(self.files(owner, recursive=True)),
-                'crewDocuments': [f for f in self.files(team,0) if f['kind']=='inbox' and not internal_team_input(f['path'])] if team else [], 'teamSelections': selections(self,team), 'profile': self.profile(owner), 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': self.files(owner),
+                'crewDocuments': [f for f in self.files(team,0) if f['kind']=='inbox' and not internal_team_input(f['path'])] if team else [], 'teamSelections': selections(self,team,scenario), 'profile': self.profile(owner), 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': self.files(owner),
                 'techRadar': self.heartbeat.status(owner, self.profile(owner) or {}),
                 'memory': memory_text, 'agentId': owner, 'crewOwner': team, 'roundtableTurns': roundtable_turns,
                 'agents': agents, 'agentLimit': MAX_AGENTS, 'assignments': assignments, 'bacResetting': bac_resetting,
@@ -763,8 +765,12 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
         if not isinstance(members, dict) or any(k not in {str(i) for i in range(1, EVENT_ROLE_COUNT)} for k in members):
             raise Problem('Assign personal agents to the specialist roles.')
         account = db.execute('SELECT participant FROM agents WHERE id=?', (owner,)).fetchone()['participant']
+        from scenarios import crew_member
+        scenario = self.crew_scenario(owner)
         roster, used = [], {owner}
         for i, (name, role, persona) in enumerate(ROLES):
+            definition = crew_member(CREW_CATALOG[i], scenario)
+            name, role = definition['name'], definition['role']
             key = None if preset else (lead or owner) if i == 0 else members.get(str(i))
             if key:
                 if not isinstance(key, str) or (i and key in used):
@@ -1130,6 +1136,9 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
         """Verify built-in protection before preparation, direct chat, and event work."""
         from studio_policy import ProtectionNotVerified
         # Saved jobs from an older build must not restore an unprotected Dylan.
+        from scenarios import crew_member
+        definition = crew_member(CREW_CATALOG[role], self.crew_scenario(owner))
+        member.update(name=definition['name'], role=definition['role'], _scenario=self.crew_scenario(owner))
         member['protection'] = CREW_CATALOG[role].get('protection', 'standard')
         agent_id = member['id']
         from team_models import selections
@@ -1143,7 +1152,7 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
         modes = self.__dict__.setdefault('_crew_tool_modes', {})
         if agent_id not in self.provisioned or modes.get(agent_id) != mode:
             self.initialize_workspace(owner)
-            self.adapter.register(agent_id, self.workspace(owner, role), member, member['role'])
+            self.adapter.register(agent_id, self.workspace(owner, role), member, CREW_CATALOG[role]['role'])
             self.provisioned.add(agent_id)
             modes[agent_id] = mode
         if member['protection'] != 'openshell':
@@ -1298,8 +1307,9 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
             member = self.crew_roster(db, owner, {}, preset=True)[role]
             reset = self.crew_chat_reset_state(db, owner)
             current_event = db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind='crew' AND created>=?", (owner, reset['at'])).fetchone()
-        event_scenario = self.crew_scenario(owner) == 'event-brief'
-        member['purpose'] = CREW_CATALOG[role]['description'] if event_scenario else CREW_CATALOG[role]['collaboration']['description']
+        from scenarios import crew_member
+        definition = crew_member(CREW_CATALOG[role], self.crew_scenario(owner))
+        member['purpose'] = definition['collaboration']['description']
         agent_id = member['id']
         report = self.prepare_builtin_crew(owner, role, member)
         if report:
@@ -1308,13 +1318,13 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
         self.event(job_id, member['name'] + ' is working', member['role'], role)
         if self.stop_checkpoint(job_id):
             return
-        prompt = ('You are ' + member['name'] + ', the ' + CREW_CATALOG[role]['collaboration']['title'] + '. '
+        prompt = ('You are ' + member['name'] + ', the ' + definition['collaboration']['title'] + '. '
                   + member['purpose'] + '\nAnswer this direct message using your equipped skills. '
                   + ('The inbox may contain the latest event brief and handoffs; use them when relevant. ' if current_event else 'No event has been submitted in this conversation yet. Do not load earlier event briefs, handoffs or conversation transcripts. ') +
                   'This is a conversation, not a new crew mission. Do not claim other agents ran, '
                   'or send invitations or publish anything on the user’s behalf.\n\n' + payload['prompt'])
         if role == 0:
-            prompt += '\nCommunication style: ' + CREW_CATALOG[0]['collaboration'].get('voice', '')
+            prompt += '\nCommunication style: ' + definition['collaboration'].get('voice', '')
         prompt += self.conversation_context(owner, role, row['created'], job_id, plans_only=True)
         session = self.crew_chat_session(owner, role) + ('-' + reset['epoch'] if reset['epoch'] else '')
         prompt += PAGE_INSTRUCTIONS

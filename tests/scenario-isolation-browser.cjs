@@ -47,18 +47,15 @@ const active = job => ['queued', 'running', 'waiting', 'stopping'].includes(job.
     await page.waitForFunction(()=>!document.querySelector('#studio-crew-document-add').disabled);
   }
   async function model(scenario, id) {
-    if(scenario==='plan'){
+    if(scenario==='event-brief'){
+      await api(scenario,'settings/connections',{source:'api',provider:'nvidia',model:id,apiKey:'fixture-key'});
+    }else{
       if(!await page.locator('#studio-standby').evaluate(e=>e.open))await page.locator('#studio-standby summary').click();
       await page.locator('[data-standby-model="0"]').click();
-    }else{
-      await page.locator('#studio-config').click();await page.locator('#studio-connections-agent-models').click();
-      await page.locator('#studio-team-config-form [data-team-model="0"]').click();
+      await page.getByRole('searchbox',{name:'Search API models'}).fill(id===LIGHTNING?'lightning':'ultra');
+      await page.locator('[data-model-choice="'+id+'"]').click();
     }
-    await page.getByRole('searchbox',{name:'Search API models'}).fill(id===LIGHTNING?'lightning':'ultra');
-    await page.locator('[data-model-choice="'+id+'"]').click();
-    if(scenario!=='plan')await page.locator('[data-team-apply-all]').click();
     await waitFor(async()=> (await state(scenario)).teamSelections.some(r=>r.role===0&&r.id===id),'model applied');
-    if(scenario!=='plan')await page.waitForFunction(()=>document.querySelector('#studio-team-model-status').textContent.includes('applied'));
     await close();
   }
   async function plan(prompt) {
@@ -89,7 +86,7 @@ const active = job => ['queued', 'running', 'waiting', 'stopping'].includes(job.
     assert.equal((await state('event-brief')).crewDocuments.length,1,'Other scenario upload must survive');
     console.log('PASS documents: independent selections, same-name reupload after reset, other scenario preserved');
     await model('plan',LIGHTNING);await choose('event-brief');
-    assert.equal((await state('event-brief')).teamSelections.find(r=>r.role===0).id,ULTRA);
+    assert.equal((await state('event-brief')).teamSelections.find(r=>r.role===0).id,'fixture-local-model');
     await model('event-brief',LIGHTNING);await model('event-brief',ULTRA);
     await choose('plan');assert.equal((await state('plan')).teamSelections.find(r=>r.role===0).id,LIGHTNING);
     await page.reload();await page.waitForFunction(()=>window.BacCampus?.inspect().navigation?.overview);await choose('plan');

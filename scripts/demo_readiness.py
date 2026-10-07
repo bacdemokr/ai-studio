@@ -36,7 +36,7 @@ class DemoReadiness:
         background = data.get('background') is True
         selected = data.get('enabledRoles', [0, 1, 2, 3])
         if not isinstance(selected, list) or not selected or 0 not in selected or any(type(i) is not int or not 0 <= i <= 3 for i in selected) or len(set(selected)) != len(selected):
-            raise Problem('Choose the BaC crew, including Casey.')
+            raise Problem('Choose the BaC crew, including Riley.')
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
             previous = db.execute("SELECT * FROM jobs WHERE owner=? AND kind='prepare' ORDER BY created DESC LIMIT 1", (owner,)).fetchone()

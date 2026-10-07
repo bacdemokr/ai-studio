@@ -55,8 +55,8 @@ class ScenarioBoundaryTests(unittest.TestCase):
 
     def test_reset_all_waits_for_both_teams_and_preserves_models(self):
         with patch.object(team_models, 'public', return_value={'models': [{'id': m} for m in team_models.MODELS]}):
-            for index, owner in enumerate(self.teams.values()):
-                team_models.select(self.app, owner, {'role': 0, 'model': team_models.MODELS[index]})
+            team_models.select(self.app, self.teams['plan'], {'role': 0, 'model': team_models.MODELS[1]})
+        before = {scenario: team_models.selections(self.app, owner) for scenario, owner in self.teams.items()}
         rows = []
         for scenario, owner in self.teams.items():
             self.saved(scenario)
@@ -74,7 +74,7 @@ class ScenarioBoundaryTests(unittest.TestCase):
             self.assertFalse(state['bacResetting'])
             self.assertEqual(state['crewChats'], [])
             self.assertEqual(state['crewDocuments'], [])
-            self.assertEqual(state['teamSelections'][0]['id'], team_models.MODELS[index])
+            self.assertEqual(state['teamSelections'], before[scenario])
             self.assertFalse((self.app.workspace(owner) / 'artifacts/report.md').exists())
 
     def test_uploaded_document_counts_as_saved_work_without_a_chat(self):

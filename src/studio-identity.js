@@ -70,7 +70,7 @@ function syncFileButtons(){
 async function openWorkspaceFiles(team=false){
  const target=agentId,scenario=selectedScenario,role=selectedCrewRole,workspace=team?String(role):'personal';
  if(team?!(data.fileWorkspaces||[]).includes(workspace):!data.hasFiles)return;
- const name=team?window.BacCrewCatalog[role]?.name:data.profile?.name;
+ const name=team?defaultNames[role]:data.profile?.name;
  dialog('FILES','<section id="studio-workspace-browser"><header><h3>'+escape(name?name+' files':'Agent files')+'</h3></header><p id="studio-file-status" role="status">Loading files…</p><div id="studio-file-folders"></div></section>');
  const host=el('workspace-browser');
  const current=()=>host.isConnected&&el('dialog').open&&target===agentId&&scenario===selectedScenario&&(!team||role===selectedCrewRole);

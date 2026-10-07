@@ -81,6 +81,7 @@ def configure(studio, owner, data):
 
 def prepare(studio, owner, member):
     saved = connection(studio, owner)
+    member['_scenario'] = studio.crew_scenario(owner)
     member.pop('_teamLocal', None)
     member.pop('_connectionConfig', None)
     if saved.get('shared'):

@@ -350,8 +350,24 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
                                   'Produce the requested deliverable, not a default LinkedIn post, survey or event page.\n')
             files['EVENT_WORKFLOW.md'] = crew_event_instructions(member)
             files['AGENTS.md'] += '\n# Actual capabilities and limits\n' + json.dumps(collaboration_capabilities(profile, role), ensure_ascii=False) + '\n'
+    legacy_files = {}
+    if role and member and profile.get('_scenario') == 'event-brief' and member.get('event'):
+        legacy_files = dict(files)
+        legacy_files['IDENTITY.md'] = '# Identity\nName: ' + member['name'] + '\nRole: ' + member['collaboration']['title'] + '\nTeam: BaC\n'
+        event = member['event']
+        expertise = event['collaboration']
+        files['IDENTITY.md'] = '# Identity\nName: ' + event['name'] + '\nRole: ' + event['role'] + '\nTeam: Event Brief\n'
+        files['SOUL.md'] = ('# Character\n' + event['name'] + ', ' + event['role'] + ' in the Event Brief team.\n'
+                            '# Communication style\n' + expertise['voice'] + '\n# Expertise\n' + expertise['description'] +
+                            '\n# Role boundary\n' + expertise['scope'] + '\nNever invent tool results or other agents\' work.\n')
+        files['AGENTS.md'] = files['AGENTS.md'].replace(
+            'Ordinary chats and /plan use the current request, not an event workflow.',
+            'You belong to the Event Brief scenario. Use your event role for direct conversations. /goal orchestration belongs to the separate Open Task team.')
+        files['AGENTS.md'] += '\n# Event Brief assignment\n' + expertise['scope'] + '\n'
+        files['EVENT_WORKFLOW.md'] = files['EVENT_WORKFLOW.md'].replace('Casey', 'Riley')
     def write(target, content):
-        if overwrite or not target.exists():target.write_text(content, encoding='utf-8')
+        if overwrite or not target.exists() or (target.name in legacy_files and target.read_text(encoding='utf-8') == legacy_files[target.name]):
+            target.write_text(content, encoding='utf-8')
     import user_location
     user_location.sync(workspace)
     for name, content in files.items():

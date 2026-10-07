@@ -163,9 +163,9 @@ class EventScenario(EventControls, DemoReadiness):
             if data.get('workflow') == 'showcase':
                 selected = payload.get('enabledRoles', [0, 1, 2, 3])
                 if brief.get('schema') != 2 or not preset or data.get('members') or any(i > 3 for i in selected):
-                    raise Problem('The quick showcase uses Casey, Dylan, Alex and Morgan.')
+                    raise Problem('The quick showcase uses Riley, Dylan, Alex and Morgan.')
                 if 0 not in selected:
-                    raise Problem('Casey is required to coordinate the BaC crew.')
+                    raise Problem('Riley is required to coordinate the BaC crew.')
                 payload.update(workflow='showcase', enabledRoles=selected, stage=min(selected))
                 if brief.get('themeCount') and 3 in selected:
                     payload['pageMode'] = 'agent-html-v1'

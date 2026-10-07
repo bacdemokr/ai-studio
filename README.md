@@ -1,6 +1,6 @@
 # NVIDIA Build-a-Claw
 
-Hire personal agents, try their skills, and collaborate with Casey and specialist agents in the **Multi-Agent demo**.
+Hire personal agents, try their skills, and collaborate with Riley or Casey and their specialist agents in the **Multi-Agent demo**.
 
 ## Start on a new PC
 
@@ -114,7 +114,7 @@ If you want to edit `api.cfg` and use Git **before your first start**, install t
 bash scripts/setup-key-filter.sh
 ```
 
-In Stage 3, **Models & connection** opens the shared Model settings. Preferences apply to new work; active requests are never automatically replayed. For Open Task on NVIDIA, expand **Standby specialists** and click the model beside each agent to search and save its choice. Event Brief exposes **Per-agent models** from its Model settings. Choices are locked while the team is working. Other external providers use the model selected for the shared endpoint. Hiring/Lounge, Event Brief and Open Task have separate rows in the same settings panel. Save both scenario choices together without switching floors.
+In Stage 3, **Models & connection** opens the shared Model settings. Preferences apply to new work; active requests are never automatically replayed. For Open Task on NVIDIA, expand **Standby specialists** and click the model beside each agent to search and save its choice. Event Brief uses the selected connection model for its entire team. Choices are locked while the team is working. Other external providers use the model selected for the shared endpoint. Hiring/Lounge, Event Brief and Open Task have separate rows in the same settings panel. Save both scenario choices together without switching floors.
 
 ### Stages 1 and 2: Hiring and Agent lounge
 
@@ -134,7 +134,7 @@ Keyless local servers need no API key. Provider keys entered in these settings a
 2. **Agent lounge:** chat with a hired agent, inspect files, or approve OpenShell access.
 3. **Multi-Agent demo:** enter the **Event Brief** or **Open Task** floor directly from the studio overview or Studio Map. Both spaces branch directly off the Lounge concourse as equal choices, with their own signs and accent colors. Entering Stage 3 or choosing **Scenarios** shows the spaces together; signs show **Continue** when work is saved. Switching spaces never clears either workspace.
 
-**Event Brief** restores the fixed Casey, Dylan, Alex and Morgan crew. Open **Plan an event**, enter event details, prepare the crew, and launch. The team produces researched demo ideas, an operations timetable and an event webpage. Dylan retains his OpenShell protection.
+**Event Brief** restores the fixed Riley, Dylan, Alex and Morgan crew. Open **Plan an event**, enter event details, prepare the crew, and launch. The team produces researched demo ideas, an operations timetable and an event webpage. Dylan retains his OpenShell protection.
 
 **Open Task** uses the Zurich Plan collaboration flow: message Casey with `/goal` and a concrete task, optionally attaching documents. Casey selects the needed specialists. Each scenario has its own team identities, chat history, model selections, documents and results. They share the Stage 3 API connection and hired-agent collection. Choosing another scenario does not cancel active work.
 
@@ -230,3 +230,9 @@ In **Settings → Model**, Local and External Endpoint are independent checkboxe
 Initial defaults prefer Local for Hiring/Lounge and External Endpoint for Stage 3; saved manual preferences are preserved. The panel highlights the actual ready connection rather than showing an ambiguous Auto option. If the preferred connection is disabled or unavailable, new work uses the other ready connection. If neither is ready, requests are blocked with **Model not connected**. Connection checks verify model availability, not model quality or task completion. Existing work is not retried automatically.
 
 Use local/private endpoints reachable from the OpenClaw host. Local mode does not launch vLLM automatically. Scenario resets preserve connection settings. The launcher treats `api.cfg` as optional. When Open Task uses Local, a warning explains that it may be slower or produce less reliable results for complex requests. With neither connection ready, tasks remain blocked. Event Brief does not show this Open Task warning.
+
+### Scenario teams and models
+
+Event Brief uses Riley (event coordinator), Dylan, Alex and Morgan, with event-specific identity and role instructions. Open Task keeps Casey as its team captain. Each scenario has separate native agents, workspaces, conversations and memory, including before any model request. Existing generated Event Brief definitions are upgraded; custom definitions and saved work are preserved.
+
+All Event Brief agents use the model selected on their active connection in **Settings > Model**, whether Local or External Endpoint. Old per-agent choices do not override that connection. Open Task retains per-agent NVIDIA model choices in its specialist roster; Local and other external providers use the selected connection model.
