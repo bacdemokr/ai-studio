@@ -5,9 +5,13 @@ October 7, 2026
 
 ### Targets of this demo (version xxx)
 
+- creating an 'Agent'
+-- depending on the audiance 'knowledge', it may make sense or not to come back on the topic: creating an agent, with some IDENTIDY/SOULD/etc.., which skills linked ot it...is it under control or not (Openshell)
 - with or without 'Openshell' [stage 1 and 2]
+-- demo is currently relying on 'openclaw' [https://openclaw.ai/], need to know what is it about, why important (other solutions: Hermes, Nanoclaw, Manus...to be updated BUT the important is to understand the basic: * These tools are AI agents that turn natural-language instructions into multi-step actions across files, apps, and services, either through self-hosted infrastructure or a managed platform*)
 -- Openshell is there to 'protect' those (openClaw and Hermess) agent harnesses
 - what is it about working a multi-agent system and what could we could do with (examples and attendee's idea)
+-- different scenarios. Somehow the 'orchestrator' is requiring different 'sub-agents' to perform a task. In this demo, some agents with some skills are already pre-defined, like 'web-searching', 'creating a nice UI output', 'double checking the output', etc...Note that we can not extend (and don't target!!!) to have a list of any kind of possible agents, fullfilling any kind of scenarios. This is not the target (and the world is wide). Point is to showcase some workflow
 
 ### the audience
 
@@ -71,3 +75,7 @@ This is similar to building a house:
 In the same way, each agent has specialized skills that helps it produce the best possible contribution for its area of responsibility.
 
 The team also needs an orchestrator. This agent plans the work, selects the right specialists, assigns the right tasks, coordinates their contributions, and brings the results together to achieve the overall goal.
+
+## 2. STAGE 1: Creating your Agent
+## 3. STAGE 2: Testing the Agents, with or without 'control'
+## 4. Stage 3: testing a multi-agent workflow
