@@ -24,6 +24,21 @@ class ConnectionTests(unittest.TestCase):
         if source=='api':data['apiKey']='fixture-secret'
         with patch.object(settings,'request',return_value={'data':[{'id':'test-model'}]}):return connections.configure(self.app,data)
 
+    def test_output_budget_reserves_input_across_connection_paths(self):
+        for context, expected in [(8192,4096),(16384,8192),(32768,16384),(131072,16384)]:
+            profile={'model':'test-model','baseUrl':'http://127.0.0.1:8000/v1','apiKey':'','contextWindow':context}
+            for provider in settings.PROVIDERS:
+                native=connections.native(dict(profile,_provider=provider))
+                self.assertEqual(native['models'][0]['maxTokens'],expected)
+            config={'agents':{'defaults':{},'entries':{}}}
+            settings.apply_to_config(config,'local',profile)
+            self.assertEqual(config['models']['providers']['bac-local']['models'][0]['maxTokens'],expected)
+            team_models.apply(config,local=profile,agent_id='bac-0123456789abcdef01234567-r0')
+            for model in config['models']['providers']['bac-team']['models']:
+                self.assertEqual(model['maxTokens'],16384)
+            local=team_models.local_provider('bac-0123456789abcdef01234567-r0')
+            self.assertEqual(config['models']['providers'][local]['models'][0]['maxTokens'],expected)
+
     def test_all_readiness_combinations(self):
         for local in (False,True):
             for api in (False,True):

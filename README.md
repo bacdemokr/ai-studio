@@ -221,7 +221,7 @@ Use **Files** beside the team API controls to browse the selected specialist’s
 
 Empty scenarios have Reset disabled. Event preparation, conversations, uploaded documents and results count as saved work. Reset clears only the selected scenario; the built-in Event Brief template remains available for the next run.
 
-Event Brief keeps the bounded output budget rather than globally increasing it to the context limit. If a model hits its output limit, that role gets at most one concise retry in a fresh context, preserving saved files and completed tool results. Existing deliverable checks still apply. Other connection or provider failures are not automatically retried. To resume after a full shutdown, run `./bac vllm` if needed, then `./bac start`.
+The maximum output budget is 16,384 tokens per response. Connections configured with less than 32,768 context tokens use at most half of their context for output, leaving the rest for input and tools. If a model hits its output limit, that role gets at most one concise retry in a fresh context, preserving saved files and completed tool results. Existing deliverable checks still apply. Other connection or provider failures are not automatically retried. To resume after a full shutdown, run `./bac vllm` if needed, then `./bac start`.
 
 ### Shared model connections
 

@@ -114,7 +114,7 @@ def apply(config, selected=None, local=None, agent_id=None):
         config['models']['providers'][local_provider(agent_id)] = {
             'baseUrl': local['baseUrl'], 'apiKey': 'local-only', 'api': 'openai-completions',
             'models': [{'id': local['model'], 'name': local['model'], 'input': ['text'], 'reasoning': False,
-                        'contextWindow': context, 'contextTokens': context, 'maxTokens': min(settings.MAX_OUTPUT_TOKENS, context // 4),
+                        'contextWindow': context, 'contextTokens': context, 'maxTokens': settings.output_token_limit(context),
                         'cost': {'input': 0, 'output': 0, 'cacheRead': 0, 'cacheWrite': 0}}]}
     for agent,entry in config.get('agents',{}).get('entries',{}).items():
         model=model_for(agent,entry.get('model'))

@@ -172,7 +172,7 @@ def native(value):
             'apiKey':'session-only' if value.get('apiKey') else 'local-only','api':settings.PROVIDERS[provider]['api'],
             'models':[{'id':value['model'],'name':value['model'],'input':['text'],'reasoning':False,
                        'contextWindow':value['contextWindow'],'contextTokens':value['contextWindow'],
-                       'maxTokens':min(settings.MAX_OUTPUT_TOKENS,value['contextWindow']//4),
+                       'maxTokens':settings.output_token_limit(value['contextWindow']),
                        'cost':{'input':0,'output':0,'cacheRead':0,'cacheWrite':0}}]}
 
 
