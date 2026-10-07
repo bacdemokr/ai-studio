@@ -194,7 +194,8 @@ function travelTo(target,instant=false,remaining=[]){
   endResidentDrag(true);drag=null;
   const start={focus:focus.clone(),azimuth,elevation,zoom,height:viewHalfHeight||roomHeight(room)};
   const delta=Math.atan2(Math.sin(target.azimuth-azimuth),Math.cos(target.azimuth-azimuth));target.azimuth=azimuth+delta;
-  journey={start,target,began:performance.now(),duration:800,remaining,lift:target.overview?0:Math.min(.6,start.focus.distanceTo(target.focus)*.025)};
+  const distance=start.focus.distanceTo(target.focus);
+  journey={start,target,began:performance.now(),duration:target.overview?800:Math.min(1000,650+distance*8),remaining,lift:target.overview?0:Math.min(target.height*.18,distance*.055)};
   refreshNavigation();
   if(instant||reduced.matches)finishJourney(true);
 }
@@ -210,19 +211,11 @@ function setRoom(next,options={}){
   if(!studioRooms[next])return;
   if(next===room&&!overview&&!journey&&!scenarioMoved){resize();return;}
   scenarioMoved=false;scenarioGallery=false;
-  // Finish the current corridor before rerouting rapid clicks; never cut across the courtyard.
-  const inFlight=!overview&&journey?.target.to?journey.target:null;
-  const previous=inFlight?.to||room;rememberCamera();room=next;overview=false;
-  const stops=previous!==next&&previous!=='lounge'&&next!=='lounge'?['lounge',next]:previous!==next?[next]:[];
-  const targets=inFlight?[inFlight]:[];
-  let from=previous;
-  for(const to of stops){
-    const [a,e,z]=roomCameras[to];
-    targets.push({focus:roomFocus(to),azimuth:a,elevation:e,zoom:z,height:roomHeight(to),overview:false,from,to,scenario:activeScenario});from=to;
-  }
-  if(!targets.length){const [a,e,z]=roomCameras[next];targets.push({focus:roomFocus(next),azimuth:a,elevation:e,zoom:z,height:roomHeight(next),overview:false,from:previous,to:next,scenario:activeScenario});}
-  journeyNote.textContent=[previous,...stops].map(id=>studioRooms[id].title).join(' → ');
-  travelTo(targets[0],options.instant,targets.slice(1));
+  // Retarget from the current camera pose, without queuing intermediate rooms.
+  const previous=room;rememberCamera();room=next;overview=false;
+  const [a,e,z]=roomCameras[next];
+  journeyNote.textContent='Opening '+studioRooms[next].title;
+  travelTo({focus:roomFocus(next),azimuth:a,elevation:e,zoom:z,height:roomHeight(next),overview:false,from:previous,to:next,scenario:activeScenario},options.instant);
 }
 function showOverview(options={}){
   closeRoomInfo(false);closeTermInfo(false);
@@ -251,7 +244,7 @@ function animateNavigation(now){
     const t=Math.min(1,(now-journey.began)/journey.duration),p=t*t*(3-2*t),{start,target}=journey;
     focus.lerpVectors(start.focus,target.focus,p);
     azimuth=THREE.MathUtils.lerp(start.azimuth,target.azimuth,p);elevation=THREE.MathUtils.lerp(start.elevation,target.elevation,p);zoom=THREE.MathUtils.lerp(start.zoom,target.zoom,p);
-    viewHalfHeight=THREE.MathUtils.lerp(start.height,target.height,p)+Math.sin(Math.PI*t)*journey.lift;
+    viewHalfHeight=THREE.MathUtils.lerp(start.height,target.height,p)+Math.sin(Math.PI*p)**2*journey.lift;
     frame();if(t===1)finishJourney();
   }
   scene.updateMatrixWorld();
