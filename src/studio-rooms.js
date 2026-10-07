@@ -84,7 +84,7 @@ function renderRoomVisibility(){
   el('collection').hidden=!lounge||!data.profile;
   layout.hidden=false;el('board').hidden=true;
   el('experiences').hidden=!lounge;el('workspace').hidden=workshop||(mission?!currentCollaboration():(!current()&&!data.files?.length));el('safety-bar').hidden=true;
-  const action=el('room-action');action.hidden=!mission||scenarioChoosing||selectedScenario!=='event-brief';action.textContent='Plan an event';action.onclick=crewForm;action.disabled=!!data.bacResetting||data.scenarios?.find(s=>s.id==='event-brief')?.busy;
+  const action=el('room-action');action.hidden=!mission||scenarioChoosing||selectedScenario!=='event-brief';action.textContent='Plan an event';action.onclick=crewForm;action.disabled=!!data.bacResetting||eventTeamWorking();
   document.getElementById('campus-roster').hidden=!mission||scenarioChoosing;
   renderScenarioSelector();
   const activeScenario=stageScenarios.find(s=>s.id===selectedScenario);
