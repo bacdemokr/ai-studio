@@ -33,14 +33,16 @@ def credentials():
     return secrets.get(settings.secret_key('team'))
 
 
-def save_connection(key, models):
+def save_connection(key, models, source=None):
+    previous = saved_connection()
+    credential_source = source or (previous.get('source') if previous.get('apiKey') == key else None) or 'host'
     path = credential_path()
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     os.chmod(path.parent, 0o700)
     fd, temporary = tempfile.mkstemp(dir=path.parent, prefix='.stage3-')
     try:
         with os.fdopen(fd, 'w') as stream:
-            json.dump({'apiKey': key, 'models': models}, stream)
+            json.dump({'apiKey': key, 'models': models, 'source': credential_source}, stream)
         os.replace(temporary, path)
     finally:
         if os.path.exists(temporary):os.unlink(temporary)

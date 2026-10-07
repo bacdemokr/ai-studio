@@ -39,6 +39,9 @@ def profile(source):
     value.setdefault('contextWindow',32768)
     value['_provider']=provider
     value.setdefault('apiKey','')
+    if value.get('apiKey'):
+        stored=team_models.saved_connection() if provider=='nvidia' else {}
+        value['_keySource']=stored.get('source','host') if stored.get('apiKey')==value['apiKey'] else 'session'
     return value
 
 
@@ -64,7 +67,7 @@ def probe(source,value):
 
 def status(source,refresh=False):
     value=profile(source);key=signature(value)
-    basic={'provider':value['_provider'],'model':value.get('model',''),'baseUrl':value['baseUrl'],'contextWindow':value['contextWindow'],'enabled':source not in read().get('disabled',[])}
+    basic={'provider':value['_provider'],'model':value.get('model',''),'baseUrl':value['baseUrl'],'contextWindow':value['contextWindow'],'keySource':value.get('_keySource'),'enabled':source not in read().get('disabled',[])}
     if source in read().get('disabled',[]):return {**basic,'ready':False,'message':'Disabled'}
     if not value.get('model') or (source=='api' and not value.get('apiKey')):
         return {**basic,'ready':False,'message':'Not configured'}

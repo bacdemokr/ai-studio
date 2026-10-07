@@ -27,7 +27,7 @@ class KeySetupTests(unittest.TestCase):
         self.path.write_text('fixture-valid\n')
         with patch.object(api, 'validate', return_value=[]), patch.object(api, 'save_connection') as save, patch.object(api.os, 'geteuid', return_value=1000):
             api.setup(self.path)
-        save.assert_called_once_with('fixture-valid', [])
+        save.assert_called_once_with('fixture-valid', [], source='api.cfg')
         self.assertEqual(self.path.read_text(), 'fixture-valid\n')
 
     def test_outage_preserves_key(self):

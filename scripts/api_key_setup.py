@@ -54,7 +54,7 @@ def setup(path):
         models = validate(key)
     except InvalidKey:
         raise InvalidKey('Put a valid inference API key in api.cfg, then run ./bac start again. Services were not restarted.') from None
-    save_connection(key, models)
+    save_connection(key, models, source='api.cfg')
     # The setup helper runs as root; the studio runs as uid 10001.
     if os.geteuid() == 0:
         saved = credential_path()
