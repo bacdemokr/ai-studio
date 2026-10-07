@@ -24,21 +24,21 @@ const { chromium } = require('playwright');
   try {
     await page.goto('http://127.0.0.1:8083');
     await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.version==='SCENARIO TEST FIXTURE');
+    await choose('plan');
+    assert.equal(await page.locator('.studio-team-utilities').getByRole('button',{name:'Files',exact:true}).isVisible(),false);
     await api('plan','onboard',{name:'File QA',skills:['documents']});
     await api('plan','upload',{name:'personal.md',content:'Personal notes stay personal.'});
     for(const scenario of ['plan','event-brief'])await api(scenario,'upload',{crewRole:0,name:'notes.md',content:scenario+' content'});
     await page.reload();await page.waitForFunction(()=>window.BacCampus?.inspect().navigation.overview);
     for(const scenario of ['plan','event-brief']){
       await choose(scenario);await files();
-      await page.locator('#studio-file-workspace').selectOption('0');
+      assert.equal(await page.locator('#studio-file-workspace').count(),0,'No agent selector in file dialog');
       await page.locator('[data-browse-file="inbox/notes.md"]').click();
       assert.equal(await page.locator('#studio-dialog-body pre').innerText(),scenario+' content');
       const download=page.waitForEvent('download');await page.locator('#studio-download').click();
       const saved=await download;assert.equal(saved.suggestedFilename(),'notes.md');
       assert.equal(await fs.readFile(await saved.path(),'utf8'),scenario+' content');
       await close();await files();
-      const choices=await page.locator('#studio-file-workspace option').evaluateAll(nodes=>nodes.map(n=>n.value));
-      assert.equal(choices.includes('5'),scenario==='plan');
       assert(!await page.locator('[data-browse-file="inbox/personal.md"]').count());
       await close();
     }
@@ -52,10 +52,10 @@ const { chromium } = require('playwright');
     await page.route('**/api/workspace-files?**',async route=>{started=true;await new Promise(resolve=>release=resolve);await route.fulfill({json:{files:[]}});});
     await files();await page.waitForFunction(()=>document.querySelector('#studio-file-status')?.textContent.includes('Loading'));
     while(!started)await new Promise(r=>setTimeout(r,10));
-    await close();await page.locator('#studio-config').click();await page.locator('#studio-config-form').waitFor();
+    await close();await page.locator('#studio-config').click();await page.locator('#studio-model-connections').waitFor();
     release();await page.waitForTimeout(300);
-    assert.equal(await page.locator('#studio-config-form').count(),1,'Late file listing cannot replace Settings');
+    assert.equal(await page.locator('#studio-model-connections').count(),1,'Late file listing cannot replace Settings');
     assert.deepEqual(errors,[]);
-    console.log('PASS: personal/team file isolation, same-name scenario downloads, role choices, and late listing after dialog closure.');
+    console.log('PASS: personal/team file isolation, same-name scenario downloads, hidden empty button, no agent selector, and late listing after dialog closure.');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

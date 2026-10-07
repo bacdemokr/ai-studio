@@ -217,7 +217,7 @@ Scenario presentation lives in `src/stage-scenarios.json`, shared by the scene, 
 
 ### Files and Event Brief recovery
 
-Use **Files** beside the team API controls to browse the selected scenario’s team results or a member’s `inbox/` and `artifacts/`. In the Lounge, use **Files** beside **Code**. Open a file to preview or download it. Definition files in **Agent files** also have a Download button. These are browser-based views of the server workspace, so they work when the demo runs on another computer. They do not open the presenter’s OS file manager.
+Use **Files** beside the team API controls to browse the selected specialist’s uploads and results. In the Lounge, use **Files** beside **Code** for the selected hired agent. The button is hidden when that agent has no files, and the file dialog has no agent selector. Open a file to preview or download it. Definition files in **Agent files** also have a Download button. These are browser-based views of the server workspace, so they work when the demo runs on another computer. They do not open the presenter’s OS file manager.
 
 Empty scenarios have Reset disabled. Event preparation, conversations, uploaded documents and results count as saved work. Reset clears only the selected scenario; the built-in Event Brief template remains available for the next run.
 

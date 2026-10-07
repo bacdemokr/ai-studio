@@ -10,7 +10,7 @@ async function openAgentDocuments(role=null,codeView=false){
  const host=el('identity-viewer');
  const current=()=>request===identityRequest&&el('dialog').open&&el('identity-viewer')===host&&agentId===target;
  try{
-  const result=await api('agent-documents'+(role===null?'':'?role='+role),undefined,target);
+  const result=await api('agent-documents'+(role===null?'':'?role='+role),undefined,fileOwner);
   if(!current())return;
   const documents=result.documents||[];
   if(codeView){
@@ -64,30 +64,28 @@ for(const id of ['crew-portrait','crew-name'])el(id).onclick=()=>openAgentDocume
 el('dialog').addEventListener('close',()=>{if(!el('dialog').open)identityRequest++;});
 
 // Browser-based folder access works on both local and remote installations.
-async function openWorkspaceFiles(team=false){
- const target=agentId,scenario=selectedScenario;
- dialog('FILES','<section id="studio-workspace-browser"><header><h3>'+(team?'Scenario files':'Agent files')+'</h3><label>Files from <select id="studio-file-workspace"></select></label></header><p id="studio-file-status" role="status"></p><div id="studio-file-folders"></div></section>');
- const host=el('workspace-browser'),select=el('file-workspace');
- const current=()=>host.isConnected&&el('dialog').open&&target===agentId&&scenario===selectedScenario;
- const choices=team?[['team','Team results'],...window.BacCrewCatalog.flatMap((member,role)=>(scenario==='event-brief'?role<4:member.planEligible!==false)?[[String(role),member.name]]:[])]:[['personal',data.profile?.name||'Your agent']];
- select.replaceChildren(...choices.map(([value,label])=>new Option(label,value)));
- let generation=0;
- async function load(){
-  const request=++generation,workspace=select.value;
-  el('file-status').textContent='Loading files…';el('file-folders').replaceChildren();
-  try{
-   const result=await api('workspace-files?workspace='+encodeURIComponent(workspace),undefined,target);
-   if(!current()||request!==generation)return;
-   const files=result.files||[];
-   el('file-status').textContent=files.length?'':'No files yet.';
-   el('file-folders').innerHTML=[['inbox','Uploaded files'],['artifacts','Results']].map(([folder,label])=>{
-    const items=files.filter(f=>f.kind===folder);
-    return items.length?'<section class="studio-file-folder"><h4>'+label+'</h4>'+items.map(f=>'<button type="button" class="studio-secondary" data-browse-file="'+escape(f.path)+'"><span>'+escape(f.path.slice(folder.length+1))+'</span><small>'+Math.ceil(f.size/1024)+' KB ↗</small></button>').join('')+'</section>':'';
-   }).join('');
-   el('file-folders').onclick=event=>{const button=event.target.closest('[data-browse-file]');if(button&&current())openFile(button.dataset.browseFile,'',workspace);};
-  }catch(error){if(current()&&request===generation)el('file-status').textContent=error.message;}
- }
- select.onchange=load;load();
+function syncFileButtons(){
+ personalFilesButton.hidden=!data.hasFiles;
+ scenarioFilesButton.hidden=!(data.fileWorkspaces||[]).includes(String(selectedCrewRole));
 }
-const personalFilesButton=document.createElement('button');personalFilesButton.type='button';personalFilesButton.id='studio-personal-files';personalFilesButton.className='studio-secondary';personalFilesButton.textContent='Files';personalFilesButton.onclick=()=>openWorkspaceFiles(false);el('agent-code').after(personalFilesButton);
-const scenarioFilesButton=document.createElement('button');scenarioFilesButton.type='button';scenarioFilesButton.className='studio-team-utility';scenarioFilesButton.textContent='Files';scenarioFilesButton.onclick=()=>openWorkspaceFiles(true);teamConnectionBar.querySelector('.studio-team-utilities').prepend(scenarioFilesButton);
+async function openWorkspaceFiles(team=false){
+ const target=agentId,scenario=selectedScenario,role=selectedCrewRole,workspace=team?String(role):'personal';
+ if(team?!(data.fileWorkspaces||[]).includes(workspace):!data.hasFiles)return;
+ const name=team?window.BacCrewCatalog[role]?.name:data.profile?.name;
+ dialog('FILES','<section id="studio-workspace-browser"><header><h3>'+escape(name?name+' files':'Agent files')+'</h3></header><p id="studio-file-status" role="status">Loading files…</p><div id="studio-file-folders"></div></section>');
+ const host=el('workspace-browser');
+ const current=()=>host.isConnected&&el('dialog').open&&target===agentId&&scenario===selectedScenario&&(!team||role===selectedCrewRole);
+ try{
+  const result=await api('workspace-files?workspace='+encodeURIComponent(workspace),undefined,target);
+  if(!current())return;
+  const files=result.files||[];
+  el('file-status').textContent=files.length?'':'No files yet.';
+  el('file-folders').innerHTML=[['inbox','Uploaded files'],['artifacts','Results']].map(([folder,label])=>{
+   const items=files.filter(f=>f.kind===folder);
+   return items.length?'<section class="studio-file-folder"><h4>'+label+'</h4>'+items.map(f=>'<button type="button" class="studio-secondary" data-browse-file="'+escape(f.path)+'"><span>'+escape(f.path.slice(folder.length+1))+'</span><small>'+Math.ceil(f.size/1024)+' KB ↗</small></button>').join('')+'</section>':'';
+  }).join('');
+  el('file-folders').onclick=event=>{const button=event.target.closest('[data-browse-file]');if(button&&current())openFile(button.dataset.browseFile,'',workspace);};
+ }catch(error){if(current())el('file-status').textContent=error.message;}
+}
+const personalFilesButton=document.createElement('button');personalFilesButton.type='button';personalFilesButton.hidden=true;personalFilesButton.id='studio-personal-files';personalFilesButton.className='studio-secondary';personalFilesButton.textContent='Files';personalFilesButton.onclick=()=>openWorkspaceFiles(false);el('agent-code').after(personalFilesButton);
+const scenarioFilesButton=document.createElement('button');scenarioFilesButton.type='button';scenarioFilesButton.hidden=true;scenarioFilesButton.className='studio-team-utility';scenarioFilesButton.textContent='Files';scenarioFilesButton.onclick=()=>openWorkspaceFiles(true);teamConnectionBar.querySelector('.studio-team-utilities').prepend(scenarioFilesButton);

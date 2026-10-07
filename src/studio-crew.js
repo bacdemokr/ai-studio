@@ -403,6 +403,7 @@ function syncCrewComposer(){
  el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping BaC work and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(teamRuntime().teamModel??runtime.model)?'Model not connected. Enable Local or External Endpoint in Settings.':'Run ./bac start on this computer to connect the team runtime.';
 }
 function renderCrewPassport(){
+ syncFileButtons();
  const epoch=selectedScenario+':'+(data.crewChatReset?.epoch||'');
  if(epoch!==crewResetEpoch){
   const resetChanged=crewResetEpoch.split(':')[0]===selectedScenario;crewResetEpoch=epoch;if(resetChanged)for(const key of crewDrafts.keys())if(key.startsWith(selectedScenario+':'))crewDrafts.delete(key);crewChatKey='';crewChatSignature='';el('crew-prompt').value=defaultCrewPrompt(selectedCrewRole);

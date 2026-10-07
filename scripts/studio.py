@@ -735,6 +735,11 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
             observation = plan.pop('observation', None)
             if job['status'] == 'running' and observation and not plan.get('responseReady'):
                 plan['liveActivity'] = live_snapshot(self.adapter, observation)
+        file_workspaces = []
+        if team:
+            candidates = [('team', None)] + [(str(role), role) for role, member in enumerate(CREW_CATALOG)
+                if (role < 4 if scenario == 'event-brief' else member.get('planEligible') is not False)]
+            file_workspaces = [name for name, role in candidates if self.files(team, role, recursive=True)]
         memory = self.workspace(owner) / 'MEMORY.md'
         memory_text = ''
         try:
@@ -744,7 +749,8 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
         from team_models import selections
         from scenario_models import connection
         return {'scenario':scenario, 'scenarios':self.scenario_status(owner), 'preparation':self.demo_preparation(team) if team and scenario=='event-brief' else None,
-                'teamConnection': connection(self, team),
+                'teamConnection': connection(self, team), 'fileWorkspaces': file_workspaces,
+                'hasFiles': bool(self.files(owner, recursive=True)),
                 'crewDocuments': [f for f in self.files(team,0) if f['kind']=='inbox' and not internal_team_input(f['path'])] if team else [], 'teamSelections': selections(self,team), 'profile': self.profile(owner), 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': self.files(owner),
                 'techRadar': self.heartbeat.status(owner, self.profile(owner) or {}),
                 'memory': memory_text, 'agentId': owner, 'crewOwner': team, 'roundtableTurns': roundtable_turns,

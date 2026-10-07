@@ -25,6 +25,23 @@ class FeedbackBoundaries(unittest.TestCase):
     server = boundaries.ScenarioBoundaryTests.server
     request = boundaries.ScenarioBoundaryTests.request
 
+    def test_file_visibility_tracks_current_agent_and_scenario(self):
+        self.assertFalse(self.app.state(self.owner)['hasFiles'])
+        self.assertEqual(self.app.state(self.owner)['fileWorkspaces'], [])
+        personal = self.app.workspace(self.owner) / 'inbox/nested'
+        personal.mkdir(parents=True)
+        document = personal / 'notes.md'
+        document.write_text('Personal upload')
+        self.assertTrue(self.app.state(self.owner)['hasFiles'])
+        result = self.app.workspace(self.teams['plan'], 5) / 'artifacts/result.md'
+        result.write_text('Specialist result')
+        self.assertEqual(self.app.state(self.owner)['fileWorkspaces'], ['5'])
+        self.assertEqual(self.app.state(self.owner, 'event-brief')['fileWorkspaces'], [])
+        document.unlink()
+        result.unlink()
+        self.assertFalse(self.app.state(self.owner)['hasFiles'])
+        self.assertEqual(self.app.state(self.owner)['fileWorkspaces'], [])
+
     def test_goal_aliases_and_routing(self):
         for command in ('/goal', '/goals', '/plan', '/plans', '/GOAL'):
             self.assertTrue(is_plan(' \n' + command + '\nBuild a game'))
