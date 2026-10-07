@@ -24,7 +24,7 @@
     "title": "Open Task",
     "eyebrow": "Your task, the right team",
     "description": "Bring a task. Casey assembles the team.",
-    "team": "Casey + specialists for your /plan request",
+    "team": "Casey + specialists for your /goal request",
     "action": "Open Task",
     "accent": "#a1d65e",
     "floor": "#2a333e",
@@ -32,11 +32,11 @@
     "guide": {
       "intro": "Bring Casey a task. Casey assembles the right team to help you complete it.",
       "points": [
-        "Message Casey with /plan and describe the result you want. Attach documents if your task uses files.",
+        "Message Casey with /goal and describe the result you want. Attach documents if your task uses files.",
         "Casey assigns work to the relevant specialists and reviews their contributions.",
         "Follow assignments and progress in Mission Control, then open the team response and any saved files."
       ],
-      "note": "For a direct conversation with Casey, remove /plan. Your conversations and results stay saved when you switch spaces."
+      "note": "For a direct conversation with Casey, remove /goal. Your conversations and results stay saved when you switch spaces."
     }
   }
 ]

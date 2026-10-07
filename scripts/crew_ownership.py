@@ -9,6 +9,21 @@ import time
 
 
 class CrewOwnership:
+    def browsing_workspace(self, owner, scenario, selection='personal'):
+        """Resolve a browser selection through account ownership, never a host path."""
+        from studio import Problem, CREW_CATALOG
+        if selection == 'personal':
+            return owner, None
+        role = None
+        if selection != 'team':
+            if not isinstance(selection, str) or not selection.isascii() or not selection.isdecimal():
+                raise Problem('Choose a valid workspace.')
+            role = int(selection)
+            if role not in range(len(CREW_CATALOG)) or (scenario == 'event-brief' and role >= 4) or (scenario == 'plan' and CREW_CATALOG[role].get('planEligible') is False):
+                raise Problem('Choose a member of this scenario.')
+        team = self.existing_crew_owner(owner, scenario)
+        return team, role
+
     def existing_crew_owner(self, owner, scenario=None):
         """Reading session/settings state must not create a team or workspaces."""
         with self.db() as db:
@@ -30,7 +45,7 @@ class CrewOwnership:
             result=[]
             for scenario in SCENARIOS:
                 team=db.execute('SELECT owner FROM crew_contexts WHERE scenario=? AND participant=(SELECT participant FROM agents WHERE id=?)',(scenario,owner)).fetchone()
-                latest=db.execute("SELECT status,updated FROM jobs WHERE owner=? AND kind IN ('crew','crew-chat') ORDER BY created DESC LIMIT 1",(team['owner'],)).fetchone() if team else None
+                latest=db.execute("SELECT status,updated FROM jobs WHERE owner=? AND kind IN ('crew','crew-chat','prepare') ORDER BY created DESC LIMIT 1",(team['owner'],)).fetchone() if team else None
                 busy=bool(team and db.execute("SELECT 1 FROM jobs WHERE owner=? AND status IN ('queued','running','waiting','stopping') LIMIT 1",(team['owner'],)).fetchone())
                 reset=self.crew_chat_reset_state(db,team['owner'])['at'] if team else 0
                 if latest and latest['updated']<reset:latest=None

@@ -40,7 +40,7 @@ def compact_contributions(outputs):
     return compact
 
 
-PLAN_COMMAND = re.compile(r'^\s*/plans?(?=\s|$)', re.I)
+PLAN_COMMAND = re.compile(r'^\s*/(?:goals?|plans?)(?=\s|$)', re.I)
 
 
 def is_plan(prompt):

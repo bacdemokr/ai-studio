@@ -26,7 +26,7 @@ The first start builds the runtime image for your PC and downloads the pinned Op
 ID and a small inference request to succeed. This command runs independently of
 Docker, Studio, and the Stage 3 API key. Ordinary `./bac start` never starts or
 waits for a local model, even if model configuration exists or model files are
-missing. `./bac stop` stops the BaC services, including OpenShell, but leaves the host model server running.
+missing. `./bac stop` stops the BaC services and their OpenShell sandboxes, but leaves the host model server running. Use `./bac stop --all` to also stop the local model launched by this installation. Externally managed model servers are left running and reported explicitly. Saved files, model weights and settings are preserved.
 
 ```bash
 ./bac vllm                # Prepare Qwen, default wait: 600 seconds
@@ -136,9 +136,9 @@ Keyless local servers need no API key. Provider keys entered in these settings a
 
 **Event Brief** restores the fixed Casey, Dylan, Alex and Morgan crew. Open **Plan an event**, enter event details, prepare the crew, and launch. The team produces researched demo ideas, an operations timetable and an event webpage. Dylan retains his OpenShell protection.
 
-**Open Task** uses the Zurich Plan collaboration flow: message Casey with `/plan` and a concrete task, optionally attaching documents. Casey selects the needed specialists. Each scenario has its own team identities, chat history, model selections, documents and results. They share the Stage 3 API connection and hired-agent collection. Choosing another scenario does not cancel active work.
+**Open Task** uses the Zurich Plan collaboration flow: message Casey with `/goal` and a concrete task, optionally attaching documents. Casey selects the needed specialists. Each scenario has its own team identities, chat history, model selections, documents and results. They share the Stage 3 API connection and hired-agent collection. Choosing another scenario does not cancel active work.
 
-Only Open Task's Casey chat supports `/plan`. Lounge agents accept direct messages; Event Brief uses **Plan an event**. Casey's Open Task chat starts with `/plan ` and restores it after a successful send. Delete the prefix to send a direct message. Specialists accept direct messages only, without `/plan` hints or suggestions; send team tasks to Casey. Their inputs start empty and clear after sending; existing drafts stay intact when switching characters.
+`/plan` and `/plans` remain supported aliases for `/goal`. Only Open Task's Casey chat supports these team commands. Lounge agents accept direct messages; Event Brief uses **Plan an event**. Casey's Open Task chat starts with `/goal ` and restores it after a successful send. Delete the prefix to send a direct message. Specialists accept direct messages only, without `/goal` hints or suggestions; send team tasks to Casey. Their inputs start empty and clear after sending; existing drafts stay intact when switching characters.
 
 The room starts with Casey. The selected specialists join together and execute in assignment order. The pool is Scout (Web Researcher), Ada (Data analyst), Iris (UX designer), Cody (Programmer), and Vera (Reviewer). Dylan, Alex and Morgan appear only in Event Brief; they are not in the Plan specialist pool. Coding tasks prioritize a compact, usable desktop demo: no mobile layouts or touch controls, no optional polish loops, and no extra design pass unless needed. Cody aims to save the core implementation in one pass and returns once required work is delivered. Explicitly requested independent review is still required. Casey reserves a repair for an observed defect, not a repeated save/read confirmation.
 
@@ -147,7 +147,7 @@ The room starts with Casey. The selected specialists join together and execute i
 Example:
 
 ```text
-/plan Build a self-contained desktop HTML page comparing the figures in the
+/goal Build a self-contained desktop HTML page comparing the figures in the
 attached CSV. Use only the supplied data and include a clear comparison chart.
 ```
 
@@ -160,7 +160,7 @@ attached CSV. Use only the supplied data and include a clear comparison chart.
 Casey can answer directly or select up to three specialists. Simple tasks need no fixed team size. To require review, say so explicitly:
 
 ```text
-/plan Analyze the attached earnings table. Add an independent review of the
+/goal Analyze the attached earnings table. Add an independent review of the
 calculations, units, reporting periods, and conclusions before the final answer.
 ```
 
@@ -178,7 +178,7 @@ Static review uses bounded source excerpts: at most eight reads, 120 lines per r
 
 Scout uses keyless Parallel Search: one focused search and 2–3 useful findings by default, then saves a short cited brief. Fewer findings are acceptable; stale or irrelevant results are reported honestly. No separate search API key is needed.
 
-The bundled research guard enforces at most two searches (three bounded excerpts each), or five bounded page reads, per research job. After a search, Scout saves the available excerpts instead of opening more pages. These limits apply only to Scout’s `/plan` research; other agents and OpenShell policies are unchanged.
+The bundled research guard enforces at most two searches (three bounded excerpts each), or five bounded page reads, per research job. After a search, Scout saves the available excerpts instead of opening more pages. These limits apply only to Scout’s `/goal` research; other agents and OpenShell policies are unchanged.
 
 Small saved evidence briefs and bounded excerpts from observed tool results are passed directly to Casey for synthesis. If the final reply cites a public URL absent from those results and their returned links, it is withheld as partial rather than labeled complete. This citation check does not verify every factual claim or establish that sources are current.
 
@@ -191,6 +191,7 @@ Scout has a 150-second research budget across retries. At the deadline, saved wo
 | Install / start / apply app changes and validate the key | `./bac start` |
 | Check status / recent logs | `./bac status` / `./bac logs` |
 | Stop, keeping data | `./bac stop` |
+| Stop services, sandboxes and this installation’s local model | `./bac stop --all` |
 | **Delete BaC and its data** | **`./bac remove`** |
 
 To update, finish active work, then run in the repository folder:
@@ -213,3 +214,11 @@ Use normal Git commands to update your checkout. Resolve local changes or diverg
 This preview starts from the frozen Zurich snapshot (`feba7df`). The viewport improvements, room information guides and side-by-side agent definition viewer adapt Benjamin Bayart’s contributions (`ee717f3`, `8993a20`, `09b4794`, `3c54aba`); the initial Stage 3 picker took inspiration from his scenario cards; scenarios now appear as separate 3D floors. The fixed Event Brief workflow is restored from `archive/bac-planning` (`94198b6`). Startup retains the overview and does not delete agents. There is no `./bac restart` command. Existing Zurich team ownership migrates to Plan without changing native identities; Event Brief creates a separate team when first used.
 
 Scenario presentation lives in `src/stage-scenarios.json`, shared by the scene, navigation and accessible fallback. Floors branch in pairs from a common concourse and use automatic overview framing, so three or four scenarios fit without hard-coded camera coordinates. New scenarios also require an explicit backend workflow and ownership identifier; adding a visual entry alone does not enable a new workflow.
+
+### Files and Event Brief recovery
+
+Use **Files** beside the team API controls to browse the selected scenario’s team results or a member’s `inbox/` and `artifacts/`. In the Lounge, use **Files** beside **Code**. Open a file to preview or download it. Definition files in **Agent files** also have a Download button. These are browser-based views of the server workspace, so they work when the demo runs on another computer. They do not open the presenter’s OS file manager.
+
+Empty scenarios have Reset disabled. Event preparation, conversations, uploaded documents and results count as saved work. Reset clears only the selected scenario; the built-in Event Brief template remains available for the next run.
+
+Event Brief keeps the bounded output budget rather than globally increasing it to the context limit. If a model hits its output limit, that role gets at most one concise retry in a fresh context, preserving saved files and completed tool results. Existing deliverable checks still apply. Other connection or provider failures are not automatically retried. To resume after a full shutdown, run `./bac vllm` if needed, then `./bac start`.

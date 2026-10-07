@@ -9,10 +9,18 @@ async function waitForAgentRuntime(requireModel=false){
   throw new Error(requireModel?'The model was verified, but the agent runtime has not applied the connection. Retry Connect model.':'Model settings are saved, but the agent runtime is not ready. Try Start agents again.');
 }
 const settingsButton=document.createElement('button');settingsButton.id='studio-config';settingsButton.className='studio-config';settingsButton.type='button';settingsButton.textContent='⚙';settingsButton.title='Settings';settingsButton.setAttribute('aria-label','Settings');settingsButton.hidden=true;document.querySelector('#bac-planner .topbar').append(settingsButton);
-let settingsOpenRequest=0,resetInProgress=false;
+let settingsOpenRequest=0;
+function scenarioHasWork(id=selectedScenario){
+ const scenario=(data.scenarios||[]).find(s=>s.id===id);
+ return !!(scenario?.hasWork||scenario?.busy);
+}
 function syncResetButtons(){
- for(const id of ['agent-reset','settings-bac-reset','reset-all']){
-  const button=el(id);if(button)button.disabled=resetInProgress||(id==='agent-reset'&&!(data.agents||[]).length);
+ const hasAgents=!!(data.agents||[]).length,hasAnyScenario=(data.scenarios||[]).some(s=>s.hasWork||s.busy);
+ for(const id of ['agent-reset','settings-bac-reset','reset-all','bac-reset']){
+  const button=el(id);if(!button)continue;
+  const empty=id==='agent-reset'?!hasAgents:id==='reset-all'?!hasAgents&&!hasAnyScenario:!scenarioHasWork();
+  button.disabled=resetInProgress||!!data.bacResetting||removingAgent||empty;
+  button.title=empty?'Nothing to reset':'';
  }
  if(resetInProgress&&el('settings-status'))el('settings-status').textContent='Reset in progress. Agent cleanup is still running.';
 }

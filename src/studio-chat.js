@@ -115,9 +115,9 @@ for(const crew of [false,true]){
  input.addEventListener('paste',event=>{const images=[...event.clipboardData.items].filter(item=>item.kind==='file'&&item.type.startsWith('image/')).map(item=>item.getAsFile()).filter(Boolean);if(images.length){event.preventDefault();addChatImages(images,crew)}});
 }
 let chatSending=false;
-const isPlanCommand=value=>/^\s*\/plans?(?:\s|$)/i.test(value);
-const planLocationHint='Use /plan with Casey in Open Task. Lounge agents and other teammates accept direct messages only.';
-const eventPlanLocationHint='Use Plan an event for Event Brief, or send /plan to Casey in Open Task.';
+const isPlanCommand=value=>/^\s*\/(?:goals?|plans?)(?:\s|$)/i.test(value);
+const planLocationHint='Use /goal with Casey in Open Task. Lounge agents and other teammates accept direct messages only.';
+const eventPlanLocationHint='Use Plan an event for Event Brief, or send /goal to Casey in Open Task.';
 function clearPlanLocationHint(crew=false){
  const prefix=crew?'crew-':'',notice=el(prefix+'chat-error');
  if(!isPlanCommand(el(prefix+'prompt').value)&&[planLocationHint,eventPlanLocationHint].includes(notice.textContent))notice.hidden=true;
@@ -251,13 +251,13 @@ for(const id of ['crew-prompt']){
  anchor.className='studio-command-anchor';input.before(anchor);anchor.append(input,menu);
  menu.className='studio-command-menu';menu.id=input.id+'-commands';menu.hidden=true;menu.setAttribute('role','listbox');menu.setAttribute('aria-label','Commands');
  option.type='button';option.id=menu.id+'-plan';option.setAttribute('role','option');option.setAttribute('aria-selected','true');
- option.innerHTML='<strong>/plan</strong><span>Collaborate with the BaC team</span><small>↵</small>';menu.append(option);
+ option.innerHTML='<strong>/goal</strong><span>Collaborate with the BaC team</span><small>↵</small>';menu.append(option);
  input.setAttribute('aria-controls',menu.id);input.setAttribute('aria-autocomplete','list');
  const close=()=>{menu.hidden=true;input.removeAttribute('aria-activedescendant');};
  const enabled=()=>selectedScenario==='plan'&&selectedCrewRole===0&&input.dataset.planEnabled==='true';
- const update=()=>{const value=input.value.trimStart();const show=enabled()&&!input.disabled&&/^\/(?:p(?:l(?:a(?:ns?)?)?)?)?$/i.test(value)&&input.selectionStart===input.value.length;
+ const update=()=>{const value=input.value.trimStart();const show=enabled()&&!input.disabled&&/^\/(?:g(?:o(?:a(?:ls?)?)?)?|p(?:l(?:a(?:ns?)?)?)?)?$/i.test(value)&&input.selectionStart===input.value.length;
   menu.hidden=!show;if(show)input.setAttribute('aria-activedescendant',option.id);else input.removeAttribute('aria-activedescendant');};
- const choose=()=>{if(!enabled()){close();return;}input.value='/plan ';close();input.focus({preventScroll:true});input.setSelectionRange(input.value.length,input.value.length);input.dispatchEvent(new Event('input',{bubbles:true}));};
+ const choose=()=>{if(!enabled()){close();return;}input.value='/goal ';close();input.focus({preventScroll:true});input.setSelectionRange(input.value.length,input.value.length);input.dispatchEvent(new Event('input',{bubbles:true}));};
  input.addEventListener('input',update);input.addEventListener('focus',update);input.addEventListener('click',update);
  input.addEventListener('keydown',event=>{
   if(!enabled()){close();return;}

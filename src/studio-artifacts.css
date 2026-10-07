@@ -27,3 +27,5 @@
 #studio-json-viewer [hidden]{display:none!important}
 @media(max-width:600px){#studio-dialog:has(#studio-json-viewer){padding:16px;height:88dvh;max-height:88dvh}#studio-json-viewer .result-json-row{grid-template-columns:1fr;gap:3px}#studio-json-viewer .result-json-children{padding:0 10px 5px}#studio-json-viewer .result-json-branch>summary{padding:11px 10px}#studio-json-viewer [role=tab]{padding:7px 12px}}
 #studio-json-copy-status{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+#studio-workspace-browser header{display:flex;align-items:center;justify-content:space-between;gap:24px}#studio-workspace-browser select{margin-left:12px;min-width:200px}.studio-file-folder{margin:20px 0}.studio-file-folder h4{color:#a7c486;font-size:14px;letter-spacing:.06em}.studio-file-folder button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:24px;margin:8px 0;text-align:left}.studio-file-folder small{color:#9bafbd;white-space:nowrap}

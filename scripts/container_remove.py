@@ -236,9 +236,30 @@ def remove(docker, gateway=GATEWAY, lock=None, hostname=None, installation=None,
         print('BAC_IMAGE ' + ref)
 
 
+def stop(docker, gateway=GATEWAY):
+    """Stop only verified BaC resources, preserving containers and data."""
+    containers = docker.call('GET', '/containers/json?all=1')
+    owned = [c for c in containers if owned_container(c, gateway)]
+    if owned and not gateway_marker(gateway):
+        raise RuntimeError('Cannot verify BaC ownership without the gateway marker.')
+    # Resolve every ownership check before any action. Shut off provisioning first.
+    owned.sort(key=lambda c: 0 if (c.get('Labels') or {}).get(PROJECT_LABEL) == PROJECT else 1)
+    for container in owned:
+        if container.get('State') not in ('running', 'restarting', 'paused'):
+            continue
+        try:
+            docker.call('POST', '/containers/' + container['Id'] + '/stop?t=45')
+        except DockerError as error:
+            if error.status not in (304, 404):
+                raise
+    print('Verified BaC containers stopped; files, images and volumes are preserved.', flush=True)
+
+
 if __name__ == '__main__':
     try:
-        if sys.argv[1] == '--record':
+        if sys.argv[1] == '--stop':
+            stop(Docker())
+        elif sys.argv[1] == '--record':
             record_images(json.loads(Path(sys.argv[2]).read_text()), sys.argv[3])
         else:
             remove(Docker(), lock=json.loads(Path(sys.argv[1]).read_text()),
@@ -246,5 +267,5 @@ if __name__ == '__main__':
                    host_installation=sys.argv[3] if len(sys.argv) > 3 else None,
                    release=len(sys.argv) > 4 and sys.argv[4] == 'release')
     except (RuntimeError, OSError, ValueError) as error:
-        print('BaC removal stopped: ' + str(error), file=sys.stderr)
+        print('BaC resource operation stopped: ' + str(error), file=sys.stderr)
         sys.exit(1)

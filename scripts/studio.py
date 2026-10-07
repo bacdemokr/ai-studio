@@ -826,19 +826,19 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
         if data.get('kind', 'chat') in ('chat', 'reminder'):
             self.require_manual_chat(self.profile(owner))
         if data.get('kind', 'chat') in ('chat', 'reminder') and is_plan(data.get('prompt')):
-            raise Problem('Send /plan to Casey in Open Task. Lounge agents accept direct messages only.')
+            raise Problem('Send /goal to Casey in Open Task. Lounge agents accept direct messages only.')
         collaborative = data.get('kind') == 'crew-chat' and is_plan(data.get('prompt'))
         event_scenario = self.crew_scenario(owner) == 'event-brief'
         if collaborative and event_scenario:
-            raise Problem('Use Plan an event for Event Brief, or send /plan to Casey in Open Task.')
+            raise Problem('Use Plan an event for Event Brief, or send /goal to Casey in Open Task.')
         if collaborative:
             origin_role = data.get('crewRole')
             if type(origin_role) is not int or not 0 <= origin_role < len(ROLES):
                 raise Problem('Choose a crew member.')
             if origin_role != 0:
-                raise Problem('Send /plan to Casey in Open Task. Specialists accept direct messages only.')
+                raise Problem('Send /goal to Casey in Open Task. Specialists accept direct messages only.')
             origin = {'owner': owner, 'role': origin_role}
-            task = text(plan_task(data['prompt']), 5995, 'Task after /plan')
+            task = text(plan_task(data['prompt']), 5995, 'Task after /goal')
             owner = self.crew_owner(owner)
             data = {**data, 'kind':'crew-chat', 'crewRole':0, 'skill':None}
             lead = None

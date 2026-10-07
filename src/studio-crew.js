@@ -1,5 +1,5 @@
 // Each specialist has a durable direct conversation, separate from crew execution.
-const defaultCrewPrompt=role=>selectedScenario==='plan'&&role===0?'/plan ':'';
+const defaultCrewPrompt=role=>selectedScenario==='plan'&&role===0?'/goal ':'';
 const crewDrafts=new Map();let crewChatKey='',crewChatSignature='',crewChatSending=false,crewResetEpoch='';
 // Shared by Lounge, crew chat, event replies and roundtable reactions.
 function customSkillMarkup(activity){
@@ -202,7 +202,7 @@ function missionControlTraceMarkup(job){
  let sequence=-1;
  const row=(kind,name,status,content,attrs='',recorded=true,state='')=>'<article class="mission-plan-step" data-trace-key="'+escape(kind+':'+attrs)+'" data-trace-kind="'+kind+'" data-step-state="'+state+'" '+attrs+'><header><small>'+(recorded?String(++sequence).padStart(2,'0')+' · '+({plan:'PLAN',contribution:'CONTRIBUTION',review:'REVIEW',revision:'REVISION REQUEST','revision-work':'REVISION',response:'RESPONSE',stopped:'STOPPED'}[kind]||kind.toUpperCase()):kind==='skipped'?'NOT CALLED':'PLANNED')+'</small><h4>'+escape(name)+'</h4><span>'+escape(status)+'</span></header><div class="mission-plan-content">'+content+'</div></article>';
  const detail=(key,label,content)=>'<details class="mission-trace-detail" data-trace-details="'+key+'"><summary>'+escape(label)+'</summary><div class="chat-prose">'+content+'</div></details>';
- const question=String(plan.task||job.payload.prompt||'').replace(/^\s*\/plans?(?=\s|$)/i,'').trim();
+ const question=String(plan.task||job.payload.prompt||'').replace(/^\s*\/(?:goals?|plans?)(?=\s|$)/i,'').trim();
  let markup=row('user','User','Submitted','<strong>Request</strong><div class="chat-prose">'+messageMarkup(question)+'</div>','',true,'done');
  markup+=row('plan','Casey',plan.summary?'Plan ready':active?'Planning':'No plan saved','<strong>Approach</strong><div>'+messageMarkup(plan.summary||(active?'Casey is deciding which expertise this request needs.':'No plan was saved before the work stopped.'))+'</div>','data-plan-role="0"',true,plan.summary?'done':active?'working':'');
  const called=tasks.filter(task=>plan.handoffs?.[task.role]||plan.outputs?.[task.role]||plan.calledRoles?.includes(task.role));
@@ -278,11 +278,11 @@ function renderMissionControl(){
  el('board').classList.toggle('has-plan',!!job);
  intro.querySelector('h3').textContent=job?'Execution trace':'No active plan';
  intro.querySelector('[data-mission-total]').textContent=job?collaborationTime(job):'';
- intro.querySelector('p').textContent=job?job.payload.collaboration.task:'Send /plan to Casey to start. Assigned specialists and progress will appear here.';
+ intro.querySelector('p').textContent=job?job.payload.collaboration.task:'Send /goal to Casey to start. Assigned specialists and progress will appear here.';
  if(!job){el('lanes').innerHTML='';delete el('lanes').dataset.traceJob;delete el('lanes')._traceMarkup;return;}
  updateMissionControlTrace(el('lanes'),job.id,missionControlTraceMarkup(job));
 }
-// /plan is a real Captain-led job; contributions come from completed model calls.
+// /goal is a real Captain-led job; contributions come from completed model calls.
 function collaborationRevisionBody(revision,jobId){
  return '<strong>Casey’s revision assignment</strong><div>'+messageMarkup(revision.task)+'</div><div class="mission-expectation"><small>Expected result</small>'+messageMarkup(revision.expected)+'</div>'+(revision.output?'<details class="mission-trace-detail" data-trace-details="revision-output"><summary>Revised contribution</summary><div class="chat-prose">'+messageMarkup(revision.output.answer)+'</div>'+webpageButtons(revision.output.files,jobId)+collaborationFileButtons(revision.output.files,jobId)+'</details>':'')+(revision.status==='failed'?'<p>The revision did not finish. Previous contributions are preserved.</p>':'');
 }
@@ -384,7 +384,7 @@ function syncCrewComposer(){
  const blocked=scenarioChoosing||scenarioSwitching||!teamReady()||!!data.bacResetting||captainPlanning||memberWorking||eventWorking||crewDocumentUpload;
  el('crew-document-add').hidden=selectedCrewRole!==0||selectedScenario==='event-brief';el('crew-document-add').disabled=blocked;
  renderCrewDocuments();
- const commandOnly=selectedScenario==='plan'&&selectedCrewRole===0&&/^\s*\/plans?\s*$/i.test(el('crew-prompt').value);
+ const commandOnly=selectedScenario==='plan'&&selectedCrewRole===0&&/^\s*\/(?:goals?|plans?)\s*$/i.test(el('crew-prompt').value);
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending||commandOnly;
  el('crew-chat-connection').hidden=!blocked;
  el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping BaC work and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(runtime.teamModel??runtime.model)?'Add your key to api.cfg, then run ./bac start.':'Run ./bac start on this computer to connect the team runtime.';
@@ -411,7 +411,7 @@ function renderCrewPassport(){
  const key=crewDraftKey(i),switched=key!==crewChatKey;
  if(switched){if(crewChatKey)crewDrafts.set(crewChatKey,el('crew-prompt').value);crewChatKey=key;el('crew-prompt').value=crewDrafts.get(key)??defaultCrewPrompt(i);el('crew-chat-error').hidden=true;}
  renderImageDrafts(true);
- el('crew-prompt').placeholder='Message '+name+'…'+(i===0?' or /plan a task with the BaC team':'');
+ el('crew-prompt').placeholder='Message '+name+'…'+(i===0?' or /goal a task with the BaC team':'');
  el('crew-prompt').dataset.planEnabled=String(i===0);syncCrewComposer();
  const turns=(data.crewChats||[]).filter(j=>j.payload.crewRole===i||(j.payload.collaboration&&(j.payload.collaboration.origin?.role===i||j.payload.collaboration.handoffs?.[i]||j.payload.collaboration.tasks?.some(t=>t.role===i)||j.payload.collaboration.activeRole===i))).map(j=>({...j,direct:true}));
  turns.sort((a,b)=>a.created-b.created);

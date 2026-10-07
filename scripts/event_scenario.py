@@ -64,6 +64,52 @@ def capacity(brief):
                'assumptions': 'One topic per attendee; one device and presenter per station; one floor assistant per 30 attendees plus one lead. This sizes demo stations, not measured LLM throughput.'}
 
 class EventScenario(EventControls, DemoReadiness):
+    def event_response(self, job_id, payload, stage, agent_id, session, prompt, owner, role):
+        """One bounded output-limit recovery per specialist, never a blanket replay."""
+        prompt += ('\nKeep final chat output under 150 words unless the assignment requires JSON. '
+                   'Save deliverables with native tools; do not repeat their full contents in chat. '
+                   'Use small section writes instead of one large HTML response. Target desktop only.')
+        try:
+            return self.protected_response(agent_id, session, prompt, owner, role)
+        except runtime.GatewayError as error:
+            key = str(stage)
+            retries = payload.setdefault('outputLimitRecovery', {})
+            if error.reason not in ('output-limit', 'tool-call-output-limit') or key in retries or self.stop_checkpoint(job_id):
+                raise
+            retries[key] = {'status': 'working', 'reason': error.reason}
+            # File names only. Existing task contracts and saved files remain in the workspace.
+            saved = [f['path'] for f in self.files(owner, role)][:30]
+            self.event(job_id, 'Output limit reached - one concise recovery',
+                       'Saved work is preserved. The agent will finish only missing work in a fresh context.',
+                       stage, payload=json.dumps(payload))
+            recovery = (prompt + '\nOUTPUT LIMIT RECOVERY: This is the only output-limit retry for this role. '
+                        'Inspect existing deliverables first. Preserve successful research, tool results and valid files. '
+                        'Finish only missing requirements using small targeted edits; do not restart the whole task. '
+                        'If the deliverables are already complete, verify them and return a short receipt. '
+                        'Use at most 100 words for the final reply unless the original task requires JSON. '
+                        'If anything cannot be finished, state the missing part honestly. Saved files:\n' + '\n'.join(saved))
+            try:
+                if self.stop_checkpoint(job_id):
+                    raise RuntimeError('Event work stopped; saved files are preserved.')
+                answer = self.protected_response(agent_id, session + '-output-recovery', recovery, owner, role)
+            except Exception as retry_error:
+                retries[key]['status'] = 'failed'
+                self.event(job_id, 'Output recovery did not finish', 'Saved work is preserved; no further output-limit retry.',
+                           stage, payload=json.dumps(payload))
+                if isinstance(retry_error, runtime.GatewayError) and retry_error.reason in ('output-limit', 'tool-call-output-limit'):
+                    retry_error.args = ('The model reached its output limit again after one shorter retry. Saved work is preserved. Try a smaller event brief or another team model.',)
+                raise
+            retries[key]['status'] = 'response-received'
+            self.event(job_id, 'Recovery response received', 'Checking the saved deliverable before continuing.',
+                       stage, payload=json.dumps(payload))
+            # Preserve observations from both attempts for the existing validators and activity UI.
+            first = getattr(error, 'activity', {})
+            second = getattr(answer, 'activity', {})
+            if hasattr(answer, 'activity'):
+                calls = {c['id']: c for c in first.get('calls', []) + second.get('calls', [])}
+                answer.activity = {**second, 'available': bool(first.get('available') or second.get('available')), 'calls': list(calls.values())}
+            return answer
+
     def enqueue_event(self, owner, data, source='web', due=0, lead=None):
         from studio import Problem, text, safe_file, ROLES, CREW_CATALOG
         if data.get('kind') != 'crew' or data.get('preset') is not True or self.crew_scenario(owner) != 'event-brief':
@@ -319,7 +365,7 @@ class EventScenario(EventControls, DemoReadiness):
                                    'brief':b,'themes':[{k:t.get(k) for k in ('topic','demo','action','outcome','risk')} for t in calc['topics']]},ensure_ascii=False))
                 for post_attempt in range(2):
                     if self.stop_checkpoint(job_id):raise RuntimeError('Social draft stopped.')
-                    post_reply=self.protected_response(agent_id,session+'-social',post_prompt,assigned or owner,None if assigned or (stage == 0 and not member) else stage)
+                    post_reply=self.event_response(job_id,payload,stage,agent_id,session+'-social',post_prompt,assigned or owner,None if assigned or (stage == 0 and not member) else stage)
                     self.record_usage(job_id,payload,post_reply,agent_id,name,'3-social')
                     post=str(post_reply).strip()
                     if 40 <= len(post) <= 4000 and not any(t in post for t in morgan_page.TOKENS) and 'Reply truncated' not in post:
@@ -336,7 +382,7 @@ class EventScenario(EventControls, DemoReadiness):
             for attempt in range(repair_limit + 1):
                 if self.stop_checkpoint(job_id):
                     raise RuntimeError('Event page authoring stopped.')
-                answer = self.protected_response(agent_id, session, prompt, assigned or owner, None if assigned or (stage == 0 and not member) else stage)
+                answer = self.event_response(job_id, payload, stage, agent_id, session, prompt, assigned or owner, None if assigned or (stage == 0 and not member) else stage)
                 activity=getattr(answer,'activity',{'available':False,'source':'OpenClaw transcript','calls':[]})
                 existing=payload.setdefault('activity',{}).setdefault(str(stage),{'available':False,'source':'OpenClaw transcript','calls':[]})
                 existing.update(available=existing['available'] or activity.get('available',False))

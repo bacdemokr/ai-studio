@@ -164,12 +164,27 @@ class Handler(SimpleHTTPRequestHandler):
                     if not value.isascii() or not value.isdecimal():raise Problem('Choose a valid crew member.')
                     role=int(value)
                 return self.json_response(read_documents(studio,studio.crew_owner(owner, scenario) if role is not None else owner,role))
+            if parsed.path == '/api/workspace-files':
+                query = parse_qs(parsed.query, keep_blank_values=True)
+                if set(query) - {'workspace'} or len(query.get('workspace', [])) > 1:
+                    raise Problem('Choose one workspace.')
+                target, role = studio.browsing_workspace(owner, scenario, query.get('workspace', ['personal'])[0])
+                return self.json_response({'files': studio.files(target, role) if target else []})
             if parsed.path == '/api/file':
                 name = parse_qs(parsed.query).get('path', [''])[0]
                 if not (name.startswith(('inbox/', 'artifacts/')) or name in ('MEMORY.md', 'IDENTITY.md', 'SOUL.md', 'AGENTS.md')):
                     raise Problem('File is not available.', 404)
                 job_id = parse_qs(parsed.query).get('job',[''])[0]
-                path = safe_file(studio.workspace(studio.job_owner(owner,job_id)),name,True) if job_id else studio.available_file(owner, name, scenario)
+                query = parse_qs(parsed.query, keep_blank_values=True)
+                if 'workspace' in query:
+                    if job_id or len(query['workspace']) != 1:
+                        raise Problem('Choose one file workspace.')
+                    target, role = studio.browsing_workspace(owner, scenario, query['workspace'][0])
+                    if not target:
+                        raise Problem('File is not available.', 404)
+                    path = safe_file(studio.workspace(target, role), name, True)
+                else:
+                    path = safe_file(studio.workspace(studio.job_owner(owner,job_id)),name,True) if job_id else studio.available_file(owner, name, scenario)
                 if path.suffix.lower() in ('.png','.jpg','.webp'):
                     mime={'.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp'}[path.suffix.lower()]
                     return self.json_response({'path':name,'encoding':'base64','content':base64.b64encode(path.read_bytes()).decode(),'mime':mime})

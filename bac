@@ -14,6 +14,7 @@ BaC Agent Studio
   ./bac status    Check service status
   ./bac logs      Show recent errors and activity
   ./bac stop      Stop services; keep saved data
+  ./bac stop --all   Also stop this installation's managed local model
   ./bac remove    Uninstall BaC, old images and all project data (asks once)
 
 First time? Run ./bac start, then connect your model in Settings.
@@ -74,7 +75,12 @@ case "$command_name" in
   start|status|logs|stop|remove) ;;
   *) usage >&2; die "Unknown command: $command_name. Old host commands now use ./bac dev COMMAND." ;;
 esac
-[[ $# -eq 1 ]] || die "Use ./bac $command_name without extra arguments."
+stop_all=false
+if [[ $command_name == stop && $# -eq 2 && $2 == --all ]]; then
+  stop_all=true
+else
+  [[ $# -eq 1 ]] || die "Use ./bac $command_name without extra arguments (or ./bac stop --all)."
+fi
 if [[ $command_name == start ]]; then
   bash scripts/setup-key-filter.sh
   [[ ! -L api.cfg ]] || die 'api.cfg must be a regular file, not a symlink.'
@@ -195,7 +201,32 @@ case "$command_name" in
     ;;
   status) compose ps -a ;;
   logs) compose logs --tail=80 studio openshell ;;
-  stop) compose stop; echo 'BaC stopped. Saved data is kept. Start again with ./bac start.' ;;
+  stop)
+    # Stop dispatch first, then the sandboxes created outside Compose.
+    failed=0
+    compose stop || failed=1
+    helper=scripts/container_remove.py
+    [[ -f $helper ]] || helper=remove.py
+    image=$(compose config | awk '$1=="studio:" {studio=1; next} studio && !found && $1=="image:" {print $2; found=1}')
+    if [[ -f $helper && -n $image ]] && docker image inspect "$image" >/dev/null 2>&1; then
+      docker run --rm --pull never --network none --user 0 --entrypoint python3 \
+        --mount "type=bind,src=${endpoint#unix://},dst=/var/run/docker.sock" \
+        --mount "type=bind,src=$PWD/$helper,dst=/stop.py,readonly" \
+        -v /var/lib/bac-openshell:/var/lib/bac-openshell:ro \
+        "$image" /stop.py --stop || failed=1
+    else
+      echo 'Could not verify or stop BaC sandboxes: the installed helper/image is missing.' >&2
+      failed=1
+    fi
+    if $stop_all; then
+      # Still attempt model shutdown if container cleanup failed.
+      ./bac vllm --stop || failed=1
+    else
+      echo 'The local model is left running. Use ./bac stop --all to stop a model launched by this installation too.'
+    fi
+    (( failed == 0 )) || die 'Shutdown was incomplete. Review the errors above; saved data is kept.'
+    echo 'BaC services and sandboxes stopped. Saved data is kept. Start again with ./bac start.'
+    ;;
   remove)
     install_dir=$(pwd -P)
     removal_mode=release

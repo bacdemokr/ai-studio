@@ -72,7 +72,7 @@ setInterval(()=>syncTeamTotalTime(),1000);
 function syncSurface(){
   teamConnectionBar.dataset.connected=String(!!runtime.teamReady);
   el('team-connection-label').textContent=runtime.teamReady?'API connected':runtime.teamModel?'Runtime offline':'API not connected';
-  teamResetButton.disabled=!!data.bacResetting||removingAgent;
+  syncResetButtons();
   const plan=currentCollaboration();
   syncTeamTotalTime();
   standbyPanel.hidden=selectedScenario==='event-brief';

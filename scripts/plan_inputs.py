@@ -34,7 +34,7 @@ def requested_inputs(studio, origin, task):
         raw = source.read_bytes()
         total += len(raw)
         if len(raw) > MAX_FILE or total > 30 * 1024 * 1024 or len(inputs) >= 10:
-            raise Problem('Too many document inputs for one /plan. Name up to 10 files totaling 30 MB or less.')
+            raise Problem('Too many document inputs for one /goal. Name up to 10 files totaling 30 MB or less.')
         inputs.append({'id': 'document-' + str(len(inputs)), 'name': path.name,
                        'extractedText': extracted, 'suffix': source.suffix, 'data': raw})
     return inputs
