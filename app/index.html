@@ -966,6 +966,12 @@ body{margin:0;padding:0;width:100%;max-width:none}
 
 #studio-dialog.studio-team-settings::backdrop{background:#090c10e6;backdrop-filter:none}
 
+#studio-scenario-local{margin-top:18px;padding:20px;border:1px solid #405562;border-radius:12px;background:#13232e}
+#studio-scenario-local[hidden],#studio-scenario-api[hidden]{display:none}
+#studio-scenario-load{margin:14px 0}
+#studio-scenario-apply{margin-top:18px}
+#studio-scenario-status{font-size:13px;color:#b8cbd5;min-height:1.4em}
+
 .studio-sound{display:flex;align-items:center;gap:3px;flex-shrink:0}
 #agent-campus #campus-sound-toggle{width:auto;min-height:35px;height:auto;padding:4px 9px;font-size:15px;white-space:nowrap;color:#b8c9d7;border:1px solid #526071;background:#191e25;border-radius:3px}
 #agent-campus #campus-sound-toggle[aria-pressed=true]{color:#d3edb5;border-color:#5f843c;background:#1d2a22}
@@ -80893,7 +80899,7 @@ render();
   modelBadge.onkeydown=e=>{if(modelBadge.dataset.actionable==='true'&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();connectionAction();}};
   function runtimeBadge(){
     syncCrewComposer();
-    const state=gatewayState(),slow=state==='slow',modelConnected=room==='mission'?(runtime.teamModel??runtime.model):runtime.model,viewReady=room==='mission'?teamReady():runtime.ready,ready=!!viewReady&&!runtime.testFixture;
+    const state=gatewayState(),slow=state==='slow',modelConnected=room==='mission'?(teamRuntime().teamModel??runtime.model):runtime.model,viewReady=room==='mission'?teamReady():runtime.ready,ready=!!viewReady&&!runtime.testFixture;
     const actionable=!runtime.testFixture&&!runtimeRetrying&&(!runtime.gateway||(!modelConnected&&!settingsButton.hidden));
     modelBadge.textContent=runtime.testFixture?'TEST FIXTURE · NO REAL MODEL':runtimeRetrying?'Checking connection…':slow?'◷ '+gatewayLabel():!runtime.gateway?'⚠ Agent runtime unavailable · Retry connection':!modelConnected?(room==='mission'?'○ Team API not connected':'○ Model not connected'):'● Ready';
     modelBadge.dataset.warning=String(!runtime.testFixture&&!slow&&!viewReady);
@@ -81051,7 +81057,7 @@ teamModelDialog.innerHTML='<header><div><h3 id="team-model-heading">Choose a mod
 let modelPickerRole=0,modelPickerSaving=false,modelPickerDraft=null,modelPickerOwner=null,modelPickerForm=null,modelPickerSettingsScroll=0;
 function syncTeamModelForm(){
  const form=el('team-config-form');if(!form)return;
- const blocked=modelPickerSaving||!runtime.teamModel||data.bacResetting||(selectedScenario==='event-brief'&&data.scenarios?.find(s=>s.id==='event-brief')?.busy)||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
+ const blocked=data.teamConnection?.provider==='local'||modelPickerSaving||!runtime.teamModel||data.bacResetting||(selectedScenario==='event-brief'&&data.scenarios?.find(s=>s.id==='event-brief')?.busy)||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
  for(const trigger of form.querySelectorAll('[data-team-model]')){
   const role=Number(trigger.dataset.teamModel),draft=teamModelDrafts.get(role);
   const model=draft?(runtime.teamModels||[]).find(m=>m.id===draft):teamModel(role);
@@ -81331,8 +81337,9 @@ function collaborationHistoryMarkup(job){
  return '<article class="chat-turn" data-collaboration-history="'+escape(job.id)+'"><div class="chat-message chat-user"><small>You</small><div>'+messageMarkup(job.payload.prompt)+'</div></div><div class="chat-message chat-agent"><small>Casey · BaC collaboration</small>'+collaborationTimeMarkup(job)+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(answer)+'</div>'+collaborationCompletionMarkup(job.payload.collaboration,collaborationAnswer(job)))+(held?'':collaborationDecisionMarkup(job.payload.collaboration)+webpageButtons(job.result?.files||Object.values(job.payload.collaboration.webpages||{}).flat(),job.id))+'<button type="button" class="studio-secondary" data-open-collaboration>View team conversation</button></div></article>';
 }
 function showCollaboration(){selectedCrewRole=0;setRoom('mission');root.dataset.crewDetails='true';renderCrewPassport();}
-function teamReady(){return runtime.teamReady??runtime.ready;}
-function teamModel(role){const id=data.teamSelections?.find(row=>row.role===role)?.id;return runtime.teamModels?.find(model=>model.id===id)||(id?{id,label:id}:runtime.teamModels?.[[0,5,7].includes(role)?0:1]);}
+function teamRuntime(){return data.teamConnection?.provider==='local'?{...runtime,teamModel:!!data.teamConnection.local?.model,teamReady:!!data.teamConnection.local?.model&&!!runtime.gateway}:runtime;}
+function teamReady(){return teamRuntime().teamReady??runtime.ready;}
+function teamModel(role){if(data.teamConnection?.provider==='local'){const id=data.teamConnection.local?.model;return id?{id,label:id}:null;}const id=data.teamSelections?.find(row=>row.role===role)?.id;return runtime.teamModels?.find(model=>model.id===id)||(id?{id,label:id}:runtime.teamModels?.[[0,5,7].includes(role)?0:1]);}
 let crewDocumentUpload=false;
 const crewDocumentSelections=new Map();
 function excludedCrewDocuments(){
@@ -81380,7 +81387,7 @@ function syncCrewComposer(){
  const commandOnly=selectedScenario==='plan'&&selectedCrewRole===0&&/^\s*\/(?:goals?|plans?)\s*$/i.test(el('crew-prompt').value);
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending||commandOnly;
  el('crew-chat-connection').hidden=!blocked;
- el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping BaC work and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(runtime.teamModel??runtime.model)?'Add your key to api.cfg, then run ./bac start.':'Run ./bac start on this computer to connect the team runtime.';
+ el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping BaC work and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(teamRuntime().teamModel??runtime.model)?'Add your key to api.cfg, then run ./bac start.':'Run ./bac start on this computer to connect the team runtime.';
 }
 function renderCrewPassport(){
  const epoch=selectedScenario+':'+(data.crewChatReset?.epoch||'');
@@ -81913,7 +81920,7 @@ function syncEventLaunch(){
  const form=el('crew-form'),button=el('launch-event');if(!form||!button)return;
  const prepared=matchingPreparation()?.status==='done'&&!demoPreparationError;
  button.disabled=!teamReady()||eventSubmitting||!eventPreviewValid||!prepared||!form.querySelector('[name=crewRole]:checked');
- button.textContent=!runtime.gateway?gatewayLabel():!runtime.teamModel?'Model not connected':eventSubmitting?'Assigning your brief…':!prepared?'Prepare demo':'Start the event plan';
+ button.textContent=!runtime.gateway?gatewayLabel():!teamRuntime().teamModel?'Model not connected':eventSubmitting?'Assigning your brief…':!prepared?'Prepare demo':'Start the event plan';
  const note=el('event-connection');if(note){note.hidden=!!teamReady();note.textContent=runtime.gateway?'Connect the team API in API & models to run your crew.':gatewayState()==='slow'?'Waiting for the agent runtime. Checking automatically.':'Agent runtime unavailable. Use Retry connection in the status indicator.';}
 }
 async function updateEventPreview(){
@@ -82217,7 +82224,7 @@ const teamResetButton=document.createElement('button');teamResetButton.type='but
 const teamResetStatus=document.createElement('p');teamResetStatus.id='studio-team-reset-status';teamResetStatus.className='studio-muted';teamResetStatus.setAttribute('role','status');teamResetStatus.hidden=true;crewActions.after(teamResetStatus);
 const resultsButton=document.createElement('button');resultsButton.type='button';resultsButton.className='studio-secondary';resultsButton.dataset.surface='deliverables';resultsButton.textContent='Results';resultsButton.hidden=true;crewActions.append(resultsButton);
 const teamTotalTime=document.createElement('div');teamTotalTime.id='studio-team-total-time';teamTotalTime.hidden=true;teamTotalTime.setAttribute('role','timer');teamTotalTime.title='Total process time, including queueing, planning, specialists and review';el('crew-name').parentElement.classList.add('studio-captain-heading');el('crew-name').after(teamTotalTime);
-const teamConnectionBar=document.createElement('div');teamConnectionBar.className='studio-team-connection-bar';teamConnectionBar.innerHTML='<span class="studio-team-connection-state" role="status"><i aria-hidden="true"></i><span id="studio-team-connection-label">Team API</span></span><div class="studio-team-utilities"><button type="button" class="studio-team-utility" id="studio-team-setup" aria-haspopup="dialog"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h3m4 0h7M3 14h7m4 0h3"/><circle cx="8" cy="6" r="2"/><circle cx="12" cy="14" r="2"/></svg><span>API &amp; models</span></button></div>';teamConnectionBar.querySelector('.studio-team-utilities').append(teamResetButton);crewActions.after(teamConnectionBar);el('team-setup').onclick=openTeamSettings;
+const teamConnectionBar=document.createElement('div');teamConnectionBar.className='studio-team-connection-bar';teamConnectionBar.innerHTML='<span class="studio-team-connection-state" role="status"><i aria-hidden="true"></i><span id="studio-team-connection-label">Team API</span></span><div class="studio-team-utilities"><button type="button" class="studio-team-utility" id="studio-team-setup" aria-haspopup="dialog"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h3m4 0h7M3 14h7m4 0h3"/><circle cx="8" cy="6" r="2"/><circle cx="12" cy="14" r="2"/></svg><span>Models &amp; connection</span></button></div>';teamConnectionBar.querySelector('.studio-team-utilities').append(teamResetButton);crewActions.after(teamConnectionBar);el('team-setup').onclick=openTeamSettings;
 const standbyPanel=document.createElement('details');standbyPanel.id='studio-standby';
 standbyPanel.innerHTML='<summary>Standby specialists <span id="studio-standby-count"></span></summary><div class="studio-standby-content"><ul id="studio-standby-list"></ul></div>';
 teamConnectionBar.after(standbyPanel);
@@ -82247,8 +82254,8 @@ function syncTeamTotalTime(){
 }
 setInterval(()=>syncTeamTotalTime(),1000);
 function syncSurface(){
-  teamConnectionBar.dataset.connected=String(!!runtime.teamReady);
-  el('team-connection-label').textContent=runtime.teamReady?'API connected':runtime.teamModel?'Runtime offline':'API not connected';
+  teamConnectionBar.dataset.connected=String(!!teamReady());
+  el('team-connection-label').textContent=teamReady()?(data.teamConnection?.provider==='local'?'Local model configured':'API connected'):teamRuntime().teamModel?'Runtime offline':'Model not connected';
   syncResetButtons();
   const plan=currentCollaboration();
   syncTeamTotalTime();
@@ -83079,11 +83086,11 @@ settingsButton.onclick=async()=>{
   catch(error){telegram={connected:false,error:error.message};}
   if(!currentOpen())return;
   dialog('Settings',`<form id="studio-config-form" novalidate><nav class="studio-settings-tabs" role="tablist" aria-label="Settings"><button type="button" role="tab" id="studio-settings-model-tab" data-settings-tab="model" aria-controls="studio-settings-model-panel" aria-selected="true">Lounge model</button><button type="button" role="tab" id="studio-settings-location-tab" data-settings-tab="location" aria-controls="studio-settings-location-panel" aria-selected="false" tabindex="-1">Location</button><button type="button" role="tab" id="studio-settings-telegram-tab" data-settings-tab="telegram" aria-controls="studio-settings-telegram-panel" aria-selected="false" tabindex="-1">Telegram</button><button type="button" role="tab" id="studio-settings-reset-tab" data-settings-tab="reset" aria-controls="studio-settings-reset-panel" aria-selected="false" tabindex="-1">Reset</button></nav>
-  <section id="studio-settings-model-panel" role="tabpanel" aria-labelledby="studio-settings-model-tab"><div class="studio-model-scope"><span>STAGES 01 / 02</span><h3>Hiring &amp; Agent lounge</h3><p>Choose a local model or API for your hired agents.</p></div><div class="studio-model-link"><span>Multi-Agent Demo has its own API connection.</span><button type="button" id="studio-open-team-settings" class="studio-secondary">Set up Stage 03 ↗</button></div><label for="studio-provider">Provider</label><select id="studio-provider">${Object.entries(settings.providers).map(([id,p])=>`<option value="${id}">${escape(p.label)}</option>`).join('')}</select><label for="studio-api-key">API key</label><input id="studio-api-key" type="password" autocomplete="off" spellcheck="false"><small id="studio-key-note"></small><div class="studio-settings-model"><label for="studio-model">Model</label><button type="button" id="studio-load-models" class="studio-secondary">Load models ↻</button></div><button type="button" id="studio-change-model" class="studio-secondary" aria-expanded="false" aria-controls="studio-model-options" hidden>Change model</button><p id="studio-model-status" role="status" aria-live="polite"></p><input id="studio-model-search" type="search" aria-label="Search models" placeholder="Search models…" autocomplete="off" spellcheck="false" hidden><select id="studio-model-options" size="6" aria-label="Available models" hidden></select><input id="studio-model" autocomplete="off" placeholder="Load models to choose, or enter a model ID" required><small>Choose a text model with tool calling.</small><details id="studio-connection-options"><summary>Connection options</summary><label for="studio-endpoint">API endpoint</label><input id="studio-endpoint" type="url" aria-describedby="studio-endpoint-note" required><small id="studio-endpoint-note" hidden>vLLM on this PC: <code>http://127.0.0.1:8000/v1</code>. Use your server’s port, then select a model with Load models.</small><label for="studio-model-context">Context limit · tokens</label><input id="studio-model-context" type="number" min="8192" max="2000000" step="1" required></details><small>Keys stay in memory for this tab only. Closing or refreshing clears them.</small></section>
+  <section id="studio-settings-model-panel" role="tabpanel" aria-labelledby="studio-settings-model-tab"><div class="studio-model-scope"><span>STAGES 01 / 02</span><h3>Hiring &amp; Agent lounge</h3><p>Local models are recommended on Spark. You can also use an API.</p></div><div class="studio-model-link"><span>Stage 3 has separate settings for each scenario.</span><button type="button" id="studio-open-team-settings" class="studio-secondary">Set up Stage 03 ↗</button></div><label for="studio-provider">Provider</label><select id="studio-provider">${Object.entries(settings.providers).map(([id,p])=>`<option value="${id}">${escape(p.label)}</option>`).join('')}</select><label for="studio-api-key">API key</label><input id="studio-api-key" type="password" autocomplete="off" spellcheck="false"><small id="studio-key-note"></small><div class="studio-settings-model"><label for="studio-model">Model</label><button type="button" id="studio-load-models" class="studio-secondary">Load models ↻</button></div><button type="button" id="studio-change-model" class="studio-secondary" aria-expanded="false" aria-controls="studio-model-options" hidden>Change model</button><p id="studio-model-status" role="status" aria-live="polite"></p><input id="studio-model-search" type="search" aria-label="Search models" placeholder="Search models…" autocomplete="off" spellcheck="false" hidden><select id="studio-model-options" size="6" aria-label="Available models" hidden></select><input id="studio-model" autocomplete="off" placeholder="Load models to choose, or enter a model ID" required><small>Choose a text model with tool calling.</small><details id="studio-connection-options"><summary>Connection options</summary><label for="studio-endpoint">API endpoint</label><input id="studio-endpoint" type="url" aria-describedby="studio-endpoint-note" required><small id="studio-endpoint-note" hidden>vLLM on this PC: <code>http://127.0.0.1:8000/v1</code>. Use your server’s port, then select a model with Load models.</small><label for="studio-model-context">Context limit · tokens</label><input id="studio-model-context" type="number" min="8192" max="2000000" step="1" required></details><small>Keys stay in memory for this tab only. Closing or refreshing clears them.</small></section>
 
   <section id="studio-settings-location-panel" role="tabpanel" aria-labelledby="studio-settings-location-tab" hidden><label for="studio-location-city">City</label><input id="studio-location-city" autocomplete="address-level2" maxlength="80" required aria-describedby="studio-location-note"><small id="studio-location-note">Default city in every agent’s USER.md for weather and local requests.</small></section>
   <section id="studio-settings-telegram-panel" role="tabpanel" aria-labelledby="studio-settings-telegram-tab" hidden>
-  <p>Send new Heartbeat summaries to Telegram as well as chat.</p>
+  <p><strong>Tech Radar only.</strong> Send its scheduled Heartbeat summaries to Telegram as well as chat. Other agents’ replies and Multi-Agent results are not sent to Telegram.</p>
   <label for="studio-telegram-token">Bot token (create your bot with <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer">@BotFather</a> and paste its token)</label><input id="studio-telegram-token" type="password" autocomplete="off" spellcheck="false" placeholder="Token from @BotFather (e.g. 123456789:ABCdef...)">
   <label for="studio-telegram-chat">Chat ID (open <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer">@userinfobot</a>, type /start, copy your Id)</label><input id="studio-telegram-chat" autocomplete="off" spellcheck="false" placeholder="Numeric chat ID (e.g. 123456789)">
   <p id="studio-telegram-status" role="status" hidden></p><div id="studio-telegram-controls" hidden><div class="studio-dialog-actions"><button type="button" id="studio-telegram-test" class="studio-secondary">Send test</button><button type="button" id="studio-telegram-disconnect" class="studio-secondary">Disconnect</button></div></div></section>
@@ -83246,17 +83253,42 @@ function openTeamSettings(){
  teamModelDraftOwner=agentId;
  const available=window.BacCrewCatalog.map((member,role)=>({...member,roleIndex:role})).filter(member=>selectedScenario==='event-brief'?member.roleIndex<4:member.planEligible!==false);
  dialog('Multi-Agent setup',`<form id="studio-team-config-form">
-  <div class="studio-model-scope"><span>STAGE 03</span><h3>Team API &amp; models</h3><p>A dedicated NVIDIA API connection for Casey and the specialists.</p></div>
-  <div class="studio-team-api-card"><div class="studio-team-api-heading"><strong>NVIDIA Inference</strong><span class="studio-team-api-state" data-connected="${!!runtime.teamModel}">${runtime.teamModel?(runtime.teamReady?'Connected':'API connected · Runtime offline'):'Not connected'}</span></div>
+  <div class="studio-model-scope"><span>STAGE 03</span><h3>${selectedScenario==='event-brief'?'Event Brief':'Open Task'} models</h3><p>API is recommended for Stage 3. Local models are optional and may take longer.</p></div>
+  <label for="studio-scenario-provider">Model source for this scenario</label><select id="studio-scenario-provider"><option value="api">NVIDIA API (recommended)</option><option value="local">Local model</option></select>
+  <section id="studio-scenario-local" hidden><label for="studio-scenario-url">Local endpoint</label><input id="studio-scenario-url" type="url" value="${escape(data.teamConnection?.local?.baseUrl||'http://127.0.0.1:8000/v1')}"><small>Use a model server reachable from the OpenClaw host. All agents in this scenario use this model.</small><button type="button" id="studio-scenario-load" class="studio-secondary">Load models</button><label for="studio-scenario-model">Model</label><select id="studio-scenario-model">${data.teamConnection?.local?.model?`<option>${escape(data.teamConnection.local.model)}</option>`:''}</select><label for="studio-scenario-context">Context limit · tokens</label><input id="studio-scenario-context" type="number" min="8192" max="2000000" value="${Number(data.teamConnection?.local?.contextWindow)||32768}"></section>
+  <button type="button" id="studio-scenario-apply" class="studio-primary">Apply model source</button><p id="studio-scenario-status" role="status"></p>
+  <section id="studio-scenario-api"><div class="studio-team-api-card"><div class="studio-team-api-heading"><strong>NVIDIA Inference</strong><span class="studio-team-api-state" data-connected="${!!runtime.teamModel}">${runtime.teamModel?(runtime.teamReady?'Connected':'API connected · Runtime offline'):'Not connected'}</span></div>
   <small>inference-api.nvidia.com</small>
   <small>${runtime.teamModel?'Key loaded from <code>api.cfg</code>.':'Add a key to <code>api.cfg</code> and run <code>./bac start</code>.'}</small></div>
   <div class="studio-team-models-heading"><h3>Agent models</h3><small>Choose models for your agents, then select Apply changes. No API key re-entry needed.</small></div><p id="studio-team-model-status" role="status" hidden></p>
   <div class="studio-team-setup-models">${available.map(member=>`<div><span><strong>${escape(member.name)}</strong><small>${escape(selectedScenario==='event-brief'?member.role:member.collaboration.title)}</small></span><div class="studio-team-model-controls"><button type="button" class="team-model-trigger" data-team-model="${member.roleIndex}" ${!runtime.teamModel||data.bacResetting||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status))?'disabled':''}><span>${escape(teamModel(member.roleIndex)?.label||'Choose model')}</span><span aria-hidden="true">⌕</span></button></div></div>`).join('')}</div>
-  <div class="studio-team-model-save"><button type="button" class="studio-primary" data-team-apply-all disabled>Apply changes</button></div><p class="studio-team-setup-note">Stage 1 &amp; 2 keep using the model selected in Settings.</p></form>`);
+  <div class="studio-team-model-save"><button type="button" class="studio-primary" data-team-apply-all disabled>Apply changes</button></div></section><p class="studio-team-setup-note">Stage 1 &amp; 2 keep using the model selected in Settings.</p></form>`);
  el('dialog').classList.add('studio-team-settings');
  el('team-config-form').onsubmit=event=>event.preventDefault();
+ bindScenarioModelSettings();
  syncTeamModelForm();
  if(modelPickerSaving){const notice=el('team-model-status');notice.hidden=false;notice.textContent='Applying model changes…';}
+}
+
+function bindScenarioModelSettings(){
+ const owner=agentId,scenario=selectedScenario,form=el('team-config-form'),source=el('scenario-provider'),notice=el('scenario-status');
+ const current=()=>agentId===owner&&selectedScenario===scenario&&el('team-config-form')===form;
+ const busy=()=>modelPickerSaving||data.bacResetting||data.scenarios?.find(s=>s.id===scenario)?.busy||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
+ source.value=data.teamConnection?.provider||'api';
+ const update=()=>{el('scenario-local').hidden=source.value!=='local';el('scenario-api').hidden=source.value!=='api';el('scenario-apply').textContent=source.value==='local'?'Apply local model':'Use API for this scenario';el('scenario-apply').hidden=source.value==='api'&&(data.teamConnection?.provider||'api')==='api';el('scenario-apply').disabled=!!busy();source.disabled=!!busy();};
+ source.onchange=update;update();
+ const payload=()=>({provider:source.value,baseUrl:el('scenario-url').value,model:el('scenario-model').value,contextWindow:Number(el('scenario-context').value)});
+ el('scenario-load').onclick=async()=>{
+  const button=el('scenario-load');button.disabled=true;notice.textContent='Loading local models…';
+  try{const result=await api('settings/scenario-models',payload(),owner);if(!current())return;el('scenario-model').innerHTML=result.models.map(m=>`<option value="${escape(m.id)}">${escape(m.label)}</option>`).join('');notice.textContent=result.models.length?'Choose a model, then apply.':'No models found.';}
+  catch(error){if(current())notice.textContent=error.message;}finally{if(current())button.disabled=false;}
+ };
+ el('scenario-apply').onclick=async()=>{
+  if(busy())return;const values=payload();modelPickerSaving=true;update();notice.textContent='Applying…';
+  try{const result=await api('settings/scenario-model',values,owner);if(!current())return;++refreshVersion;stateCache.clear();data.teamConnection=result.teamConnection;render();notice.textContent='Applied. Used from the next request in this scenario.';}
+  catch(error){if(current())notice.textContent=error.message;}
+  finally{modelPickerSaving=false;if(current()){update();syncTeamModelForm();}}
+ };
 }
 
   el('home').onclick=async()=>{

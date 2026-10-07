@@ -58,7 +58,7 @@ If paths are missing, `vllm` explains the problem; `start` is unaffected.
 
 After starting Studio, connect Stages 1 and 2 in **Settings → Lounge model → Local**
 using the model ID and endpoint printed by `vllm`. Stage 3 retains its separate
-NVIDIA inference API connection. Model preparation does not change Studio's
+NVIDIA inference API default, with optional local routing per scenario. Model preparation does not change Studio's
 saved provider settings.
 
 The helper requires host Python 3.9+ and a systemd user session to launch a new
@@ -114,7 +114,7 @@ If you want to edit `api.cfg` and use Git **before your first start**, install t
 bash scripts/setup-key-filter.sh
 ```
 
-In Stage 3, open **API & models** to view connection status and choose each agent’s model. Select the single **Apply changes** button to save your selections for the next request. Saving disables model controls until the request finishes, including after closing and reopening the panel. Failed selections remain available for retry. The UI explains how to manage the key from the terminal; it has no Stage 3 key-entry form.
+In Stage 3, open **Models & connection** to view connection status and choose each agent’s model. Select the single **Apply changes** button to save your selections for the next request. Saving disables model controls until the request finishes, including after closing and reopening the panel. Failed selections remain available for retry. The UI explains how to manage the key from the terminal; it has no Stage 3 key-entry form.
 
 ### Stages 1 and 2: Hiring and Agent lounge
 
@@ -222,3 +222,10 @@ Use **Files** beside the team API controls to browse the selected scenario’s t
 Empty scenarios have Reset disabled. Event preparation, conversations, uploaded documents and results count as saved work. Reset clears only the selected scenario; the built-in Event Brief template remains available for the next run.
 
 Event Brief keeps the bounded output budget rather than globally increasing it to the context limit. If a model hits its output limit, that role gets at most one concise retry in a fresh context, preserving saved files and completed tool results. Existing deliverable checks still apply. Other connection or provider failures are not automatically retried. To resume after a full shutdown, run `./bac vllm` if needed, then `./bac start`.
+
+### Scenario model sources
+
+Stages 1 and 2 recommend a local model on Spark; API connections remain available.
+Stage 3 defaults to NVIDIA API. In **Models & connection**, each scenario can independently select **Local model**, load the models from a local/private `/v1` endpoint and **Apply model source**. All agents in that scenario then use the selected local model. Switching back to API restores the per-agent API choices. Other scenarios and Lounge settings are unchanged; scenario resets preserve model settings.
+
+Use an endpoint reachable from the OpenClaw host. This option supports keyless local servers and does not launch vLLM automatically. Local performance depends on the model and hardware. Startup still validates `api.cfg`; selecting local for a scenario does not introduce a keyless/offline startup mode. There is no automatic fallback between API and local.

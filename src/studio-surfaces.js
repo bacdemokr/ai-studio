@@ -40,7 +40,7 @@ const teamResetButton=document.createElement('button');teamResetButton.type='but
 const teamResetStatus=document.createElement('p');teamResetStatus.id='studio-team-reset-status';teamResetStatus.className='studio-muted';teamResetStatus.setAttribute('role','status');teamResetStatus.hidden=true;crewActions.after(teamResetStatus);
 const resultsButton=document.createElement('button');resultsButton.type='button';resultsButton.className='studio-secondary';resultsButton.dataset.surface='deliverables';resultsButton.textContent='Results';resultsButton.hidden=true;crewActions.append(resultsButton);
 const teamTotalTime=document.createElement('div');teamTotalTime.id='studio-team-total-time';teamTotalTime.hidden=true;teamTotalTime.setAttribute('role','timer');teamTotalTime.title='Total process time, including queueing, planning, specialists and review';el('crew-name').parentElement.classList.add('studio-captain-heading');el('crew-name').after(teamTotalTime);
-const teamConnectionBar=document.createElement('div');teamConnectionBar.className='studio-team-connection-bar';teamConnectionBar.innerHTML='<span class="studio-team-connection-state" role="status"><i aria-hidden="true"></i><span id="studio-team-connection-label">Team API</span></span><div class="studio-team-utilities"><button type="button" class="studio-team-utility" id="studio-team-setup" aria-haspopup="dialog"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h3m4 0h7M3 14h7m4 0h3"/><circle cx="8" cy="6" r="2"/><circle cx="12" cy="14" r="2"/></svg><span>API &amp; models</span></button></div>';teamConnectionBar.querySelector('.studio-team-utilities').append(teamResetButton);crewActions.after(teamConnectionBar);el('team-setup').onclick=openTeamSettings;
+const teamConnectionBar=document.createElement('div');teamConnectionBar.className='studio-team-connection-bar';teamConnectionBar.innerHTML='<span class="studio-team-connection-state" role="status"><i aria-hidden="true"></i><span id="studio-team-connection-label">Team API</span></span><div class="studio-team-utilities"><button type="button" class="studio-team-utility" id="studio-team-setup" aria-haspopup="dialog"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h3m4 0h7M3 14h7m4 0h3"/><circle cx="8" cy="6" r="2"/><circle cx="12" cy="14" r="2"/></svg><span>Models &amp; connection</span></button></div>';teamConnectionBar.querySelector('.studio-team-utilities').append(teamResetButton);crewActions.after(teamConnectionBar);el('team-setup').onclick=openTeamSettings;
 const standbyPanel=document.createElement('details');standbyPanel.id='studio-standby';
 standbyPanel.innerHTML='<summary>Standby specialists <span id="studio-standby-count"></span></summary><div class="studio-standby-content"><ul id="studio-standby-list"></ul></div>';
 teamConnectionBar.after(standbyPanel);
@@ -70,8 +70,8 @@ function syncTeamTotalTime(){
 }
 setInterval(()=>syncTeamTotalTime(),1000);
 function syncSurface(){
-  teamConnectionBar.dataset.connected=String(!!runtime.teamReady);
-  el('team-connection-label').textContent=runtime.teamReady?'API connected':runtime.teamModel?'Runtime offline':'API not connected';
+  teamConnectionBar.dataset.connected=String(!!teamReady());
+  el('team-connection-label').textContent=teamReady()?(data.teamConnection?.provider==='local'?'Local model configured':'API connected'):teamRuntime().teamModel?'Runtime offline':'Model not connected';
   syncResetButtons();
   const plan=currentCollaboration();
   syncTeamTotalTime();

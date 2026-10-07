@@ -59,9 +59,16 @@ def default_model(role):
     return MODELS[0 if role in (0, 5, 7) else 1]
 
 
+def local_provider(agent):
+    return 'bac-team-local-' + agent.split('-')[1] if role_for(agent) is not None else None
+
+
 def model_for(agent, selected=None):
     role = role_for(agent)
     if role is None:return None
+    prefix = local_provider(agent) + '/'
+    if isinstance(selected, str) and selected.startswith(prefix) and valid_model(selected[len(prefix):]):
+        return selected
     if isinstance(selected,str) and selected.startswith('bac-team/'):
         selected=selected[len('bac-team/'):]
         if valid_model(selected):return 'bac-team/'+selected
@@ -76,19 +83,26 @@ def public():
     return {'connected':bool(credentials().get('apiKey')), 'models':models}
 
 
-def apply(config, selected=None):
+def apply(config, selected=None, local=None, agent_id=None):
     import runtime_settings as settings
     import session_secrets as secrets
     ids=set(MODELS)
-    if valid_model(selected):ids.add(selected.removeprefix('bac-team/'))
+    if valid_model(selected) and not selected.startswith('bac-team-local-'):ids.add(selected.removeprefix('bac-team/'))
     for agent,entry in config.get('agents',{}).get('entries',{}).items():
         model=model_for(agent,entry.get('model'))
-        if model:ids.add(model.removeprefix('bac-team/'))
+        if model and model.startswith('bac-team/'):ids.add(model.removeprefix('bac-team/'))
     config.setdefault('models',{}).setdefault('providers',{})['bac-team']={
         'baseUrl':secrets.proxy_url('team',BASE_URL),'apiKey':'session-only','api':'openai-completions',
         'models':[{'id':m,'name':m,'input':['text'],'reasoning':False,'contextWindow':32768,
                    'contextTokens':32768,'maxTokens':settings.MAX_OUTPUT_TOKENS,
                    'cost':{'input':0,'output':0,'cacheRead':0,'cacheWrite':0}} for m in sorted(ids)]}
+    if local is not None and local_provider(agent_id):
+        context = local['contextWindow']
+        config['models']['providers'][local_provider(agent_id)] = {
+            'baseUrl': local['baseUrl'], 'apiKey': 'local-only', 'api': 'openai-completions',
+            'models': [{'id': local['model'], 'name': local['model'], 'input': ['text'], 'reasoning': False,
+                        'contextWindow': context, 'contextTokens': context, 'maxTokens': min(settings.MAX_OUTPUT_TOKENS, context // 4),
+                        'cost': {'input': 0, 'output': 0, 'cacheRead': 0, 'cacheWrite': 0}}]}
     for agent,entry in config.get('agents',{}).get('entries',{}).items():
         model=model_for(agent,entry.get('model'))
         if model:entry.update(model=model,modelPolicy={'allow':[model]})

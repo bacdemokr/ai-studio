@@ -133,7 +133,7 @@ function syncEventLaunch(){
  const form=el('crew-form'),button=el('launch-event');if(!form||!button)return;
  const prepared=matchingPreparation()?.status==='done'&&!demoPreparationError;
  button.disabled=!teamReady()||eventSubmitting||!eventPreviewValid||!prepared||!form.querySelector('[name=crewRole]:checked');
- button.textContent=!runtime.gateway?gatewayLabel():!runtime.teamModel?'Model not connected':eventSubmitting?'Assigning your brief…':!prepared?'Prepare demo':'Start the event plan';
+ button.textContent=!runtime.gateway?gatewayLabel():!teamRuntime().teamModel?'Model not connected':eventSubmitting?'Assigning your brief…':!prepared?'Prepare demo':'Start the event plan';
  const note=el('event-connection');if(note){note.hidden=!!teamReady();note.textContent=runtime.gateway?'Connect the team API in API & models to run your crew.':gatewayState()==='slow'?'Waiting for the agent runtime. Checking automatically.':'Agent runtime unavailable. Use Retry connection in the status indicator.';}
 }
 async function updateEventPreview(){

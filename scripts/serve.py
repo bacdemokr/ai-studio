@@ -248,6 +248,12 @@ class Handler(SimpleHTTPRequestHandler):
             if self.path == '/api/telegram/test':
                 import telegram_notifications
                 return self.json_response(telegram_notifications.test(row['id'], data['_credentialSession']))
+            if self.path in ('/api/settings/scenario-model', '/api/settings/scenario-models'):
+                self.require_operator()
+                import scenario_models
+                if self.path.endswith('/scenario-models'):
+                    return self.json_response(scenario_models.models(data))
+                return self.json_response(scenario_models.configure(studio, studio.crew_owner(owner, scenario), data))
             if self.path in ('/api/settings','/api/settings/models','/api/settings/start','/api/settings/team-model'):
                 self.require_operator()
                 import runtime_settings

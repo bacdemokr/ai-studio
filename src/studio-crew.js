@@ -58,7 +58,7 @@ teamModelDialog.innerHTML='<header><div><h3 id="team-model-heading">Choose a mod
 let modelPickerRole=0,modelPickerSaving=false,modelPickerDraft=null,modelPickerOwner=null,modelPickerForm=null,modelPickerSettingsScroll=0;
 function syncTeamModelForm(){
  const form=el('team-config-form');if(!form)return;
- const blocked=modelPickerSaving||!runtime.teamModel||data.bacResetting||(selectedScenario==='event-brief'&&data.scenarios?.find(s=>s.id==='event-brief')?.busy)||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
+ const blocked=data.teamConnection?.provider==='local'||modelPickerSaving||!runtime.teamModel||data.bacResetting||(selectedScenario==='event-brief'&&data.scenarios?.find(s=>s.id==='event-brief')?.busy)||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
  for(const trigger of form.querySelectorAll('[data-team-model]')){
   const role=Number(trigger.dataset.teamModel),draft=teamModelDrafts.get(role);
   const model=draft?(runtime.teamModels||[]).find(m=>m.id===draft):teamModel(role);
@@ -338,8 +338,9 @@ function collaborationHistoryMarkup(job){
  return '<article class="chat-turn" data-collaboration-history="'+escape(job.id)+'"><div class="chat-message chat-user"><small>You</small><div>'+messageMarkup(job.payload.prompt)+'</div></div><div class="chat-message chat-agent"><small>Casey · BaC collaboration</small>'+collaborationTimeMarkup(job)+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(answer)+'</div>'+collaborationCompletionMarkup(job.payload.collaboration,collaborationAnswer(job)))+(held?'':collaborationDecisionMarkup(job.payload.collaboration)+webpageButtons(job.result?.files||Object.values(job.payload.collaboration.webpages||{}).flat(),job.id))+'<button type="button" class="studio-secondary" data-open-collaboration>View team conversation</button></div></article>';
 }
 function showCollaboration(){selectedCrewRole=0;setRoom('mission');root.dataset.crewDetails='true';renderCrewPassport();}
-function teamReady(){return runtime.teamReady??runtime.ready;}
-function teamModel(role){const id=data.teamSelections?.find(row=>row.role===role)?.id;return runtime.teamModels?.find(model=>model.id===id)||(id?{id,label:id}:runtime.teamModels?.[[0,5,7].includes(role)?0:1]);}
+function teamRuntime(){return data.teamConnection?.provider==='local'?{...runtime,teamModel:!!data.teamConnection.local?.model,teamReady:!!data.teamConnection.local?.model&&!!runtime.gateway}:runtime;}
+function teamReady(){return teamRuntime().teamReady??runtime.ready;}
+function teamModel(role){if(data.teamConnection?.provider==='local'){const id=data.teamConnection.local?.model;return id?{id,label:id}:null;}const id=data.teamSelections?.find(row=>row.role===role)?.id;return runtime.teamModels?.find(model=>model.id===id)||(id?{id,label:id}:runtime.teamModels?.[[0,5,7].includes(role)?0:1]);}
 let crewDocumentUpload=false;
 const crewDocumentSelections=new Map();
 function excludedCrewDocuments(){
@@ -387,7 +388,7 @@ function syncCrewComposer(){
  const commandOnly=selectedScenario==='plan'&&selectedCrewRole===0&&/^\s*\/(?:goals?|plans?)\s*$/i.test(el('crew-prompt').value);
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending||commandOnly;
  el('crew-chat-connection').hidden=!blocked;
- el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping BaC work and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(runtime.teamModel??runtime.model)?'Add your key to api.cfg, then run ./bac start.':'Run ./bac start on this computer to connect the team runtime.';
+ el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping BaC work and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(teamRuntime().teamModel??runtime.model)?'Add your key to api.cfg, then run ./bac start.':'Run ./bac start on this computer to connect the team runtime.';
 }
 function renderCrewPassport(){
  const epoch=selectedScenario+':'+(data.crewChatReset?.epoch||'');

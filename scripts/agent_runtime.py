@@ -488,7 +488,7 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
         config['agents']['ownership'] = 'explicit'
         config.setdefault('tools', {}).setdefault('fs', {})['workspaceOnly'] = False
         import team_models
-        team_models.apply(config, selected=profile.get('_teamModel'))
+        team_models.apply(config, selected=profile.get('_teamModel'), local=profile.get('_teamLocal'), agent_id=agent_id)
         settings.apply_context_limits(config)
         model = team_models.model_for(agent_id, profile.get('_teamModel') or config['agents']['entries'].get(agent_id,{}).get('model')) or config['agents']['defaults']['model']['primary']
         entry = {
@@ -529,6 +529,9 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
         patch['agents']['defaults']['compaction'] = config['agents']['defaults']['compaction']
         patch['tools']['web'] = {'fetch': config['tools']['web']['fetch']}
         patch['models'] = {'providers': {'bac-team': config['models']['providers']['bac-team']}}
+        provider = team_models.local_provider(agent_id)
+        if provider and model.startswith(provider + '/'):
+            patch['models']['providers'][provider] = config['models']['providers'][provider]
         replace_paths = [f'agents.entries.{agent_id}.skills',
                          f'agents.entries.{agent_id}.modelPolicy.allow',
                          f'agents.entries.{agent_id}.tools.allow',

@@ -178,8 +178,10 @@ class EventScenario(EventControls, DemoReadiness):
                                 staffingPolicy='awaiting-agent',assumptions='Awaiting Alex’s staffing and schedule decisions.')
                     for topic in calc['topics']:topic.pop('presenters',None)
         # A schedule may be created while offline, but immediate requests must fail visibly.
-        if not self.runtime_status().get('teamReady', self.runtime_status().get('ready')):
-            raise Problem('Connect the dedicated Multi-Agent Demo API and OpenClaw on the host.', 503)
+        from scenario_models import readiness
+        status = readiness(self, owner)
+        if not status.get('teamReady', status.get('ready')):
+            raise Problem('Check this scenario’s model connection and OpenClaw on the host.', 503)
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
             if (profile or not preset) and not (kind == 'crew' and preset):

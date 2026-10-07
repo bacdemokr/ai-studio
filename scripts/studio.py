@@ -729,7 +729,9 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
         except (Problem, UnicodeError):
             pass
         from team_models import selections
+        from scenario_models import connection
         return {'scenario':scenario, 'scenarios':self.scenario_status(owner), 'preparation':self.demo_preparation(team) if team and scenario=='event-brief' else None,
+                'teamConnection': connection(self, team),
                 'crewDocuments': [f for f in self.files(team,0) if f['kind']=='inbox' and not internal_team_input(f['path'])] if team else [], 'teamSelections': selections(self,team), 'profile': self.profile(owner), 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': self.files(owner),
                 'techRadar': self.heartbeat.status(owner, self.profile(owner) or {}),
                 'memory': memory_text, 'agentId': owner, 'crewOwner': team, 'roundtableTurns': roundtable_turns,
@@ -886,11 +888,12 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
                 raise Problem('Schedule between 30 seconds and 24 hours from now.')
             due = time.time() + delay
         # A schedule may be created while offline, but immediate requests must fail visibly.
-        readiness = self.runtime_status()
         team_request = kind == 'crew-chat'
+        from scenario_models import readiness as team_readiness
+        readiness = team_readiness(self, owner) if team_request else self.runtime_status()
         ready = readiness.get('teamReady', readiness.get('ready')) if team_request else readiness.get('ready')
         if kind != 'reminder' and not ready:
-            if team_request:raise Problem('Connect the dedicated Multi-Agent Demo API and OpenClaw on the host.', 503)
+            if team_request:raise Problem('Check this scenario’s model connection and OpenClaw on the host.', 503)
             raise Problem('Your agent is saved. Start the shared LLM and OpenClaw on the host to run this mission.', 503)
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
@@ -1112,6 +1115,8 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
         agent_id = member['id']
         from team_models import selections
         member['_teamModel'] = selections(self,owner)[role]['id']
+        from scenario_models import prepare
+        prepare(self, owner, member)
         control = member.get('_planControl') if role == 0 else None
         if control not in (None, 'none', 'read'):
             raise ValueError('Invalid Captain tool mode')

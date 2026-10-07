@@ -664,3 +664,9 @@
 #agent-campus .team-model-apply[hidden]{display:none}
 
 #studio-dialog.studio-team-settings::backdrop{background:#090c10e6;backdrop-filter:none}
+
+#studio-scenario-local{margin-top:18px;padding:20px;border:1px solid #405562;border-radius:12px;background:#13232e}
+#studio-scenario-local[hidden],#studio-scenario-api[hidden]{display:none}
+#studio-scenario-load{margin:14px 0}
+#studio-scenario-apply{margin-top:18px}
+#studio-scenario-status{font-size:13px;color:#b8cbd5;min-height:1.4em}
