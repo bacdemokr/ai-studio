@@ -8,10 +8,29 @@ import unittest
 from unittest.mock import patch
 sys.path[:0]=[str(Path(__file__).resolve().parents[1]/'scripts'),str(Path(__file__).resolve().parent)]
 import telemetry
+import agent_runtime
 from studio import Studio
 from fixture_studio import BrowserAdapter
 
 class TelemetryTests(unittest.TestCase):
+    def test_model_endpoint_reports_external_and_local_routes_without_credentials(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'config.json'
+            config={'agents':{'defaults':{'model':{'primary':'bac-team/model'}},'entries':{'external':{'model':'bac-team/model'},'local':{'model':'bac-team-local-a/model'}}},
+                    'models':{'providers':{'bac-team':{'baseUrl':'http://127.0.0.1:3210/provider/team/v1'},
+                                           'bac-team-local-a':{'baseUrl':'http://127.0.0.1:8000/v1'}}}}
+            path.write_text(json.dumps(config))
+            with patch('agent_runtime.config_path',return_value=path):
+                self.assertEqual(agent_runtime.model_endpoint('external'),'External · NVIDIA Inference · https://inference-api.nvidia.com/v1')
+                self.assertEqual(agent_runtime.model_endpoint('local'),'Local · Local model · http://127.0.0.1:8000/v1')
+
+    def test_public_job_includes_updated_time_for_completed_run_duration(self):
+        row={'id':'job','kind':'crew-chat','status':'done','payload':'{}','result':'{}','events':'[]',
+             'created':100.0,'updated':125.5,'due':100.0}
+        public=Studio.public_job(row)
+        self.assertEqual(public['updated'],125.5)
+        self.assertEqual(public['payload'],{})
+
     def test_speed_uses_output_only_and_elapsed_response_time(self):
         with tempfile.TemporaryDirectory() as folder:
             result={'usage':{'prompt_tokens':10000,'completion_tokens':240,'total_tokens':10240}}

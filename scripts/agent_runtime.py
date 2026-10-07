@@ -12,6 +12,7 @@ import socket
 import subprocess
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 import ops_common as c
@@ -935,12 +936,44 @@ def respond(agent_id, session, prompt, images=None, json_response=False, timeout
         error.activity = observed_activity(agent_id, session, started)
         raise error
     from telemetry import Reply, measure
-    answer=Reply(content, measure(result, root() / 'state', agent_id, session, started, elapsed=elapsed))
+    metrics=measure(result, root() / 'state', agent_id, session, started, elapsed=elapsed)
+    metrics['endpoint']=model_endpoint(agent_id)
+    answer=Reply(content, metrics)
     answer.activity = observed_activity(agent_id, session, started)
     if agent_id.endswith('-r8') and session.startswith('bac-plan-'):
         from research_recovery import recovered_sources
         answer.sources = recovered_sources(root() / 'state', agent_id, session, started)
     return answer
+
+
+def model_endpoint(agent_id):
+    """Return a credential-free description of the endpoint used by this agent."""
+    try:
+        config=c.read_json(config_path())
+        entry=config.get('agents',{}).get('entries',{}).get(agent_id,{})
+        reference=entry.get('model') or config.get('agents',{}).get('defaults',{}).get('model',{}).get('primary')
+        if not isinstance(reference,str) or '/' not in reference:return None
+        provider_id=reference.split('/',1)[0]
+        route=config.get('models',{}).get('providers',{}).get(provider_id,{})
+        raw=route.get('baseUrl')
+        if not isinstance(raw,str):return None
+        parsed=urllib.parse.urlsplit(raw)
+        proxy=re.match(r'^/provider/([^/]+)(/.*)?$',parsed.path)
+        provider=proxy[1] if proxy else None
+        if provider=='team':
+            provider='nvidia'
+            import team_models
+            raw=team_models.BASE_URL
+        elif provider in settings.PROVIDERS:
+            raw=settings.read().get('profiles',{}).get(provider,{}).get('baseUrl',settings.PROVIDERS[provider]['baseUrl'])
+        parsed=urllib.parse.urlsplit(raw)
+        endpoint=urllib.parse.urlunsplit((parsed.scheme,parsed.netloc,parsed.path.rstrip('/'),'',''))
+        local=provider=='local' or 'local' in provider_id or provider_id=='bac-vllm'
+        labels={'nvidia':'NVIDIA Inference','openai':'OpenAI','anthropic':'Anthropic','local':'Local model'}
+        label=labels.get(provider,'Local model' if local else provider_id)
+        return ('Local' if local else 'External')+' · '+label+' · '+endpoint
+    except (OSError,ValueError,TypeError,AttributeError):
+        return None
 
 
 def observed_activity(agent_id, session, started):

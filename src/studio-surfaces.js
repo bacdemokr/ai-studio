@@ -18,13 +18,61 @@ function renderPlanResults(job){
  planResults.innerHTML='<h3>Team results</h3>'+collaborationTimeMarkup(job)+'<p>'+escape(plan.task||job.payload.prompt||'')+'</p><div class="chat-prose">'+messageMarkup(answer||status)+'</div>'+collaborationCompletionMarkup(plan,answer)+webpageButtons(files,job.id)+collaborationFileButtons(files,job.id,'Open saved file');
 }
 
+const usageTime=document.createElement('section');usageTime.id='studio-usage-time';usageTime.className='studio-usage-time';usageTime.hidden=true;surfaceStore.append(usageTime);
+function usageNumber(value){return typeof value==='number'&&Number.isFinite(value)&&value>=0?value:null;}
+function usageDuration(seconds){
+ const value=usageNumber(seconds);if(value===null)return '—';
+ const rounded=Math.round(value),hours=Math.floor(rounded/3600),minutes=Math.floor(rounded%3600/60),secs=rounded%60;
+ return hours?hours+'h '+minutes+'m '+secs+'s':minutes?minutes+'m '+secs+'s':value<1?value.toFixed(1)+'s':secs+'s';
+}
+function scenarioTaskSummary(job){
+ const prompt=job?.payload?.collaboration?.task||job?.payload?.prompt;
+ if(prompt)return String(prompt).replace(/^\s*\/(?:goals?|plans?)(?=\s|$)/i,'').trim();
+ const brief=job?.payload?.brief;if(!brief)return 'No task summary was saved for this run.';
+ const place=brief.city?' in '+brief.city:'',dates=[brief.startDate,brief.endDate].filter(Boolean).join(' to ');
+ const details=[dates&&'Dates: '+dates,brief.days&&'Days: '+brief.days,brief.attendees&&'Attendees: '+brief.attendees,brief.themeCount&&'Themes: '+brief.themeCount].filter(Boolean);
+ return 'Plan an event'+place+(details.length?'. '+details.join(' · '):'.');
+}
+function scenarioUsageSummary(job){
+ const records=Object.values(job?.payload?.metrics||{}).filter(record=>record&&typeof record==='object'),agents=new Map();
+ let input=0,output=0,total=0,apiSeconds=0,inputReported=false,outputReported=false,totalReported=false,timeReported=false,unreportedCalls=0;
+ for(const record of records){
+  const recordInput=usageNumber(record.input),recordOutput=usageNumber(record.output);
+  const recordTotal=usageNumber(record.total)??(recordInput!==null&&recordOutput!==null?recordInput+recordOutput:null);
+  const seconds=usageNumber(record.runSeconds),key=record.agent||record.name||'unknown';
+  if(!agents.has(key))agents.set(key,{name:record.name||'Unknown agent',endpoints:new Set(),input:0,output:0,total:0,seconds:0,calls:0,inputReported:false,outputReported:false,totalReported:false,timeReported:false});
+  const agent=agents.get(key);agent.calls++;
+  if(typeof record.endpoint==='string'&&record.endpoint)agent.endpoints.add(record.endpoint);
+  else if(typeof record.model==='string'&&record.model)agent.endpoints.add('Model · '+record.model);
+  if(recordInput!==null){input+=recordInput;agent.input+=recordInput;inputReported=agent.inputReported=true;}
+  if(recordOutput!==null){output+=recordOutput;agent.output+=recordOutput;outputReported=agent.outputReported=true;}
+  if(recordTotal!==null){total+=recordTotal;agent.total+=recordTotal;totalReported=agent.totalReported=true;}else unreportedCalls++;
+  if(seconds!==null){apiSeconds+=seconds;agent.seconds+=seconds;timeReported=agent.timeReported=true;}
+ }
+ const start=usageNumber(job?.created),end=usageNumber(job?.updated);
+ return {records,agents:[...agents.values()],input,output,total,apiSeconds,inputReported,outputReported,totalReported,timeReported,unreportedCalls,elapsed:start!==null&&end!==null?Math.max(0,end-start):null};
+}
+function renderUsageTime(job){
+ if(!job){usageTime.innerHTML='';delete usageTime.dataset.key;return;}
+ const summary=scenarioUsageSummary(job),key=JSON.stringify([job.id,job.status,job.updated,job.payload?.metrics,job.payload?.prompt,job.payload?.brief,job.payload?.collaboration?.task]);
+ if(usageTime.dataset.key===key)return;usageTime.dataset.key=key;
+ const amount=(value,reported)=>reported?Math.round(value).toLocaleString():'—';
+ const rows=summary.agents.map(agent=>'<tr><th scope="row">'+escape(agent.name)+'</th><td class="studio-usage-endpoint">'+escape([...agent.endpoints].join(', ')||'Not reported')+'</td><td>'+amount(agent.input,agent.inputReported)+'</td><td>'+amount(agent.output,agent.outputReported)+'</td><td>'+amount(agent.total,agent.totalReported)+'</td><td>'+usageDuration(agent.timeReported?agent.seconds:null)+'</td><td>'+agent.calls+'</td></tr>').join('');
+ const warning=summary.unreportedCalls?'<p class="studio-usage-note">'+summary.unreportedCalls+' recorded API call'+(summary.unreportedCalls===1?' did':'s did')+' not report token counts, so token totals are partial.</p>':'';
+ usageTime.innerHTML='<section class="studio-usage-task"><small>Task</small><p>'+escape(scenarioTaskSummary(job))+'</p></section>'+
+  '<div class="studio-usage-totals"><article><small>Input tokens</small><strong>'+amount(summary.input,summary.inputReported)+'</strong></article><article><small>Output tokens</small><strong>'+amount(summary.output,summary.outputReported)+'</strong></article><article><small>Combined tokens</small><strong>'+amount(summary.total,summary.totalReported)+'</strong></article><article><small>Total elapsed</small><strong>'+usageDuration(summary.elapsed)+'</strong></article><article><small>Combined API time</small><strong>'+usageDuration(summary.timeReported?summary.apiSeconds:null)+'</strong></article></div>'+
+  (rows?'<h3>Usage and time by agent</h3><div class="studio-usage-table-wrap"><table><thead><tr><th>Agent</th><th>Endpoint</th><th>Input</th><th>Output</th><th>Combined</th><th>API time</th><th>Calls</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p class="studio-usage-note">This run has no reported API usage metrics.</p>')+
+  warning+'<p class="studio-usage-note">Total elapsed is submission-to-completion wall time. Combined API time adds each agent’s model-call duration and can be longer when agents work in parallel.</p>';
+}
+
 const surfaceDefinitions={
   missions:{title:'Try a mission',ids:['experiences']},
   results:{title:'Results & files',ids:['workspace']},
   compare:{title:'Agent comparison',ids:['compare']},
   policies:{title:'OpenShell Policy',ids:['policy-panel']},
   control:{title:'Mission Control',ids:['board']},
-  deliverables:{title:'Results',ids:['plan-results']}
+  deliverables:{title:'Results',ids:['plan-results']},
+  usage:{title:'API usage and time',ids:['usage-time']}
 };
 for(const id of ['event-package','board','workspace','experiences','policy-panel','connections'])surfaceStore.append(el(id));
 el('passport').prepend(el('collection'));
@@ -39,6 +87,7 @@ const controlButton=document.createElement('button');controlButton.type='button'
 const teamResetButton=document.createElement('button');teamResetButton.type='button';teamResetButton.id='studio-bac-reset';teamResetButton.className='studio-team-utility';teamResetButton.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7a6 6 0 1 1-.2 5M4 3v4h4"/></svg><span>Reset</span>';teamResetButton.setAttribute('aria-label','Reset current scenario');teamResetButton.title='Stop this scenario’s work and clear its chats, documents and results';teamResetButton.onclick=()=>confirmTeamReset(teamResetButton);
 const teamResetStatus=document.createElement('p');teamResetStatus.id='studio-team-reset-status';teamResetStatus.className='studio-muted';teamResetStatus.setAttribute('role','status');teamResetStatus.hidden=true;crewActions.after(teamResetStatus);
 const resultsButton=document.createElement('button');resultsButton.type='button';resultsButton.className='studio-secondary';resultsButton.dataset.surface='deliverables';resultsButton.textContent='Results';resultsButton.hidden=true;crewActions.append(resultsButton);
+const usageTimeButton=document.createElement('button');usageTimeButton.type='button';usageTimeButton.className='studio-secondary';usageTimeButton.dataset.surface='usage';usageTimeButton.textContent='API usage and time';usageTimeButton.hidden=true;crewActions.append(usageTimeButton);
 const teamTotalTime=document.createElement('div');teamTotalTime.id='studio-team-total-time';teamTotalTime.hidden=true;teamTotalTime.setAttribute('role','timer');teamTotalTime.title='Total process time, including queueing, planning, specialists and review';el('crew-name').parentElement.classList.add('studio-captain-heading');el('crew-name').after(teamTotalTime);
 const teamConnectionBar=document.createElement('div');teamConnectionBar.className='studio-team-connection-bar';teamConnectionBar.innerHTML='<span class="studio-team-connection-state" role="status"><i aria-hidden="true"></i><span id="studio-team-connection-label">Team API</span></span><div class="studio-team-utilities"><button type="button" class="studio-team-utility" id="studio-team-setup" aria-haspopup="dialog"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h3m4 0h7M3 14h7m4 0h3"/><circle cx="8" cy="6" r="2"/><circle cx="12" cy="14" r="2"/></svg><span>Models &amp; connection</span></button></div>';teamConnectionBar.querySelector('.studio-team-utilities').append(teamResetButton);crewActions.after(teamConnectionBar);el('team-setup').onclick=openTeamSettings;
 const localTaskWarning=document.createElement('p');localTaskWarning.id='studio-local-task-warning';localTaskWarning.className='studio-local-task-warning';localTaskWarning.setAttribute('role','status');localTaskWarning.hidden=true;localTaskWarning.textContent='Local model selected for Open Task. Tasks may take longer, and complex requests may not produce the expected results. An external endpoint is recommended.';teamConnectionBar.after(localTaskWarning);
@@ -79,8 +128,11 @@ function syncSurface(){
   syncTeamTotalTime();
   standbyPanel.hidden=selectedScenario==='event-brief';
   const event=crewMission();resultsButton.hidden=selectedScenario==='event-brief'?!event:!plan;
+  const scenarioJob=selectedScenario==='event-brief'?event:plan;
+  usageTimeButton.hidden=!scenarioJob||['queued','running','waiting','stopping'].includes(scenarioJob.status);
   surfaceDefinitions.deliverables.ids=selectedScenario==='event-brief'?['event-package']:['plan-results'];
   if(activeSurface==='deliverables'){if(selectedScenario==='event-brief')renderEventPackage();else renderPlanResults(plan);}
+  if(activeSurface==='usage')renderUsageTime(scenarioJob);
   el('compare-open').hidden=!comparison;
   if(!activeSurface)return;
   for(const id of surfaceDefinitions[activeSurface].ids){

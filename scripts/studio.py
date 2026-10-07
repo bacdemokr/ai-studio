@@ -792,7 +792,7 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
     @staticmethod
     def public_job(row):
         return {key: json.loads(row[key]) if key in ('payload', 'result', 'events') else row[key]
-                for key in ('id', 'kind', 'status', 'payload', 'result', 'events', 'created', 'due')}
+                for key in ('id', 'kind', 'status', 'payload', 'result', 'events', 'created', 'updated', 'due')}
 
     def upload(self, owner, data):
         role = data.get('crewRole')

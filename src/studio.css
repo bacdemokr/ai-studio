@@ -123,6 +123,25 @@
 #studio-telemetry .usage-total{margin-top:20px;margin-bottom:9px}
 #studio-telemetry hr{border:0;border-top:1px solid #344755;margin:16px 0}
 
+/* Completed Stage 3 run usage stays scoped to that scenario, not lifetime telemetry. */
+.studio-usage-time{color:#d6e0e7}
+.studio-usage-task{padding:18px 20px;border:1px solid #344957;border-radius:8px;background:#111c25}
+.studio-usage-task small,.studio-usage-totals small{display:block;margin-bottom:7px;color:#9fb2bf;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.studio-usage-task p{margin:0;font-size:16px;line-height:1.6;white-space:pre-wrap}
+.studio-usage-totals{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:10px;margin:18px 0 26px}
+.studio-usage-totals article{padding:15px 16px;border:1px solid #344957;border-radius:7px;background:#15212b}
+.studio-usage-totals strong{display:block;color:#f2f7fa;font-size:22px;font-variant-numeric:tabular-nums}
+.studio-usage-time h3{margin:0 0 12px;font-size:18px}
+.studio-usage-table-wrap{overflow-x:auto;border:1px solid #344957;border-radius:8px}
+.studio-usage-time table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.studio-usage-time :is(th,td){padding:12px 14px;border-bottom:1px solid #2e414e;text-align:right;white-space:nowrap}
+.studio-usage-time thead th{background:#111c25;color:#9fb2bf;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.studio-usage-time :is(th:first-child,td:first-child){text-align:left}
+.studio-usage-time .studio-usage-endpoint{max-width:310px;text-align:left;white-space:normal;overflow-wrap:anywhere;color:#b9cbd6}
+.studio-usage-time tbody tr:last-child :is(th,td){border-bottom:0}
+.studio-usage-note{margin:14px 0 0;color:#9fb2bf;font-size:13px;line-height:1.55}
+@media(max-width:900px){.studio-usage-totals{grid-template-columns:repeat(2,minmax(120px,1fr))}}
+
 /* The board follows execution dependencies; the paired roles share one stage. */
 #studio-lanes,#studio-surface #studio-lanes{display:flex;flex-direction:column;gap:26px}
 .studio-work-group{position:relative;min-width:0}
