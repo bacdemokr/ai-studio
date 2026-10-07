@@ -237,7 +237,8 @@ def verify_connection(provider, profile):
     if not isinstance(rows,list):
         raise Problem('The endpoint did not return a model list. Check the API endpoint.',502)
     if not any(isinstance(item,dict) and item.get('id')==profile['model'] for item in rows):
-        raise Problem('The selected model was not returned by this provider. Use Load models to choose an available model.',502)
+        raise Problem('The selected model is unavailable. Search for another model.',502)
+    return rows
 
 
 def apply_to_config(config, provider, profile):

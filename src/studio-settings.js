@@ -223,6 +223,12 @@ function bindScenarioModelSettings(){
  const owner=agentId,scenario=selectedScenario,form=el('team-config-form'),source=el('scenario-provider'),notice=el('scenario-status');
  const current=()=>agentId===owner&&selectedScenario===scenario&&el('team-config-form')===form;
  const busy=()=>modelPickerSaving||data.bacResetting||data.scenarios?.find(s=>s.id===scenario)?.busy||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
+ if(data.teamConnection?.shared){
+  source.hidden=true;form.querySelector('label[for="studio-scenario-provider"]').hidden=true;
+  el('scenario-local').hidden=true;el('scenario-apply').hidden=true;el('scenario-api').hidden=false;
+  form.querySelector('.studio-team-api-card').hidden=true;
+  return;
+ }
  source.value=data.teamConnection?.provider||'api';
  const update=()=>{el('scenario-local').hidden=source.value!=='local';el('scenario-api').hidden=source.value!=='api';el('scenario-apply').textContent=source.value==='local'?'Apply local model':'Use API for this scenario';el('scenario-apply').hidden=source.value==='api'&&(data.teamConnection?.provider||'api')==='api';el('scenario-apply').disabled=!!busy();source.disabled=!!busy();};
  source.onchange=update;update();
@@ -295,18 +301,17 @@ async function openModelConnections(){
   const lockFields=()=>{const active=state.connections[source],verified=source==='api'&&active.provider===provider()&&active.ready;el('connect-url').disabled=source==='api';if(el('connect-key')){el('connect-key').disabled=verified;el('connect-key').placeholder=verified?(active.keySource==='api.cfg'?'API key verified · api.cfg':active.keySource==='host'?'API key verified · saved on host':'API key verified · this session'):'Enter API key';el('connect-key-status').textContent=verified?'':'Keys entered here last for this tab only.';}};
   const fill=()=>{const id=provider(),profile=settings.profiles[id]||{},active=state.connections[source];el('connect-url').value=profile.baseUrl||settings.providers[id].baseUrl;el('connect-url').readOnly=source==='api';el('connect-model').value=profile.model||(active.provider===id?active.model:'');if(el('connect-key'))el('connect-key').value='';el('connect-models').innerHTML='';lockFields();};
   if(source==='api'){el('connect-provider').value=state.connections.api.provider;el('connect-provider').onchange=fill;}fill();
-  const payload=()=>({source,provider:provider(),apiKey:el('connect-key')?.value.trim()||'',baseUrl:el('connect-url').value.trim(),model:el('connect-model').value.trim(),contextWindow:settings.profiles[provider()]?.contextWindow||state.connections[source].contextWindow||32768});
+  const payload=()=>({source,provider:provider(),apiKey:el('connect-key')?.value.trim()||'',baseUrl:el('connect-url').value.trim(),model:el('connect-model').value.trim(),contextWindow:settings.profiles[provider()]?.contextWindow||(state.connections[source].provider===provider()?state.connections[source].contextWindow:0)||32768});
   el('connect-cancel').onclick=()=>{if(!working){editor.replaceChildren();editor.hidden=true;editing=false;}};
-  async function action(load){if(working)return;working=true;++inventoryRevision;paint();const values=payload(),message=el('connect-status');editor.querySelectorAll('input,select,button').forEach(e=>e.disabled=true);message.textContent=load?'Loading models…':'Checking connection…';try{
-   const result=await api('settings/connections'+(load?'/models':''),values,owner);if(!current()||!editor.contains(message))return;
-   if(load){el('connect-models').replaceChildren(...result.models.map(m=>new Option(m.name||m.id,m.id)));message.textContent=result.models.length+' models available.';}
-   else{state=result;settings.profiles[values.provider]={baseUrl:values.baseUrl,model:values.model,contextWindow:values.contextWindow};if(el('connect-key'))el('connect-key').value='';runtime=await api('runtime');if(current()){await refresh();paint();message.textContent='Connected.';}}
+  async function action(){if(working)return;working=true;++inventoryRevision;paint();const values=payload(),message=el('connect-status');editor.querySelectorAll('input,select,button').forEach(e=>e.disabled=true);message.textContent='Checking connection…';try{
+   const result=await api('settings/connections',values,owner);if(!current()||!editor.contains(message))return;
+   {state=result;settings.profiles[values.provider]={baseUrl:values.baseUrl,model:values.model,contextWindow:values.contextWindow,hasKey:source==='api'};if(el('connect-key'))el('connect-key').value='';runtime=await api('runtime');if(current()){await refresh();paint();message.textContent='Connected.';}}
   }catch(error){if(current())message.textContent=error.message;}finally{working=false;if(current()){editor.querySelectorAll('input,select,button').forEach(e=>e.disabled=false);lockFields();paint();}}}
   let catalogVersion=0,catalogLoaded='',catalogPending='';
   async function loadCatalog(){
    const values=payload(),signature=JSON.stringify([values.provider,values.baseUrl,values.apiKey]);
    if(working||catalogLoaded===signature||catalogPending===signature)return;
-   if(source==='api'&&!values.apiKey&&!(state.connections.api.provider===values.provider&&state.connections.api.keySource))return;
+   if(source==='api'&&!values.apiKey&&!((state.connections.api.provider===values.provider&&state.connections.api.keySource)||settings.profiles[values.provider]?.hasKey))return;
    const version=++catalogVersion,message=el('connect-status'),list=el('connect-models');catalogPending=signature;message.textContent='Loading models…';
    try{const result=await api('settings/connections/models',values,owner);if(!current()||!editor.contains(list)||version!==catalogVersion)return;
     list.replaceChildren(...result.models.map(m=>new Option(m.name||m.id,m.id)));catalogLoaded=signature;message.textContent=result.models.length?'':'No models found.';
@@ -316,7 +321,7 @@ async function openModelConnections(){
   el('connect-model').onfocus=()=>{el('connect-model').select();loadCatalog();};
   if(el('connect-provider'))el('connect-provider').onchange=()=>{++catalogVersion;catalogLoaded='';catalogPending='';fill();loadCatalog();};
   for(const id of ['connect-key','connect-url'])if(el(id))el(id).oninput=()=>{++catalogVersion;catalogLoaded='';catalogPending='';el('connect-models').replaceChildren();};
-  el('connect-apply').onclick=()=>{++catalogVersion;catalogPending='';action(false);};
+  el('connect-apply').onclick=()=>{++catalogVersion;catalogPending='';action();};
   loadCatalog();
  }
 }

@@ -152,7 +152,7 @@ for(const [id,r] of Object.entries(studioRooms).filter(([id])=>id!=='mission')){
 for(const r of scenarioFloors){
   const node=document.createElement('button');node.type='button';node.className='world-campus-room world-scenario-label';node.dataset.worldScenario=r.id;
   node.style.setProperty('--scenario-accent',r.accent);node.title=r.description;
-  node.innerHTML='<span>03 / MULTI-AGENT</span><b>'+escape(r.title)+'</b><small>'+escape(r.description)+'</small><em class="world-scenario-status"></em>';
+  node.innerHTML='<span>'+escape(r.number)+' / MULTI-AGENT</span><b>'+escape(r.title)+'</b><small>'+escape(r.description)+'</small><em class="world-scenario-status"></em>';
   node.onclick=()=>goToScenario(r.id);navigationLayer.append(node);overviewLabels.push({id:r.id,scenario:r.id,node,group:r.group});
 }
 function refreshScenarioLabels(){

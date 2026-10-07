@@ -112,3 +112,41 @@ class ConnectionTests(unittest.TestCase):
         with patch.object(connections,'idle',side_effect=Problem('Busy')):
             with self.assertRaises(Problem):connections.preferences(self.app,{'scenarios':{'event-brief':'api','plan':'local'}},participant=self.owner)
         self.assertEqual(connections.public_for(self.app,self.owner)['scenarioPreferences'],{'event-brief':'local','plan':'api'})
+
+    def test_model_change_and_search_keep_session_key_over_host_key(self):
+        team_models.save_connection('fixture-old-host',[],source='api.cfg')
+        self.connect('api','nvidia')
+        request={'source':'api','provider':'nvidia','model':'test-model','baseUrl':settings.PROVIDERS['nvidia']['baseUrl'],'_credentialSession':self.lease}
+        with patch.object(settings,'request',return_value={'data':[{'id':'test-model'}]}) as call:
+            connections.models(request)
+            self.assertEqual(call.call_args.args[1]['apiKey'],'fixture-secret')
+            connections.configure(self.app,request)
+            self.assertEqual(call.call_args.args[1]['apiKey'],'fixture-secret')
+        self.assertEqual(connections.profile('api')['_keySource'],'session')
+        self.assertEqual(team_models.credentials()['apiKey'],'fixture-old-host')
+
+    def test_credential_origin_and_no_cross_endpoint_reuse(self):
+        team_models.save_connection('fixture-imported',[],source='api.cfg')
+        self.assertEqual(connections.profile('api')['_keySource'],'api.cfg')
+        team_models.save_connection('fixture-imported',[])
+        self.assertEqual(team_models.saved_connection()['source'],'api.cfg')
+        team_models.save_connection('fixture-replacement',[])
+        self.assertEqual(connections.profile('api')['_keySource'],'host')
+        request={'provider':'nvidia','baseUrl':'https://untrusted.example/v1'}
+        self.assertNotIn('apiKey',connections.with_nvidia_key(request))
+        with patch.object(settings,'request') as call:
+            with self.assertRaises(Problem):connections.models(request)
+            call.assert_not_called()
+
+    def test_session_catalog_drives_per_agent_selection_and_runtime(self):
+        self.connect('api','nvidia')
+        owner=self.app.crew_owner(self.owner,'plan')
+        selected=team_models.select(self.app,owner,{'role':0,'model':'test-model'})
+        self.assertEqual(selected['teamSelections'][0]['id'],'test-model')
+        self.assertEqual(self.app.runtime_status()['teamModels'][0]['id'],'test-model')
+        member={'id':'bac-'+'a'*24+'-r0','_teamModel':'test-model'}
+        connections.prepare(self.app,member)
+        self.assertEqual(member['_connectionConfig']['models'][0]['id'],'test-model')
+        with self.assertRaises(Problem):team_models.select(self.app,owner,{'role':0,'model':'not-offered'})
+        member['_teamModel']='not-offered'
+        with self.assertRaisesRegex(Problem,'selected model is unavailable'):connections.prepare(self.app,member)

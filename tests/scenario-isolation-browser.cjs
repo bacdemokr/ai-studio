@@ -20,6 +20,7 @@ const active = job => ['queued', 'running', 'waiting', 'stopping'].includes(job.
     }, {scenario,path,body});
   }
   const state = scenario => api(scenario, 'state');
+  const leaseTimer=setInterval(()=>api('plan','credential-session',{}).catch(()=>{}),15000);
   async function waitFor(check, detail, timeout=30000) {
     const until = Date.now()+timeout;
     while (Date.now()<until) {const result=await check(); if(result)return result; await new Promise(r=>setTimeout(r,250));}
@@ -31,7 +32,7 @@ const active = job => ['queued', 'running', 'waiting', 'stopping'].includes(job.
     await page.waitForFunction(id=>BacCampus.inspect().navigation.activeScenario===id&&!BacCampus.inspect().navigation.travelling,id);
   }
   async function close() {if(await page.locator('#studio-dialog').evaluate(el=>el.open))await page.locator('#studio-dialog-close').click();}
-  async function settings() {await page.locator('#studio-config').click();await page.locator('#studio-settings-reset-tab').click();}
+  async function settings() {await page.locator('#studio-config').click();await page.locator('[data-connection-tab=reset]').click();}
   async function reset(scenario, all=false) {
     await settings();
     assert((await page.locator('#studio-settings-reset-panel').textContent()).includes(scenario==='plan'?'Open Task':'Event Brief'));
@@ -46,13 +47,18 @@ const active = job => ['queued', 'running', 'waiting', 'stopping'].includes(job.
     await page.waitForFunction(()=>!document.querySelector('#studio-crew-document-add').disabled);
   }
   async function model(scenario, id) {
-    await page.locator('#studio-config').click();await page.locator('#studio-open-team-settings').click();
-    await page.locator('#studio-team-config-form [data-team-model="0"]').click();
+    if(scenario==='plan'){
+      if(!await page.locator('#studio-standby').evaluate(e=>e.open))await page.locator('#studio-standby summary').click();
+      await page.locator('[data-standby-model="0"]').click();
+    }else{
+      await page.locator('#studio-config').click();await page.locator('#studio-connections-agent-models').click();
+      await page.locator('#studio-team-config-form [data-team-model="0"]').click();
+    }
     await page.getByRole('searchbox',{name:'Search API models'}).fill(id===LIGHTNING?'lightning':'ultra');
     await page.locator('[data-model-choice="'+id+'"]').click();
-    await page.locator('[data-team-apply-all]').click();
+    if(scenario!=='plan')await page.locator('[data-team-apply-all]').click();
     await waitFor(async()=> (await state(scenario)).teamSelections.some(r=>r.role===0&&r.id===id),'model applied');
-    await page.waitForFunction(()=>document.querySelector('#studio-team-model-status').textContent.includes('applied'));
+    if(scenario!=='plan')await page.waitForFunction(()=>document.querySelector('#studio-team-model-status').textContent.includes('applied'));
     await close();
   }
   async function plan(prompt) {
@@ -66,7 +72,9 @@ const active = job => ['queued', 'running', 'waiting', 'stopping'].includes(job.
   try {
     await page.goto(BASE);
     await page.waitForFunction(()=>window.BacStudio&&window.BacCampus?.inspect().navigation?.overview);
-    assert.equal(await page.evaluate(()=>BacStudio.inspect().runtime.version),'SCENARIO TEST FIXTURE','Must use disposable fixture');
+    await page.waitForFunction(()=>BacStudio.inspect().runtime.version==='SCENARIO TEST FIXTURE');
+    await api('plan','settings/connections',{source:'api',provider:'nvidia',apiKey:'fixture-key',model:'fixture-local-model'});
+    await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.modelConnections?.connections.api.ready);
     await page.locator('.world-campus-room[data-world-room=workshop]').click();
     await page.locator('#studio-name').fill('Isolation QA');await page.locator('#studio-create').click();
     await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Isolation QA'&&!BacCampus.inspect().arrival);
@@ -146,5 +154,5 @@ const active = job => ['queued', 'running', 'waiting', 'stopping'].includes(job.
     assert.deepEqual(errors,[]);
     console.log('PASS Reset all: both histories/documents cleared, lounge removed, both model choices retained; no browser errors');
   } catch(error) {await page.screenshot({path:'/tmp/scenario-isolation-failure.png'});throw error;}
-  finally {await browser.close();}
+  finally {clearInterval(leaseTimer);await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

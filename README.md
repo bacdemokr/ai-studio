@@ -16,7 +16,7 @@ cd ai-studio
 
 Startup optionally loads the NVIDIA inference API key from `api.cfg`. If the file is empty, invalid or the API cannot be reached, Studio still starts so you can configure Local or External Endpoint in Settings. A failed validation preserves previously saved connections and prints a warning. Valid keys are checked with a small inference request before being saved.
 
-Open **http://localhost:8080**. The validated key is available automatically under **Settings → Model → External Endpoint**. Enable **Local** and/or **External Endpoint**, then choose stage preferences below. Auto prefers Local for Stages 1/2 and External Endpoint for Stage 3.
+Open **http://localhost:8080**. The validated key is available automatically under **Settings → Model → External Endpoint**. Enable **Local** and/or **External Endpoint**, then choose stage preferences below. The initial preference is Local for Stages 1/2 and External Endpoint for Stage 3.
 
 The first start builds the runtime image for your PC and downloads the pinned OpenShell images. OpenClaw and OpenShell are included; no host Python or Node installation is needed. BaC does not install model weights. A local model server, if used for Stages 1 and 2, runs separately.
 
@@ -114,11 +114,11 @@ If you want to edit `api.cfg` and use Git **before your first start**, install t
 bash scripts/setup-key-filter.sh
 ```
 
-In Stage 3, **Models & connection** opens the shared Model settings. Preferences apply to new work; active requests are never automatically replayed. NVIDIA retains per-agent choices under **Agent API models**. Other external providers use the model selected for the shared endpoint. Hiring/Lounge, Event Brief and Open Task have separate rows in the same settings panel. Save both scenario choices together without switching floors.
+In Stage 3, **Models & connection** opens the shared Model settings. Preferences apply to new work; active requests are never automatically replayed. For Open Task on NVIDIA, expand **Standby specialists** and click the model beside each agent to search and save its choice. Event Brief exposes **Per-agent models** from its Model settings. Choices are locked while the team is working. Other external providers use the model selected for the shared endpoint. Hiring/Lounge, Event Brief and Open Task have separate rows in the same settings panel. Save both scenario choices together without switching floors.
 
 ### Stages 1 and 2: Hiring and Agent lounge
 
-Open **Settings → Model → Local → Set up**, load the models, and connect a model with tool calling:
+Open **Settings → Model → Local → Configure**, search the model list, and connect a model with tool calling:
 
 | Server | Endpoint |
 | --- | --- |
@@ -225,8 +225,8 @@ Event Brief keeps the bounded output budget rather than globally increasing it t
 
 ### Shared model connections
 
-In **Settings → Model**, Local and External Endpoint are independent checkboxes. Set up each connection, load a model, and connect. External Endpoint supports NVIDIA Inference, OpenAI and Anthropic. An `api.cfg` key can supply NVIDIA automatically; newly entered keys stay in memory for the browser credential session.
+In **Settings → Model**, Local and External Endpoint are independent checkboxes. Configure each connection, search the automatically loaded model list, and connect. External Endpoint supports NVIDIA Inference, OpenAI and Anthropic. An `api.cfg` key can supply NVIDIA automatically; newly entered keys stay in memory for the browser credential session.
 
-Recommended defaults prefer Local for Hiring/Lounge and External Endpoint for Stage 3. The panel highlights the actual ready connection rather than showing an ambiguous Auto option. If the preferred connection is disabled or unavailable, new work uses the other ready connection. If neither is ready, requests are blocked with **Model not connected**. Connection checks verify model availability, not model quality or task completion. Existing work is not retried automatically.
+Initial defaults prefer Local for Hiring/Lounge and External Endpoint for Stage 3; saved manual preferences are preserved. The panel highlights the actual ready connection rather than showing an ambiguous Auto option. If the preferred connection is disabled or unavailable, new work uses the other ready connection. If neither is ready, requests are blocked with **Model not connected**. Connection checks verify model availability, not model quality or task completion. Existing work is not retried automatically.
 
 Use local/private endpoints reachable from the OpenClaw host. Local mode does not launch vLLM automatically. Scenario resets preserve connection settings. The launcher treats `api.cfg` as optional. When Open Task uses Local, a warning explains that it may be slower or produce less reliable results for complex requests. With neither connection ready, tasks remain blocked. Event Brief does not show this Open Task warning.

@@ -60,7 +60,7 @@ teamModelDialog.innerHTML='<header><div><h3 id="team-model-heading">Choose a mod
 let modelPickerRole=0,modelPickerSaving=false,modelPickerDraft=null,modelPickerOwner=null,modelPickerForm=null,modelPickerSettingsScroll=0;
 function syncTeamModelForm(){
  const form=el('team-config-form');if(!form)return;
- const blocked=data.teamConnection?.provider==='local'||modelPickerSaving||!runtime.teamModel||data.bacResetting||(selectedScenario==='event-brief'&&data.scenarios?.find(s=>s.id==='event-brief')?.busy)||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
+ const blocked=(data.teamConnection?.shared?data.teamConnection.effectiveSource!=='api':data.teamConnection?.provider==='local')||modelPickerSaving||!teamRuntime().teamReady||data.bacResetting||(selectedScenario==='event-brief'&&data.scenarios?.find(s=>s.id==='event-brief')?.busy)||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
  for(const trigger of form.querySelectorAll('[data-team-model]')){
   const role=Number(trigger.dataset.teamModel),draft=teamModelDrafts.get(role);
   const model=draft?(runtime.teamModels||[]).find(m=>m.id===draft):teamModel(role);
@@ -71,6 +71,8 @@ function syncTeamModelForm(){
  apply.disabled=!!blocked||![...teamModelDrafts].some(([role,id])=>id!==teamModel(role)?.id);
 }
 function renderModelResults(){
+ teamModelDialog.querySelector('[data-model-close]').disabled=modelPickerSaving;
+ teamModelDialog.querySelector('input').disabled=modelPickerSaving;
  const query=teamModelDialog.querySelector('input').value.trim().toLowerCase();
  const selected=modelPickerDraft;
  const models=(runtime.teamModels||[]).filter(m=>(m.id+' '+m.label).toLowerCase().includes(query));
@@ -148,6 +150,7 @@ root.addEventListener('click',async event=>{
 async function applyTeamModel(){
  const target=modelPickerOwner,role=modelPickerRole,model=modelPickerDraft;
  modelPickerSaving=true;
+ if(!teamModelDialog.hidden)renderModelResults();
  syncTeamModelForm();
  try{
   const result=await api('team-model',{role,model},target);
@@ -166,9 +169,10 @@ async function applyTeamModel(){
    }
   }
   return true;
- }catch(error){const message=el('team-model-status');if(message&&agentId===target){message.textContent='Some changes may have saved. '+error.message+' Unsaved selections are kept for retry.';message.hidden=false;}else alert('Model changes could not be applied. '+error.message);return false;}
+ }catch(error){const message=el('team-model-status');if(message&&agentId===target){message.textContent='Some changes may have saved. '+error.message+' Unsaved selections are kept for retry.';message.hidden=false;}else if(!teamModelDialog.hidden&&agentId===target){const notice=teamModelDialog.querySelector('.team-model-error');notice.textContent=error.message;notice.hidden=false;}else alert('Model changes could not be applied. '+error.message);return false;}
  finally{
   modelPickerSaving=false;render();
+  if(!teamModelDialog.hidden)renderModelResults();
   syncTeamModelForm();
  }
 }

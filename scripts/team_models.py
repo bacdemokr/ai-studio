@@ -87,6 +87,15 @@ def public():
     return {'connected':bool(credentials().get('apiKey')), 'models':models}
 
 
+def available_models():
+    import model_connections
+    if model_connections.enabled():
+        state=model_connections.status('api')
+        if state['provider']=='nvidia' and state['ready']:
+            return state.get('models',[])
+    return public()['models']
+
+
 def apply(config, selected=None, local=None, agent_id=None):
     import runtime_settings as settings
     import session_secrets as secrets
@@ -151,7 +160,7 @@ def select(studio, owner, data):
     from studio import Problem, CREW_CATALOG
     role,model=data.get('role'),data.get('model')
     eligible = set(range(4)) if studio.crew_scenario(owner)=='event-brief' else {i for i,m in enumerate(CREW_CATALOG) if m.get('planEligible',True)}
-    if type(role) is not int or role not in eligible or model not in {m['id'] for m in public()['models']}:
+    if type(role) is not int or role not in eligible or model not in {m['id'] for m in available_models()}:
         raise Problem('Choose a team member and an available model.')
     with studio.db() as db:
         db.execute('BEGIN IMMEDIATE')

@@ -49,6 +49,11 @@ def signature(value):
     return hashlib.sha256(json.dumps(value,sort_keys=True).encode()).hexdigest()
 
 
+def catalog(rows):
+    import team_models
+    return [{'id':row['id'],'label':row.get('display_name') or dict(zip(team_models.MODELS,team_models.LABELS)).get(row['id'],row['id'])} for row in (rows or []) if isinstance(row,dict) and team_models.valid_model(row.get('id'))]
+
+
 def probe(source,value):
     key=signature(value)
     try:
@@ -56,7 +61,7 @@ def probe(source,value):
         result=settings.request(provider,value,'/v1/models?limit=1000' if provider=='anthropic' else '/models',timeout=8)
         rows=result.get('data',[]) if isinstance(result,dict) else []
         ready=any(isinstance(row,dict) and row.get('id')==value.get('model') for row in rows)
-        state={'ready':ready,'message':'Ready' if ready else 'Selected model is not available.','checkedAt':time.time()}
+        state={'ready':ready,'message':'Ready' if ready else 'Selected model is not available.','checkedAt':time.time(),'models':catalog(rows)}
     except Exception as error:
         from studio import Problem
         state={'ready':False,'message':str(error) if isinstance(error,Problem) else 'Connection check failed.','checkedAt':time.time()}
@@ -112,12 +117,9 @@ def configure(studio,data):
     provider=data.get('provider') if source=='api' else 'local'
     if provider not in ('nvidia','openai','anthropic') and source=='api':raise Problem('Choose an API provider.')
     request={**data,'provider':provider}
-    # api.cfg can supply NVIDIA without entering its key again.
-    if provider=='nvidia' and not request.get('apiKey'):
-        import team_models
-        request['apiKey']=team_models.credentials().get('apiKey','')
+    request=with_nvidia_key(request)
     provider,value=settings.validate(request)
-    settings.verify_connection(provider,value)
+    rows=settings.verify_connection(provider,value)
     with _lock,studio.db() as db:
         db.execute('BEGIN IMMEDIATE');idle(studio,db)
         saved=settings.read();saved.setdefault('profiles',{})[provider]=value;settings.persist(saved)
@@ -126,7 +128,7 @@ def configure(studio,data):
         if source=='api':config['apiProvider']=provider
         persist(config)
         checked=profile(source)
-        _checks[signature(checked)]=(time.monotonic(),{'ready':True,'message':'Ready','checkedAt':time.time()})
+        _checks[signature(checked)]=(time.monotonic(),{'ready':True,'message':'Ready','checkedAt':time.time(),'models':catalog(rows)})
         studio.provisioned.clear();studio.status_cache=(0,{})
     return public()
 
@@ -182,7 +184,10 @@ def prepare(studio,member,preference='auto',stage='team'):
     if source=='api' and value['_provider']=='nvidia' and stage=='team':
         import team_models
         selected=member.get('_teamModel')
-        if selected in {m['id'] for m in team_models.public()['models']}:value['model']=selected
+        if selected:
+            if selected not in {m['id'] for m in team_models.available_models()}:
+                raise Problem('This agent’s selected model is unavailable on the current API connection. Choose another model for this agent.',503)
+            value['model']=selected
     provider=native(value)
     if stage=='lounge':provider['models'][0]['input']=['text','image']
     member['_connectionConfig']=provider
@@ -196,11 +201,26 @@ def provider_id(agent):
     return 'bac-connection-'+hashlib.sha256(agent.encode()).hexdigest()[:24]
 
 
+def with_nvidia_key(data):
+    # Explicit key, then this tab's current connection, then the host fallback.
+    # Only forward saved credentials to the destination they belong to.
+    if data.get('provider')!='nvidia' or data.get('apiKey'):
+        return data
+    saved=settings.read().get('profiles',{}).get('nvidia',{})
+    base=data.get('baseUrl',saved.get('baseUrl',settings.PROVIDERS['nvidia']['baseUrl']))
+    session=secrets.get(settings.secret_key('nvidia'),data.get('_credentialSession','direct'))
+    if session.get('apiKey') and isinstance(base,str) and base.rstrip('/')==saved.get('baseUrl'):
+        return {**data,'apiKey':session['apiKey']}
+    import team_models
+    fallback=team_models.credentials()
+    if isinstance(base,str) and base.rstrip('/')==fallback.get('baseUrl'):
+        return {**data,'apiKey':fallback.get('apiKey','')}
+    return data
+
+
 def models(data):
-    if data.get('provider')=='nvidia' and not data.get('apiKey'):
-        import team_models
-        data={**data,'apiKey':team_models.credentials().get('apiKey','')}
-    return settings.models(data)
+    return settings.models(with_nvidia_key(data))
+
 
 
 def scenario_preferences(studio,participant):

@@ -666,6 +666,9 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
         import model_connections
         if model_connections.enabled():
             shared = model_connections.public()
+            external = shared['connections']['api']
+            if external['provider']=='nvidia' and external['ready']:
+                result['teamModels']=external.get('models',[])
             result.update(modelConnections=shared, model=bool(shared['loungeSource']), ready=bool(shared['loungeSource']) and bool(result.get('gateway')))
         return result
 
@@ -676,7 +679,12 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
             folder = base / category
             if folder.is_symlink():
                 continue
-            for p in sorted(folder.rglob('*') if recursive else folder.glob('*')):
+            try:
+                paths = sorted(folder.rglob('*') if recursive else folder.glob('*'))
+            except (FileNotFoundError, NotADirectoryError):
+                # A scenario reset can replace the directory during enumeration.
+                continue
+            for p in paths:
                 try:
                     p = safe_file(base, str(p.relative_to(base)), True)
                     stat = p.stat()
