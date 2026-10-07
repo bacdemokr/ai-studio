@@ -63,11 +63,21 @@ def setup(path):
     print('Inference API key verified. Stage 3 is configured.', flush=True)
 
 
-if __name__ == '__main__':
+def main(arguments=None):
+    arguments = sys.argv[1:] if arguments is None else arguments
+    optional = '--optional' in arguments[1:]
     try:
-        setup(Path(sys.argv[1]))
-    except (InvalidKey, ServiceUnavailable, OSError):
-        error = sys.exc_info()[1]
+        setup(Path(arguments[0]))
+    except (InvalidKey, ServiceUnavailable, OSError) as error:
+        if optional:
+            print('NVIDIA API was not configured from api.cfg. Any previously saved connection is preserved. '
+                  'Studio will start; configure Local or External Endpoint in Settings.', file=sys.stderr)
+            return 0
         print(str(error) if isinstance(error, (InvalidKey, ServiceUnavailable)) else
               'Could not read or save api.cfg. Check its file permissions.', file=sys.stderr)
-        sys.exit(1)
+        return 1
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

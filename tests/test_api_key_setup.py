@@ -48,3 +48,15 @@ class KeySetupTests(unittest.TestCase):
         for status, expected in [(401, api.InvalidKey), (403, api.InvalidKey), (429, api.ServiceUnavailable), (503, api.ServiceUnavailable)]:
             with patch.object(api.urllib.request, 'urlopen', side_effect=urllib.error.HTTPError(api.BASE_URL,status,'error',{},io.BytesIO(b''))):
                 with self.assertRaises(expected): api.request('fixture', '/models')
+
+    def test_optional_validation_allows_settings_without_replacing_key(self):
+        for error in (api.InvalidKey('Invalid'),api.ServiceUnavailable('Offline'),OSError('Unreadable')):
+            with patch.object(api,'setup',side_effect=error),patch.object(api,'save_connection') as save:
+                self.assertEqual(api.main([str(self.path),'--optional']),0)
+                self.assertEqual(api.main([str(self.path)]),1)
+                save.assert_not_called()
+
+    def test_optional_valid_key_still_loads(self):
+        with patch.object(api,'setup') as setup:
+            self.assertEqual(api.main([str(self.path),'--optional']),0)
+            setup.assert_called_once_with(self.path)

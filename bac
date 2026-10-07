@@ -87,9 +87,6 @@ if [[ $command_name == start ]]; then
   if [[ ! -e api.cfg ]]; then (umask 077; touch api.cfg); fi
   [[ -f api.cfg ]] || die 'api.cfg must be a regular file.'
   chmod 600 api.cfg
-  if ! LC_ALL=C awk 'NF {if (NF != 1) bad=1; count++} END {exit (bad || count != 1)}' api.cfg; then
-    die 'Put a valid inference API key in api.cfg, then run ./bac start again.'
-  fi
 fi
 [[ $(uname -s) == Linux ]] || die 'Docker deployment targets Ubuntu. For the existing Mac source preview use ./bac dev preview.'
 command -v docker >/dev/null || die 'Install Docker Engine and its Compose plugin, then run ./bac start again.'
@@ -194,7 +191,7 @@ case "$command_name" in
     echo 'Checking the inference API key in api.cfg…'
     if ! compose run --rm --no-deps -T --user 0 --entrypoint python3 \
       -v "$PWD/api.cfg:/run/bac-api.cfg:ro" studio \
-      /opt/bac/source/scripts/api_key_setup.py /run/bac-api.cfg; then
+      /opt/bac/source/scripts/api_key_setup.py /run/bac-api.cfg --optional; then
       exit 1
     fi
     # Record before provisioning so failed starts and later version changes are

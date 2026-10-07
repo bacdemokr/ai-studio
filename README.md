@@ -14,7 +14,7 @@ cd ai-studio
 ./bac start
 ```
 
-Startup checks the NVIDIA inference API key in `api.cfg`. If the file is empty or the API rejects the key, startup prints instructions and exits. Edit `api.cfg`, then run `./bac start` again. Startup checks access to the configured team models and makes a small inference request before restarting services.
+Startup optionally loads the NVIDIA inference API key from `api.cfg`. If the file is empty, invalid or the API cannot be reached, Studio still starts so you can configure Local or External Endpoint in Settings. A failed validation preserves previously saved connections and prints a warning. Valid keys are checked with a small inference request before being saved.
 
 Open **http://localhost:8080**. The validated key is available automatically under **Settings → Model → External Endpoint**. Enable **Local** and/or **External Endpoint**, then choose stage preferences below. Auto prefers Local for Stages 1/2 and External Endpoint for Stage 3.
 
@@ -104,8 +104,8 @@ independently. Failed new launches print the final startup-log lines automatical
 ```
 
 - The validated key is saved on this computer with owner-only file permissions. Refreshing the browser does not require re-entry.
-- Missing or rejected keys stop startup with instructions to edit `api.cfg`. Empty files are detected before Docker is invoked.
-- Network or API service failures stop startup without replacing your key or restarting running services. Startup never silently falls back to the previous saved key.
+- Missing or rejected keys do not block startup. No unverified key is saved.
+- API validation failures preserve any previously saved connection. Settings checks the currently configured connection before marking it ready.
 - GitHub tracks an **empty `api.cfg` placeholder**. Startup installs a local Git clean filter that stages an empty file while preserving your working key. Release packages also contain an empty file; the Docker image excludes it.
 
 If you want to edit `api.cfg` and use Git **before your first start**, install the filter first:
@@ -229,4 +229,4 @@ In **Settings → Model**, Local and External Endpoint are independent checkboxe
 
 Auto prefers Local for Hiring/Lounge and External Endpoint for Stage 3. If the preferred connection is disabled or unavailable, new work uses the other ready connection. If neither is ready, requests are blocked with **Model not connected**. Connection checks verify model availability, not model quality or task completion. Existing work is not retried automatically.
 
-Use local/private endpoints reachable from the OpenClaw host. Local mode does not launch vLLM automatically. Scenario resets preserve connection settings. The launcher still requires the existing `api.cfg` startup validation.
+Use local/private endpoints reachable from the OpenClaw host. Local mode does not launch vLLM automatically. Scenario resets preserve connection settings. The launcher treats `api.cfg` as optional. When Open Task uses Local, a warning explains that it may be slower or produce less reliable results for complex requests. With neither connection ready, tasks remain blocked. Event Brief does not show this Open Task warning.
