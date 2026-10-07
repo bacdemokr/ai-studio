@@ -216,6 +216,25 @@ body{margin:0;padding:0;width:100%;max-width:none}
 #studio-telemetry .usage-total{margin-top:20px;margin-bottom:9px}
 #studio-telemetry hr{border:0;border-top:1px solid #344755;margin:16px 0}
 
+/* Completed Stage 3 run usage stays scoped to that scenario, not lifetime telemetry. */
+.studio-usage-time{color:#d6e0e7}
+.studio-usage-task{padding:18px 20px;border:1px solid #344957;border-radius:8px;background:#111c25}
+.studio-usage-task small,.studio-usage-totals small{display:block;margin-bottom:7px;color:#9fb2bf;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.studio-usage-task p{margin:0;font-size:16px;line-height:1.6;white-space:pre-wrap}
+.studio-usage-totals{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:10px;margin:18px 0 26px}
+.studio-usage-totals article{padding:15px 16px;border:1px solid #344957;border-radius:7px;background:#15212b}
+.studio-usage-totals strong{display:block;color:#f2f7fa;font-size:22px;font-variant-numeric:tabular-nums}
+.studio-usage-time h3{margin:0 0 12px;font-size:18px}
+.studio-usage-table-wrap{overflow-x:auto;border:1px solid #344957;border-radius:8px}
+.studio-usage-time table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.studio-usage-time :is(th,td){padding:12px 14px;border-bottom:1px solid #2e414e;text-align:right;white-space:nowrap}
+.studio-usage-time thead th{background:#111c25;color:#9fb2bf;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.studio-usage-time :is(th:first-child,td:first-child){text-align:left}
+.studio-usage-time .studio-usage-endpoint{max-width:310px;text-align:left;white-space:normal;overflow-wrap:anywhere;color:#b9cbd6}
+.studio-usage-time tbody tr:last-child :is(th,td){border-bottom:0}
+.studio-usage-note{margin:14px 0 0;color:#9fb2bf;font-size:13px;line-height:1.55}
+@media(max-width:900px){.studio-usage-totals{grid-template-columns:repeat(2,minmax(120px,1fr))}}
+
 /* The board follows execution dependencies; the paired roles share one stage. */
 #studio-lanes,#studio-surface #studio-lanes{display:flex;flex-direction:column;gap:26px}
 .studio-work-group{position:relative;min-width:0}
@@ -80554,6 +80573,7 @@ function animateCrewExchange(dt){
   // Both directions require native OpenShell policy evidence, never an approval click.
 const protectionSeen=new Set(),protectionHits=new Map(),protectionCooldown=new Map();
 const protectionReplies=new Map();
+const externalActivitySeen=new Set(),externalActivityPrimed=new Set(),nativeAllowSeen=new Map();
 function protectionReplyDelay(owner,role=null){
   const key=owner+':'+(role===null?'personal':role),hold=protectionReplies.get(key);
   if(hold&&performance.now()<hold.until)return hold;
@@ -80597,6 +80617,7 @@ function createProtectionShell(){
 function createExternalConnection(event){
   const group=new THREE.Group();group.name='openshell-outbound';group.visible=false;scene.add(group);
   const shell=createProtectionShell();shell.scale.y=1.08;group.add(shell);
+  shell.visible=event.source!=='OpenClaw tool activity'||event.protected;
   const screen=protectionTarget(event).getWorldPosition(new THREE.Vector3()).project(camera),direction=screen.x>0?-1:1;
   const origin=new THREE.Vector3(0,.95,.05),destination=new THREE.Vector3(direction*8.8,1.9,1);
   const curve=new THREE.QuadraticBezierCurve3(origin,new THREE.Vector3(direction*4,4.2,.8),destination);
@@ -80625,9 +80646,10 @@ function createExternalConnection(event){
   for(let i=0;i<2;i++){const packet=new THREE.Mesh(new THREE.SphereGeometry(.085,12,8),protectionMaterial(0xd4ffe7));packet.add(new THREE.Mesh(new THREE.SphereGeometry(.17,12,8),protectionMaterial(0x7dffc3,.2)));group.add(packet);packets.push(packet);}
   const arrow=new THREE.Mesh(new THREE.ConeGeometry(.12,.32,12),protectionMaterial(0xb4ffdb));arrow.position.copy(curve.getPoint(.72));arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),curve.getTangent(.72).normalize());group.add(arrow);
   const label=document.createElement('div');label.className='world-protection-hit world-protection-allow';label.setAttribute('role','status');
-  const title=document.createElement('b');title.textContent='↗ Request allowed';
+  const observed=event.source==='OpenClaw tool activity';
+  const title=document.createElement('b');title.textContent=observed?'↗ Internet activity':'↗ Request allowed';
   const host=document.createElement('small');host.textContent=String(event.host||'').slice(0,120);
-  const caption=document.createElement('span');caption.textContent='OpenShell · external website';label.append(title,host,caption);protectionLayer.append(label);
+  const caption=document.createElement('span');caption.textContent=observed?(event.protected?'OpenShell agent · web tool':'Direct access · web tool'):'OpenShell · external website';label.append(title,host,caption);protectionLayer.append(label);
   return {event,group,shell,route,globe,earth,halo,curve,packets,arrow,label,began:performance.now(),phase:'outbound'};
 }
 function animateExternalConnection(hit,age,duration){
@@ -80645,6 +80667,42 @@ function animateExternalConnection(hit,age,duration){
   hit.label.style.left=Math.max(half+8,Math.min(viewport.clientWidth-half-8,parseFloat(hit.label.style.left)))+'px';
   hit.label.style.top=Math.max(hit.label.offsetHeight+8,Math.min(viewport.clientHeight-8,parseFloat(hit.label.style.top)))+'px';
 }
+function queueExternalConnection(event){
+  const key=event.owner+':'+(event.role===null?'personal':event.role),target=protectionTarget(event);
+  const cooldownKey=key+':allow';
+  if(!target||performance.now()-(protectionCooldown.get(cooldownKey)||-Infinity)<4500)return;
+  if(protectionHits.get(key)?.event.action==='deny')return;
+  protectionCooldown.set(cooldownKey,performance.now());
+  if(protectionHits.has(key)){disposeProtection(protectionHits.get(key));protectionHits.delete(key);}
+  if(protectionHits.size>=3){const [oldKey,old]=protectionHits.entries().next().value;disposeProtection(old);protectionHits.delete(oldKey);}
+  protectionHits.set(key,createExternalConnection(event));
+}
+function observeExternalActivity(jobs=[],owner){
+  const resident=residents.find(r=>r.key===owner),protectedAgent=resident?.appearance?.protection==='openshell';
+  const candidates=[];
+  for(const job of jobs){
+    if(!['chat','reminder'].includes(job.kind))continue;
+    const activity=job.liveActivity||job.result?.activity;
+    if(!activity?.available||!Array.isArray(activity.calls))continue;
+    activity.calls.forEach((call,index)=>{
+      if(!['web_fetch','web_search'].includes(call.tool)||!['running','completed'].includes(call.status))return;
+      let host=call.tool==='web_search'?'Web search':String(call.target||'External website');
+      if(call.tool==='web_fetch')try{host=new URL(host).hostname||host;}catch{}
+      candidates.push({id:'web:'+job.id+':'+index,host});
+    });
+  }
+  if(!externalActivityPrimed.has(owner)){
+    candidates.forEach(event=>externalActivitySeen.add(event.id));externalActivityPrimed.add(owner);return;
+  }
+  const key=owner+':personal';
+  for(const event of candidates){
+    if(externalActivitySeen.has(event.id))continue;
+    externalActivitySeen.add(event.id);
+    if(protectedAgent&&performance.now()-(nativeAllowSeen.get(key)||-Infinity)<30000)continue;
+    queueExternalConnection({...event,owner,role:null,action:'allow',source:'OpenClaw tool activity',protected:protectedAgent});
+  }
+  while(externalActivitySeen.size>256)externalActivitySeen.delete(externalActivitySeen.values().next().value);
+}
 function observeProtection(events=[]){
   const now=Date.now()/1000;
   for(const event of events){
@@ -80656,14 +80714,15 @@ function observeProtection(events=[]){
     if(!target||performance.now()-(protectionCooldown.get(cooldownKey)||-Infinity)<4500)continue;
     // Keep a denial visible when other concurrent destinations are allowed.
     if(event.action==='allow'&&protectionHits.get(key)?.event.action==='deny')continue;
-    protectionCooldown.set(cooldownKey,performance.now());
+    if(event.action==='allow')nativeAllowSeen.set(key,performance.now());
+    else protectionCooldown.set(cooldownKey,performance.now());
     if(event.action==='deny'&&!overview&&!journey&&room===(event.role===null?'lounge':'mission')){
       const hold={time:event.time,until:performance.now()+3000};protectionReplies.set(key,hold);
       setTimeout(()=>{if(protectionReplies.get(key)===hold){protectionReplies.delete(key);root.dispatchEvent(new Event('bac:protection-reveal'));}},3000);
     }
+    if(event.action==='allow'){queueExternalConnection(event);continue;}
     if(protectionHits.has(key)){disposeProtection(protectionHits.get(key));protectionHits.delete(key);}
     if(protectionHits.size>=3){const [oldKey,old]=protectionHits.entries().next().value;disposeProtection(old);protectionHits.delete(oldKey);}
-    if(event.action==='allow'){protectionHits.set(key,createExternalConnection(event));continue;}
     const group=new THREE.Group();group.name='openshell-impact';group.visible=false;scene.add(group);
     const shell=createProtectionShell();shell.scale.y=1.08;group.add(shell);
     const rim=new THREE.Mesh(new THREE.TorusGeometry(1.8,.035,8,80),protectionMaterial(0x7fe9ff,.85));rim.rotation.x=-Math.PI/2;rim.position.y=.045;group.add(rim);
@@ -80696,6 +80755,7 @@ function observeProtection(events=[]){
   protectionPrimed=true;
   while(protectionSeen.size>256)protectionSeen.delete(protectionSeen.values().next().value);
   for(const [key,stamp] of protectionCooldown)if(performance.now()-stamp>30000)protectionCooldown.delete(key);
+  for(const [key,stamp] of nativeAllowSeen)if(performance.now()-stamp>30000)nativeAllowSeen.delete(key);
 }
 function animateProtection(now){
   for(const [key,hit] of protectionHits){
@@ -80762,11 +80822,11 @@ function animateProtection(now){
     renderer.render(scene,camera);
   }
   setScenario('plan');motionButton();resize();update(snapshot,0);requestAnimationFrame(animate);root.dataset.renderer='webgl';
-  return {resize,update,setRoom,setScenario,setScenarioStatus,scenarios:showScenarios,setCollection,observeProtection,protectionReplyDelay,setDraft,welcomeAgent,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',protectionHits:[...protectionHits.values()].map(h=>({id:h.event.id,owner:h.event.owner,role:h.event.role,action:h.event.action,globeRotation:h.earth?.rotation.y,visible:h.group.visible,animated:motion&&h.phase!=='blocked',phase:h.phase})),roundtable:roundtableInfo(),arrival:arrival?{key:arrival.key,avatar:{...arrival.rig.appearance},phase:arrival.time<1.8?'loading':'walking',position:arrival.rig.group.position.toArray()}:null,room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,draftShield:!!draftRig?.body.getObjectByName('openshell-shield'),crewExchange:robots.map((r,role)=>({role,visible:r.robot.visible,phase:r.exchange,wanted:r.wanted})),deskAssignments:[...deskAssignments],crewHomes:robots.map(r=>r.home.toArray()),selectedTeam:state.crewMission?.enabledRoles||[0],crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,captain:{position:robots[0].robot.position.toArray(),job:captainJob,received:[...receivedDocuments],assigned:[...assignedDocuments],pending:documentQueue.map(d=>({...d})),inFlight:documentFlight?{...documentFlight}:null},robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
+  return {resize,update,setRoom,setScenario,setScenarioStatus,scenarios:showScenarios,setCollection,observeProtection,observeExternalActivity,protectionReplyDelay,setDraft,welcomeAgent,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',protectionHits:[...protectionHits.values()].map(h=>({id:h.event.id,owner:h.event.owner,role:h.event.role,action:h.event.action,source:h.event.source,globeRotation:h.earth?.rotation.y,visible:h.group.visible,animated:motion&&h.phase!=='blocked',phase:h.phase})),roundtable:roundtableInfo(),arrival:arrival?{key:arrival.key,avatar:{...arrival.rig.appearance},phase:arrival.time<1.8?'loading':'walking',position:arrival.rig.group.position.toArray()}:null,room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,draftShield:!!draftRig?.body.getObjectByName('openshell-shield'),crewExchange:robots.map((r,role)=>({role,visible:r.robot.visible,phase:r.exchange,wanted:r.wanted})),deskAssignments:[...deskAssignments],crewHomes:robots.map(r=>r.home.toArray()),selectedTeam:state.crewMission?.enabledRoles||[0],crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,captain:{position:robots[0].robot.position.toArray(),job:captainJob,received:[...receivedDocuments],assigned:[...assignedDocuments],pending:documentQueue.map(d=>({...d})),inFlight:documentFlight?{...documentFlight}:null},robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
 }
 
 try {sceneView=createScene();}catch(error){el('fallback').hidden=false;root.dataset.renderer='fallback';console.warn('3D unavailable; accessible workflow controls remain available.',error.message);}
-window.BacCampus={setScenario:id=>sceneView?.setScenario(id),setScenarioStatus:(rows,busy)=>sceneView?.setScenarioStatus(rows,busy),scenarios:options=>sceneView?.scenarios(options),protectionReplyDelay:(owner,role)=>sceneView?.protectionReplyDelay(owner,role),observeProtection:events=>sceneView?.observeProtection(events),welcomeAgent:key=>sceneView?.welcomeAgent(key),setRoom:(room,options)=>sceneView?.setRoom(room,options),overview:options=>sceneView?.overview(options),setCollection:(agents,key)=>sceneView?.setCollection(agents,key),setDraft:profile=>sceneView?.setDraft(profile),inspect:()=>sceneView?.inspect()||{fallback:true},setLive:next=>{snapshot=next;selected=next.selected;render();}};
+window.BacCampus={setScenario:id=>sceneView?.setScenario(id),setScenarioStatus:(rows,busy)=>sceneView?.setScenarioStatus(rows,busy),scenarios:options=>sceneView?.scenarios(options),protectionReplyDelay:(owner,role)=>sceneView?.protectionReplyDelay(owner,role),observeProtection:events=>sceneView?.observeProtection(events),observeExternalActivity:(jobs,owner)=>sceneView?.observeExternalActivity(jobs,owner),welcomeAgent:key=>sceneView?.welcomeAgent(key),setRoom:(room,options)=>sceneView?.setRoom(room,options),overview:options=>sceneView?.overview(options),setCollection:(agents,key)=>sceneView?.setCollection(agents,key),setDraft:profile=>sceneView?.setDraft(profile),inspect:()=>sceneView?.inspect()||{fallback:true},setLive:next=>{snapshot=next;selected=next.selected;render();}};
 render();
 
 })();</script>
@@ -80950,6 +81010,7 @@ render();
   function render() {
     const profile=data.profile, job=current();
     window.BacCampus?.observeProtection(data.protectionEvents||[]);
+    window.BacCampus?.observeExternalActivity(data.jobs||[],agentId);
     renderCollection();syncFileButtons();
     el('onboarding').hidden=false;el('companion').hidden=!profile;el('lounge-empty').hidden=!!profile;
     if(profile){el('agent-name').textContent=profile.name;el('personality').textContent=toneSummary(profile);el('personality').title=profile.tonePrompt||toneSummary(profile);el('agent-skills').innerHTML=profile.skills.map(s=>'<span class="studio-skill-badge" title="'+escape(capabilities[s]?.[1]||titles[s]||s)+'"><i aria-hidden="true">'+escape(missions.find(m=>m.id===s)?.icon||'◇')+'</i>'+escape(titles[s]||capabilities[s]?.[0]||s)+'</span>').join('');el('agent-skills').hidden=!profile.skills.length;el('equipped').innerHTML=profile.skills.map(s=>{const c=capabilities[s];return c?'<button type="button" data-try-skill="'+s+'"><strong>'+escape(c[0])+'</strong><small>'+escape(c[1])+'</small></button>':'<span>'+escape(titles[s])+'</span>';}).join('');el('memory').hidden=!profile.skills.includes('memory');}
@@ -82256,13 +82317,61 @@ function renderPlanResults(job){
  planResults.innerHTML='<h3>Team results</h3>'+collaborationTimeMarkup(job)+'<p>'+escape(plan.task||job.payload.prompt||'')+'</p><div class="chat-prose">'+messageMarkup(answer||status)+'</div>'+collaborationCompletionMarkup(plan,answer)+webpageButtons(files,job.id)+collaborationFileButtons(files,job.id,'Open saved file');
 }
 
+const usageTime=document.createElement('section');usageTime.id='studio-usage-time';usageTime.className='studio-usage-time';usageTime.hidden=true;surfaceStore.append(usageTime);
+function usageNumber(value){return typeof value==='number'&&Number.isFinite(value)&&value>=0?value:null;}
+function usageDuration(seconds){
+ const value=usageNumber(seconds);if(value===null)return '—';
+ const rounded=Math.round(value),hours=Math.floor(rounded/3600),minutes=Math.floor(rounded%3600/60),secs=rounded%60;
+ return hours?hours+'h '+minutes+'m '+secs+'s':minutes?minutes+'m '+secs+'s':value<1?value.toFixed(1)+'s':secs+'s';
+}
+function scenarioTaskSummary(job){
+ const prompt=job?.payload?.collaboration?.task||job?.payload?.prompt;
+ if(prompt)return String(prompt).replace(/^\s*\/(?:goals?|plans?)(?=\s|$)/i,'').trim();
+ const brief=job?.payload?.brief;if(!brief)return 'No task summary was saved for this run.';
+ const place=brief.city?' in '+brief.city:'',dates=[brief.startDate,brief.endDate].filter(Boolean).join(' to ');
+ const details=[dates&&'Dates: '+dates,brief.days&&'Days: '+brief.days,brief.attendees&&'Attendees: '+brief.attendees,brief.themeCount&&'Themes: '+brief.themeCount].filter(Boolean);
+ return 'Plan an event'+place+(details.length?'. '+details.join(' · '):'.');
+}
+function scenarioUsageSummary(job){
+ const records=Object.values(job?.payload?.metrics||{}).filter(record=>record&&typeof record==='object'),agents=new Map();
+ let input=0,output=0,total=0,apiSeconds=0,inputReported=false,outputReported=false,totalReported=false,timeReported=false,unreportedCalls=0;
+ for(const record of records){
+  const recordInput=usageNumber(record.input),recordOutput=usageNumber(record.output);
+  const recordTotal=usageNumber(record.total)??(recordInput!==null&&recordOutput!==null?recordInput+recordOutput:null);
+  const seconds=usageNumber(record.runSeconds),key=record.agent||record.name||'unknown';
+  if(!agents.has(key))agents.set(key,{name:record.name||'Unknown agent',endpoints:new Set(),input:0,output:0,total:0,seconds:0,calls:0,inputReported:false,outputReported:false,totalReported:false,timeReported:false});
+  const agent=agents.get(key);agent.calls++;
+  if(typeof record.endpoint==='string'&&record.endpoint)agent.endpoints.add(record.endpoint);
+  else if(typeof record.model==='string'&&record.model)agent.endpoints.add('Model · '+record.model);
+  if(recordInput!==null){input+=recordInput;agent.input+=recordInput;inputReported=agent.inputReported=true;}
+  if(recordOutput!==null){output+=recordOutput;agent.output+=recordOutput;outputReported=agent.outputReported=true;}
+  if(recordTotal!==null){total+=recordTotal;agent.total+=recordTotal;totalReported=agent.totalReported=true;}else unreportedCalls++;
+  if(seconds!==null){apiSeconds+=seconds;agent.seconds+=seconds;timeReported=agent.timeReported=true;}
+ }
+ const start=usageNumber(job?.created),end=usageNumber(job?.updated);
+ return {records,agents:[...agents.values()],input,output,total,apiSeconds,inputReported,outputReported,totalReported,timeReported,unreportedCalls,elapsed:start!==null&&end!==null?Math.max(0,end-start):null};
+}
+function renderUsageTime(job){
+ if(!job){usageTime.innerHTML='';delete usageTime.dataset.key;return;}
+ const summary=scenarioUsageSummary(job),key=JSON.stringify([job.id,job.status,job.updated,job.payload?.metrics,job.payload?.prompt,job.payload?.brief,job.payload?.collaboration?.task]);
+ if(usageTime.dataset.key===key)return;usageTime.dataset.key=key;
+ const amount=(value,reported)=>reported?Math.round(value).toLocaleString():'—';
+ const rows=summary.agents.map(agent=>'<tr><th scope="row">'+escape(agent.name)+'</th><td class="studio-usage-endpoint">'+escape([...agent.endpoints].join(', ')||'Not reported')+'</td><td>'+amount(agent.input,agent.inputReported)+'</td><td>'+amount(agent.output,agent.outputReported)+'</td><td>'+amount(agent.total,agent.totalReported)+'</td><td>'+usageDuration(agent.timeReported?agent.seconds:null)+'</td><td>'+agent.calls+'</td></tr>').join('');
+ const warning=summary.unreportedCalls?'<p class="studio-usage-note">'+summary.unreportedCalls+' recorded API call'+(summary.unreportedCalls===1?' did':'s did')+' not report token counts, so token totals are partial.</p>':'';
+ usageTime.innerHTML='<section class="studio-usage-task"><small>Task</small><p>'+escape(scenarioTaskSummary(job))+'</p></section>'+
+  '<div class="studio-usage-totals"><article><small>Input tokens</small><strong>'+amount(summary.input,summary.inputReported)+'</strong></article><article><small>Output tokens</small><strong>'+amount(summary.output,summary.outputReported)+'</strong></article><article><small>Combined tokens</small><strong>'+amount(summary.total,summary.totalReported)+'</strong></article><article><small>Total elapsed</small><strong>'+usageDuration(summary.elapsed)+'</strong></article><article><small>Combined API time</small><strong>'+usageDuration(summary.timeReported?summary.apiSeconds:null)+'</strong></article></div>'+
+  (rows?'<h3>Usage and time by agent</h3><div class="studio-usage-table-wrap"><table><thead><tr><th>Agent</th><th>Endpoint</th><th>Input</th><th>Output</th><th>Combined</th><th>API time</th><th>Calls</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p class="studio-usage-note">This run has no reported API usage metrics.</p>')+
+  warning+'<p class="studio-usage-note">Total elapsed is submission-to-completion wall time. Combined API time adds each agent’s model-call duration and can be longer when agents work in parallel.</p>';
+}
+
 const surfaceDefinitions={
   missions:{title:'Try a mission',ids:['experiences']},
   results:{title:'Results & files',ids:['workspace']},
   compare:{title:'Agent comparison',ids:['compare']},
   policies:{title:'OpenShell Policy',ids:['policy-panel']},
   control:{title:'Mission Control',ids:['board']},
-  deliverables:{title:'Results',ids:['plan-results']}
+  deliverables:{title:'Results',ids:['plan-results']},
+  usage:{title:'API usage and time',ids:['usage-time']}
 };
 for(const id of ['event-package','board','workspace','experiences','policy-panel','connections'])surfaceStore.append(el(id));
 el('passport').prepend(el('collection'));
@@ -82277,6 +82386,7 @@ const controlButton=document.createElement('button');controlButton.type='button'
 const teamResetButton=document.createElement('button');teamResetButton.type='button';teamResetButton.id='studio-bac-reset';teamResetButton.className='studio-team-utility';teamResetButton.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7a6 6 0 1 1-.2 5M4 3v4h4"/></svg><span>Reset</span>';teamResetButton.setAttribute('aria-label','Reset current scenario');teamResetButton.title='Stop this scenario’s work and clear its chats, documents and results';teamResetButton.onclick=()=>confirmTeamReset(teamResetButton);
 const teamResetStatus=document.createElement('p');teamResetStatus.id='studio-team-reset-status';teamResetStatus.className='studio-muted';teamResetStatus.setAttribute('role','status');teamResetStatus.hidden=true;crewActions.after(teamResetStatus);
 const resultsButton=document.createElement('button');resultsButton.type='button';resultsButton.className='studio-secondary';resultsButton.dataset.surface='deliverables';resultsButton.textContent='Results';resultsButton.hidden=true;crewActions.append(resultsButton);
+const usageTimeButton=document.createElement('button');usageTimeButton.type='button';usageTimeButton.className='studio-secondary';usageTimeButton.dataset.surface='usage';usageTimeButton.textContent='API usage and time';usageTimeButton.hidden=true;crewActions.append(usageTimeButton);
 const teamTotalTime=document.createElement('div');teamTotalTime.id='studio-team-total-time';teamTotalTime.hidden=true;teamTotalTime.setAttribute('role','timer');teamTotalTime.title='Total process time, including queueing, planning, specialists and review';el('crew-name').parentElement.classList.add('studio-captain-heading');el('crew-name').after(teamTotalTime);
 const teamConnectionBar=document.createElement('div');teamConnectionBar.className='studio-team-connection-bar';teamConnectionBar.innerHTML='<span class="studio-team-connection-state" role="status"><i aria-hidden="true"></i><span id="studio-team-connection-label">Team API</span></span><div class="studio-team-utilities"><button type="button" class="studio-team-utility" id="studio-team-setup" aria-haspopup="dialog"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h3m4 0h7M3 14h7m4 0h3"/><circle cx="8" cy="6" r="2"/><circle cx="12" cy="14" r="2"/></svg><span>Models &amp; connection</span></button></div>';teamConnectionBar.querySelector('.studio-team-utilities').append(teamResetButton);crewActions.after(teamConnectionBar);el('team-setup').onclick=openTeamSettings;
 const localTaskWarning=document.createElement('p');localTaskWarning.id='studio-local-task-warning';localTaskWarning.className='studio-local-task-warning';localTaskWarning.setAttribute('role','status');localTaskWarning.hidden=true;localTaskWarning.textContent='Local model selected for Open Task. Tasks may take longer, and complex requests may not produce the expected results. An external endpoint is recommended.';teamConnectionBar.after(localTaskWarning);
@@ -82317,8 +82427,11 @@ function syncSurface(){
   syncTeamTotalTime();
   standbyPanel.hidden=selectedScenario==='event-brief';
   const event=crewMission();resultsButton.hidden=selectedScenario==='event-brief'?!event:!plan;
+  const scenarioJob=selectedScenario==='event-brief'?event:plan;
+  usageTimeButton.hidden=!scenarioJob||['queued','running','waiting','stopping'].includes(scenarioJob.status);
   surfaceDefinitions.deliverables.ids=selectedScenario==='event-brief'?['event-package']:['plan-results'];
   if(activeSurface==='deliverables'){if(selectedScenario==='event-brief')renderEventPackage();else renderPlanResults(plan);}
+  if(activeSurface==='usage')renderUsageTime(scenarioJob);
   el('compare-open').hidden=!comparison;
   if(!activeSurface)return;
   for(const id of surfaceDefinitions[activeSurface].ids){

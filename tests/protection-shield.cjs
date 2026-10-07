@@ -49,6 +49,13 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.equal(await page.evaluate(()=>BacCampus.inspect().protectionHits.find(h=>h.action==='allow').globeRotation),still.globeRotation);
   await page.screenshot({path:'../../work/lounge-outbound-world.png'});
   await page.waitForFunction(()=>BacCampus.inspect().protectionHits.length===0);
+  await page.evaluate(owner=>{
+   BacCampus.setCollection([{key:owner,name:'Direct',persona:'guide',skills:['weather'],protection:'standard',avatar:{body:'round',color:'cyan',accessory:'headset'}}],owner);
+   BacCampus.observeExternalActivity([{id:'direct-web',kind:'chat',liveActivity:{available:true,calls:[{tool:'web_fetch',target:'https://example.org/weather',status:'running'}]}}],owner);
+  },owner);
+  await page.waitForFunction(()=>BacCampus.inspect().protectionHits.some(h=>h.source==='OpenClaw tool activity'&&h.visible));
+  assert.match(await page.locator('.world-protection-allow:visible').innerText(),/Internet activity.*example.org.*Direct access · web tool/s);
+  await page.waitForFunction(()=>BacCampus.inspect().protectionHits.length===0);
   events=[deny('stale',1)];events[0].time-=100;events[0].observedAt-=100;
   await page.evaluate(()=>BacStudio.refresh());assert.equal((await page.evaluate(()=>BacCampus.inspect())).protectionHits.length,0);
   assert.deepEqual(errors,[]);console.log('PASS: crew and personal denial/allow effects, rotating external globe, outbound route, no allow reply delay, dedupe, expiry and reduced motion. Injected fixture evidence.');

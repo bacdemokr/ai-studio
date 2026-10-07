@@ -732,6 +732,13 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
                            for j in active if j['kind'] in ('crew','crew-chat') and j['owner'] != owner for m in job_participants(j['payload']) if m.get('key') == owner
                            and (m in j['payload'].get('roster', []) or j['payload'].get('roundtable', {}).get('replies', {}).get(owner, {}).get('status') not in ('done','error','cancelled'))]
         from live_plan_activity import snapshot as live_snapshot
+        personal_profile = self.profile(owner)
+        for job in jobs:
+            if (job['status'] in ('running', 'stopping') and job['kind'] in ('chat', 'reminder')
+                    and personal_profile):
+                job['liveActivity'] = live_snapshot(self.adapter, {
+                    'agent': personal_profile['id'], 'session': 'bac-' + owner,
+                    'started': job['created'], 'role': None})
         for job in crew_chats:
             plan = job['payload'].get('collaboration', {})
             observation = plan.pop('observation', None)

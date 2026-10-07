@@ -1,6 +1,7 @@
 // Both directions require native OpenShell policy evidence, never an approval click.
 const protectionSeen=new Set(),protectionHits=new Map(),protectionCooldown=new Map();
 const protectionReplies=new Map();
+const externalActivitySeen=new Set(),externalActivityPrimed=new Set(),nativeAllowSeen=new Map();
 function protectionReplyDelay(owner,role=null){
   const key=owner+':'+(role===null?'personal':role),hold=protectionReplies.get(key);
   if(hold&&performance.now()<hold.until)return hold;
@@ -44,6 +45,7 @@ function createProtectionShell(){
 function createExternalConnection(event){
   const group=new THREE.Group();group.name='openshell-outbound';group.visible=false;scene.add(group);
   const shell=createProtectionShell();shell.scale.y=1.08;group.add(shell);
+  shell.visible=event.source!=='OpenClaw tool activity'||event.protected;
   const screen=protectionTarget(event).getWorldPosition(new THREE.Vector3()).project(camera),direction=screen.x>0?-1:1;
   const origin=new THREE.Vector3(0,.95,.05),destination=new THREE.Vector3(direction*8.8,1.9,1);
   const curve=new THREE.QuadraticBezierCurve3(origin,new THREE.Vector3(direction*4,4.2,.8),destination);
@@ -72,9 +74,10 @@ function createExternalConnection(event){
   for(let i=0;i<2;i++){const packet=new THREE.Mesh(new THREE.SphereGeometry(.085,12,8),protectionMaterial(0xd4ffe7));packet.add(new THREE.Mesh(new THREE.SphereGeometry(.17,12,8),protectionMaterial(0x7dffc3,.2)));group.add(packet);packets.push(packet);}
   const arrow=new THREE.Mesh(new THREE.ConeGeometry(.12,.32,12),protectionMaterial(0xb4ffdb));arrow.position.copy(curve.getPoint(.72));arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),curve.getTangent(.72).normalize());group.add(arrow);
   const label=document.createElement('div');label.className='world-protection-hit world-protection-allow';label.setAttribute('role','status');
-  const title=document.createElement('b');title.textContent='↗ Request allowed';
+  const observed=event.source==='OpenClaw tool activity';
+  const title=document.createElement('b');title.textContent=observed?'↗ Internet activity':'↗ Request allowed';
   const host=document.createElement('small');host.textContent=String(event.host||'').slice(0,120);
-  const caption=document.createElement('span');caption.textContent='OpenShell · external website';label.append(title,host,caption);protectionLayer.append(label);
+  const caption=document.createElement('span');caption.textContent=observed?(event.protected?'OpenShell agent · web tool':'Direct access · web tool'):'OpenShell · external website';label.append(title,host,caption);protectionLayer.append(label);
   return {event,group,shell,route,globe,earth,halo,curve,packets,arrow,label,began:performance.now(),phase:'outbound'};
 }
 function animateExternalConnection(hit,age,duration){
@@ -92,6 +95,42 @@ function animateExternalConnection(hit,age,duration){
   hit.label.style.left=Math.max(half+8,Math.min(viewport.clientWidth-half-8,parseFloat(hit.label.style.left)))+'px';
   hit.label.style.top=Math.max(hit.label.offsetHeight+8,Math.min(viewport.clientHeight-8,parseFloat(hit.label.style.top)))+'px';
 }
+function queueExternalConnection(event){
+  const key=event.owner+':'+(event.role===null?'personal':event.role),target=protectionTarget(event);
+  const cooldownKey=key+':allow';
+  if(!target||performance.now()-(protectionCooldown.get(cooldownKey)||-Infinity)<4500)return;
+  if(protectionHits.get(key)?.event.action==='deny')return;
+  protectionCooldown.set(cooldownKey,performance.now());
+  if(protectionHits.has(key)){disposeProtection(protectionHits.get(key));protectionHits.delete(key);}
+  if(protectionHits.size>=3){const [oldKey,old]=protectionHits.entries().next().value;disposeProtection(old);protectionHits.delete(oldKey);}
+  protectionHits.set(key,createExternalConnection(event));
+}
+function observeExternalActivity(jobs=[],owner){
+  const resident=residents.find(r=>r.key===owner),protectedAgent=resident?.appearance?.protection==='openshell';
+  const candidates=[];
+  for(const job of jobs){
+    if(!['chat','reminder'].includes(job.kind))continue;
+    const activity=job.liveActivity||job.result?.activity;
+    if(!activity?.available||!Array.isArray(activity.calls))continue;
+    activity.calls.forEach((call,index)=>{
+      if(!['web_fetch','web_search'].includes(call.tool)||!['running','completed'].includes(call.status))return;
+      let host=call.tool==='web_search'?'Web search':String(call.target||'External website');
+      if(call.tool==='web_fetch')try{host=new URL(host).hostname||host;}catch{}
+      candidates.push({id:'web:'+job.id+':'+index,host});
+    });
+  }
+  if(!externalActivityPrimed.has(owner)){
+    candidates.forEach(event=>externalActivitySeen.add(event.id));externalActivityPrimed.add(owner);return;
+  }
+  const key=owner+':personal';
+  for(const event of candidates){
+    if(externalActivitySeen.has(event.id))continue;
+    externalActivitySeen.add(event.id);
+    if(protectedAgent&&performance.now()-(nativeAllowSeen.get(key)||-Infinity)<30000)continue;
+    queueExternalConnection({...event,owner,role:null,action:'allow',source:'OpenClaw tool activity',protected:protectedAgent});
+  }
+  while(externalActivitySeen.size>256)externalActivitySeen.delete(externalActivitySeen.values().next().value);
+}
 function observeProtection(events=[]){
   const now=Date.now()/1000;
   for(const event of events){
@@ -103,14 +142,15 @@ function observeProtection(events=[]){
     if(!target||performance.now()-(protectionCooldown.get(cooldownKey)||-Infinity)<4500)continue;
     // Keep a denial visible when other concurrent destinations are allowed.
     if(event.action==='allow'&&protectionHits.get(key)?.event.action==='deny')continue;
-    protectionCooldown.set(cooldownKey,performance.now());
+    if(event.action==='allow')nativeAllowSeen.set(key,performance.now());
+    else protectionCooldown.set(cooldownKey,performance.now());
     if(event.action==='deny'&&!overview&&!journey&&room===(event.role===null?'lounge':'mission')){
       const hold={time:event.time,until:performance.now()+3000};protectionReplies.set(key,hold);
       setTimeout(()=>{if(protectionReplies.get(key)===hold){protectionReplies.delete(key);root.dispatchEvent(new Event('bac:protection-reveal'));}},3000);
     }
+    if(event.action==='allow'){queueExternalConnection(event);continue;}
     if(protectionHits.has(key)){disposeProtection(protectionHits.get(key));protectionHits.delete(key);}
     if(protectionHits.size>=3){const [oldKey,old]=protectionHits.entries().next().value;disposeProtection(old);protectionHits.delete(oldKey);}
-    if(event.action==='allow'){protectionHits.set(key,createExternalConnection(event));continue;}
     const group=new THREE.Group();group.name='openshell-impact';group.visible=false;scene.add(group);
     const shell=createProtectionShell();shell.scale.y=1.08;group.add(shell);
     const rim=new THREE.Mesh(new THREE.TorusGeometry(1.8,.035,8,80),protectionMaterial(0x7fe9ff,.85));rim.rotation.x=-Math.PI/2;rim.position.y=.045;group.add(rim);
@@ -143,6 +183,7 @@ function observeProtection(events=[]){
   protectionPrimed=true;
   while(protectionSeen.size>256)protectionSeen.delete(protectionSeen.values().next().value);
   for(const [key,stamp] of protectionCooldown)if(performance.now()-stamp>30000)protectionCooldown.delete(key);
+  for(const [key,stamp] of nativeAllowSeen)if(performance.now()-stamp>30000)nativeAllowSeen.delete(key);
 }
 function animateProtection(now){
   for(const [key,hit] of protectionHits){
