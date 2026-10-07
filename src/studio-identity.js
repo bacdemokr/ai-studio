@@ -4,7 +4,7 @@ async function openAgentDocuments(role=null,codeView=false){
  const target=agentId,request=++identityRequest;
  const name=role===null?data.profile?.name:defaultNames[role];
  if(!name||!target)return;
- dialog(codeView?'AGENT CODE':'AGENT FILES','<section id="studio-identity-viewer"><h3>'+escape(name)+'</h3><p role="status">Loading agent files…</p></section>');
+ dialog(codeView?'INSTRUCTIONS':'AGENT FILES','<section id="studio-identity-viewer"><h3>'+escape(name)+'</h3><p role="status">Loading agent files…</p></section>');
  el('dialog').classList.add('studio-agent-documents');
  el('dialog').classList.toggle('studio-agent-code',codeView);
  const host=el('identity-viewer');

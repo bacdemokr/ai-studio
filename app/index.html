@@ -1452,7 +1452,7 @@ body{margin:0;padding:0;width:100%;max-width:none}
   <div class="studio-passport-head"><span class="studio-kicker">YOUR AGENT / YOUR RULES</span><span class="studio-spark">✦</span></div>
   <div id="studio-lounge-empty"><div class="studio-avatar"><i></i><i></i></div><h3>Room for your first agent.</h3></div>
   <div id="studio-companion" hidden>
-    <div class="studio-companion-name"><button type="button" id="studio-portrait" class="studio-avatar small studio-identity-open" aria-label="View agent files" title="View agent files"><i aria-hidden="true"></i><i aria-hidden="true"></i></button><div><div class="studio-agent-title"><h3><button type="button" id="studio-agent-name" class="studio-identity-name" title="View agent files" aria-haspopup="dialog"></button></h3><div class="studio-agent-actions"><button id="studio-edit-agent" class="studio-secondary">Edit agent</button><button id="studio-agent-code" class="studio-secondary" aria-haspopup="dialog">Code</button><button id="studio-delete-agent" class="studio-danger-link">Delete agent</button></div></div><span id="studio-personality" class="studio-muted"></span><div id="studio-agent-skills" aria-label="Equipped skills"></div></div><span class="studio-online-dot"></span></div>
+    <div class="studio-companion-name"><button type="button" id="studio-portrait" class="studio-avatar small studio-identity-open" aria-label="View agent files" title="View agent files"><i aria-hidden="true"></i><i aria-hidden="true"></i></button><div><div class="studio-agent-title"><h3><button type="button" id="studio-agent-name" class="studio-identity-name" title="View agent files" aria-haspopup="dialog"></button></h3><div class="studio-agent-actions"><button id="studio-edit-agent" class="studio-secondary">Edit agent</button><button id="studio-agent-code" class="studio-secondary" aria-haspopup="dialog">Instructions</button><button id="studio-delete-agent" class="studio-danger-link">Delete agent</button></div></div><span id="studio-personality" class="studio-muted"></span><div id="studio-agent-skills" aria-label="Equipped skills"></div></div><span class="studio-online-dot"></span></div>
 
     <button type="button" id="studio-agent-policy" class="studio-secondary studio-policy-link" hidden>◇ OpenShell Policy</button>
     <div class="studio-agent-state" hidden><span class="studio-kicker" id="studio-task-state">READY FOR A MISSION</span><p id="studio-task-summary">Choose a mission below, or ask for something of your own.</p></div>
@@ -82880,7 +82880,7 @@ async function openAgentDocuments(role=null,codeView=false){
  const target=agentId,request=++identityRequest;
  const name=role===null?data.profile?.name:defaultNames[role];
  if(!name||!target)return;
- dialog(codeView?'AGENT CODE':'AGENT FILES','<section id="studio-identity-viewer"><h3>'+escape(name)+'</h3><p role="status">Loading agent files…</p></section>');
+ dialog(codeView?'INSTRUCTIONS':'AGENT FILES','<section id="studio-identity-viewer"><h3>'+escape(name)+'</h3><p role="status">Loading agent files…</p></section>');
  el('dialog').classList.add('studio-agent-documents');
  el('dialog').classList.toggle('studio-agent-code',codeView);
  const host=el('identity-viewer');
