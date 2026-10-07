@@ -2,6 +2,14 @@
 import re
 
 
+EVENT_INTERNAL_INPUTS = {'handoffs.md', 'shared-brief.json'}
+
+
+def internal_team_input(path):
+    name = path.rsplit('/', 1)[-1]
+    return name in EVENT_INTERNAL_INPUTS or bool(re.match(r'^(?:plan-input|plan|chat)-[0-9a-f]{24}(?:-|\.)', name))
+
+
 def requested_inputs(studio, origin, task):
     from studio import safe_file, Problem
     from document_upload import MAX_FILE
@@ -15,6 +23,8 @@ def requested_inputs(studio, origin, task):
         r'\b(uploaded|attached|supplied)\b|업로드|첨부|올린|올려둔', task, re.I)
     inputs, total = [], 0
     for path in sorted(folder.iterdir()):
+        if origin.get('role') is not None and internal_team_input(path.name):
+            continue
         if path.suffix.lower() not in ('.txt', '.md', '.csv', '.pdf', '.pptx', '.xlsx'):
             continue
         # Exclude generated handoff snapshots, not user names such as plan-notes.md.

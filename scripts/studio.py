@@ -684,6 +684,7 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
 
     def state(self, owner, scenario='plan'):
         from scenarios import validate
+        from plan_inputs import internal_team_input
         validate(scenario)
         team = self.existing_crew_owner(owner, scenario)
         with self.db() as db:
@@ -729,7 +730,7 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
             pass
         from team_models import selections
         return {'scenario':scenario, 'scenarios':self.scenario_status(owner), 'preparation':self.demo_preparation(team) if team and scenario=='event-brief' else None,
-                'crewDocuments': [f for f in self.files(team,0) if f['kind']=='inbox'] if team else [], 'teamSelections': selections(self,team), 'profile': self.profile(owner), 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': self.files(owner),
+                'crewDocuments': [f for f in self.files(team,0) if f['kind']=='inbox' and not internal_team_input(f['path'])] if team else [], 'teamSelections': selections(self,team), 'profile': self.profile(owner), 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': self.files(owner),
                 'techRadar': self.heartbeat.status(owner, self.profile(owner) or {}),
                 'memory': memory_text, 'agentId': owner, 'crewOwner': team, 'roundtableTurns': roundtable_turns,
                 'agents': agents, 'agentLimit': MAX_AGENTS, 'assignments': assignments, 'bacResetting': bac_resetting,
@@ -775,6 +776,10 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
         if role is None and not self.profile(owner):
             raise Problem('Create your agent first.')
         name = text(data.get('name'), 100, 'File name')
+        if role is not None:
+            from plan_inputs import EVENT_INTERNAL_INPUTS
+            if name in EVENT_INTERNAL_INPUTS:
+                raise Problem('This filename is reserved for internal team work. Rename your document before uploading.')
         if '/' in name or '\\' in name:
             raise Problem('Use a file name without folders.')
         from document_upload import decode_document
