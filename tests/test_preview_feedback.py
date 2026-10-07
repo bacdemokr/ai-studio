@@ -103,6 +103,14 @@ class StopTests(unittest.TestCase):
             container_remove.stop(engine,gateway)
             self.assertEqual([c for c in engine.calls if c[0]!='GET'],[('POST','/containers/sandbox/stop?t=45')])
             self.assertEqual((gateway/'saved').read_text(),'keep')
+            # A pre-existing stopped sandbox is not ours to resume implicitly.
+            dormant=copy.deepcopy(owned);dormant.update(Id='dormant',State='exited')
+            engine.containers.append(dormant)
+            container_remove.resume(engine,gateway)
+            self.assertIn(('POST','/containers/sandbox/start'),engine.calls)
+            self.assertNotIn(('POST','/containers/dormant/start'),engine.calls)
+            self.assertFalse((gateway/container_remove.STOPPED_SANDBOXES).exists())
+            container_remove.resume(engine,gateway)  # Idempotent second startup.
             bad=copy.deepcopy(owned);bad['Mounts']=[]
             engine=Engine(containers=[owned,bad])
             with self.assertRaises(RuntimeError):container_remove.stop(engine,gateway)

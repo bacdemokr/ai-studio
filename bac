@@ -168,6 +168,21 @@ resource_files() {
   [[ -f $helper && -f $lock ]] || die 'Resource files are missing. Copy the complete release folder and retry.'
 }
 
+sandbox_lifecycle() {
+  local helper=scripts/container_remove.py image
+  [[ -f $helper ]] || helper=remove.py
+  image=$(compose config | awk '$1=="studio:" {studio=1; next} studio && !found && $1=="image:" {print $2; found=1}')
+  if [[ ! -f $helper || -z $image ]] || ! docker image inspect "$image" >/dev/null 2>&1; then
+    echo 'Could not manage BaC sandboxes: the installed helper/image is missing.' >&2
+    return 1
+  fi
+  docker run --rm --pull never --network none --user 0 --entrypoint python3 \
+    --mount "type=bind,src=${endpoint#unix://},dst=/var/run/docker.sock" \
+    --mount "type=bind,src=$PWD/$helper,dst=/resources.py,readonly" \
+    -v /var/lib/bac-openshell:/var/lib/bac-openshell \
+    "$image" /resources.py "$1"
+}
+
 case "$command_name" in
   start)
     resource_files
@@ -194,6 +209,7 @@ case "$command_name" in
     compose stop studio openshell
     echo 'Starting the studio and checking readiness…'
     compose up -d --force-recreate --no-build --pull missing --wait --wait-timeout 180
+    sandbox_lifecycle --resume
     # The generated config contains the effective port even with .env overrides.
     port=$(compose config | awk '$1=="studio:" {studio=1; next} studio && !found && $1=="PORT:" {gsub(/"/,"",$2); print $2; found=1}')
     echo "Ready: http://localhost:${port:-8080}"
@@ -205,19 +221,7 @@ case "$command_name" in
     # Stop dispatch first, then the sandboxes created outside Compose.
     failed=0
     compose stop || failed=1
-    helper=scripts/container_remove.py
-    [[ -f $helper ]] || helper=remove.py
-    image=$(compose config | awk '$1=="studio:" {studio=1; next} studio && !found && $1=="image:" {print $2; found=1}')
-    if [[ -f $helper && -n $image ]] && docker image inspect "$image" >/dev/null 2>&1; then
-      docker run --rm --pull never --network none --user 0 --entrypoint python3 \
-        --mount "type=bind,src=${endpoint#unix://},dst=/var/run/docker.sock" \
-        --mount "type=bind,src=$PWD/$helper,dst=/stop.py,readonly" \
-        -v /var/lib/bac-openshell:/var/lib/bac-openshell:ro \
-        "$image" /stop.py --stop || failed=1
-    else
-      echo 'Could not verify or stop BaC sandboxes: the installed helper/image is missing.' >&2
-      failed=1
-    fi
+    sandbox_lifecycle --stop || failed=1
     if $stop_all; then
       # Still attempt model shutdown if container cleanup failed.
       ./bac vllm --stop || failed=1

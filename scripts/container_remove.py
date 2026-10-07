@@ -22,6 +22,31 @@ NAMESPACE = 'openshell.ai/sandbox-namespace'
 SERVICES = {'studio', 'openshell', 'init', 'sandbox-image'}
 VOLUMES = {'bac-demo_studio-data': 'studio-data', 'bac-demo_client-certs': 'client-certs'}
 IMAGE_HISTORY = '.bac-image-history.json'
+STOPPED_SANDBOXES = '.bac-stopped-sandboxes.json'
+
+
+def stopped_sandboxes(gateway):
+    path = gateway / STOPPED_SANDBOXES
+    if path.is_symlink():
+        raise RuntimeError('Unexpected shutdown record symlink.')
+    if not path.exists():
+        return set()
+    value = json.loads(path.read_text())
+    if (not isinstance(value, dict) or value.get('owner') != PROJECT or not isinstance(value.get('ids'), list)
+            or any(not isinstance(i, str) or not re.fullmatch(r'[a-zA-Z0-9_-]+', i) for i in value['ids'])):
+        raise RuntimeError('Invalid BaC shutdown record.')
+    return set(value['ids'])
+
+
+def save_stopped_sandboxes(gateway, ids):
+    path = gateway / STOPPED_SANDBOXES
+    if path.is_symlink():
+        raise RuntimeError('Unexpected shutdown record symlink.')
+    temporary = gateway / (STOPPED_SANDBOXES + '.tmp-' + str(os.getpid()))
+    with temporary.open('x') as stream:
+        json.dump({'owner': PROJECT, 'ids': sorted(ids)}, stream)
+    temporary.chmod(0o600)
+    temporary.replace(path)
 
 
 def image_history(gateway):
@@ -242,6 +267,12 @@ def stop(docker, gateway=GATEWAY):
     owned = [c for c in containers if owned_container(c, gateway)]
     if owned and not gateway_marker(gateway):
         raise RuntimeError('Cannot verify BaC ownership without the gateway marker.')
+    # Record before stopping so an interrupted shutdown can be resumed safely.
+    ids = stopped_sandboxes(gateway)
+    ids.update(c['Id'] for c in owned if (c.get('Labels') or {}).get(MANAGER) == 'openshell'
+               and c.get('State') in ('running', 'restarting', 'paused'))
+    if ids:
+        save_stopped_sandboxes(gateway, ids)
     # Resolve every ownership check before any action. Shut off provisioning first.
     owned.sort(key=lambda c: 0 if (c.get('Labels') or {}).get(PROJECT_LABEL) == PROJECT else 1)
     for container in owned:
@@ -255,10 +286,35 @@ def stop(docker, gateway=GATEWAY):
     print('Verified BaC containers stopped; files, images and volumes are preserved.', flush=True)
 
 
+def resume(docker, gateway=GATEWAY):
+    """Resume only the sandboxes recorded by this shutdown command."""
+    ids = stopped_sandboxes(gateway)
+    if not ids:
+        return
+    if not gateway_marker(gateway):
+        raise RuntimeError('Cannot verify BaC ownership before resuming sandboxes.')
+    containers = docker.call('GET', '/containers/json?all=1')
+    selected = [c for c in containers if c['Id'] in ids]
+    if any(not owned_container(c, gateway) or (c.get('Labels') or {}).get(MANAGER) != 'openshell' for c in selected):
+        raise RuntimeError('A recorded sandbox no longer belongs to BaC; nothing resumed.')
+    for container in selected:
+        if container.get('State') == 'running':
+            continue
+        try:
+            docker.call('POST', '/containers/' + container['Id'] + '/start')
+        except DockerError as error:
+            if error.status not in (304, 404):
+                raise
+    (gateway / STOPPED_SANDBOXES).unlink()
+    print('Previously stopped BaC sandboxes resumed.', flush=True)
+
+
 if __name__ == '__main__':
     try:
         if sys.argv[1] == '--stop':
             stop(Docker())
+        elif sys.argv[1] == '--resume':
+            resume(Docker())
         elif sys.argv[1] == '--record':
             record_images(json.loads(Path(sys.argv[2]).read_text()), sys.argv[3])
         else:

@@ -26,7 +26,7 @@ The first start builds the runtime image for your PC and downloads the pinned Op
 ID and a small inference request to succeed. This command runs independently of
 Docker, Studio, and the Stage 3 API key. Ordinary `./bac start` never starts or
 waits for a local model, even if model configuration exists or model files are
-missing. `./bac stop` stops the BaC services and their OpenShell sandboxes, but leaves the host model server running. Use `./bac stop --all` to also stop the local model launched by this installation. Externally managed model servers are left running and reported explicitly. Saved files, model weights and settings are preserved.
+missing. `./bac stop` stops the BaC services and their OpenShell sandboxes, but leaves the host model server running. Use `./bac stop --all` to also stop the local model launched by this installation. Externally managed model servers are left running and reported explicitly. Saved files, model weights and settings are preserved. The next `./bac start` resumes only the BaC sandboxes recorded by the shutdown command.
 
 ```bash
 ./bac vllm                # Prepare Qwen, default wait: 600 seconds
