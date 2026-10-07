@@ -36,7 +36,7 @@ class Engine:
             self.networks=[n for n in self.networks if n['Id']!=path.split('/')[-1]]
         elif method=='POST':
             for c in self.containers:
-                if c['Id']==path.split('/')[2]: c['State']='exited'
+                if c['Id']==path.split('/')[2]: c['State']='running' if path.endswith('/start') else 'exited'
 
 
 class RemovalTests(unittest.TestCase):

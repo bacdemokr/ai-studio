@@ -90,9 +90,10 @@ class DockerError(RuntimeError):
 
 class Docker:
     def call(self, method, path):
-        connection = http.client.HTTPConnection('localhost', timeout=45)
+        # Docker may use the full 45-second graceful-stop window before replying.
+        connection = http.client.HTTPConnection('localhost', timeout=60)
         connection.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        connection.sock.settimeout(45)
+        connection.sock.settimeout(60)
         connection.sock.connect('/var/run/docker.sock')
         try:
             connection.request(method, '/v1.47' + path)
@@ -263,9 +264,10 @@ def remove(docker, gateway=GATEWAY, lock=None, hostname=None, installation=None,
 
 def stop(docker, gateway=GATEWAY):
     """Stop only verified BaC resources, preserving containers and data."""
+    marker = gateway_marker(gateway)
     containers = docker.call('GET', '/containers/json?all=1')
     owned = [c for c in containers if owned_container(c, gateway)]
-    if owned and not gateway_marker(gateway):
+    if owned and not marker:
         raise RuntimeError('Cannot verify BaC ownership without the gateway marker.')
     # Record before stopping so an interrupted shutdown can be resumed safely.
     ids = stopped_sandboxes(gateway)
@@ -275,6 +277,7 @@ def stop(docker, gateway=GATEWAY):
         save_stopped_sandboxes(gateway, ids)
     # Resolve every ownership check before any action. Shut off provisioning first.
     owned.sort(key=lambda c: 0 if (c.get('Labels') or {}).get(PROJECT_LABEL) == PROJECT else 1)
+    failures = []
     for container in owned:
         if container.get('State') not in ('running', 'restarting', 'paused'):
             continue
@@ -282,7 +285,12 @@ def stop(docker, gateway=GATEWAY):
             docker.call('POST', '/containers/' + container['Id'] + '/stop?t=45')
         except DockerError as error:
             if error.status not in (304, 404):
-                raise
+                failures.append(container['Id'][:12])
+        except OSError:
+            failures.append(container['Id'][:12])
+    if failures:
+        raise RuntimeError('Could not confirm shutdown of BaC containers: ' + ', '.join(failures)
+                           + '. Other containers were attempted; saved data and the resume record are kept. Retry ./bac stop.')
     print('Verified BaC containers stopped; files, images and volumes are preserved.', flush=True)
 
 

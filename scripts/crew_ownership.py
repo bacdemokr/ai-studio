@@ -41,6 +41,7 @@ class CrewOwnership:
 
     def scenario_status(self, owner):
         from scenarios import SCENARIOS
+        from studio import ROLES
         with self.db() as db:
             result=[]
             for scenario in SCENARIOS:
@@ -49,7 +50,8 @@ class CrewOwnership:
                 busy=bool(team and db.execute("SELECT 1 FROM jobs WHERE owner=? AND status IN ('queued','running','waiting','stopping') LIMIT 1",(team['owner'],)).fetchone())
                 reset=self.crew_chat_reset_state(db,team['owner'])['at'] if team else 0
                 if latest and latest['updated']<reset:latest=None
-                saved_files = (self.files(team['owner']) + self.files(team['owner'], 0)) if team and not latest else []
+                saved_files = [f for role in (None, *range(len(ROLES)))
+                               for f in self.files(team['owner'], role, recursive=True)] if team and not latest else []
                 result.append(dict(id=scenario,hasWork=bool(latest or saved_files),busy=busy,status=latest['status'] if latest else None,updated=latest['updated'] if latest else max((f['updated'] for f in saved_files), default=None)))
         return result
 

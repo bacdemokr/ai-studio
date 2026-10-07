@@ -137,8 +137,8 @@ class CollaborationTests(unittest.TestCase):
     def test_command_in_specialist_chat_is_rejected(self):
         team = self.app.crew_owner(self.owner)
         for role in (4,5,6,7,8):
-            for command in ('/plan', ' \n/PLANS'):
-                with self.subTest(role=role, command=command), self.assertRaisesRegex(Problem, 'Send /plan to Casey'):
+            for command in ('/goal', ' \n/GOALS', '/plan', ' \n/PLANS'):
+                with self.subTest(role=role, command=command), self.assertRaisesRegex(Problem, 'Send /goal to Casey'):
                     self.app.enqueue(team, {'kind':'crew-chat','crewRole':role,'prompt':command+' Write a proposal'})
         self.assertIsNone(self.app.next_job())
         self.assertEqual(self.adapter.calls, [])

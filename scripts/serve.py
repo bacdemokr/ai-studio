@@ -169,7 +169,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if set(query) - {'workspace'} or len(query.get('workspace', [])) > 1:
                     raise Problem('Choose one workspace.')
                 target, role = studio.browsing_workspace(owner, scenario, query.get('workspace', ['personal'])[0])
-                return self.json_response({'files': studio.files(target, role) if target else []})
+                return self.json_response({'files': studio.files(target, role, recursive=True) if target else []})
             if parsed.path == '/api/file':
                 name = parse_qs(parsed.query).get('path', [''])[0]
                 if not (name.startswith(('inbox/', 'artifacts/')) or name in ('MEMORY.md', 'IDENTITY.md', 'SOUL.md', 'AGENTS.md')):

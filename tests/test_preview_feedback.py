@@ -1,24 +1,29 @@
 """Regressions for goal routing, scoped files, reset state and bounded recovery."""
 import copy
+import json
 import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
-from test_scenario_boundaries import ScenarioBoundaryTests
+import test_scenario_boundaries as boundaries
 from test_container_remove import Engine
 from collaboration_plan import is_plan, plan_task
 from event_scenario import EventScenario
 from agent_runtime import GatewayError
 from telemetry import Reply
 import container_remove
+from test_agent_workflow import AgentToolsAdapter
+from test_researched_event import SOURCES
+from studio import Studio
+import studio
 
 
 class FeedbackBoundaries(unittest.TestCase):
-    setUp = ScenarioBoundaryTests.setUp
-    server = ScenarioBoundaryTests.server
-    request = ScenarioBoundaryTests.request
+    setUp = boundaries.ScenarioBoundaryTests.setUp
+    server = boundaries.ScenarioBoundaryTests.server
+    request = boundaries.ScenarioBoundaryTests.request
 
     def test_goal_aliases_and_routing(self):
         for command in ('/goal', '/goals', '/plan', '/plans', '/GOAL'):
@@ -54,6 +59,36 @@ class FeedbackBoundaries(unittest.TestCase):
         self.assertTrue(next(s for s in self.app.scenario_status(self.owner) if s['id']=='event-brief')['hasWork'])
         self.app.reset_crew_chats(self.teams['event-brief'],reset_event=True)
         self.assertFalse(any(s['hasWork'] for s in self.app.scenario_status(self.owner)))
+
+    def test_nested_specialist_files_are_browsable_and_resettable_without_chat(self):
+        workspace = self.app.workspace(self.teams['plan'], 5)
+        (workspace / 'artifacts/site').mkdir()
+        (workspace / 'artifacts/site/index.html').write_text('<h1>Saved prototype</h1>')
+        # Never follow a link, even to another workspace in the same account.
+        (workspace / 'artifacts/other').symlink_to(self.app.workspace(self.teams['event-brief']), target_is_directory=True)
+        (workspace / 'artifacts/alias.html').symlink_to(workspace / 'artifacts/site/index.html')
+        self.server()
+        status, result = self.request('workspace-files?workspace=5')
+        self.assertEqual(status, 200)
+        self.assertEqual([f['path'] for f in result['files']], ['artifacts/site/index.html'])
+        self.assertEqual(self.request('file?workspace=5&path=artifacts/site/index.html')[1]['content'], '<h1>Saved prototype</h1>')
+        self.assertTrue(next(s for s in self.app.scenario_status(self.owner) if s['id'] == 'plan')['hasWork'])
+        self.app.reset_crew_chats(self.teams['plan'], reset_event=True)
+        self.assertFalse(next(s for s in self.app.scenario_status(self.owner) if s['id'] == 'plan')['hasWork'])
+        self.assertEqual(self.request('workspace-files?workspace=5')[1]['files'], [])
+
+    def test_file_removed_during_listing_does_not_break_remaining_results(self):
+        workspace = self.app.workspace(self.teams['plan'])
+        (workspace / 'artifacts/keep.md').write_text('Keep this result')
+        (workspace / 'artifacts/vanish.md').write_text('Reset removes this result')
+        validate = studio.safe_file
+        def concurrent_removal(base, relative, exists=False):
+            path = validate(base, relative, exists)
+            if path.name == 'vanish.md': path.unlink()
+            return path
+        with patch('studio.safe_file', side_effect=concurrent_removal):
+            files = self.app.files(self.teams['plan'], recursive=True)
+        self.assertEqual([f['path'] for f in files], ['artifacts/keep.md'])
 
 
 class EventRecoveryTests(unittest.TestCase):
@@ -92,7 +127,96 @@ class EventRecoveryTests(unittest.TestCase):
             self.assertEqual(self.fake.protected_response.call_count,1)
 
 
+class SavedWorkLimitAdapter(AgentToolsAdapter):
+    def __init__(self, repeat=False):
+        super().__init__()
+        self.repeat = repeat
+        self.limited = set()
+        self.recovered = []
+
+    def respond(self, agent, session, prompt):
+        stage = int(agent.rsplit('-r', 1)[1])
+        if session.endswith('-output-recovery'):
+            self.recovered.append(stage)
+            if self.repeat:
+                raise GatewayError('Second output limit', 'output-limit')
+            # A real recovery must be able to validate previous writes without
+            # repeating searches or resaving already valid deliverables.
+            result = Reply('Inspected the saved deliverables. They are complete.', {})
+            result.activity = {'available': True, 'calls': []}
+            return result
+        answer = super().respond(agent, session, prompt)
+        if stage in (1, 2, 3) and stage not in self.limited and not prompt.startswith('LINKEDIN-FIRST:'):
+            self.limited.add(stage)
+            error = GatewayError('Final receipt truncated', 'output-limit')
+            error.activity = answer.activity
+            raise error
+        return answer
+
+
+class EventRecoveryFlowTests(unittest.TestCase):
+    def test_saved_work_survives_limits_in_parallel_stages_and_page_authoring(self):
+        for repeat in (False, True):
+            with self.subTest(repeat=repeat), tempfile.TemporaryDirectory() as folder:
+                adapter = SavedWorkLimitAdapter(repeat)
+                app = Studio(folder, adapter, start_worker=False)
+                owner = app.session()[0]['id']
+                team = app.crew_owner(owner, 'event-brief')
+                prep = app.prepare_demo(team, {'enabledRoles': [0, 1, 2, 3]})
+                while (row := app.next_job()) is not None: app.execute(row)
+                job = app.enqueue(team, {'kind': 'crew', 'preset': True, 'workflow': 'showcase',
+                    'executionMode': 'agent-led-v1', 'brief': {'schema': 2, 'themeCount': 2},
+                    'enabledRoles': [0, 1, 2, 3], 'preparationId': prep['id']})
+                with patch('nvidia_research.search_one', return_value=copy.deepcopy(SOURCES['sources'])), patch('event_agent_tools.read_article', return_value='Fixture article read by the agent tool.'):
+                    # Exercise the worker's real error-to-state handling, then exit
+                    # as soon as the disposable queue is empty.
+                    with patch.object(app.signal, 'wait', side_effect=lambda timeout: app.stop.set()):
+                        app.work()
+                result = app.evidence(team, job['id'])['mission']
+                self.assertEqual(result['status'], 'error' if repeat else 'done', result['result'])
+                self.assertEqual(len(adapter.recovered), len(set(adapter.recovered)), 'At most one output-limit recovery per role')
+                self.assertTrue(app.files(team, 1), 'Research files survive either outcome')
+                if not repeat:
+                    self.assertEqual(set(adapter.recovered), {1, 2, 3})
+                    self.assertTrue(result['payload']['website']['path'])
+                    self.assertEqual(set(result['payload']['outputs']), {'0', '1', '2', '3'})
+                else:
+                    self.assertIn('after one shorter retry', json.dumps(result['result']))
+
+
 class StopTests(unittest.TestCase):
+    def test_failed_stop_still_stops_other_sandboxes_and_keeps_resume_record(self):
+        with tempfile.TemporaryDirectory() as folder:
+            gateway = Path(folder)
+            (gateway / '.bac-gateway.json').write_text('{"owner":"bac-demo","schema":1}')
+            def sandbox(ident):
+                return {'Id': ident, 'State': 'running', 'Labels': {container_remove.MANAGER: 'openshell', container_remove.NAMESPACE: 'bac-demo'}, 'Mounts': [{'Type': 'bind', 'Source': str(gateway / 'cache')}]}
+            engine = Engine(containers=[sandbox('first'), sandbox('second')])
+            engine.fail = ('POST', '/containers/first/stop?t=45')
+            with self.assertRaises(RuntimeError):
+                container_remove.stop(engine, gateway)
+            self.assertIn(('POST', '/containers/second/stop?t=45'), engine.calls)
+            self.assertEqual(container_remove.stopped_sandboxes(gateway), {'first', 'second'})
+            engine.fail = None
+            container_remove.stop(engine, gateway)
+            engine.fail = ('POST', '/containers/second/start')
+            with self.assertRaises(RuntimeError):
+                container_remove.resume(engine, gateway)
+            self.assertEqual(container_remove.stopped_sandboxes(gateway), {'first', 'second'})
+            engine.fail = None
+            container_remove.resume(engine, gateway)
+            self.assertFalse((gateway / container_remove.STOPPED_SANDBOXES).exists())
+
+    def test_gateway_symlink_is_rejected_even_without_remaining_containers(self):
+        with tempfile.TemporaryDirectory() as folder:
+            actual = Path(folder) / 'actual'; actual.mkdir()
+            gateway = Path(folder) / 'gateway'; gateway.symlink_to(actual, target_is_directory=True)
+            container_remove.save_stopped_sandboxes(actual, {'old'})
+            before = (actual / container_remove.STOPPED_SANDBOXES).stat().st_mtime_ns
+            with self.assertRaises(RuntimeError):
+                container_remove.stop(Engine(), gateway)
+            self.assertEqual((actual / container_remove.STOPPED_SANDBOXES).stat().st_mtime_ns, before)
+
     def test_stops_owned_sandboxes_preserves_other_work_and_data(self):
         with tempfile.TemporaryDirectory() as folder:
             gateway=Path(folder)

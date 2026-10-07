@@ -37,7 +37,7 @@ const active = job => ['queued', 'running', 'waiting', 'stopping'].includes(job.
     assert((await page.locator('#studio-settings-reset-panel').textContent()).includes(scenario==='plan'?'Open Task':'Event Brief'));
     await page.locator(all?'#studio-reset-all':'#studio-settings-bac-reset').click();
     await waitFor(async()=>{const s=await state(scenario);return !s.bacResetting&&!s.crewChats.length&&(s.crewDocuments||[]).length===0&&(!all||!s.agents.length);}, 'reset finished');
-    await page.waitForFunction(()=>!document.querySelector('#studio-settings-bac-reset')?.disabled);
+    await page.waitForFunction(()=>document.querySelector('#studio-settings-bac-reset')?.disabled);
     await close();
   }
   async function upload() {

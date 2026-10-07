@@ -260,6 +260,7 @@ if action=='connect' and state.get('connection_failure'):sys.exit(1)
         self.assertIn('./bac logs',result.stderr)
 
     def test_status_logs_stop_do_not_install_or_start_anything(self):
+        self.configure(image=True)
         for command in ('status','logs','stop'):
             with self.subTest(command=command):
                 self.log.unlink(missing_ok=True)
@@ -267,6 +268,13 @@ if action=='connect' and state.get('connection_failure'):sys.exit(1)
                 self.assertEqual(result.returncode,0,result.stderr)
                 self.assertFalse(any(a[0] in ('up','build','pull') for a in self.operations()))
                 self.assertFalse(any(a[0]=='load' for a in self.calls()))
+
+    def test_stop_without_helper_image_reports_incomplete_without_downloading(self):
+        result = self.run_bac('stop')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Shutdown was incomplete', result.stderr)
+        self.assertFalse(any(a[0] in ('up', 'build', 'pull') for a in self.operations()))
+        self.assertFalse(any(a[0] == 'load' for a in self.calls()))
 
     def test_wrong_architecture_old_compose_and_offline_docker_have_remedies(self):
         self.configure(image=True,imagearch='amd64')

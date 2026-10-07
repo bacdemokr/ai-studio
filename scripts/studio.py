@@ -664,19 +664,21 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
                     self.status_cache = (time.monotonic(), value)
         return {**self.status_cache[1], 'instance': self.boot_id}
 
-    def files(self, owner, role=None):
+    def files(self, owner, role=None, *, recursive=False):
         result = []
         base = self.workspace(owner, role)
         for category in ('inbox', 'artifacts'):
             folder = base / category
             if folder.is_symlink():
                 continue
-            for p in sorted(folder.glob('*')):
+            for p in sorted(folder.rglob('*') if recursive else folder.glob('*')):
                 try:
                     p = safe_file(base, str(p.relative_to(base)), True)
-                    result.append({'path': str(p.relative_to(base)), 'size': p.stat().st_size,
-                                   'updated': p.stat().st_mtime, 'kind': category})
-                except Problem:
+                    stat = p.stat()
+                    result.append({'path': str(p.relative_to(base)), 'size': stat.st_size,
+                                   'updated': stat.st_mtime, 'kind': category})
+                except (Problem, OSError):
+                    # Reset and native tool writes can remove a file mid-listing.
                     continue
         return result[:100]
 
