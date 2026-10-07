@@ -10,7 +10,7 @@ async function openAgentDocuments(role=null,codeView=false){
  const host=el('identity-viewer');
  const current=()=>request===identityRequest&&el('dialog').open&&el('identity-viewer')===host&&agentId===target;
  try{
-  const result=await api('agent-documents'+(role===null?'':'?role='+role),undefined,fileOwner);
+  const result=await api('agent-documents'+(role===null?'':'?role='+role),undefined,target);
   if(!current())return;
   const documents=result.documents||[];
   if(codeView){
@@ -32,7 +32,7 @@ async function openAgentDocuments(role=null,codeView=false){
   host.innerHTML='<div class="studio-identity-heading"><div><h3>'+escape(result.name)+'</h3><p>'+escape(result.description)+'</p></div><span>Read only</span></div><div class="studio-identity-layout"><nav aria-label="Agent documents" class="studio-identity-files">'+['agent','skill'].map(group=>{
    const items=documents.map((doc,index)=>({doc,index})).filter(({doc})=>doc.group===group);
    return items.length?'<section><h4>'+(group==='agent'?'OpenClaw files':'Custom skills')+'</h4>'+items.map(({doc,index})=>'<button type="button" data-identity-document="'+index+'" aria-pressed="false" data-status="'+escape(doc.status)+'"><strong>'+escape(group==='skill'?doc.title:doc.filename)+'</strong><small>'+escape(group==='skill'?'SKILL.md':doc.title)+'</small></button>').join('')+'</section>':'';
-  }).join('')+'</nav><section class="studio-identity-document" aria-label="Document contents"><header><div><h4 id="studio-identity-filename"></h4><small id="studio-identity-file-note"></small></div><button type="button" class="studio-secondary" id="studio-identity-download">Download</button><button type="button" class="studio-secondary" id="studio-identity-copy">Copy</button></header><p id="studio-identity-unavailable" role="status" hidden></p><pre id="studio-identity-source" tabindex="0"><code></code></pre></section></div>';
+  }).join('')+'</nav><section class="studio-identity-document" aria-label="Document contents"><header><div><h4 id="studio-identity-filename"></h4><small id="studio-identity-file-note"></small></div><button type="button" class="studio-secondary" id="studio-identity-copy">Copy</button></header><p id="studio-identity-unavailable" role="status" hidden></p><pre id="studio-identity-source" tabindex="0"><code></code></pre></section></div>';
   let selected=null;
   const show=index=>{
    const doc=documents[index];if(!doc)return;
@@ -40,7 +40,7 @@ async function openAgentDocuments(role=null,codeView=false){
    for(const button of host.querySelectorAll('[data-identity-document]'))button.setAttribute('aria-pressed',String(Number(button.dataset.identityDocument)===index));
    el('identity-filename').textContent=doc.filename;
    el('identity-file-note').textContent=doc.status==='ready'?'Saved file · '+new Date(doc.updated*1000).toLocaleString():doc.title;
-   el('identity-download').disabled=doc.status!=='ready';el('identity-copy').disabled=doc.status!=='ready';el('identity-copy').textContent='Copy';
+   el('identity-copy').disabled=doc.status!=='ready';el('identity-copy').textContent='Copy';
    el('identity-source').hidden=doc.status!=='ready';
    el('identity-source').querySelector('code').textContent=doc.content||'';
    el('identity-source').scrollTop=0;
@@ -48,7 +48,6 @@ async function openAgentDocuments(role=null,codeView=false){
    el('identity-unavailable').textContent=doc.status==='missing'?'This file has not been created yet. It will appear when this agent’s runtime is prepared.':'This saved file could not be opened.';
   };
   host.querySelector('nav').onclick=event=>{const button=event.target.closest('[data-identity-document]');if(button)show(Number(button.dataset.identityDocument));};
-  el('identity-download').onclick=()=>{if(selected?.status==='ready')downloadBytes(selected.content,'text/plain',selected.filename);};
   el('identity-copy').onclick=async()=>{
    const doc=selected,button=el('identity-copy');
    if(doc?.status!=='ready')return;
