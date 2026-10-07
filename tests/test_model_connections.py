@@ -99,3 +99,16 @@ class ConnectionTests(unittest.TestCase):
         self.app.reset_crew_chats(event,reset_event=True)
         self.assertEqual(scenario_models.connection(self.app,event)['provider'],'local')
         self.assertEqual(scenario_models.connection(self.app,plan)['provider'],'api')
+
+    def test_settings_can_save_both_scenarios_without_switching(self):
+        self.connect();self.connect('api','openai')
+        self.assertEqual(connections.public_for(self.app,self.owner)['scenarioPreferences'],{'event-brief':'auto','plan':'auto'})
+        self.assertIsNone(self.app.existing_crew_owner(self.owner,'event-brief'))
+        connections.preferences(self.app,{'lounge':'local','scenarios':{'event-brief':'local','plan':'api'}},participant=self.owner)
+        self.assertEqual(connections.public_for(self.app,self.owner)['scenarioPreferences'],{'event-brief':'local','plan':'api'})
+        other=self.app.session()[0]['id']
+        self.assertEqual(connections.public_for(self.app,other)['scenarioPreferences'],{'event-brief':'auto','plan':'auto'})
+        with self.assertRaises(Problem):connections.preferences(self.app,{'scenarios':{'unknown':'local'}},participant=self.owner)
+        with patch.object(connections,'idle',side_effect=Problem('Busy')):
+            with self.assertRaises(Problem):connections.preferences(self.app,{'scenarios':{'event-brief':'api','plan':'local'}},participant=self.owner)
+        self.assertEqual(connections.public_for(self.app,self.owner)['scenarioPreferences'],{'event-brief':'local','plan':'api'})

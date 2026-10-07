@@ -128,12 +128,16 @@ def configure(studio,data):
     return public()
 
 
-def preferences(studio,data,owner=None):
+def preferences(studio,data,owner=None,participant=None):
     from studio import Problem
     preference=data.get('lounge','auto')
     if preference not in ('auto','local','api'):raise Problem('Choose Auto, Local model or API.')
     team=data.get('team')
     if team is not None and team not in ('auto','local','api'):raise Problem('Choose Auto, Local model or API.')
+    scenarios=data.get('scenarios',{})
+    if not isinstance(scenarios,dict) or any(k not in ('event-brief','plan') or v not in ('auto','local','api') for k,v in scenarios.items()):raise Problem('Choose a valid connection for each scenario.')
+    if scenarios and not participant:raise Problem('Open your Settings before changing scenarios.')
+    owners={key:studio.crew_owner(participant,key) for key in scenarios}
     with _lock,studio.db() as db:
         db.execute('BEGIN IMMEDIATE');idle(studio,db)
         saved=read();saved['lounge']=preference
@@ -147,6 +151,8 @@ def preferences(studio,data,owner=None):
             saved['disabled']=[s for s in saved.get('disabled',[]) if s!=source]
         if team is not None and owner:
             db.execute('INSERT OR REPLACE INTO metadata(key,value) VALUES (?,?)',('scenario-model:'+owner,json.dumps({'provider':team})))
+        for key,scenario_owner in owners.items():
+            db.execute('INSERT OR REPLACE INTO metadata(key,value) VALUES (?,?)',('scenario-model:'+scenario_owner,json.dumps({'provider':scenarios[key]})))
         persist(saved);studio.provisioned.clear();studio.status_cache=(0,{})
     result=public()
     if owner:
@@ -192,3 +198,17 @@ def models(data):
         import team_models
         data={**data,'apiKey':team_models.credentials().get('apiKey','')}
     return settings.models(data)
+
+
+def scenario_preferences(studio,participant):
+    result={}
+    for key in ('event-brief','plan'):
+        owner=studio.existing_crew_owner(participant,key)
+        with studio.db() as db:
+            row=db.execute('SELECT value FROM metadata WHERE key=?',('scenario-model:'+owner,)).fetchone() if owner else None
+        result[key]=json.loads(row['value']).get('provider','auto') if row else 'auto'
+    return result
+
+
+def public_for(studio,participant):
+    return {**public(),'scenarioPreferences':scenario_preferences(studio,participant)}

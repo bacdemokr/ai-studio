@@ -141,7 +141,7 @@ class Handler(SimpleHTTPRequestHandler):
             if parsed.path == '/api/settings/connections':
                 self.require_operator()
                 import model_connections
-                return self.json_response(model_connections.public())
+                return self.json_response(model_connections.public_for(studio,owner))
             if parsed.path == '/api/runtime':
                 return self.json_response(studio.runtime_status(retry=parse_qs(parsed.query).get('retry') == ['1']))
             if parsed.path == '/api/security':
@@ -256,7 +256,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.require_operator()
                 import model_connections
                 if self.path.endswith('/models'):return self.json_response(model_connections.models(data))
-                if self.path.endswith('/preferences'):return self.json_response(model_connections.preferences(studio,data,studio.crew_owner(owner,scenario)))
+                if self.path.endswith('/preferences'):return self.json_response(model_connections.preferences(studio,data,studio.crew_owner(owner,scenario),participant=owner))
                 if self.path.endswith('/check'):return self.json_response(model_connections.public(refresh=True))
                 return self.json_response(model_connections.configure(studio,data))
             if self.path in ('/api/settings/scenario-model', '/api/settings/scenario-models'):

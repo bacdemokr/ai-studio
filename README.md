@@ -114,7 +114,7 @@ If you want to edit `api.cfg` and use Git **before your first start**, install t
 bash scripts/setup-key-filter.sh
 ```
 
-In Stage 3, **Models & connection** opens the shared Model settings. Preferences apply to new work; active requests are never automatically replayed. NVIDIA retains per-agent choices under **Agent API models**. Other external providers use the model selected for the shared endpoint. Event Brief and Open Task keep separate preferences.
+In Stage 3, **Models & connection** opens the shared Model settings. Preferences apply to new work; active requests are never automatically replayed. NVIDIA retains per-agent choices under **Agent API models**. Other external providers use the model selected for the shared endpoint. Hiring/Lounge, Event Brief and Open Task have separate rows in the same settings panel. Save both scenario choices together without switching floors.
 
 ### Stages 1 and 2: Hiring and Agent lounge
 
@@ -227,6 +227,6 @@ Event Brief keeps the bounded output budget rather than globally increasing it t
 
 In **Settings → Model**, Local and External Endpoint are independent checkboxes. Set up each connection, load a model, and connect. External Endpoint supports NVIDIA Inference, OpenAI and Anthropic. An `api.cfg` key can supply NVIDIA automatically; newly entered keys stay in memory for the browser credential session.
 
-Auto prefers Local for Hiring/Lounge and External Endpoint for Stage 3. If the preferred connection is disabled or unavailable, new work uses the other ready connection. If neither is ready, requests are blocked with **Model not connected**. Connection checks verify model availability, not model quality or task completion. Existing work is not retried automatically.
+Recommended defaults prefer Local for Hiring/Lounge and External Endpoint for Stage 3. The panel highlights the actual ready connection rather than showing an ambiguous Auto option. If the preferred connection is disabled or unavailable, new work uses the other ready connection. If neither is ready, requests are blocked with **Model not connected**. Connection checks verify model availability, not model quality or task completion. Existing work is not retried automatically.
 
 Use local/private endpoints reachable from the OpenClaw host. Local mode does not launch vLLM automatically. Scenario resets preserve connection settings. The launcher treats `api.cfg` as optional. When Open Task uses Local, a warning explains that it may be slower or produce less reliable results for complex requests. With neither connection ready, tasks remain blocked. Event Brief does not show this Open Task warning.
