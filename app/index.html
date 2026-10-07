@@ -82762,7 +82762,8 @@ function renderRoomVisibility(){
   const action=el('room-action');action.hidden=!mission||scenarioChoosing||selectedScenario!=='event-brief';action.textContent='Plan an event';action.onclick=crewForm;action.disabled=!!data.bacResetting||data.scenarios?.find(s=>s.id==='event-brief')?.busy;
   document.getElementById('campus-roster').hidden=!mission||scenarioChoosing;
   renderScenarioSelector();
-  document.getElementById('campus-location').textContent=workshop?'HIRING / MEET YOUR NEXT AGENT':lounge?'LOUNGE / Current Agents: '+(data.agents?.length||0):'03 / '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'Multi-Agent demo');
+  const activeScenario=stageScenarios.find(s=>s.id===selectedScenario);
+  document.getElementById('campus-location').textContent=workshop?'HIRING / MEET YOUR NEXT AGENT':lounge?'LOUNGE / Current Agents: '+(data.agents?.length||0):(activeScenario?.number.replace(/^0/,'')||'03')+' / '+(activeScenario?.title||'Multi-Agent demo');
   syncSurface();
   if(workshop)document.getElementById('campus-motion-status').textContent='';
   if(lounge)document.getElementById('campus-motion-status').textContent='';
