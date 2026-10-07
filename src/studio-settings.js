@@ -254,7 +254,7 @@ async function openModelConnections(){
   <div class="connection-section-heading"><h3>Connections</h3><button type="button" class="connection-text-button" id="studio-connections-check">↻ Refresh</button></div>
   <div class="connection-grid">${['local','api'].map(source=>`<section class="connection-card" data-source="${source}"><header><label class="connection-toggle"><input type="checkbox" data-connection-enable="${source}"><strong>${source==='local'?'Local':'External Endpoint'}</strong></label><span data-connection-status="${source}" role="status"></span></header><p data-connection-summary="${source}"></p><button type="button" class="connection-text-button" data-connection-edit="${source}">Configure →</button></section>`).join('')}</div>
   <div id="studio-connection-editor" hidden></div>
-  <div class="connection-section-heading"><h3>Stage preferences</h3><button type="button" class="connection-text-button" id="studio-connections-defaults">Recommended defaults</button></div>
+  <div class="connection-section-heading"><h3>Stage preferences</h3></div>
   <p class="connection-hint">If your preferred connection is unavailable, the other ready connection is used.</p>
   <div class="connection-routes">${[['lounge','01 / 02','Hiring & Agent lounge'],['event-brief','03-1','Event Brief'],['plan','03-2','Open Task']].map(([key,number,title])=>`<section class="connection-route"><div class="connection-route-name"><small>${number}</small><strong>${escape(title)}</strong><span id="studio-connection-${key}-effective" role="status"></span></div><div class="connection-choice" role="group" aria-label="${escape(title)} connection">${['local','api'].map(source=>`<button type="button" data-route="${key}" data-route-source="${source}" aria-pressed="false">${source==='local'?'Local':'External'}</button>`).join('')}</div></section>`).join('')}</div>
   <p id="studio-connections-status" role="status"></p><div class="connection-footer"><button type="button" id="studio-connections-agent-models" class="connection-text-button">Per-agent models →</button><button type="button" id="studio-connections-save" class="studio-primary">Save changes</button></div></div>`);
@@ -270,11 +270,10 @@ async function openModelConnections(){
    const label=el('connection-'+kind+'-effective');label.textContent=!effective?'Model not connected':effective!==preferred?(preferred==='local'?'Local':'External')+' unavailable · Using '+(effective==='local'?'Local':'External'):'Using '+(effective==='local'?'Local':'External Endpoint');label.dataset.error=String(!effective);
   }
   el('connections-agent-models').hidden=selectedScenario==='plan'||state.connections.api.provider!=='nvidia'||!state.connections.api.ready;
-  el('connections-save').disabled=working;el('connections-check').disabled=working;el('connections-defaults').disabled=working;
+  el('connections-save').disabled=working;el('connections-check').disabled=working;
  }
  paint();
  for(const button of panel.querySelectorAll('[data-route]'))button.onclick=()=>{if(working)return;prefs[button.dataset.route]=button.dataset.routeSource;notice.textContent='Unsaved changes';paint();};
- el('connections-defaults').onclick=()=>{if(working)return;for(const key of Object.keys(prefs))prefs[key]='auto';notice.textContent='Local preferred for Hiring & Lounge; External preferred for Event Brief and Open Task. Save to apply.';paint();};
  async function refreshConnections(force=false){const revision=inventoryRevision;try{const next=await api('settings/connections'+(force?'/check':''),force?{}:undefined);if(current()&&revision===inventoryRevision&&!working){state=next;paint();}}catch(error){if(current())notice.textContent=error.message;}}
  const timer=setInterval(()=>{if(!current()){clearInterval(timer);return;}if(!working&&!editing)refreshConnections();},2500);
  el('connections-check').onclick=()=>refreshConnections(true);
