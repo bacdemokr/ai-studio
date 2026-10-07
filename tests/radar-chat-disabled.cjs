@@ -47,13 +47,18 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   const sent=writes.filter(r=>r.path==='/api/jobs');assert.equal(sent.length,2);assert(sent.every(r=>r.owner!==radar.key));
   await select('Radar');await blocked(true);
   assert.equal(await page.evaluate(()=>BacStudio.inspect().jobs.filter(j=>j.kind==='heartbeat').length),count);
-  // Removing Radar restores manual chat; adding it back disables chat again.
+  // A second skill restores manual chat while Heartbeat remains active.
   await page.locator('#studio-edit-agent').click();await page.getByRole('button',{name:'Weather buddy',exact:true}).click();await page.locator('#studio-create').click();
   await page.waitForFunction(()=>BacStudio.inspect().profile?.skills.includes('weather'));await blocked(false);
-  await page.locator('#studio-edit-agent').click();await page.getByRole('button',{name:'Tech Radar',exact:true}).click();await page.locator('#studio-create').click();
-  await page.waitForFunction(()=>BacStudio.inspect().profile?.skills.includes('radar'));await blocked(true);
+  await page.locator('#studio-edit-agent').click();await page.locator('#studio-skill-picker input[value="radar"]').check();await page.locator('#studio-create').click();
+  await page.waitForFunction(()=>['radar','weather'].every(skill=>BacStudio.inspect().profile?.skills.includes(skill)));await blocked(false);
+  assert.equal(await page.locator('#studio-radar-monitor').isVisible(),true);
+  await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.skills.includes('radar'));await blocked(false);
+  // Tech Radar by itself remains dedicated to Heartbeat updates.
+  await page.locator('#studio-edit-agent').click();await page.locator('#studio-skill-picker input[value="weather"]').uncheck();await page.locator('#studio-create').click();
+  await page.waitForFunction(()=>BacStudio.inspect().profile?.skills.length===1&&BacStudio.inspect().profile.skills[0]==='radar');await blocked(true);
   await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.name==='Radar');await blocked(true);
   assert.deepEqual(errors,[]);
-  console.log('PASS: Radar input/send/attachments, forced submit, file drop, pause/resume, heartbeat delivery, profile edits, reload, agent drafts and group-chat exclusion.');
+  console.log('PASS: Radar-only chat restriction, mixed-skill chat, forced submit, file drop, pause/resume, heartbeat delivery, profile edits, reload, drafts and group-chat exclusion.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

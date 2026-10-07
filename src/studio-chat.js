@@ -126,7 +126,7 @@ function rejectLoungePlan(){
  if(!isPlanCommand(el('prompt').value))return false;
  el('chat-error').textContent=planLocationHint;el('chat-error').hidden=false;return true;
 }
-function radarChatDisabled(profile=data.profile){return !!profile?.skills?.includes('radar');}
+function radarChatDisabled(profile=data.profile){return profile?.skills?.length===1&&profile.skills[0]==='radar';}
 function syncComposer(){
   if(!connected)return;
   const radar=radarChatDisabled(),unavailable=!runtime.ready,blocked=radar||unavailable||!!data.deleting;

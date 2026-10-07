@@ -80,8 +80,8 @@ class StudioTests(unittest.TestCase):
         # General chat fixtures exclude the independent background monitor.
         self.studio.onboard(self.owner, {'name': 'Jinny', 'persona': 'maker', 'skills': [s for s in agent_runtime.SKILLS if s != 'radar']})
 
-    def test_tech_radar_manual_requests_rejected_before_plan_routing(self):
-        profile = {**self.studio.profile(self.owner), 'skills': ['radar', 'web']}
+    def test_tech_radar_only_manual_requests_rejected_before_plan_routing(self):
+        profile = {**self.studio.profile(self.owner), 'skills': ['radar']}
         with patch.object(self.studio, 'profile', return_value=profile), \
              patch.object(self.studio, 'crew_owner') as route:
             with self.studio.db() as db:
@@ -93,6 +93,15 @@ class StudioTests(unittest.TestCase):
             route.assert_not_called()
             with self.studio.db() as db:
                 self.assertEqual(db.execute('SELECT count(*) FROM jobs').fetchone()[0], before)
+
+    def test_tech_radar_with_weather_accepts_manual_chat(self):
+        profile = {**self.studio.profile(self.owner), 'skills': ['radar', 'weather']}
+        with self.studio.db() as db:
+            db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(profile), self.owner))
+        job = self.studio.enqueue(self.owner, {'kind': 'chat', 'prompt': 'Do I need an umbrella?'})
+        saved = next(item for item in self.studio.state(self.owner)['jobs'] if item['id'] == job['id'])
+        self.assertEqual(saved['kind'], 'chat')
+        self.assertEqual(saved['status'], 'queued')
 
     def test_switching_to_radar_during_submission_cannot_enqueue_manual_work(self):
         original = self.studio.profile(self.owner)

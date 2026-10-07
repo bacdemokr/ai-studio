@@ -333,7 +333,7 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
 
     @staticmethod
     def require_manual_chat(profile):
-        if 'radar' in (profile or {}).get('skills', []):
+        if (profile or {}).get('skills') == ['radar']:
             raise Problem('Tech Radar runs automatically. Manual chat is disabled.', 409)
 
     def require_idle(self, db, owner):
