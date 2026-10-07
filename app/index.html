@@ -202,7 +202,7 @@ body{margin:0;padding:0;width:100%;max-width:none}
 
 #studio-dialog.studio-page-preview{width:min(1440px,96vw);max-width:96vw;padding:20px;height:94dvh;max-height:94dvh}#studio-dialog.studio-page-preview #studio-dialog-body{height:calc(100% - 42px);display:flex;flex-direction:column;min-height:0}#studio-dialog.studio-page-preview #studio-app-frame{flex:1;min-height:0;height:auto;width:100%}#studio-dialog.studio-page-preview .studio-dialog-actions{flex:none;margin-top:12px}
 .studio-settings-tabs{display:flex;gap:24px;border-bottom:1px solid #36414d;margin-bottom:24px}.studio-settings-tabs button{background:none;border:0;border-bottom:3px solid transparent;color:#aebbc8;padding:10px 2px;font:inherit}.studio-settings-tabs button[aria-selected=true]{color:#fff;border-bottom-color:#76b900}#studio-model-options{height:190px!important;margin:8px 0 12px!important;padding:4px!important}#studio-model-options option{padding:8px 10px}#studio-model-status{margin:8px 0!important;font-size:16px;color:#b8c7d5}#studio-model-status[data-state=error]{color:#ffb1b1}#studio-config-form [role=tabpanel]>small{display:block;margin-top:12px;color:#aebbc8}
-#studio-dialog:has(#studio-config-form) #studio-dialog-kicker{font-size:28px;letter-spacing:-.5px;text-transform:none;color:#f4f6f8;font-weight:700}
+#studio-dialog:has(#studio-config-form,#studio-model-connections) #studio-dialog-kicker{font-size:28px;letter-spacing:-.5px;text-transform:none;color:#f4f6f8;font-weight:700}
 /* Small runtime meter remains inside the native fullscreen surface. */
 #studio-telemetry{position:relative;font-size:14px;color:#b6c7d5;margin-right:6px}
 #studio-telemetry summary{cursor:pointer;list-style:none;display:flex;gap:13px;padding:9px 11px;border:1px solid #344755;border-radius:5px;background:#111c25;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -1132,12 +1132,18 @@ body{margin:0;padding:0;width:100%;max-width:none}
 @media(prefers-reduced-motion:reduce){#bac-planner #agent-campus :is(button,summary,#studio-crew-chat){transition:none}}
 
 /* Compact settings rows: one label, one action, with the combined reset separated below. */
-#studio-dialog:has(#studio-config-form){width:min(740px,calc(100vw - 32px));padding:28px;border-color:#34434e;border-radius:10px}
-#studio-dialog:has(#studio-config-form) #studio-config-form{max-width:none}
-#studio-dialog:has(#studio-config-form) .studio-dialog-heading{margin-bottom:20px}
-#studio-dialog:has(#studio-config-form) #studio-dialog-kicker{font-size:24px;line-height:1.25;letter-spacing:-.4px}
-#studio-dialog .studio-settings-tabs{gap:24px;margin-bottom:0}
-#studio-dialog .studio-settings-tabs button{font-size:15px;font-weight:500;padding:12px 0;border-bottom-width:2px}
+#studio-dialog:has(#studio-config-form,#studio-model-connections){width:min(850px,calc(100vw - 32px));padding:28px;border-color:#34434e;border-radius:10px}
+#studio-dialog:has(#studio-config-form,#studio-model-connections) #studio-config-form{max-width:none}
+#studio-dialog:has(#studio-config-form,#studio-model-connections) .studio-dialog-heading{margin-bottom:20px}
+#studio-dialog:has(#studio-config-form,#studio-model-connections) #studio-dialog-kicker{font-size:24px;line-height:1.25;letter-spacing:-.4px}
+/* Keep Settings anchored when switching between short and long tabs. */
+#studio-dialog[open]:has(#studio-config-form,#studio-model-connections){display:flex;flex-direction:column;height:min(800px,90dvh);max-height:90dvh;overflow:hidden}
+#studio-dialog:has(#studio-config-form,#studio-model-connections) .studio-dialog-heading{flex-shrink:0}
+#studio-dialog:has(#studio-config-form,#studio-model-connections) #studio-dialog-body{flex:1;min-height:0;overflow-y:auto;scrollbar-gutter:stable;padding:2px 4px}
+#studio-dialog :is(.studio-settings-tabs,.connection-tabs){position:sticky;top:0;z-index:2;background:#141b23;display:flex;gap:24px;margin:0 0 24px;border-bottom:1px solid #354e5d}
+#studio-dialog :is(.studio-settings-tabs,.connection-tabs) button{box-sizing:border-box;background:none!important;border:0!important;border-bottom:2px solid transparent!important;border-radius:0!important;padding:12px 2px!important;color:#b7c7d2!important;font:inherit;font-size:14px;font-weight:600;line-height:20px}
+#studio-dialog :is(.studio-settings-tabs,.connection-tabs) button:is([aria-selected=true],[aria-current=page]){color:#fff!important;border-bottom-color:#76b900!important}
+
 #studio-dialog #studio-settings-model-panel{padding-top:20px}
 #studio-dialog .studio-reset-row{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:27px 0}
 #studio-dialog .studio-reset-row>div{min-width:0}
@@ -1156,7 +1162,7 @@ body{margin:0;padding:0;width:100%;max-width:none}
 #studio-dialog #studio-settings-status:empty{display:none}
 #studio-config-form>.studio-dialog-actions:has(#studio-save-settings[hidden]){display:none}
 @media(max-width:520px){
- #studio-dialog:has(#studio-config-form){padding:20px}
+ #studio-dialog:has(#studio-config-form,#studio-model-connections){padding:20px}
  #studio-dialog .studio-reset-row{gap:14px;padding:23px 0;align-items:flex-start}
  #studio-dialog .studio-reset-row p{font-size:13px}
  #studio-dialog #studio-settings-reset-panel button{min-width:88px;padding:0 12px}
@@ -80911,7 +80917,7 @@ render();
   }
   el('agent-list').onclick=e=>{const b=e.target.closest('[data-agent-key]');if(b)switchAgent(b.dataset.agentKey);};
   let dialogRevision=0;
-  function dialog(kicker, html) {dialogRevision++;el('dialog').classList.remove('studio-agent-documents','studio-team-settings','studio-agent-code');el('dialog').classList.toggle('studio-page-preview',['EVENT PAGE','WEBPAGE PREVIEW'].includes(kicker));el('dialog-kicker').textContent=kicker;el('dialog-body').innerHTML=html;if(!el('dialog').open)el('dialog').showModal();}
+  function dialog(kicker, html) {dialogRevision++;el('dialog').classList.remove('studio-agent-documents','studio-team-settings','studio-agent-code');el('dialog').classList.toggle('studio-page-preview',['EVENT PAGE','WEBPAGE PREVIEW'].includes(kicker));el('dialog-kicker').textContent=kicker;el('dialog-body').innerHTML=html;if(kicker==='Settings')el('dialog-body').scrollTop=0;if(!el('dialog').open)el('dialog').showModal();}
   el('dialog').addEventListener('close',()=>{dialogRevision++;});
   el('dialog-close').onclick=()=>el('dialog').close();
   el('dialog').addEventListener('click',e=>{if(e.target===el('dialog')&&!removingAgent){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
@@ -83170,7 +83176,7 @@ settingsButton.onclick=async()=>{
   function filterModels(){const query=modelSearch.value.trim().toLowerCase();const matches=availableModels.filter(m=>(m.id+' '+(m.name||'')).toLowerCase().includes(query));modelList.replaceChildren(...matches.map(m=>new Option(!m.name||m.name===m.id?m.id:m.name+' · '+m.id,m.id)));modelList.value=el('model').value;modelList.hidden=!matches.length;modelStatus.dataset.state=matches.length?'ready':'empty';modelStatus.textContent=(query?`${matches.length} of ${availableModels.length} models`:`${availableModels.length} models`)+(matches.length?'':' · No matches')+(hasMoreModels?' · More IDs can be entered manually.':'');}
   modelSearch.oninput=filterModels;
   modelSearch.onkeydown=e=>{if(e.key==='Enter')e.preventDefault();if(e.key==='ArrowDown'&&!modelList.hidden){e.preventDefault();modelList.focus();}};
-  function selectTab(next){if(connecting)return;tab=next;form.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===tab;b.setAttribute('aria-selected',active);b.tabIndex=active?0:-1;});el('settings-model-panel').hidden=tab!=='model';el('settings-location-panel').hidden=tab!=='location';el('settings-reset-panel').hidden=tab!=='reset';el('settings-telegram-panel').hidden=tab!=='telegram';el('save-settings').textContent=tab==='telegram'?'Connect Telegram':tab==='location'?'Save location':'Connect model';el('save-settings').hidden=tab==='reset';el('start-agents').hidden=tab!=='model'||!!runtime.gateway;el('settings-status').textContent='';if(tab==='reset')syncResetButtons();}
+  function selectTab(next){if(connecting)return;tab=next;el('dialog-body').scrollTop=0;form.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===tab;b.setAttribute('aria-selected',active);b.tabIndex=active?0:-1;});el('settings-model-panel').hidden=tab!=='model';el('settings-location-panel').hidden=tab!=='location';el('settings-reset-panel').hidden=tab!=='reset';el('settings-telegram-panel').hidden=tab!=='telegram';el('save-settings').textContent=tab==='telegram'?'Connect Telegram':tab==='location'?'Save location':'Connect model';el('save-settings').hidden=tab==='reset';el('start-agents').hidden=tab!=='model'||!!runtime.gateway;el('settings-status').textContent='';if(tab==='reset')syncResetButtons();}
   form.querySelectorAll('[data-settings-tab]').forEach(b=>{b.onclick=()=>selectTab(b.dataset.settingsTab);b.onkeydown=e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const tabs=['model','location','telegram','reset'];selectTab(e.key==='Home'?tabs[0]:e.key==='End'?tabs.at(-1):tabs[(tabs.indexOf(tab)+(e.key==='ArrowLeft'?-1:1)+tabs.length)%tabs.length]);el('settings-'+tab+'-tab').focus();}};});
 
   const input=()=>({provider:el('provider').value,apiKey:el('api-key').value.trim(),baseUrl:el('endpoint').value.trim(),model:el('model').value.trim(),contextWindow:Number(el('model-context').value)});

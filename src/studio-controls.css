@@ -73,12 +73,18 @@
 @media(prefers-reduced-motion:reduce){#bac-planner #agent-campus :is(button,summary,#studio-crew-chat){transition:none}}
 
 /* Compact settings rows: one label, one action, with the combined reset separated below. */
-#studio-dialog:has(#studio-config-form){width:min(740px,calc(100vw - 32px));padding:28px;border-color:#34434e;border-radius:10px}
-#studio-dialog:has(#studio-config-form) #studio-config-form{max-width:none}
-#studio-dialog:has(#studio-config-form) .studio-dialog-heading{margin-bottom:20px}
-#studio-dialog:has(#studio-config-form) #studio-dialog-kicker{font-size:24px;line-height:1.25;letter-spacing:-.4px}
-#studio-dialog .studio-settings-tabs{gap:24px;margin-bottom:0}
-#studio-dialog .studio-settings-tabs button{font-size:15px;font-weight:500;padding:12px 0;border-bottom-width:2px}
+#studio-dialog:has(#studio-config-form,#studio-model-connections){width:min(850px,calc(100vw - 32px));padding:28px;border-color:#34434e;border-radius:10px}
+#studio-dialog:has(#studio-config-form,#studio-model-connections) #studio-config-form{max-width:none}
+#studio-dialog:has(#studio-config-form,#studio-model-connections) .studio-dialog-heading{margin-bottom:20px}
+#studio-dialog:has(#studio-config-form,#studio-model-connections) #studio-dialog-kicker{font-size:24px;line-height:1.25;letter-spacing:-.4px}
+/* Keep Settings anchored when switching between short and long tabs. */
+#studio-dialog[open]:has(#studio-config-form,#studio-model-connections){display:flex;flex-direction:column;height:min(800px,90dvh);max-height:90dvh;overflow:hidden}
+#studio-dialog:has(#studio-config-form,#studio-model-connections) .studio-dialog-heading{flex-shrink:0}
+#studio-dialog:has(#studio-config-form,#studio-model-connections) #studio-dialog-body{flex:1;min-height:0;overflow-y:auto;scrollbar-gutter:stable;padding:2px 4px}
+#studio-dialog :is(.studio-settings-tabs,.connection-tabs){position:sticky;top:0;z-index:2;background:#141b23;display:flex;gap:24px;margin:0 0 24px;border-bottom:1px solid #354e5d}
+#studio-dialog :is(.studio-settings-tabs,.connection-tabs) button{box-sizing:border-box;background:none!important;border:0!important;border-bottom:2px solid transparent!important;border-radius:0!important;padding:12px 2px!important;color:#b7c7d2!important;font:inherit;font-size:14px;font-weight:600;line-height:20px}
+#studio-dialog :is(.studio-settings-tabs,.connection-tabs) button:is([aria-selected=true],[aria-current=page]){color:#fff!important;border-bottom-color:#76b900!important}
+
 #studio-dialog #studio-settings-model-panel{padding-top:20px}
 #studio-dialog .studio-reset-row{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:27px 0}
 #studio-dialog .studio-reset-row>div{min-width:0}
@@ -97,7 +103,7 @@
 #studio-dialog #studio-settings-status:empty{display:none}
 #studio-config-form>.studio-dialog-actions:has(#studio-save-settings[hidden]){display:none}
 @media(max-width:520px){
- #studio-dialog:has(#studio-config-form){padding:20px}
+ #studio-dialog:has(#studio-config-form,#studio-model-connections){padding:20px}
  #studio-dialog .studio-reset-row{gap:14px;padding:23px 0;align-items:flex-start}
  #studio-dialog .studio-reset-row p{font-size:13px}
  #studio-dialog #studio-settings-reset-panel button{min-width:88px;padding:0 12px}
