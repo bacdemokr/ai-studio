@@ -21,7 +21,7 @@ const scenarioFloors=scenarioDefinitions.map((definition,index)=>{
     group.add(rig.group);
   }
   scene.add(group);
-  return {...definition,x,z,group,number:'03',width:21.6,depth:15};
+  return {...definition,x,z,group,number:definition.number||('03-'+(index+1)),width:21.6,depth:15};
 });
 let activeScenario='',scenarioMoved=false,scenarioGallery=false,scenarioStatus=[],scenarioPending=false;
 function setScenario(id){

@@ -257,7 +257,7 @@ async function openModelConnections(){
   <div class="connection-section-heading"><h3>Stage preferences</h3><button type="button" class="connection-text-button" id="studio-connections-defaults">Recommended defaults</button></div>
   <p class="connection-hint">If your preferred connection is unavailable, the other ready connection is used.</p>
   <div class="connection-routes">${[['lounge','01 / 02','Hiring & Agent lounge'],['event-brief','03-1','Event Brief'],['plan','03-2','Open Task']].map(([key,number,title])=>`<section class="connection-route"><div class="connection-route-name"><small>${number}</small><strong>${escape(title)}</strong><span id="studio-connection-${key}-effective" role="status"></span></div><div class="connection-choice" role="group" aria-label="${escape(title)} connection">${['local','api'].map(source=>`<button type="button" data-route="${key}" data-route-source="${source}" aria-pressed="false">${source==='local'?'Local':'External'}</button>`).join('')}</div></section>`).join('')}</div>
-  <p id="studio-connections-status" role="status"></p><div class="connection-footer"><button type="button" id="studio-connections-agent-models" class="connection-text-button">Agent API models →</button><button type="button" id="studio-connections-save" class="studio-primary">Save changes</button></div></div>`);
+  <p id="studio-connections-status" role="status"></p><div class="connection-footer"><button type="button" id="studio-connections-agent-models" class="connection-text-button">Per-agent models →</button><button type="button" id="studio-connections-save" class="studio-primary">Save changes</button></div></div>`);
  const panel=el('model-connections'),notice=el('connections-status'),owner=agentId,scenario=selectedScenario;
  let working=false,editing=false,inventoryRevision=0;
  const current=()=>el('model-connections')===panel&&el('dialog').open&&agentId===owner&&selectedScenario===scenario;
@@ -269,7 +269,7 @@ async function openModelConnections(){
    for(const button of panel.querySelectorAll(`[data-route="${kind}"]`)){const source=button.dataset.routeSource;button.setAttribute('aria-pressed',String(effective===source));button.disabled=working||!state.connections[source].ready;button.title=state.connections[source].ready?'Prefer '+(source==='local'?'Local':'External Endpoint'):'Connection not ready';}
    const label=el('connection-'+kind+'-effective');label.textContent=!effective?'Model not connected':effective!==preferred?(preferred==='local'?'Local':'External')+' unavailable · Using '+(effective==='local'?'Local':'External'):'Using '+(effective==='local'?'Local':'External Endpoint');label.dataset.error=String(!effective);
   }
-  el('connections-agent-models').hidden=state.connections.api.provider!=='nvidia'||!state.connections.api.ready;
+  el('connections-agent-models').hidden=selectedScenario==='plan'||state.connections.api.provider!=='nvidia'||!state.connections.api.ready;
   el('connections-save').disabled=working;el('connections-check').disabled=working;el('connections-defaults').disabled=working;
  }
  paint();

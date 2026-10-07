@@ -701,3 +701,8 @@
 #studio-model-connections .connection-footer .studio-primary{margin-left:auto;border-radius:8px;padding:10px 20px;font-size:13px}
 #studio-model-connections #studio-connections-status{font-size:12px;line-height:1.5;min-height:18px;margin:14px 0 0;color:#a7bbc7}
 #studio-model-connections .connection-card header span[data-ready=false]{color:#91a5b2}
+
+#studio-standby #studio-standby-list .specialist-model-edit{display:flex;align-items:center;gap:12px;padding:8px 12px;border:1px solid #425b69;border-radius:8px;background:#1b2e3a;color:#e1ebf1;cursor:pointer;text-align:left}
+#studio-standby #studio-standby-list .specialist-model-edit:hover:not(:disabled){border-color:#76b900;background:#253e4b}
+#studio-standby #studio-standby-list .specialist-model-edit:disabled{opacity:.5;cursor:not-allowed}
+#studio-standby #studio-standby-list .specialist-model-edit:focus-visible{outline:2px solid #76b900;outline-offset:2px}
