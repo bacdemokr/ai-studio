@@ -16,7 +16,6 @@
 #bac-planner #agent-campus .world-map-scenarios [data-world-scenario]{font-size:11px;color:#adc0cd}
 #bac-planner #agent-campus .world-map-scenarios [data-world-scenario]:hover,
 #bac-planner #agent-campus .world-map-scenarios [data-world-scenario].selected{color:var(--scenario-accent)}
-.world-scenario-dot{width:5px;height:5px;border-radius:50%;background:var(--scenario-accent);flex-shrink:0}
 #agent-campus .world-map-scenarios button:disabled{opacity:.5;cursor:wait}
 
 #bac-planner #agent-campus .world-campus-room.world-scenario-label{width:clamp(180px,14vw,215px);max-width:none;box-sizing:border-box;padding:12px 16px;border-radius:12px;border-color:color-mix(in srgb,var(--scenario-accent) 45%,#263f50);border-top:2px solid var(--scenario-accent);background:#10202bee;white-space:normal;backdrop-filter:blur(8px);box-shadow:0 14px 35px #0004;transition:background .16s,border-color .16s}
