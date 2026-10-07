@@ -80,3 +80,23 @@ The orchestrator plans the work, selects the appropriate specialists, assigns th
 ## 3. Stage 2: Test agents with and without runtime controls
 
 ## 4. Stage 3: Explore a multi-agent workflow
+
+
+## Three scenario ideas linked to [README_POSSIBLESCENARIOS.md](README_POSSIBLESCENARIOS.md)
+
+### Audiences and objectives
+
+**Note:** These ideas are not ranked, and one is not better or necessarily more complex than another. Their purpose is to show how a virtual coworker or AI agent can help with different types of tasks.
+
+- **Basic and accessible to anyone: plan a trip**
+  - **Audience:** Anyone who wants help planning a personal trip.
+  - **Objective:** Demonstrate a non-work-related task that primarily involves web research and the creation of a polished result, such as an HTML travel plan.
+
+- **Coding practitioners: development or monitoring**
+  - **Audience:** Developers investigating a technical topic and IT operations teams monitoring systems or services.
+  - **Objective:** Demonstrate a work-related task that identifies how to solve a technical issue or determines the steps needed to implement a solution. This may combine web research, analysis, decision-making, coding, and testing.
+
+- **Decision-makers and managers: monitoring, decision support, and work preparation**
+  - **Audience:** Managers and other decision-makers who need to understand the current state of a topic and potentially decide what to do next.
+  - **Objective:** Demonstrate a virtual personal assistant that summarizes recent developments in a chosen field, such as finance, research, or global news.
+  - **Alternative objective:** Review an ongoing discussion using emails, messages, and documents; compare developments year over year; identify what went wrong; and recommend changes.
