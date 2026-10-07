@@ -83373,7 +83373,7 @@ async function openModelConnections(){
   <div id="studio-connection-editor" hidden></div>
   <div class="connection-section-heading"><h3>Stage preferences</h3></div>
   <div class="connection-routes">${[['lounge','01 / 02','Hiring & Agent lounge'],['event-brief','03-1','Event Brief'],['plan','03-2','Open Task']].map(([key,number,title])=>`<section class="connection-route"><div class="connection-route-name"><small>${number}</small><strong>${escape(title)}</strong><span id="studio-connection-${key}-effective" role="status"></span></div><div class="connection-choice" role="group" aria-label="${escape(title)} connection">${['local','api'].map(source=>`<button type="button" data-route="${key}" data-route-source="${source}" aria-pressed="false">${source==='local'?'Local':'External'}</button>`).join('')}</div></section>`).join('')}</div>
-  <p id="studio-connections-status" role="status"></p><div class="connection-footer"><button type="button" id="studio-connections-agent-models" class="connection-text-button">Per-agent models →</button><button type="button" id="studio-connections-save" class="studio-primary">Save changes</button></div></div>`);
+  <p id="studio-connections-status" role="status"></p><div class="connection-footer"><button type="button" id="studio-connections-save" class="studio-primary">Save changes</button></div></div>`);
  const panel=el('model-connections'),notice=el('connections-status'),owner=agentId,scenario=selectedScenario;
  let working=false,editing=false,inventoryRevision=0;
  const current=()=>el('model-connections')===panel&&el('dialog').open&&agentId===owner&&selectedScenario===scenario;
@@ -83385,7 +83385,6 @@ async function openModelConnections(){
    for(const button of panel.querySelectorAll(`[data-route="${kind}"]`)){const source=button.dataset.routeSource;button.setAttribute('aria-pressed',String(effective===source));button.disabled=working||!state.connections[source].ready;button.title=state.connections[source].ready?'Prefer '+(source==='local'?'Local':'External Endpoint'):'Connection not ready';}
    const label=el('connection-'+kind+'-effective');label.textContent=!effective?'Model not connected':effective!==preferred?(preferred==='local'?'Local':'External')+' unavailable · Using '+(effective==='local'?'Local':'External'):'Using '+(effective==='local'?'Local':'External Endpoint');label.dataset.error=String(!effective);
   }
-  el('connections-agent-models').hidden=selectedScenario==='plan'||state.connections.api.provider!=='nvidia'||!state.connections.api.ready;
   el('connections-save').disabled=working;el('connections-check').disabled=working;
  }
  paint();
@@ -83394,7 +83393,6 @@ async function openModelConnections(){
  const timer=setInterval(()=>{if(!current()){clearInterval(timer);return;}if(!working&&!editing)refreshConnections();},2500);
  el('connections-check').onclick=()=>refreshConnections(true);
  for(const tab of panel.querySelectorAll('[data-connection-tab]'))tab.onclick=async()=>{if(working)return;await openOtherSettings();const target=el('settings-'+tab.dataset.connectionTab+'-tab');if(target){target.click();const model=el('settings-model-tab');model.textContent='Model';model.onclick=()=>openModelConnections();}};
- el('connections-agent-models').onclick=()=>{if(!working)openLegacyTeamSettings();};
  el('connections-save').onclick=async()=>{if(working)return;working=true;++inventoryRevision;paint();notice.textContent='Applying…';try{
   const result=await api('settings/connections/preferences',{lounge:prefs.lounge,scenarios:{'event-brief':prefs['event-brief'],plan:prefs.plan}},owner);if(!current())return;state=result;
   ++refreshVersion;stateCache.clear();data.teamConnection=result.teamConnection;runtime=await api('runtime');if(!current())return;render();notice.textContent='Saved. Applies to new requests.';
