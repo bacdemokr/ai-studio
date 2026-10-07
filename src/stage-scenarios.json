@@ -1,6 +1,7 @@
 [
   {
     "id": "event-brief",
+    "number": "03-1",
     "title": "Event Brief",
     "eyebrow": "A guided team demo",
     "description": "Plan an event with a dedicated crew.",
@@ -21,6 +22,7 @@
   },
   {
     "id": "plan",
+    "number": "03-2",
     "title": "Open Task",
     "eyebrow": "Your task, the right team",
     "description": "Bring a task. Casey assembles the team.",
