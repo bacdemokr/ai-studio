@@ -491,6 +491,12 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
         team_models.apply(config, selected=profile.get('_teamModel'), local=profile.get('_teamLocal'), agent_id=agent_id)
         settings.apply_context_limits(config)
         model = team_models.model_for(agent_id, profile.get('_teamModel') or config['agents']['entries'].get(agent_id,{}).get('model')) or config['agents']['defaults']['model']['primary']
+        connection_config = profile.get('_connectionConfig')
+        if connection_config:
+            from model_connections import provider_id
+            connection_provider = provider_id(agent_id)
+            config['models']['providers'][connection_provider] = connection_config
+            model = connection_provider + '/' + connection_config['models'][0]['id']
         entry = {
             'name': profile['name'], 'workspace': str(workspace), 'model': model,
             'modelPolicy': {'allow': [model]}, 'skills': ['bac-' + x for x in equipped],
@@ -529,6 +535,8 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
         patch['agents']['defaults']['compaction'] = config['agents']['defaults']['compaction']
         patch['tools']['web'] = {'fetch': config['tools']['web']['fetch']}
         patch['models'] = {'providers': {'bac-team': config['models']['providers']['bac-team']}}
+        if connection_config:
+            patch['models']['providers'][connection_provider] = connection_config
         provider = team_models.local_provider(agent_id)
         if provider and model.startswith(provider + '/'):
             patch['models']['providers'][provider] = config['models']['providers'][provider]

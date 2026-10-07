@@ -66,6 +66,8 @@ def local_provider(agent):
 def model_for(agent, selected=None):
     role = role_for(agent)
     if role is None:return None
+    from model_connections import provider_id
+    if isinstance(selected,str) and selected.startswith(provider_id(agent)+'/'):return selected
     prefix = local_provider(agent) + '/'
     if isinstance(selected, str) and selected.startswith(prefix) and valid_model(selected[len(prefix):]):
         return selected

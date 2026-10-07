@@ -662,7 +662,12 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
                 if not self.status_cache[1] or time.monotonic() - self.status_cache[0] > ttl:
                     value = self.runtime_health.observe(self.adapter.status(), time.monotonic())
                     self.status_cache = (time.monotonic(), value)
-        return {**self.status_cache[1], 'instance': self.boot_id}
+        result = {**self.status_cache[1], 'instance': self.boot_id}
+        import model_connections
+        if model_connections.enabled():
+            shared = model_connections.public()
+            result.update(modelConnections=shared, model=bool(shared['loungeSource']), ready=bool(shared['loungeSource']) and bool(result.get('gateway')))
+        return result
 
     def files(self, owner, role=None, *, recursive=False):
         result = []
@@ -1145,7 +1150,11 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
         if role is not None:
             member = {'name':ROLES[role][0], 'persona':ROLES[role][2], 'skills':list(ROLE_SKILLS[role]), 'id':agent_id, 'role':ROLES[role][1]}
             self.prepare_builtin_crew(owner, role, member)
-        elif agent_id not in self.provisioned:
+        else:
+            import model_connections
+            profile = dict(profile)
+            if model_connections.enabled():model_connections.prepare(self,profile,model_connections.read().get('lounge','auto'),'lounge')
+            if agent_id in self.provisioned:return agent_id
             native = profile if role is None else {'name': ROLES[role][0], 'persona': ROLES[role][2], 'skills': list(ROLE_SKILLS[role])}
             self.adapter.register(agent_id, self.workspace(owner, role), native, ROLES[role][1] if role is not None else None)
             self.provisioned.add(agent_id)

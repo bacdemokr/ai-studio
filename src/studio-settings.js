@@ -197,7 +197,7 @@ async function resetStudio(scope,sourceButton=null){
 
 const teamModelDrafts=new Map();
 let teamModelDraftOwner=null;
-function openTeamSettings(){
+function openLegacyTeamSettings(){
  if(!modelPickerSaving||teamModelDraftOwner!==agentId)teamModelDrafts.clear();
  teamModelDraftOwner=agentId;
  const available=window.BacCrewCatalog.map((member,role)=>({...member,roleIndex:role})).filter(member=>selectedScenario==='event-brief'?member.roleIndex<4:member.planEligible!==false);
@@ -238,4 +238,61 @@ function bindScenarioModelSettings(){
   catch(error){if(current())notice.textContent=error.message;}
   finally{modelPickerSaving=false;if(current()){update();syncTeamModelForm();}}
  };
+}
+
+const openOtherSettings=settingsButton.onclick;
+settingsButton.onclick=()=>openModelConnections();
+function openTeamSettings(){return openModelConnections();}
+async function openModelConnections(){
+ const request=++settingsOpenRequest,revision=dialogRevision;
+ let state,settings;
+ try{[state,settings]=await Promise.all([api('settings/connections'),api('settings')]);}
+ catch(error){alert(error.message);return;}
+ if(request!==settingsOpenRequest||revision!==dialogRevision)return;
+ dialog('Settings',`<div id="studio-model-connections"><nav class="connection-tabs"><button type="button" aria-current="page">Model</button><button type="button" data-connection-tab="location">Location</button><button type="button" data-connection-tab="telegram">Telegram</button><button type="button" data-connection-tab="reset">Reset</button></nav><p class="connection-intro">Connect once, then choose where each stage runs.</p><div class="connection-grid">${['local','api'].map(source=>`<section class="connection-card" data-source="${source}"><header><label class="connection-toggle"><input type="checkbox" data-connection-enable="${source}"><strong>${source==='local'?'Local':'External Endpoint'}</strong></label><span data-connection-status="${source}" role="status"></span></header><p data-connection-summary="${source}"></p><div><button type="button" class="studio-secondary" data-connection-edit="${source}">Set up</button></div></section>`).join('')}</div><button type="button" class="studio-secondary" id="studio-connections-check">Check connections</button><div id="studio-connection-editor" hidden></div><h3 class="connection-heading">Use for each stage</h3><p class="connection-intro">Auto prefers Local for Stages 1 &amp; 2 and External Endpoint for Stage 3. If only one is ready, that connection is used.</p><div class="connection-routes"><label>01 / 02 · Hiring &amp; Agent lounge<select id="studio-connection-lounge"></select><small id="studio-connection-lounge-effective"></small></label><label>03 · ${escape(stageScenarios.find(s=>s.id===selectedScenario)?.title||'Open Task')}<select id="studio-connection-team"></select><small id="studio-connection-team-effective"></small></label></div><small>Stage 3 choices are saved separately for Event Brief and Open Task. Switch floors to configure the other scenario.</small><p id="studio-connections-status" role="status"></p><div class="studio-dialog-actions"><button type="button" id="studio-connections-agent-models" class="studio-secondary">Agent API models</button><button type="button" id="studio-connections-save" class="studio-primary">Apply stage choices</button></div></div>`);
+ const panel=el('model-connections'),notice=el('connections-status'),owner=agentId,scenario=selectedScenario;
+ let working=false,editing=false;
+ const current=()=>el('model-connections')===panel&&el('dialog').open&&agentId===owner&&selectedScenario===scenario;
+ const prefs={lounge:state.loungePreference||'auto',team:data.teamConnection?.provider||'auto'};
+ function paint(){
+  for(const source of ['local','api']){const c=state.connections[source],badge=panel.querySelector(`[data-connection-status="${source}"]`);badge.textContent=c.ready?'Ready':c.message;badge.dataset.ready=String(c.ready);panel.querySelector(`[data-connection-summary="${source}"]`).textContent=[c.provider==='local'?'Local':({nvidia:'NVIDIA Inference',openai:'OpenAI',anthropic:'Anthropic'}[c.provider]),c.model].filter(Boolean).join(' · ');const toggle=panel.querySelector(`[data-connection-enable="${source}"]`);if(!working)toggle.checked=c.enabled&&c.message!=='Not configured';toggle.disabled=working;}
+  for(const kind of ['lounge','team']){const select=el('connection-'+kind);select.innerHTML='<option value="auto">Auto (recommended)</option>'+['local','api'].map(s=>`<option value="${s}" ${state.connections[s].ready?'':'disabled'}>${s==='local'?'Local':'External Endpoint'}${state.connections[s].ready?'':' · Not ready'}</option>`).join('');select.value=prefs[kind];select.disabled=working;
+   const preferred=prefs[kind]==='auto'?(kind==='lounge'?'local':'api'):prefs[kind],other=preferred==='local'?'api':'local',effective=state.connections[preferred].ready?preferred:state.connections[other].ready?other:null;
+   const label=el('connection-'+kind+'-effective');label.textContent=effective?'Using '+(effective==='local'?'Local':'External Endpoint')+(effective!==preferred?' · Only ready connection':''):'Model not connected';label.dataset.error=String(!effective);
+  }
+  el('connections-agent-models').hidden=state.connections.api.provider!=='nvidia'||!state.connections.api.ready;
+  el('connections-save').disabled=working;el('connections-check').disabled=working;
+ }
+ paint();
+ for(const kind of ['lounge','team'])el('connection-'+kind).onchange=e=>{prefs[kind]=e.target.value;paint();};
+ async function refreshConnections(force=false){try{const next=await api('settings/connections'+(force?'/check':''),force?{}:undefined);if(current()){state=next;paint();}}catch(error){if(current())notice.textContent=error.message;}}
+ const timer=setInterval(()=>{if(!current()){clearInterval(timer);return;}if(!working&&!editing)refreshConnections();},2500);
+ el('connections-check').onclick=()=>refreshConnections(true);
+ for(const tab of panel.querySelectorAll('[data-connection-tab]'))tab.onclick=async()=>{if(working)return;await openOtherSettings();const target=el('settings-'+tab.dataset.connectionTab+'-tab');if(target){target.click();const model=el('settings-model-tab');model.textContent='Model';model.onclick=()=>openModelConnections();}};
+ el('connections-agent-models').onclick=()=>{if(!working)openLegacyTeamSettings();};
+ el('connections-save').onclick=async()=>{if(working)return;working=true;paint();notice.textContent='Applying…';try{
+  const result=await api('settings/connections/preferences',{lounge:prefs.lounge,team:prefs.team},owner);if(!current())return;state=result;
+  ++refreshVersion;stateCache.clear();data.teamConnection=result.teamConnection;runtime=await api('runtime');if(!current())return;render();notice.textContent='Applied. New requests use the ready connection shown above.';
+ }catch(error){if(current())notice.textContent=error.message;}finally{working=false;if(current())paint();}};
+ for(const toggle of panel.querySelectorAll('[data-connection-enable]'))toggle.onchange=async()=>{
+  if(working)return;const source=toggle.dataset.connectionEnable,on=toggle.checked;
+  if(on&&state.connections[source].message==='Not configured'){editConnection(source);paint();return;}
+  working=true;paint();try{state=await api('settings/connections/preferences',{lounge:state.loungePreference,[on?'enable':'disable']:source},owner);if(current())notice.textContent=on?'Enabled. Checking connection…':'Disabled. New requests use the other ready connection.';}catch(error){if(current())notice.textContent=error.message;}finally{working=false;if(current()){paint();await refresh();}}
+ };
+ for(const button of panel.querySelectorAll('[data-connection-edit]'))button.onclick=()=>editConnection(button.dataset.connectionEdit);
+ function editConnection(source){
+  if(working)return;editing=true;const editor=el('connection-editor');editor.hidden=false;
+  editor.innerHTML=`<h3>${source==='local'?'Local model':'API connection'}</h3>${source==='api'?'<label>Provider<select id="studio-connect-provider"><option value="nvidia">NVIDIA Inference</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option></select></label><label>API key<input id="studio-connect-key" type="password" autocomplete="off" placeholder="Leave blank to keep the current key"></label><small>NVIDIA can use api.cfg automatically. Keys entered here stay in memory for this tab.</small>':''}<label>Endpoint<input id="studio-connect-url" type="url"></label><label>Model<input id="studio-connect-model" list="studio-connect-models" autocomplete="off" placeholder="Load models or enter a model ID"><datalist id="studio-connect-models"></datalist></label><label>Context limit · tokens<input id="studio-connect-context" type="number" min="8192" max="2000000" value="32768"></label><p id="studio-connect-status" role="status"></p><div class="studio-dialog-actions"><button type="button" class="studio-secondary" id="studio-connect-cancel">Close</button><button type="button" class="studio-secondary" id="studio-connect-load">Load models</button><button type="button" class="studio-primary" id="studio-connect-apply">Connect &amp; enable</button></div>`;
+  const provider=()=>source==='local'?'local':el('connect-provider').value;
+  const fill=()=>{const id=provider(),profile=settings.profiles[id]||{},active=state.connections[source];el('connect-url').value=profile.baseUrl||settings.providers[id].baseUrl;el('connect-url').readOnly=source==='api';el('connect-model').value=profile.model||(active.provider===id?active.model:'');el('connect-context').value=profile.contextWindow||32768;if(el('connect-key'))el('connect-key').value='';el('connect-models').innerHTML='';};
+  if(source==='api'){el('connect-provider').value=state.connections.api.provider;el('connect-provider').onchange=fill;}fill();
+  const payload=()=>({source,provider:provider(),apiKey:el('connect-key')?.value.trim()||'',baseUrl:el('connect-url').value.trim(),model:el('connect-model').value.trim(),contextWindow:Number(el('connect-context').value)});
+  el('connect-cancel').onclick=()=>{if(!working){editor.replaceChildren();editor.hidden=true;editing=false;}};
+  async function action(load){if(working)return;working=true;paint();const values=payload(),message=el('connect-status');editor.querySelectorAll('input,select,button').forEach(e=>e.disabled=true);message.textContent=load?'Loading models…':'Checking connection…';try{
+   const result=await api('settings/connections'+(load?'/models':''),values,owner);if(!current()||!editor.contains(message))return;
+   if(load){el('connect-models').replaceChildren(...result.models.map(m=>new Option(m.name||m.id,m.id)));message.textContent=result.models.length+' models available. Type to search.';}
+   else{state=result;settings.profiles[values.provider]={baseUrl:values.baseUrl,model:values.model,contextWindow:values.contextWindow};if(el('connect-key'))el('connect-key').value='';message.textContent='Ready. Stage choices apply automatically.';runtime=await api('runtime');if(current()){await refresh();paint();}}
+  }catch(error){if(current())message.textContent=error.message;}finally{working=false;if(current()){editor.querySelectorAll('input,select,button').forEach(e=>e.disabled=false);paint();}}}
+  el('connect-load').onclick=()=>action(true);el('connect-apply').onclick=()=>action(false);
+ }
 }

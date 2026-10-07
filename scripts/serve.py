@@ -138,6 +138,10 @@ class Handler(SimpleHTTPRequestHandler):
             if parsed.path == '/api/telemetry':
                 import telemetry
                 return self.json_response(telemetry.report(studio, owner))
+            if parsed.path == '/api/settings/connections':
+                self.require_operator()
+                import model_connections
+                return self.json_response(model_connections.public())
             if parsed.path == '/api/runtime':
                 return self.json_response(studio.runtime_status(retry=parse_qs(parsed.query).get('retry') == ['1']))
             if parsed.path == '/api/security':
@@ -248,6 +252,13 @@ class Handler(SimpleHTTPRequestHandler):
             if self.path == '/api/telegram/test':
                 import telegram_notifications
                 return self.json_response(telegram_notifications.test(row['id'], data['_credentialSession']))
+            if self.path in ('/api/settings/connections', '/api/settings/connections/preferences', '/api/settings/connections/check', '/api/settings/connections/models'):
+                self.require_operator()
+                import model_connections
+                if self.path.endswith('/models'):return self.json_response(model_connections.models(data))
+                if self.path.endswith('/preferences'):return self.json_response(model_connections.preferences(studio,data,studio.crew_owner(owner,scenario)))
+                if self.path.endswith('/check'):return self.json_response(model_connections.public(refresh=True))
+                return self.json_response(model_connections.configure(studio,data))
             if self.path in ('/api/settings/scenario-model', '/api/settings/scenario-models'):
                 self.require_operator()
                 import scenario_models
@@ -302,7 +313,10 @@ class Handler(SimpleHTTPRequestHandler):
 
 def create_server(host='127.0.0.1', port=8080, studio=None):
     import session_secrets, ops_common
-    if studio is None:session_secrets.purge_legacy(ops_common.home())
+    if studio is None:
+        session_secrets.purge_legacy(ops_common.home())
+        import model_connections
+        model_connections.persist(model_connections.read())
     root = Path(__file__).resolve().parents[1] / 'app'
     server = ThreadingHTTPServer((host, port), functools.partial(Handler, directory=str(root)))
     server.studio = studio or Studio()

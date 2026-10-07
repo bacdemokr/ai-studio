@@ -16,7 +16,7 @@ cd ai-studio
 
 Startup checks the NVIDIA inference API key in `api.cfg`. If the file is empty or the API rejects the key, startup prints instructions and exits. Edit `api.cfg`, then run `./bac start` again. Startup checks access to the configured team models and makes a small inference request before restarting services.
 
-Open **http://localhost:8080**. **Stage 3 is configured automatically** with the validated key. For **Stages 1 and 2**, connect a model separately in **Settings → Lounge model**.
+Open **http://localhost:8080**. The validated key is available automatically under **Settings → Model → External Endpoint**. Enable **Local** and/or **External Endpoint**, then choose stage preferences below. Auto prefers Local for Stages 1/2 and External Endpoint for Stage 3.
 
 The first start builds the runtime image for your PC and downloads the pinned OpenShell images. OpenClaw and OpenShell are included; no host Python or Node installation is needed. BaC does not install model weights. A local model server, if used for Stages 1 and 2, runs separately.
 
@@ -56,7 +56,7 @@ can point anywhere on the host PC; a `build-a-claw` parent is not required when
 this file is present. No model files or runtime packages are downloaded.
 If paths are missing, `vllm` explains the problem; `start` is unaffected.
 
-After starting Studio, connect Stages 1 and 2 in **Settings → Lounge model → Local**
+After starting Studio, connect Stages 1 and 2 in **Settings → Model → Local**
 using the model ID and endpoint printed by `vllm`. Stage 3 retains its separate
 NVIDIA inference API default, with optional local routing per scenario. Model preparation does not change Studio's
 saved provider settings.
@@ -114,11 +114,11 @@ If you want to edit `api.cfg` and use Git **before your first start**, install t
 bash scripts/setup-key-filter.sh
 ```
 
-In Stage 3, open **Models & connection** to view connection status and choose each agent’s model. Select the single **Apply changes** button to save your selections for the next request. Saving disables model controls until the request finishes, including after closing and reopening the panel. Failed selections remain available for retry. The UI explains how to manage the key from the terminal; it has no Stage 3 key-entry form.
+In Stage 3, **Models & connection** opens the shared Model settings. Preferences apply to new work; active requests are never automatically replayed. NVIDIA retains per-agent choices under **Agent API models**. Other external providers use the model selected for the shared endpoint. Event Brief and Open Task keep separate preferences.
 
 ### Stages 1 and 2: Hiring and Agent lounge
 
-Open **Settings → Lounge model**, choose a provider, load the models, and connect. For a local model with tool calling, choose **Local / on-prem**:
+Open **Settings → Model → Local → Set up**, load the models, and connect a model with tool calling:
 
 | Server | Endpoint |
 | --- | --- |
@@ -126,7 +126,7 @@ Open **Settings → Lounge model**, choose a provider, load the models, and conn
 | vLLM on this PC | `http://127.0.0.1:8000/v1` (use its actual port) |
 | Other OpenAI-compatible server | Its API URL ending in `/v1` |
 
-Keyless local servers need no API key. Provider keys entered in these settings are kept in memory for the current tab and must be re-entered after refresh, tab closure, or app restart. These settings do not change Stage 3’s connection or agent model selections.
+Keyless local servers need no API key. Provider keys entered in these settings are kept in memory for the current tab and must be re-entered after refresh, tab closure, or app restart. The same enabled connections are available to all stages, with separate stage preferences.
 
 ## Try the demo
 
@@ -223,9 +223,10 @@ Empty scenarios have Reset disabled. Event preparation, conversations, uploaded 
 
 Event Brief keeps the bounded output budget rather than globally increasing it to the context limit. If a model hits its output limit, that role gets at most one concise retry in a fresh context, preserving saved files and completed tool results. Existing deliverable checks still apply. Other connection or provider failures are not automatically retried. To resume after a full shutdown, run `./bac vllm` if needed, then `./bac start`.
 
-### Scenario model sources
+### Shared model connections
 
-Stages 1 and 2 recommend a local model on Spark; API connections remain available.
-Stage 3 defaults to NVIDIA API. In **Models & connection**, each scenario can independently select **Local model**, load the models from a local/private `/v1` endpoint and **Apply model source**. All agents in that scenario then use the selected local model. Switching back to API restores the per-agent API choices. Other scenarios and Lounge settings are unchanged; scenario resets preserve model settings.
+In **Settings → Model**, Local and External Endpoint are independent checkboxes. Set up each connection, load a model, and connect. External Endpoint supports NVIDIA Inference, OpenAI and Anthropic. An `api.cfg` key can supply NVIDIA automatically; newly entered keys stay in memory for the browser credential session.
 
-Use an endpoint reachable from the OpenClaw host. This option supports keyless local servers and does not launch vLLM automatically. Local performance depends on the model and hardware. Startup still validates `api.cfg`; selecting local for a scenario does not introduce a keyless/offline startup mode. There is no automatic fallback between API and local.
+Auto prefers Local for Hiring/Lounge and External Endpoint for Stage 3. If the preferred connection is disabled or unavailable, new work uses the other ready connection. If neither is ready, requests are blocked with **Model not connected**. Connection checks verify model availability, not model quality or task completion. Existing work is not retried automatically.
+
+Use local/private endpoints reachable from the OpenClaw host. Local mode does not launch vLLM automatically. Scenario resets preserve connection settings. The launcher still requires the existing `api.cfg` startup validation.

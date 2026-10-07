@@ -71,7 +71,7 @@ function syncTeamTotalTime(){
 setInterval(()=>syncTeamTotalTime(),1000);
 function syncSurface(){
   teamConnectionBar.dataset.connected=String(!!teamReady());
-  el('team-connection-label').textContent=teamReady()?(data.teamConnection?.provider==='local'?'Local model configured':'API connected'):teamRuntime().teamModel?'Runtime offline':'Model not connected';
+  el('team-connection-label').textContent=teamReady()?((data.teamConnection?.effectiveSource||data.teamConnection?.provider)==='local'?'Local model configured':'API connected'):teamRuntime().teamModel?'Runtime offline':'Model not connected';
   syncResetButtons();
   const plan=currentCollaboration();
   syncTeamTotalTime();
