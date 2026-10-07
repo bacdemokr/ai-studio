@@ -66,7 +66,7 @@ el('dialog').addEventListener('close',()=>{if(!el('dialog').open)identityRequest
 // Browser-based folder access works on both local and remote installations.
 async function openWorkspaceFiles(team=false){
  const target=agentId,scenario=selectedScenario;
- dialog('FILES','<section id="studio-workspace-browser"><header><h3>'+(team?'Scenario files':'Agent files')+'</h3><label>Workspace <select id="studio-file-workspace"></select></label></header><p id="studio-file-status" role="status"></p><div id="studio-file-folders"></div></section>');
+ dialog('FILES','<section id="studio-workspace-browser"><header><h3>'+(team?'Scenario files':'Agent files')+'</h3><label>Files from <select id="studio-file-workspace"></select></label></header><p id="studio-file-status" role="status"></p><div id="studio-file-folders"></div></section>');
  const host=el('workspace-browser'),select=el('file-workspace');
  const current=()=>host.isConnected&&el('dialog').open&&target===agentId&&scenario===selectedScenario;
  const choices=team?[['team','Team results'],...window.BacCrewCatalog.flatMap((member,role)=>(scenario==='event-brief'?role<4:member.planEligible!==false)?[[String(role),member.name]]:[])]:[['personal',data.profile?.name||'Your agent']];
@@ -79,8 +79,11 @@ async function openWorkspaceFiles(team=false){
    const result=await api('workspace-files?workspace='+encodeURIComponent(workspace),undefined,target);
    if(!current()||request!==generation)return;
    const files=result.files||[];
-   el('file-status').textContent=files.length?'Open a file to preview or download it.':'No saved files in this workspace yet.';
-   el('file-folders').innerHTML=['inbox','artifacts'].map(folder=>'<section class="studio-file-folder"><h4>'+folder+'/</h4>'+files.filter(f=>f.kind===folder).map(f=>'<button type="button" class="studio-secondary" data-browse-file="'+escape(f.path)+'"><span>'+escape(f.path.slice(folder.length+1))+'</span><small>'+Math.ceil(f.size/1024)+' KB ↗</small></button>').join('')+'</section>').join('');
+   el('file-status').textContent=files.length?'':'No files yet.';
+   el('file-folders').innerHTML=[['inbox','Uploaded files'],['artifacts','Results']].map(([folder,label])=>{
+    const items=files.filter(f=>f.kind===folder);
+    return items.length?'<section class="studio-file-folder"><h4>'+label+'</h4>'+items.map(f=>'<button type="button" class="studio-secondary" data-browse-file="'+escape(f.path)+'"><span>'+escape(f.path.slice(folder.length+1))+'</span><small>'+Math.ceil(f.size/1024)+' KB ↗</small></button>').join('')+'</section>':'';
+   }).join('');
    el('file-folders').onclick=event=>{const button=event.target.closest('[data-browse-file]');if(button&&current())openFile(button.dataset.browseFile,'',workspace);};
   }catch(error){if(current()&&request===generation)el('file-status').textContent=error.message;}
  }
