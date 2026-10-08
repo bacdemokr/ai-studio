@@ -19,7 +19,7 @@ class AppBundleTests(unittest.TestCase):
         page = (ROOT / 'app/index.html').read_text(encoding='utf-8')
         header = page[page.index('<header class="topbar'):page.index('</header>')]
         self.assertIn('id="studio-resources"', header)
-        for url in ('https://www.nvidia.com/en-us/ai/build-a-claw/', 'https://brev.nvidia.com/', 'https://docs.nvidia.com/brev/concepts/launchables',
+        for url in ('https://www.nvidia.com/en-us/ai/build-a-claw/', 'https://brev.nvidia.com/', 'https://brev.nvidia.com/launchables?tab=explore',
                     'https://openclaw.ai/', 'https://www.nvidia.com/en-us/ai/openshell/'):
             self.assertIn(f'href="{url}" target="_blank" rel="noopener noreferrer"', header)
         self.assertNotIn('id="campus-openclaw-link"', page)
