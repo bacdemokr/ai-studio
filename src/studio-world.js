@@ -21,7 +21,7 @@
     if(!worldOpen)return;
     worldOpen=false;++worldEpoch;
     resources.open=false;
-    document.querySelector('.studio-header-actions').append(resources,document.getElementById('studio-config'));
+    document.querySelector('.studio-header-actions').append(document.getElementById('studio-config'));
     root.classList.remove('studio-world-open');layout.classList.remove('world-expanded');
     worldButton.textContent='Full screen';worldButton.setAttribute('aria-expanded','false');
     document.body.style.overflow=worldOverflow;
@@ -37,7 +37,7 @@
     if(worldOpen||el('dialog').open)return;
     worldOpen=true;const epoch=++worldEpoch;
     resources.open=false;
-    root.querySelector('.campus-scene-bottom .row').append(resources,document.getElementById('studio-config'));
+    root.querySelector('.campus-scene-bottom .row').append(document.getElementById('studio-config'));
     worldPreviousFocus=document.activeElement;worldScroll=[window.scrollX,window.scrollY];worldOverflow=document.body.style.overflow;
     // The window-filling fallback has the same keyboard boundary as native fullscreen.
     for(let node=root;node.parentElement&&node!==document.body;node=node.parentElement){

@@ -45,7 +45,6 @@
 #bac-planner .studio-resources-panel a:hover{background:#ffffff08;color:#fff}
 #bac-planner .studio-resources-panel a:hover span{color:#b2d979}
 #bac-planner .studio-resources-panel a:focus-visible{outline:2px solid #a5d85b;outline-offset:-2px}
-#bac-planner .studio-world-open .studio-resources-panel{top:auto;bottom:calc(100% + 10px)}
 #bac-planner :is(button,input,select,summary):focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 #bac-planner input[type="checkbox"]{accent-color:var(--accent)}
 @media(max-width:700px){#bac-planner .topbar{padding:18px;gap:12px}#bac-planner .brand{gap:14px;font-size:21px}#bac-planner h2{font-size:32px}}
