@@ -309,11 +309,12 @@
     selectedCrewRole=e.detail;root.dataset.crewDetails='true';
     renderCrewPassport();
   });
+  let fileRequestRevision=0;
   async function openFile(path,jobId='',workspace=''){
-    const target=agentId,scenario=selectedScenario,revision=dialogRevision;
+    const target=agentId,scenario=selectedScenario,revision=dialogRevision,request=++fileRequestRevision;
     try{
       const file=await api('file?path='+encodeURIComponent(path)+(jobId?'&job='+encodeURIComponent(jobId):'')+(workspace?'&workspace='+encodeURIComponent(workspace):''));
-      if(target!==agentId||scenario!==selectedScenario||revision!==dialogRevision)return;
+      if(request!==fileRequestRevision||target!==agentId||scenario!==selectedScenario||revision!==dialogRevision)return;
       if(file.encoding==='base64'){downloadBytes(Uint8Array.from(atob(file.content),c=>c.charCodeAt(0)),file.mime,path.split('/').pop());return;}
       const html=/\.html$/i.test(path),eventPage=path.endsWith('-event-page.html');
       dialog(html?(eventPage?'EVENT PAGE':'WEBPAGE PREVIEW'):'WORKSPACE FILE',
@@ -330,7 +331,9 @@
         });
       }
       el('download').onclick=()=>{const blob=new Blob([(html?protection:'')+file.content],{type:html?'text/html':'text/plain'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=path.split('/').pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
-    }catch(error){alert(error.message);}
+    }catch(error){
+      if(request===fileRequestRevision&&target===agentId&&scenario===selectedScenario&&revision===dialogRevision)alert(error.message);
+    }
   }
   root.addEventListener('click',async e=>{const file=e.target.closest('[data-studio-file]');if(file){openFile(file.dataset.studioFile);return;}const history=e.target.closest('[data-studio-job]');if(history){selectedJob=history.dataset.studioJob;render();return;}const choice=e.target.closest('[data-decision]');if(choice){try{await api('decision',{id:current().id,action:choice.dataset.decision});await refresh();}catch(error){alert(error.message);}}});
   el('read-aloud').onclick=()=>{if(!('speechSynthesis' in window)){alert('This browser does not support speech playback.');return;}window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance((current()?.result.answer||'').slice(0,4000));utterance.lang='en-US';window.speechSynthesis.speak(utterance);el('read-aloud').textContent='Browser voice · playing';utterance.onend=()=>el('read-aloud').textContent='▷ Hear the answer';};
