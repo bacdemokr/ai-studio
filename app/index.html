@@ -82708,7 +82708,7 @@ function rejectLoungePlan(){
  if(!isPlanCommand(el('prompt').value))return false;
  el('chat-error').textContent=planLocationHint;el('chat-error').hidden=false;return true;
 }
-function radarChatDisabled(profile=data.profile){return profile?.skills?.length===1&&profile.skills[0]==='radar';}
+function radarChatDisabled(profile=data.profile){return profile?.skills?.includes('radar')||false;}
 function syncComposer(){
   if(!connected)return;
   const radar=radarChatDisabled(),unavailable=!runtime.ready,blocked=radar||unavailable||!!data.deleting;
@@ -82720,7 +82720,7 @@ function syncComposer(){
   el('attach').disabled=radar||!!data.deleting||!data.profile||documentUploadTarget!==null;
   el('schedule').disabled=radar||!!data.deleting;
   el('chat-connection').hidden=!blocked;
-  el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':radar?'Manual chat is disabled because Tech Radar is dedicated to displaying Heartbeat updates.':!runtime.gateway?(gatewayState()==='slow'?'Waiting for the agent runtime to respond. Checking automatically.':'Agent runtime unavailable. Retry the connection to continue.'):'Model not connected. Connect a model to start chatting.';
+  el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':radar?'Tech Radar uses Heartbeat. Manual chat is disabled.':!runtime.gateway?(gatewayState()==='slow'?'Waiting for the agent runtime to respond. Checking automatically.':'Agent runtime unavailable. Retry the connection to continue.'):'Model not connected. Connect a model to start chatting.';
   el('chat-connect').hidden=radar||!unavailable||(runtime.gateway&&settingsButton.hidden);
   el('chat-connect').textContent=!runtime.gateway?'Retry connection':'Connect model';
   el('chat-connect').disabled=runtimeRetrying;
@@ -83328,7 +83328,7 @@ settingsButton.onclick=async()=>{
 
   <section id="studio-settings-location-panel" role="tabpanel" aria-labelledby="studio-settings-location-tab" hidden><label for="studio-location-city">City</label><input id="studio-location-city" autocomplete="address-level2" maxlength="80" required aria-describedby="studio-location-note"><small id="studio-location-note">Default city in every agent’s USER.md for weather and local requests.</small></section>
   <section id="studio-settings-telegram-panel" role="tabpanel" aria-labelledby="studio-settings-telegram-tab" hidden>
-  <p><strong>Tech Radar only.</strong> Send its scheduled Heartbeat summaries to Telegram as well as chat. Other agents’ replies and Multi-Agent results are not sent to Telegram.</p>
+  <p>Send Heartbeat summaries from agents with the <strong>Tech Radar skill</strong> to Telegram. Chat replies and Multi-Agent results are not sent.</p>
   <label for="studio-telegram-token">Bot token (create your bot with <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer">@BotFather</a> and paste its token)</label><input id="studio-telegram-token" type="password" autocomplete="off" spellcheck="false" placeholder="Token from @BotFather (e.g. 123456789:ABCdef...)">
   <label for="studio-telegram-chat">Chat ID (open <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer">@userinfobot</a>, type /start, copy your Id)</label><input id="studio-telegram-chat" autocomplete="off" spellcheck="false" placeholder="Numeric chat ID (e.g. 123456789)">
   <p id="studio-telegram-status" role="status" hidden></p><div id="studio-telegram-controls" hidden><div class="studio-dialog-actions"><button type="button" id="studio-telegram-test" class="studio-secondary">Send test</button><button type="button" id="studio-telegram-disconnect" class="studio-secondary">Disconnect</button></div></div></section>

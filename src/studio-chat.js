@@ -126,7 +126,7 @@ function rejectLoungePlan(){
  if(!isPlanCommand(el('prompt').value))return false;
  el('chat-error').textContent=planLocationHint;el('chat-error').hidden=false;return true;
 }
-function radarChatDisabled(profile=data.profile){return profile?.skills?.length===1&&profile.skills[0]==='radar';}
+function radarChatDisabled(profile=data.profile){return profile?.skills?.includes('radar')||false;}
 function syncComposer(){
   if(!connected)return;
   const radar=radarChatDisabled(),unavailable=!runtime.ready,blocked=radar||unavailable||!!data.deleting;
@@ -138,7 +138,7 @@ function syncComposer(){
   el('attach').disabled=radar||!!data.deleting||!data.profile||documentUploadTarget!==null;
   el('schedule').disabled=radar||!!data.deleting;
   el('chat-connection').hidden=!blocked;
-  el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':radar?'Manual chat is disabled because Tech Radar is dedicated to displaying Heartbeat updates.':!runtime.gateway?(gatewayState()==='slow'?'Waiting for the agent runtime to respond. Checking automatically.':'Agent runtime unavailable. Retry the connection to continue.'):'Model not connected. Connect a model to start chatting.';
+  el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':radar?'Tech Radar uses Heartbeat. Manual chat is disabled.':!runtime.gateway?(gatewayState()==='slow'?'Waiting for the agent runtime to respond. Checking automatically.':'Agent runtime unavailable. Retry the connection to continue.'):'Model not connected. Connect a model to start chatting.';
   el('chat-connect').hidden=radar||!unavailable||(runtime.gateway&&settingsButton.hidden);
   el('chat-connect').textContent=!runtime.gateway?'Retry connection':'Connect model';
   el('chat-connect').disabled=runtimeRetrying;

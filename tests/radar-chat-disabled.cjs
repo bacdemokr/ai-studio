@@ -10,7 +10,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.testFixture);
   await page.evaluate(async()=>{
    const s=await fetch('/api/session').then(r=>r.json());
-   for(const [index,name,skills] of [[0,'Radar',['radar']],[1,'Helper',['documents']],[2,'Writer',['writer']]]){
+   for(const [index,name,skills] of [[0,'Radar',['radar']],[1,'Helper',['documents']],[2,'Writer',['writer']],[3,'Pixel',['weather','radar']]]){
     const response=await fetch(index?'/api/agents':'/api/onboard',{method:'POST',headers:{'Content-Type':'application/json','X-BaC-CSRF':s.csrf},body:JSON.stringify({name,skills,protection:'standard'})});
     if(!response.ok)throw Error(await response.text());
    }
@@ -18,7 +18,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.reload();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Radar');
   await page.locator('.world-room-map [data-world-room=lounge]').click();
   await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
-  const agents=await page.evaluate(()=>BacStudio.inspect().agents),radar=agents.find(a=>a.name==='Radar');
+  const agents=await page.evaluate(()=>BacStudio.inspect().agents),radar=agents.find(a=>a.name==='Radar'),pixel=agents.find(a=>a.name==='Pixel');
   async function select(name){
    await page.locator('#studio-agent-list [data-agent-key="'+agents.find(a=>a.name===name).key+'"]').click();
    await page.waitForFunction(name=>BacStudio.inspect().profile?.name===name,name);
@@ -39,21 +39,40 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   const dropped=page.waitForRequest(r=>r.method()==='POST'&&new URL(r.url()).pathname==='/api/upload',{timeout:1200}).then(()=>true,()=>false);
   await page.locator('#studio-companion').evaluate(node=>{const dataTransfer=new DataTransfer();dataTransfer.items.add(new File(['fixture'],'disabled-drop.txt',{type:'text/plain'}));node.dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer}));});
   assert.equal(await dropped,false,'disabled Radar composer must reject document drops');
+  await select('Pixel');await blocked(true);
+  await page.waitForFunction(()=>BacStudio.inspect().jobs.some(j=>j.kind==='heartbeat'&&!j.result.systemNotice));
   await select('Helper');await blocked(false);
   await page.locator('#studio-prompt').fill('Keep this draft');await select('Radar');await blocked(true);
   await select('Helper');assert.equal(await page.locator('#studio-prompt').inputValue(),'Keep this draft');
   await page.locator('#studio-run-options').click();await page.locator('#studio-send-all').click();
   await page.waitForFunction(()=>!document.querySelector('#studio-send').disabled);
-  const sent=writes.filter(r=>r.path==='/api/jobs');assert.equal(sent.length,2);assert(sent.every(r=>r.owner!==radar.key));
+  const sent=writes.filter(r=>r.path==='/api/jobs');assert.equal(sent.length,2);assert(sent.every(r=>r.owner!==radar.key&&r.owner!==pixel.key));
   await select('Radar');await blocked(true);
   assert.equal(await page.evaluate(()=>BacStudio.inspect().jobs.filter(j=>j.kind==='heartbeat').length),count);
-  // A second skill restores manual chat while Heartbeat remains active.
+  // Removing Radar restores chat; adding it back disables every manual entry
+  // point, even though the Weather buddy purpose and weather skill remain.
   await page.locator('#studio-edit-agent').click();await page.getByRole('button',{name:'Weather buddy',exact:true}).click();await page.locator('#studio-create').click();
   await page.waitForFunction(()=>BacStudio.inspect().profile?.skills.includes('weather'));await blocked(false);
   await page.locator('#studio-edit-agent').click();await page.locator('#studio-skill-picker input[value="radar"]').check();await page.locator('#studio-create').click();
-  await page.waitForFunction(()=>['radar','weather'].every(skill=>BacStudio.inspect().profile?.skills.includes(skill)));await blocked(false);
+  await page.waitForFunction(()=>['radar','weather'].every(skill=>BacStudio.inspect().profile?.skills.includes(skill)));await blocked(true);
   assert.equal(await page.locator('#studio-radar-monitor').isVisible(),true);
-  await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.skills.includes('radar'));await blocked(false);
+  await page.waitForFunction(()=>BacStudio.inspect().agents.find(a=>a.key===BacStudio.inspect().agentId)?.techRadar?.state==='watching');
+  const weatherPurpose=await page.evaluate(()=>BacStudio.inspect().profile.purpose);
+  assert.match(weatherPurpose,/weather/i,'Adding a skill must keep the Weather buddy purpose');
+  const before=writes.length;
+  await page.evaluate(()=>{const form=document.querySelector('#studio-chat');document.querySelector('#studio-prompt').value='weather bypass attempt';form.dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));});
+  assert.equal(writes.length,before);
+  const denied=await page.evaluate(async()=>{
+   const session=await fetch('/api/session').then(r=>r.json()),owner=BacStudio.inspect().agentId;
+   const response=await fetch('/api/jobs',{method:'POST',headers:{'Content-Type':'application/json','X-BaC-CSRF':session.csrf,'X-BaC-Agent':owner},body:JSON.stringify({kind:'chat',prompt:'Do I need an umbrella?'})});
+   return {status:response.status,...await response.json()};
+  });
+  assert.equal(denied.status,409);assert.match(denied.error,/Manual chat is disabled/);
+  await page.locator('#studio-radar-monitor button').click();
+  await page.waitForFunction(()=>document.querySelector('#studio-radar-monitor').textContent.includes('Paused'));await blocked(true);
+  await page.locator('#studio-radar-monitor button').click();
+  await page.waitForFunction(()=>!document.querySelector('#studio-radar-monitor').textContent.includes('Paused'));await blocked(true);
+  await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.skills.includes('radar'));await blocked(true);
   // Tech Radar by itself remains dedicated to Heartbeat updates.
   await page.locator('.world-room-map [data-world-room=lounge]').click();
   await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
@@ -61,6 +80,6 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.waitForFunction(()=>BacStudio.inspect().profile?.skills.length===1&&BacStudio.inspect().profile.skills[0]==='radar');await blocked(true);
   await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.name==='Radar');await blocked(true);
   assert.deepEqual(errors,[]);
-  console.log('PASS: Radar-only chat restriction, mixed-skill chat, forced submit, file drop, pause/resume, heartbeat delivery, profile edits, reload, drafts and group-chat exclusion.');
+  console.log('PASS: Radar skill blocks manual chat alone or with other skills, direct requests and group chat; Heartbeat, pause/resume, skill removal, reload and other agents remain functional.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

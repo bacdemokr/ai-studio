@@ -75,6 +75,51 @@ class HeartbeatRelayTests(unittest.TestCase):
         with patch('runtime_settings.model_available',return_value=False):self.studio.heartbeat.tick()
         self.assertFalse(self.adapter.cadence[self.profile['id']])
 
+    def test_weather_persona_gains_and_loses_heartbeat_with_radar_skill(self):
+        weather = {**self.profile, 'name':'Pixel', 'purpose':'Check the weather before I go outside.', 'skills':['weather']}
+        self.studio.configure(self.owner, weather)
+        self.tick()
+        self.assertIsNone(self.studio.heartbeat.status(self.owner, weather))
+        self.assertFalse(self.adapter.cadence[self.profile['id']])
+        self.assertFalse((self.root/'HEARTBEAT.md').exists())
+
+        mixed = self.studio.configure(self.owner, {**weather, 'skills':['weather','radar']})
+        self.studio.execute(self.studio.next_job())
+        with patch.object(telegram, 'send', return_value='sent') as send:
+            self.tick(); self.tick()
+            self.assertEqual(send.call_count, 1)
+            self.assertTrue(send.call_args.args[1].startswith('Pixel · Tech Radar'))
+        self.assertEqual(mixed['purpose'], weather['purpose'])
+        self.assertTrue(self.adapter.cadence[mixed['id']])
+        self.assertEqual(self.studio.heartbeat.status(self.owner, mixed)['state'], 'watching')
+        self.assertIn('Every 30 seconds', (self.root/'HEARTBEAT.md').read_text())
+
+        # A second skill does not allow manual work to compete with Heartbeat.
+        with self.assertRaisesRegex(Problem, 'Manual chat is disabled'):
+            self.studio.enqueue(self.owner, {'kind':'chat', 'prompt':'Do I need an umbrella?'})
+        self.tick(); self.assertTrue(self.adapter.cadence[mixed['id']])
+        self.studio.heartbeat.control(self.owner, {'paused':True})
+        with self.assertRaisesRegex(Problem, 'Manual chat is disabled'):
+            self.studio.enqueue(self.owner, {'kind':'chat', 'prompt':'Do I need an umbrella?'})
+
+        self.studio.configure(self.owner, weather)
+        with patch.object(telegram, 'send') as send:
+            self.tick(); send.assert_not_called()
+        self.assertFalse(self.adapter.cadence[mixed['id']])
+        self.assertIsNone(self.studio.heartbeat.status(self.owner, weather))
+        self.assertFalse((self.root/'HEARTBEAT.md').exists())
+        chat = self.studio.enqueue(self.owner, {'kind':'chat', 'prompt':'Do I need an umbrella?'})
+        self.studio.execute(self.studio.next_job())
+        self.assertEqual(next(j for j in self.studio.state(self.owner)['jobs'] if j['id']==chat['id'])['status'], 'done')
+
+    def test_radar_name_and_purpose_without_skill_do_not_enable_heartbeat(self):
+        profile = self.studio.configure(self.owner, {**self.profile, 'name':'Tech Radar',
+            'purpose':'Share Tech Radar updates every 30 seconds.', 'skills':['weather']})
+        with patch.object(telegram, 'send') as send:
+            self.tick(); send.assert_not_called()
+        self.assertFalse(self.adapter.cadence[profile['id']])
+        self.assertIsNone(self.studio.heartbeat.status(self.owner, profile))
+
     def test_invisible_old_session_cannot_run_or_deliver_on_another_sessions_lease(self):
         self.studio.heartbeat.presence(self.owner, 'fixture-tab', end=True)
         other = self.studio.session()[0]['id']

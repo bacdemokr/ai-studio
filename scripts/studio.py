@@ -333,8 +333,8 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
 
     @staticmethod
     def require_manual_chat(profile):
-        if (profile or {}).get('skills') == ['radar']:
-            raise Problem('Tech Radar runs automatically. Manual chat is disabled.', 409)
+        if 'radar' in (profile or {}).get('skills', []):
+            raise Problem('Tech Radar uses Heartbeat. Manual chat is disabled.', 409)
 
     def require_idle(self, db, owner):
         if owner in self.executing_owners or db.execute("SELECT 1 FROM jobs WHERE owner=? AND status IN ('queued','running','waiting','stopping') AND NOT (kind='prepare-agent' AND status='queued')", (owner,)).fetchone():

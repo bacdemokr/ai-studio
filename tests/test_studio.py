@@ -94,18 +94,22 @@ class StudioTests(unittest.TestCase):
             with self.studio.db() as db:
                 self.assertEqual(db.execute('SELECT count(*) FROM jobs').fetchone()[0], before)
 
-    def test_tech_radar_with_weather_accepts_manual_chat(self):
-        profile = {**self.studio.profile(self.owner), 'skills': ['radar', 'weather']}
-        with self.studio.db() as db:
-            db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(profile), self.owner))
-        job = self.studio.enqueue(self.owner, {'kind': 'chat', 'prompt': 'Do I need an umbrella?'})
-        saved = next(item for item in self.studio.state(self.owner)['jobs'] if item['id'] == job['id'])
-        self.assertEqual(saved['kind'], 'chat')
-        self.assertEqual(saved['status'], 'queued')
+    def test_radar_skill_blocks_manual_work_with_any_other_skill(self):
+        original = self.studio.profile(self.owner)
+        for skills in [['radar', key] for key in agent_runtime.SKILLS if key != 'radar'] + [list(agent_runtime.SKILLS)]:
+            with self.subTest(skills=skills), self.studio.db() as db:
+                db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps({**original, 'name':'Pixel', 'skills':skills}), self.owner))
+                before = db.execute('SELECT count(*) FROM jobs').fetchone()[0]
+            for request in ({'kind':'chat', 'prompt':'Do I need an umbrella?'},
+                            {'kind':'reminder', 'prompt':'Check later', 'delay':60}):
+                with self.subTest(skills=skills, request=request), self.assertRaisesRegex(Problem, 'Manual chat is disabled'):
+                    self.studio.enqueue(self.owner, request)
+            with self.studio.db() as db:
+                self.assertEqual(db.execute('SELECT count(*) FROM jobs').fetchone()[0], before)
 
     def test_switching_to_radar_during_submission_cannot_enqueue_manual_work(self):
         original = self.studio.profile(self.owner)
-        radar = {**original, 'skills': ['radar']}
+        radar = {**original, 'skills': ['weather', 'radar']}
         def become_radar():
             with self.studio.db() as db:
                 db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(radar), self.owner))
