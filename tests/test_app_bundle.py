@@ -15,18 +15,15 @@ spec.loader.exec_module(bootstrap)
 
 
 class AppBundleTests(unittest.TestCase):
-    def test_scene_resource_links_and_openclaw_icon_are_bundled(self):
+    def test_resources_are_grouped_in_header(self):
         page = (ROOT / 'app/index.html').read_text(encoding='utf-8')
-        camera = page.index('id="campus-camera"')
-        openclaw = page.index('id="campus-openclaw-link"')
-        openshell = page.index('id="campus-openshell-link"')
-        self.assertLess(camera, openclaw)
-        self.assertLess(openclaw, openshell)
-        self.assertIn('href="https://openclaw.ai/" target="_blank" rel="noopener noreferrer"', page)
-        self.assertIn('href="https://www.nvidia.com/en-us/ai/openshell/" target="_blank" rel="noopener noreferrer"', page)
-        self.assertIn('src="data:image/png;base64,', page[openclaw:openshell])
-        self.assertEqual((ROOT/'docs/images/openclaw-icon.png').read_bytes(),
-                         (ROOT/'src/assets/openclaw-icon.png').read_bytes())
+        header = page[page.index('<header class="topbar'):page.index('</header>')]
+        self.assertIn('id="studio-resources"', header)
+        for url in ('https://brev.nvidia.com/', 'https://docs.nvidia.com/brev/concepts/launchables',
+                    'https://openclaw.ai/', 'https://www.nvidia.com/en-us/ai/openshell/'):
+            self.assertIn(f'href="{url}" target="_blank" rel="noopener noreferrer"', header)
+        self.assertNotIn('id="campus-openclaw-link"', page)
+        self.assertNotIn('id="campus-openshell-link"', page)
 
     def test_patch_isolated_until_restart_and_runtime_change_rejected(self):
         with tempfile.TemporaryDirectory() as temp:

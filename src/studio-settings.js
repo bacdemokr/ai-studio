@@ -8,7 +8,7 @@ async function waitForAgentRuntime(requireModel=false){
   }while(Date.now()<deadline);
   throw new Error(requireModel?'The model was verified, but the agent runtime has not applied the connection. Retry Connect model.':'Model settings are saved, but the agent runtime is not ready. Try Start agents again.');
 }
-const settingsButton=document.createElement('button');settingsButton.id='studio-config';settingsButton.className='studio-config';settingsButton.type='button';settingsButton.textContent='⚙';settingsButton.title='Settings';settingsButton.setAttribute('aria-label','Settings');settingsButton.hidden=true;document.querySelector('#bac-planner .topbar').append(settingsButton);
+const settingsButton=document.createElement('button');settingsButton.id='studio-config';settingsButton.className='studio-config';settingsButton.type='button';settingsButton.textContent='⚙';settingsButton.title='Settings';settingsButton.setAttribute('aria-label','Settings');settingsButton.hidden=true;document.querySelector('.studio-header-actions').append(settingsButton);
 let settingsOpenRequest=0;
 function scenarioHasWork(id=selectedScenario){
  const scenario=(data.scenarios||[]).find(s=>s.id===id);

@@ -39,13 +39,6 @@
 /* A restrained utility bar instead of a row of mismatched boxes. */
 #bac-planner #agent-campus .campus-scene-bottom>.row{gap:6px;align-items:center}
 #bac-planner #agent-campus .campus-scene-bottom button{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;min-height:36px;padding:0;font-size:16px}
-#bac-planner #agent-campus .campus-scene-bottom .campus-resource-link{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;min-height:36px;padding:0;border:1px solid var(--control-line);border-radius:var(--control-radius);background:var(--control-surface);color:var(--control-text);box-shadow:0 1px 2px #0002;transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease}
-#bac-planner #agent-campus .campus-scene-bottom .campus-resource-link:hover{background:var(--control-hover);border-color:#ffffff35}
-#bac-planner #agent-campus .campus-scene-bottom .campus-resource-link:focus-visible{outline:2px solid #a5d85b;outline-offset:3px}
-#bac-planner #agent-campus .campus-scene-bottom .campus-resource-link img{display:block;width:27px;height:27px;object-fit:contain;border-radius:5px}
-#bac-planner #agent-campus .campus-scene-bottom .campus-openshell-icon{display:block;width:25px;height:25px}
-.campus-openshell-shield{fill:#76b900;stroke:#c5ef91;stroke-width:.8}
-.campus-openshell-lock{fill:none;stroke:#f3ffe6;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 #bac-planner #agent-campus .campus-scene-bottom #studio-focus{width:auto;min-height:36px;height:36px;padding:0 12px;font-size:13px;border-color:var(--control-line)}
 #bac-planner #agent-campus .campus-scene-bottom #campus-sound-toggle{width:36px;min-height:36px;height:36px;padding:0;font-size:16px}
 #bac-planner #agent-campus #campus-sound-toggle[aria-pressed=true]{color:#b6dd7c;background:#213023;border-color:#76b90045}
@@ -74,7 +67,6 @@
 }
 @media(pointer:coarse){
  #bac-planner #agent-campus .campus-scene-bottom button{min-width:44px;min-height:44px;height:44px}
- #bac-planner #agent-campus .campus-scene-bottom .campus-resource-link{min-width:44px;min-height:44px;height:44px}
  #bac-planner #agent-campus .campus-scene-bottom :is(#studio-focus,#campus-sound-toggle){min-height:44px;height:44px}
  #bac-planner #agent-campus #studio-crew-chat .studio-compose-actions>button{min-height:44px}
 }

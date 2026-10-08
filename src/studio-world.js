@@ -9,11 +9,19 @@
   worldViewport.setAttribute('aria-keyshortcuts','Enter');
   worldViewport.setAttribute('aria-label','Interactive 3D workshop. Click then press Enter for full screen, or double-click an empty area. Drag to orbit and scroll to zoom. Escape returns to the studio.');
   let worldOpen=false,worldEpoch=0,worldPreviousFocus=null,worldScroll=[0,0],worldOverflow='',worldInert=[];
+  const resources=document.getElementById('studio-resources');
+  document.addEventListener('pointerdown',e=>{if(!resources.contains(e.target))resources.open=false;});
+  resources.addEventListener('focusout',e=>{if(!resources.contains(e.relatedTarget))resources.open=false;});
+  resources.addEventListener('click',e=>{if(e.target.closest('a'))resources.open=false;});
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&resources.open){e.preventDefault();e.stopPropagation();resources.open=false;resources.querySelector('summary').focus();}
+  },true);
 
   function restoreWorld(){
     if(!worldOpen)return;
     worldOpen=false;++worldEpoch;
-    document.querySelector('#bac-planner .topbar').append(document.getElementById('studio-config'));
+    resources.open=false;
+    document.querySelector('.studio-header-actions').append(resources,document.getElementById('studio-config'));
     root.classList.remove('studio-world-open');layout.classList.remove('world-expanded');
     worldButton.textContent='Full screen';worldButton.setAttribute('aria-expanded','false');
     document.body.style.overflow=worldOverflow;
@@ -28,7 +36,8 @@
   async function enterWorld(){
     if(worldOpen||el('dialog').open)return;
     worldOpen=true;const epoch=++worldEpoch;
-    root.querySelector('.campus-scene-bottom .row').append(document.getElementById('studio-config'));
+    resources.open=false;
+    root.querySelector('.campus-scene-bottom .row').append(resources,document.getElementById('studio-config'));
     worldPreviousFocus=document.activeElement;worldScroll=[window.scrollX,window.scrollY];worldOverflow=document.body.style.overflow;
     // The window-filling fallback has the same keyboard boundary as native fullscreen.
     for(let node=root;node.parentElement&&node!==document.body;node=node.parentElement){
