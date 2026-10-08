@@ -17,7 +17,7 @@ const {chromium}=require('playwright');
   }
   // Deletion always shows the selected identity; dismissing never changes the collection.
   await page.locator('#studio-delete-agent').click();assert.equal(await page.locator('#studio-dialog h3').innerText(),'Delete Scout?');
-  assert.match(await page.locator('#studio-dialog').innerText(),/saved memory and workspace files/);
+  assert.match(await page.locator('#studio-dialog').innerText(),/chats, memory and files/);
   assert.equal(await page.evaluate(()=>document.activeElement.id),'studio-delete-cancel');await page.keyboard.press('Escape');
   assert.equal((await page.evaluate(()=>BacStudio.inspect().agents)).length,3);
   // Pending work is cancelled by deletion; waiting behavior is covered in delete-pending.cjs.

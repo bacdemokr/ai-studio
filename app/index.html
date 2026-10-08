@@ -81268,7 +81268,10 @@ teamModelDialog.addEventListener('click',async event=>{
   }
   if(agentId!==modelPickerOwner){closeTeamModelPicker();return;}
   teamModelDialog.querySelector('.team-model-error').hidden=true;
+  const pickerRevision=dialogRevision;
   const saved=await applyTeamModel();
+  // The presenter may close this picker and open another dialog while saving.
+  if(pickerRevision!==dialogRevision||teamModelDialog.hidden||!teamModelDialog.isConnected)return;
   if(saved)closeTeamModelPicker();else renderModelResults();return;
  }
 
@@ -82345,7 +82348,7 @@ function renderEventCrewPassport(){
  const turns=(data.crewChats||[]).filter(j=>j.payload.crewRole===i).map(j=>({...j,direct:true}));
  for(const j of data.jobs||[])if(j.kind==='crew'&&j.created>=(data.crewChatReset?.at||0)&&(i===0||j.payload.handoffs?.[i]||j.payload.outputs?.[i]))turns.push({...j,direct:false});
  turns.sort((a,b)=>a.created-b.created);
- const signature=JSON.stringify([key,turns.map(j=>[j.id,j.status,j.result,shieldReplyHeld(j,i),j.direct?null:[j.payload.outputs?.[i],j.payload.website,i===3?j.payload.socialDraft:null,j.payload.activity?.[i],i===0?j.payload.handoffs:j.payload.handoffs?.[i],i===0?[crewBriefMessage(j),j.payload.roundtable]:null]])]);
+ const signature=JSON.stringify([key,turns.map(j=>[j.id,j.status,j.result,shieldReplyHeld(j,i),j.direct?null:[j.payload.outputs?.[i],j.payload.stageErrors?.[i],j.payload.website,i===3?j.payload.socialDraft:null,j.payload.activity?.[i],i===0?j.payload.handoffs:j.payload.handoffs?.[i],i===0?[crewBriefMessage(j),j.payload.roundtable]:null]])]);
  if(signature===crewChatSignature)return;
  crewChatSignature=signature;const log=el('crew-conversation'),follow=switched||log.scrollHeight-log.scrollTop-log.clientHeight<70,top=log.scrollTop;
  log.innerHTML=turns.length?turns.map(j=>{
@@ -83469,9 +83472,12 @@ async function resetStudio(scope,sourceButton=null){
   status.textContent=scope==='all'?'All stages reset.':scope==='bac'?'Stage 3 reset.':'Lounge agents reset.';
   if(background)alert('Cleanup complete. '+completed+' agents removed.');
  }catch(error){
-  status.textContent=(scope==='all'&&teamCleared?'Stage 3 was reset. ':'')+(completed?`${completed} / ${total} removed. `:'')+error.message;
-  if(background)alert(status.textContent);
+  const message=(scope==='all'&&teamCleared?'Stage 3 was reset. ':'')+(completed?`${completed} / ${total} removed. `:'')+error.message;
+  if(background)alert(message);
   try{const state=await api('state',undefined,'');if(state.agentId===agentId){data=state;render();}else openAgentState(state);}catch{}
+  // Refreshing controls while resetInProgress is true shows the busy notice.
+  // Restore the failure afterward so the presenter can see why a retry is needed.
+  status.textContent=message;
  }finally{
   // Background cleanup has released this lock; a newer individual deletion may own it now.
   if(!background)removingAgent=false;

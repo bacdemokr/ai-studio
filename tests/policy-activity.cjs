@@ -2,8 +2,8 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const elements={},agent={key:'test-agent',pending:1,latestMission:{id:'run',status:'running'}};
 const report={agentId:agent.key,status:'applied',sandboxes:['sandbox'],requested:[],catalog:{weather:{title:'Weather',description:'Live weather',hosts:['example.com']}}};
 let calls=0;
-const context={window:{BacCrewCatalog:[]},data:{agents:[agent],profile:{name:'Test',protection:'openshell'}},agentId:agent.key,policySnapshot:report,policyLoading:false,policySaving:false,policyVersion:0,
-el:id=>elements[id]||(elements[id]={innerHTML:'',open:id==='policy-panel',addEventListener(){}}),escape:String,api:async()=>{calls++;return report;}};
+const context={window:{BacCrewCatalog:[]},room:'workshop',selectedCrewRole:0,clearTimeout,setTimeout,data:{agents:[agent],profile:{name:'Test',protection:'openshell'}},agentId:agent.key,policySnapshot:report,policyLoading:false,policySaving:false,policyVersion:0,
+el:id=>elements[id]||(elements[id]={innerHTML:'',open:id==='policy-panel',addEventListener(){},setAttribute(){}}),escape:String,api:async()=>{calls++;return report;}};
 vm.createContext(context);vm.runInContext(fs.readFileSync('src/studio-policies.js','utf8'),context);
 (async()=>{
  vm.runInContext('renderPolicySelector()',context);await new Promise(setImmediate);

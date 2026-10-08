@@ -180,9 +180,12 @@ async function resetStudio(scope,sourceButton=null){
   status.textContent=scope==='all'?'All stages reset.':scope==='bac'?'Stage 3 reset.':'Lounge agents reset.';
   if(background)alert('Cleanup complete. '+completed+' agents removed.');
  }catch(error){
-  status.textContent=(scope==='all'&&teamCleared?'Stage 3 was reset. ':'')+(completed?`${completed} / ${total} removed. `:'')+error.message;
-  if(background)alert(status.textContent);
+  const message=(scope==='all'&&teamCleared?'Stage 3 was reset. ':'')+(completed?`${completed} / ${total} removed. `:'')+error.message;
+  if(background)alert(message);
   try{const state=await api('state',undefined,'');if(state.agentId===agentId){data=state;render();}else openAgentState(state);}catch{}
+  // Refreshing controls while resetInProgress is true shows the busy notice.
+  // Restore the failure afterward so the presenter can see why a retry is needed.
+  status.textContent=message;
  }finally{
   // Background cleanup has released this lock; a newer individual deletion may own it now.
   if(!background)removingAgent=false;

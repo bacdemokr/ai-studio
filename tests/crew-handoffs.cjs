@@ -2,7 +2,8 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const names=['Casey','Dylan','Alex','Morgan','Riley','Wade'];
 const escape=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
 const c={defaultNames:names,roles:names.map(n=>[n,n]),escape,messageMarkup:escape};vm.createContext(c);
-vm.runInContext(fs.readFileSync('src/studio-crew.js','utf8').split('function syncCrewComposer()')[0],c);
+const source=fs.readFileSync('src/studio-event-team.js','utf8');
+vm.runInContext(source.slice(source.indexOf('function crewHandoffMessages('),source.indexOf('function renderEventCrew(')),c);
 const job={payload:{enabledRoles:[0,1,2,3],roster:names.map(name=>({name})),outputs:{0:'Captain brief'},assignments:[{name:'Morgan',task:'Later task'}],handoffs:{1:{started:1,senderRole:0,recipientName:'Dylan',task:'Design demos <safely>',receivedFrom:['0'],sharedState:{brief:{city:'Zurich'}}},2:{started:2,senderRole:0,recipientName:'Alex',task:'Plan booths',receivedFrom:['0']}}}};
 c.job=job;
 let sent=vm.runInContext('crewHandoffMessages(job,0)',c);assert.match(sent,/App workflow → Dylan · Task assigned/);assert.match(sent,/App workflow → Alex/);assert.doesNotMatch(sent,/Morgan/);

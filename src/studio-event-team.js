@@ -86,7 +86,7 @@ function renderEventCrewPassport(){
  const turns=(data.crewChats||[]).filter(j=>j.payload.crewRole===i).map(j=>({...j,direct:true}));
  for(const j of data.jobs||[])if(j.kind==='crew'&&j.created>=(data.crewChatReset?.at||0)&&(i===0||j.payload.handoffs?.[i]||j.payload.outputs?.[i]))turns.push({...j,direct:false});
  turns.sort((a,b)=>a.created-b.created);
- const signature=JSON.stringify([key,turns.map(j=>[j.id,j.status,j.result,shieldReplyHeld(j,i),j.direct?null:[j.payload.outputs?.[i],j.payload.website,i===3?j.payload.socialDraft:null,j.payload.activity?.[i],i===0?j.payload.handoffs:j.payload.handoffs?.[i],i===0?[crewBriefMessage(j),j.payload.roundtable]:null]])]);
+ const signature=JSON.stringify([key,turns.map(j=>[j.id,j.status,j.result,shieldReplyHeld(j,i),j.direct?null:[j.payload.outputs?.[i],j.payload.stageErrors?.[i],j.payload.website,i===3?j.payload.socialDraft:null,j.payload.activity?.[i],i===0?j.payload.handoffs:j.payload.handoffs?.[i],i===0?[crewBriefMessage(j),j.payload.roundtable]:null]])]);
  if(signature===crewChatSignature)return;
  crewChatSignature=signature;const log=el('crew-conversation'),follow=switched||log.scrollHeight-log.scrollTop-log.clientHeight<70,top=log.scrollTop;
  log.innerHTML=turns.length?turns.map(j=>{

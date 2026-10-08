@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync('src/studio-crew.js','utf8');
 const escape=value=>String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
-const context=vm.createContext({escape,messageMarkup:escape,webpageButtons:()=>'',defaultNames:['Casey','Dylan','Alex','Morgan','Vera','Cody','Ada','Iris','Scout']});
+const context=vm.createContext({escape,messageMarkup:escape,webpageButtons:()=>'',data:{crewChats:[]},window:{BacCrewCatalog:JSON.parse(fs.readFileSync('src/crew-catalog.json','utf8'))},defaultNames:['Casey','Dylan','Alex','Morgan','Vera','Cody','Ada','Iris','Scout']});
 vm.runInContext(source.slice(source.indexOf('function collaborationRoleOrder('),source.indexOf('function renderMissionControl(')),context);
 const render=(plan,status='running',result={})=>context.missionControlTraceMarkup({id:'fixture',status,result,payload:{collaboration:plan}});
 const kinds=html=>[...html.matchAll(/data-trace-kind="([^"]+)"/g)].map(m=>m[1]);
@@ -10,34 +10,34 @@ assert.equal(JSON.stringify(context.collaborationTeam({...base,calledRoles:[8]})
 assert.equal(JSON.stringify(context.collaborationTeam({...base,calledRoles:[8],skippedRoles:[4]})),'[0,8,4]');
 assert.equal(JSON.stringify(context.collaborationTeam({tasks:[],calledRoles:[]})),'[0]');
 assert.equal(JSON.stringify(context.collaborationTeam({calledRoles:[8,4]})),'[0,8,4]');
-assert.deepEqual(kinds(render(base)),['plan','planned','planned']);
+assert.deepEqual(kinds(render(base)),['user','plan','planned','planned']);
 const delivered={...base,calledRoles:[8],activeRole:0,handoffs:{8:{task:'Find sources.',started:1,receivedFrom:[]}},outputs:{8:{answer:'Research result.'}}};
-assert.deepEqual(kinds(render(delivered)),['plan','contribution','review','planned']);
+assert.deepEqual(kinds(render(delivered)),['user','plan','contribution','review','planned']);
 assert.match(render(delivered),/Reviewing/);
 assert(!render(delivered).includes('No additional agents will be called.'));
 const continued={...delivered,checks:[{afterRole:8,done:false,reason:'Independent review remains.'}],activeRole:4,calledRoles:[8,4],handoffs:{...delivered.handoffs,4:{task:'Review evidence.',started:2,receivedFrom:['8']}}};
 const running=render(continued);
-assert.deepEqual(kinds(running),['plan','contribution','review','contribution']);
+assert.deepEqual(kinds(running),['user','plan','contribution','review','contribution']);
 assert(running.indexOf('Research result.')<running.indexOf('Independent review remains.'));
 assert(running.indexOf('Independent review remains.')<running.indexOf('data-plan-role="4"'));
 assert.match(running,/Working/);
 const stopped={...delivered,activeRole:null,checks:[{afterRole:8,done:true,reason:'Enough evidence.'}],skippedRoles:[4],finalAnswer:'Final answer.',responseReady:true};
 const complete=render(stopped,'done');
-assert.deepEqual(kinds(complete),['plan','contribution','review','skipped','response']);
+assert.deepEqual(kinds(complete),['user','plan','contribution','review','skipped','response']);
 assert.equal(complete.split('Enough evidence.').length-1,1);
 assert(complete.indexOf('Research result.')<complete.indexOf('Enough evidence.'));
 assert.match(complete,/04 · RESPONSE/); // An uncalled role is not an execution step.
 const cancelled=render(delivered,'cancelled');
-assert.deepEqual(kinds(cancelled),['plan','contribution','skipped','stopped']);
+assert.deepEqual(kinds(cancelled),['user','plan','contribution','skipped','stopped']);
 assert(!cancelled.includes('Enough to finish'));
 const failed=render({...continued,activeRole:null},'error',{error:'Runtime failed.'});
 assert.match(failed,/Incomplete/);assert.match(failed,/Runtime failed\./);
 const unavailable=render({...base,tasks:[],outcome:'unavailable',finalAnswer:'No deployment tool.'},'done');
-assert.deepEqual(kinds(unavailable),['plan','response']);assert.match(unavailable,/Capability unavailable/);
+assert.deepEqual(kinds(unavailable),['user','plan','response']);assert.match(unavailable,/Capability unavailable/);
 // Legacy saved plans without calledRoles still follow recorded handoff order.
 const legacy=render({...base,tasks:[base.tasks[1],base.tasks[0]],handoffs:continued.handoffs,outputs:{8:{answer:'First'},4:{answer:'Second'}},checks:[{afterRole:'8',done:false,reason:'Review next.'},{afterRole:4,done:true,reason:'Finished.'}],finalAnswer:'Done.'},'done');
 assert(legacy.indexOf('data-plan-role="8"')<legacy.indexOf('data-plan-role="4"'));
-assert.deepEqual(kinds(legacy),['plan','contribution','review','contribution','review','response']);
+assert.deepEqual(kinds(legacy),['user','plan','contribution','review','contribution','review','response']);
 assert(!render({...base,summary:'<script>bad</script>'}).includes('<script>'));
 // Chat contributions and reviews follow execution order, not numeric role IDs.
 Object.assign(context,{shieldReplyHeld:()=>false,customSkillMarkup:()=>'',imageHistoryMarkup:()=>'',roundtableMarkup:()=>'',window:{BacCrewCatalog:Array.from({length:9},()=>({collaboration:{title:'Specialist'}}))}});
@@ -78,7 +78,7 @@ console.log('PASS: one final-response button; deduplicated supporting files stay
 const revision={role:8,evidenceRole:4,status:'delivered',reason:'A key source was missing.',issue:'Required date lacked evidence.',task:'Verify the missing date only.',expected:'Cited date.',output:{answer:'Date verified from the source.',files:[]}};
 const revisedPlan={...chatPlan,revision,checks:[...chatPlan.checks.filter(check=>!check.done),{afterRole:4,afterRevision:true,done:true,outcome:'partial',reason:'Date verified; webpage update remains.'}],outcome:'partial',remaining:['Update webpage']};
 const revised=render(revisedPlan,'done',{answer:'The source is verified; implementation still needs updating.'});
-assert.deepEqual(kinds(revised),['plan','contribution','review','contribution','revision','revision-work','review','response']);
+assert.deepEqual(kinds(revised),['user','plan','contribution','review','contribution','revision','revision-work','review','response']);
 assert(revised.indexOf('data-plan-role="4"')<revised.indexOf('data-revision-request'));
 assert(revised.indexOf('data-revision-role="8"')<revised.indexOf('data-after-revision'));
 assert.equal((revised.match(/Date verified; webpage update remains/g)||[]).length,1);

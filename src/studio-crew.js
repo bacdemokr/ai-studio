@@ -131,7 +131,10 @@ teamModelDialog.addEventListener('click',async event=>{
   }
   if(agentId!==modelPickerOwner){closeTeamModelPicker();return;}
   teamModelDialog.querySelector('.team-model-error').hidden=true;
+  const pickerRevision=dialogRevision;
   const saved=await applyTeamModel();
+  // The presenter may close this picker and open another dialog while saving.
+  if(pickerRevision!==dialogRevision||teamModelDialog.hidden||!teamModelDialog.isConnected)return;
   if(saved)closeTeamModelPicker();else renderModelResults();return;
  }
 
