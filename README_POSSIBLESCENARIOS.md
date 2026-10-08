@@ -30,6 +30,11 @@ For a short business rehearsal:
   - [Execution trace](#execution-trace)
   - [Business review output](#business-review-output)
   - [Business review API usage and time](#business-review-api-usage-and-time)
+- [Coding rapidly a simple ping pong game](#coding-rapidly-a-simple-ping-pong-game)
+  - [Prompt given](#prompt-given-1)
+  - [Team](#team-2)
+  - [Execution trace](#execution-trace-1)
+  - [Expected type of output](#expected-type-of-output-1)
 
 ## TRAVEL PLAN : anyone use's case
 
@@ -151,3 +156,33 @@ The run completed in **2 minutes 2 seconds**, with **1 minute 57 seconds** of co
 | Cody | 102,412 | 11,349 | 113,761 | 1m 2s | 2 |
 
 ![Business internal review API usage and time](docs/images/business-internal-review-api-usage.png)
+
+## Coding rapidly a simple ping pong game
+
+### Prompt given
+
+> /goal create a simple ping pong game that I can play within a webbrowser and using the letters A and Q to control the left player and P and M for the right player. please indicate the keyboard controling keys at the bottom of the view
+
+### Team
+
+- **Cody:** Programs the simple browser-based game.
+
+Casey coordinates the workflow, assigns the implementation to Cody, and verifies the result.
+
+### Execution trace
+
+| Step | Phase | Participant | Status | Details |
+|---:|---|---|---|---|
+| 00 | User request | **User** | Submitted | **Request:** Create a simple ping pong game that can be played in a web browser. Use A and Q to control the left player and P and M to control the right player. Show the keyboard controls at the bottom of the view. |
+| 01 | Plan | **Casey** | Plan ready | **Approach:** This simple ping pong game requires only Cody. Cody will implement the browser-based game with the specified keyboard controls-A/Q for the left player and P/M for the right player-and a control legend at the bottom. |
+| 02 | Contribution | **Cody** | Delivered | **Casey's assignment:** Create a self-contained HTML file containing a Canvas-based ping pong game. Implement two paddles controlled by A/Q on the left and P/M on the right, a bouncing ball, score tracking, and a control legend at the bottom showing the keyboard mappings. Keep it desktop-focused, keyboard accessible, and approximately 6,000 characters or fewer.<br><br>**Expected result:** A working `index.html` file in `artifacts/`, with complete game logic, keyboard handling, Canvas rendering, and visible control instructions at the bottom. No external dependencies.<br><br>**Received:** Casey's brief.<br><br>**Result:** Cody delivered the game. |
+| 03 | Revision request | **Casey** | One targeted revision | **Why repair is needed:** Verify that the saved implementation meets every requirement before finalizing it. Confirm that the file is saved at the correct path and implements A/Q controls for the left player, P/M controls for the right player, a control legend at the bottom, keyboard handling, and score tracking. |
+| 04 | Revision | **Cody** | Revised result delivered | **Casey's revision assignment:** Read the saved HTML file at `inbox/plan-4bce94056a8ad22954efa317-r5-0.html` and verify that the implementation is complete.<br><br>**Expected result:** Confirmation that the file contains the Canvas game, correct key bindings, a visible control legend at the bottom, a score display, and self-contained HTML.<br><br>**Result:** Cody delivered the revised contribution. |
+| 05 | Review | **Casey** | Final verification | The saved HTML file contains every required feature: a Canvas-based ping pong game, A/Q controls for the left player, P/M controls for the right player, a visible control legend at the bottom, real-time score tracking, and self-contained HTML with inline CSS and JavaScript.<br><br>No additional specialists will be called. |
+| 06 | Response | **Casey** | Response ready | Final team response. |
+
+### Expected type of output
+
+![Ping pong game result](docs/images/ping-pong-results.png)
+
+![Ping pong webpage preview](docs/images/ping-pong-webpage-preview.png)
