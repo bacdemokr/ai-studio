@@ -83,10 +83,13 @@
   // State polling is frequent; reuse unchanged snapshots without rebuilding the UI.
   // This cache is tab-local and scoped by agent, never stored on disk.
   const stateCache=new Map();
+  let backgroundWrites=0,agentSwitchVersion=0;
   async function api(path, payload, target=agentId) {
     // Presence renewals belong to the tab, not an editable agent workspace.
     const workspaceWrite=payload!==undefined&&path!=='credential-session';
-    if(workspaceWrite&&changingAgent)throw new Error('Wait for your agent’s workspace to open.');
+    // Preparation has a captured owner and never applies its response to the UI.
+    const backgroundWrite=path==='prepare-demo'&&payload?.background===true;
+    if(workspaceWrite&&changingAgent&&!backgroundWrite)throw new Error('Wait for your agent’s workspace to open.');
     const headers={'X-BaC-Scenario':selectedScenario,'X-BaC-Key-Session':credentialSession,...(target?{'X-BaC-Agent':target}:{})};
     const cacheKey=selectedScenario+':'+target,conditional=path==='state'&&payload===undefined,cached=conditional?stateCache.get(cacheKey):null;
     if(cached)headers['If-None-Match']=cached.etag;
@@ -96,6 +99,7 @@
     const timeout=controller?setTimeout(()=>controller.abort(),readTimeout):null;
     if(controller)options.signal=controller.signal;
     if(workspaceWrite)pendingWrites++;
+    if(backgroundWrite)backgroundWrites++;
     try {
     let response;
     try {response=await fetch('/api/'+path,options);} catch {if(controller?.signal.aborted)throw new Error('The studio took too long to respond. Please try again.');throw new Error('Cannot reach the studio. Check ./bac status; use ./bac start to restart its services.');}
@@ -108,7 +112,7 @@
       if(stateCache.size>16)stateCache.delete(stateCache.keys().next().value);
     }
     return result;
-    }finally{clearTimeout(timeout);if(workspaceWrite)pendingWrites--;}
+    }finally{clearTimeout(timeout);if(workspaceWrite)pendingWrites--;if(backgroundWrite)backgroundWrites--;}
   }
   function rememberSelection(){try{sessionStorage.setItem('bac-selected-agent',agentId);}catch{}}
   function openAgentState(state){
@@ -121,13 +125,20 @@
     if(!data.profile){fillCreator(true);setRoom('workshop');}
   }
   async function switchAgent(next){
-    if(next===agentId)return;
-    if(changingAgent||pendingWrites||removingAgent){alert('Wait for the current save to finish before switching agents.');return;}
+    const version=++agentSwitchVersion;
+    if(next===agentId){++refreshVersion;changingAgent=false;busy=false;render();return;}
+    // Keep the last click instead of rejecting it. Foreground writes still
+    // finish in their original workspace; background preparation can continue.
+    while(pendingWrites>backgroundWrites||removingAgent||hiringArrival||scenarioSwitching){
+      await new Promise(resolve=>setTimeout(resolve,50));
+      if(version!==agentSwitchVersion)return;
+    }
     changingAgent=true;++refreshVersion;
     try{
       const state=await api('state',undefined,next);
-      openAgentState(state);
-    }catch(error){alert(error.message);}finally{changingAgent=false;busy=false;}
+      if(version===agentSwitchVersion)openAgentState(state);
+    }catch(error){if(version===agentSwitchVersion)alert(error.message);}
+    finally{if(version===agentSwitchVersion){changingAgent=false;busy=false;}}
   }
   function renderCollection(){
     el('collection').hidden=!data.profile;
