@@ -1,9 +1,11 @@
 # Tech Radar and Telegram
 
-1. In Hiring, select **Tech Radar** and choose its tone.
+1. Add the **Tech Radar skill** to any personal agent in Hiring or Edit agent. The Tech Radar preset is a shortcut; the skill controls Heartbeat.
 2. Connect the model. No upload or chat prompt is needed.
 3. Every **30 seconds**, OpenClaw asks the agent to introduce one technical article or announcement it has not shared before, from NVIDIA Developer Blog or Hugging Face Blog.
 4. Use **Pause / Resume** in the agent panel.
+
+While this skill is equipped, manual chat, attachments and scheduled follow-ups are disabled, and Run all agents excludes the agent. This applies even with additional skills or while Heartbeat is paused. Remove the Tech Radar skill to restore manual chat.
 
 Older feed entries are eligible: the agent discovers useful reading rather than waiting for newly published posts. Each short summary has a source link and publication date, and follows the chosen persona. The source evidence is the feed excerpt, not a full article review. Politics, investing, earnings and personnel announcements are excluded using a preliminary filter and agent judgment.
 
