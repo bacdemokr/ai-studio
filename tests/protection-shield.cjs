@@ -3,15 +3,20 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
  const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});
  try{
   const page=await browser.newPage({viewport:{width:1600,height:1000}});const errors=[];let events=[],owner;
+  const base=process.env.BASE_URL||'http://127.0.0.1:8094';
+  const session=await (await page.request.get(base+'/api/session')).json();
+  const created=await page.request.post(base+'/api/onboard',{headers:{'X-BaC-CSRF':session.csrf},data:{name:'Shield',persona:'guide',skills:['weather'],protection:'standard'}});
+  assert(created.ok(),'Create a real fixture profile before overriding its policy evidence');
   page.on('pageerror',e=>errors.push(e.message));
+  page.on('response',r=>{if(r.status()>=400)console.log('HTTP',r.status(),new URL(r.url()).pathname)});
   page.on('console',e=>{if(e.type()==='error')errors.push(e.text())});
   await page.route(/\/api\/(session|state)$/,async route=>{
    const response=await route.fetch({headers:{...route.request().headers(),'if-none-match':''}}),state=await response.json();owner=state.agentId;
    const profile={name:'Shield',persona:'guide',skills:['weather'],protection:'openshell',avatar:{body:'round',color:'cyan',accessory:'headset'}};
    await route.fulfill({response,json:{...state,profile,agents:[{...profile,key:owner,pending:0}],protectionEvents:events}});
   });
-  await page.goto(process.env.BASE_URL||'http://127.0.0.1:8094');await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.name==='Shield');
-  await page.locator('.world-room-map [data-world-room=mission]').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
+  await page.goto(base);await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.name==='Shield');
+  await page.locator('.world-room-map [data-world-scenario=event-brief]').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
   function deny(id,role){const now=Date.now()/1000;return{id,owner,role,action:'deny',source:'OpenShell policy log',host:'example.com',time:now,observedAt:now};}
   events=[deny('crew-hit',1)];await page.evaluate(()=>BacStudio.refresh());
   await page.waitForFunction(()=>BacCampus.inspect().protectionHits.some(h=>h.role===1&&h.visible));
@@ -49,6 +54,8 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.equal(await page.evaluate(()=>BacCampus.inspect().protectionHits.find(h=>h.action==='allow').globeRotation),still.globeRotation);
   await page.screenshot({path:'../../work/lounge-outbound-world.png'});
   await page.waitForFunction(()=>BacCampus.inspect().protectionHits.length===0);
+  // Reduced-motion feedback expires at 3s; its duplicate-suppression window is 4.5s.
+  await page.waitForTimeout(1700);
   await page.evaluate(owner=>{
    BacCampus.setCollection([{key:owner,name:'Direct',persona:'guide',skills:['weather'],protection:'standard',avatar:{body:'round',color:'cyan',accessory:'headset'}}],owner);
    BacCampus.observeExternalActivity([{id:'direct-web',kind:'chat',liveActivity:{available:true,calls:[{tool:'web_fetch',target:'https://example.org/weather',status:'running'}]}}],owner);

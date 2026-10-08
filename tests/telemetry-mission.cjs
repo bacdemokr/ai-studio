@@ -32,3 +32,13 @@ vm.runInContext(fs.readFileSync('src/studio-telemetry.js','utf8'),context);
  context.room='lounge';listeners['bac:world-room']();assert.doesNotMatch(panel.innerHTML,/>Morgan</);
  console.log('PASS: mission isolation, waiting roles, cumulative preservation, immediate reset, selection and request race.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
+
+// Open Task reads only its own recorded turns, even if Event Brief has newer history.
+(async()=>{await new Promise(resolve=>setImmediate(resolve));
+context.room='mission';context.selectedScenario='plan';
+context.currentCollaboration=()=>({payload:{collaboration:{task:'test'},metrics:{p:{agent:'cody',name:'Cody',context:1000,limit:10000}}}});
+context.renderTelemetry({...snapshot,agents:[...history,{agent:'cody',crew:true,total:42,calls:1}]});
+assert.match(summary.innerHTML,/Context 10.0%/);assert.match(panel.innerHTML,/>Cody</);assert.doesNotMatch(panel.innerHTML,/>Morgan</);
+context.currentCollaboration=()=>null;context.renderTelemetry(snapshot);assert.match(summary.innerHTML,/Context —/);
+console.log('PASS: Open Task and Event Brief context remain isolated');
+})().catch(e=>{console.error(e);process.exitCode=1;});

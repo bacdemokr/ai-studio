@@ -204,7 +204,7 @@ git pull --ff-only
 
 Use normal Git commands to update your checkout. Resolve local changes or divergent history before pulling. With the Git key filter configured, your local key stays in `api.cfg`.
 
-By default, `start` recreates services and clears agents, conversations, results, context and recorded usage. Project files, `api.cfg`, shared host files, images and the separately managed local model are preserved. Use `./bac start --keep-data` when applying app changes without clearing runtime data. There is no `./bac restart` or `./bac update` command. Use `git pull --ff-only` followed by `./bac start --keep-data` for a non-destructive app update; `./bac vllm --restart` restarts only the local model server.
+By default, `start` recreates services and clears agents, conversations, results, context, recorded usage and runtime settings. Project files, `api.cfg`, shared host files, images and the separately managed local model are preserved. Use `./bac start --keep-data` when applying app changes without clearing runtime data. There is no `./bac restart` or `./bac update` command. Use `git pull --ff-only` followed by `./bac start --keep-data` for a non-destructive app update; `./bac vllm --restart` restarts only the local model server.
 
 `remove` asks you to type `remove` once. It deletes BaC containers, data, shared files, backups, recorded project images, local settings, and `api.cfg`. A source checkout keeps its code; an installed release folder is removed. Other projects and your model server remain.
 

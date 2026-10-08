@@ -115,6 +115,27 @@ class RemovalTests(unittest.TestCase):
         self.assertEqual(engine.containers,[helper]);self.assertEqual(engine.volumes,[])
         self.assertTrue(self.marker.exists())
 
+    def test_fresh_rejects_foreign_data_and_network_users_before_deletion(self):
+        engines=[Engine([self.studio],[{**self.volume,'Labels':{}}]),
+                 Engine([self.studio,{**self.foreign,'Mounts':[{'Name':self.volume['Name']}]}]),
+                 Engine([self.studio,self.sandbox],networks=[{**self.network,'Containers':{'model':{}}}])]
+        for engine in engines:
+            with self.subTest(calls=engine.calls),self.assertRaises(RuntimeError):
+                self.run_fresh(engine)
+            self.assert_untouched(engine)
+            self.assertTrue((self.gateway/'state/data').exists())
+
+    def test_fresh_can_resume_after_partial_container_failure(self):
+        engine=Engine([self.studio,self.sandbox,self.foreign],[self.volume])
+        engine.fail=('DELETE','/containers/sandbox?v=true')
+        with self.assertRaises(remove.DockerError):self.run_fresh(engine)
+        self.assertTrue((self.gateway/'state/data').exists())
+        engine.fail=None
+        self.run_fresh(engine)
+        self.assertEqual(engine.containers,[self.foreign])
+        self.assertEqual(engine.volumes,[])
+        self.assertTrue(self.marker.exists())
+
     def test_foreign_network_endpoint_prevents_any_removal(self):
         engine=Engine([self.studio,self.sandbox],networks=[{**self.network,'Containers':{'model':{}}}])
         with self.assertRaisesRegex(RuntimeError,'BaC network'): self.run_remove(engine)

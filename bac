@@ -217,8 +217,8 @@ case "$command_name" in
     if $fresh_start; then
       echo 'Starting fresh. Removing agents, chats, results, context and usage history…'
       sandbox_lifecycle --fresh
-      # The first check protects existing data from an invalid key. Save the
-      # verified key again after the fresh data volume has been created.
+      # Credentials are optional. Reload api.cfg into the new data volume
+      # after clearing the previous runtime settings.
       if ! compose run --rm --no-deps -T --user 0 --entrypoint python3 \
         -v "$PWD/api.cfg:/run/bac-api.cfg:ro" studio \
         /opt/bac/source/scripts/api_key_setup.py /run/bac-api.cfg --optional; then

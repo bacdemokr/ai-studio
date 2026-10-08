@@ -3,6 +3,7 @@ import json
 import math
 import platform
 import re
+import secrets
 import sqlite3
 from contextlib import closing
 import subprocess
@@ -59,7 +60,7 @@ def measure(result, state_dir, agent, session, started, elapsed=None):
     speed = tokens['output'] / duration if duration is not None and tokens['output'] is not None else None
     return {**tokens, **context_usage(state_dir, agent, session, started),
             'runSeconds': duration, 'outputTokensPerSecond': speed,
-            'session': session, 'measuredAt': time.time()}
+            'session': session, 'measuredAt': time.time(), 'turnId': secrets.token_hex(12)}
 
 _lock = threading.Lock()
 _cached = {'cpu': None, 'memory': None, 'sampledAt': 0}
@@ -109,18 +110,22 @@ def report(studio, owner):
         rows = db.execute("SELECT id,owner,created,json_extract(payload,'$.preset') AS preset,json_extract(payload,'$.metrics') AS metrics,kind FROM jobs WHERE owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) AND json_type(payload,'$.metrics')='object' ORDER BY created", (owner,))
         for row in rows:
             for stage, record in json.loads(row['metrics']).items():
-                key = (record['agent'], row['kind']=='crew')
+                stage = record.get('stage', stage)
+                crew = row['kind'] in ('crew', 'crew-chat')
+                key = (record['agent'], crew)
                 previous = agents.get(key, {'total':0, 'calls':0})
                 amount = number(record.get('total'))
                 if amount is None: missing += 1
                 else: total += amount; measured += 1
-                agents[key] = {**record, 'total': previous['total'] + (amount or 0), 'calls': previous['calls'] + (amount is not None), 'crew': row['kind']=='crew'}
+                newer = (number(record.get('measuredAt')) is None or number(previous.get('measuredAt')) is None
+                         or record['measuredAt'] >= previous['measuredAt'])
+                agents[key] = {**(record if newer else previous), 'total': previous['total'] + (amount or 0), 'calls': previous['calls'] + (amount is not None), 'crew': crew}
                 session = record.get('session')
                 if not session and row['kind'] == 'crew':
                     session = 'bac-' + row['owner'] if stage == '0' and not row['preset'] else 'bac-crew-' + row['id'] + '-' + stage
                 elif not session and row['kind'] == 'chat':
                     session = 'bac-' + row['owner']
-                sources[key] = (session, row['created'])
+                if newer:sources[key] = (session, row['created'])
     # Repair display of previously recorded runs without rewriting history or
     # attributing a newer session's context to an older run.
     from agent_runtime import root

@@ -46,7 +46,8 @@ function scenarioUsageSummary(job){
   else if(typeof record.model==='string'&&record.model)agent.endpoints.add('Model · '+record.model);
   if(recordInput!==null){input+=recordInput;agent.input+=recordInput;inputReported=agent.inputReported=true;}
   if(recordOutput!==null){output+=recordOutput;agent.output+=recordOutput;outputReported=agent.outputReported=true;}
-  if(recordTotal!==null){total+=recordTotal;agent.total+=recordTotal;totalReported=agent.totalReported=true;}else unreportedCalls++;
+  if(recordTotal!==null){total+=recordTotal;agent.total+=recordTotal;totalReported=agent.totalReported=true;}
+  if(recordInput===null||recordOutput===null||recordTotal===null)unreportedCalls++;
   if(seconds!==null){apiSeconds+=seconds;agent.seconds+=seconds;timeReported=agent.timeReported=true;}
  }
  const start=usageNumber(job?.created),end=usageNumber(job?.updated);
@@ -58,11 +59,11 @@ function renderUsageTime(job){
  if(usageTime.dataset.key===key)return;usageTime.dataset.key=key;
  const amount=(value,reported)=>reported?Math.round(value).toLocaleString():'—';
  const rows=summary.agents.map(agent=>'<tr><th scope="row">'+escape(agent.name)+'</th><td class="studio-usage-endpoint">'+escape([...agent.endpoints].join(', ')||'Not reported')+'</td><td>'+amount(agent.input,agent.inputReported)+'</td><td>'+amount(agent.output,agent.outputReported)+'</td><td>'+amount(agent.total,agent.totalReported)+'</td><td>'+usageDuration(agent.timeReported?agent.seconds:null)+'</td><td>'+agent.calls+'</td></tr>').join('');
- const warning=summary.unreportedCalls?'<p class="studio-usage-note">'+summary.unreportedCalls+' recorded API call'+(summary.unreportedCalls===1?' did':'s did')+' not report token counts, so token totals are partial.</p>':'';
+ const warning=summary.unreportedCalls?'<p class="studio-usage-note">'+summary.unreportedCalls+' recorded agent turn'+(summary.unreportedCalls===1?' did':'s did')+' not report token counts, so token totals are partial.</p>':'';
  usageTime.innerHTML='<section class="studio-usage-task"><small>Task</small><p>'+escape(scenarioTaskSummary(job))+'</p></section>'+
-  '<div class="studio-usage-totals"><article><small>Input tokens</small><strong>'+amount(summary.input,summary.inputReported)+'</strong></article><article><small>Output tokens</small><strong>'+amount(summary.output,summary.outputReported)+'</strong></article><article><small>Combined tokens</small><strong>'+amount(summary.total,summary.totalReported)+'</strong></article><article><small>Total elapsed</small><strong>'+usageDuration(summary.elapsed)+'</strong></article><article><small>Combined API time</small><strong>'+usageDuration(summary.timeReported?summary.apiSeconds:null)+'</strong></article></div>'+
-  (rows?'<h3>Usage and time by agent</h3><div class="studio-usage-table-wrap"><table><thead><tr><th>Agent</th><th>Endpoint</th><th>Input</th><th>Output</th><th>Combined</th><th>API time</th><th>Calls</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p class="studio-usage-note">This run has no reported API usage metrics.</p>')+
-  warning+'<p class="studio-usage-note">Total elapsed is submission-to-completion wall time. Combined API time adds each agent’s model-call duration and can be longer when agents work in parallel.</p>';
+  '<div class="studio-usage-totals"><article><small>Input tokens</small><strong>'+amount(summary.input,summary.inputReported)+'</strong></article><article><small>Output tokens</small><strong>'+amount(summary.output,summary.outputReported)+'</strong></article><article><small>Combined tokens</small><strong>'+amount(summary.total,summary.totalReported)+'</strong></article><article><small>Total elapsed</small><strong>'+usageDuration(summary.elapsed)+'</strong></article><article><small>Combined agent time</small><strong>'+usageDuration(summary.timeReported?summary.apiSeconds:null)+'</strong></article></div>'+
+  (rows?'<h3>Usage and time by agent</h3><div class="studio-usage-table-wrap"><table><thead><tr><th>Agent</th><th>Endpoint</th><th>Input</th><th>Output</th><th>Combined</th><th>Agent time</th><th>Turns</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p class="studio-usage-note">No usage reported for this run.</p>')+
+  warning+'<p class="studio-usage-note">Total elapsed is submission-to-completion wall time. Agent time includes model responses and tool execution. Parallel turns can make the combined time longer than elapsed time. Only recorded responses are counted.</p>';
 }
 
 const surfaceDefinitions={
@@ -72,7 +73,7 @@ const surfaceDefinitions={
   policies:{title:'OpenShell Policy',ids:['policy-panel']},
   control:{title:'Mission Control',ids:['board']},
   deliverables:{title:'Results',ids:['plan-results']},
-  usage:{title:'API usage and time',ids:['usage-time']}
+  usage:{title:'Usage & time',ids:['usage-time']}
 };
 for(const id of ['event-package','board','workspace','experiences','policy-panel','connections'])surfaceStore.append(el(id));
 el('passport').prepend(el('collection'));
@@ -87,7 +88,7 @@ const controlButton=document.createElement('button');controlButton.type='button'
 const teamResetButton=document.createElement('button');teamResetButton.type='button';teamResetButton.id='studio-bac-reset';teamResetButton.className='studio-team-utility';teamResetButton.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7a6 6 0 1 1-.2 5M4 3v4h4"/></svg><span>Reset</span>';teamResetButton.setAttribute('aria-label','Reset current scenario');teamResetButton.title='Stop this scenario’s work and clear its chats, documents and results';teamResetButton.onclick=()=>confirmTeamReset(teamResetButton);
 const teamResetStatus=document.createElement('p');teamResetStatus.id='studio-team-reset-status';teamResetStatus.className='studio-muted';teamResetStatus.setAttribute('role','status');teamResetStatus.hidden=true;crewActions.after(teamResetStatus);
 const resultsButton=document.createElement('button');resultsButton.type='button';resultsButton.className='studio-secondary';resultsButton.dataset.surface='deliverables';resultsButton.textContent='Results';resultsButton.hidden=true;crewActions.append(resultsButton);
-const usageTimeButton=document.createElement('button');usageTimeButton.type='button';usageTimeButton.className='studio-secondary';usageTimeButton.dataset.surface='usage';usageTimeButton.textContent='API usage and time';usageTimeButton.hidden=true;crewActions.append(usageTimeButton);
+const usageTimeButton=document.createElement('button');usageTimeButton.type='button';usageTimeButton.className='studio-secondary';usageTimeButton.dataset.surface='usage';usageTimeButton.textContent='Usage & time';usageTimeButton.hidden=true;crewActions.append(usageTimeButton);
 const teamTotalTime=document.createElement('div');teamTotalTime.id='studio-team-total-time';teamTotalTime.hidden=true;teamTotalTime.setAttribute('role','timer');teamTotalTime.title='Total process time, including queueing, planning, specialists and review';el('crew-name').parentElement.classList.add('studio-captain-heading');el('crew-name').after(teamTotalTime);
 const teamConnectionBar=document.createElement('div');teamConnectionBar.className='studio-team-connection-bar';teamConnectionBar.innerHTML='<span class="studio-team-connection-state" role="status"><i aria-hidden="true"></i><span id="studio-team-connection-label">Team API</span></span><div class="studio-team-utilities"><button type="button" class="studio-team-utility" id="studio-team-setup" aria-haspopup="dialog"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h3m4 0h7M3 14h7m4 0h3"/><circle cx="8" cy="6" r="2"/><circle cx="12" cy="14" r="2"/></svg><span>Models &amp; connection</span></button></div>';teamConnectionBar.querySelector('.studio-team-utilities').append(teamResetButton);crewActions.after(teamConnectionBar);el('team-setup').onclick=openTeamSettings;
 const localTaskWarning=document.createElement('p');localTaskWarning.id='studio-local-task-warning';localTaskWarning.className='studio-local-task-warning';localTaskWarning.setAttribute('role','status');localTaskWarning.hidden=true;localTaskWarning.textContent='Local model selected for Open Task. Tasks may take longer, and complex requests may not produce the expected results. An external endpoint is recommended.';teamConnectionBar.after(localTaskWarning);
@@ -111,9 +112,9 @@ standbyPanel.addEventListener('keydown',event=>{
     standbyPanel.open=false;standbyPanel.querySelector('summary').focus();event.stopPropagation();
   }
 });
-// Total process time belongs beside Casey's name, not over page controls.
+// Show the active scenario's total time beside its coordinator.
 function syncTeamTotalTime(){
-  const timer=el('team-total-time'),plan=currentCollaboration();
+  const timer=el('team-total-time'),plan=selectedScenario==='event-brief'?crewMission():currentCollaboration();
   const label=plan&&selectedCrewRole===0?collaborationTime(plan):'';
   if(timer.textContent!==label)timer.textContent=label;
   timer.hidden=!label;

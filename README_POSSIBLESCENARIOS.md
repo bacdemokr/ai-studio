@@ -1,5 +1,16 @@
 # POSSIBLE SCENARIOS
-October 7, 2026
+October 8, 2026
+
+These are example requests for **3-2 Open Task**, not additional rooms or new execution modes. Screenshots and timings below are Benjamin's observed NVIDIA Inference API runs. They have not been benchmarked on local Qwen here; endpoint load and task size change the timing.
+
+- **Travel:** requires live weather and web access. The historical prompt below says three days but spans four dates, and its result is partial. For a new demo, choose three explicit upcoming dates and ask the team to mark unavailable forecasts rather than invent them.
+- **Drone research:** requires internet access and produces a research dashboard, not a tested robotics implementation. Keep the number of papers small for a short demo.
+- **Store email review:** upload the short `.txt` example below. All task evidence is supplied, making it a candidate for a local offline rehearsal. This does not yet demonstrate filesystem permission enforcement.
+
+For a short business rehearsal:
+
+> /goal Use only the attached email thread. Summarize the year-over-year performance of the five stores and recommend three actions. Create one self-contained desktop HTML report with inline CSS, no external assets or network access. Keep the analysis concise and label missing data. Do not send emails or modify the source document.
+
 
 ## Table of contents
 
@@ -13,7 +24,7 @@ October 7, 2026
   - [Team involved](#team-involved)
   - [Expected output](#expected-output)
   - [Time and API usage](#time-and-api-usage)
-- [Buisness internal review](#buisness-internal-review)
+- [Business internal review](#business-internal-review)
   - [Prompt and document](#prompt-and-document)
   - [Team](#team-1)
   - [Execution trace](#execution-trace)
@@ -35,13 +46,13 @@ October 7, 2026
 | Step | Phase | Participant | Status | Details |
 |---:|---|---|---|---|
 | 00 | User request | **User** | Submitted | **Request:** I would like to berlin for 3 days. Can you check the weather in Berlin between the 17th and the 20th of october, create one html page to highlight, day after day the weather. Then find me 3 nice places or monuments to visit, one per day. Everything should be seen at the end within one nice html page with the title 'Travel in Berlin October'. |
-| 01 | Plan | **Casey** | Plan ready | **Approach:** Weather forecast for Berlin from October 17–20, 2026, plus three attractions. Scout researches both through public sources—Open-Meteo for weather and Berlin tourism sites for attractions. Cody builds one HTML page containing daily weather cards and attraction highlights. Vera reviews the result for completeness and accuracy. |
-| 02 | Contribution | **Scout** | Delivered | **Casey’s assignment:** Research Berlin weather for October 17–20, 2026 through the Open-Meteo API, then find three notable Berlin attractions or monuments, one for each day. Save the findings to `artifacts/research-brief.md` with citations.<br><br>**Expected result:** A Markdown brief containing daily temperature, conditions, and precipitation; source URL and retrieval date; three attractions with descriptions and source URLs; and any limitations.<br><br>**Received:** Casey’s brief.<br><br>**Result:** Scout’s contribution was delivered. |
-| 03 | Review | **Casey** | More work needed | **After Scout’s result:** The research brief contains sufficient data for October 17 and three attractions. Cody can build the page with the available information while clearly noting that weather for October 18–19 is unavailable. |
+| 01 | Plan | **Casey** | Plan ready | **Approach:** Weather forecast for Berlin from October 17-20, 2026, plus three attractions. Scout researches both through public sources-Open-Meteo for weather and Berlin tourism sites for attractions. Cody builds one HTML page containing daily weather cards and attraction highlights. Vera reviews the result for completeness and accuracy. |
+| 02 | Contribution | **Scout** | Delivered | **Casey’s assignment:** Research Berlin weather for October 17-20, 2026 through the Open-Meteo API, then find three notable Berlin attractions or monuments, one for each day. Save the findings to `artifacts/research-brief.md` with citations.<br><br>**Expected result:** A Markdown brief containing daily temperature, conditions, and precipitation; source URL and retrieval date; three attractions with descriptions and source URLs; and any limitations.<br><br>**Received:** Casey’s brief.<br><br>**Result:** Scout’s contribution was delivered. |
+| 03 | Review | **Casey** | More work needed | **After Scout’s result:** The research brief contains sufficient data for October 17 and three attractions. Cody can build the page with the available information while clearly noting that weather for October 18-19 is unavailable. |
 | 04 | Contribution | **Cody** | Delivered | **Casey’s assignment:** Build one self-contained HTML page titled **Travel in Berlin October**, with daily cards for October 17, 18, and 19 and one featured attraction per day. Use the research brief. Provide a clean desktop layout, semantic HTML, basic CSS, and keyboard accessibility.<br><br>**Expected result:** A dependency-free page at `artifacts/travel-berlin-october.html`, showing three daily cards with weather and attraction information consistent with the research brief.<br><br>**Received:** Casey’s brief and Scout’s contribution.<br><br>**Result:** Cody’s contribution was delivered. |
-| 05 | Review | **Casey** | More work needed | **After Cody’s result:** The page contains the available weather for October 17 and all three attractions. Vera should verify the exact title, three-day coverage, weather for each day, one attraction per day, and the single-file requirement. The original request mentions October 17–20, which spans four calendar dates, while the requested trip and available page cover three days; the review must identify this gap. |
-| 06 | Contribution | **Vera** | Delivered | **Casey’s assignment:** Review the HTML page against the requirements: exact title, October 17–19 coverage, weather for every day, three attractions with one per day, one self-contained file, and no broken references.<br><br>**Expected result:** A review report with a pass or fail for each requirement and a description of every issue.<br><br>**Received:** Casey’s brief, Scout’s contribution, and Cody’s contribution.<br><br>**Result:** Vera’s contribution was delivered. |
-| 07 | Review | **Casey** | Partial result | **After Vera’s result:** The research budget was exhausted after obtaining weather for October 17 only. The HTML page covers October 17–19, assigns one attraction to each day, and communicates the weather limitation. The title, three attractions, single-file delivery, and absence of broken references satisfy the remaining requirements.<br><br>No additional agents will be called. |
+| 05 | Review | **Casey** | More work needed | **After Cody’s result:** The page contains the available weather for October 17 and all three attractions. Vera should verify the exact title, three-day coverage, weather for each day, one attraction per day, and the single-file requirement. The original request mentions October 17-20, which spans four calendar dates, while the requested trip and available page cover three days; the review must identify this gap. |
+| 06 | Contribution | **Vera** | Delivered | **Casey’s assignment:** Review the HTML page against the requirements: exact title, October 17-19 coverage, weather for every day, three attractions with one per day, one self-contained file, and no broken references.<br><br>**Expected result:** A review report with a pass or fail for each requirement and a description of every issue.<br><br>**Received:** Casey’s brief, Scout’s contribution, and Cody’s contribution.<br><br>**Result:** Vera’s contribution was delivered. |
+| 07 | Review | **Casey** | Partial result | **After Vera’s result:** The research budget was exhausted after obtaining weather for October 17 only. The HTML page covers October 17-19, assigns one attraction to each day, and communicates the weather limitation. The title, three attractions, single-file delivery, and absence of broken references satisfy the remaining requirements.<br><br>No additional agents will be called. |
 | 08 | Response | **Casey** | Partial result | Final team response. |
 
 ### expected type of output
@@ -78,7 +89,7 @@ A self-contained HTML research dashboard that groups the selected papers by topi
 
 ### Time and API usage
 
-The run completed in approximately two minutes. The recorded combined model API time was 1 minute 42 seconds:
+The run completed in approximately two minutes. The recorded combined agent time was 1 minute 42 seconds:
 
 - **Input tokens:** 181,201
 - **Output tokens:** 20,145
@@ -86,7 +97,7 @@ The run completed in approximately two minutes. The recorded combined model API 
 
 ![Drone swarm research API usage and time](docs/images/drone-swarm-api-usage.png)
 
-## Buisness internal review
+## Business internal review
 
 ### Prompt and document
 
@@ -107,7 +118,7 @@ Casey coordinates the work and passes Ada's structured analysis to Cody.
 |---:|---|---|---|---|
 | 00 | User request | **User** | Submitted | **Request:** Review the supplied email thread about the current situation of the five stores. Summarize what changed since last year, highlight the benefits, decide which actions should be taken, and present everything in one polished HTML page.<br><br>**Attached document:** `FAKE_OUTLOOK_FRANCE_STORE_STATUS_THREAD_shortversion.txt`. |
 | 01 | Plan | **Casey** | Plan ready | **Approach:** Read the email thread first and extract the store-performance data. Assign Ada to analyze the year-over-year results and benefits, then assign Cody to build a single HTML page containing the summary, benefits, and recommended actions. No external research is required because all data is in the supplied document. |
-| 02 | Contribution | **Ada** | Delivered | **Casey's assignment:** Read the full email thread and extract each store's year-over-year sales result, main challenge or explanation, and recommended action. Identify overall benefits—such as the impact of store redesign, traffic, and conversion gains—and synthesize recommended actions across the stores.<br><br>**Expected result:** A concise analysis saved to `artifacts/store-analysis.md`, including a store-by-store table with the name, year-over-year percentage, challenge, and action; a benefits summary; and prioritized improvement actions with rationale.<br><br>**Received:** Casey's brief.<br><br>**Result:** Ada delivered the analysis. |
+| 02 | Contribution | **Ada** | Delivered | **Casey's assignment:** Read the full email thread and extract each store's year-over-year sales result, main challenge or explanation, and recommended action. Identify overall benefits-such as the impact of store redesign, traffic, and conversion gains-and synthesize recommended actions across the stores.<br><br>**Expected result:** A concise analysis saved to `artifacts/store-analysis.md`, including a store-by-store table with the name, year-over-year percentage, challenge, and action; a benefits summary; and prioritized improvement actions with rationale.<br><br>**Received:** Casey's brief.<br><br>**Result:** Ada delivered the analysis. |
 | 03 | Review | **Casey** | More work needed | **After Ada's result:** The analysis contains store-by-store year-over-year data, a benefits summary, and prioritized actions. Cody should now build the self-contained HTML page using this analysis. |
 | 04 | Contribution | **Cody** | Delivered after retry | **Casey's assignment:** Build one self-contained, desktop-friendly HTML page presenting: 1) a rapid summary of what changed since last year, including the year-over-year result for each store; 2) the benefits and positive outcomes; and 3) prioritized actions for improvement. Use Ada's analysis and provide a clean, accessible layout with clear sections.<br><br>**Expected result:** A working file at `artifacts/store-status-report.html`, with no external dependencies and inline CSS or JavaScript only.<br><br>**Received:** Casey's brief and Ada's contribution.<br><br>**Result:** Cody's first handoff was incomplete. A subsequent call completed the self-contained HTML report. |
 | 05 | Response | **Casey** | Delivered | **Final team response:** The store analysis and completed HTML report were returned to the user. |
@@ -125,7 +136,7 @@ The final result is a self-contained **France Stores Status Report** containing:
 
 ### Business review API usage and time
 
-The run completed in **2 minutes 2 seconds**, with **1 minute 57 seconds** of combined model API time:
+The run completed in **2 minutes 2 seconds**, with **1 minute 57 seconds** of combined agent time:
 
 - **Input tokens:** 163,280
 - **Output tokens:** 14,135
@@ -133,7 +144,7 @@ The run completed in **2 minutes 2 seconds**, with **1 minute 57 seconds** of co
 - **Model endpoint:** NVIDIA Inference API
 - **Agents called:** Casey, Ada, and Cody
 
-| Agent | Input | Output | Combined | API time | Calls |
+| Agent | Input | Output | Combined | Agent time | Turns |
 |---|---:|---:|---:|---:|---:|
 | Casey | 21,888 | 728 | 22,616 | 7s | 2 |
 | Ada | 38,980 | 2,058 | 41,038 | 47s | 1 |

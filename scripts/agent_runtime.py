@@ -967,7 +967,8 @@ def model_endpoint(agent_id):
         elif provider in settings.PROVIDERS:
             raw=settings.read().get('profiles',{}).get(provider,{}).get('baseUrl',settings.PROVIDERS[provider]['baseUrl'])
         parsed=urllib.parse.urlsplit(raw)
-        endpoint=urllib.parse.urlunsplit((parsed.scheme,parsed.netloc,parsed.path.rstrip('/'),'',''))
+        # URL userinfo can contain credentials even when query/fragment are gone.
+        endpoint=urllib.parse.urlunsplit((parsed.scheme,parsed.netloc.rsplit('@',1)[-1],parsed.path.rstrip('/'),'',''))
         local=provider=='local' or 'local' in provider_id or provider_id=='bac-vllm'
         labels={'nvidia':'NVIDIA Inference','openai':'OpenAI','anthropic':'Anthropic','local':'Local model'}
         label=labels.get(provider,'Local model' if local else provider_id)

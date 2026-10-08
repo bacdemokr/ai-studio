@@ -1,9 +1,9 @@
 # Demo workflow: what, why, and how
-October 7, 2026
+October 8, 2026
 
 ## Understanding the workflow and its objectives
 
-### Demo objectives (version xxx)
+### Demo objectives
 
 - **Create an agent**
   - Depending on the audience's level of knowledge, explain what an agent is and how its identity, character, purpose, and skills define it.
@@ -34,7 +34,7 @@ The key objectives are:
 
 ## 1. The different stages
 
-### 1.a. Hiring
+### Stage 1. Hiring
 
 **Target:** Explain how to create an agent and introduce:
 
@@ -43,7 +43,7 @@ The key objectives are:
 - The skills assigned to the agent
 - Whether the agent operates with or without [OpenShell](https://build.nvidia.com/openshell)
 
-### 1.b. Agent Lounge
+### Stage 2. Agent Lounge
 
 **Target:** Demonstrate how an individual agent performs a task and how [OpenShell](https://build.nvidia.com/openshell) changes its access to external resources.
 
@@ -58,7 +58,7 @@ An alternative workflow is:
 
 The objective is to explain [OpenShell](https://build.nvidia.com/openshell) and show how it sandboxes the agent's environment while allowing explicitly approved access.
 
-### 1.c. Events — multi-agent work
+### Stage 3. Multi-agent work
 
 **Target:** Show how a multi-agent team works toward a task or goal that requires different specialist skills.
 
@@ -73,13 +73,20 @@ This is similar to building a house:
 
 Similarly, each agent has specialized skills that help it produce the best possible contribution in its area of responsibility.
 
-The orchestrator plans the work, selects the appropriate specialists, assigns their tasks, coordinates their contributions, and combines the results to achieve the overall goal.
+Stage 3 has two separate workflows:
 
-## 2. Stage 1: Create your agent
+- **3-1 Event Brief:** Riley coordinates the fixed team of Dylan, Alex and Morgan. The application runs the event workflow; demo research and operations can run in parallel after Riley's brief. All team members use the model selected for this scenario's connection.
+- **3-2 Open Task:** Casey selects specialists for the attendee's `/goal` request. Specialist contributions run sequentially, with Casey checking their handoffs. External NVIDIA connections support per-agent model choices.
 
-## 3. Stage 2: Test agents with and without runtime controls
+The scenarios keep their own agents, conversations and files. Hired Lounge agents can join at the end with optional personal reactions.
 
-## 4. Stage 3: Explore a multi-agent workflow
+## 2. Before presenting
+
+- Connect Local and/or External Endpoint in **Settings > Model**. Select the connection for Hiring & Agent Lounge, Event Brief and Open Task separately. With both ready, the defaults favor Local for Stages 1 and 2, and External for Stage 3.
+- Rehearse the selected request on the actual model and hardware. Endpoint timings in the examples are observed runs, not local Spark benchmarks or guaranteed completion times.
+- Local inference does not make web research or live weather available offline. For an offline rehearsal, start with the attached store-email example and request no external sources. Filesystem read/write blocking is not implemented by that example.
+- **Usage & time** shows recorded tokens, elapsed time and agent turns after a Stage 3 run. Agent time includes tools; summed time can exceed elapsed time when turns overlap. It is not a provider billing report.
+- `./bac start` clears runtime data and starts fresh. Use `./bac start --keep-data` to retain a rehearsal. `./bac stop --all` stops the demo and its managed local model.
 
 
 ## Three scenario ideas linked to [README_POSSIBLESCENARIOS.md](README_POSSIBLESCENARIOS.md)

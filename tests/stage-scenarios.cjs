@@ -20,7 +20,15 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
  await page.waitForFunction(()=>document.querySelector('#studio-crew-conversation').textContent.includes('Morgan'));
  await page.waitForFunction(()=>!document.querySelector('#studio-room-action').disabled,{},{timeout:30000});
  await page.locator('button[data-surface=deliverables]').click();await page.locator('#studio-event-package .event-showcase-preview').waitFor({state:'visible'});
- await page.screenshot({path:'/tmp/stage3-event-results.png'});await page.locator('#studio-surface-close').click();
+  await page.screenshot({path:'/tmp/stage3-event-results.png'});await page.locator('#studio-surface-close').click();
+ await page.locator('button[data-surface=usage]').click();
+ assert.match(await page.locator('#studio-usage-time').innerText(),/Riley/);
+ assert.match(await page.locator('#studio-usage-time').innerText(),/Morgan/);
+ assert.match(await page.locator('#studio-usage-time').innerText(),/Agent time/);
+ assert.match(await page.locator('#studio-usage-time').innerText(),/Turns/i);
+ const usageBounds=await page.locator('#studio-surface').boundingBox();assert(usageBounds.x>=0&&usageBounds.y>=0&&usageBounds.x+usageBounds.width<=1500&&usageBounds.y+usageBounds.height<=1000);
+ await page.screenshot({path:'/tmp/stage3-event-usage.png'});
+ await page.locator('#studio-surface-close').click();
  await choose('plan');assert.equal(await page.locator('#studio-crew-prompt').inputValue(),'/plan keep this draft');assert((await page.locator('#studio-crew-conversation').textContent()).includes('plan hello'));assert(!(await page.locator('#studio-crew-conversation').textContent()).includes('event hello'));
  await choose('event-brief');assert((await page.locator('#studio-crew-conversation').textContent()).includes('event hello'));
  await page.locator('#studio-scenarios').evaluate(()=>{}); // Ensure switching didn't replace the selector node.

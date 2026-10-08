@@ -29,3 +29,9 @@ Errors preserve the other active specialist's result and block dependent stages.
 ## Optional preset crew members
 
 Plan a BaC shows six preset member toggles, all selected by default. Personal agents are not offered in this form. New jobs persist `enabledRoles` and call only those roles. At least one member is required; the Captain is optional. The original phase order is filtered by selection, preserving the demo/operations parallel group when both are selected. All roles receive the organizer brief and the list of selected/omitted roles, so absent specialist work is not represented as completed. Assignments, document animations, progress, result tabs, retries and survey replans follow that selection. Older jobs without this field retain their original roster and workflow. The deterministic booth preview remains an application calculation; Excel/CSV require the operations role.
+
+## Per-scenario Usage & time
+
+After an Event Brief or Open Task run, **Usage & time** shows recorded input/output tokens and a breakdown by agent and endpoint. **Total elapsed** runs from submission to completion, including queueing and waits. **Agent time** includes the complete OpenClaw turn, including model responses and tools; it is not inference-only latency. **Turns** counts recorded agent responses, not underlying provider HTTP calls. Concurrent turns can have a combined time greater than wall time.
+
+Repairs retain each recorded response rather than replacing the previous attempt. A saved response is counted only once. Older records remain readable, but previously overwritten attempts and failed/lost responses without usage cannot be reconstructed. Missing token values are unknown, not zero. These numbers support demo comparisons, not billing reconciliation.

@@ -20,7 +20,8 @@ def snapshot(adapter, observation):
             elif tool in ('read','write','edit','apply_patch'):
                 target=PurePosixPath(target.replace('\\','/')).name if target else ''
             else:target=''
-            calls.append({'tool':tool if tool in ('web_fetch','web_search','read','write','edit','apply_patch','exec') else 'tool',
+            calls.append({'id':str(call.get('id') or '')[:160],
+                          'tool':tool if tool in ('web_fetch','web_search','read','write','edit','apply_patch','exec') else 'tool',
                           'target':target[:160], 'status':call.get('status') if call.get('status') in ('started','running','completed','failed') else 'started'})
             code=call.get('httpStatus')
             if calls[-1]['status']=='failed' and tool in ('web_fetch','web_search') and type(code) is int and 400<=code<=599:

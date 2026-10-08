@@ -1192,7 +1192,18 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
 
     def record_usage(self, job_id, payload, answer, agent_id, name, stage=0):
         metrics = getattr(answer, 'metrics', {})
-        payload.setdefault('metrics', {})[str(stage)] = {**metrics, 'agent': agent_id, 'name': name}
+        records = payload.setdefault('metrics', {})
+        # Repairs are separate agent turns. Preserve every recorded response,
+        # but do not count a response twice when it is saved after validation.
+        turn = metrics.get('turnId')
+        if turn and any(record.get('turnId') == turn and record.get('agent') == agent_id
+                        for record in records.values()):
+            return
+        key, attempt = str(stage), 1
+        while key in records:
+            attempt += 1
+            key = str(stage) + ':' + str(attempt)
+        records[key] = {**metrics, 'agent': agent_id, 'name': name, 'stage': str(stage)}
         # Save immediately, including when a later artifact validation fails.
         with self.db() as db:
             db.execute('UPDATE jobs SET payload=? WHERE id=?', (json.dumps(payload), job_id))

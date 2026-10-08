@@ -55,6 +55,8 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.equal(await page.locator('#studio-radar-monitor').isVisible(),true);
   await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.skills.includes('radar'));await blocked(false);
   // Tech Radar by itself remains dedicated to Heartbeat updates.
+  await page.locator('.world-room-map [data-world-room=lounge]').click();
+  await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
   await page.locator('#studio-edit-agent').click();await page.locator('#studio-skill-picker input[value="weather"]').uncheck();await page.locator('#studio-create').click();
   await page.waitForFunction(()=>BacStudio.inspect().profile?.skills.length===1&&BacStudio.inspect().profile.skills[0]==='radar');await blocked(true);
   await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.name==='Radar');await blocked(true);

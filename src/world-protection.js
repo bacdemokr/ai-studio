@@ -116,7 +116,7 @@ function observeExternalActivity(jobs=[],owner){
       if(!['web_fetch','web_search'].includes(call.tool)||!['running','completed'].includes(call.status))return;
       let host=call.tool==='web_search'?'Web search':String(call.target||'External website');
       if(call.tool==='web_fetch')try{host=new URL(host).hostname||host;}catch{}
-      candidates.push({id:'web:'+job.id+':'+index,host});
+      candidates.push({id:'web:'+job.id+':'+(call.id||index),host});
     });
   }
   if(!externalActivityPrimed.has(owner)){
