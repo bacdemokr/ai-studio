@@ -7,7 +7,7 @@
   const tones={kind:['Kind','Warm & encouraging'],direct:['Direct','Clear & candid'],playful:['Playful','Light & witty'],cynical:['Cynical','Dry humor & skepticism']};
   const verbosityLabels={brief:'Brief',balanced:'Balanced',verbose:'Detailed'};
   const capabilities={
-    radar:['Tech Radar','Technical articles and announcements → a short summary','Every 30 seconds · never repeats a shared article'],
+    radar:['Tech Radar','Technical articles and announcements → a short summary','Every 20 seconds · never repeats a shared article'],
     builder:['Build an interactive app','An idea → a playable HTML app','Try: a reaction-time game'],
     documents:['Three Takeaways','Any question or document → three clear points','Always: 1. · 2. · 3. — including event reactions'],
     web:['Research & papers','Recent papers → dated sources and a comparison','Try: find 3 recent arXiv papers on RAG'],
@@ -212,7 +212,7 @@
     el('agent-policy').disabled=!!data.deleting;
     let monitor=el('radar-monitor');if(!monitor){monitor=document.createElement('div');monitor.id='studio-radar-monitor';monitor.className='studio-radar-monitor';el('agent-policy').after(monitor);}
     const watch=data.techRadar;monitor.hidden=!watch;
-    if(watch){monitor.innerHTML='<span><b>Heartbeat</b> · '+escape(watch.paused?'Paused':watch.state)+'<small>One unread article every 30 seconds'+(watch.lastChecked?' · Last checked '+new Date(watch.lastChecked*1000).toLocaleTimeString(): '')+'</small></span><button type="button" class="studio-secondary">'+(watch.paused?'Resume':'Pause')+'</button>';const button=monitor.querySelector('button');button.disabled=!!data.deleting;button.onclick=async()=>{button.disabled=true;try{await api('heartbeat',{paused:!watch.paused});await refresh();}catch(error){alert(error.message);button.disabled=false;}};}
+    if(watch){monitor.innerHTML='<span><b>Heartbeat</b> · '+escape(watch.paused?'Paused':watch.state)+'<small>One unread article every 20 seconds'+(watch.lastChecked?' · Last checked '+new Date(watch.lastChecked*1000).toLocaleTimeString(): '')+'</small></span><button type="button" class="studio-secondary">'+(watch.paused?'Resume':'Pause')+'</button>';const button=monitor.querySelector('button');button.disabled=!!data.deleting;button.onclick=async()=>{button.disabled=true;try{await api('heartbeat',{paused:!watch.paused});await refresh();}catch(error){alert(error.message);button.disabled=false;}};}
 
     el('edit-agent').disabled=!!data.deleting;el('send').disabled=!!data.deleting;
     if(data.deleting){const waiting=data.agents?.find(a=>a.key===agentId)?.deletionWaiting;el('task-state').textContent=waiting?'DELETING':'DELETION NEEDS ATTENTION';el('task-summary').textContent=waiting?'Stopping work. This agent will be removed automatically after the current call ends.':'Cleanup could not finish. Retry Delete agent.';}

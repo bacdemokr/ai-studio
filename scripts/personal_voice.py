@@ -3,6 +3,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PRESET_UPDATES = {
+    'Every 30 seconds, share one unread technical article or announcement from NVIDIA or Hugging Face blogs in my chosen tone. Include older articles; never repeat. Skip politics, stocks and earnings.':
+    'Every 20 seconds, share one unread technical article or announcement from NVIDIA or Hugging Face blogs in my chosen tone. Include older articles; never repeat. Skip politics, stocks and earnings.',
+    'Every 30 seconds, summarize one technical article or announcement not yet shared. Share useful discoveries in my chosen tone; skip politics, stocks and company earnings.':
+    'Every 20 seconds, summarize one technical article or announcement not yet shared. Share useful discoveries in my chosen tone; skip politics, stocks and company earnings.',
     'Summarize uploaded PDFs, slide decks and notes in 3 key points and one next step. Cite pages or slides, flag missing evidence, and keep the answer under 150 words.':
     'Turn any question, document or event into exactly three concise takeaways, numbered 1, 2 and 3. Keep my chosen tone. Cite sources when supplied, and include any next step within the three points.',
     'Polish short messages for my audience while keeping my facts and intent. Give me one concise, ready-to-use draft.':

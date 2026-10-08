@@ -4,7 +4,7 @@ These are seven BaC-authored workspace skills registered in OpenClaw as `bac-web
 
 | Skill | Short demonstration | Evidence to inspect |
 | --- | --- | --- |
-| Tech Radar | Hire, connect the model, and wait for the native 30-second heartbeat. | One unread technical article per check; persona-based summary in chat and optionally Telegram. [Setup](heartbeat.md). |
+| Tech Radar | Hire, connect the model, and wait for the native 20-second heartbeat. | One unread technical article per check; persona-based summary in chat and optionally Telegram. [Setup](heartbeat.md). |
 | Research & papers | Find three recent arXiv RAG preprints and choose one to read first. | Submission dates, authors, abstract links, query and retrieval date; abstract-based comparison, not a claimed full-paper review. |
 | Live weather | Ask whether an outdoor break is a good idea in the chosen city. | Resolved city, observation time, units, real current conditions and separate hourly forecast. |
 | Three Takeaways | Ask any question or upload a document; get exactly 1., 2., 3. | Filename and short supporting quotations; absent dates/owners marked missing. TXT, Markdown, CSV, PDF and PPTX; PDF text extraction needs Poppler. Scanned-page OCR is not provided. |

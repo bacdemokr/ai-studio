@@ -34,7 +34,28 @@ class HeartbeatRelayTests(unittest.TestCase):
         tech_radar.save(self.root,tech_radar.DRAFT,{'token':poll['token'],'articleId':poll['articles'][0]['id'],'answer':'A useful new inference SDK.'})
         tech_radar.run(self.root,'publish')
     def tick(self):
+        # Existing relay tests model an already-started timer, not onboarding.
+        with self.studio.db() as db:
+            db.execute("UPDATE jobs SET created=MIN(created,?) WHERE kind='prepare-agent'", (time.time()-tech_radar.HEARTBEAT_SECONDS,))
         with patch('runtime_settings.model_available',return_value=True):self.studio.heartbeat.tick()
+    def test_new_agent_waits_one_full_interval_before_enabling_native_search(self):
+        (self.root/tech_radar.OUTBOX).unlink()
+        hired_at=time.time()
+        with self.studio.db() as db:
+            db.execute("UPDATE jobs SET created=? WHERE owner=? AND kind='prepare-agent'", (hired_at,self.owner))
+        with patch('runtime_settings.model_available',return_value=True), patch.object(telegram,'send') as send:
+            for elapsed in (0, 5, 19.99):
+                with self.subTest(elapsed=elapsed), patch('studio_heartbeat.time.time',return_value=hired_at+elapsed):
+                    self.studio.heartbeat.tick()
+                    self.assertFalse(self.adapter.cadence[self.profile['id']])
+                    self.assertEqual(self.studio.heartbeat.status(self.owner,self.profile)['state'],'starting soon')
+                    self.assertEqual(self.studio.state(self.owner)['jobs'],[])
+            with patch('studio_heartbeat.time.time',return_value=hired_at+20):
+                self.studio.heartbeat.tick()
+                self.assertTrue(self.adapter.cadence[self.profile['id']])
+                self.assertEqual(self.studio.heartbeat.status(self.owner,self.profile)['state'],'watching')
+            send.assert_not_called()
+        self.assertEqual(self.studio.heartbeat.status(self.owner,self.profile)['everySeconds'],20)
     def test_native_cadence_and_single_chat_result_even_after_restart(self):
         with patch.object(telegram,'send',return_value='sent') as send:
             self.tick();self.tick()
@@ -92,7 +113,7 @@ class HeartbeatRelayTests(unittest.TestCase):
         self.assertEqual(mixed['purpose'], weather['purpose'])
         self.assertTrue(self.adapter.cadence[mixed['id']])
         self.assertEqual(self.studio.heartbeat.status(self.owner, mixed)['state'], 'watching')
-        self.assertIn('Every 30 seconds', (self.root/'HEARTBEAT.md').read_text())
+        self.assertIn('Every 20 seconds', (self.root/'HEARTBEAT.md').read_text())
 
         # A second skill does not allow manual work to compete with Heartbeat.
         with self.assertRaisesRegex(Problem, 'Manual chat is disabled'):
@@ -292,7 +313,7 @@ class NativeConfigTests(unittest.TestCase):
             self.assertIn('exec',entry['tools']['allow'])
             agent_runtime.set_radar_heartbeat(agent,True)
             config=json.loads(agent_runtime.config_path().read_text())
-            self.assertEqual(config['agents']['entries'][agent]['heartbeat']['every'],'30s')
+            self.assertEqual(config['agents']['entries'][agent]['heartbeat']['every'],'20s')
             self.assertEqual(config['agents']['defaults']['heartbeat']['every'],'0m')
             self.assertFalse(agent_runtime.set_radar_heartbeat('unrelated-agent',True))
             agent_runtime.register(agent,Path(tmp)/'radar',{'name':'Echo','persona':'analyst','skills':['writer']})
@@ -402,3 +423,12 @@ class RadarFeedTests(unittest.TestCase):
         report=studio.policy_report(owner)
         self.assertEqual(report['requested'],[])
         self.assertEqual(set(report['recommended']),{'host:developer.nvidia.com','host:huggingface.co'})
+        self.assertEqual(report['pendingAccess'],[])
+        self.assertEqual(report['recentDenied'],[])
+        # Only attempted destinations become alerts; a recommended second site
+        # must not appear blocked just because the first site was denied.
+        denied={'time':time.time(),'host':'developer.nvidia.com','action':'deny','reason':'policy-denied'}
+        self.adapter=studio.adapter
+        self.adapter.policy_status=lambda *args:{'logs':[denied],'catalog':{}}
+        report=studio.policy_report(owner)
+        self.assertEqual(report['pendingAccess'],[{'host':'developer.nvidia.com','reason':'blocked'}])

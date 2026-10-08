@@ -60,7 +60,7 @@ class RadarHeartbeat:
         if 'radar' not in profile.get('skills', []):return None
         with self.studio.db() as db:
             row = db.execute('SELECT paused FROM heartbeat_controls WHERE owner=?', (owner,)).fetchone()
-        return {'paused': bool(row and row['paused']), 'everySeconds': 30,
+        return {'paused': bool(row and row['paused']), 'everySeconds': tech_radar.HEARTBEAT_SECONDS,
                 **self.statuses.get(owner, {'state':'preparing'})}
 
     def control(self, owner, data):
@@ -204,6 +204,7 @@ class RadarHeartbeat:
                         current = db.execute('SELECT profile,deleting FROM agents WHERE id=?',(owner,)).fetchone()
                         paused = db.execute('SELECT paused FROM heartbeat_controls WHERE owner=?',(owner,)).fetchone()
                         pending = db.execute("SELECT owner,payload FROM jobs WHERE status IN ('queued','running','waiting','stopping')").fetchall()
+                        preparation = db.execute("SELECT MAX(created) AS created FROM jobs WHERE owner=? AND kind='prepare-agent'", (owner,)).fetchone()
                         busy = owner in studio.executing_owners or any(j['owner']==owner or any(m.get('key')==owner for m in job_participants(json.loads(j['payload']))) for j in pending)
                     if not current or current['profile'] != row['profile']:continue
                     paused = bool(paused and paused['paused'])
@@ -215,9 +216,12 @@ class RadarHeartbeat:
                             if live and not live['deleting'] and live['profile'] == row['profile'] and not db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind='prepare-agent' AND status IN ('queued','running')", (owner,)).fetchone():
                                 studio.queue_agent_preparation(db, owner, profile)
                         studio.signal.set()
-                    enabled = bool(connected and ready and not current['deleting'] and not paused and not busy and profile['id'] in studio.provisioned)
+                    # Native scheduling can choose a near-immediate first tick.
+                    # Keep it disabled for one interval after hiring/skill setup.
+                    starting = bool(preparation['created'] is not None and time.time() < preparation['created'] + tech_radar.HEARTBEAT_SECONDS)
+                    enabled = bool(connected and ready and not current['deleting'] and not paused and not busy and not starting and profile['id'] in studio.provisioned)
                     registered = toggle(profile['id'],enabled)
-                    state = 'paused' if paused else 'waiting for browser' if not connected else 'waiting for model' if not ready else 'waiting for task' if busy else 'watching' if enabled and registered else 'preparing'
+                    state = 'paused' if paused else 'waiting for browser' if not connected else 'waiting for model' if not ready else 'waiting for task' if busy else 'starting soon' if starting and profile['id'] in studio.provisioned else 'watching' if enabled and registered else 'preparing'
                     previous=self.statuses.get(owner,{})
                     since=previous.get('watchingSince',time.time()) if enabled else time.time()
                     self.statuses[owner] = {**previous, 'state':state, 'watchingSince':since}

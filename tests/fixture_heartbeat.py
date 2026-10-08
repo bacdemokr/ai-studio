@@ -15,10 +15,14 @@ from radar_fixture_data import sample
 
 class Adapter(BrowserAdapter):
     def status(self):return {**super().status(),'event':settings.event(),'location':settings.location(),'installed':False}
+    def policy_events(self,agent):return self.policy_logs.get(agent,[])
     def set_radar_heartbeat(self,agent,enabled):
         if enabled and agent in self.agents and agent not in getattr(self,'published',set()):
             self.published=getattr(self,'published',set())|{agent}
             root=self.agents[agent];now=time.time()
+            if os.environ.get('BAC_TEST_RADAR_DENIED')=='1':
+                self.policy_logs[agent]=[{'time':now,'action':'deny','reason':'policy-denied','host':source['host']} for source in tech_radar.SOURCES]
+                return True
             poll=tech_radar.run(root,'poll',lambda source,cache:(sample(source,now),{}),now)
             tech_radar.save(root,tech_radar.DRAFT,{'token':poll['token'],'articleId':poll['articles'][0]['id'],'answer':'TEST FIXTURE: Explore a Python inference SDK with a practical developer tutorial.'})
             tech_radar.run(root,'publish')

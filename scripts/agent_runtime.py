@@ -18,6 +18,7 @@ import urllib.request
 import ops_common as c
 import runtime_settings as settings
 from browser_capability import BROWSER_LIMIT
+from tech_radar import HEARTBEAT_SECONDS
 
 VERSION = '2026.9.4'
 MODEL = 'bac-vllm/bac-local'
@@ -323,7 +324,7 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
         radar_host = 'sandbox' if protected else 'gateway'
         files['AGENTS.md'] += ('\nUse exec with host=' + radar_host + ' to run python3 skills/bac-radar/scripts/tech_radar.py poll or publish for your heartbeat. '
                               'Read skills/bac-radar/SKILL.md first. Never contact Telegram directly.\n')
-        files['HEARTBEAT.md'] = '# Tech Radar\nEvery 30 seconds, follow skills/bac-radar/SKILL.md. Share one technical article or announcement you have not shared before, including older articles in the feeds. Never repeat a shared article or call an older article breaking news. Otherwise HEARTBEAT_OK. Skip politics, stocks and earnings.\n'
+        files['HEARTBEAT.md'] = f'# Tech Radar\nEvery {HEARTBEAT_SECONDS} seconds, follow skills/bac-radar/SKILL.md. Share one technical article or announcement you have not shared before, including older articles in the feeds. Never repeat a shared article or call an older article breaking news. Otherwise HEARTBEAT_OK. Skip politics, stocks and earnings.\n'
     if role:
         files['AGENTS.md'] += ('\n# Reading supplied documents\n'
                               'Read supplied files with native file tools. For PDF/PPTX/XLSX, use the companion extracted .txt file '
@@ -1076,7 +1077,7 @@ def set_radar_heartbeat(agent_id, enabled):
         entry = config.get('agents', {}).get('entries', {}).get(agent_id)
         if not entry or not ('bac-radar' in entry.get('skills', []) or not enabled and 'bac-notes' in entry.get('skills', [])):return False
         heartbeat = entry.get('heartbeat', {})
-        every = '30s' if enabled else '0m'
+        every = f'{HEARTBEAT_SECONDS}s' if enabled else '0m'
         if heartbeat.get('every') != every:
             heartbeat['every'] = every
             gateway_config_patch({'agents': {'entries': {agent_id: {'heartbeat': heartbeat}}}}, [])

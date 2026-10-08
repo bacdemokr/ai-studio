@@ -60,6 +60,9 @@ class TwelveAgentTests(unittest.TestCase):
             self.studio.execute(row)
 
     def publish(self, owner):
+        # A synthetic completed Heartbeat implies its initial delay has elapsed.
+        with self.studio.db() as db:
+            db.execute("UPDATE jobs SET created=MIN(created,?) WHERE owner=? AND kind='prepare-agent'", (time.time()-tech_radar.HEARTBEAT_SECONDS,owner))
         root = self.studio.workspace(owner)
         now = time.time()
         poll = tech_radar.run(root, 'poll', lambda source, cache: (sample(source, now), {}), now)
