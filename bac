@@ -11,7 +11,7 @@ BaC Agent Studio
   ./bac vllm --model gemma   Prepare another configured model
   ./bac vllm --restart | --status | --logs | --stop   Manage the local model
   ./bac start     Start fresh with no agents, work, context or usage history
-  ./bac start --keep-data   Start while preserving agents, work and usage
+  ./bac start --keep-data   Keep existing agents, conversations, results, and settings
   ./bac status    Check service status
   ./bac logs      Show recent errors and activity
   ./bac stop      Stop services; keep saved data
