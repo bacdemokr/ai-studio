@@ -64,10 +64,15 @@ function setRoom(next,options={}){
   const openPolicies=next==='policies';if(openPolicies)next='lounge';
   if(!roomCopy[next])return;
   const before=options.fromWorld&&!worldOpen?worldViewport.getBoundingClientRect().top:null;
-  if(next!==room)closeSurface();
+  if(next!==room){closeSurface();if(next==='mission'&&!options.resume)scenarioChoosing=true;}
+  if(next==='mission'&&options.fromWorld&&!options.resume){closeSurface();scenarioChoosing=true;}
+  if(next!=='mission')scenarioChoosing=true;
   editingInPlace=false;room=next;if(next!=='mission')board=false;
   root.dataset.room=next;worldViewport.setAttribute('aria-label',roomCopy[next]+'. Drag to orbit, scroll to zoom. Press Enter to toggle full screen.');if(roomsReady)try{sessionStorage.setItem('bac-studio-room',next);}catch{}
-  if(next==='mission')renderCrew();renderRoomVisibility();window.BacCampus?.setRoom(next,{instant:!roomsReady});
+  if(next==='mission')renderCrew();renderRoomVisibility();
+  runtimeBadge();
+  if(next==='mission'&&scenarioChoosing)window.BacCampus?.scenarios({instant:!roomsReady});
+  else window.BacCampus?.setRoom(next,{instant:!roomsReady});
   if(openPolicies)openSurface('policies');
   if(before!==null)window.scrollBy(0,worldViewport.getBoundingClientRect().top-before);
 }
@@ -75,13 +80,15 @@ function renderRoomVisibility(){
   if(el('compare'))el('compare').hidden=room!=='lounge'||!comparison;
   syncComposer();
   const workshop=room==='workshop',lounge=room==='lounge',mission=room==='mission';
-  el('workshop').hidden=!(workshop||editingInPlace);el('passport').hidden=!lounge||editingInPlace;el('crew-passport').hidden=!mission;el('connections').hidden=!workshop;el('policies').hidden=false;el('policy-panel').hidden=!lounge;
+  el('workshop').hidden=!(workshop||editingInPlace);el('passport').hidden=!lounge||editingInPlace;el('crew-passport').hidden=!mission||scenarioChoosing;el('connections').hidden=!workshop;el('policies').hidden=false;el('policy-panel').hidden=!lounge;
   el('collection').hidden=!lounge||!data.profile;
   layout.hidden=false;el('board').hidden=true;
   el('experiences').hidden=!lounge;el('workspace').hidden=workshop||(mission?!currentCollaboration():(!current()&&!data.files?.length));el('safety-bar').hidden=true;
-  const action=el('room-action');action.hidden=true;
-  document.getElementById('campus-roster').hidden=!mission;
-  document.getElementById('campus-location').textContent=workshop?'HIRING / MEET YOUR NEXT AGENT':lounge?'LOUNGE / Current Agents: '+(data.agents?.length||0):'Multi-Agent demo';
+  const action=el('room-action');action.hidden=!mission||scenarioChoosing||selectedScenario!=='event-brief';action.textContent='Plan an event';action.onclick=crewForm;action.disabled=!!data.bacResetting||eventTeamWorking();
+  document.getElementById('campus-roster').hidden=!mission||scenarioChoosing;
+  renderScenarioSelector();
+  const activeScenario=stageScenarios.find(s=>s.id===selectedScenario);
+  document.getElementById('campus-location').textContent=workshop?'HIRING / MEET YOUR NEXT AGENT':lounge?'LOUNGE / Current Agents: '+(data.agents?.length||0):(activeScenario?.number.replace(/^0/,'')||'03')+' / '+(activeScenario?.title||'Multi-Agent demo');
   syncSurface();
   if(workshop)document.getElementById('campus-motion-status').textContent='';
   if(lounge)document.getElementById('campus-motion-status').textContent='';
@@ -104,7 +111,7 @@ el('color-picker').onclick=e=>{const b=e.target.closest('[data-avatar-color]');i
 el('accessory').onchange=updateDraft;el('name').addEventListener('input',()=>{draftNameEdited=true;updateDraft();});
 const roleTemplates=[
   {label:'Weather buddy',summary:'Current weather and practical outdoor advice.',purpose:'Check current weather and help me decide what to wear or whether to go outside. Keep advice short and practical.',skills:['weather']},
-  {label:'Tech Radar',summary:'One technical discovery every 30 seconds.',purpose:'Every 30 seconds, share one unread technical article or announcement from NVIDIA or Hugging Face blogs in my chosen tone. Include older articles; never repeat. Skip politics, stocks and earnings.',skills:['radar']},
+  {label:'Tech Radar',summary:'One technical discovery every 20 seconds.',purpose:'Every 20 seconds, share one unread technical article or announcement from NVIDIA or Hugging Face blogs in my chosen tone. Include older articles; never repeat. Skip politics, stocks and earnings.',skills:['radar']},
   {label:'Arxivbot',summary:'Three relevant papers on a topic you choose.',purpose:'When I give you a research topic, find three relevant arXiv papers. Summarize each paper’s main idea, include its title, authors, date and link, and briefly compare them in my chosen tone. Ask for a topic if none is given.',skills:['web']},
   {label:'Slack Announcer',summary:'Emoji-led updates in your chosen voice.',purpose:'Answer in the style of a concise Slack announcement: an emoji-led headline and short, useful lines. Keep my chosen tone and the supplied facts. Draft only; never send or publish.',skills:['writer']},
 ];
@@ -154,7 +161,7 @@ async function waitForAgentDeletion(target,name,onWaiting=()=>{}){
 el('delete-agent').onclick=()=>{
   if(!data.profile||pendingWrites||changingAgent||removingAgent)return;
   const target=agentId,name=data.profile.name;
-  dialog('YOUR COLLECTION',`<div class="studio-delete-identity">${avatarBadge(data.profile.avatar)}<span>REMOVE A TEAMMATE</span></div><h3>Delete ${escape(name)}?</h3><p>Remove this agent, its conversation, saved memory and workspace files from your studio.</p><p>Pending requests and scheduled follow-ups will be cancelled. Any active crew task involving this agent will also stop. Deletion finishes after the current call ends.</p><p class="studio-muted">You cannot undo this in the app. Completed crew packages saved by other agents remain. Agent-owned runtime files and temporary cleanup records are removed when deletion finishes.</p><p id="studio-delete-error" role="alert" hidden></p><div class="studio-delete-actions"><button class="studio-secondary" id="studio-delete-cancel" autofocus>Keep agent</button><button class="studio-danger" id="studio-delete-confirm">Delete ${escape(name)}</button></div>`);
+  dialog('YOUR COLLECTION',`<div class="studio-delete-identity">${avatarBadge(data.profile.avatar)}<span>REMOVE A TEAMMATE</span></div><h3>Delete ${escape(name)}?</h3><p>Permanently delete this agent, its chats, memory and files.</p><p class="studio-muted">Pending and scheduled tasks will be cancelled, and any running task involving this agent will stop.</p><p id="studio-delete-error" role="alert" hidden></p><div class="studio-delete-actions"><button class="studio-secondary" id="studio-delete-cancel" autofocus>Keep agent</button><button class="studio-danger" id="studio-delete-confirm">Delete ${escape(name)}</button></div>`);
   el('delete-cancel').onclick=()=>el('dialog').close();el('delete-cancel').focus();
   el('delete-confirm').onclick=async()=>{
     if(target!==agentId)return;

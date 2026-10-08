@@ -1,5 +1,5 @@
 // Each specialist has a durable direct conversation, separate from crew execution.
-const defaultCrewPrompt=role=>role===0?'/plan ':'';
+const defaultCrewPrompt=role=>selectedScenario==='plan'&&role===0?'/goal ':'';
 const crewDrafts=new Map();let crewChatKey='',crewChatSignature='',crewChatSending=false,crewResetEpoch='';
 // Shared by Lounge, crew chat, event replies and roundtable reactions.
 function customSkillMarkup(activity){
@@ -25,12 +25,13 @@ function webpageButtons(files,jobId){
 }
 root.addEventListener('click',event=>{const page=event.target.closest('[data-preview-file]');if(page)openFile(page.dataset.previewFile,page.dataset.previewJob);});
 // The latest saved plan owns the visible team, including after a refresh.
-function stageCollaboration(job){
- render();
- showCollaboration();
+async function stageCollaboration(job){
+ if(selectedScenario!=='plan')await chooseScenario('plan');
+ scenarioChoosing=false;render();showCollaboration();scenarioChoosing=false;renderRoomVisibility();
 }
 // Keep this visit’s chosen team visible until a newer plan or reset.
 function currentCollaboration(){
+ if(selectedScenario!=='plan')return null;
  const latest=(data.crewChats||[]).filter(j=>j.payload.collaboration&&j.created>=(data.crewChatReset?.at||0)).sort((a,b)=>b.created-a.created)[0];
  return latest||null;
 }
@@ -44,7 +45,9 @@ function renderStandbySpecialists(agents){
  const available=window.BacCrewCatalog.map((member,role)=>({...member,roleIndex:role}))
   .filter(member=>member.planEligible!==false);
  el('standby-count').textContent=String(available.length);
- const markup=available.map(member=>'<li data-standby-role="'+member.roleIndex+'"><div><strong>'+escape(member.name)+'</strong><span>'+escape(member.collaboration.title)+(occupied.has(member.roleIndex)?' · With team':'')+'</span></div><span class="studio-specialist-model" title="'+escape(teamModel(member.roleIndex)?.id||'')+'">'+escape(teamModel(member.roleIndex)?.label||'No model selected')+'</span><p class="studio-specialist-summary">'+escape(member.collaboration.summary||member.collaboration.description)+'</p></li>').join('');
+ const perAgent=data.teamConnection?.shared?data.teamConnection.effectiveSource==='api'&&runtime.modelConnections?.connections?.api?.provider==='nvidia':data.teamConnection?.provider!=='local'&&runtime.teamModel;
+ const locked=modelPickerSaving||!teamRuntime().teamReady||data.bacResetting||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
+ const markup=available.map(member=>'<li data-standby-role="'+member.roleIndex+'"><div><strong>'+escape(member.name)+'</strong><span>'+escape(member.collaboration.title)+(occupied.has(member.roleIndex)?' · With team':'')+'</span></div>'+(perAgent?'<button type="button" class="studio-specialist-model specialist-model-edit" data-standby-model="'+member.roleIndex+'" aria-label="Change '+escape(member.name)+' model" '+(locked?'disabled':'')+'>':'<span class="studio-specialist-model">')+escape(teamModel(member.roleIndex)?.label||'Choose model')+(perAgent?' <span aria-hidden="true">⌕</span></button>':'</span>')+'<p class="studio-specialist-summary">'+escape(member.collaboration.summary||member.collaboration.description)+'</p></li>').join('');
  if(!el('standby-list').contains(document.activeElement)&&el('standby-list').innerHTML!==markup)el('standby-list').innerHTML=markup;
  if(el('standby').open)requestAnimationFrame(fitStandbyPanel);
 }
@@ -57,7 +60,7 @@ teamModelDialog.innerHTML='<header><div><h3 id="team-model-heading">Choose a mod
 let modelPickerRole=0,modelPickerSaving=false,modelPickerDraft=null,modelPickerOwner=null,modelPickerForm=null,modelPickerSettingsScroll=0;
 function syncTeamModelForm(){
  const form=el('team-config-form');if(!form)return;
- const blocked=modelPickerSaving||!runtime.teamModel||data.bacResetting||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
+ const blocked=(data.teamConnection?.shared?data.teamConnection.effectiveSource!=='api':data.teamConnection?.provider==='local')||modelPickerSaving||!teamRuntime().teamReady||data.bacResetting||(selectedScenario==='event-brief'&&data.scenarios?.find(s=>s.id==='event-brief')?.busy)||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
  for(const trigger of form.querySelectorAll('[data-team-model]')){
   const role=Number(trigger.dataset.teamModel),draft=teamModelDrafts.get(role);
   const model=draft?(runtime.teamModels||[]).find(m=>m.id===draft):teamModel(role);
@@ -68,6 +71,8 @@ function syncTeamModelForm(){
  apply.disabled=!!blocked||![...teamModelDrafts].some(([role,id])=>id!==teamModel(role)?.id);
 }
 function renderModelResults(){
+ teamModelDialog.querySelector('[data-model-close]').disabled=modelPickerSaving;
+ teamModelDialog.querySelector('input').disabled=modelPickerSaving;
  const query=teamModelDialog.querySelector('input').value.trim().toLowerCase();
  const selected=modelPickerDraft;
  const models=(runtime.teamModels||[]).filter(m=>(m.id+' '+m.label).toLowerCase().includes(query));
@@ -77,22 +82,25 @@ function renderModelResults(){
 
 }
 root.addEventListener('click',event=>{
- const button=event.target.closest('#studio-team-config-form [data-team-model]');if(!button||button.disabled||modelPickerSaving||!teamModelDialog.hidden)return;
+ const button=event.target.closest('#studio-team-config-form [data-team-model], [data-standby-model]');if(!button||button.disabled||modelPickerSaving||!teamModelDialog.hidden)return;
  modelPickerForm=button.closest('#studio-team-config-form');
- modelPickerRole=Number(button.dataset.teamModel);modelPickerDraft=button.closest('#studio-team-config-form')?(teamModelDrafts.get(modelPickerRole)||teamModel(modelPickerRole)?.id):teamModel(modelPickerRole)?.id;modelPickerOwner=agentId;
+ modelPickerRole=Number(button.dataset.teamModel??button.dataset.standbyModel);modelPickerDraft=button.closest('#studio-team-config-form')?(teamModelDrafts.get(modelPickerRole)||teamModel(modelPickerRole)?.id):teamModel(modelPickerRole)?.id;modelPickerOwner=agentId;
  teamModelDialog.querySelector('#team-model-member').textContent=defaultNames[modelPickerRole]+' · Dedicated team API';
  teamModelDialog.querySelector('input').value='';teamModelDialog.querySelector('.team-model-error').hidden=true;
  renderModelResults();
  // Keep the modal open so focus, backdrop and the paused WebGL scene stay stable.
+ if(!modelPickerForm)dialog(defaultNames[modelPickerRole]+' · Model','');
  modelPickerSettingsScroll=el('dialog').scrollTop;
  el('dialog-body').append(teamModelDialog);
- modelPickerForm.hidden=true;teamModelDialog.hidden=false;
+ if(modelPickerForm)modelPickerForm.hidden=true;teamModelDialog.hidden=false;
  el('dialog').scrollTop=0;teamModelDialog.querySelector('.team-model-results').scrollTop=0;
  teamModelDialog.querySelector('input').focus({preventScroll:true});
 });
 teamModelDialog.querySelector('input').addEventListener('input',renderModelResults);
 function closeTeamModelPicker(){
+ if(modelPickerSaving)return;
  const form=modelPickerForm;modelPickerForm=null;teamModelDialog.hidden=true;
+ if(!form){el('dialog').close();return;}
  if(form?.isConnected&&form===el('team-config-form')&&agentId===modelPickerOwner){
   form.hidden=false;el('dialog').scrollTop=modelPickerSettingsScroll;
   form.querySelector('[data-team-model="'+modelPickerRole+'"]')?.focus({preventScroll:true});
@@ -121,7 +129,13 @@ teamModelDialog.addEventListener('click',async event=>{
    const notice=el('team-model-status');notice.hidden=form.querySelector('[data-team-apply-all]').disabled;notice.textContent='Unsaved model selections. Select Apply changes to save them.';
    closeTeamModelPicker();return;
   }
-  teamModelDialog.querySelector('.team-model-error').hidden=true;renderModelResults();return;
+  if(agentId!==modelPickerOwner){closeTeamModelPicker();return;}
+  teamModelDialog.querySelector('.team-model-error').hidden=true;
+  const pickerRevision=dialogRevision;
+  const saved=await applyTeamModel();
+  // The presenter may close this picker and open another dialog while saving.
+  if(pickerRevision!==dialogRevision||teamModelDialog.hidden||!teamModelDialog.isConnected)return;
+  if(saved)closeTeamModelPicker();else renderModelResults();return;
  }
 
 });
@@ -139,6 +153,7 @@ root.addEventListener('click',async event=>{
 async function applyTeamModel(){
  const target=modelPickerOwner,role=modelPickerRole,model=modelPickerDraft;
  modelPickerSaving=true;
+ if(!teamModelDialog.hidden)renderModelResults();
  syncTeamModelForm();
  try{
   const result=await api('team-model',{role,model},target);
@@ -154,12 +169,13 @@ async function applyTeamModel(){
      const current=draft?(runtime.teamModels||[]).find(m=>m.id===draft):teamModel(index);trigger.querySelector('span').textContent=current?.label||'Choose model';trigger.title=current?.id||'';
     }
     const notice=el('team-model-status');notice.hidden=false;notice.textContent=defaultNames[role]+' · '+(teamModel(role)?.label||model)+' applied. Used from the next request.';
-   }else alert(defaultNames[role]+' model applied. Used from the next request.');
+   }
   }
   return true;
- }catch(error){const message=el('team-model-status');if(message&&agentId===target){message.textContent='Some changes may have saved. '+error.message+' Unsaved selections are kept for retry.';message.hidden=false;}else alert('Model changes could not be applied. '+error.message);return false;}
+ }catch(error){const message=el('team-model-status');if(message&&agentId===target){message.textContent='Some changes may have saved. '+error.message+' Unsaved selections are kept for retry.';message.hidden=false;}else if(!teamModelDialog.hidden&&agentId===target){const notice=teamModelDialog.querySelector('.team-model-error');notice.textContent=error.message;notice.hidden=false;}else alert('Model changes could not be applied. '+error.message);return false;}
  finally{
   modelPickerSaving=false;render();
+  if(!teamModelDialog.hidden)renderModelResults();
   syncTeamModelForm();
  }
 }
@@ -201,7 +217,7 @@ function missionControlTraceMarkup(job){
  let sequence=-1;
  const row=(kind,name,status,content,attrs='',recorded=true,state='')=>'<article class="mission-plan-step" data-trace-key="'+escape(kind+':'+attrs)+'" data-trace-kind="'+kind+'" data-step-state="'+state+'" '+attrs+'><header><small>'+(recorded?String(++sequence).padStart(2,'0')+' · '+({plan:'PLAN',contribution:'CONTRIBUTION',review:'REVIEW',revision:'REVISION REQUEST','revision-work':'REVISION',response:'RESPONSE',stopped:'STOPPED'}[kind]||kind.toUpperCase()):kind==='skipped'?'NOT CALLED':'PLANNED')+'</small><h4>'+escape(name)+'</h4><span>'+escape(status)+'</span></header><div class="mission-plan-content">'+content+'</div></article>';
  const detail=(key,label,content)=>'<details class="mission-trace-detail" data-trace-details="'+key+'"><summary>'+escape(label)+'</summary><div class="chat-prose">'+content+'</div></details>';
- const question=String(plan.task||job.payload.prompt||'').replace(/^\s*\/plans?(?=\s|$)/i,'').trim();
+ const question=String(plan.task||job.payload.prompt||'').replace(/^\s*\/(?:goals?|plans?)(?=\s|$)/i,'').trim();
  let markup=row('user','User','Submitted','<strong>Request</strong><div class="chat-prose">'+messageMarkup(question)+'</div>','',true,'done');
  markup+=row('plan','Casey',plan.summary?'Plan ready':active?'Planning':'No plan saved','<strong>Approach</strong><div>'+messageMarkup(plan.summary||(active?'Casey is deciding which expertise this request needs.':'No plan was saved before the work stopped.'))+'</div>','data-plan-role="0"',true,plan.summary?'done':active?'working':'');
  const called=tasks.filter(task=>plan.handoffs?.[task.role]||plan.outputs?.[task.role]||plan.calledRoles?.includes(task.role));
@@ -271,16 +287,17 @@ function updateMissionControlTrace(lanes,jobId,markup){
  lanes.dataset.traceJob=jobId;lanes._traceMarkup=markup;
 }
 function renderMissionControl(){
+ if(selectedScenario==='event-brief')return;
  const job=missionControlPlan(),intro=el('board').querySelector('.studio-board-intro');
  el('lanes').classList.toggle('studio-plan-control',!!job);
  el('board').classList.toggle('has-plan',!!job);
  intro.querySelector('h3').textContent=job?'Execution trace':'No active plan';
  intro.querySelector('[data-mission-total]').textContent=job?collaborationTime(job):'';
- intro.querySelector('p').textContent=job?job.payload.collaboration.task:'Send /plan to Casey to start. Assigned specialists and progress will appear here.';
+ intro.querySelector('p').textContent=job?job.payload.collaboration.task:'Send /goal to Casey to start. Assigned specialists and progress will appear here.';
  if(!job){el('lanes').innerHTML='';delete el('lanes').dataset.traceJob;delete el('lanes')._traceMarkup;return;}
  updateMissionControlTrace(el('lanes'),job.id,missionControlTraceMarkup(job));
 }
-// /plan is a real Captain-led job; contributions come from completed model calls.
+// /goal is a real Captain-led job; contributions come from completed model calls.
 function collaborationRevisionBody(revision,jobId){
  return '<strong>Casey’s revision assignment</strong><div>'+messageMarkup(revision.task)+'</div><div class="mission-expectation"><small>Expected result</small>'+messageMarkup(revision.expected)+'</div>'+(revision.output?'<details class="mission-trace-detail" data-trace-details="revision-output"><summary>Revised contribution</summary><div class="chat-prose">'+messageMarkup(revision.output.answer)+'</div>'+webpageButtons(revision.output.files,jobId)+collaborationFileButtons(revision.output.files,jobId)+'</details>':'')+(revision.status==='failed'?'<p>The revision did not finish. Previous contributions are preserved.</p>':'');
 }
@@ -336,18 +353,25 @@ function collaborationHistoryMarkup(job){
  return '<article class="chat-turn" data-collaboration-history="'+escape(job.id)+'"><div class="chat-message chat-user"><small>You</small><div>'+messageMarkup(job.payload.prompt)+'</div></div><div class="chat-message chat-agent"><small>Casey · BaC collaboration</small>'+collaborationTimeMarkup(job)+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(answer)+'</div>'+collaborationCompletionMarkup(job.payload.collaboration,collaborationAnswer(job)))+(held?'':collaborationDecisionMarkup(job.payload.collaboration)+webpageButtons(job.result?.files||Object.values(job.payload.collaboration.webpages||{}).flat(),job.id))+'<button type="button" class="studio-secondary" data-open-collaboration>View team conversation</button></div></article>';
 }
 function showCollaboration(){selectedCrewRole=0;setRoom('mission');root.dataset.crewDetails='true';renderCrewPassport();}
-function teamReady(){return runtime.teamReady??runtime.ready;}
-function teamModel(role){const id=data.teamSelections?.find(row=>row.role===role)?.id;return runtime.teamModels?.find(model=>model.id===id)||(id?{id,label:id}:runtime.teamModels?.[[0,5,7].includes(role)?0:1]);}
+function teamRuntime(){if(data.teamConnection?.shared)return {...runtime,teamModel:data.teamConnection.ready,teamReady:data.teamConnection.ready&&!!runtime.gateway};return data.teamConnection?.provider==='local'?{...runtime,teamModel:!!data.teamConnection.local?.model,teamReady:!!data.teamConnection.local?.model&&!!runtime.gateway}:runtime;}
+function teamReady(){return teamRuntime().teamReady??runtime.ready;}
+function teamModel(role){if(data.teamConnection?.shared){const source=data.teamConnection.effectiveSource,connections=runtime.modelConnections?.connections;if(selectedScenario==='event-brief'||source==='local'||connections?.api?.provider!=='nvidia'){const id=data.teamConnection.model;return id?{id,label:id}:null;}}if(data.teamConnection?.provider==='local'){const id=data.teamConnection.local?.model;return id?{id,label:id}:null;}const id=data.teamSelections?.find(row=>row.role===role)?.id;return runtime.teamModels?.find(model=>model.id===id)||(id?{id,label:id}:runtime.teamModels?.[[0,5,7].includes(role)?0:1]);}
 let crewDocumentUpload=false;
-const excludedCrewDocuments=new Set();
+const crewDocumentSelections=new Map();
+function excludedCrewDocuments(){
+ const epoch=data.crewChatReset?.epoch||'';
+ let selection=crewDocumentSelections.get(selectedScenario);
+ if(!selection||selection.epoch!==epoch){selection={epoch,excluded:new Set()};crewDocumentSelections.set(selectedScenario,selection);}
+ return selection.excluded;
+}
 function renderCrewDocuments(){
- const files=data.crewDocuments||[],paths=new Set(files.map(f=>f.path));
+ const files=data.crewDocuments||[],paths=new Set(files.map(f=>f.path)),excluded=excludedCrewDocuments();
  const docs=files.filter(f=>/\.(pdf|pptx|xlsx|txt|md|csv)$/i.test(f.path)&&!/^(?:plan-input|plan|chat)-[0-9a-f]{24}(?:-|\.)/.test(f.path.split('/').at(-1))&&!(/\.(pdf|pptx|xlsx)\.txt$/i.test(f.path)&&paths.has(f.path.slice(0,-4))));
  const box=el('crew-documents');box.hidden=selectedCrewRole!==0||(!docs.length&&!crewDocumentUpload);
- box.innerHTML=docs.map(f=>'<label><input type="checkbox" data-crew-document="'+escape(f.path)+'" '+(excludedCrewDocuments.has(f.path)?'':'checked')+' '+(crewDocumentUpload?'disabled':'')+'><span>'+escape(f.path.slice(6))+'</span></label>').join('')+(crewDocumentUpload?'<small role="status">Adding document…</small>':'');
- return docs.filter(f=>!excludedCrewDocuments.has(f.path));
+ box.innerHTML=docs.map(f=>'<label><input type="checkbox" data-crew-document="'+escape(f.path)+'" '+(excluded.has(f.path)?'':'checked')+' '+(crewDocumentUpload?'disabled':'')+'><span>'+escape(f.path.slice(6))+'</span></label>').join('')+(crewDocumentUpload?'<small role="status">Adding document…</small>':'');
+ return docs.filter(f=>!excluded.has(f.path));
 }
-el('crew-documents').addEventListener('change',event=>{const path=event.target.dataset.crewDocument;if(path){if(event.target.checked)excludedCrewDocuments.delete(path);else excludedCrewDocuments.add(path);}});
+el('crew-documents').addEventListener('change',event=>{const path=event.target.dataset.crewDocument;if(path){const excluded=excludedCrewDocuments();if(event.target.checked)excluded.delete(path);else excluded.add(path);}});
 el('crew-document-add').onclick=()=>el('crew-document-input').click();
 el('crew-document-input').onchange=async event=>{await uploadCrewDocuments([...event.target.files]);event.target.value='';};
 async function uploadCrewDocuments(files){
@@ -372,21 +396,25 @@ for(const type of ['dragover','drop'])el('crew-chat').addEventListener(type,even
 function syncCrewComposer(){
  const captainPlanning=selectedCrewRole===0&&(data.crewChats||[]).some(j=>j.payload?.collaboration&&['queued','running','waiting','stopping'].includes(j.status));
  const memberWorking=(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status)&&(j.payload?.collaboration?(['running','stopping'].includes(j.status)&&j.payload.collaboration.activeRole===selectedCrewRole):j.payload?.crewRole===selectedCrewRole));
- const blocked=!teamReady()||!!data.bacResetting||captainPlanning||memberWorking||crewDocumentUpload;
- el('crew-document-add').hidden=selectedCrewRole!==0;el('crew-document-add').disabled=blocked;
+ const eventWorking=eventTeamWorking(['crew']);
+ const eventPreparing=selectedScenario==='event-brief'&&['queued','running','stopping'].includes(data.preparation?.status);
+ const blocked=scenarioChoosing||scenarioSwitching||!teamReady()||!!data.bacResetting||captainPlanning||memberWorking||eventWorking||eventPreparing||crewDocumentUpload;
+ el('crew-document-add').hidden=selectedCrewRole!==0||selectedScenario==='event-brief';el('crew-document-add').disabled=blocked;
  renderCrewDocuments();
- const commandOnly=/^\s*\/plans?\s*$/i.test(el('crew-prompt').value);
+ const commandOnly=selectedScenario==='plan'&&selectedCrewRole===0&&/^\s*\/(?:goals?|plans?)\s*$/i.test(el('crew-prompt').value);
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending||commandOnly;
  el('crew-chat-connection').hidden=!blocked;
- el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping BaC work and resetting…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(runtime.teamModel??runtime.model)?'Add your key to api.cfg, then run ./bac start.':'Run ./bac start on this computer to connect the team runtime.';
+ el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping BaC work and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':eventPreparing?'Preparing the Event Brief team…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(teamRuntime().teamModel??runtime.model)?'Model not connected. Enable Local or External Endpoint in Settings.':'Run ./bac start on this computer to connect the team runtime.';
 }
 function renderCrewPassport(){
- const epoch=data.crewChatReset?.epoch||'';
+ syncFileButtons();
+ const epoch=selectedScenario+':'+(data.crewChatReset?.epoch||'');
  if(epoch!==crewResetEpoch){
-  crewResetEpoch=epoch;crewDrafts.clear();crewChatKey='';crewChatSignature='';el('crew-prompt').value=defaultCrewPrompt(selectedCrewRole);
-  for(const key of chatImageDrafts.keys())if(key.includes(':crew:'))chatImageDrafts.delete(key);
+  const resetChanged=crewResetEpoch.split(':')[0]===selectedScenario;crewResetEpoch=epoch;if(resetChanged)for(const key of crewDrafts.keys())if(key.startsWith(selectedScenario+':'))crewDrafts.delete(key);crewChatKey='';crewChatSignature='';el('crew-prompt').value=defaultCrewPrompt(selectedCrewRole);
+  for(const key of chatImageDrafts.keys())if(key.includes(':crew:')&&key.includes(':'+selectedScenario+':'))chatImageDrafts.delete(key);
  }
  if(room!=='mission')return;
+ if(selectedScenario==='event-brief')return renderEventCrewPassport();
  const i=selectedCrewRole,name=defaultNames[i],role=window.BacCrewCatalog[i].collaboration.title;
  const avatar=window.BacCampus?.inspect().crewAvatars?.[i]||{};
  el('crew-number').textContent=String(i+1).padStart(2,'0')+' / '+roles.length;
@@ -398,10 +426,10 @@ function renderCrewPassport(){
  el('crew-policy').hidden=window.BacCrewCatalog[i].protection!=='openshell';
  syncPolicyBadges();
  const markup=skills.map(s=>'<span>'+escape(skillLabels[s]||s)+'</span>').join('');if(el('crew-skills').innerHTML!==markup)el('crew-skills').innerHTML=markup;
- const key=agentId+':'+i,switched=key!==crewChatKey;
+ const key=crewDraftKey(i),switched=key!==crewChatKey;
  if(switched){if(crewChatKey)crewDrafts.set(crewChatKey,el('crew-prompt').value);crewChatKey=key;el('crew-prompt').value=crewDrafts.get(key)??defaultCrewPrompt(i);el('crew-chat-error').hidden=true;}
  renderImageDrafts(true);
- el('crew-prompt').placeholder='Message '+name+'…'+(i===0?' or /plan a task with the BaC team':'');
+ el('crew-prompt').placeholder='Message '+name+'…'+(i===0?' or /goal a task with the BaC team':'');
  el('crew-prompt').dataset.planEnabled=String(i===0);syncCrewComposer();
  const turns=(data.crewChats||[]).filter(j=>j.payload.crewRole===i||(j.payload.collaboration&&(j.payload.collaboration.origin?.role===i||j.payload.collaboration.handoffs?.[i]||j.payload.collaboration.tasks?.some(t=>t.role===i)||j.payload.collaboration.activeRole===i))).map(j=>({...j,direct:true}));
  turns.sort((a,b)=>a.created-b.created);
@@ -423,7 +451,11 @@ function renderCrewPassport(){
 el('crew-policy').onclick=()=>openPolicy(selectedCrewRole);
 el('crew-chat').onsubmit=async e=>{
  e.preventDefault();syncCrewComposer();if(el('crew-send').disabled)return;
- const owner=agentId,index=selectedCrewRole,key=owner+':'+index,draft=captureChatDraft(true);
+ const owner=agentId,index=selectedCrewRole,key=crewDraftKey(index),draft=captureChatDraft(true);
+ if(isPlanCommand(draft.prompt)&&(selectedScenario!=='plan'||index!==0)){
+  el('crew-chat-error').textContent=selectedScenario==='event-brief'?eventPlanLocationHint:planLocationHint;
+  el('crew-chat-error').hidden=false;return;
+ }
  let requestPrompt=draft.prompt;
  if(index===0){const docs=renderCrewDocuments();if(docs.length)requestPrompt+='\n\nAttached documents (use these files):\n'+docs.map(f=>f.path.slice(6)).join('\n');}
  crewChatSending=true;syncCrewComposer();el('crew-chat-error').hidden=true;
@@ -431,7 +463,7 @@ el('crew-chat').onsubmit=async e=>{
  catch(error){if(crewChatKey===key){el('crew-chat-error').textContent=error.message;el('crew-chat-error').hidden=false;}}
  finally{crewChatSending=false;syncCrewComposer();}
 };
-el('crew-prompt').addEventListener('input',syncCrewComposer);
+el('crew-prompt').addEventListener('input',()=>{clearPlanLocationHint(true);syncCrewComposer();});
 el('crew-prompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();if(!el('crew-send').disabled)el('crew-chat').requestSubmit(el('crew-send'));}});
 el('crew-conversation').onclick=async e=>{const file=e.target.closest('[data-plan-file]');if(file){await openFile(file.dataset.planFile,file.dataset.planJob);return;}const button=e.target.closest('[data-crew-chat-stop]');if(!button||button.disabled)return;await stopChat(button.dataset.crewChatStop,true);};
 

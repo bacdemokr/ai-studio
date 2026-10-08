@@ -7,7 +7,7 @@
   const tones={kind:['Kind','Warm & encouraging'],direct:['Direct','Clear & candid'],playful:['Playful','Light & witty'],cynical:['Cynical','Dry humor & skepticism']};
   const verbosityLabels={brief:'Brief',balanced:'Balanced',verbose:'Detailed'};
   const capabilities={
-    radar:['Tech Radar','Technical articles and announcements → a short summary','Every 30 seconds · never repeats a shared article'],
+    radar:['Tech Radar','Technical articles and announcements → a short summary','Every 20 seconds · never repeats a shared article'],
     builder:['Build an interactive app','An idea → a playable HTML app','Try: a reaction-time game'],
     documents:['Three Takeaways','Any question or document → three clear points','Always: 1. · 2. · 3. — including event reactions'],
     web:['Research & papers','Recent papers → dated sources and a comparison','Try: find 3 recent arXiv papers on RAG'],
@@ -15,8 +15,14 @@
     memory:['Remember what matters','A preference → a saved note used next time','Try: remember my diet, then suggest a meal'],
     weather:['Live weather','A city → timestamped weather and a forecast','Try: choose a time for an outdoor break']
   };
-  const roles = window.BacCrewCatalog.map(({name,collaboration})=>[name,collaboration.title,collaboration.description]);
-  const defaultNames=roles.map(r=>r[0]);
+  let roles = window.BacCrewCatalog.map(({name,collaboration})=>[name,collaboration.title,collaboration.description]);
+  let defaultNames=roles.map(r=>r[0]);
+  const stageScenarios=/* STAGE_SCENARIOS */;
+  let selectedScenario='plan',scenarioChoosing=true,scenarioSwitching=false;
+  try{const saved=sessionStorage.getItem('bac-stage3-scenario');if(stageScenarios.some(s=>s.id===saved))selectedScenario=saved;}catch{}
+  function scenarioRoles(){roles=window.BacCrewCatalog.map(base=>{const member=selectedScenario==='event-brief'?{...base,...base.event}:base;return [member.name,member.collaboration.title,member.collaboration.description];});defaultNames=roles.map(r=>r[0]);}
+  function crewDraftKey(role){return selectedScenario+':'+agentId+':'+role;}
+  scenarioRoles();
   const personaLabels={guide:'Helper',maker:'Creator',analyst:'Researcher'};
   function toneSummary(profile){
     const custom=(profile.tonePrompt||'').trim().replace(/\s+/g,' ');
@@ -36,6 +42,7 @@
     {id:'memory',icon:'▧',title:'Teach it your style',sub:'A preference → a lasting memory',tag:'PERSONALIZE',color:'#c3ace9',prompt:'Please remember that I prefer concise English answers with three practical bullets, and I like vegetarian food. Save this preference to MEMORY.md. Tell me exactly what you saved.'},
   ];
   let csrf = '', data = {profile:null,jobs:[],files:[],memory:''}, runtime = {}, persona = 'guide', skill = null, selectedJob = null, resultKey = '', board = false, connected = false, busy = false;
+  let resetInProgress=false;
   let agentId='',changingAgent=false,removingAgent=false,pendingWrites=0,refreshVersion=0,collectionKey='';
   let room='workshop',roomsReady=false,draftMode='new',draftOwner='',draftAvatar={body:'classic',color:'green',accessory:'antenna'};
   let draftTone='kind';
@@ -76,12 +83,15 @@
   // State polling is frequent; reuse unchanged snapshots without rebuilding the UI.
   // This cache is tab-local and scoped by agent, never stored on disk.
   const stateCache=new Map();
+  let backgroundWrites=0,agentSwitchVersion=0;
   async function api(path, payload, target=agentId) {
     // Presence renewals belong to the tab, not an editable agent workspace.
     const workspaceWrite=payload!==undefined&&path!=='credential-session';
-    if(workspaceWrite&&changingAgent)throw new Error('Wait for your agent’s workspace to open.');
-    const headers={'X-BaC-Key-Session':credentialSession,...(target?{'X-BaC-Agent':target}:{})};
-    const conditional=path==='state'&&payload===undefined,cached=conditional?stateCache.get(target):null;
+    // Preparation has a captured owner and never applies its response to the UI.
+    const backgroundWrite=path==='prepare-demo'&&payload?.background===true;
+    if(workspaceWrite&&changingAgent&&!backgroundWrite)throw new Error('Wait for your agent’s workspace to open.');
+    const headers={'X-BaC-Scenario':selectedScenario,'X-BaC-Key-Session':credentialSession,...(target?{'X-BaC-Agent':target}:{})};
+    const cacheKey=selectedScenario+':'+target,conditional=path==='state'&&payload===undefined,cached=conditional?stateCache.get(cacheKey):null;
     if(cached)headers['If-None-Match']=cached.etag;
     const options = payload===undefined ? {headers} : {method:'POST',headers:{...headers,'Content-Type':'application/json','X-BaC-CSRF':csrf},body:JSON.stringify(payload)};
     const readTimeout=payload===undefined?(['session','state'].includes(path)?30000:/^(?:agent-policy|crew-policy)(?:\?|$)/.test(path)?45000:0):0;
@@ -89,6 +99,7 @@
     const timeout=controller?setTimeout(()=>controller.abort(),readTimeout):null;
     if(controller)options.signal=controller.signal;
     if(workspaceWrite)pendingWrites++;
+    if(backgroundWrite)backgroundWrites++;
     try {
     let response;
     try {response=await fetch('/api/'+path,options);} catch {if(controller?.signal.aborted)throw new Error('The studio took too long to respond. Please try again.');throw new Error('Cannot reach the studio. Check ./bac status; use ./bac start to restart its services.');}
@@ -97,11 +108,11 @@
     try {result=await response.json();} catch {if(controller?.signal.aborted)throw new Error('The studio took too long to respond. Please try again.');throw new Error('The app server did not return a valid response. Refresh after updating the app.');}
     if(!response.ok){const error=new Error(result.error||'The request could not be completed.');error.status=response.status;throw error;}
     if(conditional&&response.headers.get('ETag')){
-      stateCache.set(target,{etag:response.headers.get('ETag'),value:result});
+      stateCache.set(cacheKey,{etag:response.headers.get('ETag'),value:result});
       if(stateCache.size>16)stateCache.delete(stateCache.keys().next().value);
     }
     return result;
-    }finally{clearTimeout(timeout);if(workspaceWrite)pendingWrites--;}
+    }finally{clearTimeout(timeout);if(workspaceWrite)pendingWrites--;if(backgroundWrite)backgroundWrites--;}
   }
   function rememberSelection(){try{sessionStorage.setItem('bac-selected-agent',agentId);}catch{}}
   function openAgentState(state){
@@ -114,13 +125,20 @@
     if(!data.profile){fillCreator(true);setRoom('workshop');}
   }
   async function switchAgent(next){
-    if(next===agentId)return;
-    if(changingAgent||pendingWrites||removingAgent){alert('Wait for the current save to finish before switching agents.');return;}
+    const version=++agentSwitchVersion;
+    if(next===agentId){++refreshVersion;changingAgent=false;busy=false;render();return;}
+    // Keep the last click instead of rejecting it. Foreground writes still
+    // finish in their original workspace; background preparation can continue.
+    while(pendingWrites>backgroundWrites||removingAgent||hiringArrival||scenarioSwitching){
+      await new Promise(resolve=>setTimeout(resolve,50));
+      if(version!==agentSwitchVersion)return;
+    }
     changingAgent=true;++refreshVersion;
     try{
       const state=await api('state',undefined,next);
-      openAgentState(state);
-    }catch(error){alert(error.message);}finally{changingAgent=false;busy=false;}
+      if(version===agentSwitchVersion)openAgentState(state);
+    }catch(error){if(version===agentSwitchVersion)alert(error.message);}
+    finally{if(version===agentSwitchVersion){changingAgent=false;busy=false;}}
   }
   function renderCollection(){
     el('collection').hidden=!data.profile;
@@ -131,7 +149,7 @@
   }
   el('agent-list').onclick=e=>{const b=e.target.closest('[data-agent-key]');if(b)switchAgent(b.dataset.agentKey);};
   let dialogRevision=0;
-  function dialog(kicker, html) {dialogRevision++;el('dialog').classList.remove('studio-agent-documents','studio-team-settings');el('dialog').classList.toggle('studio-page-preview',['EVENT PAGE','WEBPAGE PREVIEW'].includes(kicker));el('dialog-kicker').textContent=kicker;el('dialog-body').innerHTML=html;if(!el('dialog').open)el('dialog').showModal();}
+  function dialog(kicker, html) {dialogRevision++;el('dialog').classList.remove('studio-agent-documents','studio-team-settings','studio-agent-code');el('dialog').classList.toggle('studio-page-preview',['EVENT PAGE','WEBPAGE PREVIEW'].includes(kicker));el('dialog-kicker').textContent=kicker;el('dialog-body').innerHTML=html;if(kicker==='Settings')el('dialog-body').scrollTop=0;if(!el('dialog').open)el('dialog').showModal();}
   el('dialog').addEventListener('close',()=>{dialogRevision++;});
   el('dialog-close').onclick=()=>el('dialog').close();
   el('dialog').addEventListener('click',e=>{if(e.target===el('dialog')&&!removingAgent){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
@@ -155,9 +173,9 @@
   modelBadge.onkeydown=e=>{if(modelBadge.dataset.actionable==='true'&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();connectionAction();}};
   function runtimeBadge(){
     syncCrewComposer();
-    const state=gatewayState(),slow=state==='slow',modelConnected=room==='mission'?(runtime.teamModel??runtime.model):runtime.model,viewReady=room==='mission'?teamReady():runtime.ready,ready=!!viewReady&&!runtime.testFixture;
+    const state=gatewayState(),slow=state==='slow',modelConnected=room==='mission'?(teamRuntime().teamModel??runtime.model):runtime.model,viewReady=room==='mission'?teamReady():runtime.ready,ready=!!viewReady&&!runtime.testFixture;
     const actionable=!runtime.testFixture&&!runtimeRetrying&&(!runtime.gateway||(!modelConnected&&!settingsButton.hidden));
-    modelBadge.textContent=runtime.testFixture?'TEST FIXTURE · NO REAL MODEL':runtimeRetrying?'Checking connection…':slow?'◷ '+gatewayLabel():!runtime.gateway?'⚠ Agent runtime unavailable · Retry connection':!modelConnected?(room==='mission'?'○ Team API not connected':'○ Model not connected'):'● Ready';
+    modelBadge.textContent=runtime.testFixture?'TEST FIXTURE · NO REAL MODEL':runtimeRetrying?'Checking connection…':slow?'◷ '+gatewayLabel():!runtime.gateway?'⚠ Agent runtime unavailable · Retry connection':!modelConnected?'○ Model not connected':'● Ready';
     modelBadge.dataset.warning=String(!runtime.testFixture&&!slow&&!viewReady);
     modelBadge.dataset.slow=String(!runtime.testFixture&&slow);
     modelBadge.dataset.ready=String(ready&&!slow);modelBadge.dataset.actionable=String(actionable);
@@ -170,8 +188,10 @@
   function current(){return data.jobs.find(j=>j.id===selectedJob)||data.jobs[0];}
   function render() {
     const profile=data.profile, job=current();
-    window.BacCampus?.observeProtection(data.protectionEvents||[]);
     renderCollection();
+    window.BacCampus?.observeProtection(data.protectionEvents||[]);
+    window.BacCampus?.observeExternalActivity(data.jobs||[],agentId);
+    syncFileButtons();
     el('onboarding').hidden=false;el('companion').hidden=!profile;el('lounge-empty').hidden=!!profile;
     if(profile){el('agent-name').textContent=profile.name;el('personality').textContent=toneSummary(profile);el('personality').title=profile.tonePrompt||toneSummary(profile);el('agent-skills').innerHTML=profile.skills.map(s=>'<span class="studio-skill-badge" title="'+escape(capabilities[s]?.[1]||titles[s]||s)+'"><i aria-hidden="true">'+escape(missions.find(m=>m.id===s)?.icon||'◇')+'</i>'+escape(titles[s]||capabilities[s]?.[0]||s)+'</span>').join('');el('agent-skills').hidden=!profile.skills.length;el('equipped').innerHTML=profile.skills.map(s=>{const c=capabilities[s];return c?'<button type="button" data-try-skill="'+s+'"><strong>'+escape(c[0])+'</strong><small>'+escape(c[1])+'</small></button>':'<span>'+escape(titles[s])+'</span>';}).join('');el('memory').hidden=!profile.skills.includes('memory');}
     const personalJobs=data.jobs.filter(j=>!['crew','crew-chat','prepare'].includes(j.kind));
@@ -192,7 +212,7 @@
     el('agent-policy').disabled=!!data.deleting;
     let monitor=el('radar-monitor');if(!monitor){monitor=document.createElement('div');monitor.id='studio-radar-monitor';monitor.className='studio-radar-monitor';el('agent-policy').after(monitor);}
     const watch=data.techRadar;monitor.hidden=!watch;
-    if(watch){monitor.innerHTML='<span><b>Heartbeat</b> · '+escape(watch.paused?'Paused':watch.state)+'<small>One unread article every 30 seconds'+(watch.lastChecked?' · Last checked '+new Date(watch.lastChecked*1000).toLocaleTimeString(): '')+'</small></span><button type="button" class="studio-secondary">'+(watch.paused?'Resume':'Pause')+'</button>';const button=monitor.querySelector('button');button.disabled=!!data.deleting;button.onclick=async()=>{button.disabled=true;try{await api('heartbeat',{paused:!watch.paused});await refresh();}catch(error){alert(error.message);button.disabled=false;}};}
+    if(watch){monitor.innerHTML='<span><b>Heartbeat</b> · '+escape(watch.paused?'Paused':watch.state)+'<small>One unread article every 20 seconds'+(watch.lastChecked?' · Last checked '+new Date(watch.lastChecked*1000).toLocaleTimeString(): '')+'</small></span><button type="button" class="studio-secondary">'+(watch.paused?'Resume':'Pause')+'</button>';const button=monitor.querySelector('button');button.disabled=!!data.deleting;button.onclick=async()=>{button.disabled=true;try{await api('heartbeat',{paused:!watch.paused});await refresh();}catch(error){alert(error.message);button.disabled=false;}};}
 
     el('edit-agent').disabled=!!data.deleting;el('send').disabled=!!data.deleting;
     if(data.deleting){const waiting=data.agents?.find(a=>a.key===agentId)?.deletionWaiting;el('task-state').textContent=waiting?'DELETING':'DELETION NEEDS ATTENTION';el('task-summary').textContent=waiting?'Stopping work. This agent will be removed automatically after the current call ends.':'Cleanup could not finish. Retry Delete agent.';}
@@ -201,14 +221,14 @@
     if(taskFailed){el('task-state').textContent='MISSION NEEDS ATTENTION';el('task-summary').textContent=personalJobs[0].result?.error||'Open Results & files to review this mission.';}
     el('task-state').parentElement.hidden=!(active||assignment||data.deleting||taskFailed);
 
-    el('files').innerHTML=data.files.length?data.files.map(f=>`<button data-studio-file="${escape(f.path)}">${f.path.endsWith('.html')?'⌘':'▤'} ${escape(f.path.split('/').pop())}<span>${Math.ceil(f.size/1024)} KB</span></button>`).join(''):'<p class="studio-muted">Uploaded documents and deliverables live here.</p>';
+    el('files').innerHTML=data.files.length?data.files.map(f=>`<button data-studio-file="${escape(f.path)}">${f.path.endsWith('.html')?'⌘':'▤'} ${escape(f.path.split('/').pop())}<span>${Math.ceil(f.size/1024)} KB</span></button>`).join(''):'<p class="studio-muted">No files yet.</p>';
     el('job-history').innerHTML=data.jobs.slice(0,12).map((j,i)=>`<button data-studio-job="${j.id}" aria-pressed="${job?.id===j.id}">${j.kind==='crew'?'Crew':j.kind==='reminder'?'Follow-up':'Mission'} ${data.jobs.length-i} · ${escape(j.status)}</button>`).join('');
     if(job){
       const events=[...job.events].reverse();
       el('events').innerHTML=events.length?events.map(e=>`<li><b>${escape(e.title)}</b><small>${new Date(e.time*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · ${escape(e.detail)}</small></li>`).join(''):'<li><b>Waiting in the shared queue</b><small>All agents share one model. Scheduled jobs run when their time arrives.</small></li>';
       const key=job.id+job.status+job.events.length;
       if(key!==resultKey){
-        resultKey=key;el('result-title').textContent=job.status==='done'?'Your agent made this.':job.status==='error'?'This mission needs attention.':job.kind==='crew'?'Your crew is building the plan.':'From request to result.';
+        resultKey=key;el('result-title').textContent=job.status==='done'?'Result':job.status==='error'?'This mission needs attention.':job.kind==='crew'?'Your crew is building the plan.':'Working…';
         el('read-aloud').hidden=!job.result.answer;
         el('result').replaceChildren();
         if(job.status==='waiting'){
@@ -216,16 +236,17 @@
         }
         const answer=document.createElement('div');answer.textContent=job.result.answer||job.result.error||Object.values(job.payload.outputs||{}).slice(-1)[0]||(job.status==='queued'?'Your mission is saved in the queue.':job.status==='cancelled'?'This mission was cancelled.':'The agent is working. Actual handoffs and saved files appear in the evidence panel.');el('result').append(answer);
         const apps=(job.result.files||[]).filter(f=>f.endsWith('.html'));
-        if(apps.length){const preview=document.createElement('div');preview.className='studio-app-preview';preview.innerHTML='<strong>Your mini app is ready to try.</strong>'+apps.map(path=>`<button class="studio-primary" data-studio-file="${escape(path)}">Play your app</button>`).join('');el('result').prepend(preview);}
+        if(apps.length){const preview=document.createElement('div');preview.className='studio-app-preview';preview.innerHTML=''+apps.map(path=>`<button class="studio-primary" data-studio-file="${escape(path)}">Play your app</button>`).join('');el('result').prepend(preview);}
         if(job.status==='queued'){const cancel=document.createElement('button');cancel.className='studio-secondary';cancel.dataset.decision='cancel';cancel.textContent='Cancel queued task';el('result').append(cancel);}
       }
     }
-    if(!job){resultKey='';el('result-title').textContent='Results';el('result').textContent='';el('events').innerHTML='<li><b>No mission on this board.</b><small>Real handoffs and results will appear here.</small></li>';el('read-aloud').hidden=true;}
+    if(!job){resultKey='';el('result-title').textContent='Results';el('result').textContent='';el('events').innerHTML='<li><b>No missions yet.</b></li>';el('read-aloud').hidden=true;}
     renderCrew();renderSafety();renderRooms();renderConversation();
     root.dispatchEvent(new Event('bac:state-rendered'));
   }
   el('assigned-crew').onclick=async()=>{const a=data.assignments?.[0];if(!a)return;await switchAgent(a.lead);if(agentId===a.lead){selectedJob=a.job;render();showBoard(true);}};
   function renderCrew(){
+    if(selectedScenario==='event-brief')return renderEventCrew();
     window.BacSound?.observeJobs(agentId,data.jobs);
     renderMissionControl();
     const active=room==='mission'?null:data.jobs.find(j=>['running','stopping'].includes(j.status))||data.jobs.find(j=>j.status==='waiting');
@@ -249,7 +270,7 @@
     const planRoundtable=collaboration?.payload.collaboration.tasks&&collaboration.payload.collaboration.outcome!=='unavailable'?collaboration.payload.roundtable:null;
     if(planRoundtable?.status==='reviewing'&&['running','stopping'].includes(collaboration.status))flow=['Your agents’ take','The result is ready. Your agents are sharing their personal reactions.','Open mission'];
     window.BacCampus?.setLive({...s,live:true,crewMission:collaboration?{id:collaboration.id,kind:'plan',status:collaboration.status,assignedRoles:collaboration.payload.collaboration.tasks?.map(task=>task.role),roundtable:planRoundtable,activeStages:planning?[planning.payload.collaboration.activeRole??0]:[],count:roles.length,enabledRoles:collaborationTeam(collaboration.payload.collaboration),revisionRole:collaboration.payload.collaboration.revision?.role,completed:Object.keys(collaboration.payload.collaboration.outputs||{}).map(Number).filter(role=>!(collaboration.payload.collaboration.revision?.role===role&&['requested','working'].includes(collaboration.payload.collaboration.revision.status)))}:null,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected:room==='mission'?selectedCrewRole:selected,flow,gap:active?.status==='waiting',brief:null,calc:null,policy:null});
-    document.getElementById('campus-motion-status').textContent=planning||active?flow[0]:'Meet your specialists · use /plan to assemble a team';
+    document.getElementById('campus-motion-status').textContent=planning||active?flow[0]:'Meet your specialists · use /goal to assemble a team';
     renderCrewPassport();
   }
   /* STUDIO_CREW */
@@ -261,21 +282,24 @@
       notice.querySelector('button').onclick=async()=>{const action=notice.querySelector('button');action.disabled=true;try{if(agentId!==target)throw new Error('The selected agent changed. Choose a mission again.');await api('profile',{...data.profile,skills:[...new Set([...data.profile.skills,mission.id])]},target);await refresh();notice.remove();if(agentId===target)button.click();}catch(error){notice.querySelector('p').textContent=error.message;action.disabled=false;}};
       notice.scrollIntoView({block:'nearest'});return;
     }el('mission-skill-notice')?.remove();closeSurface();setRoom('lounge');if(mission.id==='radar'){el('radar-monitor')?.scrollIntoView({block:'nearest'});return;}skill=mission.id;const city=runtime.location?.city||'Zurich';el('prompt').value=['weather','writer'].includes(mission.id)?mission.prompt.replaceAll('Zurich',city):mission.prompt;el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===button));if(mission.id==='documents'&&!data.files.some(f=>f.kind==='inbox')){sampleDocument();}el('prompt').focus({preventScroll:true});};
-  el('chat').onsubmit=async e=>{e.preventDefault();if(radarChatDisabled()||!(/^\/plans?(?:\s|$)/i.test(el('prompt').value.trim())?teamReady():runtime.ready)||data.deleting||chatSending||comparisonSending||documentUploadTarget===agentId){syncComposer();return;}el('chat-error').hidden=true;if(e.submitter?.id==='studio-send-all')return askAllAgents();const draft=captureChatDraft();chatSending=true;syncComposer();try{const result=await api('jobs',{kind:'chat',prompt:draft.prompt,skill,images:draft.images});selectedJob=result.id;acknowledgeChatDraft(draft);await refresh();if(result.collaboration)stageCollaboration(result);el('conversation').scrollTop=el('conversation').scrollHeight;}catch(error){el('chat-error').textContent=error.message;el('chat-error').hidden=false;}finally{chatSending=false;syncComposer();}};
-  el('prompt').addEventListener('input',()=>{skill=null;syncComposer();});
-  function sampleDocument(){dialog('Upload notes','<h3>Give your agent something to read.</h3><p>Use your own PDF, PPTX, XLSX, CSV, Markdown or text file, or try a clearly labeled sample meeting note.</p><div class="studio-dialog-actions"><button class="studio-secondary" id="studio-own-document">Upload my file</button><button class="studio-primary" id="studio-sample-document">Use sample notes</button></div>');el('own-document').onclick=()=>{el('dialog').close();el('upload').click();};el('sample-document').onclick=async()=>{try{await api('upload',{name:'sample-meeting-notes.md',content:'# Sample meeting notes — fictional demo data\n\nWe agreed to keep the agent demo to 10 minutes.\nDylan will check the weather-demo endpoint by Thursday.\nMorgan will draft a short invitation; no deadline was agreed.\nWe still need someone to confirm the venue.\nDo not send invitations until the venue is confirmed.\n'});el('dialog').close();await refresh();}catch(e){alert(e.message);}};}
+  el('chat').onsubmit=async e=>{e.preventDefault();if(radarChatDisabled()||!runtime.ready||data.deleting||chatSending||comparisonSending||documentUploadTarget===agentId){syncComposer();return;}el('chat-error').hidden=true;if(rejectLoungePlan())return;if(e.submitter?.id==='studio-send-all')return askAllAgents();const draft=captureChatDraft();chatSending=true;syncComposer();try{const result=await api('jobs',{kind:'chat',prompt:draft.prompt,skill,images:draft.images});selectedJob=result.id;acknowledgeChatDraft(draft);await refresh();el('conversation').scrollTop=el('conversation').scrollHeight;}catch(error){el('chat-error').textContent=error.message;el('chat-error').hidden=false;}finally{chatSending=false;syncComposer();}};
+  el('prompt').addEventListener('input',()=>{skill=null;clearPlanLocationHint();syncComposer();});
+  function sampleDocument(){dialog('Upload notes','<p>Use your own PDF, PPTX, XLSX, CSV, Markdown or text file, or try a clearly labeled sample meeting note.</p><div class="studio-dialog-actions"><button class="studio-secondary" id="studio-own-document">Upload my file</button><button class="studio-primary" id="studio-sample-document">Use sample notes</button></div>');el('own-document').onclick=()=>{el('dialog').close();el('upload').click();};el('sample-document').onclick=async()=>{try{await api('upload',{name:'sample-meeting-notes.md',content:'# Sample meeting notes — fictional demo data\n\nWe agreed to keep the agent demo to 10 minutes.\nDylan will check the weather-demo endpoint by Thursday.\nMorgan will draft a short invitation; no deadline was agreed.\nWe still need someone to confirm the venue.\nDo not send invitations until the venue is confirmed.\n'});el('dialog').close();await refresh();}catch(e){alert(e.message);}};}
   el('attach').onclick=()=>el('upload').click();
   el('upload').onchange=()=>{const files=[...el('upload').files];el('upload').value='';uploadDocuments(files);};
   el('refresh-files').onclick=refresh;
-  el('memory').onclick=()=>{dialog('PERSISTENT MEMORY',`<h3>What ${escape(data.profile.name)} remembers.</h3><p>This is the actual MEMORY.md in your agent’s workspace. Ask your agent to remember, correct or forget a preference.</p><pre>${escape(data.memory||'No saved preferences yet.')}</pre><p>Try refreshing this page, then ask “What do you remember about me?”</p><button class="studio-primary" id="studio-recall">Ask my agent</button>`);el('recall').onclick=()=>{el('dialog').close();el('prompt').value='What do you remember about my preferences? Read MEMORY.md and apply my preferred response style.';skill='memory';el('prompt').focus();};};
-  el('schedule').onclick=()=>{dialog('PERSISTENT FOLLOW-UP',`<h3>Give it something to come back to.</h3><p>The app keeps this task across refreshes and app restarts. It runs through OpenClaw when due; the result appears in this workspace. The server must stay on.</p><form id="studio-schedule-form"><label for="studio-followup">Task</label><textarea id="studio-followup" rows="3" required>Read my saved preferences and suggest one useful next task for me to try.</textarea><label for="studio-delay">Run in</label><select id="studio-delay"><option value="60">1 minute · demo</option><option value="300">5 minutes</option><option value="3600">1 hour</option></select><div class="studio-dialog-actions"><button class="studio-primary">Schedule follow-up</button></div></form>`);el('schedule-form').onsubmit=async e=>{e.preventDefault();try{const job=await api('jobs',{kind:'reminder',prompt:el('followup').value,delay:Number(el('delay').value)});selectedJob=job.id;el('dialog').close();await refresh();}catch(error){alert(error.message);}};};
+  el('memory').onclick=()=>{dialog('PERSISTENT MEMORY',`<h3>What ${escape(data.profile.name)} remembers.</h3><p>This is the actual MEMORY.md in your agent’s workspace. Ask your agent to remember, correct or forget a preference.</p><pre>${escape(data.memory||'No saved preferences yet.')}</pre><button class="studio-primary" id="studio-recall">Ask my agent</button>`);el('recall').onclick=()=>{el('dialog').close();el('prompt').value='What do you remember about my preferences? Read MEMORY.md and apply my preferred response style.';skill='memory';el('prompt').focus();};};
+  el('schedule').onclick=()=>{dialog('PERSISTENT FOLLOW-UP',`<p>The app keeps this task across refreshes and app restarts. It runs through OpenClaw when due; the result appears in this workspace. The server must stay on.</p><form id="studio-schedule-form"><label for="studio-followup">Task</label><textarea id="studio-followup" rows="3" required>Read my saved preferences and suggest one useful next task for me to try.</textarea><label for="studio-delay">Run in</label><select id="studio-delay"><option value="60">1 minute · demo</option><option value="300">5 minutes</option><option value="3600">1 hour</option></select><div class="studio-dialog-actions"><button class="studio-primary">Schedule follow-up</button></div></form>`);el('schedule-form').onsubmit=async e=>{e.preventDefault();try{const job=await api('jobs',{kind:'reminder',prompt:el('followup').value,delay:Number(el('delay').value)});selectedJob=job.id;el('dialog').close();await refresh();}catch(error){alert(error.message);}};};
   /* STUDIO_JSON */
   function downloadBytes(content,mime,name){const url=URL.createObjectURL(new Blob([content],{type:mime})),link=document.createElement('a');link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-  root.addEventListener('bac:world-skill',async e=>{const id=e.detail;if(id==='crew'){setRoom('mission');el('crew-prompt').focus();}else if(id==='security')securityLab();else if(id==='runtime')setup();else{el('missions').querySelector('[data-studio-mission="'+id+'"]')?.click();}});
+  root.addEventListener('bac:world-skill',async e=>{const id=e.detail;if(id==='crew'){setRoom('mission');if(!scenarioChoosing)el('crew-prompt').focus();}else if(id==='security')securityLab();else if(id==='runtime')setup();else{el('missions').querySelector('[data-studio-mission="'+id+'"]')?.click();}});
   /* STUDIO_WORLD */
   /* STUDIO_TELEMETRY */
   /* STUDIO_POLICIES */
+  /* STUDIO_EVENTS */
+  /* STUDIO_EVENT-TEAM */
   /* STUDIO_SURFACES */
+  /* STUDIO_SCENARIOS */
   /* STUDIO_CHAT */
   /* STUDIO_ROOMS */
   /* STUDIO_IDENTITY */
@@ -285,11 +309,11 @@
     selectedCrewRole=e.detail;root.dataset.crewDetails='true';
     renderCrewPassport();
   });
-  async function openFile(path,jobId=''){
-    const target=agentId,revision=dialogRevision;
+  async function openFile(path,jobId='',workspace=''){
+    const target=agentId,scenario=selectedScenario,revision=dialogRevision;
     try{
-      const file=await api('file?path='+encodeURIComponent(path)+(jobId?'&job='+encodeURIComponent(jobId):''));
-      if(target!==agentId||revision!==dialogRevision)return;
+      const file=await api('file?path='+encodeURIComponent(path)+(jobId?'&job='+encodeURIComponent(jobId):'')+(workspace?'&workspace='+encodeURIComponent(workspace):''));
+      if(target!==agentId||scenario!==selectedScenario||revision!==dialogRevision)return;
       if(file.encoding==='base64'){downloadBytes(Uint8Array.from(atob(file.content),c=>c.charCodeAt(0)),file.mime,path.split('/').pop());return;}
       const html=/\.html$/i.test(path),eventPage=path.endsWith('-event-page.html');
       dialog(html?(eventPage?'EVENT PAGE':'WEBPAGE PREVIEW'):'WORKSPACE FILE',

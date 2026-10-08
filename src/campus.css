@@ -1,8 +1,9 @@
 #bac-planner .campus-nav-tag{font-size:15px;padding:2px 5px;background:#191e25;color:#b2bdca;margin-left:5px;border:1px solid #36414d;border-radius:2px}
-#agent-campus{--campus-green:#76b900;background:#090c10}
+#agent-campus{--campus-green:#76b900;--demo-top-gap:clamp(12px,2.4vh,30px);background:#090c10}
+@supports(height:100dvh){#agent-campus{--demo-top-gap:clamp(12px,2.4dvh,30px)}}
 #agent-campus .campus-eyebrow{font-size:15px;letter-spacing:1.7px;font-weight:600;color:#d4dce6;display:flex;gap:8px;align-items:center}
 #agent-campus .campus-eyebrow>span:first-child:empty{width:6px;height:6px;background:#96d52b;border-radius:50%;box-shadow:0 0 10px #76b90066}
-#agent-campus .campus-layout{display:grid;grid-template-columns:minmax(0,1fr) 292px;margin:0 32px;border:1px solid #252d36;border-radius:7px;overflow:hidden;background:#101419}
+#agent-campus .campus-layout{display:grid;grid-template-columns:minmax(0,1fr) 292px;margin:var(--demo-top-gap) 32px 0;border:1px solid #252d36;border-radius:7px;overflow:hidden;background:#101419}
 #agent-campus .campus-stage{position:relative;min-width:0;background:radial-gradient(ellipse at 50% 40%,#191e25,#090c10 80%)}
 #agent-campus .campus-stage-top{position:absolute;top:19px;left:22px;right:22px;z-index:2;display:flex;justify-content:space-between;gap:12px;pointer-events:none}
 #agent-campus .campus-location{font-size:15px;font-weight:600;letter-spacing:2px;color:#d4dce6}
@@ -34,7 +35,7 @@
 @media(min-width:1450px){#campus-viewport{height:540px}}
 @media(max-width:1080px){#agent-campus .campus-layout{grid-template-columns:minmax(0,1fr) 245px}#campus-viewport{height:440px}#agent-campus .campus-sim{font-size:14px}}
 @media(max-width:800px){#agent-campus .campus-layout{grid-template-columns:1fr}}
-@media(max-width:560px){#agent-campus .campus-layout{margin:0 12px}#agent-campus .campus-stage-top{top:14px;left:12px;right:12px;display:block}#agent-campus .campus-location{font-size:14px}#agent-campus .campus-sim{display:block;border:0;padding:6px 0;background:none;letter-spacing:.5px}#campus-viewport{height:350px}#agent-campus .campus-agent-label{font-size:14px;padding:3px 5px}#agent-campus .campus-agent-label small{font-size:14px}#agent-campus .campus-roster button{font-size:15px;padding:12px 5px}#agent-campus .campus-roster small{font-size:14px}}
+@media(max-width:560px){#agent-campus .campus-layout{margin:var(--demo-top-gap) 12px 0}#agent-campus .campus-stage-top{top:14px;left:12px;right:12px;display:block}#agent-campus .campus-location{font-size:14px}#agent-campus .campus-sim{display:block;border:0;padding:6px 0;background:none;letter-spacing:.5px}#campus-viewport{height:350px}#agent-campus .campus-agent-label{font-size:14px;padding:3px 5px}#agent-campus .campus-agent-label small{font-size:14px}#agent-campus .campus-roster button{font-size:15px;padding:12px 5px}#agent-campus .campus-roster small{font-size:14px}}
 
 .world-protection-layer{position:absolute;inset:0;pointer-events:none;z-index:8;overflow:hidden}
 .world-protection-hit{position:absolute;transform:translate(-50%,-100%);padding:10px 16px;border:1px solid #78ddec;border-top:2px solid #ffbe78;border-radius:10px;background:linear-gradient(135deg,rgba(15,35,46,.97),rgba(10,24,34,.97));color:#e1fbff;box-shadow:0 0 0 4px #70dfff0a,0 8px 28px #0008,0 0 24px #54caff29;max-width:260px;text-align:center;line-height:1.45}

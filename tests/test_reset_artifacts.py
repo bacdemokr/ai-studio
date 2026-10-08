@@ -51,3 +51,19 @@ class ResetArtifactsTests(unittest.TestCase):
         self.assertEqual(self.app.state(self.owner)['crewDocuments'],[])
         self.assertTrue(kept.exists())
         self.assertFalse(link.exists())
+
+    def test_directory_removed_mid_listing_does_not_break_state(self):
+        from unittest.mock import patch
+        from pathlib import Path
+        original=Path.rglob
+        def disappear(folder, pattern):
+            if folder.name=='artifacts':
+                def scan():
+                    raise FileNotFoundError('reset removed the directory during iteration')
+                    yield
+                return scan()
+            return original(folder,pattern)
+        self.file(self.owner,category='inbox',name='keep.txt')
+        with patch.object(Path,'rglob',disappear):
+            files=self.app.files(self.owner,recursive=True)
+        self.assertEqual([f['path'] for f in files],['inbox/keep.txt'])

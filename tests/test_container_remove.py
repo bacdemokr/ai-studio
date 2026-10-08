@@ -36,7 +36,7 @@ class Engine:
             self.networks=[n for n in self.networks if n['Id']!=path.split('/')[-1]]
         elif method=='POST':
             for c in self.containers:
-                if c['Id']==path.split('/')[2]: c['State']='exited'
+                if c['Id']==path.split('/')[2]: c['State']='running' if path.endswith('/start') else 'exited'
 
 
 class RemovalTests(unittest.TestCase):
@@ -57,6 +57,11 @@ class RemovalTests(unittest.TestCase):
         with contextlib.redirect_stdout(output): remove.remove(engine,self.gateway,**kwargs)
         return output.getvalue()
 
+    def run_fresh(self, engine, **kwargs):
+        output=io.StringIO()
+        with contextlib.redirect_stdout(output): remove.fresh(engine,self.gateway,**kwargs)
+        return output.getvalue()
+
     def assert_untouched(self, engine):
         self.assertFalse(any(method!='GET' for method,_ in engine.calls))
         self.assertTrue(self.marker.exists())
@@ -69,6 +74,18 @@ class RemovalTests(unittest.TestCase):
         deletions=[p for m,p in engine.calls if m=='DELETE']
         self.assertLess(deletions.index('/containers/studio?v=true'),deletions.index('/containers/sandbox?v=true'))
         self.run_remove(engine)
+
+    def test_fresh_removes_runtime_data_but_keeps_ownership_and_image_history(self):
+        history=self.gateway/remove.IMAGE_HISTORY
+        history.write_text(json.dumps({'owner':'bac-demo','schema':1,'images':['bac-studio:test']}))
+        engine=Engine([self.sandbox,self.foreign,self.studio],[self.volume],[self.network])
+        output=self.run_fresh(engine)
+        self.assertEqual(engine.containers,[self.foreign]);self.assertEqual(engine.volumes,[])
+        self.assertTrue(self.marker.exists());self.assertTrue(history.exists())
+        self.assertFalse((self.gateway/'state').exists())
+        self.assertIn('Cleared BaC runtime state',output)
+        self.run_fresh(engine)
+        self.assertTrue(self.marker.exists());self.assertTrue(history.exists())
 
     def test_unknown_marker_or_volume_owner_rejects_before_mutating(self):
         engine=Engine([self.studio],[{**self.volume,'Labels':{}}])
@@ -86,10 +103,38 @@ class RemovalTests(unittest.TestCase):
             self.assert_untouched(engine)
 
     def test_only_current_helper_exempt_from_mount_check(self):
-        helper={**self.foreign,'Id':'abcdef1234567890','Labels':{'com.nvidia.bac.cleanup':'true'},'Mounts':[{'Source':str(self.gateway)}]}
+        helper={**self.foreign,'Id':'abcdef1234567890','Labels':{'com.nvidia.bac.cleanup':'true',remove.PROJECT_LABEL:'bac-demo','com.docker.compose.service':'studio'},'Mounts':[{'Source':str(self.gateway)}]}
         engine=Engine([self.studio,helper])
         self.run_remove(engine,hostname='abcdef123456')
         self.assertEqual(engine.containers,[helper]); self.assertFalse(self.marker.exists())
+
+    def test_fresh_does_not_stop_its_helper_when_image_labels_include_compose_ownership(self):
+        helper={**self.foreign,'Id':'abcdef1234567890','Labels':{'com.nvidia.bac.cleanup':'true',remove.PROJECT_LABEL:'bac-demo','com.docker.compose.service':'studio'},'Mounts':[{'Source':str(self.gateway)}]}
+        engine=Engine([self.studio,helper],[self.volume])
+        self.run_fresh(engine,hostname='abcdef123456')
+        self.assertEqual(engine.containers,[helper]);self.assertEqual(engine.volumes,[])
+        self.assertTrue(self.marker.exists())
+
+    def test_fresh_rejects_foreign_data_and_network_users_before_deletion(self):
+        engines=[Engine([self.studio],[{**self.volume,'Labels':{}}]),
+                 Engine([self.studio,{**self.foreign,'Mounts':[{'Name':self.volume['Name']}]}]),
+                 Engine([self.studio,self.sandbox],networks=[{**self.network,'Containers':{'model':{}}}])]
+        for engine in engines:
+            with self.subTest(calls=engine.calls),self.assertRaises(RuntimeError):
+                self.run_fresh(engine)
+            self.assert_untouched(engine)
+            self.assertTrue((self.gateway/'state/data').exists())
+
+    def test_fresh_can_resume_after_partial_container_failure(self):
+        engine=Engine([self.studio,self.sandbox,self.foreign],[self.volume])
+        engine.fail=('DELETE','/containers/sandbox?v=true')
+        with self.assertRaises(remove.DockerError):self.run_fresh(engine)
+        self.assertTrue((self.gateway/'state/data').exists())
+        engine.fail=None
+        self.run_fresh(engine)
+        self.assertEqual(engine.containers,[self.foreign])
+        self.assertEqual(engine.volumes,[])
+        self.assertTrue(self.marker.exists())
 
     def test_foreign_network_endpoint_prevents_any_removal(self):
         engine=Engine([self.studio,self.sandbox],networks=[{**self.network,'Containers':{'model':{}}}])

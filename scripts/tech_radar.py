@@ -18,6 +18,8 @@ from email.utils import parsedate_to_datetime
 from urllib.parse import urlsplit, urlunsplit
 import xml.etree.ElementTree as ET
 
+HEARTBEAT_SECONDS = 20
+
 SOURCES = (
     {'id':'nvidia','name':'NVIDIA Developer Blog','url':'https://developer.nvidia.com/blog/feed/','host':'developer.nvidia.com'},
     {'id':'huggingface','name':'Hugging Face Blog','url':'https://huggingface.co/blog/feed.xml','host':'huggingface.co'},

@@ -5,13 +5,73 @@ import sys
 import tempfile
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 sys.path[:0]=[str(Path(__file__).resolve().parents[1]/'scripts'),str(Path(__file__).resolve().parent)]
 import telemetry
+import agent_runtime
 from studio import Studio
 from fixture_studio import BrowserAdapter
 
 class TelemetryTests(unittest.TestCase):
+    def test_repair_turns_accumulate_without_double_counting_saved_response(self):
+        with tempfile.TemporaryDirectory() as folder, patch.object(telemetry, 'host', return_value={}):
+            studio=Studio(Path(folder)/'studio',BrowserAdapter(),start_worker=False)
+            owner=studio.session()[0]['id']
+            studio.onboard(owner,{'name':'Agent','persona':'guide','skills':['weather']})
+            job=studio.enqueue(owner,{'prompt':'Hello'})
+            studio.decision(owner,job['id'],'cancel')
+            payload={}
+            first=telemetry.Reply('draft',{'turnId':'first','total':100,'runSeconds':10})
+            second=telemetry.Reply('repair',{'turnId':'second','total':60,'runSeconds':6})
+            for answer in (first,second,second):
+                studio.record_usage(job['id'],payload,answer,'agent','Morgan',3)
+            self.assertEqual(len(payload['metrics']),2)
+            self.assertEqual(sum(r['total'] for r in payload['metrics'].values()),160)
+            self.assertEqual(sum(r['runSeconds'] for r in payload['metrics'].values()),16)
+            self.assertEqual(telemetry.report(studio,owner)['total'],160)
+            with studio.db() as db:
+                saved=json.loads(db.execute('SELECT payload FROM jobs WHERE id=?',(job['id'],)).fetchone()['payload'])
+            self.assertEqual(saved,payload)
+            # JSON numeric stage keys and parallel completion need not be in
+            # observation-time order. Totals include both; context uses the latest.
+            payload={'metrics':{'3':{'agent':'agent','name':'Morgan','total':60,'context':600,'limit':32000,'measuredAt':20},
+                                '3-social':{'agent':'agent','name':'Morgan','total':100,'context':1000,'limit':32000,'measuredAt':10}}}
+            with studio.db() as db:db.execute("UPDATE jobs SET kind='crew-chat',payload=? WHERE id=?",(json.dumps(payload),job['id']))
+            report=telemetry.report(studio,owner)
+            self.assertEqual(report['total'],160)
+            self.assertEqual(report['agents'][0]['context'],600)
+            self.assertTrue(report['agents'][0]['crew'])
+
+    def test_legacy_stage_records_are_retained_when_new_turn_is_saved(self):
+        studio=MagicMock()
+        payload={'metrics':{'3':{'agent':'agent','name':'Morgan','total':100}}}
+        Studio.record_usage(studio,'job',payload,telemetry.Reply('repair',{'total':60,'turnId':'new'}),'agent','Morgan',3)
+        self.assertEqual([r['total'] for r in payload['metrics'].values()],[100,60])
+
+    def test_endpoint_strips_url_credentials_query_and_fragment(self):
+        config={'agents':{'entries':{'a':{'model':'bac-vllm/model'}}},
+                'models':{'providers':{'bac-vllm':{'baseUrl':'http://user:password@[::1]:8000/v1?key=secret#private'}}}}
+        with patch('agent_runtime.c.read_json',return_value=config):
+            self.assertEqual(agent_runtime.model_endpoint('a'),'Local · Local model · http://[::1]:8000/v1')
+
+    def test_model_endpoint_reports_external_and_local_routes_without_credentials(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'config.json'
+            config={'agents':{'defaults':{'model':{'primary':'bac-team/model'}},'entries':{'external':{'model':'bac-team/model'},'local':{'model':'bac-team-local-a/model'}}},
+                    'models':{'providers':{'bac-team':{'baseUrl':'http://127.0.0.1:3210/provider/team/v1'},
+                                           'bac-team-local-a':{'baseUrl':'http://127.0.0.1:8000/v1'}}}}
+            path.write_text(json.dumps(config))
+            with patch('agent_runtime.config_path',return_value=path):
+                self.assertEqual(agent_runtime.model_endpoint('external'),'External · NVIDIA Inference · https://inference-api.nvidia.com/v1')
+                self.assertEqual(agent_runtime.model_endpoint('local'),'Local · Local model · http://127.0.0.1:8000/v1')
+
+    def test_public_job_includes_updated_time_for_completed_run_duration(self):
+        row={'id':'job','kind':'crew-chat','status':'done','payload':'{}','result':'{}','events':'[]',
+             'created':100.0,'updated':125.5,'due':100.0}
+        public=Studio.public_job(row)
+        self.assertEqual(public['updated'],125.5)
+        self.assertEqual(public['payload'],{})
+
     def test_speed_uses_output_only_and_elapsed_response_time(self):
         with tempfile.TemporaryDirectory() as folder:
             result={'usage':{'prompt_tokens':10000,'completion_tokens':240,'total_tokens':10240}}

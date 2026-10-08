@@ -212,8 +212,8 @@ class PolicyControls:
                             pending.setdefault(host, 'suggested')
                     except ValueError:
                         pass
-        for host in radar_hosts:
-            if host not in covered:pending.setdefault(host,'suggested')
+        # The feed hosts remain available as recommendations. Do not present
+        # them as pending access before the agent actually requests them.
         report['pendingAccess'] = [{'host': host, 'reason': reason} for host, reason in pending.items()]
         report['catalog'] = catalog
         return report

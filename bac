@@ -10,10 +10,12 @@ BaC Agent Studio
   ./bac vllm     Start or reuse Qwen and wait for successful inference
   ./bac vllm --model gemma   Prepare another configured model
   ./bac vllm --restart | --status | --logs | --stop   Manage the local model
-  ./bac start     Install / start / apply updated app files
+  ./bac start     Start fresh with no agents, work, context or usage history
+  ./bac start --keep-data   Keep existing agents, conversations, results, and settings
   ./bac status    Check service status
   ./bac logs      Show recent errors and activity
   ./bac stop      Stop services; keep saved data
+  ./bac stop --all   Also stop this installation's managed local model
   ./bac remove    Uninstall BaC, old images and all project data (asks once)
 
 First time? Run ./bac start, then connect your model in Settings.
@@ -74,16 +76,28 @@ case "$command_name" in
   start|status|logs|stop|remove) ;;
   *) usage >&2; die "Unknown command: $command_name. Old host commands now use ./bac dev COMMAND." ;;
 esac
-[[ $# -eq 1 ]] || die "Use ./bac $command_name without extra arguments."
+stop_all=false
+fresh_start=false
+if [[ $command_name == start ]]; then
+  fresh_start=true
+  if [[ $# -eq 2 && $2 == --keep-data ]]; then
+    fresh_start=false
+  elif [[ $# -eq 2 && $2 == --fresh ]]; then
+    fresh_start=true
+  elif [[ $# -ne 1 ]]; then
+    die 'Use ./bac start [--keep-data].'
+  fi
+elif [[ $command_name == stop && $# -eq 2 && $2 == --all ]]; then
+  stop_all=true
+else
+  [[ $# -eq 1 ]] || die "Use ./bac $command_name without extra arguments (or ./bac stop --all)."
+fi
 if [[ $command_name == start ]]; then
   bash scripts/setup-key-filter.sh
   [[ ! -L api.cfg ]] || die 'api.cfg must be a regular file, not a symlink.'
   if [[ ! -e api.cfg ]]; then (umask 077; touch api.cfg); fi
   [[ -f api.cfg ]] || die 'api.cfg must be a regular file.'
   chmod 600 api.cfg
-  if ! LC_ALL=C awk 'NF {if (NF != 1) bad=1; count++} END {exit (bad || count != 1)}' api.cfg; then
-    die 'Put a valid inference API key in api.cfg, then run ./bac start again.'
-  fi
 fi
 [[ $(uname -s) == Linux ]] || die 'Docker deployment targets Ubuntu. For the existing Mac source preview use ./bac dev preview.'
 command -v docker >/dev/null || die 'Install Docker Engine and its Compose plugin, then run ./bac start again.'
@@ -162,6 +176,22 @@ resource_files() {
   [[ -f $helper && -f $lock ]] || die 'Resource files are missing. Copy the complete release folder and retry.'
 }
 
+sandbox_lifecycle() {
+  local helper=scripts/container_remove.py image
+  [[ -f $helper ]] || helper=remove.py
+  image=$(compose config | awk '$1=="studio:" {studio=1; next} studio && !found && $1=="image:" {print $2; found=1}')
+  if [[ ! -f $helper || -z $image ]] || ! docker image inspect "$image" >/dev/null 2>&1; then
+    echo 'Could not manage BaC sandboxes: the installed helper/image is missing.' >&2
+    return 1
+  fi
+  docker run --rm --pull never --network none --user 0 --entrypoint python3 \
+    --label com.nvidia.bac.cleanup=true \
+    --mount "type=bind,src=${endpoint#unix://},dst=/var/run/docker.sock" \
+    --mount "type=bind,src=$PWD/$helper,dst=/resources.py,readonly" \
+    -v /var/lib/bac-openshell:/var/lib/bac-openshell \
+    "$image" /resources.py "$1"
+}
+
 case "$command_name" in
   start)
     resource_files
@@ -173,7 +203,7 @@ case "$command_name" in
     echo 'Checking the inference API key in api.cfg…'
     if ! compose run --rm --no-deps -T --user 0 --entrypoint python3 \
       -v "$PWD/api.cfg:/run/bac-api.cfg:ro" studio \
-      /opt/bac/source/scripts/api_key_setup.py /run/bac-api.cfg; then
+      /opt/bac/source/scripts/api_key_setup.py /run/bac-api.cfg --optional; then
       exit 1
     fi
     # Record before provisioning so failed starts and later version changes are
@@ -184,10 +214,23 @@ case "$command_name" in
       --mount "type=bind,src=$PWD/$lock,dst=/runtime-lock.json,readonly" \
       "$studio_image" /resources.py --record /runtime-lock.json "$studio_image"
     mkdir -p shared
-    echo 'Restarting BaC services. Active work may stop; saved data is kept.'
-    compose stop studio openshell
+    if $fresh_start; then
+      echo 'Starting fresh. Removing agents, chats, results, context and usage history…'
+      sandbox_lifecycle --fresh
+      # Credentials are optional. Reload api.cfg into the new data volume
+      # after clearing the previous runtime settings.
+      if ! compose run --rm --no-deps -T --user 0 --entrypoint python3 \
+        -v "$PWD/api.cfg:/run/bac-api.cfg:ro" studio \
+        /opt/bac/source/scripts/api_key_setup.py /run/bac-api.cfg --optional; then
+        exit 1
+      fi
+    else
+      echo 'Restarting BaC services. Active work may stop; saved data is kept.'
+      compose stop studio openshell
+    fi
     echo 'Starting the studio and checking readiness…'
     compose up -d --force-recreate --no-build --pull missing --wait --wait-timeout 180
+    if ! $fresh_start; then sandbox_lifecycle --resume; fi
     # The generated config contains the effective port even with .env overrides.
     port=$(compose config | awk '$1=="studio:" {studio=1; next} studio && !found && $1=="PORT:" {gsub(/"/,"",$2); print $2; found=1}')
     echo "Ready: http://localhost:${port:-8080}"
@@ -195,7 +238,20 @@ case "$command_name" in
     ;;
   status) compose ps -a ;;
   logs) compose logs --tail=80 studio openshell ;;
-  stop) compose stop; echo 'BaC stopped. Saved data is kept. Start again with ./bac start.' ;;
+  stop)
+    # Stop dispatch first, then the sandboxes created outside Compose.
+    failed=0
+    compose stop || failed=1
+    sandbox_lifecycle --stop || failed=1
+    if $stop_all; then
+      # Still attempt model shutdown if container cleanup failed.
+      ./bac vllm --stop || failed=1
+    else
+      echo 'The local model is left running. Use ./bac stop --all to stop a model launched by this installation too.'
+    fi
+    (( failed == 0 )) || die 'Shutdown was incomplete. Review the errors above; saved data is kept.'
+    echo 'BaC services and sandboxes stopped. Saved data is kept. Start again with ./bac start.'
+    ;;
   remove)
     install_dir=$(pwd -P)
     removal_mode=release

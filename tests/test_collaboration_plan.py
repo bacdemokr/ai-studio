@@ -46,11 +46,34 @@ class CollaborationTests(unittest.TestCase):
         self.app.onboard(self.owner, {'name': 'Personal', 'skills': ['web']})
 
     def start(self, prompt='/plan Prepare a practical NVIDIA workshop proposal.'):
-        result = self.app.enqueue(self.owner, {'kind':'chat', 'prompt':prompt})
+        result = self.app.enqueue(self.app.crew_owner(self.owner), {'kind':'crew-chat', 'crewRole':0, 'prompt':prompt})
         return result
 
     def job(self, result):
         return next(j for j in self.app.state(self.owner)['crewChats'] if j['id'] == result['id'])
+
+    def test_lounge_plan_and_scheduled_plan_are_rejected_without_work(self):
+        for kind in ('chat', 'reminder'):
+            for command in ('/plan', '  /plan Build a page', '\n /PLANS\nResearch this'):
+                with self.subTest(kind=kind, command=command), self.assertRaisesRegex(Problem, 'Casey in Open Task'):
+                    self.app.enqueue(self.owner, {'kind':kind, 'prompt':command})
+        with self.app.db() as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM jobs').fetchone()[0], 0)
+        self.assertEqual(self.adapter.calls, [])
+
+    def test_mentions_and_similarly_spelled_words_remain_direct_messages(self):
+        for prompt in ('Explain /plan', '/planet facts', '/planning tips', 'Please plan a trip'):
+            self.app.enqueue(self.owner, {'kind':'chat', 'prompt':prompt})
+            row=self.app.next_job()
+            self.assertEqual(row['kind'], 'chat')
+            self.assertNotIn('collaboration', json.loads(row['payload']))
+            self.app.execute(row)
+
+    def test_open_task_does_not_import_current_lounge_conversation(self):
+        self.app.enqueue(self.owner, {'kind':'chat','prompt':'PRIVATE_LOUNGE_DISCUSSION'})
+        self.app.execute(self.app.next_job());self.adapter.calls.clear()
+        self.start();self.app.execute(self.app.next_job())
+        self.assertTrue(all('PRIVATE_LOUNGE_DISCUSSION' not in prompt for _,_,prompt in self.adapter.calls))
 
     def test_command_routes_to_captain_and_runs_real_handoffs(self):
         result = self.start()
@@ -114,8 +137,8 @@ class CollaborationTests(unittest.TestCase):
     def test_command_in_specialist_chat_is_rejected(self):
         team = self.app.crew_owner(self.owner)
         for role in (4,5,6,7,8):
-            for command in ('/plan', ' \n/PLANS'):
-                with self.subTest(role=role, command=command), self.assertRaisesRegex(Problem, 'Send /plan to Casey'):
+            for command in ('/goal', ' \n/GOALS', '/plan', ' \n/PLANS'):
+                with self.subTest(role=role, command=command), self.assertRaisesRegex(Problem, 'Send /goal to Casey'):
                     self.app.enqueue(team, {'kind':'crew-chat','crewRole':role,'prompt':command+' Write a proposal'})
         self.assertIsNone(self.app.next_job())
         self.assertEqual(self.adapter.calls, [])
@@ -230,13 +253,14 @@ class CollaborationTests(unittest.TestCase):
         team=self.app.crew_owner(self.owner)
         for role in range(4):self.assertFalse((self.app.workspace(team,role)/'inbox/private.txt').exists())
 
-    def test_plan_reads_source_conversation_and_captain_followups(self):
-        self.app.enqueue(self.owner, {'kind':'chat','prompt':'Use Zurich, with a budget of CHF 800.'})
+    def test_plan_reads_captain_conversation_and_followups(self):
+        team=self.app.crew_owner(self.owner)
+        self.app.enqueue(team, {'kind':'crew-chat','crewRole':0,'prompt':'Use Zurich, with a budget of CHF 800.'})
         self.app.execute(self.app.next_job())
         first=self.start('/plan Use the constraints we discussed.')
         self.app.execute(self.app.next_job())
         self.assertIn('CHF 800', self.adapter.calls[1][2])
-        self.assertEqual(self.job(first)['payload']['collaboration']['origin'], {'owner':self.owner,'role':None})
+        self.assertEqual(self.job(first)['payload']['collaboration']['origin'], {'owner':team,'role':0})
         team=self.app.crew_owner(self.owner)
         self.adapter.calls.clear()
         self.app.enqueue(team, {'kind':'crew-chat','crewRole':0,'prompt':'/plan Make that proposal shorter.'})
@@ -249,8 +273,14 @@ class CollaborationTests(unittest.TestCase):
         self.assertEqual(len(self.adapter.calls),1)
         self.assertIn('A combined proposal', self.adapter.calls[0][2])
 
-    def test_personal_followup_knows_team_response_without_delegation(self):
-        self.start();self.app.execute(self.app.next_job());self.adapter.calls.clear()
+    def test_legacy_personal_plan_history_remains_readable(self):
+        first=self.start()
+        # Saved plans created by older versions keep their original chat history.
+        with self.app.db() as db:
+            payload=json.loads(db.execute('SELECT payload FROM jobs WHERE id=?',(first['id'],)).fetchone()[0])
+            payload['collaboration']['origin']={'owner':self.owner,'role':None}
+            db.execute('UPDATE jobs SET payload=? WHERE id=?',(json.dumps(payload),first['id']))
+        self.app.execute(self.app.next_job());self.adapter.calls.clear()
         self.app.enqueue(self.owner, {'kind':'chat','prompt':'Summarize their proposal.'})
         self.app.execute(self.app.next_job())
         self.assertEqual(len(self.adapter.calls),1)

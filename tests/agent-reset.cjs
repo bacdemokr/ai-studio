@@ -13,11 +13,12 @@ with tempfile.TemporaryDirectory() as d:
  const b=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});
  try{const p=await b.newPage({viewport:{width:1500,height:1100}}),errors=[];p.on('pageerror',e=>errors.push(e.message));let step=0,fail=true;
  await p.route(/\/api\/(session|state)$/,r=>r.fulfill({json:{...fixture.states[step],bacResetting:bacPending>0?(bacPending--,true):false}}));
+ await p.route('**/api/settings/connections',r=>r.fulfill({json:{connections:{local:{ready:true,enabled:true,provider:'local',model:'fixture',message:'Ready'},api:{ready:false,enabled:false,message:'Not configured'}},loungePreference:'auto',scenarioPreferences:{}}}));
  await p.route('**/api/settings',r=>r.fulfill({json:{provider:'local',providers:{local:{label:'Local',baseUrl:'http://localhost:8000/v1'}},profiles:{},event:{city:'Zurich',language:'English',venue:''}}}));
  await p.route('**/api/delete-agent',r=>{if(step===1&&fail){fail=false;return r.fulfill({status:503,json:{error:'Cleanup needs retry.'}})}assert.equal(r.request().postDataJSON().name,fixture.states[step].agents[0].name);return r.fulfill({json:fixture.results[step++]})});
  let bacCalls=0,bacBusy=false,bacPending=0;await p.route('**/api/bac-reset',r=>{bacCalls++;if(bacPending>0){return r.fulfill({json:{reset:false,resetting:true}});}return bacBusy?r.fulfill({status:409,json:{error:'BaC is still running. Nothing was reset.'}}):r.fulfill({json:{reset:true}});});
  await p.goto(process.env.BAC_TEST_URL||'http://127.0.0.1:8080');await p.waitForFunction(()=>window.BacStudio);
- async function openReset(){await p.locator('#studio-config').click();await p.locator('#studio-settings-reset-tab').click();assert.equal(await p.locator('#studio-settings-reset-panel button').count(),3);}
+ async function openReset(){await p.locator('#studio-config').click();await p.locator('[data-connection-tab=reset]').click();await p.locator('#studio-settings-reset-panel').waitFor({state:'visible'});assert.equal(await p.locator('#studio-settings-reset-panel button').count(),3);}
  await p.route('**/api/jobs',r=>r.fulfill({json:{id:'fixture-compare'}}));
  await p.evaluate(()=>BacStudio.setRoom('lounge'));await p.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
  await p.locator('#studio-prompt').fill('Old comparison');

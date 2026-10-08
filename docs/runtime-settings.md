@@ -13,7 +13,7 @@ NVIDIA keys come from [key management](https://inference.nvidia.com/key-manageme
 
 The context limit defaults to 32,768 tokens and must match the chosen model server. It declares capacity to OpenClaw; it does not configure Ollama’s server-side `num_ctx`. Model listing checks access without generating a completion; it does not guarantee that every listed model supports the agent's tool calls. The readiness check currently requires the selected ID to appear in the model list. Anthropic lists up to 1,000 models; the dialog indicates if more exist.
 
-Set the default city in Settings → Location. Supply dates, venue and other task-specific requirements in your `/plan` message. The old Plan a BaC form is retired. Existing saved event defaults remain readable for compatibility.
+Set the default city in Settings → Location. Supply task-specific requirements in Casey's Open Task `/plan` message. Event Brief uses its own Plan an event form for dates, venue and event requirements.
 
 ## Stage 3 connection and models
 
@@ -29,7 +29,7 @@ Non-secret preferences live at `$BAC_DATA_DIR/host-settings.json`. Stages 1 and 
 
 The Settings API requires an existing browser session, CSRF protection for writes, a loopback peer and a localhost Host header. LAN participants do not see the button and cannot call these routes. For a remote host, forward port 8080 through SSH. Treat the local operating-system account as trusted. Hosted inference sends model requests to the selected provider; OpenShell controls for agent tools remain separate.
 
-For the Docker release, `./bac start` prepares the runtime or refreshes existing services while preserving saved data. For host/development installations only, install once with `./bac dev setup`; Linux user services use `./bac dev start --model external`, and copied/edited source or macOS uses `./bac dev preview`. Save starts the installed runtime if it is offline. Start agents can start it explicitly. On Linux with systemd, Settings starts the same managed gateway service as the CLI. Without systemd (including macOS), the gateway runs as a detached process and logs to `$BAC_DATA_DIR/openclaw/gateway.log`; the app never installs runtime software from a browser request.
+For the Docker release, `./bac start` prepares a fresh runtime and clears saved runtime data. Use `./bac start --keep-data` to refresh existing services without clearing agents, work, context or usage. For host/development installations only, install once with `./bac dev setup`; Linux user services use `./bac dev start --model external`, and copied/edited source or macOS uses `./bac dev preview`. Save starts the installed runtime if it is offline. Start agents can start it explicitly. On Linux with systemd, Settings starts the same managed gateway service as the CLI. Without systemd (including macOS), the gateway runs as a detached process and logs to `$BAC_DATA_DIR/openclaw/gateway.log`; the app never installs runtime software from a browser request.
 
 ## Evidence and focused checks
 

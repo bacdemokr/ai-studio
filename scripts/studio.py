@@ -23,6 +23,7 @@ from studio_policy import PolicyControls
 from crew_roundtable import RoundtableControls, participants as job_participants
 from crew_ownership import CrewOwnership
 from collaboration_plan import CollaborationPlans, is_plan, plan_task
+from event_scenario import EventScenario
 from webpage_artifacts import DEMO_CODING_INSTRUCTIONS, PAGE_INSTRUCTIONS, html_files, collect_pages
 
 CREW_CATALOG = json.loads((Path(__file__).resolve().parents[1] / 'src/crew-catalog.json').read_text())
@@ -117,7 +118,7 @@ def safe_file(directory, relative, exists=False):
     return result
 
 
-class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableControls):
+class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, RoundtableControls):
     def __init__(self, directory=None, adapter=runtime, start_worker=True, recover=False):
         self.directory = Path(directory) if directory else c.initialize() / 'studio'
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -333,7 +334,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
     @staticmethod
     def require_manual_chat(profile):
         if 'radar' in (profile or {}).get('skills', []):
-            raise Problem('Tech Radar runs automatically. Manual chat is disabled.', 409)
+            raise Problem('Tech Radar uses Heartbeat. Manual chat is disabled.', 409)
 
     def require_idle(self, db, owner):
         if owner in self.executing_owners or db.execute("SELECT 1 FROM jobs WHERE owner=? AND status IN ('queued','running','waiting','stopping') AND NOT (kind='prepare-agent' AND status='queued')", (owner,)).fetchone():
@@ -386,8 +387,10 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
             number += 1
 
     def initialize_crew_workspaces(self, owner):
+        from scenarios import crew_member
+        scenario = self.crew_scenario(owner)
         for role, member in enumerate(CREW_CATALOG):
-            profile = {**member, 'skills':list(ROLE_SKILLS[role]), 'protection':member.get('protection','standard')}
+            profile = {**crew_member(member, scenario), '_scenario':scenario, 'skills':list(ROLE_SKILLS[role]), 'protection':member.get('protection','standard')}
             runtime.write_workspace(self.workspace(owner, role), profile, member['role'], overwrite=False)
 
     def initialize_workspace(self, owner):
@@ -412,6 +415,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
                 raise Problem('This studio supports up to %d personal agents per attendee.' % MAX_AGENTS, 409)
             profile['name'] = self.unique_agent_name(db, participant, profile['name'])
             self.initialize_workspace(owner)
+            runtime.write_workspace(self.workspace(owner), profile)
             db.execute('INSERT INTO agents (id,participant,profile,created) VALUES (?,?,?,?)',
                        (owner, participant, json.dumps(profile), time.time()))
             self.queue_agent_preparation(db, owner, profile)
@@ -457,15 +461,17 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
         profile = self.agent_profile(owner, data)
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
-            selected = db.execute("SELECT participant,deleting FROM agents WHERE id=? AND kind='personal'", (owner,)).fetchone()
+            selected = db.execute("SELECT participant,profile,deleting FROM agents WHERE id=? AND kind='personal'", (owner,)).fetchone()
             if not selected:raise Problem('Agent not found. Refresh the studio before hiring.', 404)
             if selected['deleting']:raise Problem('Agent deletion is pending.', 409)
+            if selected['profile']:raise Problem('Your agent was already created in another tab.', 409)
             participant = selected['participant']
             profile['name'] = self.unique_agent_name(db, participant, profile['name'], owner)
+            self.initialize_workspace(owner)
+            runtime.write_workspace(self.workspace(owner), profile)
             changed = db.execute("UPDATE agents SET profile=? WHERE id=? AND profile IS NULL AND kind='personal'", (json.dumps(profile), owner)).rowcount
             if changed:
                 db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
-                self.initialize_workspace(owner)
                 self.queue_agent_preparation(db, owner, profile)
         if not changed:
             raise Problem('Your agent was already created in another tab.', 409)
@@ -505,6 +511,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
                 self.require_idle(db, owner)
                 participant = db.execute('SELECT participant FROM agents WHERE id=?', (owner,)).fetchone()['participant']
                 profile['name'] = self.unique_agent_name(db, participant, profile['name'], owner)
+                runtime.write_workspace(self.workspace(owner), profile)
                 db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(profile), owner))
                 db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
                 self.provisioned.discard(profile['id'])
@@ -657,29 +664,50 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
                 if not self.status_cache[1] or time.monotonic() - self.status_cache[0] > ttl:
                     value = self.runtime_health.observe(self.adapter.status(), time.monotonic())
                     self.status_cache = (time.monotonic(), value)
-        return {**self.status_cache[1], 'instance': self.boot_id}
+        result = {**self.status_cache[1], 'instance': self.boot_id}
+        import model_connections
+        if model_connections.enabled():
+            shared = model_connections.public()
+            external = shared['connections']['api']
+            if external['provider']=='nvidia' and external['ready']:
+                result['teamModels']=external.get('models',[])
+            result.update(modelConnections=shared, model=bool(shared['loungeSource']), ready=bool(shared['loungeSource']) and bool(result.get('gateway')))
+        return result
 
-    def files(self, owner, role=None):
+    def files(self, owner, role=None, *, recursive=False):
         result = []
         base = self.workspace(owner, role)
         for category in ('inbox', 'artifacts'):
             folder = base / category
             if folder.is_symlink():
                 continue
-            for p in sorted(folder.glob('*')):
+            try:
+                paths = sorted(folder.rglob('*') if recursive else folder.glob('*'))
+            except (FileNotFoundError, NotADirectoryError):
+                # A scenario reset can replace the directory during enumeration.
+                continue
+            for p in paths:
                 try:
                     p = safe_file(base, str(p.relative_to(base)), True)
-                    result.append({'path': str(p.relative_to(base)), 'size': p.stat().st_size,
-                                   'updated': p.stat().st_mtime, 'kind': category})
-                except Problem:
+                    stat = p.stat()
+                    result.append({'path': str(p.relative_to(base)), 'size': stat.st_size,
+                                   'updated': stat.st_mtime, 'kind': category})
+                except (Problem, OSError):
+                    # Reset and native tool writes can remove a file mid-listing.
                     continue
         return result[:100]
 
-    def state(self, owner):
-        team = self.existing_crew_owner(owner)
+    def state(self, owner, scenario='plan'):
+        from scenarios import validate
+        from plan_inputs import internal_team_input
+        validate(scenario)
+        team = self.existing_crew_owner(owner, scenario)
         with self.db() as db:
             jobs = [self.public_job(r) for r in db.execute("SELECT * FROM jobs WHERE owner=? AND kind NOT IN ('crew','crew-chat','prepare','prepare-agent') AND created >= (SELECT reset_at FROM agents WHERE id=?) ORDER BY created DESC LIMIT 30", (owner, owner))]
-            crew_chats = [self.public_job(r) for role in range(len(ROLES)) for r in db.execute("SELECT * FROM jobs WHERE (owner=? OR owner IN (SELECT owner FROM crew_contexts WHERE participant=(SELECT participant FROM agents WHERE id=?))) AND kind='crew-chat' AND json_extract(payload,'$.crewRole')=? ORDER BY created DESC LIMIT 30", (owner, owner, role))]
+            crew_chats = [self.public_job(r) for role in range(len(ROLES)) for r in db.execute("SELECT * FROM jobs WHERE (owner=? OR owner=?) AND kind='crew-chat' AND json_extract(payload,'$.crewRole')=? ORDER BY created DESC LIMIT 30", (team, owner if scenario=='plan' else team, role))]
+            if scenario == 'event-brief' and team:
+                reset = self.crew_chat_reset_state(db, team)
+                jobs += [self.public_job(r) for r in db.execute("SELECT * FROM jobs WHERE owner=? AND kind='crew' AND created>=? ORDER BY created DESC LIMIT 30",(team,reset['at']))]
             collection = db.execute('SELECT id,profile,deleting FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?) AND profile IS NOT NULL ORDER BY created,id', (owner,)).fetchall()
             active = [dict(j, payload=json.loads(j['payload'])) for j in db.execute("SELECT id,owner,status,payload,kind,due FROM jobs WHERE status IN ('queued','running','waiting','stopping') AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) ORDER BY created", (owner,))]
             agents = [{'key': r['id'], **json.loads(r['profile']), 'deleting': bool(r['deleting']), 'deletionWaiting': r['deleting'] == 2,
@@ -696,19 +724,31 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
                 agent['avatar'] = avatar_for(agent['key'], agent.get('avatar'))
                 agent.setdefault('tone', 'kind')
                 agent.setdefault('verbosity', 'balanced')
-            bac_resetting = bool(db.execute("SELECT 1 FROM metadata m JOIN agents a ON m.key='bac-reset-pending:'||a.participant WHERE a.id=?",(owner,)).fetchone())
-            crew_chat_reset = self.crew_chat_reset_state(db, owner)
+            bac_resetting = bool(db.execute("SELECT 1 FROM metadata m JOIN agents a ON (m.key='bac-reset-pending:'||a.participant OR m.key='bac-reset-pending:'||a.id) WHERE a.id=?",(team or owner,)).fetchone())
+            crew_chat_reset = self.crew_chat_reset_state(db, team or owner)
             roundtable_turns = self.roundtable_history(db, owner)
             names = {a['key']: a['name'] for a in agents}
             assignments = [{'job': j['id'], 'lead': j['owner'], 'name': names.get(j['owner'], 'BaC Captain'), 'role': m['role'], 'status': j['status']}
                            for j in active if j['kind'] in ('crew','crew-chat') and j['owner'] != owner for m in job_participants(j['payload']) if m.get('key') == owner
                            and (m in j['payload'].get('roster', []) or j['payload'].get('roundtable', {}).get('replies', {}).get(owner, {}).get('status') not in ('done','error','cancelled'))]
         from live_plan_activity import snapshot as live_snapshot
+        personal_profile = self.profile(owner)
+        for job in jobs:
+            if (job['status'] in ('running', 'stopping') and job['kind'] in ('chat', 'reminder')
+                    and personal_profile):
+                job['liveActivity'] = live_snapshot(self.adapter, {
+                    'agent': personal_profile['id'], 'session': 'bac-' + owner,
+                    'started': job['created'], 'role': None})
         for job in crew_chats:
             plan = job['payload'].get('collaboration', {})
             observation = plan.pop('observation', None)
             if job['status'] == 'running' and observation and not plan.get('responseReady'):
                 plan['liveActivity'] = live_snapshot(self.adapter, observation)
+        file_workspaces = []
+        if team:
+            candidates = [('team', None)] + [(str(role), role) for role, member in enumerate(CREW_CATALOG)
+                if (role < 4 if scenario == 'event-brief' else member.get('planEligible') is not False)]
+            file_workspaces = [name for name, role in candidates if self.files(team, role, recursive=True)]
         memory = self.workspace(owner) / 'MEMORY.md'
         memory_text = ''
         try:
@@ -716,7 +756,11 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
         except (Problem, UnicodeError):
             pass
         from team_models import selections
-        return {'crewDocuments': [f for f in self.files(team,0) if f['kind']=='inbox'] if team else [], 'teamSelections': selections(self,team), 'profile': self.profile(owner), 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': self.files(owner),
+        from scenario_models import connection
+        return {'scenario':scenario, 'scenarios':self.scenario_status(owner), 'preparation':self.demo_preparation(team) if team and scenario=='event-brief' else None,
+                'teamConnection': connection(self, team), 'fileWorkspaces': file_workspaces,
+                'hasFiles': bool(self.files(owner, recursive=True)),
+                'crewDocuments': [f for f in self.files(team,0) if f['kind']=='inbox' and not internal_team_input(f['path'])] if team else [], 'teamSelections': selections(self,team,scenario), 'profile': self.profile(owner), 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': self.files(owner),
                 'techRadar': self.heartbeat.status(owner, self.profile(owner) or {}),
                 'memory': memory_text, 'agentId': owner, 'crewOwner': team, 'roundtableTurns': roundtable_turns,
                 'agents': agents, 'agentLimit': MAX_AGENTS, 'assignments': assignments, 'bacResetting': bac_resetting,
@@ -728,8 +772,12 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
         if not isinstance(members, dict) or any(k not in {str(i) for i in range(1, EVENT_ROLE_COUNT)} for k in members):
             raise Problem('Assign personal agents to the specialist roles.')
         account = db.execute('SELECT participant FROM agents WHERE id=?', (owner,)).fetchone()['participant']
+        from scenarios import crew_member
+        scenario = self.crew_scenario(owner)
         roster, used = [], {owner}
         for i, (name, role, persona) in enumerate(ROLES):
+            definition = crew_member(CREW_CATALOG[i], scenario)
+            name, role = definition['name'], definition['role']
             key = None if preset else (lead or owner) if i == 0 else members.get(str(i))
             if key:
                 if not isinstance(key, str) or (i and key in used):
@@ -751,7 +799,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
     @staticmethod
     def public_job(row):
         return {key: json.loads(row[key]) if key in ('payload', 'result', 'events') else row[key]
-                for key in ('id', 'kind', 'status', 'payload', 'result', 'events', 'created', 'due')}
+                for key in ('id', 'kind', 'status', 'payload', 'result', 'events', 'created', 'updated', 'due')}
 
     def upload(self, owner, data):
         role = data.get('crewRole')
@@ -762,6 +810,10 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
         if role is None and not self.profile(owner):
             raise Problem('Create your agent first.')
         name = text(data.get('name'), 100, 'File name')
+        if role is not None:
+            from plan_inputs import EVENT_INTERNAL_INPUTS
+            if name in EVENT_INTERNAL_INPUTS:
+                raise Problem('This filename is reserved for internal team work. Rename your document before uploading.')
         if '/' in name or '\\' in name:
             raise Problem('Use a file name without folders.')
         from document_upload import decode_document
@@ -807,24 +859,27 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
             raise Problem('The team is busy. Finish or stop its current work first.', 409)
 
     def enqueue(self, owner, data, source='web', due=0, lead=None):
-        if data.get('kind') in ('crew', 'prepare'):
-            raise Problem('Event planning has been retired. Send /plan to Casey instead.', 410)
-        # Automatic Tech Radar heartbeats use their own delivery path. Reject
-        # manual requests before /plan can redirect them to the team workspace.
+        if data.get('kind') == 'crew':
+            return self.enqueue_event(owner, data, source, due, lead)
+        if data.get('kind') == 'prepare':
+            raise Problem('Use Event Brief preparation to prepare this team.')
+        # Automatic Tech Radar heartbeats use their own delivery path.
         if data.get('kind', 'chat') in ('chat', 'reminder'):
             self.require_manual_chat(self.profile(owner))
-        collaborative = data.get('kind', 'chat') in ('chat', 'crew-chat') and is_plan(data.get('prompt'))
+        if data.get('kind', 'chat') in ('chat', 'reminder') and is_plan(data.get('prompt')):
+            raise Problem('Send /goal to Casey in Open Task. Lounge agents accept direct messages only.')
+        collaborative = data.get('kind') == 'crew-chat' and is_plan(data.get('prompt'))
+        event_scenario = self.crew_scenario(owner) == 'event-brief'
+        if collaborative and event_scenario:
+            raise Problem('Use Plan an event for Event Brief, or send /goal to Casey in Open Task.')
         if collaborative:
-            if data.get('kind', 'chat') == 'chat':
-                with self.db() as db:
-                    self.require_available(db, owner)
-            origin_role = data.get('crewRole') if data.get('kind') == 'crew-chat' else None
-            if data.get('kind') == 'crew-chat' and (type(origin_role) is not int or not 0 <= origin_role < len(ROLES)):
+            origin_role = data.get('crewRole')
+            if type(origin_role) is not int or not 0 <= origin_role < len(ROLES):
                 raise Problem('Choose a crew member.')
-            if data.get('kind') == 'crew-chat' and origin_role != 0:
-                raise Problem('Send /plan to Casey. Specialists accept direct messages only.')
+            if origin_role != 0:
+                raise Problem('Send /goal to Casey in Open Task. Specialists accept direct messages only.')
             origin = {'owner': owner, 'role': origin_role}
-            task = text(plan_task(data['prompt']), 5995, 'Task after /plan')
+            task = text(plan_task(data['prompt']), 5995, 'Task after /goal')
             owner = self.crew_owner(owner)
             data = {**data, 'kind':'crew-chat', 'crewRole':0, 'skill':None}
             lead = None
@@ -848,7 +903,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
             role = data.get('crewRole')
             if type(role) is not int or not 0 <= role < len(ROLES):
                 raise Problem('Choose a crew member.')
-            if CREW_CATALOG[role].get('planEligible') is False:
+            if (event_scenario and role not in range(4)) or (not event_scenario and CREW_CATALOG[role].get('planEligible') is False):
                 raise Problem('This specialist is no longer available. Ask Casey to assign the current team.')
             if skill:
                 raise Problem('Crew skills are managed by the role.')
@@ -865,11 +920,12 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
                 raise Problem('Schedule between 30 seconds and 24 hours from now.')
             due = time.time() + delay
         # A schedule may be created while offline, but immediate requests must fail visibly.
-        readiness = self.runtime_status()
         team_request = kind == 'crew-chat'
+        from scenario_models import readiness as team_readiness
+        readiness = team_readiness(self, owner) if team_request else self.runtime_status()
         ready = readiness.get('teamReady', readiness.get('ready')) if team_request else readiness.get('ready')
         if kind != 'reminder' and not ready:
-            if team_request:raise Problem('Connect the dedicated Multi-Agent Demo API and OpenClaw on the host.', 503)
+            if team_request:raise Problem('Check this scenario’s model connection and OpenClaw on the host.', 503)
             raise Problem('Your agent is saved. Start the shared LLM and OpenClaw on the host to run this mission.', 503)
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
@@ -883,6 +939,8 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
                 raise Problem('This agent’s policy is being updated. Please wait.', 409)
             if kind in ('crew','crew-chat'):
                 self.require_bac_not_resetting(db, owner)
+            if kind == 'crew-chat' and event_scenario and db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind IN ('crew','prepare') AND status IN ('queued','running','waiting','stopping')",(owner,)).fetchone():
+                raise Problem('The event team is working. Wait for it to finish before messaging.',409)
             if kind == 'crew-chat' and role == 0 and db.execute(
                     "SELECT 1 FROM jobs WHERE owner=? AND kind='crew-chat' AND status IN ('queued','running','waiting','stopping') AND json_type(payload,'$.collaboration')='object' LIMIT 1", (owner,)).fetchone():
                 raise Problem('Casey is coordinating the current plan. Wait for it to finish or stop it before sending a new message.', 409)
@@ -973,7 +1031,8 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
         account = db.execute('SELECT participant FROM agents WHERE id=?', (owner,)).fetchone()
         if not account:
             raise Problem('Agent not found.', 404)
-        saved = db.execute('SELECT value FROM metadata WHERE key=?', ('crew-chat-reset:' + account['participant'],)).fetchone()
+        saved = db.execute("SELECT value FROM metadata WHERE key IN (?,?) ORDER BY CAST(json_extract(value,'$.at') AS REAL) DESC LIMIT 1",
+                           ('crew-chat-reset:'+owner,'crew-chat-reset:'+account['participant'])).fetchone()
         return json.loads(saved['value']) if saved else {'at': 0, 'epoch': ''}
 
     def reset_crew_chats(self, owner, reset_event=False, *, pending_only=False):
@@ -987,11 +1046,13 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
             account = db.execute('SELECT participant FROM agents WHERE id=?', (owner,)).fetchone()
             if not account:
                 raise Problem('Agent not found.', 404)
-            owners = [r['id'] for r in db.execute('SELECT id FROM agents WHERE participant=?', (account['participant'],))]
+            scoped = bool(db.execute('SELECT 1 FROM crew_contexts WHERE owner=?',(owner,)).fetchone())
+            owners = [owner] if scoped else [r['id'] for r in db.execute('SELECT id FROM agents WHERE participant=?', (account['participant'],))]
             slots = ','.join('?' for _ in owners)
             kinds = "('crew','crew-chat','prepare')" if reset_event else "('crew','crew-chat')"
             active = db.execute("SELECT id,status FROM jobs WHERE owner IN (" + slots + ") AND kind IN " + kinds + " AND status IN ('queued','running','waiting','stopping')", owners).fetchall()
-            pending_key = 'bac-reset-pending:' + account['participant']
+            reset_scope = owner if scoped else account['participant']
+            pending_key = 'bac-reset-pending:' + reset_scope
             if pending_only and not db.execute('SELECT 1 FROM metadata WHERE key=?',(pending_key,)).fetchone():
                 return {'reset':True}
             if reset_event:
@@ -1009,7 +1070,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
                 raise Problem('Finish or stop the active BaC work before resetting. Nothing was reset.', 409)
             if reset_event:
                 # Only explicitly owned team workspaces; personal artifacts and uploads survive.
-                teams = [r['owner'] for r in db.execute('SELECT owner FROM crew_contexts WHERE participant=?', (account['participant'],))]
+                teams = [owner] if scoped else [r['owner'] for r in db.execute('SELECT owner FROM crew_contexts WHERE participant=?', (account['participant'],))]
                 workspaces = {self.workspace(team) for team in teams}
                 for team in teams:
                     workspaces.update(self.workspace(team, role) for role in range(len(ROLES)))
@@ -1034,16 +1095,16 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
             reset = {'at': time.time(), 'epoch': secrets.token_hex(12)}
             removed = db.execute("DELETE FROM jobs WHERE owner IN (" + slots + ") AND kind='crew-chat'", owners).rowcount
             db.execute('INSERT OR REPLACE INTO metadata (key,value) VALUES (?,?)',
-                       ('crew-chat-reset:' + account['participant'], json.dumps(reset)))
+                       ('crew-chat-reset:' + reset_scope, json.dumps(reset)))
             if reset_event:
                 db.execute('INSERT OR REPLACE INTO metadata (key,value) VALUES (?,?)',
-                           ('event-board-reset:' + account['participant'], str(reset['at'])))
+                           ('event-board-reset:' + reset_scope, str(reset['at'])))
                 db.execute("DELETE FROM jobs WHERE owner IN (" + slots + ") AND kind='prepare'", owners)
         return {'reset': True, 'removed': removed, 'crewChatReset': reset}
 
     def finish_pending_bac_resets(self):
         with self.db() as db:
-            pending = db.execute("SELECT a.id FROM metadata m JOIN agents a ON m.key='bac-reset-pending:'||a.participant GROUP BY a.participant").fetchall()
+            pending = db.execute("SELECT DISTINCT a.id FROM metadata m JOIN agents a ON m.value=a.id WHERE m.key LIKE 'bac-reset-pending:%'").fetchall()
         for row in pending:
             try:
                 self.reset_crew_chats(row['id'], reset_event=True, pending_only=True)
@@ -1051,7 +1112,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
                 if error.status != 404:raise
 
     def require_bac_not_resetting(self, db, owner):
-        if db.execute("SELECT 1 FROM metadata m JOIN agents a ON m.key='bac-reset-pending:'||a.participant WHERE a.id=?",(owner,)).fetchone():
+        if db.execute("SELECT 1 FROM metadata m JOIN agents a ON (m.key='bac-reset-pending:'||a.participant OR m.key='bac-reset-pending:'||a.id) WHERE a.id=?",(owner,)).fetchone():
             raise Problem('BaC is stopping its current work and resetting. Please wait.',409)
 
     def reset_board(self, owner):
@@ -1082,10 +1143,15 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
         """Verify built-in protection before preparation, direct chat, and event work."""
         from studio_policy import ProtectionNotVerified
         # Saved jobs from an older build must not restore an unprotected Dylan.
+        from scenarios import crew_member
+        definition = crew_member(CREW_CATALOG[role], self.crew_scenario(owner))
+        member.update(name=definition['name'], role=definition['role'], _scenario=self.crew_scenario(owner))
         member['protection'] = CREW_CATALOG[role].get('protection', 'standard')
         agent_id = member['id']
         from team_models import selections
         member['_teamModel'] = selections(self,owner)[role]['id']
+        from scenario_models import prepare
+        prepare(self, owner, member)
         control = member.get('_planControl') if role == 0 else None
         if control not in (None, 'none', 'read'):
             raise ValueError('Invalid Captain tool mode')
@@ -1093,7 +1159,7 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
         modes = self.__dict__.setdefault('_crew_tool_modes', {})
         if agent_id not in self.provisioned or modes.get(agent_id) != mode:
             self.initialize_workspace(owner)
-            self.adapter.register(agent_id, self.workspace(owner, role), member, member['role'])
+            self.adapter.register(agent_id, self.workspace(owner, role), member, CREW_CATALOG[role]['role'])
             self.provisioned.add(agent_id)
             modes[agent_id] = mode
         if member['protection'] != 'openshell':
@@ -1114,7 +1180,11 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
         if role is not None:
             member = {'name':ROLES[role][0], 'persona':ROLES[role][2], 'skills':list(ROLE_SKILLS[role]), 'id':agent_id, 'role':ROLES[role][1]}
             self.prepare_builtin_crew(owner, role, member)
-        elif agent_id not in self.provisioned:
+        else:
+            import model_connections
+            profile = dict(profile)
+            if model_connections.enabled():model_connections.prepare(self,profile,model_connections.read().get('lounge','auto'),'lounge')
+            if agent_id in self.provisioned:return agent_id
             native = profile if role is None else {'name': ROLES[role][0], 'persona': ROLES[role][2], 'skills': list(ROLE_SKILLS[role])}
             self.adapter.register(agent_id, self.workspace(owner, role), native, ROLES[role][1] if role is not None else None)
             self.provisioned.add(agent_id)
@@ -1122,7 +1192,18 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
 
     def record_usage(self, job_id, payload, answer, agent_id, name, stage=0):
         metrics = getattr(answer, 'metrics', {})
-        payload.setdefault('metrics', {})[str(stage)] = {**metrics, 'agent': agent_id, 'name': name}
+        records = payload.setdefault('metrics', {})
+        # Repairs are separate agent turns. Preserve every recorded response,
+        # but do not count a response twice when it is saved after validation.
+        turn = metrics.get('turnId')
+        if turn and any(record.get('turnId') == turn and record.get('agent') == agent_id
+                        for record in records.values()):
+            return
+        key, attempt = str(stage), 1
+        while key in records:
+            attempt += 1
+            key = str(stage) + ':' + str(attempt)
+        records[key] = {**metrics, 'agent': agent_id, 'name': name, 'stage': str(stage)}
         # Save immediately, including when a later artifact validation fails.
         with self.db() as db:
             db.execute('UPDATE jobs SET payload=? WHERE id=?', (json.dumps(payload), job_id))
@@ -1182,8 +1263,10 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
             return self.collaboration_plan(row, payload)
         if row['kind'] == 'crew-chat':
             return self.crew_chat(row, payload)
-        if row['kind'] in ('crew', 'prepare'):
-            raise Problem('Event planning has been retired. Send /plan to Casey instead.', 410)
+        if row['kind'] == 'crew':
+            return self.crew(row, payload)
+        if row['kind'] == 'prepare':
+            return self.prepare_demo_run(row, payload)
         if profile.get('protection') == 'openshell':
             self.event(job_id, 'Preparing OpenShell', 'Checking the protected runtime and agent sandbox configuration.')
         agent_id = self.ensure_agent(owner, profile)
@@ -1242,7 +1325,9 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
             member = self.crew_roster(db, owner, {}, preset=True)[role]
             reset = self.crew_chat_reset_state(db, owner)
             current_event = db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind='crew' AND created>=?", (owner, reset['at'])).fetchone()
-        member['purpose'] = CREW_CATALOG[role]['collaboration']['description']
+        from scenarios import crew_member
+        definition = crew_member(CREW_CATALOG[role], self.crew_scenario(owner))
+        member['purpose'] = definition['collaboration']['description']
         agent_id = member['id']
         report = self.prepare_builtin_crew(owner, role, member)
         if report:
@@ -1251,13 +1336,13 @@ class Studio(CollaborationPlans, CrewOwnership, PolicyControls, RoundtableContro
         self.event(job_id, member['name'] + ' is working', member['role'], role)
         if self.stop_checkpoint(job_id):
             return
-        prompt = ('You are ' + member['name'] + ', the ' + CREW_CATALOG[role]['collaboration']['title'] + '. '
+        prompt = ('You are ' + member['name'] + ', the ' + definition['collaboration']['title'] + '. '
                   + member['purpose'] + '\nAnswer this direct message using your equipped skills. '
                   + ('The inbox may contain the latest event brief and handoffs; use them when relevant. ' if current_event else 'No event has been submitted in this conversation yet. Do not load earlier event briefs, handoffs or conversation transcripts. ') +
                   'This is a conversation, not a new crew mission. Do not claim other agents ran, '
                   'or send invitations or publish anything on the user’s behalf.\n\n' + payload['prompt'])
         if role == 0:
-            prompt += '\nCommunication style: ' + CREW_CATALOG[0]['collaboration'].get('voice', '')
+            prompt += '\nCommunication style: ' + definition['collaboration'].get('voice', '')
         prompt += self.conversation_context(owner, role, row['created'], job_id, plans_only=True)
         session = self.crew_chat_session(owner, role) + ('-' + reset['epoch'] if reset['epoch'] else '')
         prompt += PAGE_INSTRUCTIONS

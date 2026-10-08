@@ -1,6 +1,6 @@
 # /plan team and model selection
 
-The Multi-Agent Demo starts with Casey and three empty desks. Send `/plan` to assemble up to three specialists. Alex and Morgan remain available in the roster; Dylan is excluded from this workflow. The previous event-template form and automatic event preparation are retired. Previously saved event results remain readable.
+Open Task starts with Casey and three empty desks. Send `/plan` to Casey to assemble up to three specialists from Scout, Ada, Iris, Cody and Vera. Other chats do not support `/plan`. Event Brief has a separate fixed team (Casey, Dylan, Alex and Morgan), event form and results.
 
 The assigned team stays seated after completion and after refresh. While Casey plans a new request, the previous team waits; substitutions begin when the new assignment is available. BaC reset returns the scene to Casey alone.
 

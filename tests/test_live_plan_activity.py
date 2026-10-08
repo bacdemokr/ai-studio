@@ -7,6 +7,16 @@ from test_collaboration_plan import CollaborationTests
 
 
 class SnapshotTests(unittest.TestCase):
+    def test_call_identity_survives_the_rolling_activity_window(self):
+        calls=[{'id':'call-'+str(i),'tool':'web_fetch','target':'https://example.com','status':'completed'} for i in range(13)]
+        reader=Mock(return_value={'available':True,'calls':calls[:12]})
+        observation={'agent':'a','session':'s','started':time.time(),'role':None}
+        first=snapshot(SimpleNamespace(observed_activity=reader),observation)
+        reader.return_value={'available':True,'calls':calls}
+        second=snapshot(SimpleNamespace(observed_activity=reader),observation)
+        self.assertEqual(first['calls'][1]['id'],second['calls'][0]['id'])
+        self.assertEqual(second['calls'][-1]['id'],'call-12')
+
     def test_sanitizes_observed_metadata(self):
         reader=Mock(return_value={'available':True,'calls':[
             {'tool':'web_fetch','target':'https://user:secret@example.com/page?token=secret','status':'completed','text':'PRIVATE'},
@@ -30,6 +40,25 @@ class SnapshotTests(unittest.TestCase):
 
 
 class StateActivityTests(CollaborationTests):
+    def test_personal_job_exposes_live_web_activity_only_while_running(self):
+        observed=[]
+        self.adapter.observed_activity=Mock(return_value={'available':True,'calls':[
+            {'tool':'web_fetch','target':'https://example.com/private?token=secret','status':'running'}]})
+        original=self.adapter.respond
+        def respond(agent,session,prompt,**kwargs):
+            if session == 'bac-' + self.owner:
+                job=self.app.state(self.owner)['jobs'][0]
+                self.assertEqual(job['liveActivity']['role'],None)
+                self.assertEqual(job['liveActivity']['calls'][0]['target'],'example.com')
+                self.assertNotIn('secret',str(job['liveActivity']))
+                observed.append(job['liveActivity'])
+            return original(agent,session,prompt,**kwargs)
+        self.adapter.respond=respond
+        self.app.enqueue(self.owner,{'kind':'chat','prompt':'Read example.com','source':'test'})
+        self.app.execute(self.app.next_job())
+        self.assertTrue(observed)
+        self.assertNotIn('liveActivity',self.app.state(self.owner)['jobs'][0])
+
     def test_live_activity_is_scoped_and_stops_after_completion(self):
         observed=[]
         self.adapter.observed_activity=Mock(return_value={'available':True,'calls':[{'tool':'web_fetch','target':'https://example.com/','status':'completed'}]})

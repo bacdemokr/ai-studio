@@ -18,10 +18,24 @@
 #bac-planner #agent-campus :is(.studio-team-actions button,.campus-scene-bottom button,.world-overview-button,#studio-crew-chat button):focus-visible{
  outline:2px solid #a5d85b;outline-offset:3px;
 }
-/* Compact equal-height actions leave more room for the conversation. */
-#bac-planner #agent-campus #studio-crew-passport .studio-team-actions{padding:14px 16px;gap:7px;background:#15202a;border-bottom-color:#ffffff0e}
-#bac-planner #agent-campus .studio-team-actions button{min-width:0;min-height:42px;padding:10px 9px;font-size:13px;white-space:nowrap;flex:1}
-#bac-planner #agent-campus .studio-team-actions [data-surface=control]{flex:1.25}
+/* Primary work above, quiet settings below. Neither row stretches into equal boxes. */
+#bac-planner #agent-campus #studio-crew-passport .studio-team-actions{padding:16px 20px 4px;gap:6px;align-items:center;flex-wrap:wrap;background:transparent;border:0}
+#bac-planner #agent-campus #studio-crew-passport .studio-team-actions button{flex:0 0 auto;min-width:0;min-height:36px;padding:8px 11px;font-size:14px;font-weight:550;white-space:nowrap;border:1px solid transparent;background:transparent;box-shadow:none;color:#b9c9d2}
+#bac-planner #agent-campus #studio-crew-passport .studio-team-actions button:hover:not(:disabled){background:#ffffff08;border-color:transparent;color:#f2f7fa}
+#bac-planner #agent-campus #studio-crew-passport .studio-team-actions .studio-team-start{background:#243820;border-color:#76b90055;color:#d9edbf;padding-inline:14px;margin-right:4px}
+#bac-planner #agent-campus #studio-crew-passport .studio-team-actions .studio-team-start:hover:not(:disabled){background:#304924;border-color:#76b90099;color:#efffdb}
+#bac-planner #agent-campus #studio-crew-passport .studio-team-connection-bar{padding:6px 20px 12px;gap:12px;border-bottom:1px solid #ffffff0c;color:#91a6b4;font-size:12px;line-height:1.4}
+.studio-team-connection-state{min-width:0}
+.studio-team-connection-state i{flex:none}
+.studio-team-utilities{display:flex;align-items:center;gap:4px;flex:none}
+#bac-planner #agent-campus #studio-crew-passport .studio-team-utility{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:32px;padding:5px 7px;border:1px solid transparent;border-radius:6px;background:transparent;box-shadow:none;color:#a7bac6;font-family:inherit;font-size:12px;font-weight:500;line-height:1.4;cursor:pointer;white-space:nowrap;transition:background-color .16s,color .16s}
+#bac-planner #agent-campus #studio-crew-passport .studio-team-utility:hover:not(:disabled){background:#ffffff08;color:#edf5fa}
+#bac-planner #agent-campus #studio-crew-passport .studio-team-utility:focus-visible{outline:2px solid #a5d85b;outline-offset:2px}
+#bac-planner #agent-campus #studio-crew-passport .studio-team-utility:disabled{opacity:.4;cursor:not-allowed}
+.studio-team-utility svg{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+#bac-planner #agent-campus #studio-crew-passport #studio-bac-reset{margin-left:5px;color:#91a6b4}
+#bac-planner #agent-campus #studio-crew-passport #studio-bac-reset:hover:not(:disabled){color:#f0afa6;background:#b44b3c12}
+#bac-planner #agent-campus #studio-crew-passport .studio-team-connection-bar[data-connected=false] .studio-team-connection-state{color:#d4b68b}
 /* A restrained utility bar instead of a row of mismatched boxes. */
 #bac-planner #agent-campus .campus-scene-bottom>.row{gap:6px;align-items:center}
 #bac-planner #agent-campus .campus-scene-bottom button{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;min-height:36px;padding:0;font-size:16px}
@@ -59,12 +73,18 @@
 @media(prefers-reduced-motion:reduce){#bac-planner #agent-campus :is(button,summary,#studio-crew-chat){transition:none}}
 
 /* Compact settings rows: one label, one action, with the combined reset separated below. */
-#studio-dialog:has(#studio-config-form){width:min(740px,calc(100vw - 32px));padding:28px;border-color:#34434e;border-radius:10px}
-#studio-dialog:has(#studio-config-form) #studio-config-form{max-width:none}
-#studio-dialog:has(#studio-config-form) .studio-dialog-heading{margin-bottom:20px}
-#studio-dialog:has(#studio-config-form) #studio-dialog-kicker{font-size:24px;line-height:1.25;letter-spacing:-.4px}
-#studio-dialog .studio-settings-tabs{gap:24px;margin-bottom:0}
-#studio-dialog .studio-settings-tabs button{font-size:15px;font-weight:500;padding:12px 0;border-bottom-width:2px}
+#studio-dialog:has(#studio-config-form,#studio-model-connections){width:min(850px,calc(100vw - 32px));padding:28px;border-color:#34434e;border-radius:10px}
+#studio-dialog:has(#studio-config-form,#studio-model-connections) #studio-config-form{max-width:none}
+#studio-dialog:has(#studio-config-form,#studio-model-connections) .studio-dialog-heading{margin-bottom:20px}
+#studio-dialog:has(#studio-config-form,#studio-model-connections) #studio-dialog-kicker{font-size:24px;line-height:1.25;letter-spacing:-.4px}
+/* Keep Settings anchored when switching between short and long tabs. */
+#studio-dialog[open]:has(#studio-config-form,#studio-model-connections){display:flex;flex-direction:column;height:min(800px,90dvh);max-height:90dvh;overflow:hidden}
+#studio-dialog:has(#studio-config-form,#studio-model-connections) .studio-dialog-heading{flex-shrink:0}
+#studio-dialog:has(#studio-config-form,#studio-model-connections) #studio-dialog-body{flex:1;min-height:0;overflow-y:auto;scrollbar-gutter:stable;padding:2px 4px}
+#studio-dialog :is(.studio-settings-tabs,.connection-tabs){position:sticky;top:0;z-index:2;background:#141b23;display:flex;gap:24px;margin:0 0 24px;border-bottom:1px solid #354e5d}
+#studio-dialog :is(.studio-settings-tabs,.connection-tabs) button{box-sizing:border-box;background:none!important;border:0!important;border-bottom:2px solid transparent!important;border-radius:0!important;padding:12px 2px!important;color:#b7c7d2!important;font:inherit;font-size:14px;font-weight:600;line-height:20px}
+#studio-dialog :is(.studio-settings-tabs,.connection-tabs) button:is([aria-selected=true],[aria-current=page]){color:#fff!important;border-bottom-color:#76b900!important}
+
 #studio-dialog #studio-settings-model-panel{padding-top:20px}
 #studio-dialog .studio-reset-row{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:27px 0}
 #studio-dialog .studio-reset-row>div{min-width:0}
@@ -83,7 +103,7 @@
 #studio-dialog #studio-settings-status:empty{display:none}
 #studio-config-form>.studio-dialog-actions:has(#studio-save-settings[hidden]){display:none}
 @media(max-width:520px){
- #studio-dialog:has(#studio-config-form){padding:20px}
+ #studio-dialog:has(#studio-config-form,#studio-model-connections){padding:20px}
  #studio-dialog .studio-reset-row{gap:14px;padding:23px 0;align-items:flex-start}
  #studio-dialog .studio-reset-row p{font-size:13px}
  #studio-dialog #studio-settings-reset-panel button{min-width:88px;padding:0 12px}
@@ -128,10 +148,6 @@
 /* Stage 3 should be readable at normal desktop zoom, including large displays. */
 @media(min-width:1100px){
  #bac-planner #agent-campus[data-room=mission]:not([data-world-overview=true]) .campus-layout{grid-template-columns:minmax(0,1fr) clamp(440px,34vw,640px)!important}
- #bac-planner #agent-campus #studio-crew-passport .studio-team-actions{padding:16px 24px;gap:10px}
- #bac-planner #agent-campus #studio-crew-passport .studio-team-actions button{min-height:50px;font-size:17px;padding:12px}
- #bac-planner #agent-campus #studio-crew-passport .studio-team-connection-bar{padding:16px 24px;font-size:16px}
- #bac-planner #agent-campus #studio-crew-passport #studio-team-setup{font-size:15px;min-height:42px;padding:10px 14px}
  #bac-planner #agent-campus #studio-standby>summary{font-size:17px;padding:16px 24px}
  #bac-planner #agent-campus #studio-standby-count{font-size:14px;min-width:26px;height:26px}
  #bac-planner #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content{padding:22px 24px;gap:14px;overflow-y:auto}

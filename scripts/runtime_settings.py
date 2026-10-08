@@ -17,8 +17,13 @@ import urllib.request
 import ops_common as c
 import session_secrets as secrets
 
-MAX_OUTPUT_TOKENS = 8192
+MAX_OUTPUT_TOKENS = 16384
 AGENT_TIMEOUT_SECONDS = 360
+
+
+def output_token_limit(context_window):
+    """Reserve at least half of the configured context for input and tools."""
+    return min(MAX_OUTPUT_TOKENS, context_window // 2)
 
 
 def apply_context_limits(config):
@@ -30,7 +35,7 @@ def apply_context_limits(config):
     fetch['maxChars'] = min(fetch.get('maxChars', 3000), 3000, fetch['maxCharsCap'])
     compaction = config.setdefault('agents', {}).setdefault('defaults', {}).setdefault('compaction', {})
     compaction['enabled'] = True
-    # Native default retains 20k recent tokens, almost the whole 24k input
+    # Native default retains 20k recent tokens, exceeding the 16k input
     # budget of our 32k models. Leave room for summaries, tools and new evidence.
     compaction['keepRecentTokens'] = min(compaction.get('keepRecentTokens', 8192), 8192)
     compaction['midTurnPrecheck'] = {'enabled': True}
@@ -237,7 +242,8 @@ def verify_connection(provider, profile):
     if not isinstance(rows,list):
         raise Problem('The endpoint did not return a model list. Check the API endpoint.',502)
     if not any(isinstance(item,dict) and item.get('id')==profile['model'] for item in rows):
-        raise Problem('The selected model was not returned by this provider. Use Load models to choose an available model.',502)
+        raise Problem('The selected model is unavailable. Search for another model.',502)
+    return rows
 
 
 def apply_to_config(config, provider, profile):
@@ -245,7 +251,7 @@ def apply_to_config(config, provider, profile):
     config.setdefault('models',{}).setdefault('providers',{})['bac-'+provider]={
         'baseUrl':secrets.proxy_url(provider,profile['baseUrl']) if profile['apiKey'] else profile['baseUrl'],'apiKey':'session-only' if profile['apiKey'] else 'local-only','api':PROVIDERS[provider]['api'],
         'models':[{'id':profile['model'],'name':profile['model'],'input':['text','image'],'reasoning':False,
-                   'contextWindow':profile['contextWindow'],'contextTokens':profile['contextWindow'],'maxTokens':MAX_OUTPUT_TOKENS,
+                   'contextWindow':profile['contextWindow'],'contextTokens':profile['contextWindow'],'maxTokens':output_token_limit(profile['contextWindow']),
                    'cost':{'input':0,'output':0,'cacheRead':0,'cacheWrite':0}}]}
     config['agents']['defaults']['model']={'primary':ref,'fallbacks':[]}
     config['agents']['defaults']['timeoutSeconds']=AGENT_TIMEOUT_SECONDS

@@ -22,7 +22,11 @@ def read_documents(studio, owner, role=None):
         if not profile:raise Problem('Choose a hired agent.',404)
         name=profile['name'];description=profile.get('purpose') or 'Personal agent';skills=profile['skills']
     else:
-        name,description,_=ROLES[role];skills=ROLE_SKILLS[role]
+        from studio import CREW_CATALOG
+        from scenarios import crew_member
+        member = crew_member(CREW_CATALOG[role], studio.crew_scenario(owner))
+        name,description = member['name'],member['collaboration']['description']
+        skills=ROLE_SKILLS[role]
     workspace=studio.workspace(owner,role)
     requested=[(name,title,'agent') for name,title in CORE_DOCUMENTS]
     requested += [(name,title,'agent') for name,title in OPTIONAL_DOCUMENTS if (workspace/name).exists()]

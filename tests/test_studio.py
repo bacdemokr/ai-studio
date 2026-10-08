@@ -80,8 +80,8 @@ class StudioTests(unittest.TestCase):
         # General chat fixtures exclude the independent background monitor.
         self.studio.onboard(self.owner, {'name': 'Jinny', 'persona': 'maker', 'skills': [s for s in agent_runtime.SKILLS if s != 'radar']})
 
-    def test_tech_radar_manual_requests_rejected_before_plan_routing(self):
-        profile = {**self.studio.profile(self.owner), 'skills': ['radar', 'web']}
+    def test_tech_radar_only_manual_requests_rejected_before_plan_routing(self):
+        profile = {**self.studio.profile(self.owner), 'skills': ['radar']}
         with patch.object(self.studio, 'profile', return_value=profile), \
              patch.object(self.studio, 'crew_owner') as route:
             with self.studio.db() as db:
@@ -94,14 +94,28 @@ class StudioTests(unittest.TestCase):
             with self.studio.db() as db:
                 self.assertEqual(db.execute('SELECT count(*) FROM jobs').fetchone()[0], before)
 
+    def test_radar_skill_blocks_manual_work_with_any_other_skill(self):
+        original = self.studio.profile(self.owner)
+        for skills in [['radar', key] for key in agent_runtime.SKILLS if key != 'radar'] + [list(agent_runtime.SKILLS)]:
+            with self.subTest(skills=skills), self.studio.db() as db:
+                db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps({**original, 'name':'Pixel', 'skills':skills}), self.owner))
+                before = db.execute('SELECT count(*) FROM jobs').fetchone()[0]
+            for request in ({'kind':'chat', 'prompt':'Do I need an umbrella?'},
+                            {'kind':'reminder', 'prompt':'Check later', 'delay':60}):
+                with self.subTest(skills=skills, request=request), self.assertRaisesRegex(Problem, 'Manual chat is disabled'):
+                    self.studio.enqueue(self.owner, request)
+            with self.studio.db() as db:
+                self.assertEqual(db.execute('SELECT count(*) FROM jobs').fetchone()[0], before)
+
     def test_switching_to_radar_during_submission_cannot_enqueue_manual_work(self):
         original = self.studio.profile(self.owner)
-        radar = {**original, 'skills': ['radar']}
+        radar = {**original, 'skills': ['weather', 'radar']}
         def become_radar():
             with self.studio.db() as db:
                 db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(radar), self.owner))
             return {'ready': True, 'teamReady': True}
-        for kind, prompt in [('chat', 'Hi'), ('reminder', 'Check later'), ('chat', '/plan summarize this')]:
+        # /plan is rejected before runtime preparation; test actual direct-chat races.
+        for kind, prompt in [('chat', 'Hi'), ('reminder', 'Check later')]:
             with self.subTest(kind=kind, prompt=prompt):
                 with self.studio.db() as db:
                     db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(original), self.owner))

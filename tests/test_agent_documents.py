@@ -49,6 +49,7 @@ class AgentDocumentsTests(unittest.TestCase):
 
     def test_unreadable_or_linked_file_does_not_expose_content_or_break_other_tabs(self):
         outside=Path(self.temp.name)/'outside.md';outside.write_text('Do not expose this.')
+        (self.studio.workspace(self.owner)/'SOUL.md').unlink(missing_ok=True)
         (self.studio.workspace(self.owner)/'SOUL.md').symlink_to(outside)
         self.save('IDENTITY.md','Scout identity')
         self.save('USER.md','x'*(MAX_BYTES+1))

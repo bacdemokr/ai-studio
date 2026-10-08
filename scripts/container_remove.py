@@ -22,6 +22,31 @@ NAMESPACE = 'openshell.ai/sandbox-namespace'
 SERVICES = {'studio', 'openshell', 'init', 'sandbox-image'}
 VOLUMES = {'bac-demo_studio-data': 'studio-data', 'bac-demo_client-certs': 'client-certs'}
 IMAGE_HISTORY = '.bac-image-history.json'
+STOPPED_SANDBOXES = '.bac-stopped-sandboxes.json'
+
+
+def stopped_sandboxes(gateway):
+    path = gateway / STOPPED_SANDBOXES
+    if path.is_symlink():
+        raise RuntimeError('Unexpected shutdown record symlink.')
+    if not path.exists():
+        return set()
+    value = json.loads(path.read_text())
+    if (not isinstance(value, dict) or value.get('owner') != PROJECT or not isinstance(value.get('ids'), list)
+            or any(not isinstance(i, str) or not re.fullmatch(r'[a-zA-Z0-9_-]+', i) for i in value['ids'])):
+        raise RuntimeError('Invalid BaC shutdown record.')
+    return set(value['ids'])
+
+
+def save_stopped_sandboxes(gateway, ids):
+    path = gateway / STOPPED_SANDBOXES
+    if path.is_symlink():
+        raise RuntimeError('Unexpected shutdown record symlink.')
+    temporary = gateway / (STOPPED_SANDBOXES + '.tmp-' + str(os.getpid()))
+    with temporary.open('x') as stream:
+        json.dump({'owner': PROJECT, 'ids': sorted(ids)}, stream)
+    temporary.chmod(0o600)
+    temporary.replace(path)
 
 
 def image_history(gateway):
@@ -65,9 +90,10 @@ class DockerError(RuntimeError):
 
 class Docker:
     def call(self, method, path):
-        connection = http.client.HTTPConnection('localhost', timeout=45)
+        # Docker may use the full 45-second graceful-stop window before replying.
+        connection = http.client.HTTPConnection('localhost', timeout=60)
         connection.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        connection.sock.settimeout(45)
+        connection.sock.settimeout(60)
         connection.sock.connect('/var/run/docker.sock')
         try:
             connection.request(method, '/v1.47' + path)
@@ -166,7 +192,7 @@ def remove(docker, gateway=GATEWAY, lock=None, hostname=None, installation=None,
     hostname = hostname or socket.gethostname()
     helper_ids = {c['Id'] for c in containers if c['Id'][:12] == hostname
                   and (c.get('Labels') or {}).get('com.nvidia.bac.cleanup') == 'true'}
-    owned = [c for c in containers if owned_container(c, gateway)]
+    owned = [c for c in containers if c['Id'] not in helper_ids and owned_container(c, gateway)]
     ids = {c['Id'] for c in owned}
     check_foreign_mounts(containers, ids | helper_ids, gateway, host_paths)
     if not marker and any((c.get('Labels') or {}).get(NAMESPACE) == PROJECT for c in owned):
@@ -236,9 +262,129 @@ def remove(docker, gateway=GATEWAY, lock=None, hostname=None, installation=None,
         print('BAC_IMAGE ' + ref)
 
 
+def fresh(docker, gateway=GATEWAY, hostname=None):
+    """Remove this installation's runtime state while preserving images and project files."""
+    marker = gateway_marker(gateway)
+    containers = docker.call('GET', '/containers/json?all=1')
+    hostname = hostname or socket.gethostname()
+    helper_ids = {c['Id'] for c in containers if c['Id'][:12] == hostname
+                  and (c.get('Labels') or {}).get('com.nvidia.bac.cleanup') == 'true'}
+    owned = [c for c in containers if c['Id'] not in helper_ids and owned_container(c, gateway)]
+    ids = {c['Id'] for c in owned}
+    check_foreign_mounts(containers, ids | helper_ids, gateway)
+    if not marker and any((c.get('Labels') or {}).get(NAMESPACE) == PROJECT for c in owned):
+        raise RuntimeError('Cannot verify sandbox ownership without the BaC gateway marker.')
+    volumes = []
+    for volume in docker.call('GET', '/volumes').get('Volumes') or []:
+        name = volume['Name']
+        if name not in VOLUMES:
+            continue
+        labels = volume.get('Labels') or {}
+        if labels.get(PROJECT_LABEL) != PROJECT or labels.get('com.docker.compose.volume') != VOLUMES[name]:
+            raise RuntimeError('A volume with a BaC name has different ownership; nothing reset.')
+        volumes.append(name)
+    networks = []
+    for network in docker.call('GET', '/networks'):
+        labels = network.get('Labels') or {}
+        if labels.get(PROJECT_LABEL) == PROJECT or (marker and network['Name'] == 'bac-sandboxes' and labels.get(MANAGER) == 'openshell'):
+            detail = docker.call('GET', '/networks/' + network['Id'])
+            if set((detail.get('Containers') or {})) - ids:
+                raise RuntimeError('Another container uses the BaC network; nothing reset.')
+            networks.append(network['Id'])
+    owned.sort(key=lambda c: 0 if (c.get('Labels') or {}).get('com.docker.compose.service') in ('studio', 'openshell') else 1)
+    for container in owned:
+        path = '/containers/' + container['Id']
+        name=(container.get('Names') or [container['Id'][:12]])[0].lstrip('/')
+        print('Clearing container ' + name + '…', flush=True)
+        if container.get('State') == 'running':
+            docker.call('POST', path + '/stop?t=25')
+        docker.call('DELETE', path + '?v=true')
+    for network in networks:
+        docker.call('DELETE', '/networks/' + network)
+    for name in volumes:
+        docker.call('DELETE', '/volumes/' + quote(name, safe=''))
+    check_foreign_mounts(docker.call('GET', '/containers/json?all=1'), helper_ids, gateway)
+    if marker:
+        keep={marker,gateway/IMAGE_HISTORY}
+        for child in gateway.iterdir():
+            if child in keep:
+                continue
+            if child.is_symlink() or not child.is_dir():
+                child.unlink()
+            else:
+                if child.is_mount():
+                    raise RuntimeError('Unexpected nested mount in gateway state; fresh start paused.')
+                shutil.rmtree(child)
+    print(f'Cleared BaC runtime state, {len(owned)} containers and {len(volumes)} data volumes.', flush=True)
+
+
+def stop(docker, gateway=GATEWAY, hostname=None):
+    """Stop only verified BaC resources, preserving containers and data."""
+    marker = gateway_marker(gateway)
+    containers = docker.call('GET', '/containers/json?all=1')
+    hostname = hostname or socket.gethostname()
+    helper_ids = {c['Id'] for c in containers if c['Id'][:12] == hostname
+                  and (c.get('Labels') or {}).get('com.nvidia.bac.cleanup') == 'true'}
+    owned = [c for c in containers if c['Id'] not in helper_ids and owned_container(c, gateway)]
+    if owned and not marker:
+        raise RuntimeError('Cannot verify BaC ownership without the gateway marker.')
+    # Record before stopping so an interrupted shutdown can be resumed safely.
+    ids = stopped_sandboxes(gateway)
+    ids.update(c['Id'] for c in owned if (c.get('Labels') or {}).get(MANAGER) == 'openshell'
+               and c.get('State') in ('running', 'restarting', 'paused'))
+    if ids:
+        save_stopped_sandboxes(gateway, ids)
+    # Resolve every ownership check before any action. Shut off provisioning first.
+    owned.sort(key=lambda c: 0 if (c.get('Labels') or {}).get(PROJECT_LABEL) == PROJECT else 1)
+    failures = []
+    for container in owned:
+        if container.get('State') not in ('running', 'restarting', 'paused'):
+            continue
+        try:
+            docker.call('POST', '/containers/' + container['Id'] + '/stop?t=45')
+        except DockerError as error:
+            if error.status not in (304, 404):
+                failures.append(container['Id'][:12])
+        except OSError:
+            failures.append(container['Id'][:12])
+    if failures:
+        raise RuntimeError('Could not confirm shutdown of BaC containers: ' + ', '.join(failures)
+                           + '. Other containers were attempted; saved data and the resume record are kept. Retry ./bac stop.')
+    print('Verified BaC containers stopped; files, images and volumes are preserved.', flush=True)
+
+
+def resume(docker, gateway=GATEWAY):
+    """Resume only the sandboxes recorded by this shutdown command."""
+    ids = stopped_sandboxes(gateway)
+    if not ids:
+        return
+    if not gateway_marker(gateway):
+        raise RuntimeError('Cannot verify BaC ownership before resuming sandboxes.')
+    containers = docker.call('GET', '/containers/json?all=1')
+    selected = [c for c in containers if c['Id'] in ids]
+    if any(not owned_container(c, gateway) or (c.get('Labels') or {}).get(MANAGER) != 'openshell' for c in selected):
+        raise RuntimeError('A recorded sandbox no longer belongs to BaC; nothing resumed.')
+    for container in selected:
+        if container.get('State') == 'running':
+            continue
+        try:
+            docker.call('POST', '/containers/' + container['Id'] + '/start')
+        except DockerError as error:
+            if error.status not in (304, 404):
+                raise
+    (gateway / STOPPED_SANDBOXES).unlink()
+    print('Previously stopped BaC sandboxes resumed.', flush=True)
+
+
 if __name__ == '__main__':
     try:
-        if sys.argv[1] == '--record':
+        if sys.argv[1] == '--stop':
+            stop(Docker())
+        elif sys.argv[1] == '--resume':
+            resume(Docker())
+        elif sys.argv[1] == '--fresh':
+            fresh(Docker())
+        elif sys.argv[1] == '--record':
             record_images(json.loads(Path(sys.argv[2]).read_text()), sys.argv[3])
         else:
             remove(Docker(), lock=json.loads(Path(sys.argv[1]).read_text()),
@@ -246,5 +392,5 @@ if __name__ == '__main__':
                    host_installation=sys.argv[3] if len(sys.argv) > 3 else None,
                    release=len(sys.argv) > 4 and sys.argv[4] == 'release')
     except (RuntimeError, OSError, ValueError) as error:
-        print('BaC removal stopped: ' + str(error), file=sys.stderr)
+        print('BaC resource operation stopped: ' + str(error), file=sys.stderr)
         sys.exit(1)

@@ -32,6 +32,19 @@
 #bac-planner .nv-brand{display:inline-flex;align-items:center;color:#fff;font-size:26px;font-weight:700;letter-spacing:-.5px}
 #bac-planner .nv-brand svg{display:block;width:108px;height:auto}
 #bac-planner .brand-divider{height:26px;width:1px;background:#505050}
+#bac-planner .studio-header-actions{display:flex;align-items:center;gap:18px;margin-left:auto}
+#bac-planner .studio-resources{position:relative;flex:none;margin:0;font-size:14px;line-height:1.4}
+#bac-planner .studio-resources>summary{display:flex;align-items:center;justify-content:center;gap:8px;min-height:36px;margin:0;padding:7px 9px;list-style:none;border-radius:6px;font-size:14px;font-weight:500;color:#b3bec7;cursor:pointer;user-select:none}
+#bac-planner .studio-resources>summary::-webkit-details-marker{display:none}
+#bac-planner .studio-resources>summary:hover,#bac-planner .studio-resources[open]>summary{background:#ffffff0a;color:#f2f5f7}
+#bac-planner .studio-resources>summary svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+#bac-planner .studio-resources[open]>summary svg{transform:rotate(180deg)}
+#bac-planner .studio-resources-panel{position:absolute;top:calc(100% + 10px);right:0;z-index:110;width:246px;max-width:calc(100vw - 32px);padding:6px;background:#15202a;border:1px solid #35434e;border-radius:10px;box-shadow:0 12px 32px #0007}
+#bac-planner .studio-resources-panel a{display:flex;align-items:center;justify-content:space-between;gap:22px;min-height:44px;padding:10px 12px;border-radius:5px;color:#dce6ec;text-decoration:none;white-space:nowrap;font-size:14px;font-weight:500}
+#bac-planner .studio-resources-panel a span{font-size:16px;color:#8297a5}
+#bac-planner .studio-resources-panel a:hover{background:#ffffff08;color:#fff}
+#bac-planner .studio-resources-panel a:hover span{color:#b2d979}
+#bac-planner .studio-resources-panel a:focus-visible{outline:2px solid #a5d85b;outline-offset:-2px}
 #bac-planner :is(button,input,select,summary):focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 #bac-planner input[type="checkbox"]{accent-color:var(--accent)}
 @media(max-width:700px){#bac-planner .topbar{padding:18px;gap:12px}#bac-planner .brand{gap:14px;font-size:21px}#bac-planner h2{font-size:32px}}

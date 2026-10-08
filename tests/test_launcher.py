@@ -59,7 +59,7 @@ elif args[:2]==['image','rm']:
 elif args[0]=='load' or args[:2] in (['compose','build'],['compose','pull']):
     s['image']=True;state_file.write_text(json.dumps(s))
 elif args[:2]==['compose','run']:
-    if s.get('invalid_key'):sys.exit(1)
+    if s.get('invalid_key') and '--optional' not in args:sys.exit(1)
 elif args[:2]==['compose','up']:
     if s.get('fail_up'):sys.exit(1)
     print('Studio Healthy')
@@ -179,23 +179,23 @@ if action=='connect' and state.get('connection_failure'):sys.exit(1)
         self.assertEqual(self.run_bac('start').returncode,0)
         self.assertEqual(sum(a[0]=='load' for a in self.calls()),1)
 
-    def test_missing_or_blank_key_exits_before_docker(self):
+    def test_missing_or_blank_key_allows_settings_setup(self):
+        self.configure(image=True)
         for content in (None, '', '  \n', 'one two', 'one\ntwo'):
             path=self.root/'api.cfg'
             if content is None: path.unlink()
             else: path.write_text(content)
             result=self.run_bac('start')
-            self.assertNotEqual(result.returncode,0)
-            self.assertIn('Put a valid inference API key in api.cfg',result.stderr)
-            self.assertEqual(self.calls(),[])
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertTrue(any('--optional' in call for call in self.calls()))
 
-    def test_invalid_key_stops_before_service_restart(self):
+    def test_invalid_key_does_not_block_settings(self):
         self.configure(image=True, invalid_key=True)
         result=self.run_bac('start')
-        self.assertNotEqual(result.returncode,0)
+        self.assertEqual(result.returncode,0,result.stderr)
         self.assertTrue((self.root/'api.cfg').is_file())
         self.assertEqual((self.root/'api.cfg').read_text(), 'fixture-key\n')
-        self.assertFalse(any(a[0] in ('stop','up') for a in self.operations()))
+        self.assertTrue(any(a[0]=='up' for a in self.operations()))
 
     def test_corrupt_or_missing_archive_never_starts(self):
         archive=self.archive();archive.write_bytes(b'corrupt')
@@ -242,14 +242,28 @@ if action=='connect' and state.get('connection_failure'):sys.exit(1)
         self.assertTrue((self.root/'.env').exists())
         self.assertIn(['build'],self.operations())
 
-    def test_start_stops_both_services_then_waits_without_deleting_data(self):
+    def test_keep_data_start_stops_both_services_then_waits_without_deleting_data(self):
         self.configure(image=True)
         sentinel=self.root/'shared/keep.txt';sentinel.parent.mkdir();sentinel.write_text('keep')
-        result=self.run_bac('start')
+        result=self.run_bac('start','--keep-data')
         self.assertEqual(result.returncode,0,result.stderr)
         ops=self.operations();stop=ops.index(['stop','studio','openshell'])
         self.assertEqual(ops[stop+1][0],'up')
         self.assertFalse(any(a[0] in ('down','build','pull') for a in ops))
+        self.assertEqual(sentinel.read_text(),'keep')
+
+    def test_default_start_clears_runtime_before_recreating_services_and_key(self):
+        self.configure(image=True)
+        sentinel=self.root/'shared/keep.txt';sentinel.parent.mkdir();sentinel.write_text('keep')
+        result=self.run_bac('start')
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn('Starting fresh',result.stdout)
+        helpers=[call for call in self.calls() if '--fresh' in call]
+        self.assertEqual(len(helpers),1)
+        self.assertIn('com.nvidia.bac.cleanup=true',helpers[0])
+        self.assertEqual(sum(a[0]=='run' for a in self.operations()),2)
+        self.assertFalse(any(a[0]=='stop' for a in self.operations()))
+        self.assertTrue(any(a[0]=='up' for a in self.operations()))
         self.assertEqual(sentinel.read_text(),'keep')
 
     def test_failed_readiness_is_not_reported_as_ready(self):
@@ -260,6 +274,7 @@ if action=='connect' and state.get('connection_failure'):sys.exit(1)
         self.assertIn('./bac logs',result.stderr)
 
     def test_status_logs_stop_do_not_install_or_start_anything(self):
+        self.configure(image=True)
         for command in ('status','logs','stop'):
             with self.subTest(command=command):
                 self.log.unlink(missing_ok=True)
@@ -267,6 +282,13 @@ if action=='connect' and state.get('connection_failure'):sys.exit(1)
                 self.assertEqual(result.returncode,0,result.stderr)
                 self.assertFalse(any(a[0] in ('up','build','pull') for a in self.operations()))
                 self.assertFalse(any(a[0]=='load' for a in self.calls()))
+
+    def test_stop_without_helper_image_reports_incomplete_without_downloading(self):
+        result = self.run_bac('stop')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Shutdown was incomplete', result.stderr)
+        self.assertFalse(any(a[0] in ('up', 'build', 'pull') for a in self.operations()))
+        self.assertFalse(any(a[0] == 'load' for a in self.calls()))
 
     def test_wrong_architecture_old_compose_and_offline_docker_have_remedies(self):
         self.configure(image=True,imagearch='amd64')

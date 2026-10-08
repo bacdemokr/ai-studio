@@ -257,7 +257,7 @@ class RevisionTests(unittest.TestCase):
 
     def test_original_documents_are_available_again_only_to_the_same_assignee(self):
         self.setup_repair(6)
-        self.app.upload(self.owner, {'name':'sales.csv','content':'sales\n42'})
+        self.app.upload(self.app.crew_owner(self.owner), {'crewRole':0,'name':'sales.csv','content':'sales\n42'})
         self.adapter.plan['tasks'][0]['inputs']=['document-0']
         def inspect(agent,session,prompt):
             copies=list((self.adapter.agents[agent]/'inbox').glob('plan-input-*.csv'))
@@ -269,7 +269,7 @@ class RevisionTests(unittest.TestCase):
         self.assertEqual(self.job(result)['payload']['collaboration']['revision']['status'],'delivered')
         for workspace in self.adapter.agents.values():
             self.assertFalse(list((workspace/'inbox').glob('plan-input-*')))
-        self.assertTrue((self.app.workspace(self.owner)/'inbox/sales.csv').exists())
+        self.assertTrue((self.app.workspace(self.app.crew_owner(self.owner),0)/'inbox/sales.csv').exists())
 
     def test_time_budget_stops_before_starting_an_extra_call(self):
         self.setup_repair();clock=[0]

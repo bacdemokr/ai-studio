@@ -18,8 +18,8 @@ const settings={provider:'local',providers:{local:{label:'Local',baseUrl:'http:/
   await scenario('Telegram status failure does not block model, location or reset settings',async page=>{
    await page.route('**/api/telegram',r=>r.fulfill({status:503,json:{error:'Telegram status temporarily unavailable.'}}));
    await page.locator('#studio-config').click();
-   await page.locator('#studio-model').waitFor();
-   await page.locator('#studio-settings-location-tab').click();assert.equal(await page.locator('#studio-location-city').inputValue(),'Zurich');
+   await page.locator('#studio-model-connections').waitFor();
+   await page.locator('[data-connection-tab=location]').click();assert.equal(await page.locator('#studio-location-city').inputValue(),'Zurich');
    await page.locator('#studio-settings-reset-tab').click();assert.equal(await page.locator('#studio-settings-reset-panel #studio-bac-reset').count(),0);assert(await page.locator('#studio-reset-all').isVisible());assert(await page.locator('#studio-settings-bac-reset').isVisible());assert.equal(await page.locator('#studio-settings-reset-panel button').count(),3);
    await page.locator('#studio-settings-telegram-tab').click();
    assert.match(await page.locator('#studio-telegram-status').innerText(),/temporarily unavailable/);
@@ -32,9 +32,11 @@ const settings={provider:'local',providers:{local:{label:'Local',baseUrl:'http:/
     await page.locator('#studio-config').click();
     while(!finish)await page.waitForTimeout(25);
     await page.locator('#studio-config').click();
-    await page.locator('#studio-model').fill('keep-my-new-draft');
+    await page.locator('#studio-model-connections').waitFor();
+    await page.locator('[data-connection-edit=local]').click();
+    await page.locator('#studio-connect-model').fill('keep-my-new-draft');
     finish();await page.waitForTimeout(350);
-    assert.equal(await page.locator('#studio-model').inputValue(),'keep-my-new-draft');
+    assert.equal(await page.locator('#studio-connect-model').inputValue(),'keep-my-new-draft');
    }finally{finish?.();}
   });
  }finally{await browser.close();}

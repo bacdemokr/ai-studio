@@ -22,7 +22,8 @@ async function scenario(mode){
    const job={id:key+'-job',status:'queued',result:{answer:key}};
    jobs.set(key,job);accepted.set(key,job);pending++;maximum=Math.max(maximum,pending);return job;
   }});
- vm.runInContext(implementation,context);
+ const chat=fs.readFileSync('src/studio-chat.js','utf8');
+ vm.runInContext(chat.slice(chat.indexOf('const isPlanCommand='),chat.indexOf('function syncComposer('))+implementation,context);
  await context.askAllAgents();
  await context.pollComparison(false);
  assert.equal(context.comparisonSending,false);

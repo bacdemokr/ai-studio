@@ -15,12 +15,13 @@ with tempfile.TemporaryDirectory() as d:
  try{
   const p=await b.newPage({viewport:{width:1500,height:1100}}),errors=[];p.on('pageerror',e=>errors.push(e.message));
   let deleting=false,complete=false,deletions=0,bacCalls=0;
-  await p.route(/\/api\/(session|state)$/,r=>r.fulfill({json:complete?fixture.states[2]:{...fixture.states[0],agents:fixture.states[0].agents.map(a=>({...a,deleting,deletionWaiting:deleting}))}}));
+  await p.route(/\/api\/(session|state)$/,r=>r.fulfill({json:{...(complete?fixture.states[2]:{...fixture.states[0],agents:fixture.states[0].agents.map(a=>({...a,deleting,deletionWaiting:deleting}))}),scenarios:[{id:'plan',hasWork:true}]}}));
+ await p.route('**/api/settings/connections',r=>r.fulfill({json:{connections:{local:{ready:true,enabled:true,provider:'local',model:'fixture',message:'Ready'},api:{ready:false,enabled:false,message:'Not configured'}},loungePreference:'auto',scenarioPreferences:{}}}));
   await p.route('**/api/settings',r=>r.fulfill({json:{provider:'local',providers:{local:{label:'Local',baseUrl:'http://localhost:8000/v1'}},profiles:{},event:{city:'Zurich',language:'English',venue:''}}}));
   await p.route('**/api/delete-agent',r=>{deleting=true;deletions++;return r.fulfill({json:{deleting:true}})});
   await p.route('**/api/bac-reset',r=>{bacCalls++;return r.fulfill({json:{reset:true}})});
   await p.goto(process.env.BAC_TEST_URL||'http://127.0.0.1:18087');await p.waitForFunction(()=>window.BacStudio);
-  async function openReset(){await p.locator('#studio-config').click();await p.locator('#studio-settings-reset-tab').click();}
+  async function openReset(){await p.locator('#studio-config').click();await p.locator('[data-connection-tab=reset]').click();}
   await openReset();await p.locator('#studio-agent-reset').click();
   await p.waitForFunction(()=>!document.querySelector('#studio-dialog').open);
   await openReset();

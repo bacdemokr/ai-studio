@@ -6,7 +6,7 @@ On Ubuntu or DGX Spark, put the NVIDIA inference key in `api.cfg` beside `bac`, 
 
 Rehearse one real personal-agent task and one `/plan` task with the target models. If demonstrating OpenShell, also rehearse a protected file read and website approval on that host. Use a desktop browser and Enter for presentation mode. Keep previous results available, but identify them as previous runs.
 
-Use **Reset beside Mission Control** to stop active Stage 3 work and clear team chats, attached team documents, generated files and the current plan after confirmation. **Settings → Reset → Remove agents** removes Stage 1 & 2 agents and their data. **Reset Stage 3** stops team work and clears its data; **Reset all** does both, resetting Stage 3 first. Model and connection settings are preserved. Download anything needed before resetting. A normal `./bac start` preserves saved demo data.
+Use **Reset beside Mission Control** to stop active Stage 3 work and clear team chats, attached team documents, generated files and the current plan after confirmation. **Settings → Reset → Remove agents** removes Stage 1 & 2 agents and their data. **Reset Stage 3** stops team work and clears its data; **Reset all** does both, resetting Stage 3 first. Model and connection settings are preserved. Download anything needed before resetting. A normal `./bac start` begins with clean runtime data; use `./bac start --keep-data` to retain a rehearsed run.
 
 ## Hiring and Lounge
 
@@ -18,7 +18,7 @@ For OpenShell, approve a blocked website through **OpenShell Policy**, then rese
 
 ## Multi-Agent demo
 
-The room starts with Casey. Use **API & models** to select models for individual team members, then **Apply changes**. These settings are separate from the Lounge model. Start a team task with `/plan`; a normal message goes to the selected agent directly.
+Open Task starts with Casey. Use **API & models** to select models for individual team members, then **Apply changes**. These settings are separate from the Lounge model. Start a team task with `/plan` in Casey's Open Task chat; a normal message goes to the selected agent directly. Lounge and other team members do not accept `/plan`.
 
 Casey answers directly when appropriate or chooses up to three specialists:
 
@@ -30,7 +30,7 @@ Casey answers directly when appropriate or chooses up to three specialists:
 | Cody | Implementation of webpages and small code prototypes |
 | Vera | Independent review of supplied work and concrete defects |
 
-The selected specialists enter together and work in assignment order. The old event-template form and Dylan, Alex and Morgan are retired. There is no fixed research/schedule/LinkedIn workflow.
+The selected specialists enter together and work in assignment order. Event Brief separately retains its fixed team of Casey, Dylan, Alex and Morgan and the Plan an event form. Open Task does not use that fixed workflow.
 
 For a compact data-analysis demo, attach a table to Casey and try:
 
@@ -65,6 +65,6 @@ Keep saved contributions and the failure visible. Inspect observed Activity, Mis
 
 If required review or another requirement could not finish, describe the result as partial or unavailable. After the single repair, Casey states what changed and what remains unverified.
 
-`./bac start` restarts the app services while preserving data; there is no `./bac restart`. `./bac vllm --restart` is separate and restarts the configured local model server. Stage 3 reloads the validated `api.cfg` connection at startup. API-key providers for Stages 1 and 2 need reconnecting after refresh or restart; keyless local endpoints need no key re-entry.
+`./bac start` restarts the app services with clean agents, work, context and usage. Use `./bac start --keep-data` for a preserving restart; there is no `./bac restart`. `./bac vllm --restart` is separate and restarts the configured local model server. Stage 3 reloads the validated `api.cfg` connection at startup. API-key providers for Stages 1 and 2 need reconnecting after refresh or restart; keyless local endpoints need no key re-entry.
 
 [Installation and recovery](docker-setup.md) · [Model settings](runtime-settings.md) · [Runtime details](live-studio.md)

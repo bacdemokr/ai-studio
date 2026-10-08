@@ -12,7 +12,7 @@ class PlanEdgeCases(unittest.TestCase):
 
     def test_deleting_personal_agent_cannot_start_plan(self):
         with self.app.db() as db:db.execute('UPDATE agents SET deleting=1 WHERE id=?',(self.owner,))
-        with self.assertRaises(Problem):self.start()
+        with self.assertRaises(Problem):self.app.enqueue(self.owner,{'kind':'chat','prompt':'/plan A proposal'})
         self.assertEqual(self.app.state(self.owner)['crewChats'],[])
 
     def test_bac_reset_stops_running_plan_and_discards_late_reply(self):
@@ -144,7 +144,7 @@ class PlanEdgeCases(unittest.TestCase):
         seen=[];original=self.adapter.respond
         def respond(agent,session,prompt,**kwargs):seen.append((agent,kwargs.get('images')));return original(agent,session,prompt,**kwargs)
         self.adapter.respond=respond
-        self.app.enqueue(self.owner,{'kind':'chat','prompt':'/plan Summarize this diagram','images':images})
+        self.app.enqueue(self.app.crew_owner(self.owner),{'kind':'crew-chat','crewRole':0,'prompt':'/plan Summarize this diagram','images':images})
         self.app.execute(self.app.next_job())
         self.assertTrue(seen[0][1]);self.assertTrue(all(images for agent,images in seen if agent.endswith('-r0')))
         self.assertTrue(all(not images for agent,images in seen if not agent.endswith('-r0')))

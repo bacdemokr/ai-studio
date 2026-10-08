@@ -76,11 +76,11 @@ function restorePersonalDraft(next,agents){
  for(const owner of personalDrafts.keys())if(!live.has(owner))personalDrafts.delete(owner);
  el('prompt').value=personalDrafts.get(next)||'';
 }
-const imageKey=crew=>agentId+(crew?':crew:'+selectedCrewRole:':personal');
+const imageKey=crew=>agentId+(crew?':crew:'+selectedScenario+':'+selectedCrewRole:':personal');
 function pendingImages(crew=false){return chatImageDrafts.get(imageKey(crew))||[];}
 function clearChatImages(crew=false){chatImageDrafts.delete(imageKey(crew));renderImageDrafts(crew);}
 // Acknowledgement clears only the submitted draft, not later typing or attachments.
-function captureChatDraft(crew=false){return {crew,crewRole:selectedCrewRole,key:imageKey(crew),roleKey:agentId+':'+selectedCrewRole,prompt:el((crew?'crew-':'')+'prompt').value,images:pendingImages(crew).slice()};}
+function captureChatDraft(crew=false){return {crew,crewRole:selectedCrewRole,key:imageKey(crew),roleKey:crewDraftKey(selectedCrewRole),prompt:el((crew?'crew-':'')+'prompt').value,images:pendingImages(crew).slice()};}
 function acknowledgeChatDraft(draft){
  const current=imageKey(draft.crew)===draft.key;
  if(current){const input=el((draft.crew?'crew-':'')+'prompt');if(input.value===draft.prompt)input.value=draft.crew?defaultCrewPrompt(draft.crewRole):'';if(draft.crew)crewDrafts.set(draft.roleKey,input.value);}
@@ -115,12 +115,22 @@ for(const crew of [false,true]){
  input.addEventListener('paste',event=>{const images=[...event.clipboardData.items].filter(item=>item.kind==='file'&&item.type.startsWith('image/')).map(item=>item.getAsFile()).filter(Boolean);if(images.length){event.preventDefault();addChatImages(images,crew)}});
 }
 let chatSending=false;
-function radarChatDisabled(profile=data.profile){return !!profile?.skills?.includes('radar');}
+const isPlanCommand=value=>/^\s*\/(?:goals?|plans?)(?:\s|$)/i.test(value);
+const planLocationHint='Use /goal with Casey in Open Task. Lounge agents and other teammates accept direct messages only.';
+const eventPlanLocationHint='Use Plan an event for Event Brief, or send /goal to Casey in Open Task.';
+function clearPlanLocationHint(crew=false){
+ const prefix=crew?'crew-':'',notice=el(prefix+'chat-error');
+ if(!isPlanCommand(el(prefix+'prompt').value)&&[planLocationHint,eventPlanLocationHint].includes(notice.textContent))notice.hidden=true;
+}
+function rejectLoungePlan(){
+ if(!isPlanCommand(el('prompt').value))return false;
+ el('chat-error').textContent=planLocationHint;el('chat-error').hidden=false;return true;
+}
+function radarChatDisabled(profile=data.profile){return profile?.skills?.includes('radar')||false;}
 function syncComposer(){
   if(!connected)return;
-  const planning=/^\/plans?(?:\s|$)/i.test(el('prompt').value.trim());
-  const radar=radarChatDisabled(),unavailable=!(planning?teamReady():runtime.ready),blocked=radar||unavailable||!!data.deleting;
-  el('prompt').disabled=radar||(!runtime.ready&&!teamReady())||!!data.deleting;
+  const radar=radarChatDisabled(),unavailable=!runtime.ready,blocked=radar||unavailable||!!data.deleting;
+  el('prompt').disabled=blocked;
   el('send').disabled=blocked||chatSending||comparisonSending||documentUploadTarget===agentId;
   el('send-all').disabled=!runtime.ready||blocked||chatSending||comparisonSending||documentUploadTarget===agentId||(data.agents||[]).filter(agent=>!radarChatDisabled(agent)).length<2;
   el('run-options').disabled=el('send-all').disabled;
@@ -128,11 +138,11 @@ function syncComposer(){
   el('attach').disabled=radar||!!data.deleting||!data.profile||documentUploadTarget!==null;
   el('schedule').disabled=radar||!!data.deleting;
   el('chat-connection').hidden=!blocked;
-  el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':radar?'Manual chat is disabled because Tech Radar is dedicated to displaying Heartbeat updates.':!runtime.gateway?(gatewayState()==='slow'?'Waiting for the agent runtime to respond. Checking automatically.':'Agent runtime unavailable. Retry the connection to continue.'):'Model not connected. Connect a model to start chatting.';
+  el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':radar?'Tech Radar uses Heartbeat. Manual chat is disabled.':!runtime.gateway?(gatewayState()==='slow'?'Waiting for the agent runtime to respond. Checking automatically.':'Agent runtime unavailable. Retry the connection to continue.'):'Model not connected. Connect a model to start chatting.';
   el('chat-connect').hidden=radar||!unavailable||(runtime.gateway&&settingsButton.hidden);
   el('chat-connect').textContent=!runtime.gateway?'Retry connection':'Connect model';
   el('chat-connect').disabled=runtimeRetrying;
-  el('prompt').placeholder=data.deleting?'This agent is paused for deletion…':radar?'Heartbeat updates only':!runtime.gateway?'Waiting for the agent runtime…':!runtime.model?'Connect a model to message your agent…':'Message your agent… or /plan a task with the BaC team';
+  el('prompt').placeholder=data.deleting?'This agent is paused for deletion…':radar?'Heartbeat updates only':!runtime.gateway?'Waiting for the agent runtime…':!runtime.model?'Connect a model to message your agent…':'Message your agent…';
   el('equipped').querySelectorAll('button').forEach(button=>button.disabled=blocked);
 }
 el('chat-connect').onclick=connectionAction;
@@ -198,7 +208,7 @@ function renderConversation(){
     const held=shieldReplyHeld(j),result=held?{}:j.result||{},pending=['queued','running','waiting','stopping'].includes(j.status);
     const status={queued:'Waiting to start…',running:j.events?.at(-1)?.title==='Preparing OpenShell'?'Preparing your protected runtime…':'Working on your request…',waiting:'Waiting for a decision.',stopping:'Stopping after the current model call…',cancelled:'Stopped.'}[j.status];
     return '<article class="chat-turn" data-chat-turn="'+escape(j.id)+'">'+(j.kind==='heartbeat'?'':'<div class="chat-message chat-user"><small>'+escape(j.payload.sender||'You')+'</small><div>'+escape(j.payload.prompt||'').replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images,j.id)+'</div></div>')+'<div class="chat-message chat-agent"><small>'+escape(j.result?.systemNotice?'System':data.profile?.name||'Agent')+(j.kind==='heartbeat'?' · Heartbeat':'')+' · '+escape(new Date(j.created*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))+'</small>'+(j.kind==='heartbeat'?'<small class="heartbeat-delivery">'+escape(result.telegram==='sent'?'Sent to Telegram':result.telegram==='failed'?'Telegram delivery failed. Your summary is saved here.':['pending','sending'].includes(result.telegram)?'Telegram delivery unconfirmed':'')+'</small>':'')+customSkillMarkup(result.activity)+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(result.answer||result.error||(pending?'':status||'No text reply was returned.'))+'</div>')+(!held&&pending?'<div class="chat-progress" role="status">'+escape(status)+(j.status!=='stopping'?chatStopButton(j.id):'')+'</div>':'')+(!held&&result.source?'<small class="heartbeat-source">'+'Technical discovery · '+'Published '+escape(result.source.published)+' · Feed excerpt<br><a href="'+escape(result.source.url)+'" target="_blank" rel="noopener noreferrer">'+escape(result.source.title)+'</a></small>':'')+webpageButtons(result.files,j.id)+(result.files||[]).filter(f=>!/\.html$/i.test(f)&&(!f.endsWith('.md')||!result.answer)).map(f=>'<details class="chat-file"><summary data-chat-file="'+escape(f)+'">'+escape(f.split('/').pop())+'</summary><div class="chat-file-body"></div></details>').join('')+'</div></article>';
-  }).join(''):'<p class="chat-empty">Start a conversation. Your questions and replies will stay here.</p>');
+  }).join(''):'<p class="chat-empty">No messages yet.</p>');
   loadChatImages(log,agentId);
   if(follow)log.scrollTop=log.scrollHeight;else log.scrollTop=top;
 }
@@ -236,18 +246,18 @@ document.addEventListener('pointerdown',e=>{if(!el('run-control').contains(e.tar
 el('chat').addEventListener('submit',()=>setRunOptions(false));
 
 // Suggestions only complete an explicit slash prefix; Enter selects before sending.
-for(const id of ['prompt','crew-prompt']){
+for(const id of ['crew-prompt']){
  const input=el(id),anchor=document.createElement('div'),menu=document.createElement('div'),option=document.createElement('button');
  anchor.className='studio-command-anchor';input.before(anchor);anchor.append(input,menu);
  menu.className='studio-command-menu';menu.id=input.id+'-commands';menu.hidden=true;menu.setAttribute('role','listbox');menu.setAttribute('aria-label','Commands');
  option.type='button';option.id=menu.id+'-plan';option.setAttribute('role','option');option.setAttribute('aria-selected','true');
- option.innerHTML='<strong>/plan</strong><span>Collaborate with the BaC team</span><small>↵</small>';menu.append(option);
+ option.innerHTML='<strong>/goal</strong><span>Collaborate with the BaC team</span><small>↵</small>';menu.append(option);
  input.setAttribute('aria-controls',menu.id);input.setAttribute('aria-autocomplete','list');
  const close=()=>{menu.hidden=true;input.removeAttribute('aria-activedescendant');};
- const enabled=()=>id!=='crew-prompt'||input.dataset.planEnabled==='true';
- const update=()=>{const value=input.value.trimStart();const show=enabled()&&!input.disabled&&/^\/(?:p(?:l(?:a(?:ns?)?)?)?)?$/i.test(value)&&input.selectionStart===input.value.length;
+ const enabled=()=>selectedScenario==='plan'&&selectedCrewRole===0&&input.dataset.planEnabled==='true';
+ const update=()=>{const value=input.value.trimStart();const show=enabled()&&!input.disabled&&/^\/(?:g(?:o(?:a(?:ls?)?)?)?|p(?:l(?:a(?:ns?)?)?)?)?$/i.test(value)&&input.selectionStart===input.value.length;
   menu.hidden=!show;if(show)input.setAttribute('aria-activedescendant',option.id);else input.removeAttribute('aria-activedescendant');};
- const choose=()=>{if(!enabled()){close();return;}input.value='/plan ';close();input.focus({preventScroll:true});input.setSelectionRange(input.value.length,input.value.length);input.dispatchEvent(new Event('input',{bubbles:true}));};
+ const choose=()=>{if(!enabled()){close();return;}input.value='/goal ';close();input.focus({preventScroll:true});input.setSelectionRange(input.value.length,input.value.length);input.dispatchEvent(new Event('input',{bubbles:true}));};
  input.addEventListener('input',update);input.addEventListener('focus',update);input.addEventListener('click',update);
  input.addEventListener('keydown',event=>{
   if(!enabled()){close();return;}

@@ -1,6 +1,6 @@
 ---
 name: bac-radar
-description: Tech Radar - share one unread technical article or announcement every 30 seconds.
+description: Tech Radar - share one unread technical article or announcement every 20 seconds.
 ---
 
 On each heartbeat, run `python3 skills/bac-radar/scripts/tech_radar.py poll` with exec using the host specified for this agent in AGENTS.md. This tool reads only the fixed NVIDIA Developer Blog and Hugging Face Blog feeds through curl. It tracks article URLs and publication dates; it does not generate your answer. Never request another URL, bypass a denial or use host-side web_fetch for this heartbeat.

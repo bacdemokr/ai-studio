@@ -38,7 +38,7 @@ function releaseMeetingGuest(guest){
  if(resident){resident.atRoundtable=false;resident.mount.visible=true;resident.node.hidden=false;}
 }
 function meetingRoute(guest,start){
- return [start,new THREE.Vector3(8,.05,3),new THREE.Vector3(14.7,.05,3),missionRoom.localToWorld(new THREE.Vector3(-10,.05,6.85)),missionRoom.localToWorld(new THREE.Vector3(missionRoom.worldToLocal(guest.target.clone()).x,.05,6.85)),guest.target.clone()];
+ return [start,...scenarioPath(activeScenario).map(([x,z])=>new THREE.Vector3(x,.05,z)),missionRoom.localToWorld(new THREE.Vector3(-10,.05,6.85)),missionRoom.localToWorld(new THREE.Vector3(missionRoom.worldToLocal(guest.target.clone()).x,.05,6.85)),guest.target.clone()];
 }
 function inviteMeetingGuest(guest){
  const resident=residents.find(r=>r.key===guest.key);

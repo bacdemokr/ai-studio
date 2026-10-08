@@ -13,7 +13,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   });
   await page.goto(process.env.BASE_URL||'http://127.0.0.1:8197');
   await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.testFixture);
-  await page.locator('.world-room-map [data-world-room=mission]').click();
+  await page.locator('.world-room-map [data-world-scenario=plan]').click();
   await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
   const timer=page.locator('#studio-team-total-time');
   async function check(){await timer.waitFor({state:'visible'});const r=await timer.boundingBox();assert(r.width>0);assert(await timer.evaluate(e=>e.previousElementSibling?.id==='studio-crew-name'));assert.equal(await timer.evaluate(e=>getComputedStyle(e).position),'static');}

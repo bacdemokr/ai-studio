@@ -12,11 +12,13 @@ import socket
 import subprocess
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 import ops_common as c
 import runtime_settings as settings
 from browser_capability import BROWSER_LIMIT
+from tech_radar import HEARTBEAT_SECONDS
 
 VERSION = '2026.9.4'
 MODEL = 'bac-vllm/bac-local'
@@ -322,7 +324,7 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
         radar_host = 'sandbox' if protected else 'gateway'
         files['AGENTS.md'] += ('\nUse exec with host=' + radar_host + ' to run python3 skills/bac-radar/scripts/tech_radar.py poll or publish for your heartbeat. '
                               'Read skills/bac-radar/SKILL.md first. Never contact Telegram directly.\n')
-        files['HEARTBEAT.md'] = '# Tech Radar\nEvery 30 seconds, follow skills/bac-radar/SKILL.md. Share one technical article or announcement you have not shared before, including older articles in the feeds. Never repeat a shared article or call an older article breaking news. Otherwise HEARTBEAT_OK. Skip politics, stocks and earnings.\n'
+        files['HEARTBEAT.md'] = f'# Tech Radar\nEvery {HEARTBEAT_SECONDS} seconds, follow skills/bac-radar/SKILL.md. Share one technical article or announcement you have not shared before, including older articles in the feeds. Never repeat a shared article or call an older article breaking news. Otherwise HEARTBEAT_OK. Skip politics, stocks and earnings.\n'
     if role:
         files['AGENTS.md'] += ('\n# Reading supplied documents\n'
                               'Read supplied files with native file tools. For PDF/PPTX/XLSX, use the companion extracted .txt file '
@@ -350,8 +352,24 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
                                   'Produce the requested deliverable, not a default LinkedIn post, survey or event page.\n')
             files['EVENT_WORKFLOW.md'] = crew_event_instructions(member)
             files['AGENTS.md'] += '\n# Actual capabilities and limits\n' + json.dumps(collaboration_capabilities(profile, role), ensure_ascii=False) + '\n'
+    legacy_files = {}
+    if role and member and profile.get('_scenario') == 'event-brief' and member.get('event'):
+        legacy_files = dict(files)
+        legacy_files['IDENTITY.md'] = '# Identity\nName: ' + member['name'] + '\nRole: ' + member['collaboration']['title'] + '\nTeam: BaC\n'
+        event = member['event']
+        expertise = event['collaboration']
+        files['IDENTITY.md'] = '# Identity\nName: ' + event['name'] + '\nRole: ' + event['role'] + '\nTeam: Event Brief\n'
+        files['SOUL.md'] = ('# Character\n' + event['name'] + ', ' + event['role'] + ' in the Event Brief team.\n'
+                            '# Communication style\n' + expertise['voice'] + '\n# Expertise\n' + expertise['description'] +
+                            '\n# Role boundary\n' + expertise['scope'] + '\nNever invent tool results or other agents\' work.\n')
+        files['AGENTS.md'] = files['AGENTS.md'].replace(
+            'Ordinary chats and /plan use the current request, not an event workflow.',
+            'You belong to the Event Brief scenario. Use your event role for direct conversations. /goal orchestration belongs to the separate Open Task team.')
+        files['AGENTS.md'] += '\n# Event Brief assignment\n' + expertise['scope'] + '\n'
+        files['EVENT_WORKFLOW.md'] = files['EVENT_WORKFLOW.md'].replace('Casey', 'Riley')
     def write(target, content):
-        if overwrite or not target.exists():target.write_text(content, encoding='utf-8')
+        if overwrite or not target.exists() or (target.name in legacy_files and target.read_text(encoding='utf-8') == legacy_files[target.name]):
+            target.write_text(content, encoding='utf-8')
     import user_location
     user_location.sync(workspace)
     for name, content in files.items():
@@ -488,9 +506,15 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
         config['agents']['ownership'] = 'explicit'
         config.setdefault('tools', {}).setdefault('fs', {})['workspaceOnly'] = False
         import team_models
-        team_models.apply(config, selected=profile.get('_teamModel'))
+        team_models.apply(config, selected=profile.get('_teamModel'), local=profile.get('_teamLocal'), agent_id=agent_id)
         settings.apply_context_limits(config)
         model = team_models.model_for(agent_id, profile.get('_teamModel') or config['agents']['entries'].get(agent_id,{}).get('model')) or config['agents']['defaults']['model']['primary']
+        connection_config = profile.get('_connectionConfig')
+        if connection_config:
+            from model_connections import provider_id
+            connection_provider = provider_id(agent_id)
+            config['models']['providers'][connection_provider] = connection_config
+            model = connection_provider + '/' + connection_config['models'][0]['id']
         entry = {
             'name': profile['name'], 'workspace': str(workspace), 'model': model,
             'modelPolicy': {'allow': [model]}, 'skills': ['bac-' + x for x in equipped],
@@ -529,6 +553,11 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
         patch['agents']['defaults']['compaction'] = config['agents']['defaults']['compaction']
         patch['tools']['web'] = {'fetch': config['tools']['web']['fetch']}
         patch['models'] = {'providers': {'bac-team': config['models']['providers']['bac-team']}}
+        if connection_config:
+            patch['models']['providers'][connection_provider] = connection_config
+        provider = team_models.local_provider(agent_id)
+        if provider and model.startswith(provider + '/'):
+            patch['models']['providers'][provider] = config['models']['providers'][provider]
         replace_paths = [f'agents.entries.{agent_id}.skills',
                          f'agents.entries.{agent_id}.modelPolicy.allow',
                          f'agents.entries.{agent_id}.tools.allow',
@@ -908,12 +937,45 @@ def respond(agent_id, session, prompt, images=None, json_response=False, timeout
         error.activity = observed_activity(agent_id, session, started)
         raise error
     from telemetry import Reply, measure
-    answer=Reply(content, measure(result, root() / 'state', agent_id, session, started, elapsed=elapsed))
+    metrics=measure(result, root() / 'state', agent_id, session, started, elapsed=elapsed)
+    metrics['endpoint']=model_endpoint(agent_id)
+    answer=Reply(content, metrics)
     answer.activity = observed_activity(agent_id, session, started)
     if agent_id.endswith('-r8') and session.startswith('bac-plan-'):
         from research_recovery import recovered_sources
         answer.sources = recovered_sources(root() / 'state', agent_id, session, started)
     return answer
+
+
+def model_endpoint(agent_id):
+    """Return a credential-free description of the endpoint used by this agent."""
+    try:
+        config=c.read_json(config_path())
+        entry=config.get('agents',{}).get('entries',{}).get(agent_id,{})
+        reference=entry.get('model') or config.get('agents',{}).get('defaults',{}).get('model',{}).get('primary')
+        if not isinstance(reference,str) or '/' not in reference:return None
+        provider_id=reference.split('/',1)[0]
+        route=config.get('models',{}).get('providers',{}).get(provider_id,{})
+        raw=route.get('baseUrl')
+        if not isinstance(raw,str):return None
+        parsed=urllib.parse.urlsplit(raw)
+        proxy=re.match(r'^/provider/([^/]+)(/.*)?$',parsed.path)
+        provider=proxy[1] if proxy else None
+        if provider=='team':
+            provider='nvidia'
+            import team_models
+            raw=team_models.BASE_URL
+        elif provider in settings.PROVIDERS:
+            raw=settings.read().get('profiles',{}).get(provider,{}).get('baseUrl',settings.PROVIDERS[provider]['baseUrl'])
+        parsed=urllib.parse.urlsplit(raw)
+        # URL userinfo can contain credentials even when query/fragment are gone.
+        endpoint=urllib.parse.urlunsplit((parsed.scheme,parsed.netloc.rsplit('@',1)[-1],parsed.path.rstrip('/'),'',''))
+        local=provider=='local' or 'local' in provider_id or provider_id=='bac-vllm'
+        labels={'nvidia':'NVIDIA Inference','openai':'OpenAI','anthropic':'Anthropic','local':'Local model'}
+        label=labels.get(provider,'Local model' if local else provider_id)
+        return ('Local' if local else 'External')+' · '+label+' · '+endpoint
+    except (OSError,ValueError,TypeError,AttributeError):
+        return None
 
 
 def observed_activity(agent_id, session, started):
@@ -1015,7 +1077,7 @@ def set_radar_heartbeat(agent_id, enabled):
         entry = config.get('agents', {}).get('entries', {}).get(agent_id)
         if not entry or not ('bac-radar' in entry.get('skills', []) or not enabled and 'bac-notes' in entry.get('skills', [])):return False
         heartbeat = entry.get('heartbeat', {})
-        every = '30s' if enabled else '0m'
+        every = f'{HEARTBEAT_SECONDS}s' if enabled else '0m'
         if heartbeat.get('every') != every:
             heartbeat['every'] = every
             gateway_config_patch({'agents': {'entries': {agent_id: {'heartbeat': heartbeat}}}}, [])

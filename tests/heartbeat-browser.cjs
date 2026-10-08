@@ -3,7 +3,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
 const page=await browser.newPage({viewport:{width:1440,height:1100}}),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(process.env.BASE_URL||'http://127.0.0.1:8087');await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.testFixture);
 await page.context().grantPermissions(['clipboard-read','clipboard-write']);
 const telegramWrites=[];page.on('request',request=>{if(request.method()==='POST'&&new URL(request.url()).pathname.startsWith('/api/telegram'))telegramWrites.push(new URL(request.url()).pathname);});
-await page.getByRole('button',{name:'Settings',exact:true}).click();await page.locator('#studio-settings-telegram-tab').click();
+await page.getByRole('button',{name:'Settings',exact:true}).click();await page.locator('[data-connection-tab=telegram]').click();await page.locator('#studio-settings-telegram-panel').waitFor({state:'visible'});
 assert.deepEqual(await page.locator('[data-settings-tab]').allTextContents(),['Model','Location','Telegram','Reset']);
 assert(await page.locator('#studio-settings-model-panel').isHidden());
 assert(await page.locator('#studio-telegram-test').isHidden());assert(await page.locator('#studio-telegram-disconnect').isHidden());
@@ -45,7 +45,7 @@ assert.match(await page.locator('.heartbeat-source a').getAttribute('href'),/^ht
 assert.equal(await page.locator('.chat-turn .chat-user').count(),0);assert.match(await page.locator('.chat-turn').innerText(),/Heartbeat/);assert.match(await page.locator('.chat-turn').innerText(),/Sent to Telegram/);
 await page.screenshot({path:'/tmp/bac-tech-radar-chat.png'});
 await page.waitForTimeout(3500);assert.equal(await page.locator('.chat-turn').count(),1);
-await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.name==='Echo');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.locator('#studio-settings-telegram-tab').click();assert(await page.locator('#studio-telegram-status').isHidden());
+await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.name==='Echo');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.locator('[data-connection-tab=telegram]').click();await page.locator('#studio-settings-telegram-panel').waitFor({state:'visible'});assert(await page.locator('#studio-telegram-status').isHidden());
 assert(await page.locator('#studio-telegram-test').isHidden());assert(await page.locator('#studio-telegram-disconnect').isHidden());
 await page.locator('#studio-telegram-token').fill('123456789:'+'x'.repeat(30));await page.locator('#studio-telegram-chat').fill('12345');await page.locator('#studio-save-settings').click();
 await page.waitForFunction(()=>!document.querySelector('#studio-telegram-controls').hidden);
