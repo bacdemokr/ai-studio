@@ -237,3 +237,23 @@ Use local/private endpoints reachable from the OpenClaw host. Local mode does no
 Event Brief uses Riley (event coordinator), Dylan, Alex and Morgan, with event-specific identity and role instructions. Open Task keeps Casey as its team captain. Each scenario has separate native agents, workspaces, conversations and memory, including before any model request. Existing generated Event Brief definitions are upgraded; custom definitions and saved work are preserved.
 
 All Event Brief agents use the model selected on their active connection in **Settings > Model**, whether Local or External Endpoint. Old per-agent choices do not override that connection. Open Task retains per-agent NVIDIA model choices in its specialist roster; Local and other external providers use the selected connection model.
+
+
+## FAQ
+
+### several instances, not the same version on one computer
+if you end up installing (throught *git clone* or else) different version of the demo, you could encounter some issues of starting one version or the other. Issue may come from one earlier version was using and creating some environment without cleaning them after being stop.
+
+1. **Docker Volume(s) seen issue**
+
+   As part of the deployment, some volumes are created. When stopping the solution, those volumes (and backup) may not been cleaned nicely after stopping.
+
+   In case, and to be sure.
+
+   ```bash
+   ./bac stop
+   docker compose down
+   docker volume rm bac-demo_studio-data
+   docker volume rm bac-demo_client-certs
+   ./bac start
+   ```
