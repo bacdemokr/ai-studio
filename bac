@@ -15,7 +15,7 @@ BaC Agent Studio
   ./bac status    Check service status
   ./bac logs      Show recent errors and activity
   ./bac stop      Stop services; keep saved data
-  ./bac stop --all   Also stop this installation's managed local model
+  ./bac stop --all   Stop the model, remove the Compose stack and delete its data volumes
   ./bac remove    Uninstall BaC, old images and all project data (asks once)
 
 First time? Run ./bac start, then connect your model in Settings.
@@ -244,13 +244,18 @@ case "$command_name" in
     compose stop || failed=1
     sandbox_lifecycle --stop || failed=1
     if $stop_all; then
-      # Still attempt model shutdown if container cleanup failed.
+      # Still attempt model and stack cleanup if sandbox cleanup failed.
       ./bac vllm --stop || failed=1
+      compose down --volumes || failed=1
     else
       echo 'The local model is left running. Use ./bac stop --all to stop a model launched by this installation too.'
     fi
-    (( failed == 0 )) || die 'Shutdown was incomplete. Review the errors above; saved data is kept.'
-    echo 'BaC services and sandboxes stopped. Saved data is kept. Start again with ./bac start.'
+    (( failed == 0 )) || die 'Shutdown was incomplete. Review the errors above.'
+    if $stop_all; then
+      echo 'BaC services, sandboxes and managed local model stopped. Compose containers and data volumes removed.'
+    else
+      echo 'BaC services and sandboxes stopped. Saved data is kept. Start again with ./bac start.'
+    fi
     ;;
   remove)
     install_dir=$(pwd -P)

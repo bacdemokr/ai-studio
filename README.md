@@ -26,7 +26,7 @@ The first start builds the runtime image for your PC and downloads the pinned Op
 ID and a small inference request to succeed. This command runs independently of
 Docker, Studio, and the Stage 3 API key. Ordinary `./bac start` never starts or
 waits for a local model, even if model configuration exists or model files are
-missing. `./bac stop` stops the BaC services and their OpenShell sandboxes, but leaves the host model server running. Use `./bac stop --all` to also stop the local model launched by this installation. Externally managed model servers are left running and reported explicitly. Saved files, model weights and settings are preserved. The next `./bac start` resumes only the BaC sandboxes recorded by the shutdown command.
+missing. `./bac stop` stops the BaC services and their OpenShell sandboxes, but leaves the host model server running and preserves saved data. Use `./bac stop --all` to also stop the local model launched by this installation, remove the Compose stack, and delete its application data volumes. Externally managed model servers and model weights are preserved.
 
 ```bash
 ./bac vllm                # Prepare Qwen, default wait: 600 seconds
@@ -192,7 +192,7 @@ Scout has a 150-second research budget across retries. At the deadline, saved wo
 | Start or apply app changes while preserving runtime data | `./bac start --keep-data` |
 | Check status / recent logs | `./bac status` / `./bac logs` |
 | Stop, keeping data | `./bac stop` |
-| Stop services, sandboxes and this installation’s local model | `./bac stop --all` |
+| Stop services and local model, then delete Compose containers and data volumes | `./bac stop --all` |
 | **Delete BaC and its data** | **`./bac remove`** |
 
 To update, finish active work, then run in the repository folder:
@@ -251,9 +251,6 @@ if you end up installing (throught *git clone* or else) different version of the
    In case, and to be sure.
 
    ```bash
-   ./bac stop
-   docker compose down
-   docker volume rm bac-demo_studio-data
-   docker volume rm bac-demo_client-certs
+   ./bac stop --all
    ./bac start
    ```
