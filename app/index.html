@@ -1428,7 +1428,7 @@ body{margin:0;padding:0;width:100%;max-width:none}
 .scenario-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
 #agent-campus .scenario-card{display:flex;flex-direction:column;align-items:flex-start;text-align:left;color:#e9f1f5;padding:24px;border:1px solid #354c59;border-radius:16px;background:#152530;cursor:pointer}
 .scenario-card h3{font-size:24px;margin:8px 0}.scenario-card p{color:#bbcad2;line-height:1.6}
-.scenario-team,.scenario-saved{font-size:12px;color:#9fb9c4}.scenario-card-footer{display:flex;justify-content:space-between;gap:16px;width:100%;margin-top:24px}
+.scenario-team,.scenario-saved{font-size:12px;color:#9fb9c4}.scenario-saved{margin-top:12px}
 #agent-campus .studio-scenario-back{font-size:12px;min-height:34px;flex-basis:100%;text-align:left;border-color:transparent;background:transparent;color:#a9bdc8;padding:4px 0}
 
 /* Compact, extensible navigation: Stage 3 owns any number of scenario links. */
@@ -1443,22 +1443,26 @@ body{margin:0;padding:0;width:100%;max-width:none}
 .world-scenario-dot{width:5px;height:5px;border-radius:50%;background:var(--scenario-accent);flex-shrink:0}
 #agent-campus .world-map-scenarios button:disabled{opacity:.5;cursor:wait}
 
-#bac-planner #agent-campus .world-campus-room.world-scenario-label{width:clamp(180px,14vw,215px);max-width:none;box-sizing:border-box;padding:12px 16px;border-radius:12px;border-color:color-mix(in srgb,var(--scenario-accent) 45%,#263f50);border-top:2px solid var(--scenario-accent);background:#10202bee;white-space:normal;backdrop-filter:blur(8px);box-shadow:0 14px 35px #0004;transition:background .16s,border-color .16s}
-#agent-campus .world-scenario-label>span{font-size:10px;letter-spacing:.12em;margin-bottom:6px;color:var(--scenario-accent)}
-#agent-campus .world-scenario-label>b{display:block;font-size:20px;line-height:1.2;white-space:nowrap}
-#agent-campus .world-scenario-label>small{display:none;color:#a9bdc9;font-size:12px;line-height:1.45;margin-top:7px}
-#agent-campus .world-scenario-label>em{display:block;font-style:normal;color:var(--scenario-accent);font-size:11px;margin-top:8px}
-#bac-planner #agent-campus .world-campus-room.world-scenario-label:hover{background:#1c3038f5;border-color:var(--scenario-accent)}
-#bac-planner #agent-campus .world-campus-room.world-scenario-label:focus-visible{outline:2px solid var(--scenario-accent);outline-offset:4px}
+#bac-planner #agent-campus .world-campus-room{--scenario-accent:#a7bfce;width:clamp(180px,14vw,215px);max-width:none;box-sizing:border-box;padding:12px 16px;border-radius:12px;border-color:color-mix(in srgb,var(--scenario-accent) 45%,#263f50);border-top:2px solid var(--scenario-accent);background:#10202bee;white-space:normal;backdrop-filter:blur(8px);box-shadow:0 14px 35px #0004;transition:background .16s,border-color .16s}
+#agent-campus .world-campus-room>span{display:block;font-size:10px;letter-spacing:.12em;margin-bottom:6px;color:var(--scenario-accent)}
+#agent-campus .world-campus-room>b{display:block;font-size:20px;line-height:1.2;white-space:nowrap}
+#bac-planner #agent-campus .world-campus-room:hover{background:#1c3038f5;border-color:var(--scenario-accent)}
+#bac-planner #agent-campus .world-campus-room:focus-visible{outline:2px solid var(--scenario-accent);outline-offset:4px}
 #agent-campus .world-scenario-label:disabled{opacity:.6;cursor:wait}
 #agent-campus[data-scenario-gallery=true] .world-overview-button{display:block!important}
 #agent-campus[data-scenario-gallery=true] .world-journey{display:none!important}
 /* Scenario mode still uses the full scene, including in presentation mode. */
 #agent-campus[data-scenario-gallery=true] #campus-location{display:none!important}
 #agent-campus .world-navigation[data-scenario-density=compact] .world-scenario-label{padding:11px 15px;width:clamp(175px,14vw,220px)}
-#agent-campus .world-navigation[data-scenario-density=compact] .world-scenario-label>small{display:none}
-#agent-campus .world-navigation[data-scenario-density=compact] .world-scenario-label>b{font-size:18px}
-#agent-campus .world-navigation[data-scenario-density=compact] .world-scenario-label>em{margin-top:8px}
+#agent-campus .world-navigation[data-scenario-density=compact] .world-campus-room>b{font-size:18px}
+
+@media(max-width:700px){
+ #bac-planner #agent-campus .world-campus-room{width:145px;padding:9px 12px}
+ #agent-campus .world-campus-room>b{font-size:16px}
+ #agent-campus .world-campus-room>span{margin-bottom:4px}
+ #bac-planner #agent-campus .world-scenario-map>.world-map-stages{flex-wrap:wrap;gap:8px 20px}
+ #bac-planner #agent-campus .world-scenario-map .world-map-scenarios{flex-basis:100%;border-left:0;border-top:1px solid #ffffff1a;padding:7px 0 0}
+}
 </style>
 <button class="studio-secondary" id="studio-room-action" hidden></button>
 <nav hidden class="studio-safety-bar" id="studio-safety-bar" aria-label="Studio controls"><span>YOU STAY IN CONTROL</span><button id="studio-security">◇ Security lab</button><button id="studio-help">Help &amp; fallback</button><button id="studio-reset">Reset mission board</button></nav>
@@ -80044,9 +80048,9 @@ function campusFrame(scenariosOnly=false){
 
   // One persistent floor plan. Room changes move the camera, never swap worlds.
 const studioRooms={
-  workshop:{group:workshopRoom,x:0,z:18,title:roomTitles.workshop,verb:'Meet your next agent',number:'01'},
-  lounge:{group:loungeRoom,x:0,z:0,title:roomTitles.lounge,verb:'Meet your agents',number:'02'},
-  mission:{group:missionRoom,x:24,z:0,title:roomTitles.mission,verb:'Meet your team',number:'03'}
+  workshop:{group:workshopRoom,x:0,z:18,title:roomTitles.workshop,number:'01'},
+  lounge:{group:loungeRoom,x:0,z:0,title:roomTitles.lounge,number:'02'},
+  mission:{group:missionRoom,x:24,z:0,title:roomTitles.mission,number:'03'}
 };
 Object.entries(studioRooms).forEach(([id,entry])=>{entry.group.position.set(entry.x,0,entry.z);entry.group.visible=true;entry.group.userData.studioRoom=id;});
 let overview=false,journey=null,viewHalfHeight=0;
@@ -80191,19 +80195,17 @@ scenarioFloors.forEach(s=>doorway('scenario:'+s.id,'lounge',-10.6,0,0,s.group));
 doorway('lounge','workshop',0,6.1,Math.PI/2);doorway('workshop','lounge',0,-4.05,Math.PI/2);
 for(const [id,r] of Object.entries(studioRooms).filter(([id])=>id!=='mission')){
   const node=document.createElement('button');node.type='button';node.className='world-campus-room';node.dataset.worldRoom=id;
-  node.innerHTML='<span>'+r.number+' / '+r.verb+'</span><b>'+r.title+'</b>';node.onclick=()=>goToRoom(id);navigationLayer.append(node);overviewLabels.push({id,node,group:r.group});
+  node.innerHTML='<span>'+r.number+'</span><b>'+r.title+'</b>';node.onclick=()=>goToRoom(id);navigationLayer.append(node);overviewLabels.push({id,node,group:r.group});
 }
 for(const r of scenarioFloors){
   const node=document.createElement('button');node.type='button';node.className='world-campus-room world-scenario-label';node.dataset.worldScenario=r.id;
   node.style.setProperty('--scenario-accent',r.accent);node.title=r.description;
-  node.innerHTML='<span>'+escape(r.number)+' / MULTI-AGENT</span><b>'+escape(r.title)+'</b><small>'+escape(r.description)+'</small><em class="world-scenario-status"></em>';
+  node.innerHTML='<span>'+escape(r.number)+'</span><b>'+escape(r.title)+'</b>';
   node.onclick=()=>goToScenario(r.id);navigationLayer.append(node);overviewLabels.push({id:r.id,scenario:r.id,node,group:r.group});
 }
 function refreshScenarioLabels(){
   for(const item of overviewLabels.filter(r=>r.scenario)){
-    const saved=scenarioStatus.find(s=>s.id===item.scenario),node=item.node.querySelector('.world-scenario-status');
-    const text=saved?.busy?'In progress · Open ↗':saved?.hasWork?'Continue ↗':'Enter ↗';
-    if(node.textContent!==text)node.textContent=text;
+    const saved=scenarioStatus.find(s=>s.id===item.scenario);
     item.node.classList.toggle('has-work',!!saved?.hasWork);item.node.disabled=scenarioPending;
   }
   roomMap.querySelectorAll('[data-world-scenario]').forEach(node=>{
@@ -82635,8 +82637,8 @@ function renderScenarioSelector(){
  scenarioButton.disabled=scenarioSwitching;
  if(!visible)return;
  const markup=stageScenarios.map(s=>{
-  const saved=data.scenarios?.find(item=>item.id===s.id),hasWork=saved?.hasWork;
-  return '<button type="button" class="scenario-card" data-scenario="'+s.id+'" '+(scenarioSwitching?'disabled':'')+'><small>'+s.number+' · '+s.eyebrow+'</small><h3>'+s.title+'</h3><p>'+s.description+'</p><span class="scenario-team">'+s.team+'</span><span class="scenario-card-footer"><strong>'+(hasWork?'Continue':s.action)+' ↗</strong><span class="scenario-saved">'+(saved?.busy?'In progress':hasWork?'Saved work':'')+'</span></span></button>';
+  const saved=data.scenarios?.find(item=>item.id===s.id);
+  return '<button type="button" class="scenario-card" data-scenario="'+s.id+'" '+(scenarioSwitching?'disabled':'')+'><small>'+s.number+'</small><h3>'+s.title+'</h3><p>'+s.description+'</p><span class="scenario-team">'+s.team+'</span>'+(saved?.busy?'<span class="scenario-saved">In progress</span>':'')+'</button>';
  }).join('');
  const cards=scenarioSelector.querySelector('.scenario-cards');if(cards.innerHTML!==markup)cards.innerHTML=markup;
 }

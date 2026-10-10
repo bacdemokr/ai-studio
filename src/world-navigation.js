@@ -1,8 +1,8 @@
 // One persistent floor plan. Room changes move the camera, never swap worlds.
 const studioRooms={
-  workshop:{group:workshopRoom,x:0,z:18,title:roomTitles.workshop,verb:'Meet your next agent',number:'01'},
-  lounge:{group:loungeRoom,x:0,z:0,title:roomTitles.lounge,verb:'Meet your agents',number:'02'},
-  mission:{group:missionRoom,x:24,z:0,title:roomTitles.mission,verb:'Meet your team',number:'03'}
+  workshop:{group:workshopRoom,x:0,z:18,title:roomTitles.workshop,number:'01'},
+  lounge:{group:loungeRoom,x:0,z:0,title:roomTitles.lounge,number:'02'},
+  mission:{group:missionRoom,x:24,z:0,title:roomTitles.mission,number:'03'}
 };
 Object.entries(studioRooms).forEach(([id,entry])=>{entry.group.position.set(entry.x,0,entry.z);entry.group.visible=true;entry.group.userData.studioRoom=id;});
 let overview=false,journey=null,viewHalfHeight=0;
@@ -147,19 +147,17 @@ scenarioFloors.forEach(s=>doorway('scenario:'+s.id,'lounge',-10.6,0,0,s.group));
 doorway('lounge','workshop',0,6.1,Math.PI/2);doorway('workshop','lounge',0,-4.05,Math.PI/2);
 for(const [id,r] of Object.entries(studioRooms).filter(([id])=>id!=='mission')){
   const node=document.createElement('button');node.type='button';node.className='world-campus-room';node.dataset.worldRoom=id;
-  node.innerHTML='<span>'+r.number+' / '+r.verb+'</span><b>'+r.title+'</b>';node.onclick=()=>goToRoom(id);navigationLayer.append(node);overviewLabels.push({id,node,group:r.group});
+  node.innerHTML='<span>'+r.number+'</span><b>'+r.title+'</b>';node.onclick=()=>goToRoom(id);navigationLayer.append(node);overviewLabels.push({id,node,group:r.group});
 }
 for(const r of scenarioFloors){
   const node=document.createElement('button');node.type='button';node.className='world-campus-room world-scenario-label';node.dataset.worldScenario=r.id;
   node.style.setProperty('--scenario-accent',r.accent);node.title=r.description;
-  node.innerHTML='<span>'+escape(r.number)+' / MULTI-AGENT</span><b>'+escape(r.title)+'</b><small>'+escape(r.description)+'</small><em class="world-scenario-status"></em>';
+  node.innerHTML='<span>'+escape(r.number)+'</span><b>'+escape(r.title)+'</b>';
   node.onclick=()=>goToScenario(r.id);navigationLayer.append(node);overviewLabels.push({id:r.id,scenario:r.id,node,group:r.group});
 }
 function refreshScenarioLabels(){
   for(const item of overviewLabels.filter(r=>r.scenario)){
-    const saved=scenarioStatus.find(s=>s.id===item.scenario),node=item.node.querySelector('.world-scenario-status');
-    const text=saved?.busy?'In progress · Open ↗':saved?.hasWork?'Continue ↗':'Enter ↗';
-    if(node.textContent!==text)node.textContent=text;
+    const saved=scenarioStatus.find(s=>s.id===item.scenario);
     item.node.classList.toggle('has-work',!!saved?.hasWork);item.node.disabled=scenarioPending;
   }
   roomMap.querySelectorAll('[data-world-scenario]').forEach(node=>{

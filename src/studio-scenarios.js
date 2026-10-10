@@ -16,8 +16,8 @@ function renderScenarioSelector(){
  scenarioButton.disabled=scenarioSwitching;
  if(!visible)return;
  const markup=stageScenarios.map(s=>{
-  const saved=data.scenarios?.find(item=>item.id===s.id),hasWork=saved?.hasWork;
-  return '<button type="button" class="scenario-card" data-scenario="'+s.id+'" '+(scenarioSwitching?'disabled':'')+'><small>'+s.number+' · '+s.eyebrow+'</small><h3>'+s.title+'</h3><p>'+s.description+'</p><span class="scenario-team">'+s.team+'</span><span class="scenario-card-footer"><strong>'+(hasWork?'Continue':s.action)+' ↗</strong><span class="scenario-saved">'+(saved?.busy?'In progress':hasWork?'Saved work':'')+'</span></span></button>';
+  const saved=data.scenarios?.find(item=>item.id===s.id);
+  return '<button type="button" class="scenario-card" data-scenario="'+s.id+'" '+(scenarioSwitching?'disabled':'')+'><small>'+s.number+'</small><h3>'+s.title+'</h3><p>'+s.description+'</p><span class="scenario-team">'+s.team+'</span>'+(saved?.busy?'<span class="scenario-saved">In progress</span>':'')+'</button>';
  }).join('');
  const cards=scenarioSelector.querySelector('.scenario-cards');if(cards.innerHTML!==markup)cards.innerHTML=markup;
 }

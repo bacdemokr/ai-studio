@@ -136,7 +136,7 @@ Keyless local servers need no API key. Provider keys entered in these settings a
 
 1. **Hiring:** choose a character, role, tone, and skills.
 2. **Agent lounge:** chat with a hired agent, inspect files, or approve OpenShell access.
-3. **Multi-Agent demo:** enter the **Event Brief** or **Open Task** floor directly from the studio overview or Studio Map. Both spaces branch directly off the Lounge concourse as equal choices, with their own signs and accent colors. Entering Stage 3 or choosing **Scenarios** shows the spaces together; signs show **Continue** when work is saved. Switching spaces never clears either workspace.
+3. **Multi-Agent demo:** enter the **Event Brief** or **Open Task** floor directly from the studio overview or Studio Map. Both spaces branch directly off the Lounge concourse as equal choices, with their own signs and accent colors. Entering Stage 3 or choosing **Scenarios** shows the spaces together. Switching spaces never clears either workspace.
 
 **Event Brief** restores the fixed Riley, Dylan, Alex and Morgan crew. The app prepares this crew in the background once a model connection is available, without running inference. Open **Plan an event**, enter event details, and launch when preparation is ready. Reopening the form reuses the prepared team. While the app is open, it checks readiness in the background and prepares again after model changes, scenario resets or server restarts, without requiring a visit to Stage 3. A failed preparation waits for a manual retry. The team produces researched demo ideas, an operations timetable and an event webpage. Dylan retains his OpenShell protection.
 

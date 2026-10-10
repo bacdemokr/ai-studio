@@ -33,9 +33,9 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
  await choose('event-brief');assert((await page.locator('#studio-crew-conversation').textContent()).includes('event hello'));
  await page.locator('#studio-scenarios').evaluate(()=>{}); // Ensure switching didn't replace the selector node.
  await page.locator('button[data-world-room=lounge]').first().click();await page.locator('button[data-world-room=mission]').first().click();await page.locator('.world-scenario-label[data-world-scenario=plan]').waitFor({state:'visible'});
- assert((await page.locator('.world-scenario-label[data-world-scenario=event-brief]').textContent()).includes('Continue'));
+ assert.equal((await page.locator('.world-scenario-label[data-world-scenario=event-brief]').innerText()).replace(/\s+/g,' ').trim(),'03-1 Event Brief');
  await choose('event-brief');await page.reload();await page.waitForFunction(()=>window.BacCampus?.inspect().navigation?.overview);await page.locator('.world-room-map [data-world-room=mission]').click();await page.locator('.world-scenario-label[data-world-scenario=plan]').waitFor({state:'visible'});
- assert((await page.locator('.world-scenario-label[data-world-scenario=event-brief]').textContent()).includes('Continue'));
+ assert.equal((await page.locator('.world-scenario-label[data-world-scenario=event-brief]').innerText()).replace(/\s+/g,' ').trim(),'03-1 Event Brief');
  await choose('event-brief');assert((await page.locator('#studio-crew-conversation').textContent()).includes('event hello'));
  await page.locator('.studio-team-utilities').getByRole('button',{name:'Files',exact:true}).click();
  await page.waitForFunction(()=>document.querySelectorAll('[data-browse-file]').length>0);
@@ -46,5 +46,5 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
  await page.waitForFunction(()=>document.querySelector('#studio-bac-reset').disabled);
  await page.locator('#studio-config').click();await page.locator('[data-connection-tab=reset]').click();assert(await page.locator('#studio-settings-bac-reset').isDisabled());assert(!await page.locator('#studio-reset-all').isDisabled());await page.locator('#studio-dialog').evaluate(d=>d.close());
  await choose('plan');assert((await page.locator('#studio-crew-conversation').textContent()).includes('plan hello'));
- assert.deepEqual(errors,[]);console.log('PASS: separate 3D floors, map navigation, direct chat/history and draft isolation, complete Event Brief results, repeated entry, reload/continue and scenario-only Reset.');
+ assert.deepEqual(errors,[]);console.log('PASS: separate 3D floors, map navigation, direct chat/history and draft isolation, complete Event Brief results, repeated entry, reload and scenario-only Reset.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
