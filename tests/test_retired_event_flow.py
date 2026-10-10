@@ -38,7 +38,7 @@ class RetiredEventFlowTests(unittest.TestCase):
         self.app.initialize_workspace(self.owner)
         saved = self.app.workspace(self.owner) / 'artifacts/saved.html'
         saved.write_text('<h1>Saved result</h1>')
-        upgraded = Studio(self.temp.name, self.adapter, start_worker=False)
+        upgraded = Studio(self.temp.name, self.adapter, start_worker=False, recover=True)
         with upgraded.db() as db:
             statuses = [row['status'] for row in db.execute("SELECT status FROM jobs WHERE id LIKE 'legacy-%'")]
         self.assertEqual(statuses, ['cancelled', 'cancelled'])
