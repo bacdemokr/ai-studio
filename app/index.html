@@ -80864,6 +80864,27 @@ render();
   const root = document.getElementById('agent-campus');
   const el = name => document.getElementById('studio-' + name);
   const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  async function copyText(value) {
+    const text=String(value);
+    if(navigator.clipboard?.writeText){
+      try{await navigator.clipboard.writeText(text);return;}catch{/* Try the user-initiated HTTP-compatible copy below. */}
+    }
+    const focused=document.activeElement,selection=window.getSelection();
+    const ranges=selection?Array.from({length:selection.rangeCount},(_,i)=>selection.getRangeAt(i).cloneRange()):[];
+    const field=document.createElement('textarea');field.value=text;field.readOnly=true;field.tabIndex=-1;
+    field.style.cssText='position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px';
+    // A modal makes the rest of the document inert; fullscreen has a similar boundary.
+    const host=focused?.closest('dialog[open]')||document.fullscreenElement||root;
+    host.append(field);
+    try{
+      field.focus({preventScroll:true});field.select();
+      if(!document.execCommand('copy'))throw new Error('Copy is unavailable in this browser.');
+    }finally{
+      field.remove();
+      if(focused?.isConnected)focused.focus({preventScroll:true});
+      if(selection){selection.removeAllRanges();for(const range of ranges)if(range.commonAncestorContainer.isConnected)selection.addRange(range);}
+    }
+  }
   const titles = {'nvidia-webpage':'NVIDIA event page','nvidia-social':'NVIDIA social copy','nvidia-research':'NVIDIA theme research','event-page':'Event page studio',radar:'Tech Radar',weather:'Live weather',web:'Research & papers',documents:'Three Takeaways',builder:'App builder',writer:'Slack announcements',memory:'Personal memory'};
   const personas = {guide:'Explains ideas and turns them into practical plans.',maker:'Turns ideas into drafts, prototypes and small apps.',analyst:'Researches questions and compares the evidence.'};
   const tones={kind:['Kind','Warm & encouraging'],direct:['Direct','Clear & candid'],playful:['Playful','Light & witty'],cynical:['Cynical','Dry humor & skepticism']};
@@ -81680,7 +81701,7 @@ async function openResultJson(path,title,jobId){
   const tabs=[...viewer.querySelectorAll('[data-json-view]')];
   const select=next=>{tabs.forEach(tab=>{const active=tab.dataset.jsonView===next;tab.setAttribute('aria-selected',active);tab.tabIndex=active?0:-1;});el('json-browse').hidden=next!=='browse';el('json-raw').hidden=next!=='raw';viewer.querySelector('.result-json-scroll').scrollTop=0;};
   tabs.forEach((tab,i)=>{tab.onclick=()=>select(tab.dataset.jsonView);tab.onkeydown=event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const next=event.key==='Home'?tabs[0]:event.key==='End'?tabs[1]:tabs[1-i];select(next.dataset.jsonView);next.focus();};});
-  const copy=el('json-copy');copy.onclick=async()=>{try{await navigator.clipboard.writeText(formatted);if(current()){copy.textContent='Copied';el('json-copy-status').textContent='JSON copied';setTimeout(()=>{if(current())copy.textContent='Copy JSON';},1800);}}catch{if(current()){select('raw');el('json-copy-status').textContent='Select the JSON text to copy it.';copy.textContent='Select JSON to copy';}}};
+  const copy=el('json-copy');copy.onclick=async()=>{try{await copyText(formatted);if(current()){copy.textContent='Copied';el('json-copy-status').textContent='JSON copied';setTimeout(()=>{if(current())copy.textContent='Copy JSON';},1800);}}catch{if(current()){select('raw');el('json-copy-status').textContent='Select the JSON text to copy it.';copy.textContent='Select JSON to copy';}}};
  }catch(error){if(current()){viewer.replaceChildren();const message=document.createElement('p');message.setAttribute('role','alert');message.textContent=error.message;const retry=document.createElement('button');retry.className='studio-secondary';retry.textContent='Retry';retry.onclick=()=>openResultJson(path,title,jobId);viewer.append(message,retry);}}
 }
 
@@ -82186,7 +82207,7 @@ eventPackage.onclick=async e=>{
  const download=e.target.closest('[data-package-download]');if(download){downloadPackageFile(download.dataset.packageDownload);return;}
  const action=e.target.closest('[data-survey-action]');if(!action)return;const job=crewMission();
  try{
-  if(action.dataset.surveyAction==='copy'){try{await navigator.clipboard.writeText(el('survey-link').value);alert('Survey link copied.');}catch{el('survey-link').focus();el('survey-link').select();alert('Select and copy the survey link.');}return;}
+  if(action.dataset.surveyAction==='copy'){try{await copyText(el('survey-link').value);alert('Survey link copied.');}catch{el('survey-link').focus();el('survey-link').select();alert('Select and copy the survey link.');}return;}
   action.disabled=true;
   if(action.dataset.surveyAction==='refresh'){audienceReport=await api('survey-report?id='+encodeURIComponent(job.id));audienceJob=job.id;renderEventPackage();}
   if(action.dataset.surveyAction==='replan'){const next=await api('survey-replan',{id:job.id});selectedJob=next.id;eventPackageTab='plan';await refresh();alert('A new crew mission is using the audience interests. Your original package is preserved.');}
@@ -83090,7 +83111,7 @@ async function openAgentDocuments(role=null,codeView=false){
    host.querySelector('.studio-code-layout').onclick=async event=>{
     const button=event.target.closest('[data-code-copy]');if(!button)return;
     const doc=core[Number(button.dataset.codeCopy)];if(doc?.status!=='ready')return;
-    try{await navigator.clipboard.writeText(doc.content);if(current())button.textContent='Copied';}
+    try{await copyText(doc.content);if(current())button.textContent='Copied';}
     catch{if(current())button.textContent='Select text to copy';}
    };
    return;
@@ -83117,7 +83138,7 @@ async function openAgentDocuments(role=null,codeView=false){
   el('identity-copy').onclick=async()=>{
    const doc=selected,button=el('identity-copy');
    if(doc?.status!=='ready')return;
-   try{await navigator.clipboard.writeText(doc.content);if(current()&&selected===doc)button.textContent='Copied';}
+   try{await copyText(doc.content);if(current()&&selected===doc)button.textContent='Copied';}
    catch{if(current()&&selected===doc)button.textContent='Select text to copy';}
   };
   show(0);
@@ -83594,7 +83615,10 @@ async function openModelConnections(){
   if(working)return;editing=true;const editor=el('connection-editor');editor.hidden=false;
   editor.innerHTML=`<h3>${source==='local'?'Local model':'API connection'}</h3>${source==='api'?'<label>Provider<select id="studio-connect-provider"><option value="nvidia">NVIDIA Inference</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option></select></label><label>API key<input id="studio-connect-key" type="password" autocomplete="off" placeholder="Leave blank to keep the current key"></label><small id="studio-connect-key-status"></small>':''}<label>Endpoint<input id="studio-connect-url" type="url"></label><label for="studio-connect-model">Model</label><label><input id="studio-connect-model" list="studio-connect-models" autocomplete="off" placeholder="Search models…"><datalist id="studio-connect-models"></datalist></label><p id="studio-connect-status" role="status"></p><div class="studio-dialog-actions"><button type="button" class="studio-secondary" id="studio-connect-cancel">Close</button><button type="button" class="studio-primary" id="studio-connect-apply">Connect &amp; enable</button></div>`;
   const provider=()=>source==='local'?'local':el('connect-provider').value;
-  const lockFields=()=>{const active=state.connections[source],verified=source==='api'&&active.provider===provider()&&active.ready;el('connect-url').disabled=source==='api';if(el('connect-key')){el('connect-key').disabled=verified;el('connect-key').placeholder=verified?(active.keySource==='api.cfg'?'API key verified · api.cfg':active.keySource==='host'?'API key verified · saved on host':'API key verified · this session'):'Enter API key';el('connect-key-status').textContent=verified?'':'Keys entered here last for this tab only.';}};
+  // A connection may be ready using another tab's key. Only this tab's key
+  // or a host-saved key can be reused by the connection editor.
+  const reusableKey=()=>!!settings.profiles[provider()]?.hasKey||(state.connections.api.provider===provider()&&['api.cfg','host'].includes(state.connections.api.keySource));
+  const lockFields=()=>{const active=state.connections[source],verified=source==='api'&&active.provider===provider()&&active.ready&&reusableKey();el('connect-url').disabled=source==='api';if(el('connect-key')){el('connect-key').disabled=verified;el('connect-key').placeholder=verified?(active.keySource==='api.cfg'?'API key verified · api.cfg':active.keySource==='host'?'API key verified · saved on host':'API key verified · this session'):'Enter API key';el('connect-key-status').textContent=verified?'':'Keys entered here last for this tab only.';}};
   const fill=()=>{const id=provider(),profile=settings.profiles[id]||{},active=state.connections[source];el('connect-url').value=profile.baseUrl||settings.providers[id].baseUrl;el('connect-url').readOnly=source==='api';el('connect-model').value=profile.model||(active.provider===id?active.model:'');if(el('connect-key'))el('connect-key').value='';el('connect-models').innerHTML='';lockFields();};
   if(source==='api'){el('connect-provider').value=state.connections.api.provider;el('connect-provider').onchange=fill;}fill();
   const payload=()=>({source,provider:provider(),apiKey:el('connect-key')?.value.trim()||'',baseUrl:el('connect-url').value.trim(),model:el('connect-model').value.trim(),contextWindow:settings.profiles[provider()]?.contextWindow||(state.connections[source].provider===provider()?state.connections[source].contextWindow:0)||32768});
@@ -83607,7 +83631,7 @@ async function openModelConnections(){
   async function loadCatalog(){
    const values=payload(),signature=JSON.stringify([values.provider,values.baseUrl,values.apiKey]);
    if(working||catalogLoaded===signature||catalogPending===signature)return;
-   if(source==='api'&&!values.apiKey&&!((state.connections.api.provider===values.provider&&state.connections.api.keySource)||settings.profiles[values.provider]?.hasKey))return;
+   if(source==='api'&&!values.apiKey&&!reusableKey())return;
    const version=++catalogVersion,message=el('connect-status'),list=el('connect-models');catalogPending=signature;message.textContent='Loading models…';
    try{const result=await api('settings/connections/models',values,owner);if(!current()||!editor.contains(list)||version!==catalogVersion)return;
     list.replaceChildren(...result.models.map(m=>new Option(m.name||m.id,m.id)));catalogLoaded=signature;message.textContent=result.models.length?'':'No models found.';

@@ -1,6 +1,6 @@
 # Studio settings
 
-Open the small Settings gear at the top right on localhost and select **Lounge model**. Select a provider, enter its API key, load the available model IDs and choose a text model that supports tool calling. These settings apply to hired agents in Stages 1 and 2. Stage 3 has a separate connection and per-agent models. Each agent retains its own persona, tools, memory and protection settings. Pending missions must finish or be cancelled before shared settings change.
+Open the Settings gear at the top right on localhost or the host’s LAN IP and select **Model**. Configure Local and/or External Endpoint, search for a text model with tool calling, then select a connection for Hiring/Lounge, Event Brief and Open Task. Open Task also supports per-agent NVIDIA model choices in its specialist roster. Each agent retains its own persona, tools, memory and protection settings. Pending missions must finish or be cancelled before shared settings change.
 
 | Provider | Default base URL | Native OpenClaw API |
 | --- | --- | --- |
@@ -17,9 +17,9 @@ Set the default city in Settings → Location. Supply task-specific requirements
 
 ## Stage 3 connection and models
 
-Run `./bac start` to validate the NVIDIA inference key in `api.cfg`. Empty or rejected keys stop startup with instructions to edit the file and rerun the command; no key is requested interactively. Startup verifies model access and a small inference request, then saves the connection on the host for Stage 3. Browser refreshes do not clear this key. To replace it, edit `api.cfg` and run `./bac start` again.
+`./bac start` optionally loads the NVIDIA inference key from `api.cfg`. Empty, rejected or unreachable credentials do not block Studio from starting; configure Local or External Endpoint in Settings instead. Valid keys are checked with a small inference request and saved on the host. Browser refreshes do not clear this host key. To replace it, edit `api.cfg` and restart with `./bac start --keep-data` if existing runtime data should be preserved.
 
-Stage 3’s **API & models** panel displays connection status and terminal setup instructions. It has no key-entry form. Choose models for Casey and the specialists, then use the single **Apply changes** button. Model changes apply to the next request.
+Stage 3's **Models & connection** opens the shared Model settings. Event Brief uses its selected connection model for the entire team. For Open Task with NVIDIA, click the model beside each agent in **Standby specialists** to search and save a different model. Other external providers and Local use the selected connection model. Model changes apply to new requests.
 
 The Git clean filter installed by startup keeps the tracked `api.cfg` empty while preserving its local contents. Configure it with `bash scripts/setup-key-filter.sh` before editing the key if you plan to use Git before the first startup. Release packages contain an empty placeholder.
 
@@ -27,7 +27,7 @@ The Git clean filter installed by startup keeps the tracked `api.cfg` empty whil
 
 Non-secret preferences live at `$BAC_DATA_DIR/host-settings.json`. Stages 1 and 2 API keys exist only in the app process memory, leased to the owning browser document. OpenClaw uses a loopback proxy with a non-secret placeholder; real provider credentials are never written to native config. Reload, tab closure, lease expiry or server restart requires reconnecting. See [session credentials](session-credentials.md).
 
-The Settings API requires an existing browser session, CSRF protection for writes, a loopback peer and a localhost Host header. LAN participants do not see the button and cannot call these routes. For a remote host, forward port 8080 through SSH. Treat the local operating-system account as trusted. Hosted inference sends model requests to the selected provider; OpenShell controls for agent tools remain separate.
+Localhost and trusted-LAN visitors have the same Settings access, including shared model and location changes. The API still requires a browser session, a supported Host header, matching request origins and CSRF protection for writes. An SSH tunnel is optional. The demo does not distinguish remote attendees from presenters. Hosted inference sends model requests to the selected provider; OpenShell controls for agent tools remain separate.
 
 For the Docker release, `./bac start` prepares a fresh runtime and clears saved runtime data. Use `./bac start --keep-data` to refresh existing services without clearing agents, work, context or usage. For host/development installations only, install once with `./bac dev setup`; Linux user services use `./bac dev start --model external`, and copied/edited source or macOS uses `./bac dev preview`. Save starts the installed runtime if it is offline. Start agents can start it explicitly. On Linux with systemd, Settings starts the same managed gateway service as the CLI. Without systemd (including macOS), the gateway runs as a detached process and logs to `$BAC_DATA_DIR/openclaw/gateway.log`; the app never installs runtime software from a browser request.
 
@@ -40,7 +40,7 @@ Endpoint references:
 - [Anthropic model listing](https://platform.claude.com/docs/en/api/models/list).
 - [Pinned OpenClaw provider documentation](https://github.com/openclaw/openclaw/blob/v2026.9.4/docs/concepts/model-providers.md).
 
-Focused checks cover provider isolation, key masking and file permissions, pending-job protection, authorization headers, localhost access, settings persistence and event defaults. All four native provider configurations were accepted by the installed OpenClaw 2026.9.4 validator. Provider-format checks use fixtures; rehearse live completions and tool calls with the actual target model. The Ubuntu porting audit also exercises local model discovery, streamed completions, provider errors and key handling through a real HTTP fixture, without claiming GPU inference.
+Focused checks cover provider isolation, key masking and file permissions, pending-job protection, authorization headers, localhost/LAN access, settings persistence and event defaults. All four native provider configurations were accepted by the installed OpenClaw 2026.9.4 validator. Provider-format checks use fixtures; rehearse live completions and tool calls with the actual target model. The Ubuntu porting audit also exercises local model discovery, streamed completions, provider errors and key handling through a real HTTP fixture, without claiming GPU inference.
 
 ```bash
 python3 -B -m unittest discover -s tests -p test_runtime_settings.py
@@ -50,10 +50,19 @@ python3 -B tests/fixture_settings.py
 node tests/settings.cjs
 ```
 
-Settings has Lounge model, Location, Telegram and Reset tabs. Settings → Reset provides Remove agents (Stages 1 & 2), Reset Stage 3 (stop work and clear team data), and Reset all (Stage 3 first, then hired agents). Model and connection settings are preserved. The separate Reset button beside Mission Control stops Stage 3 work and clears team data after confirmation. Switching tabs preserves model drafts. Load models displays a visible list (manual model IDs remain supported); missing keys, empty responses and errors appear next to the model controls.
+Settings has Model, Location, Telegram and Reset tabs. Settings → Reset provides Remove agents (Stages 1 & 2), Reset scenario (the selected Stage 3 scenario), and Reset all (both scenarios and hired agents). Model and connection settings are preserved. The separate Reset button beside Mission Control clears only the selected scenario after confirmation. The Model search loads the model list automatically; connection errors appear beside the controls.
+
+Remote HTTP regression checks cover Settings, model selection, Usage, file previews/downloads, Copy and fullscreen using a disposable server:
+
+```bash
+python3 -B -m unittest discover -s tests -p test_remote_settings.py
+python3 -B tests/fixture_scenarios.py
+# In another terminal, with Playwright and Chrome installed:
+node tests/remote-access-browser.cjs
+```
 
 ## Location
 
-Settings has Model, Location and Reset tabs. Location accepts one city (default Zurich), stored under `location.city` in host settings. It is independent of the legacy event defaults and the current BaC brief. Saving is allowed while work is pending: existing work continues; future model calls receive the new default.
+Location accepts one city (default Zurich), stored under `location.city` in host settings. It is independent of the legacy event defaults and the current BaC brief. Saving is allowed while work is pending: existing work continues; future model calls receive the new default.
 
 Only the managed location block in each existing agent/crew `USER.md` is replaced; custom notes and MEMORY.md remain. Newly hired agents inherit the same setting. The native adapter also sends the latest location on every model request so a reused OpenClaw session or sandbox cannot rely solely on a stale bootstrap file. Explicit task/event locations take precedence. Location changes do not restart services, change permissions or clear model credentials.

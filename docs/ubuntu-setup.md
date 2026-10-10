@@ -71,13 +71,13 @@ API keys, when used, remain in memory and require reconnecting after tab refresh
 
 ### Access from a laptop
 
-On the laptop:
+For Docker installations, open **http://UBUNTU_HOST_IP:8080** directly. All demo controls and Settings are available on the trusted LAN. A private SSH tunnel is also supported:
 
 ```bash
 ssh -N -L 8080:127.0.0.1:8080 USER@UBUNTU_HOST
 ```
 
-Open **http://localhost:8080** on the laptop. Keep the model URL pointing to the Ubuntu host's loopback address. Only port 8080 needs forwarding: the app contacts the model internally. Settings requires this localhost/tunnel access.
+Open **http://localhost:8080** on the laptop. Keep the model URL pointing to the Ubuntu host's loopback address. Only port 8080 needs forwarding: the app contacts the model internally. The tunnel is optional when the app is already reachable over the trusted LAN.
 
 ## OpenShell for Dylan and protected personal agents
 

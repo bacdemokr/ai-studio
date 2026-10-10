@@ -14,9 +14,9 @@ cd ai-studio
 
 The first start creates `.env` from the supplied example, builds the pinned runtime image and downloads the OpenShell images. Later starts reuse the image unless its dependencies changed.
 
-Startup validates the Stage 3 inference key in `api.cfg` and exits with instructions to edit the file if it is missing or rejected. Stage 3 uses this saved connection automatically; its **API & models** panel lets you choose agent models and save them with **Apply changes**.
+Startup optionally validates the NVIDIA inference key in `api.cfg`. A missing, rejected or unreachable key does not block startup. A validated key becomes available automatically in **Settings → Model**; Local and External Endpoint can also be configured there.
 
-Open **http://localhost:8080**. For Stages 1 and 2, open **Settings → Lounge model**. Choose **Local / on-prem**, enter the endpoint, **Load models**, then **Connect model**.
+Open **http://localhost:8080** on the host or **http://SPARK_IP:8080** from another computer on the same trusted network. Settings are available through either address. In **Settings → Model**, configure Local and/or External Endpoint, then choose the connection for each stage. Model endpoint URLs are resolved by the Spark, not by the browser computer.
 
 - Ollama on this PC: `http://127.0.0.1:11434/v1`
 - Another compatible server: its URL ending in `/v1`, for example `http://127.0.0.1:8000/v1`

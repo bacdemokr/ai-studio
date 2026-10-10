@@ -219,7 +219,7 @@ eventPackage.onclick=async e=>{
  const download=e.target.closest('[data-package-download]');if(download){downloadPackageFile(download.dataset.packageDownload);return;}
  const action=e.target.closest('[data-survey-action]');if(!action)return;const job=crewMission();
  try{
-  if(action.dataset.surveyAction==='copy'){try{await navigator.clipboard.writeText(el('survey-link').value);alert('Survey link copied.');}catch{el('survey-link').focus();el('survey-link').select();alert('Select and copy the survey link.');}return;}
+  if(action.dataset.surveyAction==='copy'){try{await copyText(el('survey-link').value);alert('Survey link copied.');}catch{el('survey-link').focus();el('survey-link').select();alert('Select and copy the survey link.');}return;}
   action.disabled=true;
   if(action.dataset.surveyAction==='refresh'){audienceReport=await api('survey-report?id='+encodeURIComponent(job.id));audienceJob=job.id;renderEventPackage();}
   if(action.dataset.surveyAction==='replan'){const next=await api('survey-replan',{id:job.id});selectedJob=next.id;eventPackageTab='plan';await refresh();alert('A new crew mission is using the audience interests. Your original package is preserved.');}

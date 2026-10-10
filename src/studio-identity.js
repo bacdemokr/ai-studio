@@ -24,7 +24,7 @@ async function openAgentDocuments(role=null,codeView=false){
    host.querySelector('.studio-code-layout').onclick=async event=>{
     const button=event.target.closest('[data-code-copy]');if(!button)return;
     const doc=core[Number(button.dataset.codeCopy)];if(doc?.status!=='ready')return;
-    try{await navigator.clipboard.writeText(doc.content);if(current())button.textContent='Copied';}
+    try{await copyText(doc.content);if(current())button.textContent='Copied';}
     catch{if(current())button.textContent='Select text to copy';}
    };
    return;
@@ -51,7 +51,7 @@ async function openAgentDocuments(role=null,codeView=false){
   el('identity-copy').onclick=async()=>{
    const doc=selected,button=el('identity-copy');
    if(doc?.status!=='ready')return;
-   try{await navigator.clipboard.writeText(doc.content);if(current()&&selected===doc)button.textContent='Copied';}
+   try{await copyText(doc.content);if(current()&&selected===doc)button.textContent='Copied';}
    catch{if(current()&&selected===doc)button.textContent='Select text to copy';}
   };
   show(0);

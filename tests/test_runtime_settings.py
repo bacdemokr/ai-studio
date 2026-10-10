@@ -129,10 +129,12 @@ class SettingsTests(unittest.TestCase):
                 self.assertEqual(req.get_header('X-api-key'),'test-not-a-real-key');self.assertIn('/v1/models',req.full_url)
             else:self.assertEqual(req.get_header('Authorization'),'Bearer test-not-a-real-key')
         self.assertIsNone(s.NoRedirect().redirect_request(None,None,None,None,None,None))
-    def test_operator_is_loopback_connection_and_host(self):
+    def test_settings_available_on_supported_hosts_for_local_and_remote_clients(self):
         handler=object.__new__(Handler)
-        for client,host,allowed in [('127.0.0.1','localhost:8080',True),('127.0.0.1','127.0.0.1:8080',True),('192.168.1.2','localhost:8080',False),('127.0.0.1','192.168.1.2:8080',False)]:
-            handler.client_address=(client,10);handler.headers={'Host':host}
-            self.assertEqual(handler.is_operator(),allowed)
+        for client in ('127.0.0.1','192.168.1.2','fd00::2'):
+            for host,allowed in [('localhost:8080',True),('127.0.0.1:8080',True),('10.21.11.165:8080',True),('[fd00::1]:8080',True),('untrusted.example:8080',False)]:
+                with self.subTest(client=client,host=host):
+                    handler.client_address=(client,10);handler.headers={'Host':host}
+                    self.assertEqual(handler.is_operator(),allowed)
 
 if __name__=='__main__':unittest.main()

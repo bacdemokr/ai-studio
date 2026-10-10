@@ -60,15 +60,13 @@ class Handler(SimpleHTTPRequestHandler):
             return False
 
     def is_operator(self):
-        host=urlparse('http://'+self.headers.get('Host','')).hostname
-        try:
-            return ipaddress.ip_address(self.client_address[0]).is_loopback and (host=='localhost' or ipaddress.ip_address(host).is_loopback)
-        except ValueError:
-            return False
+        # The demo's supported host addresses have the same controls on LAN
+        # clients and localhost. Session, Host, origin and CSRF checks still apply.
+        return self.host_ok()
 
     def require_operator(self):
         if not self.is_operator():
-            raise Problem('Open settings on localhost, or through your private SSH tunnel.',403)
+            raise Problem('Use the host IP address or localhost.',403)
 
     def participant(self, create=False):
         cookie = SimpleCookie()

@@ -2,6 +2,27 @@
   const root = document.getElementById('agent-campus');
   const el = name => document.getElementById('studio-' + name);
   const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  async function copyText(value) {
+    const text=String(value);
+    if(navigator.clipboard?.writeText){
+      try{await navigator.clipboard.writeText(text);return;}catch{/* Try the user-initiated HTTP-compatible copy below. */}
+    }
+    const focused=document.activeElement,selection=window.getSelection();
+    const ranges=selection?Array.from({length:selection.rangeCount},(_,i)=>selection.getRangeAt(i).cloneRange()):[];
+    const field=document.createElement('textarea');field.value=text;field.readOnly=true;field.tabIndex=-1;
+    field.style.cssText='position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px';
+    // A modal makes the rest of the document inert; fullscreen has a similar boundary.
+    const host=focused?.closest('dialog[open]')||document.fullscreenElement||root;
+    host.append(field);
+    try{
+      field.focus({preventScroll:true});field.select();
+      if(!document.execCommand('copy'))throw new Error('Copy is unavailable in this browser.');
+    }finally{
+      field.remove();
+      if(focused?.isConnected)focused.focus({preventScroll:true});
+      if(selection){selection.removeAllRanges();for(const range of ranges)if(range.commonAncestorContainer.isConnected)selection.addRange(range);}
+    }
+  }
   const titles = {'nvidia-webpage':'NVIDIA event page','nvidia-social':'NVIDIA social copy','nvidia-research':'NVIDIA theme research','event-page':'Event page studio',radar:'Tech Radar',weather:'Live weather',web:'Research & papers',documents:'Three Takeaways',builder:'App builder',writer:'Slack announcements',memory:'Personal memory'};
   const personas = {guide:'Explains ideas and turns them into practical plans.',maker:'Turns ideas into drafts, prototypes and small apps.',analyst:'Researches questions and compares the evidence.'};
   const tones={kind:['Kind','Warm & encouraging'],direct:['Direct','Clear & candid'],playful:['Playful','Light & witty'],cynical:['Cynical','Dry humor & skepticism']};
