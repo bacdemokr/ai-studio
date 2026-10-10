@@ -18,6 +18,6 @@ const msg={role:'toolResult',toolName:'web_search',toolCallId:'tool-1',content:[
 const result=persistResult({toolName:'web_search',message:msg},c).message;
 assert.equal(result.toolCallId,'tool-1');const body=JSON.parse(result.content[0].text);assert.equal(body.results.length,3);assert.equal(body.results[0].url,'https://example.com/0');assert(body.results[0].snippet.endsWith('<<<END_EXTERNAL_UNTRUSTED_CONTENT id="a">>>'));assert(result.content[0].text.length<6500);assert(body.truncated);
 assert.equal(persistResult({toolName:'web_search',message:{...msg,isError:true}},c),undefined);
-assert.equal(persistResult({toolName:'read',message:msg},c),undefined);
+assert.equal(persistResult({toolName:'read',message:msg},c).message.details.coverageLimited,true);
 assert.equal(persistResult({toolName:'web_search',message:msg},{...c,agentId:'unrelated'}),undefined);
 console.log('Research bounds: call budgets, retry scope, isolation, excerpt limits and source markers passed.');

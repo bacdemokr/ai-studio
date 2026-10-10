@@ -6,7 +6,7 @@ PRESENTER_COLORS=['#e1edcb','#d8e9f3','#f4e5ce','#e7dcf2','#f0dce2','#d7e9e1','#
 def plan_themes(data):
     from event_planner import plan, TOPICS
     n=data['themeCount']
-    if type(n) is not int or not 2<=n<=6:raise ValueError('Choose 2 to 6 themes.')
+    if type(n) is not int or not 2<=n<=3:raise ValueError('Choose 2 or 3 themes.')
     base={k:v for k,v in data.items() if k not in ('themeCount','topicWeights')}
     base.update(topics=list(TOPICS)[:n],harnesses=['openclaw'],boothLimit=n)
     b,c=plan(base)

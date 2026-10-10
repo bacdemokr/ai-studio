@@ -58,6 +58,47 @@ class PlanRoundtableTests(unittest.TestCase):
         restarted = fixture.Studio(self.temp.name, self.adapter, start_worker=False)
         self.assertEqual(restarted.state(muse)['roundtableTurns'][0]['result']['answer'], replies[muse]['answer'])
 
+    def test_declined_optional_revision_still_runs_reactions_for_complete_result(self):
+        guest = self.hire()
+        original = self.adapter.respond
+        def respond(agent, session, prompt, **kwargs):
+            if session.endswith('-reviewing'):
+                return json.dumps({'done':False, 'reason':'Optional polish would look nicer.',
+                    'revision':{'role':7, 'evidenceRole':7, 'severity':'optional'}})
+            if session.endswith('-finalizing'):
+                return json.dumps({'done':True, 'outcome':'complete', 'reason':'The requested work is complete.',
+                    'answer':'A complete proposal from the saved contributions.'})
+            return original(agent, session, prompt, **kwargs)
+        self.adapter.respond = respond
+        result = self.start(); self.app.execute(self.app.next_job())
+        job = self.job(result)
+        self.assertEqual(job['status'], 'done')
+        self.assertIn('revisionDeclined', job['payload']['collaboration'])
+        self.assertEqual(job['payload']['roundtable']['status'], 'done')
+        self.assertEqual(job['payload']['roundtable']['replies'][guest]['status'], 'done')
+        self.assertEqual(len(self.adapter.reaction_calls), 2)
+
+    def test_expired_budget_marks_reactions_skipped_instead_of_waiting(self):
+        self.hire()
+        clock = [0]
+        original = self.adapter.respond
+        def respond(agent, session, prompt, **kwargs):
+            answer = original(agent, session, prompt, **kwargs)
+            if session.endswith('-reviewing'):
+                clock[0] = 601
+            return answer
+        self.adapter.respond = respond
+        result = self.start()
+        with patch('collaboration_plan.monotonic', side_effect=lambda:clock[0]):
+            self.app.execute(self.app.next_job())
+        job = self.job(result)
+        self.assertEqual(job['status'], 'done')
+        meeting = job['payload']['roundtable']
+        self.assertEqual(meeting['status'], 'skipped')
+        self.assertIn('time limit', meeting['reason'])
+        self.assertTrue(all(r['status']=='skipped' for r in meeting['replies'].values()))
+        self.assertEqual(self.adapter.reaction_calls, [])
+
     def test_failure_retry_only_guest_preserves_answer_and_specialists(self):
         guest = self.hire()
         original = self.adapter.respond

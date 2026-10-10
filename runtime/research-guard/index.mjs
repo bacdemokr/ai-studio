@@ -3,6 +3,14 @@ const sessions = new Map();
 const reviews = new Map();
 const loungeRuns = new Map();
 const TTL = 15 * 60 * 1000;
+// UTF-8 bytes are a conservative bound for multilingual source text too.
+function takeText(value, limit) {
+  const bytes = Buffer.from(value, 'utf8');
+  if (bytes.length <= limit) return value;
+  let end = Math.max(0, limit);
+  while (end > 0 && (bytes[end] & 0xc0) === 0x80) end--;
+  return bytes.subarray(0,end).toString('utf8');
+}
 function loungeKey(ctx) {
   const id = ctx.agentId || '';
   return /^bac-[a-f0-9]{24}$/.test(id) && ctx.sessionKey === `agent:${id}:openai-user:${id}` ? ctx.sessionKey : null;
@@ -36,7 +44,77 @@ function keyFor(ctx) {
   const match = (ctx.sessionKey || '').match(/:openai-user:bac-plan-([a-f0-9]{24})-8-(?:working|revising)(?:-output-retry)?$/);
   return match ? ctx.agentId + ':' + match[1] : null;
 }
+const eventRuns = new Map();
+const fileRuns = new Map();
+function fileState(ctx) {
+  const agent = (ctx.agentId || '').match(/^bac-[a-f0-9]{24}-r(\d+)$/);
+  if (!agent) return null;
+  const role = agent[1], session = ctx.sessionKey || '';
+  const plan = session.match(/:openai-user:(bac-plan-[a-f0-9]{24}-(\d+)-[a-z0-9-]+)$/);
+  const event = session.match(/:openai-user:(bac-crew-[a-f0-9]{24}-(\d+)(?:-social|-page-repair-\d+)?(?:-(?:context|output)-recovery)?)$/);
+  const match = plan || event;
+  // Dylan and Vera have stricter, dedicated guards below.
+  if (!match || match[2] !== role || (plan && role === '4') || (event && role === '1')) return null;
+  const now = Date.now(), key = ctx.agentId + ':' + match[1];
+  for (const [k,v] of fileRuns) if (now-v.updated>TTL) fileRuns.delete(k);
+  if (!fileRuns.has(key)) {
+    if (fileRuns.size>=1000) fileRuns.delete(fileRuns.keys().next().value);
+    fileRuns.set(key,{updated:now,reads:0,chars:0,calls:new Map(),results:new Map()});
+  }
+  const state=fileRuns.get(key);state.updated=now;return state;
+}
+function eventState(ctx) {
+  if (!/^bac-[a-f0-9]{24}-r1$/.test(ctx.agentId || '') ||
+      !/:openai-user:bac-crew-[a-f0-9]{24}-1(?:-(?:context|output)-recovery)?$/.test(ctx.sessionKey || '')) return null;
+  const now = Date.now(), key = ctx.sessionKey;
+  for (const [k,v] of eventRuns) if (now-v.updated>TTL) eventRuns.delete(k);
+  if (!eventRuns.has(key)) {
+    if (eventRuns.size>=1000) eventRuns.delete(eventRuns.keys().next().value);
+    eventRuns.set(key,{updated:now,reads:new Set(),calls:new Map(),results:new Map(),chars:0,search:0,read:0,evidence:0});
+  }
+  const state=eventRuns.get(key);state.updated=now;return state;
+}
+function eventBefore(event, state, ctx) {
+  const id=event.toolCallId||ctx.toolCallId, params=event.params||{};
+  if(id && state.calls.has(id))return state.calls.get(id);
+  let result;
+  const block=reason=>({block:true,blockReason:reason});
+  const finish='Use the evidence already returned, save the short demos JSON and run validate-themes. Report missing evidence honestly.';
+  if(event.toolName==='read') {
+    const path=String(params.path||params.file_path||'').replace(/\\/g,'/');
+    const normalized=path.replace(/^.*\/(skills|inbox|artifacts)\//,'$1/');
+    if(/-research\.json$|\.py$/.test(path)) result=block('Bulk research and tool-source reads are disabled for this mission. Use the event tool evidence action for bounded saved article excerpts. '+finish);
+    else if(state.reads.has(normalized)||state.chars>=18000)result=block('This file was already read or the reading budget is exhausted. '+finish);
+    else {state.reads.add(normalized);result={params:{...params,limit:Math.min(100,Math.max(1,Number(params.limit)||100))}};}
+  } else if(event.toolName==='exec') {
+    const command=String(params.command||'').trim();
+    const match=command.match(/^python3?\s+(?:\/sandbox\/)?skills\/bac-event-tools\/scripts\/event_agent_tools\.py\s+(search|read|evidence|validate-themes)(?:\s+[^;&|`$<>\n\r]*)?$/);
+    if(!match)result=block('Only direct shipped event-tool commands are available for this mission. No shell inspection, inline Python, pipelines or file copies. '+finish);
+    else {
+      const action=match[1],limits={search:2,read:2,evidence:2};
+      if(action!=='validate-themes'&&(state[action]>=limits[action]||state.chars>=18000))result=block('Research command budget exhausted. '+finish);
+      else {if(action!=='validate-themes')state[action]++;result={params:{...params,host:'sandbox',workdir:'/sandbox'}};}
+    }
+  }
+  if(id&&result)state.calls.set(id,result);
+  return result;
+}
 export function beforeTool(event, ctx) {
+  const eventRun=eventState(ctx);
+  if(eventRun)return eventBefore(event,eventRun,ctx);
+  const files = fileState(ctx);
+  if (files && event.toolName === 'read') {
+    const id = event.toolCallId || ctx.toolCallId;
+    if (id && files.calls.has(id)) return files.calls.get(id);
+    const params = event.params || {};
+    if (spillFile.test(String(params.path || params.file_path || ''))) return {block:true,blockReason:'Use the bounded web excerpt already returned. Do not read its full-output file or claim full-page verification.'};
+    const result = files.reads >= 16 || files.chars >= 24000
+      ? {block:true,blockReason:'File reading budget reached. Save useful work and finish with explicit gaps. Do not claim unread content was verified or repeat full-file reads.'}
+      : {params:{...params,limit:Math.min(120,Math.max(1,Math.floor(Number(params.limit)||120)))}};
+    if (!result.block) files.reads++;
+    if (id) files.calls.set(id,result);
+    return result;
+  }
   if (loungeKey(ctx)) {
     const params = event.params || {};
     // Reading web_fetch's full-output file bypasses maxCharsCap.
@@ -100,6 +178,39 @@ function excerpt(value, limit) {
   return wrapped ? wrapped[1] + wrapped[2].slice(0, limit) + note + wrapped[3] : value.slice(0, limit) + note;
 }
 export function persistResult(event, ctx) {
+  const files = fileState(ctx), fileTool = event.toolName || ctx.toolName;
+  if (files && ['read','exec'].includes(fileTool) && Array.isArray(event.message?.content)) {
+    const id = event.message.toolCallId || event.toolCallId;
+    if (id && files.results.has(id)) return files.results.get(id);
+    let left = Math.min(6000,Math.max(0,24000-files.chars)), truncated = false;
+    const content = event.message.content.map(block => {
+      if (block.type !== 'text' || typeof block.text !== 'string') return block;
+      const text=takeText(block.text,left), used=Buffer.byteLength(text);left-=used;files.chars+=used;
+      if (text.length === block.text.length) return block;
+      const note=truncated?'':'\n[Task excerpt shortened; some content omitted. Read only a focused missing section if budget remains. Save useful work; report coverage limits honestly.]';
+      truncated=true;return {...block,text:text+note};
+    });
+    const result = truncated ? {message:{...event.message,content,details:{truncated:true,coverageLimited:true}}} : undefined;
+    if (id) files.results.set(id,result);
+    return result;
+  }
+  const eventRun=eventState(ctx), eventTool=event.toolName||ctx.toolName;
+  if(eventRun && ['read','exec'].includes(eventTool) && Array.isArray(event.message?.content)) {
+    const id=event.message.toolCallId||event.toolCallId;
+    if(id&&eventRun.results.has(id))return eventRun.results.get(id);
+    const validating=/\svalidate-themes\s*$/.test(eventRun.calls.get(id)?.params?.command||'');
+    let left=validating?1000:Math.min(6000,Math.max(0,18000-eventRun.chars)), truncated=false;
+    const content=event.message.content.map(b=>{
+      if(b.type!=='text'||typeof b.text!=='string')return b;
+      const text=takeText(b.text,left), used=Buffer.byteLength(text);left-=used;eventRun.chars+=used;
+      const note=text.length<b.text.length&&!truncated?'\n[Event excerpt shortened; some content omitted. Use only visible evidence. Save themes and validate; do not dump full files.]':'';
+      truncated ||= text.length<b.text.length;return {...b,text:text+note};
+    });
+    const result={message:{...event.message,content,details:{bounded:true}}};
+    if(id)eventRun.results.set(id,result);
+    return result;
+  }
+
   const review = (event.toolName || ctx.toolName) === 'read' && reviewState(ctx);
   if (review && !event.message?.isError && Array.isArray(event.message?.content)) {
     const id = event.message.toolCallId || event.toolCallId;
@@ -107,10 +218,10 @@ export function persistResult(event, ctx) {
     let remaining = Math.min(5000, Math.max(0, 18000 - review.chars)), truncated = false;
     const content = event.message.content.map(block => {
       if (block.type !== 'text' || typeof block.text !== 'string') return block;
-      const text = block.text.slice(0, remaining);remaining -= text.length;review.chars += text.length;
+      const text = takeText(block.text, remaining), used=Buffer.byteLength(text);remaining -= used;review.chars += used;
       if (text.length === block.text.length) return block;
-      truncated = true;
-      return {...block, text: text + '\n[Review excerpt shortened. Some source was omitted. Use a focused, unread offset/limit range if budget remains; otherwise report limited coverage. Never claim the entire file was verified.]'};
+      const note=truncated?'':'\n[Review excerpt shortened. Some source was omitted. Use a focused, unread offset/limit range if budget remains; otherwise report limited coverage. Never claim the entire file was verified.]';
+      truncated=true;return {...block,text:text+note};
     });
     const result = truncated ? {message: {...event.message, content, details: {truncated: true, reviewCoverageLimited: true}}} : undefined;
     if (id) review.results.set(id, result);
@@ -119,7 +230,7 @@ export function persistResult(event, ctx) {
   const personal = loungeKey(ctx), tool = event.toolName || ctx.toolName;
   if ((!keyFor(ctx) && !personal) || !['web_search', 'web_fetch'].includes(tool) || event.message?.isError) return;
   if (tool === 'web_fetch') {
-    if (!personal || !Array.isArray(event.message?.content)) return;
+    if (!Array.isArray(event.message?.content)) return;
     // Preserve source metadata and untrusted markers, but do not invite a
     // full-page reread from the native temporary file.
     const clean = value => {

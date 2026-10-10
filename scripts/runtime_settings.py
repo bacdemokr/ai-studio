@@ -37,7 +37,14 @@ def apply_context_limits(config):
     compaction['enabled'] = True
     # Native default retains 20k recent tokens, exceeding the 16k input
     # budget of our 32k models. Leave room for summaries, tools and new evidence.
-    compaction['keepRecentTokens'] = min(compaction.get('keepRecentTokens', 8192), 8192)
+    windows = [32768]
+    for provider in config.get('models', {}).get('providers', {}).values():
+        for model in provider.get('models', []):
+            for key in ('contextWindow', 'contextTokens'):
+                value = model.get(key)
+                if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+                    windows.append(value)
+    compaction['keepRecentTokens'] = min(compaction.get('keepRecentTokens', 8192), min(windows) // 4)
     compaction['midTurnPrecheck'] = {'enabled': True}
     return config
 

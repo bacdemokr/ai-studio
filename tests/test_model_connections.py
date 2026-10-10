@@ -14,6 +14,9 @@ class ConnectionTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         env=patch.dict(os.environ,{'BAC_DATA_DIR':self.temp.name});env.start();self.addCleanup(env.stop)
+        # Connection fixtures must not discover a real host model in the background.
+        background = patch.object(connections, 'threading')
+        background.start(); self.addCleanup(background.stop)
         self.app=Studio(Path(self.temp.name)/'studio',Adapter(),start_worker=False)
         self.owner=self.app.session()[0]['id']
         self.lease='connections-'+self.temp.name
@@ -206,3 +209,63 @@ class ConnectionTests(unittest.TestCase):
         with self.assertRaises(Problem):team_models.select(self.app,owner,{'role':0,'model':'not-offered'})
         member['_teamModel']='not-offered'
         with self.assertRaisesRegex(Problem,'selected model is unavailable'):connections.prepare(self.app,member)
+
+
+class LocalDiscoveryTests(unittest.TestCase):
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        env = patch.dict(os.environ, {'BAC_DATA_DIR':temp.name})
+        env.start(); self.addCleanup(env.stop)
+        connections._checks.clear(); connections._pending.clear(); connections._discovered.clear()
+        connections.initialize()
+        background = patch.object(connections, 'threading')
+        self.thread = background.start().Thread; self.addCleanup(background.stop)
+
+    def probe(self, rows):
+        with patch.object(settings, 'request', return_value={'data':rows}) as request:
+            state = connections.probe('local', connections.profile('local'))
+        self.assertEqual(request.call_args.args[2], '/models')
+        return state
+
+    def test_running_vllm_discovered_without_saved_profile_or_launch_config(self):
+        self.assertFalse(connections.status('local')['ready'])
+        self.thread.assert_called_once()
+        self.probe([{'id':'nvidia/test-model','owned_by':'vllm','max_model_len':262144}])
+        state = connections.status('local')
+        self.assertTrue(state['ready'])
+        self.assertEqual(state['model'], 'nvidia/test-model')
+        self.assertEqual(state['contextWindow'], 32768)
+        self.assertEqual(connections.resolve('local', 'lounge')[1]['model'], 'nvidia/test-model')
+        self.assertNotIn('local', settings.read().get('profiles', {}))
+
+    def test_late_start_rechecks_and_respects_server_context(self):
+        with patch.object(settings, 'request', side_effect=OSError('not listening')):
+            self.assertFalse(connections.probe('local', connections.profile('local'))['ready'])
+        connections.status('local', refresh=True)
+        self.thread.assert_called_once()
+        self.probe([{'id':'small-model','max_model_len':16384}])
+        self.assertEqual(connections.status('local')['contextWindow'], 16384)
+        self.assertTrue(connections.status('local')['ready'])
+
+    def test_model_replacement_refreshes_detected_profile(self):
+        self.probe([{'id':'old-model'}])
+        self.probe([{'id':'new-model'}])
+        self.assertEqual(connections.status('local')['model'], 'new-model')
+        self.assertTrue(connections.status('local')['ready'])
+
+    def test_ambiguous_empty_and_too_small_catalogs_do_not_connect(self):
+        for rows in ([], [{'id':'one'},{'id':'two'}], [{'id':'tiny','max_model_len':4096}]):
+            self.probe([{'id':'previous'}])
+            self.assertFalse(self.probe(rows)['ready'])
+            self.assertFalse(connections.status('local')['ready'])
+            self.assertFalse(connections.profile('local').get('model'))
+
+    def test_explicit_model_and_disabled_connection_are_preserved(self):
+        settings.persist({'provider':'local','profiles':{'local':{'model':'chosen','baseUrl':'http://127.0.0.1:8000/v1','contextWindow':32768}}})
+        self.assertFalse(self.probe([{'id':'different'}])['ready'])
+        self.assertEqual(connections.profile('local')['model'], 'chosen')
+        settings.persist({'profiles':{}})
+        connections.persist({**connections.read(), 'disabled':['local']})
+        self.assertEqual(connections.status('local')['message'], 'Disabled')
+        self.thread.assert_not_called()
