@@ -24,6 +24,7 @@ CASES = {
     'code': '/plan Create a compact desktop HTML tip calculator. Inputs are bill and tip percentage; show tip and total. Reject empty, negative and non-finite values. Save a working single HTML file. No web research needed.',
     'review': '/plan Create a small desktop HTML attendee group calculator with attendee count and group size. Both must be positive whole numbers. Show groups rounded up. Then have Vera independently review the saved source for empty, zero, negative and fractional inputs. Label static inspection honestly.',
     'documents': '/plan Read supplied context-fixture.txt and save a concise summary of the workshop requirements at its beginning. The appendix is repetitive filler and not a requirement. State any coverage limitations. No web research needed.',
+    'source_page': '/plan Read this official NVIDIA article and build a compact single-file desktop HTML summary with three supported facts and the exact source link: https://nvidianews.nvidia.com/news/nvidia-kicks-off-the-next-generation-of-ai-with-rubin-six-new-chips-and-a-new-platform-for-agentic-ai . Use only retrieved evidence; omit unsupported details. No additional research needed.',
     'research': '/plan Research two NVIDIA AI developments from official NVIDIA sources and create a compact desktop HTML overview with cited links. Use only retrieved evidence; mark unknown dates honestly. Keep the page small.',
 }
 # Studio initialization performs startup recovery. Refuse to touch a busy host.
