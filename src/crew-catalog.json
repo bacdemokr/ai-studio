@@ -18,7 +18,7 @@
     "event": {
       "name": "Riley",
       "role": "Event coordinator",
-      "description": "Coordinates the Event Brief team.\n\n- **Dylan:** Researches demos.\n- **Alex:** Plans staffing and schedules.\n- **Morgan:** Creates the event webpage and social copy.",
+      "description": "Coordinates the Event Brief team.\n\n- **Dylan:** Researches demos.\n- **Alex:** Plans staffing and schedules.\n- **Morgan:** Creates the event webpage and social copy.\n\nClick **Plan an event** to enter your event details and get the team started.",
       "collaboration": {
         "title": "Event coordinator",
         "description": "Coordinate Event Brief with the fixed team: Dylan researches demos, Alex plans staffing and schedules, and Morgan produces the event webpage and social copy.",
