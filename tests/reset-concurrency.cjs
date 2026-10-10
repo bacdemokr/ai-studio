@@ -15,6 +15,9 @@ with tempfile.TemporaryDirectory() as d:
  try{
   const p=await b.newPage({viewport:{width:1500,height:1100}}),errors=[];p.on('pageerror',e=>errors.push(e.message));
   let deleting=false,complete=false,deletions=0,bacCalls=0;
+  // This is a controlled UI test. Background runtime/presence calls must not
+  // fall through to an unrelated real fixture session with different cookies.
+  await p.route('**/api/**',r=>r.fulfill({json:new URL(r.request().url()).pathname==='/api/runtime'?fixture.states[0].runtime:{}}));
   await p.route(/\/api\/(session|state)$/,r=>r.fulfill({json:{...(complete?fixture.states[2]:{...fixture.states[0],agents:fixture.states[0].agents.map(a=>({...a,deleting,deletionWaiting:deleting}))}),scenarios:[{id:'plan',hasWork:true}]}}));
  await p.route('**/api/settings/connections',r=>r.fulfill({json:{connections:{local:{ready:true,enabled:true,provider:'local',model:'fixture',message:'Ready'},api:{ready:false,enabled:false,message:'Not configured'}},loungePreference:'auto',scenarioPreferences:{}}}));
   await p.route('**/api/settings',r=>r.fulfill({json:{provider:'local',providers:{local:{label:'Local',baseUrl:'http://localhost:8000/v1'}},profiles:{},event:{city:'Zurich',language:'English',venue:''}}}));

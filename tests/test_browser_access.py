@@ -62,6 +62,24 @@ class BrowserAccessTests(unittest.TestCase):
         with self.app.db() as db:
             self.assertEqual(db.execute('SELECT count(*) FROM participants').fetchone()[0], 2)
 
+    def test_late_poll_cannot_revive_a_closed_tab(self):
+        account = self.open()
+        self.access.release(account['id'], 'a'*48)
+        for create in (False, True):
+            with self.assertRaises(Problem) as caught:
+                self.access.session(account['token'], 'a'*48, create)
+            self.assertEqual(caught.exception.status, 410)
+        self.assertNotEqual(self.open(view='b'*48)['id'], account['id'])
+
+    def test_late_poll_after_refresh_does_not_extend_the_previous_view(self):
+        account = self.open()
+        self.open(account['token'], 'b'*48)
+        self.access.release(account['id'], 'a'*48)
+        with self.assertRaises(Problem):
+            self.access.session(account['token'], 'a'*48)
+        self.access.release(account['id'], 'b'*48)
+        self.assertNotEqual(self.open(view='c'*48)['id'], account['id'])
+
     def test_lost_connection_expires_and_old_browser_cannot_resume_work(self):
         with patch('browser_access.time.monotonic', return_value=100):
             account = self.open()

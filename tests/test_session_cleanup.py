@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path[:0] = [str(Path(__file__).resolve().parents[1] / 'scripts'), str(Path(__file__).parent)]
-from studio import Studio
+from studio import Studio, Problem
 from studio_sessions import SESSION_IDLE_SECONDS
 from test_studio import Adapter
 
@@ -165,6 +165,29 @@ class SessionCleanupTests(unittest.TestCase):
             self.studio.clean_idle_sessions()
         self.assertEqual(keep.read_text(),'keep')
         self.assertFalse(self.studio.touch_session(self.owner))
+
+    def test_late_creation_cannot_add_agents_or_teams_after_retirement(self):
+        self.expire()
+        self.studio.retire_idle_sessions()
+        with self.assertRaises(Problem) as caught:
+            self.studio.add_agent(self.owner, {'name':'Late hiring', 'skills':['writer']})
+        self.assertEqual(caught.exception.status, 401)
+        for owner in [self.owner, *self.teams]:
+            with self.assertRaises(Problem) as caught:
+                self.studio.crew_owner(owner, 'event-brief')
+            self.assertEqual(caught.exception.status, 401)
+        # Also exercise a session that has not created a crew yet.
+        empty, _ = self.studio.session()
+        with self.studio.db() as db:
+            db.execute('UPDATE participants SET last_seen=0 WHERE id=?', (empty['id'],))
+        self.studio.retire_idle_sessions()
+        with self.assertRaises(Problem):
+            self.studio.crew_owner(empty['id'], 'event-brief')
+        self.studio.cleanup_session(empty['id'])
+        self.studio.cleanup_session(self.owner)
+        with self.studio.db() as db:
+            owned = {r[0] for r in db.execute('SELECT id FROM agents')} | {r[0] for r in db.execute('SELECT workspace_name FROM crew_resources')}
+        self.assertFalse({p.name for p in (Path(self.temp.name)/'workspaces').iterdir()} - owned)
 
 
 if __name__ == '__main__': unittest.main()

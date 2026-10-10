@@ -4,6 +4,7 @@ Crew contexts use the existing owner foreign keys, but are never selectable or
 counted as personal agents. Each team explicitly owns its native role identities, workspace names and chat
 sessions. Personal deletion never traverses these resources.
 """
+import contextlib
 import secrets
 import time
 
@@ -93,26 +94,37 @@ class CrewOwnership:
         from studio import Problem, ROLES
         from scenarios import validate
         if scenario is not None:validate(scenario)
-        with self.db() as db:
-            db.execute('BEGIN IMMEDIATE')
-            account = db.execute('SELECT participant,kind FROM agents WHERE id=?', (owner,)).fetchone()
-            if not account:raise Problem('Agent not found.',404)
-            if account['kind']=='crew' and scenario is None:return owner
-            scenario=scenario or 'plan'
-            found = db.execute('SELECT owner FROM crew_contexts WHERE participant=? AND scenario=?', (account['participant'],scenario)).fetchone()
-            if found:return found['owner']
-            team = secrets.token_hex(12)
-            db.execute("INSERT INTO agents(id,participant,created,kind) VALUES (?,?,?,'crew')", (team,account['participant'],time.time()))
-            db.execute('INSERT INTO crew_contexts(owner,participant,scenario) VALUES (?,?,?)', (team,account['participant'],scenario))
-            resources=[]
-            for role in range(len(ROLES)):
-                resource=dict(owner=team,role=role,native_id='bac-'+team+'-r'+str(role),workspace_name=team+'-'+str(role),chat_session='bac-crew-chat-'+team+'-'+str(role))
-                db.execute('INSERT INTO crew_resources(owner,role,native_id,workspace_name,chat_session) VALUES (:owner,:role,:native_id,:workspace_name,:chat_session)',resource)
-                resources.append(resource)
-            self.crew_resources.update({(team,r['role']):r for r in resources})
-        self.initialize_workspace(team)
-        self.initialize_crew_workspaces(team)
-        return team
+        resources = []
+        try:
+            # Keep registration and all definition files within the same
+            # transaction as the retirement fence. No late workspace writes may
+            # recreate directories after cleanup has captured/deleted the team.
+            with contextlib.ExitStack() as workspaces, self.db() as db:
+                db.execute('BEGIN IMMEDIATE')
+                account = db.execute('SELECT a.participant,a.kind,p.retiring FROM agents a JOIN participants p ON p.id=a.participant WHERE a.id=?', (owner,)).fetchone()
+                if not account:raise Problem('Agent not found.',404)
+                if account['retiring']:raise Problem('Open the Agent Studio page to start a session.',401)
+                if account['kind']=='crew' and scenario is None:return owner
+                scenario=scenario or 'plan'
+                found = db.execute('SELECT owner FROM crew_contexts WHERE participant=? AND scenario=?', (account['participant'],scenario)).fetchone()
+                if found:return found['owner']
+                team = secrets.token_hex(12)
+                db.execute("INSERT INTO agents(id,participant,created,kind) VALUES (?,?,?,'crew')", (team,account['participant'],time.time()))
+                db.execute('INSERT INTO crew_contexts(owner,participant,scenario) VALUES (?,?,?)', (team,account['participant'],scenario))
+                for role in range(len(ROLES)):
+                    resource=dict(owner=team,role=role,native_id='bac-'+team+'-r'+str(role),workspace_name=team+'-'+str(role),chat_session='bac-crew-chat-'+team+'-'+str(role))
+                    db.execute('INSERT INTO crew_resources(owner,role,native_id,workspace_name,chat_session) VALUES (:owner,:role,:native_id,:workspace_name,:chat_session)',resource)
+                    resources.append(resource)
+                for role in (None, *range(len(ROLES))):
+                    workspaces.enter_context(self.new_agent_workspace(team, role))
+                self.initialize_workspace(team)
+                self.initialize_crew_workspaces(team, scenario=scenario)
+                self.crew_resources.update({(team,r['role']):r for r in resources})
+            return team
+        except Exception:
+            for resource in resources:
+                self.crew_resources.pop((resource['owner'],resource['role']), None)
+            raise
 
     def crew_native_id(self, owner, role):
         resource = self.crew_resources.get((owner,role))

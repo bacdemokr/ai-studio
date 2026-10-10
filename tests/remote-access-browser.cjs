@@ -5,6 +5,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs/promises'),{chromium}=require('playwright');
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});
+ const local=process.env.BAC_TEST_URL||'http://127.0.0.1:8083';
  const origin=process.env.BAC_TEST_REMOTE_URL||'http://10.0.0.5:8083',page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[],failures=[];
  page.setDefaultTimeout(15000);
  page.on('pageerror',e=>errors.push(e.message));
@@ -12,7 +13,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs/promises'),{chrom
  let keySession='';page.on('request',r=>{keySession=r.headers()['x-bac-key-session']||keySession;});
  if(!process.env.BAC_TEST_REMOTE_URL)await page.route(origin+'/**',async route=>{
   const req=route.request(),headers=await req.allHeaders();headers.host=new URL(origin).host;
-  const response=await route.fetch({url:req.url().replace(origin,'http://127.0.0.1:8083'),headers});
+  const response=await route.fetch({url:req.url().replace(origin,local),headers});
   await route.fulfill({response});
  });
  const api=(path,body,scenario='plan')=>page.evaluate(async({path,body,scenario,keySession})=>{
@@ -39,15 +40,13 @@ const assert=require('node:assert/strict'),fs=require('node:fs/promises'),{chrom
   await page.locator('#qa-paste').evaluate(e=>e.remove());
  }
  try{
-  // Keep a different browser's session-only key active. Remote configuration
+  // Keep a separate API client's session-only key active (like the development
+  // helper), without competing for the single interactive browser slot. Remote configuration
   // must not lock the key field or claim that this new tab already owns it.
-  const presenter=await browser.newPage();await presenter.goto('http://127.0.0.1:8083');
-  await presenter.waitForFunction(()=>window.BacStudio?.inspect().runtime.version==='SCENARIO TEST FIXTURE');
-  await presenter.evaluate(async()=>{
-   const session=await fetch('/api/session').then(r=>r.json());
-   const result=await fetch('/api/settings/connections',{method:'POST',headers:{'Content-Type':'application/json','X-BaC-CSRF':session.csrf,'X-BaC-Key-Session':'fixture-presenter'},body:JSON.stringify({source:'api',provider:'nvidia',apiKey:'fixture-presenter-key',model:'fixture-local-model'})});
-   if(!result.ok)throw Error(await result.text());
-  });
+  const presenter=await browser.newContext();
+  const session=await (await presenter.request.get(local+'/api/session')).json();
+  const configured=await presenter.request.post(local+'/api/settings/connections',{headers:{'X-BaC-CSRF':session.csrf,'X-BaC-Key-Session':'fixture-presenter'},data:{source:'api',provider:'nvidia',apiKey:'fixture-presenter-key',model:'fixture-local-model'}});
+  assert.ok(configured.ok(),await configured.text());
   await page.goto(origin);await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.version==='SCENARIO TEST FIXTURE');
   assert.deepEqual(await page.evaluate(()=>({secure:isSecureContext,clipboard:typeof navigator.clipboard})),{secure:false,clipboard:'undefined'});
   assert(await page.locator('#studio-config').isVisible());

@@ -139,6 +139,48 @@ class OwnershipTests(unittest.TestCase):
         team=self.studio.crew_owner(self.owner)
         self.assertEqual(self.studio.state(self.owner)['crewOwner'],team)
 
+    def test_failed_team_creation_rolls_back_all_definitions_and_ownership(self):
+        import agent_runtime
+        before=set((self.studio.directory/'workspaces').iterdir())
+        write=agent_runtime.write_workspace
+        calls=[]
+        def fail(workspace,*args,**kwargs):
+            write(workspace,*args,**kwargs)
+            calls.append(workspace)
+            if len(calls)==2:raise OSError('Fixture disk failure during team initialization')
+        with patch('agent_runtime.write_workspace',side_effect=fail),self.assertRaises(OSError):
+            self.studio.crew_owner(self.owner,'event-brief')
+        self.assertEqual(set((self.studio.directory/'workspaces').iterdir()),before)
+        self.assertFalse(self.studio.crew_resources)
+        with self.studio.db() as db:
+            self.assertEqual(db.execute('SELECT count(*) FROM crew_contexts').fetchone()[0],0)
+            self.assertEqual(db.execute('SELECT count(*) FROM crew_resources').fetchone()[0],0)
+        team=self.studio.crew_owner(self.owner,'event-brief')
+        self.assertIn('Riley',(self.studio.workspace(team,0)/'IDENTITY.md').read_text())
+
+    def test_retirement_waits_for_all_team_files_then_cleans_them(self):
+        from concurrent.futures import ThreadPoolExecutor
+        entered=threading.Event();release=threading.Event();retiring=threading.Event()
+        initialize=self.studio.initialize_crew_workspaces
+        def slow(owner,**kwargs):
+            entered.set()
+            if not release.wait(5):raise RuntimeError('Fixture initialization was not released')
+            initialize(owner,**kwargs)
+        def retire():
+            retiring.set();self.studio.retire_idle_sessions()
+            self.studio.cleanup_session(self.owner)
+        with self.studio.db() as db:
+            db.execute('UPDATE participants SET last_seen=0 WHERE id=?',(self.owner,))
+        with ThreadPoolExecutor(2) as pool,patch.object(self.studio,'initialize_crew_workspaces',side_effect=slow):
+            creation=pool.submit(self.studio.crew_owner,self.owner,'event-brief')
+            self.assertTrue(entered.wait(5))
+            cleanup=pool.submit(retire)
+            self.assertTrue(retiring.wait(5))
+            release.set()
+            creation.result(5);cleanup.result(5)
+        self.assertFalse(list((self.studio.directory/'workspaces').iterdir()))
+        self.assertFalse(self.studio.crew_resources)
+
     def test_retired_personal_lead_cannot_replace_team_captain(self):
         team=self.studio.crew_owner(self.owner)
         with self.assertRaisesRegex(Problem,'Choose Event Brief'):

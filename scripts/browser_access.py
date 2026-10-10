@@ -6,6 +6,7 @@ host's credential helper retain the existing cookie/origin/CSRF checks.
 import re
 import threading
 import time
+from studio_sessions import SESSION_IDLE_SECONDS
 
 BROWSER_GRACE_SECONDS = 90
 IN_USE = 'Close the demo in the other browser, then try again.'
@@ -18,6 +19,7 @@ class BrowserAccess:
         self.lock = threading.Lock()
         self.owner = None
         self.views = {}
+        self.closed_views = {}
 
     def busy(self):
         with self.studio.db() as db:
@@ -42,6 +44,9 @@ class BrowserAccess:
         # create even an empty participant or trigger Stage 3 preparation.
         with self.lock:
             now = time.monotonic()
+            self.closed_views = {key:closed for key,closed in self.closed_views.items() if now-closed < SESSION_IDLE_SECONDS}
+            if view in self.closed_views:
+                raise Problem('This demo tab has closed. Refresh to open it again.', 410)
             self.views = {key:seen for key,seen in self.views.items() if now-seen < BROWSER_GRACE_SECONDS}
             with self.studio.db() as db:
                 row = db.execute('SELECT * FROM participants WHERE token=?', (token,)).fetchone() if token else None
@@ -70,4 +75,6 @@ class BrowserAccess:
             if participant == self.owner:
                 # A late pagehide from before a refresh must not release a new
                 # tab or a different browser that has since opened the demo.
-                self.views.pop(view, None)
+                if view in self.views:
+                    self.closed_views[view] = time.monotonic()
+                    self.views.pop(view)

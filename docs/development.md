@@ -66,7 +66,9 @@ node tests/browser-access.cjs
 node tests/session-cleanup-browser.cjs
 ```
 
-The UI sends a per-tab browser-view ID; the server admits one participant before creating its session state. All marked API requests renew/check access, and closing a tab releases only that view. Non-UI API clients (including host connection helpers) keep their existing authentication and do not occupy a browser slot. This is a duplicate-demo guard, not a security boundary. Simulated multi-participant tests should use their API clients or close one browser before opening the next.
+The UI sends a per-tab browser-view ID; the server admits one participant before creating its session state. All marked API requests renew/check access, and closing a tab releases only that view. Late requests from a closed view receive HTTP 410 and cannot reclaim the slot. Non-UI API clients (including host connection helpers) keep their existing authentication and do not occupy a browser slot. This is a duplicate-demo guard, not a security boundary. Simulated multi-participant tests should use their API clients or close one browser before opening the next. For consecutive browser tests, use fresh fixture processes or navigate the owning pages away before closing the browser; killing the browser can leave its 90-second grace period active.
+
+Team creation registers its identities and writes the initial workspace definitions within the same transaction that guards session retirement. A failed setup rolls back its newly allocated directories; a retiring session cannot hire agents or create another team. `tests/test_crew_ownership.py` and `tests/test_session_cleanup.py` cover initialization failures and overlapping cleanup.
 
 ## Exploratory rehearsal
 

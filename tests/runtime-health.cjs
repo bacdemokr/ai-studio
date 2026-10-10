@@ -22,6 +22,7 @@ finally:c.tearDown()
    if(url.pathname==='/api/session')return route.fulfill({json:{...state,runtime}});
    if(url.pathname==='/api/state')return route.fulfill({json:state});
    if(url.pathname==='/api/runtime'){if(url.searchParams.has('retry'))retries++;return route.fulfill({json:runtime});}
+   if(url.pathname==='/api/settings/connections')return route.fulfill({json:{connections:{local:{ready:false,enabled:false,message:'Not configured'},api:{ready:false,enabled:false,message:'Not configured'}},loungePreference:'auto',scenarioPreferences:{}}});
    if(url.pathname==='/api/settings'){if(route.request().method()==='POST')settingsWrites++;return route.fulfill({json:{provider:'nvidia',providers:{nvidia:{label:'Fixture provider',baseUrl:'https://example.invalid/v1'}},profiles:{}}});}
    return route.fulfill({json:{}});
   });

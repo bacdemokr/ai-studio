@@ -393,9 +393,9 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
                 return candidate
             number += 1
 
-    def initialize_crew_workspaces(self, owner):
+    def initialize_crew_workspaces(self, owner, scenario=None):
         from scenarios import crew_member
-        scenario = self.crew_scenario(owner)
+        scenario = scenario or self.crew_scenario(owner)
         for role, member in enumerate(CREW_CATALOG):
             profile = {**crew_member(member, scenario), '_scenario':scenario, 'skills':list(ROLE_SKILLS[role]), 'protection':member.get('protection','standard')}
             runtime.write_workspace(self.workspace(owner, role), profile, member['role'], overwrite=False)
@@ -416,6 +416,8 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
         profile = self.agent_profile(owner, data)
         with self.new_agent_workspace(owner), self.db() as db:
             db.execute('BEGIN IMMEDIATE')
+            if not db.execute('SELECT 1 FROM participants WHERE id=? AND retiring=0', (participant,)).fetchone():
+                raise Problem('Open the Agent Studio page to start a session.', 401)
             if not db.execute('SELECT id FROM agents WHERE participant=? AND profile IS NOT NULL', (participant,)).fetchone():
                 raise Problem('Create your first agent before adding another.')
             if db.execute("SELECT count(*) FROM agents WHERE participant=? AND kind='personal'", (participant,)).fetchone()[0] >= MAX_AGENTS:
@@ -430,9 +432,9 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
         return {'agentId': owner, 'profile': profile}
 
     @contextlib.contextmanager
-    def new_agent_workspace(self, owner):
+    def new_agent_workspace(self, owner, role=None):
         """Roll back only the fresh directory allocated by this creation attempt."""
-        path = self.workspace(owner)
+        path = self.workspace(owner, role)
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.parent.is_symlink():raise RuntimeError('Agent workspace storage is redirected.')
         path.mkdir(mode=0o700)  # Never adopt or erase a pre-existing identity.

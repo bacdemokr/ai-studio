@@ -23,11 +23,17 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await first.reload();await ready(first);
   assert.equal(await first.evaluate(()=>BacStudio.inspect().agentId),owner);
   const tab=await contexts[0].newPage();tab.on('pageerror',e=>errors.push(e.message));
+  let lastView='';tab.on('request',request=>{lastView=request.headers()['x-bac-browser-view']||lastView;});
   await tab.goto(base);await ready(tab);
   assert.equal(await tab.evaluate(()=>BacStudio.inspect().agentId),owner,'same browser must share the original agents');
   await first.goto('about:blank');
   await second.getByRole('button',{name:'Try again',exact:true}).click();await blocked(second);
   await tab.goto('about:blank');await tab.close();
+  assert.ok(lastView,'the closing tab sent its browser identity');
+  // A request already queued before pagehide can arrive after it. It must not
+  // resurrect that tab's presence or prevent the next browser from entering.
+  const late=await contexts[0].request.get(base+'/api/state',{headers:{'X-BaC-Browser-View':lastView}});
+  assert.equal(late.status(),410,'late polling from a closed tab is rejected');
   await second.getByRole('button',{name:'Try again',exact:true}).click();await ready(second);
   assert.notEqual(await second.evaluate(()=>BacStudio.inspect().agentId),owner);
   // Simulate a lost connection exceeding the admission grace without waiting
@@ -41,7 +47,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await first.screenshot({path:process.env.BAC_TEST_READY_SCREENSHOT||'/tmp/bac-browser-admission-ready.png'});
   await second.screenshot({path:process.env.BAC_TEST_BLOCKED_SCREENSHOT||'/tmp/bac-browser-admission-blocked.png'});
   await first.goto('about:blank');
-  console.log('PASS localhost/LAN exclusion, no duplicate teams, shared tabs, refresh, close, disconnect and stale-browser recovery');
+  console.log('PASS localhost/LAN exclusion, no duplicate teams, shared tabs, refresh, close, late polling, disconnect and stale-browser recovery');
  }finally{
   for(const context of contexts)await context.close();
   await browser.close();
