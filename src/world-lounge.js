@@ -103,8 +103,11 @@ function endResidentDrag(cancel=false){
  const r=drag.resident;r.dragging=false;
  if(cancel)r.group.position.copy(drag.start);
  else if(moved){r.placed=true;loungeLayout[r.key]=[r.group.position.x,r.group.position.z];try{localStorage.setItem(loungeLayoutKey,JSON.stringify(loungeLayout));}catch{}r.suppressClickUntil=performance.now()+400;}
- else root.dispatchEvent(new CustomEvent('bac:collection-select',{detail:r.key}));
- drag=null;return true;
+ // Selecting and placing a resident are compatible. Small pointer movement
+ // during a name-tag click must not silently discard the workspace selection.
+ drag=null;
+ if(!cancel)root.dispatchEvent(new CustomEvent('bac:collection-select',{detail:r.key}));
+ return true;
 }
 let loungeTime=0,loungeSpeaker=null,lastLoungeSpeaker='',nextLoungeSpeech=.9;
 const welcomeSpeakers=[];
@@ -147,7 +150,7 @@ function setCollection(agents,key){
       const node=document.createElement('button');node.type='button';node.className='world-resident';node.dataset.resident=a.key;node.dataset.speaking='false';node.innerHTML='<b></b><small></small><span class="world-resident-speech" hidden></span>';residentLayer.append(node);
       const speech=node.querySelector('.world-resident-speech');speech.id='lounge-speech-'+a.key;
       r={...rig,placed:!!savedLoungePosition(a.key),key:a.key,mount,node,halo,seed:residentSeed(a.key),target:null,waitUntil:loungeTime+.25+index*.4,activity:'resting',hovered:false,focused:false,saidIntro:false,line:0,speechText:'',blockedFor:0};residents.push(r);
-      node.onclick=e=>{if(performance.now()<(r.suppressClickUntil||0)){e.preventDefault();return;}root.dispatchEvent(new CustomEvent('bac:collection-select',{detail:r.key}));};
+      node.onclick=e=>{if(e.detail>0&&performance.now()<(r.suppressClickUntil||0)){e.preventDefault();return;}root.dispatchEvent(new CustomEvent('bac:collection-select',{detail:r.key}));};
       node.style.touchAction='none';node.style.cursor='grab';
       node.onpointerdown=e=>beginResidentDrag(e,r.key);node.onpointermove=moveResidentDrag;
       node.onpointerup=()=>{if(drag?.resident===r){endResidentDrag();r.suppressClickUntil=performance.now()+400;}};node.onpointercancel=()=>endResidentDrag(true);

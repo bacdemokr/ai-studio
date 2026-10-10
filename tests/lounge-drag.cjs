@@ -9,7 +9,7 @@ with tempfile.TemporaryDirectory() as d:
  const b=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});
  try{const p=await b.newPage({viewport:{width:1600,height:1100}}),errors=[];p.on('pageerror',e=>errors.push(e.message));
  await p.route('**/api/session',r=>r.fulfill({json:state}));await p.route('**/api/state',r=>r.fulfill({json:state}));
- await p.goto('http://127.0.0.1:8080');await p.waitForFunction(()=>window.BacCampus?.inspect().residents?.length===1);
+ await p.goto(process.env.BASE_URL||'http://127.0.0.1:8080');await p.waitForFunction(()=>window.BacCampus?.inspect().residents?.length===1);
  async function lounge(){await p.locator('.world-room-map [data-world-room=lounge]').click();await p.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);}
  await lounge();const tag=p.locator('.world-resident').first();await tag.hover();
  const before=await p.evaluate(()=>BacCampus.inspect()),box=await tag.boundingBox();

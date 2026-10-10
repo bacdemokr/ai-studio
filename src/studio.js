@@ -147,7 +147,9 @@
   }
   async function switchAgent(next){
     const version=++agentSwitchVersion;
-    if(next===agentId){++refreshVersion;changingAgent=false;busy=false;render();return;}
+    // Hiring opens the newcomer before it finishes. Even re-selecting the
+    // currently displayed agent must wait and override that automatic choice.
+    if(next===agentId&&!hiringArrival){++refreshVersion;changingAgent=false;busy=false;render();return;}
     // Keep the last click instead of rejecting it. Foreground writes still
     // finish in their original workspace; background preparation can continue.
     while(pendingWrites>backgroundWrites||removingAgent||hiringArrival||scenarioSwitching){
@@ -165,7 +167,18 @@
     el('collection').hidden=!data.profile;
     const key=JSON.stringify([agentId,data.agents]);
     if(key===collectionKey)return;collectionKey=key;
-    el('agent-list').innerHTML=(data.agents||[]).map(a=>`<button class="studio-agent-card" data-agent-key="${a.key}" data-personality="${a.persona}" aria-pressed="${a.key===agentId}">${avatarBadge(a.avatar)}<span><strong>${escape(a.name)}</strong><small>${escape(a.purpose||'Personal agent')} · ${a.skills.length} skills${a.deleting?' · Deletion pending':a.activity?' · Busy':' · Ready'}</small></span><em>${a.key===agentId?'SELECTED':'OPEN'}</em></button>`).join('');
+    const list=el('agent-list'),cards=new Map([...list.children].map(node=>[node.dataset.agentKey,node]));
+    // Keep each button mounted while preparation/heartbeat updates arrive.
+    // Replacing it between pointerdown and pointerup loses the user's click.
+    (data.agents||[]).forEach((a,index)=>{
+      const button=cards.get(a.key)||document.createElement('button');cards.delete(a.key);
+      button.type='button';button.className='studio-agent-card';button.dataset.agentKey=a.key;button.dataset.personality=a.persona;
+      button.setAttribute('aria-pressed',String(a.key===agentId));
+      const content=`${avatarBadge(a.avatar)}<span><strong>${escape(a.name)}</strong><small>${escape(a.purpose||'Personal agent')} · ${a.skills.length} skills${a.deleting?' · Deletion pending':a.activity?' · Busy':' · Ready'}</small></span><em>${a.key===agentId?'SELECTED':'OPEN'}</em>`;
+      if(button.innerHTML!==content)button.innerHTML=content;
+      if(list.children[index]!==button)list.insertBefore(button,list.children[index]||null);
+    });
+    cards.forEach(button=>button.remove());
     el('collection-note').textContent=`${data.agents?.length||0} / ${data.agentLimit||12} agents · Each keeps its own conversation, memory and files. Assign them to roles when launching a crew.`;
   }
   el('agent-list').onclick=e=>{const b=e.target.closest('[data-agent-key]');if(b)switchAgent(b.dataset.agentKey);};

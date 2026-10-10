@@ -4,7 +4,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
  try{
   const page=await browser.newPage({viewport:{width:1500,height:1000}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
-  await page.goto('http://127.0.0.1:8082');await page.waitForFunction(()=>window.BacStudio);
+  await page.goto(process.env.BASE_URL||'http://127.0.0.1:8082');await page.waitForFunction(()=>window.BacStudio);
   for(const [body,color,accessory] of [['claw','violet','glasses'],['crab','coral','cap'],['round','cyan','headset']]){
    await page.locator('.world-room-map [data-world-room=workshop]').click();
    await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
@@ -18,7 +18,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
    const arrival=await page.evaluate(()=>BacCampus.inspect().arrival);
    assert(!previous.includes(arrival.key));assert.deepEqual(arrival.avatar,expected);
    assert.equal(await page.locator('#studio-onboarding').evaluate(e=>e.inert),true);
-   // A stale selection event or poll must not change the actor during the walk.
+   // A selection is queued while hiring; the walking newcomer keeps its identity.
    if(previous.length)await page.evaluate(key=>document.querySelector('#agent-campus').dispatchEvent(new CustomEvent('bac:collection-select',{detail:key})),previous[0]);
    await page.waitForFunction(()=>BacCampus.inspect().arrival?.phase==='walking');
    assert.deepEqual((await page.evaluate(()=>BacCampus.inspect().arrival)).avatar,expected);
@@ -26,7 +26,8 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
    const resident=await page.evaluate(key=>BacCampus.inspect().residents.find(r=>r.key===key),arrival.key);
    assert.deepEqual(resident.avatar,expected);
    assert.equal(await page.locator('#studio-onboarding').evaluate(e=>e.inert),false);
+   if(previous.length)await page.waitForFunction(key=>BacStudio.inspect().agentId===key,previous[0]);
   }
-  assert.deepEqual(errors,[]);console.log('PASS: three distinct created identities retain body, color and accessories through loading, walking and arrival; stale selection ignored.');
+  assert.deepEqual(errors,[]);console.log('PASS: three distinct created identities survive arrival; queued selection applies after hiring.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

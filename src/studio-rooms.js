@@ -200,6 +200,6 @@ el('onboarding').onsubmit=async e=>{
   }catch(error){alert(error.message);}finally{hiringArrival=false;el('onboarding').inert=false;el('create').disabled=draftMode==='new'&&(data.agents?.length||0)>=(data.agentLimit||12);}
 };
 // Selecting a resident updates its workspace without moving the visitor's view.
-root.addEventListener('bac:collection-select',e=>{if(hiringArrival)return;editingInPlace=false;renderRoomVisibility();switchAgent(e.detail);});
+root.addEventListener('bac:collection-select',e=>{editingInPlace=false;renderRoomVisibility();switchAgent(e.detail);});
 // Useful in file-only UI review too; live status is supplied by boot().
 fillCreator(true);setRoom('workshop');window.BacCampus?.overview({instant:true});

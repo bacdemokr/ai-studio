@@ -69,6 +69,17 @@ function fixture(){
   const selection=c.switchAgent('b');await c.switchAgent('a');c.pendingWrites=0;
   await tick();await selection;assert.equal(calls.length,0);assert.equal(c.agentId,'a');
  }
+ // Hiring can replace the displayed workspace after an existing name was
+ // clicked. Keep that intent even when the clicked agent was already selected.
+ {
+  const {context:c,calls,opened,reply,tick}=fixture();c.hiringArrival=true;
+  const first=c.switchAgent('b'),last=c.switchAgent('a');
+  await tick();assert.equal(calls.length,0);
+  c.openAgentState({agentId:'newcomer'});c.hiringArrival=false;await tick();
+  assert.equal(calls.length,1);assert.equal(calls[0].options.headers['X-BaC-Agent'],'a');
+  reply(calls[0],{agentId:'a'});await Promise.all([first,last]);
+  assert.deepEqual(opened,['newcomer','a']);assert.equal(c.agentId,'a');
+ }
  // New writes stay fenced during state loading; tab presence and owner-scoped
  // background preparation remain safe, including a failed preparation request.
  {
