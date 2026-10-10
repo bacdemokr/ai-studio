@@ -11,6 +11,20 @@ from test_studio import Studio, Adapter
 
 
 class PersonalVoiceTests(unittest.TestCase):
+    def test_workspace_keeps_literal_voice_once_and_combined_signature(self):
+        with tempfile.TemporaryDirectory() as temp:
+            profile={'name':'Orbit','persona':'guide','purpose':'Explain robotics with practical examples.',
+                     'tonePrompt':'Dry wit, with patient explanations.', 'skills':['documents','writer','radar']}
+            runtime.write_workspace(temp,profile)
+            soul=(Path(temp)/'SOUL.md').read_text()
+            self.assertEqual(soul.count(profile['purpose']),1)
+            self.assertEqual(soul.count(profile['tonePrompt']),1)
+            self.assertIn(signature(profile),soul)
+            self.assertIn('Continue with a useful answer',soul)
+            radar=(Path(temp)/'skills/bac-radar/SKILL.md').read_text()
+            self.assertIn('Manual chat is disabled',radar)
+            self.assertIn('without polling or publishing a Radar update',radar)
+
     def test_signature_is_shared_by_workspace_chat_and_roundtable(self):
         with tempfile.TemporaryDirectory() as temp:
             profile={'name':'Echo','persona':'analyst','tone':'cynical','tonePrompt':'Dry and skeptical.', 'skills':['documents']}

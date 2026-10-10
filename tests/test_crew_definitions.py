@@ -97,4 +97,19 @@ class CrewDefinitionTests(unittest.TestCase):
             for role in range(4):
                 runtime.remove('bac-'+self.owner+'-r'+str(role),self.studio.workspace(self.owner,role))
 
+    def test_event_page_handoff_and_analysis_role_have_consistent_completion_rules(self):
+        event_owner=self.studio.crew_owner(self.person['id'],'event-brief')
+        for owner in (self.owner,event_owner):
+            workflow=(self.studio.workspace(owner,3)/'EVENT_WORKFLOW.md').read_text()
+            self.assertIn('after successful write results',workflow)
+            self.assertIn('app validates and assembles your sections after your turn',workflow)
+            self.assertNotIn('saving it and inspecting the result',workflow)
+            self.assertIn('Do not use a shared patch file, exec, apply/status, or full-page readback',workflow)
+            for role in range(len(CREW_CATALOG)):
+                self.assertNotIn('All roles use the selected shared model',
+                    (self.studio.workspace(owner,role)/'AGENTS.md').read_text())
+        ada=self.studio.workspace(self.owner,6)
+        self.assertIn('hand off findings and chart specifications',
+            (ada/'skills/bac-data-analysis/SKILL.md').read_text())
+
 if __name__=='__main__':unittest.main()

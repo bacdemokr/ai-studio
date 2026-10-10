@@ -184,6 +184,8 @@ Scout uses keyless Parallel Search: one focused search and 2–3 useful findings
 
 The bundled research guard enforces at most two searches (three bounded excerpts each), or five bounded page reads, per research job. After a search, Scout saves the available excerpts instead of opening more pages. These enforced job limits apply to Scout’s `/goal` research. Lounge research also receives concise research instructions and bounded fetched excerpts, with runtime context compaction. Neither changes OpenShell permissions or guarantees every request fits the model context.
 
+Lounge research answers ordinary questions directly; it saves a brief when requested or assigned as a team handoff. Its generated research instructions use the agent's actual transport: native web tools for standard agents, approved sandbox requests for OpenShell agents. Personal tone and reply styles remain in `SOUL.md`; Event Brief and Open Task use their own role and delivery contracts.
+
 Small saved evidence briefs and bounded excerpts from observed tool results are passed directly to Casey for synthesis. If the final reply cites a public URL absent from those results and their returned links, it is withheld as partial rather than labeled complete. This citation check does not verify every factual claim or establish that sources are current.
 
 Scout has a 150-second research budget across retries. At the deadline, saved work and completed search/page excerpts are preserved for the team; missing evidence is reported honestly.

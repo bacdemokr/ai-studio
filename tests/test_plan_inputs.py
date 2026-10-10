@@ -188,7 +188,7 @@ class PlanInputs(unittest.TestCase):
                 if member['collaboration'].get('scope'):
                     soul = (workspace / 'SOUL.md').read_text()
                     self.assertIn(member['collaboration']['scope'], soul)
-                    self.assertIn('Captain-delegated /plan work', soul)
+                    self.assertIn('Captain-delegated /goal work (/plan is an alias)', soul)
                 for path in (workspace / 'skills').glob('bac-*/SKILL.md'):
                     if path.parent.name in ('bac-event-page', 'bac-nvidia-webpage', 'bac-nvidia-social', 'bac-nvidia-research', 'bac-event-scheduling', 'bac-event-tools'):
                         self.assertIn('SCOPE: Use this skill only', path.read_text())

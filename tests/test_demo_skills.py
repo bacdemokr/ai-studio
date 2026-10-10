@@ -7,6 +7,32 @@ import agent_runtime as runtime
 import agent_policy as policy
 
 class DemoSkillsTests(unittest.TestCase):
+    def test_generated_research_instructions_match_both_transports(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for protection in ('standard','openshell'):
+                with self.subTest(protection=protection):
+                    profile={'name':'Orbit','persona':'analyst','purpose':'Research robotics.',
+                             'skills':['web','weather'],'protection':protection}
+                    workspace=Path(tmp)/protection
+                    runtime.write_workspace(workspace,profile)
+                    web=(workspace/'skills/bac-web/SKILL.md').read_text()
+                    weather=(workspace/'skills/bac-weather/SKILL.md').read_text()
+                    tools=runtime.tool_allowlist(profile)
+                    self.assertIn('five page fetches per user request',(workspace/'AGENTS.md').read_text())
+                    self.assertNotIn('Zurich',web+weather)
+                    self.assertIn('available file tools',web)
+                    if 'web_fetch' in tools:
+                        self.assertIn('Use native web_fetch',web)
+                        self.assertIn('Use web_fetch',weather)
+                    else:
+                        self.assertIn('No search tool is available',web)
+                        self.assertIn('host=sandbox',web)
+                        self.assertIn('host=sandbox',weather)
+                        self.assertNotIn('Use native web_fetch',web)
+                        self.assertNotIn('Use web_fetch',weather)
+                        self.assertNotIn('with native write',web)
+                        self.assertNotIn('web_search',tools)
+
     @offline_config
     def test_equipped_skills_are_native_files_with_matching_tool_access(self):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ,{'BAC_DATA_DIR':tmp}):

@@ -102,12 +102,14 @@ class PlanWebCapabilities(unittest.TestCase):
             profile=register.call_args.args[2]
             self.assertIn('edit',runtime.tool_allowlist(profile,profile['role']))
 
-    def test_research_skill_searches_first_with_bounded_source_fallback(self):
+    def test_research_skill_keeps_evidence_budgets_and_distinguishes_chat_from_handoff(self):
         instruction = runtime.SKILLS['web'][1]
-        self.assertIn('use it FIRST: one focused query', instruction)
-        self.assertIn('Immediately save the assigned brief with native write', instruction)
-        self.assertIn('Do not run follow-up searches or open result pages', instruction)
-        self.assertIn('save a short honest failure note and finish', instruction)
+        self.assertIn('Read a supplied URL first', instruction)
+        self.assertIn('one focused query with at most three results', instruction)
+        self.assertIn('For ordinary conversation, answer directly', instruction)
+        self.assertIn('For a handoff, use the assigned path and available file tools', instruction)
+        self.assertIn('Do not reread or rewrite a successful brief', instruction)
+        self.assertIn('never claim research succeeded', instruction)
         self.assertIn('check article dates and reporting periods', instruction)
         self.assertIn('start with a confidently known topic-specific newsroom', instruction)
         self.assertIn('Cite exact URLs successfully read', instruction)
