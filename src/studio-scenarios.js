@@ -5,7 +5,7 @@ scenarioSelector.innerHTML='<div class="scenario-heading"><span class="studio-ki
 layout.append(scenarioSelector);
 // The scene and Studio Map provide navigation. Keep a back control only when WebGL is unavailable.
 const scenarioButton=document.createElement('button');scenarioButton.type='button';scenarioButton.className='studio-secondary studio-scenario-back';scenarioButton.textContent='← Scenarios';scenarioButton.hidden=true;crewActions.prepend(scenarioButton);
-scenarioButton.onclick=()=>{if(scenarioSwitching||pendingWrites||crewChatSending||crewDocumentUpload){alert('Wait for the current save to finish.');return;}closeSurface();scenarioChoosing=true;setRoom('mission');};
+scenarioButton.onclick=()=>{if(scenarioSwitching||pendingWrites>backgroundWrites||crewChatSending||crewDocumentUpload){alert('Wait for the current save to finish.');return;}closeSurface();scenarioChoosing=true;setRoom('mission');};
 function renderScenarioSelector(){
  const visible=room==='mission'&&scenarioChoosing&&['fallback','lost'].includes(root.dataset.renderer);
  scenarioButton.hidden=room!=='mission'||scenarioChoosing||!['fallback','lost'].includes(root.dataset.renderer);
@@ -24,7 +24,7 @@ function renderScenarioSelector(){
 const scenarioDraftEpochs=new Map();
 async function chooseScenario(id){
  if(!stageScenarios.some(s=>s.id===id)||scenarioSwitching)return;
- if(pendingWrites||crewChatSending||crewDocumentUpload||changingAgent||removingAgent){alert('Wait for the current save to finish before changing scenarios.');return;}
+ if(pendingWrites>backgroundWrites||crewChatSending||crewDocumentUpload||changingAgent||removingAgent){alert('Wait for the current save to finish before changing scenarios.');return;}
  const previous=selectedScenario,previousData=data;
  if(crewChatKey)crewDrafts.set(crewChatKey,el('crew-prompt').value);
  scenarioDraftEpochs.set(previous,crewResetEpoch);

@@ -1164,15 +1164,19 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
             modes[agent_id] = mode
         if member['protection'] != 'openshell':
             return None
-        _, approvals = self.saved_policy(owner, role)
-        report = self.adapter.policy_status(agent_id, 'openshell', approvals)
-        if report['status'] == 'awaiting-first-mission':
-            self.adapter.policy_prepare(agent_id)
-        if report['status'] != 'applied':
-            report = self.adapter.policy_apply(agent_id, approvals)
-        if report['status'] != 'applied':
-            raise ProtectionNotVerified(report['status'])
-        return {key:report[key] for key in ('mode','status','checkedAt','rules','sandboxes') if key in report}
+        try:
+            _, approvals = self.saved_policy(owner, role)
+            report = self.adapter.policy_status(agent_id, 'openshell', approvals)
+            if report['status'] == 'awaiting-first-mission':
+                self.adapter.policy_prepare(agent_id)
+            if report['status'] != 'applied':
+                report = self.adapter.policy_apply(agent_id, approvals)
+            if report['status'] != 'applied':
+                raise ProtectionNotVerified(report['status'])
+            return {key:report[key] for key in ('mode','status','checkedAt','rules','sandboxes') if key in report}
+        except Exception:
+            self.provisioned.discard(agent_id)
+            raise
 
     def ensure_agent(self, owner, profile, role=None):
         role = None if role == 0 else role
@@ -1400,10 +1404,18 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
 
     def work(self, lane='background'):
         while not self.stop.is_set():
-            if lane == 'background':
-                self.finish_pending_bac_resets()
-                if self.deletion_worker is None:self.finish_pending_deletions()
-            row = self.next_job(lane)
+            try:
+                if lane == 'background':
+                    self.finish_pending_bac_resets()
+                    if self.deletion_worker is None:self.finish_pending_deletions()
+                row = self.next_job(lane)
+            except sqlite3.OperationalError as error:
+                # Startup/settings can briefly own the SQLite write lock. No job
+                # has been claimed yet, so retry the queue, never a model call.
+                if 'locked' not in str(error).lower() and 'busy' not in str(error).lower():
+                    raise
+                self.stop.wait(.5)
+                continue
             if row:
                 try:
                     self.execute(row)

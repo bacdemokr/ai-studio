@@ -9,7 +9,15 @@ class DemoReadiness:
     def demo_preparation(self, owner):
         with self.db() as db:
             row = db.execute("SELECT * FROM jobs WHERE owner=? AND kind='prepare' ORDER BY created DESC LIMIT 1", (owner,)).fetchone()
-        return {**self.public_job(row), 'valid':json.loads(row['payload']).get('bootId') == self.boot_id} if row else None
+        return {**self.public_job(row), 'valid':self.preparation_valid(row)} if row else None
+
+    def preparation_valid(self, row):
+        payload = json.loads(row['payload'])
+        if payload.get('bootId') != self.boot_id:
+            return False
+        # Reconnecting/changing models invalidates provisioned native identities.
+        return row['status'] != 'done' or all(
+            payload['roster'][role]['id'] in self.provisioned for role in payload['enabledRoles'])
 
     def require_event_crew_idle(self, db, owner):
         from studio import Problem
@@ -27,7 +35,7 @@ class DemoReadiness:
         if not row or row['status'] != 'done':
             raise Problem('Prepare the selected BaC crew before starting the event.', 409)
         payload = json.loads(row['payload'])
-        if payload.get('bootId') != self.boot_id or not set(roles).issubset(payload.get('enabledRoles', [])):
+        if not self.preparation_valid(row) or not set(roles).issubset(payload.get('enabledRoles', [])):
             raise Problem('Preparation changed or expired. Check the selected crew again.', 409)
         return payload
 
@@ -44,7 +52,7 @@ class DemoReadiness:
             # warmup stays visible for an explicit retry instead of looping.
             if background and previous:
                 prior = json.loads(previous['payload'])
-                if prior.get('bootId') == self.boot_id and set(selected).issubset(prior.get('enabledRoles', [])):
+                if self.preparation_valid(previous) and set(selected).issubset(prior.get('enabledRoles', [])):
                     return {'id': previous['id'], 'cached': True}
             if previous and previous['status'] in ('queued', 'running'):
                 pending = json.loads(previous['payload'])

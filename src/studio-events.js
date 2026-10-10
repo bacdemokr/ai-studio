@@ -92,10 +92,13 @@ const crewWarmups=new Map();
 let crewStartupReady=false;
 function warmCrewOnOpen(){
  if(!crewStartupReady||!connected||!agentId||changingAgent||removingAgent||!runtime.gateway||data.deleting||data.bacResetting)return;
- const key=runtime.instance+':'+(data.crewOwner||agentId),now=Date.now();
+ const connections=runtime.modelConnections;
+ if(connections?.enabled&&!Object.values(connections.connections||{}).some(c=>c.enabled&&c.ready))return;
+ // The crew belongs to this participant, not the selected personal agent.
+ const key=runtime.instance+':event-brief',now=Date.now();
  if((crewWarmups.get(key)||0)>now)return;
  const target=agentId;crewWarmups.set(key,Infinity);
- api('prepare-demo',{background:true},target).catch(()=>{
+ api('prepare-demo',{background:true},target,'event-brief').catch(()=>{
   // A policy edit or current mission can briefly hold the preparation fence.
   // The server deduplicates attempts, including terminal preparation failures.
   crewWarmups.set(key,Date.now()+30000);
@@ -185,7 +188,7 @@ async function crewForm(){
  form.onsubmit=async event=>{event.preventDefault();syncEventLaunch();if(el('launch-event').disabled)return;eventSubmitting=true;syncEventLaunch();const enabledRoles=selectedDemoRoles();try{const job=await api('jobs',{kind:'crew',workflow:'showcase',executionMode:'agent-led-v1',brief:eventBrief(form),enabledRoles,preparationId:demoPreparationId,guestKeys:demoGuestChoices().filter(g=>!g.reason&&!excludedDemoGuests.has(g.key)).map(g=>g.key),preset:true});selectedJob=job.id;selectedCrewRole=0;eventPackageTab='plan';el('dialog').close();await refresh();showBoard(false);}catch(error){demoPreparationError=error.message;syncDemoPreparation();}finally{eventSubmitting=false;syncEventLaunch();}};
  applyTemplate('zurich');
  const previous=data.preparation;
- demoPreparationId=previous?.valid&&(previous.payload.background||['queued','running','error','cancelled'].includes(previous.status))&&selectedDemoRoles().every(r=>previous.payload.enabledRoles.includes(r))?previous.id:null;
+ demoPreparationId=previous?.valid&&selectedDemoRoles().every(r=>previous.payload.enabledRoles.includes(r))?previous.id:null;
  demoPreparationError='';demoAutoPrepare=!demoPreparationId;syncDemoPreparation();
 }
 function renderEventPackage(force=false){

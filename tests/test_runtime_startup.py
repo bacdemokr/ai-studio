@@ -84,29 +84,23 @@ class RuntimeStartupTests(unittest.TestCase):
         self.assertLessEqual(self.clock,60)
         self.assertEqual(self.posts,0)
 
-    def test_slow_configuration_rpc_uses_explicit_timeout_without_replaying_write(self):
-        writes=[]
-        def cli(*args):
-            # Model the native CLI's independent, much shorter default timeout.
-            if '--timeout' not in args or int(args[args.index('--timeout')+1]) < 30000:
-                raise RuntimeError('RPC timed out while gateway initialized')
-            if args[2]=='config.get':return json.dumps({'hash':'current'})
-            writes.append(json.loads(args[args.index('--params')+1]))
-            return json.dumps({'ok':True})
-        with patch.object(runtime,'cli',side_effect=cli):runtime.gateway_config_patch({'agents':{}},[])
-        self.assertEqual(len(writes),1)
-        self.assertEqual(writes[0]['baseHash'],'current')
-        with patch.object(runtime,'cli',side_effect=['{"hash":"current"}',RuntimeError('Uncertain write')]) as call:
-            with self.assertRaises(RuntimeError):runtime.gateway_config_patch({'agents':{}},[])
-        self.assertEqual(call.call_count,2)
+    def test_config_patch_uses_stdin_and_accepts_only_acknowledged_success(self):
+        result=SimpleNamespace(returncode=0,stdout='{"ok":true}',stderr='')
+        with patch.object(runtime.subprocess,'run',return_value=result) as run:
+            runtime.gateway_config_patch({'private':'credential'},['agents.entries'])
+        self.assertNotIn('credential',' '.join(run.call_args.args[0]))
+        self.assertEqual(json.loads(run.call_args.kwargs['input']),
+                         {'patch':{'private':'credential'},'replacePaths':['agents.entries']})
+        self.assertEqual(run.call_args.kwargs['timeout'],130)
 
-    def test_config_read_recovers_from_interrupted_connection_but_write_never_replays(self):
-        with patch.object(runtime,'cli',side_effect=[runtime.GatewayConnectionUnavailable('temporary'), '{"hash":"current"}', '{"ok":true}']) as call:
-            runtime.gateway_config_patch({'agents':{}},[])
-        self.assertEqual([c.args[2] for c in call.call_args_list], ['config.get','config.get','config.patch'])
-        with patch.object(runtime,'cli',side_effect=['{"hash":"current"}',runtime.GatewayConnectionUnavailable('uncertain')]) as call:
-            with self.assertRaises(RuntimeError):runtime.gateway_config_patch({'agents':{}},[])
-        self.assertEqual(call.call_count,2)
+    def test_config_patch_failure_is_sanitized_and_never_replayed(self):
+        for result in [SimpleNamespace(returncode=1,stdout='private-credential',stderr='private-credential'),
+                       SimpleNamespace(returncode=0,stdout='{}',stderr=''),
+                       SimpleNamespace(returncode=0,stdout='invalid',stderr='')]:
+            with self.subTest(result=result), patch.object(runtime.subprocess,'run',return_value=result) as run:
+                with self.assertRaises(RuntimeError) as caught:runtime.gateway_config_patch({},[])
+                self.assertNotIn('private-credential',str(caught.exception))
+                self.assertEqual(run.call_count,1)
 
     def test_native_transport_failure_is_classified_without_exposing_output(self):
         binary=runtime.root()/'package/node_modules/.bin/openclaw'

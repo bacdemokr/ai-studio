@@ -123,44 +123,17 @@ def save_config(config):
 
 
 def gateway_config_patch(patch, replace_paths):
-    """Ask the active Gateway to apply a scoped config update before continuing."""
-    def response_json(output):
-        decoder = json.JSONDecoder()
-        for offset, char in enumerate(output):
-            if char == '{':
-                try:
-                    value, _ = decoder.raw_decode(output[offset:])
-                except json.JSONDecodeError:
-                    continue
-                if isinstance(value, dict):
-                    return value
-        raise RuntimeError('OpenClaw returned an unreadable configuration response.')
-
-    method = 'config.get'
+    """Apply one acknowledged, revision-checked update using the pinned native RPC."""
+    command = [str(root() / 'node/bin/node'), str(Path(__file__).with_name('native_config_patch.mjs')), str(root())]
     try:
-        # The CLI otherwise uses a 10-second RPC timeout even though our
-        # subprocess allows 90 seconds. Cold config reloads can exceed 10s.
-        read_deadline = time.monotonic() + 60
-        while True:
-            try:
-                snapshot = response_json(cli('gateway', 'call', 'config.get', '--params', '{}', '--timeout', str(max(1,int((read_deadline-time.monotonic())*1000)))))
-                break
-            except GatewayConnectionUnavailable:
-                if time.monotonic() >= read_deadline:raise
-                time.sleep(max(0,min(.5,read_deadline-time.monotonic())))
-        base_hash = snapshot.get('hash')
-        if not isinstance(base_hash, str) or not base_hash:
-            raise RuntimeError('OpenClaw did not provide a configuration revision.')
-        params = {'raw': json.dumps(patch, separators=(',', ':')), 'baseHash': base_hash,
-                  'replacePaths': replace_paths, 'note': 'BaC agent registration'}
-        method = 'config.patch'
-        applied = response_json(cli('gateway', 'call', 'config.patch', '--params', json.dumps(params), '--timeout', '60000'))
+        result = subprocess.run(command, input=json.dumps({'patch':patch, 'replacePaths':replace_paths}),
+                                env=environment(), capture_output=True, text=True, timeout=130)
+        if result.returncode or json.loads(result.stdout) != {'ok':True}:
+            raise RuntimeError('Unconfirmed configuration')
     except (RuntimeError, subprocess.TimeoutExpired, json.JSONDecodeError, OSError) as error:
         import logging
-        logging.warning('OpenClaw %s failed (%s)', method, type(error).__name__)
+        logging.warning('OpenClaw configuration update failed (%s)', type(error).__name__)
         raise RuntimeError('OpenClaw could not confirm applying the agent configuration. Check ./bac dev runtime check and retry after the gateway is healthy.') from None
-    if applied.get('ok') is False or applied.get('status') in ('error', 'failed'):
-        raise RuntimeError('OpenClaw rejected the agent configuration. Check ./bac dev runtime check before retrying.')
 
 
 def gateway_port():

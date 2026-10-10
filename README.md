@@ -138,7 +138,7 @@ Keyless local servers need no API key. Provider keys entered in these settings a
 2. **Agent lounge:** chat with a hired agent, inspect files, or approve OpenShell access.
 3. **Multi-Agent demo:** enter the **Event Brief** or **Open Task** floor directly from the studio overview or Studio Map. Both spaces branch directly off the Lounge concourse as equal choices, with their own signs and accent colors. Entering Stage 3 or choosing **Scenarios** shows the spaces together; signs show **Continue** when work is saved. Switching spaces never clears either workspace.
 
-**Event Brief** restores the fixed Riley, Dylan, Alex and Morgan crew. Open **Plan an event**, enter event details, prepare the crew, and launch. The team produces researched demo ideas, an operations timetable and an event webpage. Dylan retains his OpenShell protection.
+**Event Brief** restores the fixed Riley, Dylan, Alex and Morgan crew. The app prepares this crew in the background once a model connection is available, without running inference. Open **Plan an event**, enter event details, and launch when preparation is ready. Reopening the form reuses the prepared team; server restarts or model changes require preparation again. The team produces researched demo ideas, an operations timetable and an event webpage. Dylan retains his OpenShell protection.
 
 **Open Task** uses the Zurich Plan collaboration flow: message Casey with `/goal` and a concrete task, optionally attaching documents. Casey selects the needed specialists. Each scenario has its own team identities, chat history, model selections, documents and results. They share the Stage 3 API connection and hired-agent collection. Choosing another scenario does not cancel active work.
 

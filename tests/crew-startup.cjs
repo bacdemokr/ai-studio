@@ -1,52 +1,63 @@
+// Disposable fixture_scenarios.py: exercise startup, navigation and shared warmup.
 const assert=require('node:assert/strict'),{chromium}=require('playwright');
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});
- const context=await browser.newContext();
- try{
-  const page=await context.newPage(),errors=[];
-  page.on('pageerror',e=>errors.push(e.message));let inference=0;
+ const context=await browser.newContext({viewport:{width:1500,height:1000}});
+ let release;const gate=new Promise(resolve=>release=resolve);
+ try {
+  const base=process.env.BAC_TEST_URL||'http://127.0.0.1:8083',page=await context.newPage(),errors=[];
+  let inference=0,requests=0;
+  page.on('pageerror',e=>errors.push(e.message));
   page.on('request',r=>{if(r.url().endsWith('/api/jobs')&&r.method()==='POST')inference++;});
-  await context.route('**/api/session',async route=>{
-   const response=await route.fetch(),json=await response.json();
-   json.runtime={...json.runtime,gateway:true,model:false,ready:false};
-   await route.fulfill({json});
+  await page.route('**/api/prepare-demo',async route=>{
+   requests++;assert.equal(route.request().headers()['x-bac-scenario'],'event-brief');
+   assert.equal(route.request().postDataJSON().background,true);
+   const response=await route.fetch();await gate;await route.fulfill({response});
   });
-  await context.route('**/api/runtime',async route=>{
-   const response=await route.fetch(),json=await response.json();
-   await route.fulfill({json:{...json,gateway:true,model:false,ready:false}});
-  });
-  const base=process.env.BAC_TEST_URL||'http://127.0.0.1:8082';
-  await page.goto(base);
-  await page.waitForFunction(()=>window.BacStudio?.inspect().agentId);
-  await page.waitForFunction(async()=>{const s=await fetch('/api/state').then(r=>r.json());return s.preparation?.status==='done';},null,{polling:1000});
-  const first=await page.evaluate(()=>fetch('/api/state').then(r=>r.json()).then(s=>s.preparation));
-  assert.equal(first.payload.background,true);
-  assert.deepEqual(first.payload.checks.map(c=>c.status),['ready','ready','ready','ready']);
-  assert.equal(await page.locator('#studio-crew-form').count(),0,'No Plan a BaC click was needed');
-  const second=await context.newPage();await second.goto(base);
-  await second.waitForFunction(()=>window.BacStudio?.inspect().agentId);
+  const prep=()=>page.evaluate(()=>fetch('/api/state',{headers:{'X-BaC-Scenario':'event-brief'}}).then(r=>r.json()).then(s=>s.preparation));
+  await page.goto(base);await page.waitForFunction(()=>window.BacStudio?.inspect().agentId);
+  await page.waitForRequest(r=>r.url().endsWith('/api/prepare-demo'),{timeout:1000}).catch(()=>{});
+  assert.equal(requests,1,'Prepare begins before visiting Stage 3');
+  assert.equal(await page.locator('#studio-crew-form').count(),0);
+  // Pending background POST must not block navigating to either scenario.
+  await page.locator('.world-room-map [data-world-scenario=plan]').click();
+  await page.waitForFunction(()=>BacCampus.inspect().navigation.activeScenario==='plan'&&!BacCampus.inspect().navigation.travelling);
+  await page.locator('.world-room-map [data-world-scenario=event-brief]').click();
+  await page.waitForFunction(()=>BacCampus.inspect().navigation.activeScenario==='event-brief'&&!BacCampus.inspect().navigation.travelling);
+  release();await page.unrouteAll({behavior:'wait'});
+  await page.waitForFunction(async()=>{const s=await fetch('/api/state',{headers:{'X-BaC-Scenario':'event-brief'}}).then(r=>r.json());return s.preparation?.status==='done';});
+  const first=await prep();assert.equal(first.payload.background,true);assert.deepEqual(first.payload.checks.map(c=>c.status),['ready','ready','ready','ready']);
+  const second=await context.newPage();await second.goto(base);await second.waitForFunction(()=>window.BacStudio?.inspect().agentId);
   await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().agentId);
-  await page.waitForTimeout(1800);
-  assert.equal(await page.evaluate(()=>fetch('/api/state').then(r=>r.json()).then(s=>s.preparation.id)),first.id);
-  await page.locator('.world-room-map [data-world-room=mission]').click();
-  await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
+  await page.waitForTimeout(1700);assert.equal((await prep()).id,first.id);
+  await page.locator('.world-room-map [data-world-scenario=event-brief]').click();
+  await page.waitForFunction(()=>BacCampus.inspect().navigation.activeScenario==='event-brief'&&!BacCampus.inspect().navigation.travelling);
   await page.locator('#studio-room-action').click();
   await page.waitForFunction(()=>document.querySelectorAll('#studio-demo-preparation .demo-ready-row[data-status=ready]').length===4);
-  assert.equal(await page.locator('#studio-launch-event').isDisabled(),true,'A real mission still needs a model');
+  await page.locator('#studio-dialog-close').click();await page.locator('#studio-room-action').click();
+  assert.equal((await prep()).id,first.id);
+  // A different personal agent still uses this participant's existing crew.
   const selected=await page.evaluate(async()=>{
    const session=await fetch('/api/session').then(r=>r.json());
    const post=(path,body)=>fetch('/api/'+path,{method:'POST',headers:{'Content-Type':'application/json','X-BaC-CSRF':session.csrf},body:JSON.stringify(body)}).then(r=>r.json());
    const profile={name:'Scout',persona:'analyst',skills:['weather'],protection:'standard'};
-   await post('onboard',profile);
-   const agent=await post('agents',{...profile,name:'Pixel'});
-   sessionStorage.setItem('bac-selected-agent',agent.agentId);
-   return agent.agentId;
+   await post('onboard',profile);const agent=await post('agents',{...profile,name:'Pixel'});
+   sessionStorage.setItem('bac-selected-agent',agent.agentId);return agent.agentId;
   });
-  await page.reload();
-  await page.waitForFunction(id=>window.BacStudio?.inspect().agentId===id,selected);
-  await page.waitForFunction(async id=>{const s=await fetch('/api/state',{headers:{'X-BaC-Agent':id}}).then(r=>r.json());return s.preparation?.status==='done';},selected,{polling:1000});
-  assert.equal(inference,0);
-  assert.deepEqual(errors,[]);
-  console.log('PASS: app-open crew warmup before hiring or model connection; reload/tab deduplication; saved agent restored before warmup; ready event form; inference remains gated. Fixture runtime.');
- }finally{await context.unrouteAll({behavior:'wait'});await browser.close();}
+  await page.reload();await page.waitForFunction(id=>window.BacStudio?.inspect().agentId===id,selected);
+  assert.equal((await prep()).id,first.id);assert.equal(inference,0);assert.deepEqual(errors,[]);
+  // Connection can become ready after boot, without entering either scenario.
+  const late=await browser.newContext(),latePage=await late.newPage();let ready=false,lateRequests=0;
+  latePage.on('request',r=>{if(r.url().endsWith('/api/prepare-demo'))lateRequests++;});
+  for(const endpoint of ['session','runtime'])await latePage.route('**/api/'+endpoint,async route=>{
+   const response=await route.fetch(),json=await response.json(),runtime=endpoint==='session'?json.runtime:json;
+   runtime.gateway=true;runtime.modelConnections={enabled:true,connections:{api:{enabled:true,ready}}};
+   await route.fulfill({json});
+  });
+  await latePage.goto(base);await latePage.waitForFunction(()=>window.BacStudio?.inspect().agentId);
+  assert.equal(lateRequests,0,'No failed preparation while the model is disconnected');ready=true;
+  await latePage.waitForRequest(r=>r.url().endsWith('/api/prepare-demo'),{timeout:15000});
+  assert.equal(lateRequests,1);await late.close();
+  console.log('PASS: startup without stage visit, nonblocking navigation, ready form/reopen, tab/reload/agent deduplication, late connection and no inference. Fixture runtime.');
+ } finally {release();await context.unrouteAll({behavior:'wait'});await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
