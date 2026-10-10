@@ -56,6 +56,14 @@ class HeartbeatRelayTests(unittest.TestCase):
                 self.assertEqual(self.studio.heartbeat.status(self.owner,self.profile)['state'],'watching')
             send.assert_not_called()
         self.assertEqual(self.studio.heartbeat.status(self.owner,self.profile)['everySeconds'],20)
+    def test_delay_does_not_claim_a_model_connection_failure(self):
+        (self.root/tech_radar.OUTBOX).unlink()
+        self.tick()
+        self.studio.heartbeat.statuses[self.owner]['watchingSince'] = time.time()-101
+        self.tick()
+        self.assertEqual(self.studio.heartbeat.status(self.owner,self.profile)['state'],'check delayed')
+        self.assertTrue(self.adapter.cadence[self.profile['id']])
+
     def test_native_cadence_and_single_chat_result_even_after_restart(self):
         with patch.object(telegram,'send',return_value='sent') as send:
             self.tick();self.tick()

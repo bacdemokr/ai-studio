@@ -39,9 +39,26 @@ class BootstrapTests(unittest.TestCase):
             self.assertIn('bac-host', config['agents']['entries'])
             config['agents']['entries']['bac-host']['name'] = 'Existing host'
             config['agents']['entries']['bac-existing'] = {'name': 'Keep me'}
+            expected = json.loads(json.dumps(config))
+            config.pop('skills')  # Upgrade a pre-fix installation as well.
             runtime.save_config(config)
             ops.setup()
-            self.assertEqual(json.loads(runtime.config_path().read_text()), config)
+            self.assertEqual(json.loads(runtime.config_path().read_text()), expected)
+
+    def test_existing_radar_disables_unrelated_maintenance_without_changing_timer(self):
+        config = runtime.initial_config()
+        config.pop('skills')  # Existing installation with native auto defaults.
+        agent = 'bac-'+'a'*24
+        config['agents']['entries'][agent] = {'skills': ['bac-radar'], 'heartbeat': {'every': '20s'}}
+        runtime.save_config(config)
+        with patch.object(runtime, 'gateway_config_patch') as apply:
+            self.assertTrue(runtime.set_radar_heartbeat(agent, True))
+            apply.assert_called_once_with({'skills': {'workshop': {'autonomous': {'mode': 'off'}}}}, [])
+        config['skills'] = {'workshop': {'autonomous': {'mode': 'off'}}}
+        runtime.save_config(config)
+        with patch.object(runtime, 'gateway_config_patch') as apply:
+            self.assertTrue(runtime.set_radar_heartbeat(agent, True))
+            apply.assert_not_called()
 
     def test_bootstrap_cannot_register_a_personal_or_protected_agent(self):
         runtime.save_config(runtime.initial_config())

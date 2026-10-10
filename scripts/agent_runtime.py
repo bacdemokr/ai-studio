@@ -154,6 +154,9 @@ def initial_config():
                                 'maxConcurrent': 2, 'skipBootstrap': True, 'thinkingDefault': 'off',
                                 'heartbeat': {'every': '0m'},
                                 'timeoutSeconds': settings.AGENT_TIMEOUT_SECONDS}, 'entries': {}},
+        # Native weekly skill reviews use the same scheduler as Heartbeat.
+        # Demo skills are app-managed; unattended maintenance must not delay them.
+        'skills': {'workshop': {'autonomous': {'mode': 'off'}}},
         'plugins': {'entries': {'memory-core': {'enabled': False}}},
         'tools': {'fs': {'workspaceOnly': False}, 'deny': ['exec', 'process', 'browser', 'message',
                    'sessions_spawn', 'sessions_send', 'cron', 'gateway', 'nodes'],
@@ -551,6 +554,7 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
         entry['identity'] = {'theme': stamp}
         patch = {'agents': {'defaults': {'maxConcurrent': 2}, 'ownership': 'explicit',
                             'entries': {agent_id: entry}},
+                 'skills': {'workshop': {'autonomous': {'mode': 'off'}}},
                  'tools': {'fs': {'workspaceOnly': False}}}
         patch['agents']['defaults']['compaction'] = config['agents']['defaults']['compaction']
         patch['tools']['web'] = {'fetch': config['tools']['web']['fetch']}
@@ -1092,7 +1096,14 @@ def set_radar_heartbeat(agent_id, enabled):
         if not entry or not ('bac-radar' in entry.get('skills', []) or not enabled and 'bac-notes' in entry.get('skills', [])):return False
         heartbeat = entry.get('heartbeat', {})
         every = f'{HEARTBEAT_SECONDS}s' if enabled else '0m'
+        patch = {}
+        # Upgrade an already-prepared agent too. Native hot reload cancels only
+        # skill-collection-review jobs, preserving user tasks and Radar timers.
+        if config.get('skills', {}).get('workshop', {}).get('autonomous', {}).get('mode') != 'off':
+            patch['skills'] = {'workshop': {'autonomous': {'mode': 'off'}}}
         if heartbeat.get('every') != every:
             heartbeat['every'] = every
-            gateway_config_patch({'agents': {'entries': {agent_id: {'heartbeat': heartbeat}}}}, [])
+            patch['agents'] = {'entries': {agent_id: {'heartbeat': heartbeat}}}
+        if patch:
+            gateway_config_patch(patch, [])
         return True

@@ -70,6 +70,7 @@ def setup():
         c.run([r.root()/'node/bin/npm', 'install', '--prefix', package, '--omit=dev', '--no-audit', '--no-fund', PACKAGE+'@'+VERSION], env=r.environment())
     with r.config_lock():
         config = c.read_json(r.config_path()) or r.initial_config()
+        config.setdefault('skills', {}).setdefault('workshop', {})['autonomous'] = {'mode': 'off'}
         r.save_config(configure(config, r.root()))
     r.bootstrap_host()
     print(r.cli('config', 'validate'))

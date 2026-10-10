@@ -50,7 +50,7 @@ App chat is saved first. If Telegram fails or delivery times out, the summary re
 
 ## Who does what
 
-- **OpenClaw** owns the per-agent 20-second timer and isolated model/tool execution. Other agents keep heartbeats disabled.
+- **OpenClaw** owns the per-agent 20-second timer and isolated model/tool execution. Other agents keep heartbeats disabled. Automatic Skill Workshop reviews are also disabled: demo skills are managed by the app, and those unrelated reviews can block the shared scheduler.
 - **The agent** follows `HEARTBEAT.md` and `bac-radar/SKILL.md`, selects an unread article and writes a short summary in its persona.
 - **The feed tool** fetches the two fixed HTTPS feeds, supplies excerpts, validates the selected source and records the model-authored text once. It never authors the summary.
 - **The app** imports the result into chat and optionally sends it to Telegram. Telegram delivery is an app integration, separate from OpenShell; the model never receives the bot token.

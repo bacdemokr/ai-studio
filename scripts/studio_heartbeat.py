@@ -259,7 +259,7 @@ class RadarHeartbeat:
                     if enabled and registered:self.observe_native(owner,profile)
                     last_check=max(since,self.statuses[owner].get('lastChecked',0))
                     if self.statuses[owner]['state']=='watching' and time.time()-last_check>100:
-                        self.statuses[owner]['state']='check delayed - verify the model connection'
+                        self.statuses[owner]['state']='check delayed'
             except Exception:
                 with self.lock, studio.db() as db:
                     current=db.execute('SELECT deleting FROM agents WHERE id=?',(owner,)).fetchone()
