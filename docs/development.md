@@ -57,6 +57,17 @@ BAC_TEST_URL=http://127.0.0.1:8083 node tests/settings-resilience.cjs
 
 Test URL variables differ in older browser scripts; inspect each before running it. Infrastructure checks and deterministic fixtures do not establish real model quality or Spark performance. Rehearse a personal task and a complete event on the target PC/model. [OpenShell verification](openshell-verification.md) covers real sandbox scenarios.
 
+Browser admission and expired-session recovery use a separate disposable fixture:
+
+```bash
+python3 -B tests/fixture_session_cleanup.py
+# In another terminal; optional BAC_TEST_LAN_URL checks a private host address too.
+node tests/browser-access.cjs
+node tests/session-cleanup-browser.cjs
+```
+
+The UI sends a per-tab browser-view ID; the server admits one participant before creating its session state. All marked API requests renew/check access, and closing a tab releases only that view. Non-UI API clients (including host connection helpers) keep their existing authentication and do not occupy a browser slot. This is a duplicate-demo guard, not a security boundary. Simulated multi-participant tests should use their API clients or close one browser before opening the next.
+
 ## Exploratory rehearsal
 
 For stability work, test complete journeys as well as individual fixes: first use, mixed skills, repeated questions, simultaneous Heartbeat and foreground work, connection loss/recovery, cancellation/reset, agent switching, and localhost versus LAN HTTP. Inspect the actual outputs and recovery, not just Ready indicators.

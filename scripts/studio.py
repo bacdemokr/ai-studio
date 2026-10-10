@@ -209,6 +209,8 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
                            (json.dumps({'error': 'The app restarted during this task. Inspect saved files before retrying.'}), time.time()))
         self.initialize_crew_ownership()
         self.initialize_session_lifecycle()
+        from browser_access import BrowserAccess
+        self.browser_access = BrowserAccess(self)
         from studio_heartbeat import RadarHeartbeat
         self.heartbeat = RadarHeartbeat(self)
         self.retire_host_file_grants()

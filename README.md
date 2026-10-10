@@ -212,6 +212,8 @@ Use normal Git commands to update your checkout. Resolve local changes or diverg
 
 By default, `start` recreates services and clears agents, conversations, results, context, recorded usage and runtime settings. Project files, `api.cfg`, shared host files, images and the separately managed local model are preserved. Use `./bac start --keep-data` when applying app changes without clearing runtime data. There is no `./bac restart` or `./bac update` command. Use `git pull --ff-only` followed by `./bac start --keep-data` for a non-destructive app update; `./bac vllm --restart` restarts only the local model server.
 
+Only one browser session can use the demo at a time; other browsers show an **already open** message without preparing duplicate agents. Tabs at the same address in the same browser share the existing agents. Close those tabs before opening a different browser; disconnected browsers release access after 90 seconds, once running work finishes.
+
 Abandoned browser sessions and their agents are [automatically removed after 60 minutes](docs/runtime-settings.md#demo-session-cleanup), once active work finishes. Open tabs renew their session automatically. A preserving restart gives saved browsers 60 minutes to reconnect.
 
 `remove` asks you to type `remove` once. It deletes BaC containers, data, shared files, backups, recorded project images, local settings, and `api.cfg`. A source checkout keeps its code; an installed release folder is removed. Other projects and your model server remain.

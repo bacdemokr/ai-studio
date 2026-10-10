@@ -76,6 +76,8 @@ Browser checks require Playwright and Chrome/Chromium. See [development and veri
 
 ## Demo session cleanup
 
+Only one browser session can use the demo at a time. Other browsers, private windows and devices show **The demo is already open** before creating a session or preparing agents. Tabs in the same browser at the same address share the existing session and agents; refreshes preserve them. Close all demo tabs in that browser, then select **Try again** in the new browser. A lost connection or browser crash releases access after 90 seconds without requests, once running work finishes. This access timeout does not delete data.
+
 Each browser session owns its personal agents and its separate Stage 3 teams. Open tabs renew activity automatically. After 60 minutes without authenticated requests, the app cancels pending requests and scheduled follow-ups, then removes that session's agents, native runtime registrations, sandboxes, conversations and workspaces. Running tasks, artifact writes and policy updates finish before cleanup starts. Active browsers and their standby teams are unaffected.
 
 Cleanup runs in the background, records completed targets, and resumes after partial failures or a server restart. A returning expired browser starts a new empty session; model requests are never replayed. Model connections and host settings are not part of session cleanup.

@@ -107,6 +107,7 @@
   }
   new MutationObserver(placeAlert).observe(el('dialog'),{attributes:true,attributeFilter:['open']});
   function alert(message,kind='info') {
+    if(root.dataset.boot==='blocked')return;
     clearTimeout(alertTimer);
     const icons={info:'<circle cx="12" cy="12" r="8"/><path d="M12 11v5m0-9v.01"/>',success:'<path d="m6 12 4 4 8-8"/>',progress:'<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 8 8"/>',error:'<path d="m12 4 9 16H3L12 4Z"/><path d="M12 10v4m0 3v.01"/>'};
     kind=Object.hasOwn(icons,kind)?kind:'info';
@@ -123,7 +124,7 @@
   const credentialSession=Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>b.toString(16).padStart(2,'0')).join('');
   window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
   setInterval(()=>{if(connected)api('credential-session',{}).catch(()=>{});},20000);
-  window.addEventListener('pagehide',()=>{document.querySelectorAll('input[type=password]').forEach(input=>input.value='');if(connected)fetch('/api/credential-session',{method:'POST',keepalive:true,headers:{'Content-Type':'application/json','X-BaC-CSRF':csrf,'X-BaC-Key-Session':credentialSession},body:JSON.stringify({end:true})}).catch(()=>{});});
+  window.addEventListener('pagehide',()=>{document.querySelectorAll('input[type=password]').forEach(input=>input.value='');if(connected)fetch('/api/credential-session',{method:'POST',keepalive:true,headers:{'Content-Type':'application/json','X-BaC-CSRF':csrf,'X-BaC-Key-Session':credentialSession,'X-BaC-Browser-View':credentialSession},body:JSON.stringify({end:true})}).catch(()=>{});});
   // State polling is frequent; reuse unchanged snapshots without rebuilding the UI.
   // This cache is tab-local and scoped by agent, never stored on disk.
   const stateCache=new Map();
@@ -134,7 +135,7 @@
     // Preparation has a captured owner and never applies its response to the UI.
     const backgroundWrite=path==='prepare-demo'&&payload?.background===true;
     if(workspaceWrite&&changingAgent&&!backgroundWrite)throw new Error('Wait for your agent’s workspace to open.');
-    const headers={'X-BaC-Scenario':scenario,'X-BaC-Key-Session':credentialSession,...(target?{'X-BaC-Agent':target}:{})};
+    const headers={'X-BaC-Scenario':scenario,'X-BaC-Key-Session':credentialSession,'X-BaC-Browser-View':credentialSession,...(target?{'X-BaC-Agent':target}:{})};
     const cacheKey=scenario+':'+target,conditional=path==='state'&&payload===undefined,cached=conditional?stateCache.get(cacheKey):null;
     if(cached)headers['If-None-Match']=cached.etag;
     const options = payload===undefined ? {headers} : {method:'POST',headers:{...headers,'Content-Type':'application/json','X-BaC-CSRF':csrf},body:JSON.stringify(payload)};
@@ -150,7 +151,7 @@
     if(response.status===304&&cached)return cached.value;
     let result;
     try {result=await response.json();} catch {if(controller?.signal.aborted)throw new Error('The studio took too long to respond. Please try again.');throw new Error('The app server did not return a valid response. Refresh after updating the app.');}
-    if(!response.ok){const error=new Error(result.error||'The request could not be completed.');error.status=response.status;throw error;}
+    if(!response.ok){const error=new Error(result.error||'The request could not be completed.');error.status=response.status;if(error.status===423)showBrowserInUse(error.message);throw error;}
     if(conditional&&response.headers.get('ETag')){
       stateCache.set(cacheKey,{etag:response.headers.get('ETag'),value:result});
       if(stateCache.size>16)stateCache.delete(stateCache.keys().next().value);
@@ -407,7 +408,45 @@
     board=false;layout.hidden=false;window.BacCampus?.overview();
     window.scrollTo({top:0,left:0,behavior:'smooth'});
   };
-  async function boot(){try{const session=await api('session',undefined,'');csrf=session.csrf;settingsButton.hidden=!session.canConfigure;runtime=session.runtime;data=session;agentId=session.agentId;connected=true;runtimeBadge();render();let saved;try{saved=sessionStorage.getItem('bac-selected-agent');}catch{}if(saved&&saved!==agentId&&session.agents.some(a=>a.key===saved))await switchAgent(saved);else rememberSelection();crewStartupReady=true;warmCrewOnOpen();delete root.dataset.boot;root.setAttribute('aria-busy','false');}catch(error){connected=false;runtimeBadge();alert(error.message,'error');el('create').disabled=true;root.dataset.boot='error';root.setAttribute('aria-busy','false');root.querySelector('.studio-boot-status span').textContent='Could not open the studio. Please try again.';root.querySelector('.studio-boot-status button').hidden=false;}}
+  let booting=false;
+  function showBrowserInUse(message){
+    connected=false;crewStartupReady=false;++refreshVersion;++agentSwitchVersion;
+    busy=false;changingAgent=false;settingsButton.hidden=true;
+    el('dialog').close();dismissAlert();
+    if('speechSynthesis' in window)window.speechSynthesis.cancel();
+    root.dataset.boot='blocked';root.setAttribute('aria-busy','false');
+    const status=root.querySelector('.studio-boot-status');
+    status.querySelector('strong').textContent='The demo is already open';
+    status.querySelector('strong').hidden=false;
+    status.querySelector('span').textContent=message;
+    status.querySelector('button').hidden=false;
+  }
+  async function boot(){
+    if(booting)return;
+    booting=true;
+    const status=root.querySelector('.studio-boot-status');
+    root.dataset.boot='loading';root.setAttribute('aria-busy','true');
+    status.querySelector('strong').hidden=true;
+    status.querySelector('span').textContent='Opening studio…';
+    status.querySelector('button').hidden=true;
+    try{
+      const session=await api('session',undefined,'');
+      csrf=session.csrf;settingsButton.hidden=!session.canConfigure;
+      runtime=session.runtime;data=session;agentId=session.agentId;connected=true;
+      runtimeBadge();render();
+      let saved;try{saved=sessionStorage.getItem('bac-selected-agent');}catch{}
+      if(saved&&saved!==agentId&&session.agents.some(a=>a.key===saved))await switchAgent(saved);else rememberSelection();
+      crewStartupReady=true;warmCrewOnOpen();
+      delete root.dataset.boot;root.setAttribute('aria-busy','false');
+    }catch(error){
+      if(error.status===423){showBrowserInUse(error.message);return;}
+      connected=false;runtimeBadge();alert(error.message,'error');el('create').disabled=true;
+      root.dataset.boot='error';root.setAttribute('aria-busy','false');
+      status.querySelector('span').textContent='Could not open the studio. Please try again.';
+      status.querySelector('button').hidden=false;
+    }finally{booting=false;}
+  }
+  root.querySelector('.studio-boot-status button').onclick=()=>boot();
   boot();setInterval(()=>{if(!document.hidden&&!busy)refresh();},1500);setInterval(async()=>{if(connected&&!document.hidden){try{const nextRuntime=await api('runtime');if(runtime.instance&&nextRuntime.instance!==runtime.instance){if(!nextRuntime.model)alert('Server restarted. Your agents and results are saved; reconnect the model to continue.');}runtime=nextRuntime;runtimeBadge();}catch{}}},10000);
   window.BacStudio={refresh,inspect:()=>({profile:data.profile,agentId,agents:data.agents,jobs:data.jobs,runtime,board,room}),showBoard,setRoom};
 })();

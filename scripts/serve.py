@@ -75,6 +75,9 @@ class Handler(SimpleHTTPRequestHandler):
         except Exception:
             raise Problem('Invalid session.', 401)
         token = cookie['bac_session'].value if 'bac_session' in cookie else None
+        view = self.headers.get('X-BaC-Browser-View')
+        if view is not None:
+            return self.server.studio.browser_access.session(token, view, create)
         if create:
             return self.server.studio.session(token)
         with self.server.studio.db() as db:
@@ -242,6 +245,8 @@ class Handler(SimpleHTTPRequestHandler):
                 studio.heartbeat.presence(row['id'], self.headers.get('X-BaC-Key-Session', ''), end=bool(data.get('end')))
                 if data.get('end'):session_secrets.release(data['_credentialSession'])
                 else:session_secrets.renew(data['_credentialSession'])
+                if data.get('end'):
+                    studio.browser_access.release(row['id'], self.headers.get('X-BaC-Browser-View', ''))
                 studio.status_cache=(0,{})
                 return self.json_response({'ok':True})
             if self.path == '/api/telegram':

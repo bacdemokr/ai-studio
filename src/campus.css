@@ -53,3 +53,8 @@
 #agent-campus[data-boot] > :not(.studio-boot-status), #agent-campus[data-boot] > :not(.studio-boot-status) * { visibility:hidden!important; pointer-events:none!important; }
 #agent-campus .studio-boot-status { display:none; }
 #agent-campus[data-boot] .studio-boot-status { display:flex; position:absolute; inset:0; align-items:center; justify-content:center; flex-direction:column; gap:18px; color:#b4c3d0; font-size:18px; }
+#agent-campus[data-boot] .studio-boot-status { padding:24px; text-align:center; }
+#agent-campus .studio-boot-status strong { color:#eef5fa; font-size:24px; }
+#agent-campus .studio-boot-status button { padding:10px 18px; border:1px solid #456073; border-radius:8px; background:#192a35; color:#eef5fa; font:inherit; cursor:pointer; }
+#agent-campus .studio-boot-status button:hover { border-color:#76b900; }
+#agent-campus .studio-boot-status button:focus-visible { outline:2px solid #76b900; outline-offset:3px; }

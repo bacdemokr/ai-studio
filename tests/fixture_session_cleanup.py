@@ -13,7 +13,21 @@ from serve import create_server, Handler
 from studio_sessions import SESSION_IDLE_SECONDS
 
 original_post = Handler.do_POST
+original_get = Handler.do_GET
+def fixture_get(self):
+    if self.path != '/api/fixture-counts':
+        return original_get(self)
+    with self.server.studio.db() as db:
+        counts = {table:db.execute('SELECT count(*) FROM '+table).fetchone()[0]
+                  for table in ('participants','agents','crew_contexts')}
+    return self.json_response(counts)
+
 def fixture_post(self):
+    if self.path == '/api/fixture-disconnect':
+        self.rfile.read(int(self.headers.get('Content-Length', '0')))
+        with self.server.studio.browser_access.lock:
+            self.server.studio.browser_access.views.clear()
+        return self.json_response({'disconnected':True})
     if self.path != '/api/fixture-expire':
         return original_post(self)
     account, _ = self.participant()
@@ -24,6 +38,7 @@ def fixture_post(self):
     return self.json_response({'expired': True})
 
 Handler.do_POST = fixture_post
+Handler.do_GET = fixture_get
 with tempfile.TemporaryDirectory(prefix='bac-session-browser-') as folder:
     os.environ['BAC_DATA_DIR'] = folder
     app = Studio(Path(folder)/'studio', BrowserAdapter())
