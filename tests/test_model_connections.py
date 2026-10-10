@@ -89,6 +89,27 @@ class ConnectionTests(unittest.TestCase):
             self.assertEqual(request.call_args.args[1]['apiKey'],'fixture-imported')
         self.assertTrue(connections.public()['connections']['api']['ready'])
 
+    def test_host_key_runs_mixed_skill_heartbeat_without_legacy_session_key(self):
+        from test_tech_radar import RadarAdapter
+        import time
+        self.app.adapter = RadarAdapter()
+        settings.persist({'provider':'nvidia','profiles':{'nvidia':{
+            'model':'test-model','baseUrl':settings.PROVIDERS['nvidia']['baseUrl'],'contextWindow':32768}}})
+        team_models.save_connection('fixture-host-key',[])
+        connections.persist(connections.read())
+        with patch.object(settings,'request',return_value={'data':[{'id':'test-model'}]}):
+            connections.probe('api',connections.profile('api'))
+        self.assertFalse(settings.model_available())
+        self.assertEqual(connections.public()['loungeSource'],'api')
+        profile=self.app.onboard(self.owner,{'name':'Jinny','skills':['radar','weather']})
+        self.app.execute(self.app.next_job())
+        self.app.heartbeat.presence(self.owner,'fixture-tab')
+        with self.app.db() as db:
+            db.execute("UPDATE jobs SET created=? WHERE kind='prepare-agent'",(time.time()-30,))
+        self.app.heartbeat.tick()
+        self.assertTrue(self.app.adapter.cadence[profile['id']])
+        self.assertEqual(self.app.heartbeat.status(self.owner,profile)['state'],'watching')
+
     def test_native_registration_pins_each_provider_for_personal_and_team(self):
         import agent_runtime as runtime
         runtime.save_config(runtime.initial_config())

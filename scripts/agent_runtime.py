@@ -289,6 +289,14 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
                      'Embody the role and behavioral preferences in SOUL.md throughout the conversation. Separate confirmed facts, assumptions and missing information.\n',
     }
     files['AGENTS.md'] += '\n# Browser capability\n' + BROWSER_LIMIT + '\n'
+    if role is None and 'web' in equipped and not protected:
+        files['AGENTS.md'] += ('\n# Research size\n'
+            'Keep each research reply focused: at most two searches and five page fetches per user request, '
+            'including failed attempts. Stop sooner when the requested evidence is sufficient. '
+            'Use short source excerpts; never read openclaw-web-fetch full-output files to expand them. '
+            'For papers, prefer specific abstract pages over long listings or full papers. '
+            'If the request needs more evidence than this budget permits, answer the supported portion '
+            'with citations and clearly identify the missing coverage. Do not retry browsing after a budget notice.\n')
     if role is None:
         from personal_voice import contract
         files['SOUL.md'] += '\n# Signature replies\n' + contract(profile) + '\n'

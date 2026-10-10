@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 
 import tech_radar
 import runtime_settings
+import model_connections
 import telegram_notifications
 
 
@@ -192,7 +193,11 @@ class RadarHeartbeat:
         if not toggle:return
         with studio.db() as db:
             agents = [dict(r) for r in db.execute('SELECT id,participant,profile,deleting FROM agents WHERE profile IS NOT NULL')]
-        ready = runtime_settings.model_available() if any('radar' in json.loads(r['profile']).get('skills',[]) for r in agents) else False
+        ready = False
+        if any('radar' in json.loads(r['profile']).get('skills',[]) for r in agents):
+            # Match Lounge provisioning, including host credentials and disabled
+            # sources. The legacy session-only key can be absent while API is ready.
+            ready = bool(model_connections.public()['loungeSource']) if model_connections.enabled() else runtime_settings.model_available()
         deliveries = []
         for row in agents:
             owner=row['id']; profile=json.loads(row['profile'])

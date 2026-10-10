@@ -1,7 +1,24 @@
-// Bound this app's plan research and static review. Never change OpenShell policies.
+// Bound this app's research and static review. Never change OpenShell policies.
 const sessions = new Map();
 const reviews = new Map();
+const loungeRuns = new Map();
 const TTL = 15 * 60 * 1000;
+function loungeKey(ctx) {
+  const id = ctx.agentId || '';
+  return /^bac-[a-f0-9]{24}$/.test(id) && ctx.sessionKey === `agent:${id}:openai-user:${id}` ? ctx.sessionKey : null;
+}
+function loungeState(event, ctx) {
+  const key = loungeKey(ctx), run = event.runId || ctx.runId;
+  if (!key || !run) return null;
+  const now = Date.now();
+  for (const [k, v] of loungeRuns) if (now - v.updated > TTL) loungeRuns.delete(k);
+  if (loungeRuns.get(key)?.run !== run) {
+    if (loungeRuns.size >= 1000) loungeRuns.delete(loungeRuns.keys().next().value);
+    loungeRuns.set(key, {run, searches: 0, fetches: 0, calls: new Map(), updated: now});
+  }
+  const state = loungeRuns.get(key);state.updated = now;return state;
+}
+const spillFile = /(?:^|[\\/])openclaw-web-fetch-[a-f0-9]+\.log$/i;
 function reviewState(ctx) {
   if (!/^bac-[a-f0-9]{24}-r4$/.test(ctx.agentId || '')) return null;
   const match = (ctx.sessionKey || '').match(/:openai-user:bac-plan-([a-f0-9]{24})-4-(?:working|revising)(?:-output-retry)?$/);
@@ -20,6 +37,25 @@ function keyFor(ctx) {
   return match ? ctx.agentId + ':' + match[1] : null;
 }
 export function beforeTool(event, ctx) {
+  if (loungeKey(ctx)) {
+    const params = event.params || {};
+    // Reading web_fetch's full-output file bypasses maxCharsCap.
+    if (event.toolName === 'read' && spillFile.test(String(params.path || params.file_path || ''))) {
+      return {block: true, blockReason: 'This web page was already returned as a bounded excerpt. Do not read its full-output file. Use the excerpt, or fetch a specific abstract/article URL if essential evidence is missing and budget remains. Report missing details honestly.'};
+    }
+    if (['web_search', 'web_fetch'].includes(event.toolName)) {
+      const state = loungeState(event, ctx), id = event.toolCallId || ctx.toolCallId;
+      if (id && state?.calls.has(id)) return state.calls.get(id);
+      const search = event.toolName === 'web_search';
+      const blocked = state && (search ? state.searches >= 2 : state.fetches >= 5);
+      const result = blocked
+        ? {block: true, blockReason: 'This request has reached its research budget. Answer now using the evidence already retrieved, with source links and any gaps. Do not repeat browsing or read full-output files. Do not invent missing findings.'}
+        : {params: {...params, ...(search ? {count: Math.min(3, Math.max(1, Number(params.count) || 3))} : {maxChars: Math.min(3000, Math.max(1, Number(params.maxChars) || 3000))})}};
+      if (state && !blocked) state[search ? 'searches' : 'fetches']++;
+      if (id && state) state.calls.set(id, result);
+      return result;
+    }
+  }
   const review = event.toolName === 'read' && reviewState(ctx);
   if (review) {
     const id = event.toolCallId || ctx.toolCallId;
@@ -80,7 +116,22 @@ export function persistResult(event, ctx) {
     if (id) review.results.set(id, result);
     return result;
   }
-  if (!keyFor(ctx) || (event.toolName || ctx.toolName) !== 'web_search' || event.message?.isError) return;
+  const personal = loungeKey(ctx), tool = event.toolName || ctx.toolName;
+  if ((!keyFor(ctx) && !personal) || !['web_search', 'web_fetch'].includes(tool) || event.message?.isError) return;
+  if (tool === 'web_fetch') {
+    if (!personal || !Array.isArray(event.message?.content)) return;
+    // Preserve source metadata and untrusted markers, but do not invite a
+    // full-page reread from the native temporary file.
+    const clean = value => {
+      if (!value || typeof value !== 'object' || typeof value.text !== 'string' || !value.spill) return value;
+      const {spill, ...rest} = value;
+      return {...rest, text: value.text.replace(/\n*\[(?:Showing truncated web_fetch content\.[^\]]*|Full output[^\]]*)\]\s*$/i, '') + '\n[Excerpt only. Some page content was omitted; do not read full-output files.]', truncated: true};
+    };
+    return {message: {...event.message, content: event.message.content.map(block => {
+      if (block.type !== 'text') return block;
+      try {return {...block, text: JSON.stringify(clean(JSON.parse(block.text)))};} catch {return block;}
+    }), details: clean(event.message.details)}};
+  }
   const blocks = event.message?.content;
   if (!Array.isArray(blocks)) return;
   let envelope;

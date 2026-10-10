@@ -96,6 +96,29 @@ class HeartbeatRelayTests(unittest.TestCase):
         with patch('runtime_settings.model_available',return_value=False):self.studio.heartbeat.tick()
         self.assertFalse(self.adapter.cadence[self.profile['id']])
 
+    def test_shared_lounge_connection_controls_mixed_skill_heartbeat(self):
+        self.profile = self.studio.configure(self.owner, {**self.profile, 'skills':['radar','weather']})
+        self.studio.execute(self.studio.next_job())
+        with self.studio.db() as db:
+            db.execute("UPDATE jobs SET created=? WHERE kind='prepare-agent'", (time.time()-30,))
+        with patch('model_connections.enabled',return_value=True), \
+             patch('runtime_settings.model_available',return_value=False) as legacy:
+            for source in ('api','local',None):
+                with self.subTest(source=source), patch('model_connections.public',return_value={'loungeSource':source}):
+                    self.studio.heartbeat.tick()
+                    self.assertEqual(self.adapter.cadence[self.profile['id']],bool(source))
+                    self.assertEqual(self.studio.heartbeat.status(self.owner,self.profile)['state'],
+                                     'watching' if source else 'waiting for model')
+            legacy.assert_not_called()
+
+    def test_disabled_shared_sources_do_not_use_legacy_ready_model(self):
+        with patch('model_connections.enabled',return_value=True), \
+             patch('model_connections.public',return_value={'loungeSource':None}), \
+             patch('runtime_settings.model_available',return_value=True) as legacy:
+            self.studio.heartbeat.tick()
+            self.assertFalse(self.adapter.cadence[self.profile['id']])
+            legacy.assert_not_called()
+
     def test_weather_persona_gains_and_loses_heartbeat_with_radar_skill(self):
         weather = {**self.profile, 'name':'Pixel', 'purpose':'Check the weather before I go outside.', 'skills':['weather']}
         self.studio.configure(self.owner, weather)
