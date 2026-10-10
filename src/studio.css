@@ -126,7 +126,7 @@
 #agent-campus .campus-stage-top .campus-location{min-width:0;max-width:100%;overflow-wrap:anywhere}
 
 #studio-dialog.studio-page-preview{width:min(1440px,96vw);max-width:96vw;padding:20px;height:94dvh;max-height:94dvh}#studio-dialog.studio-page-preview #studio-dialog-body{height:calc(100% - 42px);display:flex;flex-direction:column;min-height:0}#studio-dialog.studio-page-preview #studio-app-frame{flex:1;min-height:0;height:auto;width:100%}#studio-dialog.studio-page-preview .studio-dialog-actions{flex:none;margin-top:12px}
-.studio-settings-tabs{display:flex;gap:24px;border-bottom:1px solid #36414d;margin-bottom:24px}.studio-settings-tabs button{background:none;border:0;border-bottom:3px solid transparent;color:#aebbc8;padding:10px 2px;font:inherit}.studio-settings-tabs button[aria-selected=true]{color:#fff;border-bottom-color:#76b900}#studio-model-options{height:190px!important;margin:8px 0 12px!important;padding:4px!important}#studio-model-options option{padding:8px 10px}#studio-model-status{margin:8px 0!important;font-size:16px;color:#b8c7d5}#studio-model-status[data-state=error]{color:#ffb1b1}#studio-config-form [role=tabpanel]>small{display:block;margin-top:12px;color:#aebbc8}
+#studio-config-form [role=tabpanel]>small{display:block;margin-top:12px;color:#aebbc8}
 #studio-dialog:has(#studio-config-form,#studio-model-connections) #studio-dialog-kicker{font-size:28px;letter-spacing:-.5px;text-transform:none;color:#f4f6f8;font-weight:700}
 /* Small runtime meter remains inside the native fullscreen surface. */
 #studio-telemetry{position:relative;font-size:14px;color:#b6c7d5;margin-right:6px}

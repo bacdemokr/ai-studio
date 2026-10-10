@@ -36,10 +36,21 @@ Tests use temporary state and model adapters. Browser tests require Playwright a
 # Terminal 1
 BAC_TEST_PORT=8094 python3 -B tests/fixture_settings.py
 # Terminal 2 (set CHROME_PATH if needed)
-BASE_URL=http://127.0.0.1:8094 node tests/settings.cjs
 BASE_URL=http://127.0.0.1:8094 node tests/overview-entry.cjs
 BAC_TEST_URL=http://127.0.0.1:8094 node tests/async-interactions.cjs
 BAC_TEST_URL=http://127.0.0.1:8094 node tests/agent-reset.cjs
+```
+
+For shared connections and the current Settings dialog:
+
+```bash
+# Separate terminal
+python3 -B tests/fixture_scenarios.py
+# Browser checks
+node tests/settings.cjs
+node tests/connection-editor-browser.cjs
+node tests/runtime-readiness.cjs
+BAC_TEST_URL=http://127.0.0.1:8083 node tests/settings-resilience.cjs
 ```
 
 Test URL variables differ in older browser scripts; inspect each before running it. Infrastructure checks and deterministic fixtures do not establish real model quality or Spark performance. Rehearse a personal task and a complete event on the target PC/model. [OpenShell verification](openshell-verification.md) covers real sandbox scenarios.

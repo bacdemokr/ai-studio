@@ -234,7 +234,7 @@ body{margin:0;padding:0;width:100%;max-width:none}
 #agent-campus .campus-stage-top .campus-location{min-width:0;max-width:100%;overflow-wrap:anywhere}
 
 #studio-dialog.studio-page-preview{width:min(1440px,96vw);max-width:96vw;padding:20px;height:94dvh;max-height:94dvh}#studio-dialog.studio-page-preview #studio-dialog-body{height:calc(100% - 42px);display:flex;flex-direction:column;min-height:0}#studio-dialog.studio-page-preview #studio-app-frame{flex:1;min-height:0;height:auto;width:100%}#studio-dialog.studio-page-preview .studio-dialog-actions{flex:none;margin-top:12px}
-.studio-settings-tabs{display:flex;gap:24px;border-bottom:1px solid #36414d;margin-bottom:24px}.studio-settings-tabs button{background:none;border:0;border-bottom:3px solid transparent;color:#aebbc8;padding:10px 2px;font:inherit}.studio-settings-tabs button[aria-selected=true]{color:#fff;border-bottom-color:#76b900}#studio-model-options{height:190px!important;margin:8px 0 12px!important;padding:4px!important}#studio-model-options option{padding:8px 10px}#studio-model-status{margin:8px 0!important;font-size:16px;color:#b8c7d5}#studio-model-status[data-state=error]{color:#ffb1b1}#studio-config-form [role=tabpanel]>small{display:block;margin-top:12px;color:#aebbc8}
+#studio-config-form [role=tabpanel]>small{display:block;margin-top:12px;color:#aebbc8}
 #studio-dialog:has(#studio-config-form,#studio-model-connections) #studio-dialog-kicker{font-size:28px;letter-spacing:-.5px;text-transform:none;color:#f4f6f8;font-weight:700}
 /* Small runtime meter remains inside the native fullscreen surface. */
 #studio-telemetry{position:relative;font-size:14px;color:#b6c7d5;margin-right:6px}
@@ -495,7 +495,7 @@ body{margin:0;padding:0;width:100%;max-width:none}
 @media(max-width:560px){.studio-crew-passport-content{padding:22px 18px}}
 @media(max-height:600px){#agent-campus .world-expanded #campus-motion-status{display:none}#agent-campus .world-expanded .campus-scene-bottom{padding-top:8px;padding-bottom:8px}}
 
-#bac-planner .studio-config{background:transparent;border:1px solid #344553;color:#bacad6;border-radius:5px;width:36px;height:36px;font-size:21px;cursor:pointer}#studio-config[hidden]{display:none!important}#studio-config-form{max-width:660px}#studio-config-form>label,#studio-config-form details label{display:block;margin-top:18px;margin-bottom:6px}#studio-config-form small{display:block;color:#a7b8c5;font-size:15px;margin-top:7px}#studio-config-form hr{border:0;border-top:1px solid #344553;margin:24px 0}#studio-config-form .studio-settings-model{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px;margin-bottom:8px}#studio-settings-status{margin:16px 0;color:#c9e2a8}
+#bac-planner .studio-config{background:transparent;border:1px solid #344553;color:#bacad6;border-radius:5px;width:36px;height:36px;font-size:21px;cursor:pointer}#studio-config[hidden]{display:none!important}#studio-config-form{max-width:660px}#studio-config-form>label,#studio-config-form details label{display:block;margin-top:18px;margin-bottom:6px}#studio-config-form small{display:block;color:#a7b8c5;font-size:15px;margin-top:7px}#studio-config-form hr{border:0;border-top:1px solid #344553;margin:24px 0}#studio-settings-status{margin:16px 0;color:#c9e2a8}
 
 /* The studio overview is the entry screen; room tools return when a room is selected. */
 #agent-campus[data-world-overview=true] .campus-layout{grid-template-columns:minmax(0,1fr)!important}
@@ -952,7 +952,7 @@ body{margin:0;padding:0;width:100%;max-width:none}
 .team-model-trigger>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .team-model-trigger:hover{border-color:#76b900}.team-model-trigger:disabled{opacity:.5;cursor:not-allowed}
 #studio-dialog .team-model-dialog{width:100%;max-width:640px;margin:0 auto;padding:0;border:0;background:transparent;color:#e7eef2;font-family:inherit}
-#studio-dialog :is(.team-model-dialog,#studio-team-config-form)[hidden]{display:none!important}
+#studio-dialog .team-model-dialog[hidden]{display:none!important}
 .team-model-dialog header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px}
 .team-model-dialog h3{margin:0;font-size:24px}.team-model-dialog header p{margin:6px 0 0;color:#a7bac5;font-size:14px}
 .team-model-dialog [data-model-close]{border:0;background:transparent;color:#a7bac5;font-size:16px;cursor:pointer}
@@ -967,59 +967,11 @@ body{margin:0;padding:0;width:100%;max-width:none}
 
 #studio-team-reset-status{margin:8px 22px;font-size:13px}
 /* Separate personal-agent and team model connections. */
-#studio-dialog .studio-model-scope{margin:0 0 22px}
-#studio-dialog .studio-model-scope>span{font-size:11px;font-weight:700;letter-spacing:.14em;color:#9acb61}
-#studio-dialog .studio-model-scope h3{font-size:23px;margin:8px 0}
-#studio-dialog .studio-model-scope p{font-size:14px;color:#afbec9;margin:0;line-height:1.5}
-#studio-dialog .studio-model-link{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 16px;border:1px solid #354954;border-radius:10px;margin-bottom:24px;font-size:13px;color:#afbec9}
-#studio-dialog .studio-model-link button{font-size:13px;white-space:nowrap;padding:8px 12px}
 #agent-campus .studio-team-connection-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 22px;border-bottom:1px solid #2c3f4b;color:#b0c0ca;font-size:12px}
 .studio-team-connection-bar>span{display:flex;align-items:center;gap:8px}
 .studio-team-connection-bar i{width:6px;height:6px;border-radius:50%;background:#8e9aa3}
 .studio-team-connection-bar[data-connected=true] i{background:#76b900;box-shadow:0 0 8px #76b90040}
 #agent-campus .studio-team-connection-bar button{font-size:12px;border:1px solid #3b505c;background:#1b2b35;color:#dce8ef;border-radius:7px;padding:7px 10px;white-space:nowrap}
-#studio-dialog .studio-team-api-card{padding:20px;border:1px solid #405562;border-radius:12px;background:#13232e}
-.studio-team-api-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:8px}
-#studio-dialog .studio-team-api-state{font-size:12px;border-radius:20px;background:#253640;color:#b9c9d3;padding:5px 10px}
-#studio-dialog .studio-team-api-state[data-connected=true]{color:#c1e996;background:#283d22}
-#studio-dialog .studio-team-api-card small{display:block;font-size:12px;line-height:1.6;color:#a5bac7}
-#studio-dialog .studio-team-api-card label{margin-top:20px}
-#studio-dialog .studio-team-api-card .studio-dialog-actions{margin-top:16px}
-#studio-dialog .studio-team-api-card [role=status]{font-size:13px;color:#c2d2dd;margin-bottom:0}
-#studio-dialog .studio-team-models-heading{margin:24px 0 12px}
-#studio-dialog .studio-team-models-heading h3{font-size:17px;margin:0 0 4px}
-#studio-dialog .studio-team-models-heading small,#studio-dialog .studio-team-setup-note{font-size:12px;color:#a5bac7}
-.studio-team-setup-models>div{display:grid;grid-template-columns:minmax(120px,1fr) minmax(220px,1.4fr);gap:18px;align-items:center;padding:12px 0;border-bottom:1px solid #2c414e}
-.studio-team-setup-models>div>span{display:flex;flex-direction:column;gap:4px}
-.studio-team-model-controls{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;min-width:0}
-#studio-dialog .studio-team-model-save [data-team-apply-all]{white-space:nowrap;border-radius:8px}
-#studio-dialog .studio-team-model-save [data-team-apply-all]:disabled{opacity:.4;cursor:not-allowed}
-#studio-dialog .studio-team-setup-models strong{font-size:14px}
-#studio-dialog .studio-team-setup-models small{font-size:12px;color:#a5bac7}
-#studio-dialog .studio-team-setup-models button{font-size:13px;padding:10px 12px;margin:0;min-width:0}
-#studio-dialog .studio-team-setup-models button>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#studio-dialog .studio-team-setup-models .team-model-trigger{display:flex;align-items:center;justify-content:space-between;gap:14px;border:1px solid #425b69;border-radius:8px;background:#1b2e3a;color:#e1ebf1;text-align:left;cursor:pointer;transition:border-color .15s,background .15s}
-#studio-dialog .studio-team-setup-models .team-model-trigger:hover:not(:disabled){background:#253e4b;border-color:#76b900}
-#studio-dialog .studio-team-setup-models .team-model-trigger:focus-visible{outline:2px solid #76b900;outline-offset:2px}
-#studio-dialog .studio-team-setup-models .team-model-trigger:disabled{opacity:.5;cursor:not-allowed}
-
-#agent-campus .team-model-apply{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid #354b58;margin-top:12px;padding-top:16px}
-#agent-campus .team-model-apply .team-model-selection{font-size:13px;color:#b6c9d5;overflow-wrap:anywhere;min-width:0}
-#agent-campus .team-model-apply [data-model-apply]{flex-shrink:0;background:#76b900;color:#101b07;border:1px solid #76b900;border-radius:8px;padding:10px 18px;font-weight:700}
-#agent-campus .team-model-apply [data-model-apply]:disabled{opacity:.45;cursor:not-allowed}
-#studio-team-model-status{padding:10px 14px;border-left:3px solid #76b900;background:#203021;color:#cbe6ad;font-size:13px;line-height:1.5}
-
-.studio-team-model-save{display:flex;justify-content:flex-end;padding-top:16px}
-
-#agent-campus .team-model-apply[hidden]{display:none}
-
-#studio-dialog.studio-team-settings::backdrop{background:#090c10e6;backdrop-filter:none}
-
-#studio-scenario-local{margin-top:18px;padding:20px;border:1px solid #405562;border-radius:12px;background:#13232e}
-#studio-scenario-local[hidden],#studio-scenario-api[hidden]{display:none}
-#studio-scenario-load{margin:14px 0}
-#studio-scenario-apply{margin-top:18px}
-#studio-scenario-status{font-size:13px;color:#b8cbd5;min-height:1.4em}
 #studio-model-connections{max-width:850px}.connection-intro{color:#a7bbc7;line-height:1.6}.connection-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:24px 0 16px}.connection-card{padding:22px;border:1px solid #354e5d;border-radius:16px;background:#14232d}.connection-card header{display:flex;align-items:center;justify-content:space-between;gap:14px}.connection-card h3{margin:0}.connection-card p{overflow-wrap:anywhere;color:#a7bbc7;min-height:2.8em}.connection-card header span{font-size:12px;color:#efa6a0}.connection-card header span[data-ready=true]{color:#b8e275;background:#293d22;padding:5px 10px;border-radius:20px}.connection-card button{font-size:13px;margin-right:8px}.connection-heading{margin-top:30px}.connection-routes{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:20px 0}.connection-routes small{display:block;margin:10px 0}.connection-routes small[data-error=true]{color:#efa6a0}#studio-connection-editor{padding:22px;margin-top:20px;border:1px solid #49602e;border-radius:16px;background:#15242d}
 .connection-tabs{display:flex;gap:24px;border-bottom:1px solid #354e5d;margin-bottom:24px}.connection-tabs button{background:none!important;border:0!important;border-radius:0!important;padding:12px 0!important;color:#b7c7d2!important}.connection-tabs button[aria-current=page]{color:#fff!important;border-bottom:2px solid #76b900!important}.connection-toggle{display:flex!important;align-items:center;gap:10px;margin:0!important}.connection-toggle input{width:18px!important;height:18px!important;margin:0!important;accent-color:#76b900}.connection-toggle strong{font-size:18px;white-space:nowrap}
 
@@ -1056,6 +1008,10 @@ body{margin:0;padding:0;width:100%;max-width:none}
 #studio-standby #studio-standby-list .specialist-model-edit:hover:not(:disabled){border-color:#76b900;background:#253e4b}
 #studio-standby #studio-standby-list .specialist-model-edit:disabled{opacity:.5;cursor:not-allowed}
 #studio-standby #studio-standby-list .specialist-model-edit:focus-visible{outline:2px solid #76b900;outline-offset:2px}
+
+#studio-connection-editor h3{font-size:18px;letter-spacing:0;margin:0 0 20px}
+#studio-connection-editor details{margin-top:18px}
+#studio-connection-editor summary{cursor:pointer;color:#a7bbc7;font-size:14px}
 
 .studio-sound{display:flex;align-items:center;gap:3px;flex-shrink:0}
 #agent-campus #campus-sound-toggle{width:auto;min-height:35px;height:auto;padding:4px 9px;font-size:15px;white-space:nowrap;color:#b8c9d7;border:1px solid #526071;background:#191e25;border-radius:3px}
@@ -1189,11 +1145,10 @@ body{margin:0;padding:0;width:100%;max-width:none}
 #studio-dialog[open]:has(#studio-config-form,#studio-model-connections){display:flex;flex-direction:column;height:min(800px,90dvh);max-height:90dvh;overflow:hidden}
 #studio-dialog:has(#studio-config-form,#studio-model-connections) .studio-dialog-heading{flex-shrink:0}
 #studio-dialog:has(#studio-config-form,#studio-model-connections) #studio-dialog-body{flex:1;min-height:0;overflow-y:auto;scrollbar-gutter:stable;padding:2px 4px}
-#studio-dialog :is(.studio-settings-tabs,.connection-tabs){position:sticky;top:0;z-index:2;background:#141b23;display:flex;gap:24px;margin:0 0 24px;border-bottom:1px solid #354e5d}
-#studio-dialog :is(.studio-settings-tabs,.connection-tabs) button{box-sizing:border-box;background:none!important;border:0!important;border-bottom:2px solid transparent!important;border-radius:0!important;padding:12px 2px!important;color:#b7c7d2!important;font:inherit;font-size:14px;font-weight:600;line-height:20px}
-#studio-dialog :is(.studio-settings-tabs,.connection-tabs) button:is([aria-selected=true],[aria-current=page]){color:#fff!important;border-bottom-color:#76b900!important}
+#studio-dialog .connection-tabs{position:sticky;top:0;z-index:2;background:#141b23;display:flex;gap:24px;margin:0 0 24px;border-bottom:1px solid #354e5d}
+#studio-dialog .connection-tabs button{box-sizing:border-box;background:none!important;border:0!important;border-bottom:2px solid transparent!important;border-radius:0!important;padding:12px 2px!important;color:#b7c7d2!important;font:inherit;font-size:14px;font-weight:600;line-height:20px}
+#studio-dialog .connection-tabs button:is([aria-selected=true],[aria-current=page]){color:#fff!important;border-bottom-color:#76b900!important}
 
-#studio-dialog #studio-settings-model-panel{padding-top:20px}
 #studio-dialog .studio-reset-row{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:27px 0}
 #studio-dialog .studio-reset-row>div{min-width:0}
 #studio-dialog .studio-reset-row+.studio-reset-row{border-top:1px solid #293640}
@@ -1209,7 +1164,7 @@ body{margin:0;padding:0;width:100%;max-width:none}
 #studio-dialog .studio-reset-row button{background:#1a252e;border:1px solid #41515e;color:#e5edf2}
 #studio-dialog .studio-reset-row button:hover:not(:disabled){background:#26343f;border-color:#738696}
 #studio-dialog #studio-settings-status:empty{display:none}
-#studio-config-form>.studio-dialog-actions:has(#studio-save-settings[hidden]){display:none}
+#studio-config-form>.studio-dialog-actions:has(#studio-save-settings[hidden]):has(#studio-start-agents[hidden]){display:none}
 @media(max-width:520px){
  #studio-dialog:has(#studio-config-form,#studio-model-connections){padding:20px}
  #studio-dialog .studio-reset-row{gap:14px;padding:23px 0;align-items:flex-start}
@@ -81103,7 +81058,7 @@ render();
   }
   el('agent-list').onclick=e=>{const b=e.target.closest('[data-agent-key]');if(b)switchAgent(b.dataset.agentKey);};
   let dialogRevision=0;
-  function dialog(kicker, html) {dialogRevision++;el('dialog').classList.remove('studio-agent-documents','studio-team-settings','studio-agent-code');el('dialog').classList.toggle('studio-page-preview',['EVENT PAGE','WEBPAGE PREVIEW'].includes(kicker));el('dialog-kicker').textContent=kicker;el('dialog-body').innerHTML=html;if(kicker==='Settings')el('dialog-body').scrollTop=0;if(!el('dialog').open)el('dialog').showModal();}
+  function dialog(kicker, html) {dialogRevision++;el('dialog').classList.remove('studio-agent-documents','studio-agent-code');el('dialog').classList.toggle('studio-page-preview',['EVENT PAGE','WEBPAGE PREVIEW'].includes(kicker));el('dialog-kicker').textContent=kicker;el('dialog-body').innerHTML=html;if(kicker==='Settings')el('dialog-body').scrollTop=0;if(!el('dialog').open)el('dialog').showModal();}
   el('dialog').addEventListener('close',()=>{dialogRevision++;});
   el('dialog-close').onclick=()=>el('dialog').close();
   el('dialog').addEventListener('click',e=>{if(e.target===el('dialog')&&!removingAgent){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
@@ -81289,20 +81244,8 @@ teamModelDialog.hidden=true;
 teamModelDialog.className='team-model-dialog';
 teamModelDialog.setAttribute('aria-labelledby','team-model-heading');
 teamModelDialog.innerHTML='<header><div><h3 id="team-model-heading">Choose a model</h3><p id="team-model-member"></p></div><button type="button" data-model-close>← Back</button></header><input type="search" aria-label="Search API models" placeholder="Search models or providers…" autocomplete="off"><p class="team-model-count" aria-live="polite"></p><div class="team-model-results"></div><p class="team-model-error" role="alert" hidden></p>';
-// The picker is a view inside Settings, never a second native modal.
-let modelPickerRole=0,modelPickerSaving=false,modelPickerDraft=null,modelPickerOwner=null,modelPickerForm=null,modelPickerSettingsScroll=0;
-function syncTeamModelForm(){
- const form=el('team-config-form');if(!form)return;
- const blocked=(data.teamConnection?.shared?data.teamConnection.effectiveSource!=='api':data.teamConnection?.provider==='local')||modelPickerSaving||!teamRuntime().teamReady||data.bacResetting||(selectedScenario==='event-brief'&&data.scenarios?.find(s=>s.id==='event-brief')?.busy)||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
- for(const trigger of form.querySelectorAll('[data-team-model]')){
-  const role=Number(trigger.dataset.teamModel),draft=teamModelDrafts.get(role);
-  const model=draft?(runtime.teamModels||[]).find(m=>m.id===draft):teamModel(role);
-  trigger.querySelector('span').textContent=model?.label||draft||'Choose model';trigger.title=model?.id||draft||'';trigger.disabled=!!blocked;
- }
- const apply=form.querySelector('[data-team-apply-all]');
- apply.textContent=modelPickerSaving?'Applying…':'Apply changes';
- apply.disabled=!!blocked||![...teamModelDrafts].some(([role,id])=>id!==teamModel(role)?.id);
-}
+// Open Task model choices save directly from the specialist list.
+let modelPickerRole=0,modelPickerSaving=false,modelPickerDraft=null,modelPickerOwner=null,modelPickerScenario=null;
 function renderModelResults(){
  teamModelDialog.querySelector('[data-model-close]').disabled=modelPickerSaving;
  teamModelDialog.querySelector('input').disabled=modelPickerSaving;
@@ -81315,29 +81258,20 @@ function renderModelResults(){
 
 }
 root.addEventListener('click',event=>{
- const button=event.target.closest('#studio-team-config-form [data-team-model], [data-standby-model]');if(!button||button.disabled||modelPickerSaving||!teamModelDialog.hidden)return;
- modelPickerForm=button.closest('#studio-team-config-form');
- modelPickerRole=Number(button.dataset.teamModel??button.dataset.standbyModel);modelPickerDraft=button.closest('#studio-team-config-form')?(teamModelDrafts.get(modelPickerRole)||teamModel(modelPickerRole)?.id):teamModel(modelPickerRole)?.id;modelPickerOwner=agentId;
- teamModelDialog.querySelector('#team-model-member').textContent=defaultNames[modelPickerRole]+' · Dedicated team API';
+ const button=event.target.closest('[data-standby-model]');if(!button||button.disabled||modelPickerSaving||!teamModelDialog.hidden)return;
+ modelPickerRole=Number(button.dataset.standbyModel);modelPickerDraft=teamModel(modelPickerRole)?.id;modelPickerOwner=agentId;modelPickerScenario=selectedScenario;
+ teamModelDialog.querySelector('#team-model-member').textContent=defaultNames[modelPickerRole]+' · NVIDIA Inference';
  teamModelDialog.querySelector('input').value='';teamModelDialog.querySelector('.team-model-error').hidden=true;
  renderModelResults();
- // Keep the modal open so focus, backdrop and the paused WebGL scene stay stable.
- if(!modelPickerForm)dialog(defaultNames[modelPickerRole]+' · Model','');
- modelPickerSettingsScroll=el('dialog').scrollTop;
- el('dialog-body').append(teamModelDialog);
- if(modelPickerForm)modelPickerForm.hidden=true;teamModelDialog.hidden=false;
+ dialog(defaultNames[modelPickerRole]+' · Model','');
+ el('dialog-body').append(teamModelDialog);teamModelDialog.hidden=false;
  el('dialog').scrollTop=0;teamModelDialog.querySelector('.team-model-results').scrollTop=0;
  teamModelDialog.querySelector('input').focus({preventScroll:true});
 });
 teamModelDialog.querySelector('input').addEventListener('input',renderModelResults);
 function closeTeamModelPicker(){
  if(modelPickerSaving)return;
- const form=modelPickerForm;modelPickerForm=null;teamModelDialog.hidden=true;
- if(!form){el('dialog').close();return;}
- if(form?.isConnected&&form===el('team-config-form')&&agentId===modelPickerOwner){
-  form.hidden=false;el('dialog').scrollTop=modelPickerSettingsScroll;
-  form.querySelector('[data-team-model="'+modelPickerRole+'"]')?.focus({preventScroll:true});
- }
+ teamModelDialog.hidden=true;el('dialog').close();
 }
 teamModelDialog.addEventListener('keydown',event=>{
  if(event.key==='Escape'&&!teamModelDialog.hidden){event.preventDefault();event.stopPropagation();closeTeamModelPicker();}
@@ -81345,24 +81279,14 @@ teamModelDialog.addEventListener('keydown',event=>{
 el('dialog').addEventListener('cancel',event=>{
  if(!teamModelDialog.hidden&&teamModelDialog.isConnected){event.preventDefault();closeTeamModelPicker();}
 });
-el('dialog').addEventListener('close',()=>{teamModelDialog.hidden=true;modelPickerForm=null;});
+el('dialog').addEventListener('close',()=>{teamModelDialog.hidden=true;});
 teamModelDialog.addEventListener('click',async event=>{
  if(event.target.closest('[data-model-close]')){closeTeamModelPicker();return;}
  if(modelPickerSaving)return;
  const choice=event.target.closest('[data-model-choice]');
  if(choice){
   modelPickerDraft=choice.dataset.modelChoice;
-  const form=modelPickerForm;
-  if(form?.isConnected&&form===el('team-config-form')&&agentId===modelPickerOwner){
-   if(modelPickerDraft===teamModel(modelPickerRole)?.id)teamModelDrafts.delete(modelPickerRole);
-   else teamModelDrafts.set(modelPickerRole,modelPickerDraft);
-   const trigger=form.querySelector('[data-team-model="'+modelPickerRole+'"]');
-   trigger.querySelector('span').textContent=(runtime.teamModels||[]).find(m=>m.id===modelPickerDraft)?.label||modelPickerDraft;
-   form.querySelector('[data-team-apply-all]').disabled=![...teamModelDrafts].some(([r,id])=>id!==teamModel(r)?.id);
-   const notice=el('team-model-status');notice.hidden=form.querySelector('[data-team-apply-all]').disabled;notice.textContent='Unsaved model selections. Select Apply changes to save them.';
-   closeTeamModelPicker();return;
-  }
-  if(agentId!==modelPickerOwner){closeTeamModelPicker();return;}
+  if(agentId!==modelPickerOwner||selectedScenario!==modelPickerScenario){closeTeamModelPicker();return;}
   teamModelDialog.querySelector('.team-model-error').hidden=true;
   const pickerRevision=dialogRevision;
   const saved=await applyTeamModel();
@@ -81372,44 +81296,26 @@ teamModelDialog.addEventListener('click',async event=>{
  }
 
 });
-root.addEventListener('click',async event=>{
- const button=event.target.closest('[data-team-apply-all]');if(!button||button.disabled||modelPickerSaving)return;
- const owner=agentId,changes=[...teamModelDrafts].filter(([r,id])=>id!==teamModel(r)?.id);
- button.textContent='Applying…';
- for(const [role,model] of changes){
-  modelPickerRole=role;modelPickerDraft=model;modelPickerOwner=owner;
-  if(!await applyTeamModel()){button.textContent='Apply changes';return;}
- }
- button.textContent='Apply changes';
- const notice=el('team-model-status');if(notice&&agentId===owner){notice.hidden=false;notice.textContent='Model changes applied. Used from the next request.';}
-});
 async function applyTeamModel(){
- const target=modelPickerOwner,role=modelPickerRole,model=modelPickerDraft;
+ const target=modelPickerOwner,scenario=modelPickerScenario,role=modelPickerRole,model=modelPickerDraft;
+ const current=()=>agentId===target&&selectedScenario===scenario;
  modelPickerSaving=true;
  if(!teamModelDialog.hidden)renderModelResults();
- syncTeamModelForm();
  try{
   const result=await api('team-model',{role,model},target);
-  if(agentId===target){
-   teamModelDrafts.delete(role);
-   // A poll started before this write must not put the previous model back.
+  if(current()){
+   // A poll started before this write must not restore the previous model.
    ++refreshVersion;stateCache.delete(target);busy=false;
    data={...data,teamSelections:result.teamSelections};render();
-   const form=el('team-config-form');
-   if(form&&el('dialog').open){
-    for(const trigger of form.querySelectorAll('[data-team-model]')){
-     const index=Number(trigger.dataset.teamModel),draft=teamModelDrafts.get(index);
-     const current=draft?(runtime.teamModels||[]).find(m=>m.id===draft):teamModel(index);trigger.querySelector('span').textContent=current?.label||'Choose model';trigger.title=current?.id||'';
-    }
-    const notice=el('team-model-status');notice.hidden=false;notice.textContent=defaultNames[role]+' · '+(teamModel(role)?.label||model)+' applied. Used from the next request.';
-   }
   }
   return true;
- }catch(error){const message=el('team-model-status');if(message&&agentId===target){message.textContent='Some changes may have saved. '+error.message+' Unsaved selections are kept for retry.';message.hidden=false;}else if(!teamModelDialog.hidden&&agentId===target){const notice=teamModelDialog.querySelector('.team-model-error');notice.textContent=error.message;notice.hidden=false;}else alert('Model changes could not be applied. '+error.message);return false;}
- finally{
+ }catch(error){
+  if(current()&&!teamModelDialog.hidden){const notice=teamModelDialog.querySelector('.team-model-error');notice.textContent=error.message;notice.hidden=false;}
+  else alert('Model changes could not be applied. '+error.message);
+  return false;
+ }finally{
   modelPickerSaving=false;render();
   if(!teamModelDialog.hidden)renderModelResults();
-  syncTeamModelForm();
  }
 }
 
@@ -82674,7 +82580,7 @@ async function chooseScenario(id){
   const state=await api('state');
   data=state;selectedJob=null;resultKey='';selectedCrewRole=0;crewChatKey='';crewChatSignature='';
   crewResetEpoch=scenarioDraftEpochs.get(id)||id+':'+(state.crewChatReset?.epoch||'');
-  teamModelDrafts.clear();teamModelDialog.hidden=true;
+  teamModelDialog.hidden=true;
   eventPackageKey='';audienceReport=null;audienceJob='';previewCleanup();
   if(eventPreviewUrl){URL.revokeObjectURL(eventPreviewUrl);eventPreviewUrl='';}
   scenarioChoosing=false;scenarioSwitching=false;
@@ -83400,14 +83306,14 @@ async function askAllAgents(){
 }
 
   // Host settings: tab changes keep drafts; model discovery is visibly selectable.
-async function waitForAgentRuntime(requireModel=false){
+async function waitForAgentRuntime(){
   const deadline=Date.now()+45000;
   do{
     runtime=await api('runtime');runtimeBadge();
-    if(requireModel?runtime.ready:runtime.gateway)return;
+    if(runtime.gateway)return;
     await new Promise(resolve=>setTimeout(resolve,1500));
   }while(Date.now()<deadline);
-  throw new Error(requireModel?'The model was verified, but the agent runtime has not applied the connection. Retry Connect model.':'Model settings are saved, but the agent runtime is not ready. Try Start agents again.');
+  throw new Error('The agent runtime is not ready. Try Start agents again.');
 }
 const settingsButton=document.createElement('button');settingsButton.id='studio-config';settingsButton.className='studio-config';settingsButton.type='button';settingsButton.textContent='⚙';settingsButton.title='Settings';settingsButton.setAttribute('aria-label','Settings');settingsButton.hidden=true;document.querySelector('.studio-header-actions').append(settingsButton);
 let settingsOpenRequest=0;
@@ -83425,20 +83331,9 @@ function syncResetButtons(){
  }
  if(resetInProgress&&el('settings-status'))el('settings-status').textContent='Reset in progress. Agent cleanup is still running.';
 }
-settingsButton.onclick=async()=>{
- const request=++settingsOpenRequest,revision=dialogRevision;
- const currentOpen=()=>request===settingsOpenRequest&&revision===dialogRevision;
- try{
-  const settings=await api('settings');
-  if(!currentOpen())return;
-  let telegram;
-  try{telegram=await api('telegram');}
-  catch(error){telegram={connected:false,error:error.message};}
-  if(!currentOpen())return;
-  dialog('Settings',`<form id="studio-config-form" novalidate><nav class="studio-settings-tabs" role="tablist" aria-label="Settings"><button type="button" role="tab" id="studio-settings-model-tab" data-settings-tab="model" aria-controls="studio-settings-model-panel" aria-selected="true">Lounge model</button><button type="button" role="tab" id="studio-settings-location-tab" data-settings-tab="location" aria-controls="studio-settings-location-panel" aria-selected="false" tabindex="-1">Location</button><button type="button" role="tab" id="studio-settings-telegram-tab" data-settings-tab="telegram" aria-controls="studio-settings-telegram-panel" aria-selected="false" tabindex="-1">Telegram</button><button type="button" role="tab" id="studio-settings-reset-tab" data-settings-tab="reset" aria-controls="studio-settings-reset-panel" aria-selected="false" tabindex="-1">Reset</button></nav>
-  <section id="studio-settings-model-panel" role="tabpanel" aria-labelledby="studio-settings-model-tab"><div class="studio-model-scope"><span>STAGES 01 / 02</span><h3>Hiring &amp; Agent lounge</h3></div><div class="studio-model-link"><button type="button" id="studio-open-team-settings" class="studio-secondary">Set up Stage 03 ↗</button></div><label for="studio-provider">Provider</label><select id="studio-provider">${Object.entries(settings.providers).map(([id,p])=>`<option value="${id}">${escape(p.label)}</option>`).join('')}</select><label for="studio-api-key">API key</label><input id="studio-api-key" type="password" autocomplete="off" spellcheck="false"><small id="studio-key-note"></small><div class="studio-settings-model"><label for="studio-model">Model</label><button type="button" id="studio-load-models" class="studio-secondary">Load models ↻</button></div><button type="button" id="studio-change-model" class="studio-secondary" aria-expanded="false" aria-controls="studio-model-options" hidden>Change model</button><p id="studio-model-status" role="status" aria-live="polite"></p><input id="studio-model-search" type="search" aria-label="Search models" placeholder="Search models…" autocomplete="off" spellcheck="false" hidden><select id="studio-model-options" size="6" aria-label="Available models" hidden></select><input id="studio-model" autocomplete="off" placeholder="Load models to choose, or enter a model ID" required><small>Choose a text model with tool calling.</small><details id="studio-connection-options"><summary>Connection options</summary><label for="studio-endpoint">API endpoint</label><input id="studio-endpoint" type="url" aria-describedby="studio-endpoint-note" required><small id="studio-endpoint-note" hidden>vLLM on this PC: <code>http://127.0.0.1:8000/v1</code>. Use your server’s port, then select a model with Load models.</small><label for="studio-model-context">Context limit · tokens</label><input id="studio-model-context" type="number" min="8192" max="2000000" step="1" required></details><small>Keys stay in memory for this tab only. Closing or refreshing clears them.</small></section>
-
-  <section id="studio-settings-location-panel" role="tabpanel" aria-labelledby="studio-settings-location-tab" hidden><label for="studio-location-city">City</label><input id="studio-location-city" autocomplete="address-level2" maxlength="80" required aria-describedby="studio-location-note"><small id="studio-location-note">Default city for weather and local requests.</small></section>
+settingsButton.onclick=()=>openModelConnections();
+el('dialog').addEventListener('close',()=>{for(const id of ['connect-key','telegram-token'])if(el(id))el(id).value='';});
+function settingsUtilityPanels(){return `  <section id="studio-settings-location-panel" role="tabpanel" aria-labelledby="studio-settings-location-tab" hidden><label for="studio-location-city">City</label><input id="studio-location-city" autocomplete="address-level2" maxlength="80" required aria-describedby="studio-location-note"><small id="studio-location-note">Default city for weather and local requests.</small></section>
   <section id="studio-settings-telegram-panel" role="tabpanel" aria-labelledby="studio-settings-telegram-tab" hidden>
   <p>Sends summaries from the <strong>Tech Radar skill</strong> only.</p>
   <label for="studio-telegram-token">Bot token (from <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer">@BotFather</a>)</label><input id="studio-telegram-token" type="password" autocomplete="off" spellcheck="false" placeholder="Token from @BotFather (e.g. 123456789:ABCdef...)">
@@ -83449,84 +83344,7 @@ settingsButton.onclick=async()=>{
    <div class="studio-reset-row"><div><small class="studio-reset-stage">STAGE ${selectedScenario==='event-brief'?'03-1':'03-2'}</small><h3>${escape(stageScenarios.find(s=>s.id===selectedScenario)?.title||'Multi-Agent demo')}</h3><p>Stop this scenario’s work and clear its chats, documents and results. Other scenarios are preserved.</p></div><button type="button" id="studio-settings-bac-reset" class="studio-secondary" aria-label="Reset Stage 3">Reset scenario</button></div>
    <div class="studio-reset-footer"><p>Reset all stages. Model and connection settings are kept.</p><button type="button" id="studio-reset-all" class="studio-danger">Reset all</button></div>
   </section>
-  <p id="studio-settings-status" role="status"></p><div class="studio-dialog-actions"><button type="button" id="studio-start-agents" class="studio-secondary" ${runtime.gateway?'hidden':''}>Start agents</button><button type="submit" class="studio-primary" id="studio-save-settings">Connect model</button></div></form>`);
-  const form=el('config-form'),modelList=el('model-options'),modelStatus=el('model-status'),loadButton=el('load-models');
-  function showTelegram(){el('telegram-status').textContent=telegram.connected?'Connected to @'+telegram.bot+' · chat '+telegram.chatId:telegram.error||'';el('telegram-status').hidden=!telegram.connected&&!telegram.error;el('telegram-controls').hidden=!telegram.connected;el('telegram-test').disabled=!telegram.connected;el('telegram-disconnect').disabled=!telegram.connected;el('telegram-chat').value=telegram.chatId||'';}
-  showTelegram();
-  el('open-team-settings').onclick=openTeamSettings;
-  async function telegramAction(action){if(connecting)return;connecting=true;el('settings-status').textContent='Connecting';try{const result=await api(action==='test'?'telegram/test':'telegram',action==='test'?{}:{disconnect:true});if(!currentForm())return;if(action==='test')el('settings-status').textContent='Test message sent.';else{telegram=result;showTelegram();el('settings-status').textContent='';}}catch(error){if(currentForm())el('settings-status').textContent=error.message;}finally{connecting=false;}}
-  el('telegram-test').onclick=()=>telegramAction('test');el('telegram-disconnect').onclick=()=>telegramAction('disconnect');
-  el('location-city').value=settings.location?.city||'Zurich';
-  el('agent-reset').onclick=()=>resetStudio('lounge');
-  el('settings-bac-reset').onclick=()=>resetStudio('bac');
-  el('reset-all').onclick=()=>resetStudio('all');
-  syncResetButtons();
-  let tab='model',generation=0,availableModels=[],hasMoreModels=false,connecting=false;
-  const currentForm=()=>el('config-form')===form&&el('dialog').open;
-  const modelSearch=el('model-search'),changeModel=el('change-model');
-  let browsingWithKeyboard=false;
-  function closeModelList(){if(!modelList.value)return;el('model').value=modelList.value;modelList.hidden=true;modelSearch.hidden=true;changeModel.hidden=false;changeModel.setAttribute('aria-expanded','false');modelStatus.textContent='';el('model').focus();}
-  changeModel.onclick=()=>{modelSearch.hidden=false;filterModels();changeModel.setAttribute('aria-expanded','true');modelSearch.focus();};
-  function filterModels(){const query=modelSearch.value.trim().toLowerCase();const matches=availableModels.filter(m=>(m.id+' '+(m.name||'')).toLowerCase().includes(query));modelList.replaceChildren(...matches.map(m=>new Option(!m.name||m.name===m.id?m.id:m.name+' · '+m.id,m.id)));modelList.value=el('model').value;modelList.hidden=!matches.length;modelStatus.dataset.state=matches.length?'ready':'empty';modelStatus.textContent=(query?`${matches.length} of ${availableModels.length} models`:`${availableModels.length} models`)+(matches.length?'':' · No matches')+(hasMoreModels?' · More IDs can be entered manually.':'');}
-  modelSearch.oninput=filterModels;
-  modelSearch.onkeydown=e=>{if(e.key==='Enter')e.preventDefault();if(e.key==='ArrowDown'&&!modelList.hidden){e.preventDefault();modelList.focus();}};
-  function selectTab(next){if(connecting)return;tab=next;el('dialog-body').scrollTop=0;form.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===tab;b.setAttribute('aria-selected',active);b.tabIndex=active?0:-1;});el('settings-model-panel').hidden=tab!=='model';el('settings-location-panel').hidden=tab!=='location';el('settings-reset-panel').hidden=tab!=='reset';el('settings-telegram-panel').hidden=tab!=='telegram';el('save-settings').textContent=tab==='telegram'?'Connect Telegram':tab==='location'?'Save location':'Connect model';el('save-settings').hidden=tab==='reset';el('start-agents').hidden=tab!=='model'||!!runtime.gateway;el('settings-status').textContent='';if(tab==='reset')syncResetButtons();}
-  form.querySelectorAll('[data-settings-tab]').forEach(b=>{b.onclick=()=>selectTab(b.dataset.settingsTab);b.onkeydown=e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const tabs=['model','location','telegram','reset'];selectTab(e.key==='Home'?tabs[0]:e.key==='End'?tabs.at(-1):tabs[(tabs.indexOf(tab)+(e.key==='ArrowLeft'?-1:1)+tabs.length)%tabs.length]);el('settings-'+tab+'-tab').focus();}};});
-
-  const input=()=>({provider:el('provider').value,apiKey:el('api-key').value.trim(),baseUrl:el('endpoint').value.trim(),model:el('model').value.trim(),contextWindow:Number(el('model-context').value)});
-  function resetModels(){changeModel.hidden=true;changeModel.setAttribute('aria-expanded','false');availableModels=[];hasMoreModels=false;modelSearch.value='';modelSearch.hidden=true;generation++;loadButton.disabled=false;loadButton.textContent='Load models ↻';modelList.replaceChildren();modelList.hidden=true;modelStatus.textContent='';modelStatus.dataset.state='';}
-  function fill(){const id=el('provider').value,profile=settings.profiles[id]||{};el('connection-options').open=id==='local';el('endpoint-note').hidden=id!=='local';el('endpoint').value=profile.baseUrl||settings.providers[id].baseUrl;el('model').value=profile.model||'';el('model-context').value=profile.contextWindow||32768;el('api-key').value='';el('api-key').placeholder=profile.hasKey?'Active in this tab · leave blank to keep':'Enter API key';el('key-note').textContent=id==='nvidia'?'Use your employee key from inference.nvidia.com.':id==='local'?'API key is optional for a local server.':'';resetModels();el('settings-status').textContent='';}
-  el('provider').value=settings.provider;el('provider').onchange=fill;fill();el('endpoint').oninput=resetModels;el('api-key').oninput=resetModels;
-  modelList.onchange=()=>{el('model').value=modelList.value;if(!browsingWithKeyboard)closeModelList();};
-  modelList.onpointerdown=()=>{browsingWithKeyboard=false;};
-  modelList.onclick=closeModelList;
-  modelList.onkeydown=e=>{browsingWithKeyboard=true;if(e.key==='Enter'){e.preventDefault();closeModelList();}else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();modelList.hidden=true;modelSearch.hidden=true;changeModel.hidden=false;changeModel.setAttribute('aria-expanded','false');changeModel.focus();}};
-  loadButton.onclick=async()=>{const token=++generation,request=input();loadButton.disabled=true;loadButton.textContent='Loading…';modelSearch.hidden=true;modelList.hidden=true;modelStatus.dataset.state='loading';modelStatus.textContent='Loading models…';const current=()=>el('config-form')===form&&el('dialog').open&&token===generation;
-    try{const result=await api('settings/models',request);if(!current())return;availableModels=result.models;hasMoreModels=!!result.hasMore;modelSearch.hidden=!availableModels.length;changeModel.hidden=!availableModels.length;changeModel.setAttribute('aria-expanded',String(!!availableModels.length));filterModels();if(!availableModels.length)modelStatus.textContent='No models returned for this key. Check its access or enter a model ID manually.';}
-    catch(error){if(current()){modelStatus.dataset.state='error';modelStatus.textContent=error.message;}}
-    finally{if(current()){loadButton.disabled=false;loadButton.textContent='Load models ↻';}}
-  };
-  el('start-agents').onclick=async()=>{if(connecting)return;connecting=true;el('start-agents').disabled=true;el('settings-status').textContent='Starting agent runtime…';try{await api('settings/start',{});await waitForAgentRuntime();if(!currentForm())return;el('settings-status').textContent=runtime.ready?'Model and agent runtime connected.':'Agent runtime ready. Reconnect the model to continue.';el('start-agents').hidden=true;}catch(error){if(currentForm())el('settings-status').textContent=error.message;}finally{connecting=false;if(currentForm())el('start-agents').disabled=false;}};
-  form.onsubmit=async e=>{
-    e.preventDefault();if(connecting||tab==='reset')return;
-    if(tab==='telegram'){
-      connecting=true;el('save-settings').disabled=true;el('settings-status').textContent='Checking bot';
-      try{const result=await api('telegram',{token:el('telegram-token').value.trim(),chatId:el('telegram-chat').value.trim()});if(currentForm()){telegram=result;showTelegram();el('telegram-token').value='';el('settings-status').textContent='Bot connected. Send a test to check delivery.';}}
-      catch(error){if(currentForm())el('settings-status').textContent=error.message;}
-      finally{connecting=false;if(currentForm())el('save-settings').disabled=false;}
-      return;
-    }
-    if(tab==='location'){
-      const field=el('location-city'),button=el('save-settings'),status=el('settings-status');
-      if(!field.checkValidity()){field.reportValidity();return;}
-      connecting=true;button.disabled=true;field.disabled=true;status.textContent='Saving location';
-      try{
-        const saved=await api('settings',{section:'location',location:{city:field.value.trim()}});
-        settings.location=saved.location;runtime.location=saved.location;
-        if(currentForm()){field.value=saved.location.city;status.textContent='Saved. Applies to every agent’s next request.';}
-      }catch(error){if(currentForm())status.textContent=error.message;}
-      finally{connecting=false;if(currentForm()){button.disabled=false;field.disabled=false;}}
-      return;
-    }
-    for(const id of ['model','endpoint','model-context']){const field=el(id);if(!field.checkValidity()){const details=field.closest('details');if(details)details.open=true;field.reportValidity();return;}}
-    const request=input(),button=el('save-settings'),status=el('settings-status');
-    const controls=[...form.querySelectorAll('#studio-settings-model-panel input,#studio-settings-model-panel select,#studio-settings-model-panel button,#studio-start-agents')].map(node=>[node,node.disabled]);
-    connecting=true;button.disabled=true;button.textContent='Connecting';status.dataset.state='connecting';status.textContent='Checking model connection';
-    controls.forEach(([node])=>node.disabled=true);
-    try{
-      await api('settings',{...request,section:'model',verifyConnection:true});
-      runtime=await api('runtime');
-      if(!runtime.installed&&!runtime.gateway)throw new Error('Model verified. Install the agent runtime on this host to run agents.');
-      if(!runtime.gateway){if(currentForm())status.textContent='Starting agent runtime…';await api('settings/start',{});await waitForAgentRuntime();}
-      if(!runtime.ready){if(currentForm())status.textContent='Applying model connection';await waitForAgentRuntime(true);}
-      runtimeBadge();render();
-      if(currentForm()){form.querySelector('#studio-api-key').value='';el('dialog').close();alert('Model connected.','success');}
-    }catch(error){if(currentForm()){status.dataset.state='error';status.textContent=error.message;}}
-    finally{connecting=false;if(currentForm()){button.disabled=false;button.textContent='Connect model';controls.forEach(([node,disabled])=>node.disabled=disabled);}}
-  };
- }catch(error){if(request===settingsOpenRequest)alert(error.message,'error');}
-};
-el('dialog').addEventListener('close',()=>{if(el('api-key'))el('api-key').value='';if(el('telegram-token'))el('telegram-token').value='';});
+`;}
 
 function confirmTeamReset(sourceButton){
  if(resetInProgress||removingAgent||pendingWrites||changingAgent||data.bacResetting)return;
@@ -83599,59 +83417,6 @@ async function resetStudio(scope,sourceButton=null){
 }
 
 
-const teamModelDrafts=new Map();
-let teamModelDraftOwner=null;
-function openLegacyTeamSettings(){
- if(!modelPickerSaving||teamModelDraftOwner!==agentId)teamModelDrafts.clear();
- teamModelDraftOwner=agentId;
- const available=window.BacCrewCatalog.map((member,role)=>({...member,roleIndex:role})).filter(member=>selectedScenario==='event-brief'?member.roleIndex<4:member.planEligible!==false);
- dialog('Multi-Agent setup',`<form id="studio-team-config-form">
-  <div class="studio-model-scope"><span>STAGE ${selectedScenario==='event-brief'?'03-1':'03-2'}</span><h3>${selectedScenario==='event-brief'?'Event Brief':'Open Task'} models</h3><p>API is recommended for Stage 3. Local models are optional and may take longer.</p></div>
-  <label for="studio-scenario-provider">Model source for this scenario</label><select id="studio-scenario-provider"><option value="api">NVIDIA API (recommended)</option><option value="local">Local model</option></select>
-  <section id="studio-scenario-local" hidden><label for="studio-scenario-url">Local endpoint</label><input id="studio-scenario-url" type="url" value="${escape(data.teamConnection?.local?.baseUrl||'http://127.0.0.1:8000/v1')}"><small>Use a model server reachable from the OpenClaw host. All agents in this scenario use this model.</small><button type="button" id="studio-scenario-load" class="studio-secondary">Load models</button><label for="studio-scenario-model">Model</label><select id="studio-scenario-model">${data.teamConnection?.local?.model?`<option>${escape(data.teamConnection.local.model)}</option>`:''}</select><label for="studio-scenario-context">Context limit · tokens</label><input id="studio-scenario-context" type="number" min="8192" max="2000000" value="${Number(data.teamConnection?.local?.contextWindow)||32768}"></section>
-  <button type="button" id="studio-scenario-apply" class="studio-primary">Apply model source</button><p id="studio-scenario-status" role="status"></p>
-  <section id="studio-scenario-api"><div class="studio-team-api-card"><div class="studio-team-api-heading"><strong>NVIDIA Inference</strong><span class="studio-team-api-state" data-connected="${!!runtime.teamModel}">${runtime.teamModel?(runtime.teamReady?'Connected':'API connected · Runtime offline'):'Not connected'}</span></div>
-  <small>inference-api.nvidia.com</small>
-  <small>${runtime.teamModel?'Key loaded from <code>api.cfg</code>.':'Add a key to <code>api.cfg</code> and run <code>./bac start</code>.'}</small></div>
-  <div class="studio-team-models-heading"><h3>Agent models</h3></div><p id="studio-team-model-status" role="status" hidden></p>
-  <div class="studio-team-setup-models">${available.map(member=>`<div><span><strong>${escape(member.name)}</strong><small>${escape(selectedScenario==='event-brief'?member.role:member.collaboration.title)}</small></span><div class="studio-team-model-controls"><button type="button" class="team-model-trigger" data-team-model="${member.roleIndex}" ${!runtime.teamModel||data.bacResetting||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status))?'disabled':''}><span>${escape(teamModel(member.roleIndex)?.label||'Choose model')}</span><span aria-hidden="true">⌕</span></button></div></div>`).join('')}</div>
-  <div class="studio-team-model-save"><button type="button" class="studio-primary" data-team-apply-all disabled>Apply changes</button></div></section></form>`);
- el('dialog').classList.add('studio-team-settings');
- el('team-config-form').onsubmit=event=>event.preventDefault();
- bindScenarioModelSettings();
- syncTeamModelForm();
- if(modelPickerSaving){const notice=el('team-model-status');notice.hidden=false;notice.textContent='Applying model changes…';}
-}
-
-function bindScenarioModelSettings(){
- const owner=agentId,scenario=selectedScenario,form=el('team-config-form'),source=el('scenario-provider'),notice=el('scenario-status');
- const current=()=>agentId===owner&&selectedScenario===scenario&&el('team-config-form')===form;
- const busy=()=>modelPickerSaving||data.bacResetting||data.scenarios?.find(s=>s.id===scenario)?.busy||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
- if(data.teamConnection?.shared){
-  source.hidden=true;form.querySelector('label[for="studio-scenario-provider"]').hidden=true;
-  el('scenario-local').hidden=true;el('scenario-apply').hidden=true;el('scenario-api').hidden=false;
-  form.querySelector('.studio-team-api-card').hidden=true;
-  return;
- }
- source.value=data.teamConnection?.provider||'api';
- const update=()=>{el('scenario-local').hidden=source.value!=='local';el('scenario-api').hidden=source.value!=='api';el('scenario-apply').textContent=source.value==='local'?'Apply local model':'Use API for this scenario';el('scenario-apply').hidden=source.value==='api'&&(data.teamConnection?.provider||'api')==='api';el('scenario-apply').disabled=!!busy();source.disabled=!!busy();};
- source.onchange=update;update();
- const payload=()=>({provider:source.value,baseUrl:el('scenario-url').value,model:el('scenario-model').value,contextWindow:Number(el('scenario-context').value)});
- el('scenario-load').onclick=async()=>{
-  const button=el('scenario-load');button.disabled=true;notice.textContent='Loading local models…';
-  try{const result=await api('settings/scenario-models',payload(),owner);if(!current())return;el('scenario-model').innerHTML=result.models.map(m=>`<option value="${escape(m.id)}">${escape(m.label)}</option>`).join('');notice.textContent=result.models.length?'Models loaded.':'No models found.';}
-  catch(error){if(current())notice.textContent=error.message;}finally{if(current())button.disabled=false;}
- };
- el('scenario-apply').onclick=async()=>{
-  if(busy())return;const values=payload();modelPickerSaving=true;update();notice.textContent='Applying…';
-  try{const result=await api('settings/scenario-model',values,owner);if(!current())return;++refreshVersion;stateCache.clear();data.teamConnection=result.teamConnection;render();notice.textContent='Applied. Used from the next request in this scenario.';}
-  catch(error){if(current())notice.textContent=error.message;}
-  finally{modelPickerSaving=false;if(current()){update();syncTeamModelForm();}}
- };
-}
-
-const openOtherSettings=settingsButton.onclick;
-settingsButton.onclick=()=>openModelConnections();
 function openTeamSettings(){return openModelConnections();}
 async function openModelConnections(){
  const request=++settingsOpenRequest,revision=dialogRevision;
@@ -83659,16 +83424,20 @@ async function openModelConnections(){
  try{[state,settings]=await Promise.all([api('settings/connections'),api('settings')]);}
  catch(error){alert(error.message,'error');return;}
  if(request!==settingsOpenRequest||revision!==dialogRevision)return;
- dialog('Settings',`<div id="studio-model-connections">
-  <nav class="connection-tabs"><button type="button" aria-current="page">Model</button><button type="button" data-connection-tab="location">Location</button><button type="button" data-connection-tab="telegram">Telegram</button><button type="button" data-connection-tab="reset">Reset</button></nav>
+ dialog('Settings',`<form id="studio-config-form" novalidate>
+  <nav class="connection-tabs" role="tablist" aria-label="Settings">${['model','location','telegram','reset'].map((tab,index)=>`<button type="button" role="tab" id="studio-settings-${tab}-tab" data-connection-tab="${tab}" data-settings-tab="${tab}" aria-controls="studio-settings-${tab}-panel" aria-selected="${index===0}" tabindex="${index===0?0:-1}" ${index===0?'aria-current="page"':''}>${tab[0].toUpperCase()+tab.slice(1)}</button>`).join('')}</nav>
+  <section id="studio-settings-model-panel" role="tabpanel" aria-labelledby="studio-settings-model-tab"><div id="studio-model-connections">
   <div class="connection-section-heading"><h3>Connections</h3><button type="button" class="connection-text-button" id="studio-connections-check">↻ Refresh</button></div>
   <div class="connection-grid">${['local','api'].map(source=>`<section class="connection-card" data-source="${source}"><header><label class="connection-toggle"><input type="checkbox" data-connection-enable="${source}"><strong>${source==='local'?'Local':'External Endpoint'}</strong></label><span data-connection-status="${source}" role="status"></span></header><p data-connection-summary="${source}"></p><button type="button" class="connection-text-button" data-connection-edit="${source}">Configure →</button></section>`).join('')}</div>
   <div id="studio-connection-editor" hidden></div>
   <div class="connection-section-heading"><h3>Stage connections</h3></div>
   <div class="connection-routes">${[['lounge','01 / 02','Hiring & Agent lounge'],['event-brief','03-1','Event Brief'],['plan','03-2','Open Task']].map(([key,number,title])=>`<section class="connection-route"><div class="connection-route-name"><small>${number}</small><strong>${escape(title)}</strong><span id="studio-connection-${key}-effective" role="status"></span></div><div class="connection-choice" role="group" aria-label="${escape(title)} connection">${['local','api'].map(source=>`<button type="button" data-route="${key}" data-route-source="${source}" aria-pressed="false">${source==='local'?'Local':'External'}</button>`).join('')}</div></section>`).join('')}</div>
-  <p id="studio-connections-status" role="status"></p><div class="connection-footer"><button type="button" id="studio-connections-save" class="studio-primary">Save changes</button></div></div>`);
+  <p id="studio-connections-status" role="status"></p><div class="connection-footer"><button type="button" id="studio-connections-save" class="studio-primary">Save changes</button></div></div></section>
+  ${settingsUtilityPanels()}
+  <p id="studio-settings-status" role="status"></p><div class="studio-dialog-actions"><button type="button" id="studio-start-agents" class="studio-secondary" ${runtime.gateway?'hidden':''}>Start agents</button><button type="submit" class="studio-primary" id="studio-save-settings" hidden>Save location</button></div></form>`);
+ const form=el('config-form');
  const panel=el('model-connections'),notice=el('connections-status'),owner=agentId,scenario=selectedScenario;
- let working=false,editing=false,inventoryRevision=0;
+ let working=false,editing=false,inventoryRevision=0,tab='model',telegram=null,telegramRevision=0;
  const current=()=>el('model-connections')===panel&&el('dialog').open&&agentId===owner&&selectedScenario===scenario;
  const prefs={lounge:state.loungePreference||'auto','event-brief':state.scenarioPreferences?.['event-brief']||'auto',plan:state.scenarioPreferences?.plan||'auto'};
  function paint(){
@@ -83685,7 +83454,66 @@ async function openModelConnections(){
  async function refreshConnections(force=false){const revision=inventoryRevision;try{const next=await api('settings/connections'+(force?'/check':''),force?{}:undefined);if(current()&&revision===inventoryRevision&&!working){state=next;paint();}}catch(error){if(current())notice.textContent=error.message;}}
  const timer=setInterval(()=>{if(!current()){clearInterval(timer);return;}if(!working&&!editing)refreshConnections();},2500);
  el('connections-check').onclick=()=>refreshConnections(true);
- for(const tab of panel.querySelectorAll('[data-connection-tab]'))tab.onclick=async()=>{if(working)return;await openOtherSettings();const target=el('settings-'+tab.dataset.connectionTab+'-tab');if(target){target.click();const model=el('settings-model-tab');model.textContent='Model';model.onclick=()=>openModelConnections();}};
+ function showTelegram(){
+  if(!current())return;
+  const value=telegram||{};
+  el('telegram-status').textContent=value.connected?'Connected to @'+value.bot+' · chat '+value.chatId:value.error||'';
+  el('telegram-status').hidden=!value.connected&&!value.error;el('telegram-controls').hidden=!value.connected;
+  el('telegram-test').disabled=!value.connected;el('telegram-disconnect').disabled=!value.connected;
+  el('telegram-chat').value=value.chatId||el('telegram-chat').value;
+ }
+ async function loadTelegram(){
+  const version=++telegramRevision;
+  try{const value=await api('telegram');if(current()&&version===telegramRevision){telegram=value;showTelegram();}}
+  catch(error){if(current()&&version===telegramRevision){telegram={connected:false,error:error.message};showTelegram();}}
+ }
+ function selectTab(next){
+  if(working||resetInProgress)return;
+  tab=next;el('dialog-body').scrollTop=0;
+  for(const button of form.querySelectorAll('[data-settings-tab]')){
+   const active=button.dataset.settingsTab===tab;button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;
+   if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
+   el('settings-'+button.dataset.settingsTab+'-panel').hidden=!active;
+  }
+  el('save-settings').hidden=tab==='model'||tab==='reset';el('save-settings').textContent=tab==='telegram'?'Connect Telegram':'Save location';
+  el('start-agents').hidden=tab!=='model'||!!runtime.gateway;el('settings-status').textContent='';
+  if(tab==='reset')syncResetButtons();
+  if(tab==='telegram'&&!telegram)loadTelegram();
+ }
+ for(const button of form.querySelectorAll('[data-settings-tab]')){
+  button.onclick=()=>selectTab(button.dataset.settingsTab);
+  button.onkeydown=event=>{
+   if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+   event.preventDefault();if(working||resetInProgress)return;
+   const tabs=['model','location','telegram','reset'];
+   selectTab(event.key==='Home'?tabs[0]:event.key==='End'?tabs.at(-1):tabs[(tabs.indexOf(tab)+(event.key==='ArrowLeft'?-1:1)+tabs.length)%tabs.length]);
+   el('settings-'+tab+'-tab').focus();
+  };
+ }
+ el('location-city').value=settings.location?.city||'Zurich';
+ el('agent-reset').onclick=()=>resetStudio('lounge');el('settings-bac-reset').onclick=()=>resetStudio('bac');el('reset-all').onclick=()=>resetStudio('all');syncResetButtons();
+ async function utilityAction(action){
+  if(working||!current())return;
+  working=true;paint();
+  const controls=[...form.querySelectorAll('#studio-settings-location-panel input,#studio-settings-telegram-panel input,#studio-settings-telegram-panel button,#studio-save-settings,#studio-start-agents')].map(node=>[node,node.disabled]);
+  controls.forEach(([node])=>node.disabled=true);const status=el('settings-status');
+  try{await action(status);}catch(error){if(current())status.textContent=error.message;}
+  finally{working=false;if(current()){controls.forEach(([node,disabled])=>node.disabled=disabled);if(telegram)showTelegram();paint();}}
+ }
+ el('telegram-test').onclick=()=>utilityAction(async status=>{status.textContent='Sending test…';await api('telegram/test',{});if(current())status.textContent='Test message sent.';});
+ el('telegram-disconnect').onclick=()=>utilityAction(async status=>{++telegramRevision;const value=await api('telegram',{disconnect:true});if(current()){telegram=value;showTelegram();status.textContent='Disconnected.';}});
+ el('start-agents').onclick=()=>utilityAction(async status=>{status.textContent='Starting agent runtime…';await api('settings/start',{});await waitForAgentRuntime();if(current()){el('start-agents').hidden=true;status.textContent=runtime.ready?'Model and agent runtime connected.':'Agent runtime ready. Connect a model to continue.';}});
+ form.onsubmit=event=>{
+  event.preventDefault();if(working||!['location','telegram'].includes(tab))return;
+  if(tab==='location'){
+   const field=el('location-city');if(!field.checkValidity()){field.reportValidity();return;}
+   const city=field.value.trim();
+   utilityAction(async status=>{status.textContent='Saving location…';const saved=await api('settings',{section:'location',location:{city}});settings.location=saved.location;runtime.location=saved.location;if(current()){field.value=saved.location.city;status.textContent='Saved. Applies to every agent’s next request.';}});
+  }else{
+   const values={token:el('telegram-token').value.trim(),chatId:el('telegram-chat').value.trim()};++telegramRevision;
+   utilityAction(async status=>{status.textContent='Checking bot…';const value=await api('telegram',values);if(current()){telegram=value;showTelegram();el('telegram-token').value='';status.textContent='Bot connected. Send a test to check delivery.';}});
+  }
+ };
  el('connections-save').onclick=async()=>{if(working)return;working=true;++inventoryRevision;paint();notice.textContent='Applying…';try{
   const result=await api('settings/connections/preferences',{lounge:prefs.lounge,scenarios:{'event-brief':prefs['event-brief'],plan:prefs.plan}},owner);if(!current())return;state=result;
   ++refreshVersion;stateCache.clear();data.teamConnection=result.teamConnection;runtime=await api('runtime');if(!current())return;render();notice.textContent='Saved. Applies to new requests.';
@@ -83698,17 +83526,17 @@ async function openModelConnections(){
  for(const button of panel.querySelectorAll('[data-connection-edit]'))button.onclick=()=>editConnection(button.dataset.connectionEdit);
  function editConnection(source){
   if(working)return;editing=true;const editor=el('connection-editor');editor.hidden=false;
-  editor.innerHTML=`<h3>${source==='local'?'Local model':'API connection'}</h3>${source==='api'?'<label>Provider<select id="studio-connect-provider"><option value="nvidia">NVIDIA Inference</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option></select></label><label>API key<input id="studio-connect-key" type="password" autocomplete="off" placeholder="Leave blank to keep the current key"></label><small id="studio-connect-key-status"></small>':''}<label>Endpoint<input id="studio-connect-url" type="url"></label><label for="studio-connect-model">Model</label><label><input id="studio-connect-model" list="studio-connect-models" autocomplete="off" placeholder="Search models…"><datalist id="studio-connect-models"></datalist></label><p id="studio-connect-status" role="status"></p><div class="studio-dialog-actions"><button type="button" class="studio-secondary" id="studio-connect-cancel">Close</button><button type="button" class="studio-primary" id="studio-connect-apply">Connect &amp; enable</button></div>`;
+  editor.innerHTML=`<h3>${source==='local'?'Local model':'API connection'}</h3>${source==='api'?'<label>Provider<select id="studio-connect-provider"><option value="nvidia">NVIDIA Inference</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option></select></label><label>API key<input id="studio-connect-key" type="password" autocomplete="off" placeholder="Leave blank to keep the current key"></label><small id="studio-connect-key-status"></small>':''}<label>Endpoint<input id="studio-connect-url" type="url"></label><label for="studio-connect-model">Model</label><label><input id="studio-connect-model" list="studio-connect-models" autocomplete="off" placeholder="Search models…"><datalist id="studio-connect-models"></datalist></label><details><summary>Advanced</summary><label for="studio-connect-context">Context limit · tokens</label><input id="studio-connect-context" type="number" min="8192" max="2000000" step="1" required><small>Instructions, conversation, tool results and reply. Must fit the model endpoint.</small></details><p id="studio-connect-status" role="status"></p><div class="studio-dialog-actions"><button type="button" class="studio-secondary" id="studio-connect-cancel">Close</button><button type="button" class="studio-primary" id="studio-connect-apply">Connect &amp; enable</button></div>`;
   const provider=()=>source==='local'?'local':el('connect-provider').value;
   // A connection may be ready using another tab's key. Only this tab's key
   // or a host-saved key can be reused by the connection editor.
   const reusableKey=()=>!!settings.profiles[provider()]?.hasKey||(state.connections.api.provider===provider()&&['api.cfg','host'].includes(state.connections.api.keySource));
   const lockFields=()=>{const active=state.connections[source],verified=source==='api'&&active.provider===provider()&&active.ready&&reusableKey();el('connect-url').disabled=source==='api';if(el('connect-key')){el('connect-key').disabled=verified;el('connect-key').placeholder=verified?(active.keySource==='api.cfg'?'API key verified · api.cfg':active.keySource==='host'?'API key verified · saved on host':'API key verified · this session'):'Enter API key';el('connect-key-status').textContent=verified?'':'Key expires when this tab reloads or closes.';}};
-  const fill=()=>{const id=provider(),profile=settings.profiles[id]||{},active=state.connections[source];el('connect-url').value=profile.baseUrl||settings.providers[id].baseUrl;el('connect-url').readOnly=source==='api';el('connect-model').value=profile.model||(active.provider===id?active.model:'');if(el('connect-key'))el('connect-key').value='';el('connect-models').innerHTML='';lockFields();};
+  const fill=()=>{const id=provider(),profile=settings.profiles[id]||{},active=state.connections[source];el('connect-url').value=profile.baseUrl||settings.providers[id].baseUrl;el('connect-url').readOnly=source==='api';el('connect-model').value=profile.model||(active.provider===id?active.model:'');el('connect-context').value=profile.contextWindow||(active.provider===id?active.contextWindow:0)||32768;if(el('connect-key'))el('connect-key').value='';el('connect-models').innerHTML='';lockFields();};
   if(source==='api'){el('connect-provider').value=state.connections.api.provider;el('connect-provider').onchange=fill;}fill();
-  const payload=()=>({source,provider:provider(),apiKey:el('connect-key')?.value.trim()||'',baseUrl:el('connect-url').value.trim(),model:el('connect-model').value.trim(),contextWindow:settings.profiles[provider()]?.contextWindow||(state.connections[source].provider===provider()?state.connections[source].contextWindow:0)||32768});
+  const payload=()=>({source,provider:provider(),apiKey:el('connect-key')?.value.trim()||'',baseUrl:el('connect-url').value.trim(),model:el('connect-model').value.trim(),contextWindow:Number(el('connect-context').value)});
   el('connect-cancel').onclick=()=>{if(!working){editor.replaceChildren();editor.hidden=true;editing=false;}};
-  async function action(){if(working)return;working=true;++inventoryRevision;paint();const values=payload(),message=el('connect-status');editor.querySelectorAll('input,select,button').forEach(e=>e.disabled=true);message.textContent='Checking connection…';try{
+  async function action(){if(working)return;const context=el('connect-context');if(!context.checkValidity()){context.closest('details').open=true;context.reportValidity();return;}working=true;++inventoryRevision;paint();const values=payload(),message=el('connect-status');editor.querySelectorAll('input,select,button').forEach(e=>e.disabled=true);message.textContent='Checking connection…';try{
    const result=await api('settings/connections',values,owner);if(!current()||!editor.contains(message))return;
    {state=result;settings.profiles[values.provider]={baseUrl:values.baseUrl,model:values.model,contextWindow:values.contextWindow,hasKey:source==='api'};if(el('connect-key'))el('connect-key').value='';runtime=await api('runtime');if(current()){await refresh();paint();message.textContent='Connected.';}}
   }catch(error){if(current())message.textContent=error.message;}finally{working=false;if(current()){editor.querySelectorAll('input,select,button').forEach(e=>e.disabled=false);lockFields();paint();}}}

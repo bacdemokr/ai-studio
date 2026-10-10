@@ -314,7 +314,7 @@ def create_server(host='127.0.0.1', port=8080, studio=None):
     if studio is None:
         session_secrets.purge_legacy(ops_common.home())
         import model_connections
-        model_connections.persist(model_connections.read())
+        model_connections.initialize()
     root = Path(__file__).resolve().parents[1] / 'app'
     server = ThreadingHTTPServer((host, port), functools.partial(Handler, directory=str(root)))
     server.studio = studio or Studio()

@@ -24,6 +24,26 @@ class ConnectionTests(unittest.TestCase):
         if source=='api':data['apiKey']='fixture-secret'
         with patch.object(settings,'request',return_value={'data':[{'id':'test-model'}]}):return connections.configure(self.app,data)
 
+    def test_upgrade_keeps_the_previously_selected_provider(self):
+        for provider in settings.PROVIDERS:
+            with self.subTest(provider=provider):
+                connections.path().unlink(missing_ok=True)
+                settings.persist({'provider':provider,'profiles':{provider:{'model':'previous-model','contextWindow':65536}}})
+                connections.initialize()
+                saved=connections.read()
+                self.assertEqual(saved['lounge'],'local' if provider=='local' else 'api')
+                if provider!='local':self.assertEqual(saved['apiProvider'],provider)
+                self.assertEqual(settings.read()['profiles'][provider]['contextWindow'],65536)
+
+    def test_initialize_preserves_current_preferences_and_fresh_defaults(self):
+        connections.initialize()
+        self.assertEqual(connections.read(),{'apiProvider':'nvidia','lounge':'auto','disabled':[]})
+        existing={'apiProvider':'anthropic','lounge':'api','disabled':['local']}
+        connections.persist(existing)
+        settings.persist({'provider':'local','profiles':{'local':{'model':'old-model'}}})
+        connections.initialize()
+        self.assertEqual(connections.read(),existing)
+
     def test_output_budget_reserves_input_across_connection_paths(self):
         for context, expected in [(8192,4096),(16384,8192),(32768,16384),(131072,16384)]:
             profile={'model':'test-model','baseUrl':'http://127.0.0.1:8000/v1','apiKey':'','contextWindow':context}

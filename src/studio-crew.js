@@ -56,20 +56,8 @@ teamModelDialog.hidden=true;
 teamModelDialog.className='team-model-dialog';
 teamModelDialog.setAttribute('aria-labelledby','team-model-heading');
 teamModelDialog.innerHTML='<header><div><h3 id="team-model-heading">Choose a model</h3><p id="team-model-member"></p></div><button type="button" data-model-close>← Back</button></header><input type="search" aria-label="Search API models" placeholder="Search models or providers…" autocomplete="off"><p class="team-model-count" aria-live="polite"></p><div class="team-model-results"></div><p class="team-model-error" role="alert" hidden></p>';
-// The picker is a view inside Settings, never a second native modal.
-let modelPickerRole=0,modelPickerSaving=false,modelPickerDraft=null,modelPickerOwner=null,modelPickerForm=null,modelPickerSettingsScroll=0;
-function syncTeamModelForm(){
- const form=el('team-config-form');if(!form)return;
- const blocked=(data.teamConnection?.shared?data.teamConnection.effectiveSource!=='api':data.teamConnection?.provider==='local')||modelPickerSaving||!teamRuntime().teamReady||data.bacResetting||(selectedScenario==='event-brief'&&data.scenarios?.find(s=>s.id==='event-brief')?.busy)||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
- for(const trigger of form.querySelectorAll('[data-team-model]')){
-  const role=Number(trigger.dataset.teamModel),draft=teamModelDrafts.get(role);
-  const model=draft?(runtime.teamModels||[]).find(m=>m.id===draft):teamModel(role);
-  trigger.querySelector('span').textContent=model?.label||draft||'Choose model';trigger.title=model?.id||draft||'';trigger.disabled=!!blocked;
- }
- const apply=form.querySelector('[data-team-apply-all]');
- apply.textContent=modelPickerSaving?'Applying…':'Apply changes';
- apply.disabled=!!blocked||![...teamModelDrafts].some(([role,id])=>id!==teamModel(role)?.id);
-}
+// Open Task model choices save directly from the specialist list.
+let modelPickerRole=0,modelPickerSaving=false,modelPickerDraft=null,modelPickerOwner=null,modelPickerScenario=null;
 function renderModelResults(){
  teamModelDialog.querySelector('[data-model-close]').disabled=modelPickerSaving;
  teamModelDialog.querySelector('input').disabled=modelPickerSaving;
@@ -82,29 +70,20 @@ function renderModelResults(){
 
 }
 root.addEventListener('click',event=>{
- const button=event.target.closest('#studio-team-config-form [data-team-model], [data-standby-model]');if(!button||button.disabled||modelPickerSaving||!teamModelDialog.hidden)return;
- modelPickerForm=button.closest('#studio-team-config-form');
- modelPickerRole=Number(button.dataset.teamModel??button.dataset.standbyModel);modelPickerDraft=button.closest('#studio-team-config-form')?(teamModelDrafts.get(modelPickerRole)||teamModel(modelPickerRole)?.id):teamModel(modelPickerRole)?.id;modelPickerOwner=agentId;
- teamModelDialog.querySelector('#team-model-member').textContent=defaultNames[modelPickerRole]+' · Dedicated team API';
+ const button=event.target.closest('[data-standby-model]');if(!button||button.disabled||modelPickerSaving||!teamModelDialog.hidden)return;
+ modelPickerRole=Number(button.dataset.standbyModel);modelPickerDraft=teamModel(modelPickerRole)?.id;modelPickerOwner=agentId;modelPickerScenario=selectedScenario;
+ teamModelDialog.querySelector('#team-model-member').textContent=defaultNames[modelPickerRole]+' · NVIDIA Inference';
  teamModelDialog.querySelector('input').value='';teamModelDialog.querySelector('.team-model-error').hidden=true;
  renderModelResults();
- // Keep the modal open so focus, backdrop and the paused WebGL scene stay stable.
- if(!modelPickerForm)dialog(defaultNames[modelPickerRole]+' · Model','');
- modelPickerSettingsScroll=el('dialog').scrollTop;
- el('dialog-body').append(teamModelDialog);
- if(modelPickerForm)modelPickerForm.hidden=true;teamModelDialog.hidden=false;
+ dialog(defaultNames[modelPickerRole]+' · Model','');
+ el('dialog-body').append(teamModelDialog);teamModelDialog.hidden=false;
  el('dialog').scrollTop=0;teamModelDialog.querySelector('.team-model-results').scrollTop=0;
  teamModelDialog.querySelector('input').focus({preventScroll:true});
 });
 teamModelDialog.querySelector('input').addEventListener('input',renderModelResults);
 function closeTeamModelPicker(){
  if(modelPickerSaving)return;
- const form=modelPickerForm;modelPickerForm=null;teamModelDialog.hidden=true;
- if(!form){el('dialog').close();return;}
- if(form?.isConnected&&form===el('team-config-form')&&agentId===modelPickerOwner){
-  form.hidden=false;el('dialog').scrollTop=modelPickerSettingsScroll;
-  form.querySelector('[data-team-model="'+modelPickerRole+'"]')?.focus({preventScroll:true});
- }
+ teamModelDialog.hidden=true;el('dialog').close();
 }
 teamModelDialog.addEventListener('keydown',event=>{
  if(event.key==='Escape'&&!teamModelDialog.hidden){event.preventDefault();event.stopPropagation();closeTeamModelPicker();}
@@ -112,24 +91,14 @@ teamModelDialog.addEventListener('keydown',event=>{
 el('dialog').addEventListener('cancel',event=>{
  if(!teamModelDialog.hidden&&teamModelDialog.isConnected){event.preventDefault();closeTeamModelPicker();}
 });
-el('dialog').addEventListener('close',()=>{teamModelDialog.hidden=true;modelPickerForm=null;});
+el('dialog').addEventListener('close',()=>{teamModelDialog.hidden=true;});
 teamModelDialog.addEventListener('click',async event=>{
  if(event.target.closest('[data-model-close]')){closeTeamModelPicker();return;}
  if(modelPickerSaving)return;
  const choice=event.target.closest('[data-model-choice]');
  if(choice){
   modelPickerDraft=choice.dataset.modelChoice;
-  const form=modelPickerForm;
-  if(form?.isConnected&&form===el('team-config-form')&&agentId===modelPickerOwner){
-   if(modelPickerDraft===teamModel(modelPickerRole)?.id)teamModelDrafts.delete(modelPickerRole);
-   else teamModelDrafts.set(modelPickerRole,modelPickerDraft);
-   const trigger=form.querySelector('[data-team-model="'+modelPickerRole+'"]');
-   trigger.querySelector('span').textContent=(runtime.teamModels||[]).find(m=>m.id===modelPickerDraft)?.label||modelPickerDraft;
-   form.querySelector('[data-team-apply-all]').disabled=![...teamModelDrafts].some(([r,id])=>id!==teamModel(r)?.id);
-   const notice=el('team-model-status');notice.hidden=form.querySelector('[data-team-apply-all]').disabled;notice.textContent='Unsaved model selections. Select Apply changes to save them.';
-   closeTeamModelPicker();return;
-  }
-  if(agentId!==modelPickerOwner){closeTeamModelPicker();return;}
+  if(agentId!==modelPickerOwner||selectedScenario!==modelPickerScenario){closeTeamModelPicker();return;}
   teamModelDialog.querySelector('.team-model-error').hidden=true;
   const pickerRevision=dialogRevision;
   const saved=await applyTeamModel();
@@ -139,44 +108,26 @@ teamModelDialog.addEventListener('click',async event=>{
  }
 
 });
-root.addEventListener('click',async event=>{
- const button=event.target.closest('[data-team-apply-all]');if(!button||button.disabled||modelPickerSaving)return;
- const owner=agentId,changes=[...teamModelDrafts].filter(([r,id])=>id!==teamModel(r)?.id);
- button.textContent='Applying…';
- for(const [role,model] of changes){
-  modelPickerRole=role;modelPickerDraft=model;modelPickerOwner=owner;
-  if(!await applyTeamModel()){button.textContent='Apply changes';return;}
- }
- button.textContent='Apply changes';
- const notice=el('team-model-status');if(notice&&agentId===owner){notice.hidden=false;notice.textContent='Model changes applied. Used from the next request.';}
-});
 async function applyTeamModel(){
- const target=modelPickerOwner,role=modelPickerRole,model=modelPickerDraft;
+ const target=modelPickerOwner,scenario=modelPickerScenario,role=modelPickerRole,model=modelPickerDraft;
+ const current=()=>agentId===target&&selectedScenario===scenario;
  modelPickerSaving=true;
  if(!teamModelDialog.hidden)renderModelResults();
- syncTeamModelForm();
  try{
   const result=await api('team-model',{role,model},target);
-  if(agentId===target){
-   teamModelDrafts.delete(role);
-   // A poll started before this write must not put the previous model back.
+  if(current()){
+   // A poll started before this write must not restore the previous model.
    ++refreshVersion;stateCache.delete(target);busy=false;
    data={...data,teamSelections:result.teamSelections};render();
-   const form=el('team-config-form');
-   if(form&&el('dialog').open){
-    for(const trigger of form.querySelectorAll('[data-team-model]')){
-     const index=Number(trigger.dataset.teamModel),draft=teamModelDrafts.get(index);
-     const current=draft?(runtime.teamModels||[]).find(m=>m.id===draft):teamModel(index);trigger.querySelector('span').textContent=current?.label||'Choose model';trigger.title=current?.id||'';
-    }
-    const notice=el('team-model-status');notice.hidden=false;notice.textContent=defaultNames[role]+' · '+(teamModel(role)?.label||model)+' applied. Used from the next request.';
-   }
   }
   return true;
- }catch(error){const message=el('team-model-status');if(message&&agentId===target){message.textContent='Some changes may have saved. '+error.message+' Unsaved selections are kept for retry.';message.hidden=false;}else if(!teamModelDialog.hidden&&agentId===target){const notice=teamModelDialog.querySelector('.team-model-error');notice.textContent=error.message;notice.hidden=false;}else alert('Model changes could not be applied. '+error.message);return false;}
- finally{
+ }catch(error){
+  if(current()&&!teamModelDialog.hidden){const notice=teamModelDialog.querySelector('.team-model-error');notice.textContent=error.message;notice.hidden=false;}
+  else alert('Model changes could not be applied. '+error.message);
+  return false;
+ }finally{
   modelPickerSaving=false;render();
   if(!teamModelDialog.hidden)renderModelResults();
-  syncTeamModelForm();
  }
 }
 

@@ -95,6 +95,14 @@ const assert=require('node:assert/strict'),fs=require('node:fs/promises'),{chrom
   // A real network reload revokes the previous document's session-only key.
   // Reconnect this tab before submitting work; host-saved api.cfg keys differ.
   assert.equal((await api('settings')).profiles.nvidia.hasKey,false);
+  // Reload can start background crew preparation. Wait for it before changing host connections.
+  const deadline=Date.now()+15000;
+  while(true){
+   const state=await api('state',undefined,'event-brief');
+   if(!['queued','running','waiting','stopping'].includes(state.preparation?.status))break;
+   if(Date.now()>deadline)throw Error('Background preparation did not finish');
+   await page.waitForTimeout(100);
+  }
   await api('settings/connections',{source:'api',provider:'nvidia',apiKey:'fixture-remote-key',model:'fixture-local-model'});
   await page.evaluate(()=>BacStudio.refresh());await choose('plan');
   await page.locator('.studio-team-utilities').getByRole('button',{name:'Files',exact:true}).click();await page.locator('[data-browse-file="inbox/remote-notes.md"]').click();

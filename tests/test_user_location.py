@@ -9,7 +9,7 @@ sys.path[:0] = [str(Path(__file__).resolve().parents[1]/'scripts'), str(Path(__f
 import agent_runtime as runtime
 import runtime_settings as settings
 import user_location
-from studio import Studio, Problem
+from studio import Studio, Problem, ROLES
 from test_studio import Adapter
 
 
@@ -34,7 +34,7 @@ class UserLocationTests(unittest.TestCase):
         self.assertEqual(result['location'], {'city':'Seoul'})
         self.assertEqual(settings.event(), before_event)
         for owner in (self.owner, second, team):
-            for role in ((None, 0, 1, 2, 3) if owner == team else (None,)):
+            for role in ((None, *range(len(ROLES))) if owner == team else (None,)):
                 content = (self.studio.workspace(owner,role)/'USER.md').read_text()
                 self.assertIn('Seoul', content)
                 self.assertNotIn('Zurich', content)

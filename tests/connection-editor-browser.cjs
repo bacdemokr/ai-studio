@@ -18,7 +18,9 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   const open=()=>page.locator('[data-connection-edit=api]').click();
   await open();await page.waitForFunction(()=>document.querySelector('#studio-connect-models').options.length>0);
   assert(await page.locator('#studio-connect-key').isDisabled());assert(await page.locator('#studio-connect-url').isDisabled());
-  assert.equal(await page.locator('#studio-connect-load,#studio-connect-context').count(),0);
+  assert.equal(await page.locator('#studio-connect-load').count(),0);
+  assert.equal(await page.locator('#studio-connect-context').inputValue(),'131072');
+  assert(await page.locator('#studio-connect-context').isHidden());
   await page.locator('#studio-connect-cancel').click();
   // An old provider's delayed model response must not overwrite the new provider.
   let release,started;
@@ -36,7 +38,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   release();await page.waitForTimeout(100);
   assert.equal(await page.locator('#studio-connect-models option').first().getAttribute('value'),'fixture-local-model');
   await page.unroute('**/api/settings/connections/models');
-  // Context is hidden, so changing provider must not silently inherit 131072.
+  // Changing provider must not silently inherit the previous provider’s context budget.
   const request=page.waitForRequest(r=>r.url().endsWith('/api/settings/connections')&&r.method()==='POST');
   await page.locator('#studio-connect-model').fill('fixture-local-model');await page.locator('#studio-connect-apply').click();
   assert.equal((await request).postDataJSON().contextWindow,32768);
@@ -47,9 +49,15 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.waitForFunction(()=>document.querySelector('#studio-connect-status').textContent.includes('unavailable'));
   assert.equal((await api('settings/connections')).connections.api.model,'fixture-local-model');
   assert(await page.locator('#studio-connect-model').isEnabled());assert(await page.locator('#studio-connect-url').isDisabled());
+  await page.locator('#studio-connection-editor summary').click();
+  await page.locator('#studio-connect-context').fill('4096');await page.locator('#studio-connect-apply').click();
+  assert.equal(await page.locator('#studio-connect-context').evaluate(e=>e.validity.rangeUnderflow),true);
+  assert.equal((await api('settings/connections')).connections.api.contextWindow,32768);
+  await page.locator('#studio-connect-context').fill('65536');
   await page.locator('#studio-connect-model').fill('fixture-other-model');await page.locator('#studio-connect-apply').click();
   await page.waitForFunction(()=>document.querySelector('#studio-connect-status').textContent==='Connected.');
   assert.equal((await api('settings/connections')).connections.api.model,'fixture-other-model');
+  assert.equal((await api('settings/connections')).connections.api.contextWindow,65536);
   await page.screenshot({path:'/tmp/bac-connection-editor-qa.png'});
   await page.locator('#studio-dialog-close').click();
   await api('settings/connections',{source:'api',provider:'nvidia',apiKey:'fixture-new-key',model:'fixture-local-model'});
@@ -73,6 +81,6 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.version==='SCENARIO TEST FIXTURE');
   assert.equal((await api('state')).teamSelections[0].id,'fixture-other-model');
   assert.deepEqual(errors,[]);
-  console.log('PASS: automatic catalog, provider race, key/endpoint locks, hidden context isolation, failed save preservation, direct per-agent save/error/retry and reload.');
+  console.log('PASS: automatic catalog, provider race, key/endpoint locks, advanced context isolation, failed save preservation, direct per-agent save/error/retry and reload.');
  }finally{clearInterval(leaseTimer);await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

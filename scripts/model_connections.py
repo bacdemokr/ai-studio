@@ -24,6 +24,17 @@ def persist(value):
     temp.write_text(json.dumps(value));temp.chmod(0o600);temp.replace(path())
 
 
+def initialize():
+    """Migrate the selected host provider once, without copying credentials."""
+    with _lock:
+        if enabled():return
+        value=read();previous=settings.read();provider=previous.get('provider')
+        if provider in settings.PROVIDERS and previous.get('profiles',{}).get(provider):
+            value['lounge']='local' if provider=='local' else 'api'
+            if provider!='local':value['apiProvider']=provider
+        persist(value)
+
+
 def profile(source):
     import team_models
     saved=read();provider='local' if source=='local' else saved.get('apiProvider','nvidia')

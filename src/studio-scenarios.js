@@ -34,7 +34,7 @@ async function chooseScenario(id){
   const state=await api('state');
   data=state;selectedJob=null;resultKey='';selectedCrewRole=0;crewChatKey='';crewChatSignature='';
   crewResetEpoch=scenarioDraftEpochs.get(id)||id+':'+(state.crewChatReset?.epoch||'');
-  teamModelDrafts.clear();teamModelDialog.hidden=true;
+  teamModelDialog.hidden=true;
   eventPackageKey='';audienceReport=null;audienceJob='';previewCleanup();
   if(eventPreviewUrl){URL.revokeObjectURL(eventPreviewUrl);eventPreviewUrl='';}
   scenarioChoosing=false;scenarioSwitching=false;

@@ -22,6 +22,7 @@ const settings={provider:'local',providers:{local:{label:'Local',baseUrl:'http:/
    await page.locator('[data-connection-tab=location]').click();assert.equal(await page.locator('#studio-location-city').inputValue(),'Zurich');
    await page.locator('#studio-settings-reset-tab').click();assert.equal(await page.locator('#studio-settings-reset-panel #studio-bac-reset').count(),0);assert(await page.locator('#studio-reset-all').isVisible());assert(await page.locator('#studio-settings-bac-reset').isVisible());assert.equal(await page.locator('#studio-settings-reset-panel button').count(),3);
    await page.locator('#studio-settings-telegram-tab').click();
+   await page.waitForFunction(()=>document.querySelector('#studio-telegram-status').textContent.includes('temporarily unavailable'));
    assert.match(await page.locator('#studio-telegram-status').innerText(),/temporarily unavailable/);
    assert(await page.locator('#studio-telegram-test').isHidden());
   });

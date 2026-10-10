@@ -1,6 +1,6 @@
 # Studio settings
 
-Open the Settings gear on localhost or the host's trusted LAN address. **Model**, **Location**, **Telegram** and **Reset** use the same dialog size.
+Open the Settings gear on localhost or the host's trusted LAN address. **Model**, **Location**, **Telegram** and **Reset** share one dialog. Switching tabs with the mouse or keyboard preserves unsaved drafts.
 
 ## Model connections
 
@@ -9,7 +9,7 @@ Open the Settings gear on localhost or the host's trusted LAN address. **Model**
 3. Choose **Connect & enable**.
 4. Under **Stage connections**, choose a connection for Hiring & Agent lounge, Event Brief and Open Task, then **Save changes**.
 
-With both connections ready, the initial defaults prefer Local for Stages 1/2 and External for Stage 3. Saved manual choices take precedence. If the preferred connection becomes unavailable, new requests use the other ready connection. If neither is ready, the app shows **Model not connected**. Active model requests are not replayed on another connection.
+With both connections ready, the initial defaults prefer Local for Stages 1/2 and External for Stage 3. Saved manual choices take precedence. When upgrading a data directory that predates shared connections, the selected host provider is retained. If the preferred connection becomes unavailable, new requests use the other ready connection. If neither is ready, the app shows **Model not connected**. Active model requests are not replayed on another connection.
 
 Open Task shows a warning when using Local because complex tasks may take longer or produce less reliable results. Event Brief supports Local without that warning. Starting Studio or selecting Local does not start a model server; use `./bac vllm` or an existing server first.
 
@@ -37,7 +37,7 @@ Local endpoints must be reachable from the app/OpenClaw host, not from the prese
 - **Output: at most 16,384 tokens per response.** Shared connections use `min(16,384, context / 2)`. For example, a 16K context allows at most 8K output. This is a cap, not a target reply length.
 - These are application settings, not fixed OpenClaw or OpenShell limits. The model server must support the configured context and output. A larger-capacity model does not require increasing the demo budget.
 
-The compact editor keeps context configuration out of the normal workflow. It retains an existing provider context value or uses 32K for a new provider; it does not infer the model's capacity from its name. Set up local servers with sufficient context before presenting. This setting does not resize Ollama's `num_ctx` or vLLM's server context.
+Open **Configure → Advanced → Context limit** to inspect or change the budget. Advanced options start collapsed. The editor retains an existing provider context value or uses 32K for a new provider; it does not infer the model's capacity from its name. Set up local servers with sufficient context before presenting. This setting does not resize Ollama's `num_ctx` or vLLM's server context.
 
 The runtime bounds web excerpts and enables context compaction with a pre-call check. These reduce growth during research but cannot guarantee that every request fits. A large document, accumulated conversation or model-specific limit can still cause a failure. Inspect saved work, narrow the task or reset the appropriate conversation/scenario before trying again. See `scripts/runtime_settings.py` for the current limits.
 
@@ -49,7 +49,7 @@ Startup installs a Git clean filter that stages an empty `api.cfg` while preserv
 
 ## Location, Telegram and Reset
 
-**Location** sets the default city, initially Zurich. Explicit locations in a task or event brief take precedence. Saving updates the managed location in agent preferences without changing memory, permissions or credentials.
+**Location** sets the default city, initially Zurich. Explicit locations in a task or event brief take precedence. Saving updates the managed location for hired agents and every prepared specialist in both scenarios without changing memory, permissions or credentials.
 
 **Telegram** sends new summaries from agents with the Tech Radar skill only. Ordinary chat and Multi-Agent results are not sent. See [Heartbeat and Telegram](heartbeat.md).
 

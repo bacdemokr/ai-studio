@@ -80,7 +80,7 @@ def location():
 
 
 def save_location(studio, data):
-    from studio import Problem
+    from studio import Problem, ROLES
     import agent_runtime as runtime
     import user_location
     value = data.get('location')
@@ -95,7 +95,7 @@ def save_location(studio, data):
             saved = read(); saved['location'] = clean
             persist(saved)
             for row in db.execute('SELECT id FROM agents WHERE deleting=0'):
-                for role in (None, 0, 1, 2, 3):
+                for role in (None, *range(len(ROLES))):
                     user_location.sync(studio.workspace(row['id'], role), clean)
     studio.status_cache = (0, {})
     return public()
