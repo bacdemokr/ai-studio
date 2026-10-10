@@ -18,6 +18,9 @@ class RadarHeartbeat:
     def __init__(self, studio):
         self.studio = studio
         self.lock = threading.RLock()
+        # Every browser read renews its lease. Native timer/configuration I/O
+        # can be slow and must not hold up those otherwise read-only requests.
+        self.presence_lock = threading.RLock()
         self.statuses = {}
         self.clients = {}
         self.closed_clients = {}
@@ -34,7 +37,7 @@ class RadarHeartbeat:
         """Authenticated browser lease, independent of whether a model needs a key."""
         if not isinstance(tab, str) or not 1 <= len(tab) <= 100:
             return
-        with self.lock:
+        with self.presence_lock:
             now = time.monotonic()
             self.clients = {key: expiry for key, expiry in self.clients.items() if expiry > now}
             self.closed_clients = {key: expiry for key, expiry in self.closed_clients.items() if expiry > now}
@@ -46,7 +49,7 @@ class RadarHeartbeat:
                 self.clients[key] = now + 90
 
     def connected(self, participant):
-        with self.lock:
+        with self.presence_lock:
             return any(owner == participant and expiry > time.monotonic()
                        for (owner, tab), expiry in self.clients.items())
 
@@ -194,10 +197,12 @@ class RadarHeartbeat:
         with studio.db() as db:
             agents = [dict(r) for r in db.execute('SELECT id,participant,profile,deleting FROM agents WHERE profile IS NOT NULL')]
         ready = False
+        gateway_ready = False
         if any('radar' in json.loads(r['profile']).get('skills',[]) for r in agents):
             # Match Lounge provisioning, including host credentials and disabled
             # sources. The legacy session-only key can be absent while API is ready.
             ready = bool(model_connections.public()['loungeSource']) if model_connections.enabled() else runtime_settings.model_available()
+            gateway_ready = bool(studio.runtime_status().get('gateway'))
         deliveries = []
         for row in agents:
             owner=row['id']; profile=json.loads(row['profile'])
@@ -208,13 +213,28 @@ class RadarHeartbeat:
                     with studio.db() as db:
                         current = db.execute('SELECT profile,deleting FROM agents WHERE id=?',(owner,)).fetchone()
                         paused = db.execute('SELECT paused FROM heartbeat_controls WHERE owner=?',(owner,)).fetchone()
-                        pending = db.execute("SELECT owner,payload FROM jobs WHERE status IN ('queued','running','waiting','stopping')").fetchall()
-                        preparation = db.execute("SELECT MAX(created) AS created FROM jobs WHERE owner=? AND kind='prepare-agent'", (owner,)).fetchone()
+                        pending = db.execute("SELECT owner,kind,payload FROM jobs WHERE status IN ('queued','running','waiting','stopping')").fetchall()
+                        preparations = db.execute("SELECT created,updated,status FROM jobs WHERE owner=? AND kind='prepare-agent' ORDER BY created DESC,rowid DESC LIMIT 3", (owner,)).fetchall()
                         busy = owner in studio.executing_owners or any(j['owner']==owner or any(m.get('key')==owner for m in job_participants(json.loads(j['payload']))) for j in pending)
                     if not current or current['profile'] != row['profile']:continue
                     paused = bool(paused and paused['paused'])
                     connected = self.connected(row['participant'])
-                    if connected and ready and not current['deleting'] and not paused and not busy and profile['id'] not in studio.provisioned:
+                    preparation = preparations[0] if preparations else None
+                    failures = 0
+                    for attempt in preparations:
+                        if attempt['status'] != 'error':break
+                        failures += 1
+                    retry_at = preparation['updated'] + min(60,15*2**(failures-1)) if failures else 0
+                    if failures:
+                        # Registration alone does not prove preparation succeeded;
+                        # the policy/runtime check can still fail afterwards.
+                        studio.provisioned.discard(profile['id'])
+                    if connected and ready and gateway_ready and not current['deleting'] and not paused and not busy and model_connections.enabled():
+                        old_route = studio.__dict__.get('_connection_routes',{}).get(profile['id'])
+                        model_connections.prepare(studio,profile,model_connections.read().get('lounge','auto'),'lounge')
+                        if old_route != studio._connection_routes.get(profile['id']):retry_at = 0
+                    retrying = time.time() < retry_at
+                    if connected and ready and gateway_ready and not current['deleting'] and not paused and not busy and not retrying and profile['id'] not in studio.provisioned:
                         with studio.db() as db:
                             db.execute('BEGIN IMMEDIATE')
                             live = db.execute('SELECT profile,deleting FROM agents WHERE id=?', (owner,)).fetchone()
@@ -223,12 +243,16 @@ class RadarHeartbeat:
                         studio.signal.set()
                     # Native scheduling can choose a near-immediate first tick.
                     # Keep it disabled for one interval after hiring/skill setup.
-                    starting = bool(preparation['created'] is not None and time.time() < preparation['created'] + tech_radar.HEARTBEAT_SECONDS)
-                    enabled = bool(connected and ready and not current['deleting'] and not paused and not busy and not starting and profile['id'] in studio.provisioned)
-                    registered = toggle(profile['id'],enabled)
-                    state = 'paused' if paused else 'waiting for browser' if not connected else 'waiting for model' if not ready else 'waiting for task' if busy else 'starting soon' if starting and profile['id'] in studio.provisioned else 'watching' if enabled and registered else 'preparing'
+                    starting = bool(preparation and time.time() < preparation['created'] + tech_radar.HEARTBEAT_SECONDS)
+                    enabled = bool(connected and ready and gateway_ready and not current['deleting'] and not paused and not busy and not starting and not retrying and profile['id'] in studio.provisioned)
+                    registered = toggle(profile['id'],enabled) if gateway_ready else False
+                    state = 'paused' if paused else 'waiting for browser' if not connected else 'waiting for model' if not ready else 'waiting for runtime' if not gateway_ready else 'waiting for task' if busy else 'retrying preparation' if retrying else 'starting soon' if starting and profile['id'] in studio.provisioned else 'watching' if enabled and registered else 'preparing'
+                    # Native Heartbeat defers while its main request queue is busy,
+                    # including work for a different agent. Keep its timer intact.
+                    if state == 'watching' and any(j['kind'] in ('chat','crew','crew-chat') for j in pending):
+                        state = 'waiting for other agents'
                     previous=self.statuses.get(owner,{})
-                    since=previous.get('watchingSince',time.time()) if enabled else time.time()
+                    since=previous.get('watchingSince',time.time()) if state == 'watching' else time.time()
                     self.statuses[owner] = {**previous, 'state':state, 'watchingSince':since}
                     if connected and not current['deleting'] and not paused:
                         self.import_events(owner,row['participant'],profile,deliveries)

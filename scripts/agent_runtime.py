@@ -85,6 +85,10 @@ def environment():
             'PATH': str(root() / 'node/bin') + os.pathsep + os.environ.get('PATH', '')}
 
 
+class GatewayConnectionUnavailable(RuntimeError):
+    """Sanitized native transport failure, safe to retry for read-only RPCs."""
+
+
 def cli(*args, timeout=90):
     binary = root() / 'package/node_modules/.bin/openclaw'
     if not binary.exists():
@@ -93,6 +97,8 @@ def cli(*args, timeout=90):
                             text=True, timeout=timeout)
     if result.returncode:
         # CLI output can include configuration, paths or credentials. Keep it out of browser errors.
+        if re.search(r'gateway[^\n]*(?:closed|timeout|timed out)|handshake[^\n]*(?:failed|timeout|timed out)|ECONNREFUSED|WebSocket[^\n]*closed', result.stderr, re.I):
+            raise GatewayConnectionUnavailable('OpenClaw gateway connection was interrupted.')
         raise RuntimeError('OpenClaw command failed. The host operator can run ./bac dev runtime check for diagnostics.')
     return result.stdout
 
@@ -130,15 +136,28 @@ def gateway_config_patch(patch, replace_paths):
                     return value
         raise RuntimeError('OpenClaw returned an unreadable configuration response.')
 
+    method = 'config.get'
     try:
-        snapshot = response_json(cli('gateway', 'call', 'config.get', '--params', '{}'))
+        # The CLI otherwise uses a 10-second RPC timeout even though our
+        # subprocess allows 90 seconds. Cold config reloads can exceed 10s.
+        read_deadline = time.monotonic() + 60
+        while True:
+            try:
+                snapshot = response_json(cli('gateway', 'call', 'config.get', '--params', '{}', '--timeout', str(max(1,int((read_deadline-time.monotonic())*1000)))))
+                break
+            except GatewayConnectionUnavailable:
+                if time.monotonic() >= read_deadline:raise
+                time.sleep(max(0,min(.5,read_deadline-time.monotonic())))
         base_hash = snapshot.get('hash')
         if not isinstance(base_hash, str) or not base_hash:
             raise RuntimeError('OpenClaw did not provide a configuration revision.')
         params = {'raw': json.dumps(patch, separators=(',', ':')), 'baseHash': base_hash,
                   'replacePaths': replace_paths, 'note': 'BaC agent registration'}
-        applied = response_json(cli('gateway', 'call', 'config.patch', '--params', json.dumps(params)))
-    except (RuntimeError, subprocess.TimeoutExpired, json.JSONDecodeError, OSError):
+        method = 'config.patch'
+        applied = response_json(cli('gateway', 'call', 'config.patch', '--params', json.dumps(params), '--timeout', '60000'))
+    except (RuntimeError, subprocess.TimeoutExpired, json.JSONDecodeError, OSError) as error:
+        import logging
+        logging.warning('OpenClaw %s failed (%s)', method, type(error).__name__)
         raise RuntimeError('OpenClaw could not confirm applying the agent configuration. Check ./bac dev runtime check and retry after the gateway is healthy.') from None
     if applied.get('ok') is False or applied.get('status') in ('error', 'failed'):
         raise RuntimeError('OpenClaw rejected the agent configuration. Check ./bac dev runtime check before retrying.')
@@ -815,11 +834,11 @@ def finalize_removal(agent_id, workspace):
         forget_receipt(root(), agent_id)
 
 
-def live_agents():
+def live_agents(timeout=15):
     """Read the already-running gateway without loading the full CLI command tree."""
     result = subprocess.run([str(root() / 'node/bin/node'),
         str(Path(__file__).with_name('delete_native_agent.mjs')), str(root()), '--list'],
-        env=environment(), capture_output=True, text=True, timeout=15)
+        env=environment(), capture_output=True, text=True, timeout=timeout)
     if result.returncode:
         raise RuntimeError('Could not verify the agent configuration with OpenClaw. No mission was sent.')
     return json.loads(result.stdout)
@@ -860,33 +879,45 @@ def gateway(path, payload=None, timeout=settings.AGENT_TIMEOUT_SECONDS):
 
 def respond(agent_id, session, prompt, images=None, json_response=False, timeout=None):
     response_deadline = time.monotonic() + timeout if timeout is not None else None
+    # Cold gateways can pause discovery while initializing sandboxes. Share one
+    # bounded read-only readiness window, respecting a shorter caller deadline.
+    deadline = min(time.monotonic() + 60, response_deadline if response_deadline is not None else float('inf'))
+    def remaining():
+        seconds = deadline - time.monotonic()
+        if seconds <= 0:
+            raise RuntimeError('OpenClaw has not finished preparing this agent. No mission was sent; retry after the runtime is ready.')
+        return seconds
     expected = _expected_identity.get(agent_id)
     if expected:
-        deadline = min(time.monotonic() + 20, response_deadline or float("inf"))
         while True:
-            try:live = live_agents()
+            read_timeout = min(15, remaining())
+            try:live = live_agents(timeout=read_timeout)
             except (RuntimeError, subprocess.TimeoutExpired):
                 # Native sandbox preparation can briefly stall gateway discovery.
                 # Retry this read within the existing barrier, never the model POST.
                 if time.monotonic() >= deadline:raise
-                time.sleep(.3)
+                time.sleep(min(.3, remaining()))
                 continue
             if any(a.get('id') == agent_id and a.get('identity', {}).get('theme') == expected for a in live.get('agents', [])):
                 break
             if time.monotonic() >= deadline:
                 raise RuntimeError('OpenClaw has not applied this agent’s tool and sandbox configuration. No mission was sent; retry after the host checks the gateway.')
-            time.sleep(.3)
+            time.sleep(min(.3, remaining()))
         _expected_identity.pop(agent_id, None)
     # Gateway hot reload is asynchronous. Wait on read-only discovery, never retry
     # an agent POST that might already have performed a tool side effect.
-    deadline = min(time.monotonic() + 12, response_deadline or float("inf"))
     while True:
-        models = gateway('/v1/models', timeout=3)
+        read_timeout = min(3, remaining())
+        try:models = gateway('/v1/models', timeout=read_timeout)
+        except GatewayError as error:
+            if error.reason != 'timeout':raise
+            time.sleep(min(.2, remaining()))
+            continue
         if any(item.get('id') == 'openclaw/' + agent_id for item in models.get('data', [])):
             break
         if time.monotonic() >= deadline:
             raise RuntimeError('OpenClaw has not loaded this new agent yet. Check the gateway configuration and retry the mission.')
-        time.sleep(.2)
+        time.sleep(min(.2, remaining()))
     import user_location
     prompt = prompt + '\n\n' + user_location.context()
     started = time.time()

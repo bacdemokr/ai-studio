@@ -101,7 +101,10 @@ class HeartbeatRelayTests(unittest.TestCase):
         self.studio.execute(self.studio.next_job())
         with self.studio.db() as db:
             db.execute("UPDATE jobs SET created=? WHERE kind='prepare-agent'", (time.time()-30,))
+        self.studio._connection_routes = {}
         with patch('model_connections.enabled',return_value=True), \
+             patch.object(self.studio,'runtime_status',return_value={'gateway':True}), \
+             patch('model_connections.prepare'), \
              patch('runtime_settings.model_available',return_value=False) as legacy:
             for source in ('api','local',None):
                 with self.subTest(source=source), patch('model_connections.public',return_value={'loungeSource':source}):
@@ -113,6 +116,7 @@ class HeartbeatRelayTests(unittest.TestCase):
 
     def test_disabled_shared_sources_do_not_use_legacy_ready_model(self):
         with patch('model_connections.enabled',return_value=True), \
+             patch.object(self.studio,'runtime_status',return_value={'gateway':True}), \
              patch('model_connections.public',return_value={'loungeSource':None}), \
              patch('runtime_settings.model_available',return_value=True) as legacy:
             self.studio.heartbeat.tick()
