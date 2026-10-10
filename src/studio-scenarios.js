@@ -41,7 +41,7 @@ async function chooseScenario(id){
   window.BacCampus?.setScenario(id);
   try{sessionStorage.setItem('bac-stage3-scenario',id);}catch{}
   setRoom('mission',{resume:true});render();el('crew-prompt').focus({preventScroll:true});
- }catch(error){selectedScenario=previous;data=previousData;scenarioRoles();scenarioSwitching=false;alert(error.message);render();}
+ }catch(error){selectedScenario=previous;data=previousData;scenarioRoles();scenarioSwitching=false;alert(error.message,'error');render();}
  finally{scenarioSwitching=false;renderRoomVisibility();}
 }
 scenarioSelector.onclick=event=>{if(event.target.closest('[data-scenario-return]')){if(scenarioSwitching)return;setRoom('lounge');return;}const card=event.target.closest('[data-scenario]');if(card)chooseScenario(card.dataset.scenario);};

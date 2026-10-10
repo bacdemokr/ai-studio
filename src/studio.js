@@ -90,13 +90,36 @@
   const missionCards=keys=>keys.map(key=>{const m=missions.find(m=>m.id===key);return `<button class="studio-mission" data-studio-mission="${m.id}" aria-pressed="false" style="--mission-color:${m.color}"><span>${m.icon}</span><em>${m.tag}</em><strong>${m.title}</strong><small>${m.sub}</small></button>`;}).join('');
   el('missions').innerHTML=missionCards(demoSkills)+'<details class="studio-extra-skills"><summary>More scenarios</summary><div class="studio-missions">'+missionCards(extraSkills)+'</div></details>';
   let alertTimer=null;
-  function dismissAlert(){clearTimeout(alertTimer);alertTimer=null;el('alert').hidden=true;}
-  function alert(message) {
+  const notice=el('alert');
+  if(typeof notice.showPopover==='function')notice.setAttribute('popover','manual');
+  function dismissAlert(){clearTimeout(alertTimer);alertTimer=null;if(typeof notice.hidePopover==='function'&&notice.matches(':popover-open'))notice.hidePopover();notice.hidden=true;}
+  function scheduleAlertDismiss(){
     clearTimeout(alertTimer);
-    el('alert').querySelector('span').textContent=message;el('alert').hidden=false;
+    if(notice.hidden||notice.dataset.kind==='error'||notice.matches(':hover,:focus-within'))return;
     alertTimer=setTimeout(dismissAlert,5000);
   }
-  el('alert').querySelector('button').onclick=dismissAlert;
+  function placeAlert(){
+    if(notice.hidden)return;
+    // A popover outside a modal remains inert even when drawn above it.
+    const host=el('dialog').open?el('dialog'):root;
+    if(notice.parentElement!==host)host.append(notice);
+    if(typeof notice.showPopover==='function'&&!notice.matches(':popover-open'))notice.showPopover();
+  }
+  new MutationObserver(placeAlert).observe(el('dialog'),{attributes:true,attributeFilter:['open']});
+  function alert(message,kind='info') {
+    clearTimeout(alertTimer);
+    const icons={info:'<circle cx="12" cy="12" r="8"/><path d="M12 11v5m0-9v.01"/>',success:'<path d="m6 12 4 4 8-8"/>',progress:'<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 8 8"/>',error:'<path d="m12 4 9 16H3L12 4Z"/><path d="M12 10v4m0 3v.01"/>'};
+    kind=Object.hasOwn(icons,kind)?kind:'info';
+    notice.dataset.kind=kind;notice.setAttribute('role',kind==='error'?'alert':'status');notice.setAttribute('aria-live',kind==='error'?'assertive':'polite');
+    notice.querySelector('.studio-alert-icon').innerHTML=icons[kind];
+    notice.querySelector('.studio-alert-message').textContent=message;notice.hidden=false;placeAlert();
+    scheduleAlertDismiss();
+  }
+  notice.querySelector('button').onclick=dismissAlert;
+  notice.addEventListener('pointerenter',()=>clearTimeout(alertTimer));
+  notice.addEventListener('pointerleave',scheduleAlertDismiss);
+  notice.addEventListener('focusin',()=>clearTimeout(alertTimer));
+  notice.addEventListener('focusout',()=>queueMicrotask(scheduleAlertDismiss));
   const credentialSession=Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>b.toString(16).padStart(2,'0')).join('');
   window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
   setInterval(()=>{if(connected)api('credential-session',{}).catch(()=>{});},20000);
@@ -160,7 +183,7 @@
     try{
       const state=await api('state',undefined,next);
       if(version===agentSwitchVersion)openAgentState(state);
-    }catch(error){if(version===agentSwitchVersion)alert(error.message);}
+    }catch(error){if(version===agentSwitchVersion)alert(error.message,'error');}
     finally{if(version===agentSwitchVersion){changingAgent=false;busy=false;}}
   }
   function renderCollection(){
@@ -247,7 +270,7 @@
     el('agent-policy').disabled=!!data.deleting;
     let monitor=el('radar-monitor');if(!monitor){monitor=document.createElement('div');monitor.id='studio-radar-monitor';monitor.className='studio-radar-monitor';el('agent-policy').after(monitor);}
     const watch=data.techRadar;monitor.hidden=!watch;
-    if(watch){monitor.innerHTML='<span><b>Heartbeat</b> · '+escape(watch.paused?'Paused':watch.state)+'<small>Checks every 20 seconds'+(watch.lastChecked?' · Last checked '+new Date(watch.lastChecked*1000).toLocaleTimeString(): '')+'</small></span><button type="button" class="studio-secondary">'+(watch.paused?'Resume':'Pause')+'</button>';const button=monitor.querySelector('button');button.disabled=!!data.deleting;button.onclick=async()=>{button.disabled=true;try{await api('heartbeat',{paused:!watch.paused});await refresh();}catch(error){alert(error.message);button.disabled=false;}};}
+    if(watch){monitor.innerHTML='<span><b>Heartbeat</b> · '+escape(watch.paused?'Paused':watch.state)+'<small>Checks every 20 seconds'+(watch.lastChecked?' · Last checked '+new Date(watch.lastChecked*1000).toLocaleTimeString(): '')+'</small></span><button type="button" class="studio-secondary">'+(watch.paused?'Resume':'Pause')+'</button>';const button=monitor.querySelector('button');button.disabled=!!data.deleting;button.onclick=async()=>{button.disabled=true;try{await api('heartbeat',{paused:!watch.paused});await refresh();}catch(error){alert(error.message,'error');button.disabled=false;}};}
 
     el('edit-agent').disabled=!!data.deleting;el('send').disabled=!!data.deleting;
     if(data.deleting){const waiting=data.agents?.find(a=>a.key===agentId)?.deletionWaiting;el('task-state').textContent=waiting?'DELETING':'DELETION NEEDS ATTENTION';el('task-summary').textContent=waiting?'Stopping work. This agent will be removed automatically after the current call ends.':'Cleanup could not finish. Retry Delete agent.';}
@@ -309,7 +332,7 @@
     renderCrewPassport();
   }
   /* STUDIO_CREW */
-  async function refresh(){if(changingAgent||removingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion&&target===agentId&&!changingAgent&&state!==data){data=state;render();}}catch(error){if(version===refreshVersion){if(error.status===404){try{const state=await api('state',undefined,'');if(version===refreshVersion&&!changingAgent){el('dialog').close();openAgentState(state);alert('This agent was deleted in another tab. Your collection is up to date.');}}catch(recovery){alert(recovery.message);}}else if(!document.hidden)alert(error.message);}}finally{if(version===refreshVersion)busy=false;}}
+  async function refresh(){if(changingAgent||removingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion&&target===agentId&&!changingAgent&&state!==data){data=state;render();}}catch(error){if(version===refreshVersion){if(error.status===404){try{const state=await api('state',undefined,'');if(version===refreshVersion&&!changingAgent){el('dialog').close();openAgentState(state);alert('This agent was deleted in another tab. Your collection is up to date.');}}catch(recovery){alert(recovery.message,'error');}}else if(!document.hidden)alert(error.message,'error');}}finally{if(version===refreshVersion)busy=false;}}
   el('equipped').onclick=e=>{const button=e.target.closest('[data-try-skill]');if(button)el('missions').querySelector('[data-studio-mission="'+button.dataset.trySkill+'"]')?.click();};
   el('missions').onclick=e=>{const button=e.target.closest('[data-studio-mission]');if(!button)return;const mission=missions.find(m=>m.id===button.dataset.studioMission);if(!data.profile){alert('Hire an agent first.');agentForm(true);el('name').focus();return;}if(!data.profile.skills.includes(mission.id)){
       let notice=el('mission-skill-notice');if(!notice){notice=document.createElement('div');notice.id='studio-mission-skill-notice';notice.className='studio-mission-skill-notice';el('missions').before(notice);}
@@ -319,12 +342,12 @@
     }el('mission-skill-notice')?.remove();closeSurface();setRoom('lounge');if(mission.id==='radar'){el('radar-monitor')?.scrollIntoView({block:'nearest'});return;}skill=mission.id;const city=runtime.location?.city||'Zurich';el('prompt').value=['weather','writer'].includes(mission.id)?mission.prompt.replaceAll('Zurich',city):mission.prompt;el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===button));if(mission.id==='documents'&&!data.files.some(f=>f.kind==='inbox')){sampleDocument();}el('prompt').focus({preventScroll:true});};
   el('chat').onsubmit=async e=>{e.preventDefault();if(radarChatDisabled()||!runtime.ready||data.deleting||chatSending||comparisonSending||documentUploadTarget===agentId){syncComposer();return;}el('chat-error').hidden=true;if(rejectLoungePlan())return;if(e.submitter?.id==='studio-send-all')return askAllAgents();const draft=captureChatDraft();chatSending=true;syncComposer();try{const result=await api('jobs',{kind:'chat',prompt:draft.prompt,skill,images:draft.images});selectedJob=result.id;acknowledgeChatDraft(draft);await refresh();el('conversation').scrollTop=el('conversation').scrollHeight;}catch(error){el('chat-error').textContent=error.message;el('chat-error').hidden=false;}finally{chatSending=false;syncComposer();}};
   el('prompt').addEventListener('input',()=>{skill=null;clearPlanLocationHint();syncComposer();});
-  function sampleDocument(){dialog('Upload notes','<p>PDF, PPTX, XLSX, CSV, Markdown or text.</p><div class="studio-dialog-actions"><button class="studio-secondary" id="studio-own-document">Upload my file</button><button class="studio-primary" id="studio-sample-document">Use sample notes (fictional)</button></div>');el('own-document').onclick=()=>{el('dialog').close();el('upload').click();};el('sample-document').onclick=async()=>{try{await api('upload',{name:'sample-meeting-notes.md',content:'# Sample meeting notes — fictional demo data\n\nWe agreed to keep the agent demo to 10 minutes.\nDylan will check the weather-demo endpoint by Thursday.\nMorgan will draft a short invitation; no deadline was agreed.\nWe still need someone to confirm the venue.\nDo not send invitations until the venue is confirmed.\n'});el('dialog').close();await refresh();}catch(e){alert(e.message);}};}
+  function sampleDocument(){dialog('Upload notes','<p>PDF, PPTX, XLSX, CSV, Markdown or text.</p><div class="studio-dialog-actions"><button class="studio-secondary" id="studio-own-document">Upload my file</button><button class="studio-primary" id="studio-sample-document">Use sample notes (fictional)</button></div>');el('own-document').onclick=()=>{el('dialog').close();el('upload').click();};el('sample-document').onclick=async()=>{try{await api('upload',{name:'sample-meeting-notes.md',content:'# Sample meeting notes — fictional demo data\n\nWe agreed to keep the agent demo to 10 minutes.\nDylan will check the weather-demo endpoint by Thursday.\nMorgan will draft a short invitation; no deadline was agreed.\nWe still need someone to confirm the venue.\nDo not send invitations until the venue is confirmed.\n'});el('dialog').close();await refresh();}catch(e){alert(e.message,'error');}};}
   el('attach').onclick=()=>el('upload').click();
   el('upload').onchange=()=>{const files=[...el('upload').files];el('upload').value='';uploadDocuments(files);};
   el('refresh-files').onclick=refresh;
   el('memory').onclick=()=>{dialog('PERSISTENT MEMORY',`<h3>What ${escape(data.profile.name)} remembers.</h3><p>Ask your agent to remember, update or forget a preference.</p><pre>${escape(data.memory||'No saved preferences yet.')}</pre><button class="studio-primary" id="studio-recall">Ask my agent</button>`);el('recall').onclick=()=>{el('dialog').close();el('prompt').value='What do you remember about my preferences? Read MEMORY.md and apply my preferred response style.';skill='memory';el('prompt').focus();};};
-  el('schedule').onclick=()=>{dialog('PERSISTENT FOLLOW-UP',`<p>Keep the server running until the task finishes.</p><form id="studio-schedule-form"><label for="studio-followup">Task</label><textarea id="studio-followup" rows="3" required>Read my saved preferences and suggest one useful next task for me to try.</textarea><label for="studio-delay">Run in</label><select id="studio-delay"><option value="60">1 minute · demo</option><option value="300">5 minutes</option><option value="3600">1 hour</option></select><div class="studio-dialog-actions"><button class="studio-primary">Schedule follow-up</button></div></form>`);el('schedule-form').onsubmit=async e=>{e.preventDefault();try{const job=await api('jobs',{kind:'reminder',prompt:el('followup').value,delay:Number(el('delay').value)});selectedJob=job.id;el('dialog').close();await refresh();}catch(error){alert(error.message);}};};
+  el('schedule').onclick=()=>{dialog('PERSISTENT FOLLOW-UP',`<p>Keep the server running until the task finishes.</p><form id="studio-schedule-form"><label for="studio-followup">Task</label><textarea id="studio-followup" rows="3" required>Read my saved preferences and suggest one useful next task for me to try.</textarea><label for="studio-delay">Run in</label><select id="studio-delay"><option value="60">1 minute · demo</option><option value="300">5 minutes</option><option value="3600">1 hour</option></select><div class="studio-dialog-actions"><button class="studio-primary">Schedule follow-up</button></div></form>`);el('schedule-form').onsubmit=async e=>{e.preventDefault();try{const job=await api('jobs',{kind:'reminder',prompt:el('followup').value,delay:Number(el('delay').value)});selectedJob=job.id;el('dialog').close();await refresh();}catch(error){alert(error.message,'error');}};};
   /* STUDIO_JSON */
   function downloadBytes(content,mime,name){const url=URL.createObjectURL(new Blob([content],{type:mime})),link=document.createElement('a');link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
   root.addEventListener('bac:world-skill',async e=>{const id=e.detail;if(id==='crew'){setRoom('mission');if(!scenarioChoosing)el('crew-prompt').focus();}else if(id==='security')securityLab();else if(id==='runtime')setup();else{el('missions').querySelector('[data-studio-mission="'+id+'"]')?.click();}});
@@ -367,10 +390,10 @@
       }
       el('download').onclick=()=>{const blob=new Blob([(html?protection:'')+file.content],{type:html?'text/html':'text/plain'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=path.split('/').pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
     }catch(error){
-      if(request===fileRequestRevision&&target===agentId&&scenario===selectedScenario&&revision===dialogRevision)alert(error.message);
+      if(request===fileRequestRevision&&target===agentId&&scenario===selectedScenario&&revision===dialogRevision)alert(error.message,'error');
     }
   }
-  root.addEventListener('click',async e=>{const file=e.target.closest('[data-studio-file]');if(file){openFile(file.dataset.studioFile);return;}const history=e.target.closest('[data-studio-job]');if(history){selectedJob=history.dataset.studioJob;render();return;}const choice=e.target.closest('[data-decision]');if(choice){try{await api('decision',{id:current().id,action:choice.dataset.decision});await refresh();}catch(error){alert(error.message);}}});
+  root.addEventListener('click',async e=>{const file=e.target.closest('[data-studio-file]');if(file){openFile(file.dataset.studioFile);return;}const history=e.target.closest('[data-studio-job]');if(history){selectedJob=history.dataset.studioJob;render();return;}const choice=e.target.closest('[data-decision]');if(choice){try{await api('decision',{id:current().id,action:choice.dataset.decision});await refresh();}catch(error){alert(error.message,'error');}}});
   el('read-aloud').onclick=()=>{if(!('speechSynthesis' in window)){alert('This browser does not support speech playback.');return;}window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance((current()?.result.answer||'').slice(0,4000));utterance.lang='en-US';window.speechSynthesis.speak(utterance);el('read-aloud').textContent='Browser voice · playing';utterance.onend=()=>el('read-aloud').textContent='▷ Hear the answer';};
   /* STUDIO_SAFETY */
   /* STUDIO_COMPARE */
@@ -380,7 +403,7 @@
     board=false;layout.hidden=false;window.BacCampus?.overview();
     window.scrollTo({top:0,left:0,behavior:'smooth'});
   };
-  async function boot(){try{const session=await api('session');csrf=session.csrf;settingsButton.hidden=!session.canConfigure;runtime=session.runtime;data=session;agentId=session.agentId;connected=true;runtimeBadge();render();let saved;try{saved=sessionStorage.getItem('bac-selected-agent');}catch{}if(saved&&saved!==agentId&&session.agents.some(a=>a.key===saved))await switchAgent(saved);else rememberSelection();crewStartupReady=true;warmCrewOnOpen();delete root.dataset.boot;root.setAttribute('aria-busy','false');}catch(error){connected=false;runtimeBadge();alert(error.message);el('create').disabled=true;root.dataset.boot='error';root.setAttribute('aria-busy','false');root.querySelector('.studio-boot-status span').textContent='Could not open the studio. Please try again.';root.querySelector('.studio-boot-status button').hidden=false;}}
+  async function boot(){try{const session=await api('session');csrf=session.csrf;settingsButton.hidden=!session.canConfigure;runtime=session.runtime;data=session;agentId=session.agentId;connected=true;runtimeBadge();render();let saved;try{saved=sessionStorage.getItem('bac-selected-agent');}catch{}if(saved&&saved!==agentId&&session.agents.some(a=>a.key===saved))await switchAgent(saved);else rememberSelection();crewStartupReady=true;warmCrewOnOpen();delete root.dataset.boot;root.setAttribute('aria-busy','false');}catch(error){connected=false;runtimeBadge();alert(error.message,'error');el('create').disabled=true;root.dataset.boot='error';root.setAttribute('aria-busy','false');root.querySelector('.studio-boot-status span').textContent='Could not open the studio. Please try again.';root.querySelector('.studio-boot-status button').hidden=false;}}
   boot();setInterval(()=>{if(!document.hidden&&!busy)refresh();},1500);setInterval(async()=>{if(connected&&!document.hidden){try{const nextRuntime=await api('runtime');if(runtime.instance&&nextRuntime.instance!==runtime.instance){if(!nextRuntime.model)alert('Server restarted. Your agents and results are saved; reconnect the model to continue.');}runtime=nextRuntime;runtimeBadge();}catch{}}},10000);
   window.BacStudio={refresh,inspect:()=>({profile:data.profile,agentId,agents:data.agents,jobs:data.jobs,runtime,board,room}),showBoard,setRoom};
 })();

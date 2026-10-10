@@ -477,7 +477,7 @@ root.addEventListener('click',async event=>{
  const button=event.target.closest('[data-retry-reaction]');if(!button)return;
  button.disabled=true;
  try{await api('retry-reaction',{id:button.dataset.reactionJob,member:button.dataset.retryReaction});await refresh();}
- catch(error){alert(error.message);button.disabled=false;}
+ catch(error){alert(error.message,'error');button.disabled=false;}
 });
 
 el('crew-conversation').addEventListener('click',event=>{if(event.target.closest('[data-open-collaboration]'))showCollaboration();});

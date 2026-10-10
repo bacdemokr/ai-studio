@@ -180,7 +180,7 @@ el('delete-agent').onclick=()=>{
         if(target===agentId&&!changingAgent){const viewingRoom=room;openAgentState(state);fillCreator(true);setRoom(viewingRoom==='lounge'?(data.profile?'lounge':'workshop'):viewingRoom);}
       }
       alert(name+' was deleted.');root.querySelector('.world-room-map [data-world-room="'+room+'"]')?.focus({preventScroll:true});
-    }catch(error){alert(error.message);}
+    }catch(error){alert(error.message,'error');}
     finally{removingAgent=false;render();refresh();}
   };
 };
@@ -197,7 +197,7 @@ el('onboarding').onsubmit=async e=>{
     if(mode==='new'&&room==='workshop'){hiringArrival=true;el('create').textContent='Joining your lounge…';await window.BacCampus?.welcomeAgent(createdId);if(room!=='workshop'||root.dataset.worldOverview==='true'){fillCreator(true);return;}}
     const stayHere=mode==='edit'&&editingInPlace;editingInPlace=false;fillCreator(true);if(stayHere)renderRoomVisibility();else setRoom('lounge');el('workshop').scrollTop=0;
     alert(mode==='edit'?'Your agent’s look, working style, voice and abilities are saved.':(data.profile?.name||payload.name)+' has joined your lounge. Give your new teammate a mission.');
-  }catch(error){alert(error.message);}finally{hiringArrival=false;el('onboarding').inert=false;el('create').disabled=draftMode==='new'&&(data.agents?.length||0)>=(data.agentLimit||12);}
+  }catch(error){alert(error.message,'error');}finally{hiringArrival=false;el('onboarding').inert=false;el('create').disabled=draftMode==='new'&&(data.agents?.length||0)>=(data.agentLimit||12);}
 };
 // Selecting a resident updates its workspace without moving the visitor's view.
 root.addEventListener('bac:collection-select',e=>{editingInPlace=false;renderRoomVisibility();switchAgent(e.detail);});

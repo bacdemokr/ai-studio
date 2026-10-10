@@ -74,7 +74,7 @@ function mountResultPreview(frame,html,authored){
  };
  frame.src=eventPreviewUrl;
 }
-async function downloadPackageFile(path){try{const file=await api('file?path='+encodeURIComponent(path)+'&job='+encodeURIComponent(crewMission().id));if(!(data.jobs||[]).some(j=>j.payload.website?.authored&&j.payload.website.path===path)&&path.endsWith('event-page.html')&&typeof file.content==='string'&&file.encoding!=='base64')file.content='<!doctype html>'+eventPageDocument(file.content).documentElement.outerHTML;downloadBytes(file.encoding==='base64'?Uint8Array.from(atob(file.content),c=>c.charCodeAt(0)):file.content,file.mime||'text/plain',path.split('/').pop());}catch(error){alert(error.message);}}
+async function downloadPackageFile(path){try{const file=await api('file?path='+encodeURIComponent(path)+'&job='+encodeURIComponent(crewMission().id));if(!(data.jobs||[]).some(j=>j.payload.website?.authored&&j.payload.website.path===path)&&path.endsWith('event-page.html')&&typeof file.content==='string'&&file.encoding!=='base64')file.content='<!doctype html>'+eventPageDocument(file.content).documentElement.outerHTML;downloadBytes(file.encoding==='base64'?Uint8Array.from(atob(file.content),c=>c.charCodeAt(0)):file.content,file.mime||'text/plain',path.split('/').pop());}catch(error){alert(error.message,'error');}}
 function eventBrief(form){
  const values=new FormData(form),brief={schema:2,region:'',language:'English'};
  for(const key of ['city','startTime','teardownTime','venue','startDate','endDate'])brief[key]=values.get(key);
@@ -155,7 +155,7 @@ async function updateEventPreview(){
 }
 async function crewForm(){
  if(selectedScenario!=='event-brief')return;const scenarioAtOpen=selectedScenario;
- try{eventCatalog=eventCatalog||await api('event-catalog');}catch(error){alert(error.message);return;}
+ try{eventCatalog=eventCatalog||await api('event-catalog');}catch(error){alert(error.message,'error');return;}
  if(selectedScenario!==scenarioAtOpen)return;
  dialog('Event Brief',`<label class="event-template-picker">Template<select id="studio-event-template">${eventCatalog.templates.map(t=>`<option value="${t.id}">${escape(t.title)} (Template)</option>`).join('')}</select></label><form id="studio-crew-form"><div class="studio-form-grid"><label>City<input name="city" maxlength="80" required></label><label>Event date · start<input type="date" name="startDate"></label><label>Event date · end<input type="date" name="endDate"></label><label>Venue<input name="venue" maxlength="120" placeholder="To be confirmed"></label><label>Total attendees<input type="number" name="attendees" min="1" max="3000" step="1" required></label><label>Event duration · minutes per day<input type="number" name="duration" min="30" max="720" step="30" required></label><label>Event days<input type="number" name="days" min="1" max="5" required></label><label>People per group<input type="number" name="groupSize" value="5" min="1" max="30" required></label><label>Preferred demo length · minutes<input type="number" name="session" value="15" min="5" max="60" step="5" required></label><label>Themes (one booth each)<select name="themeCount"><option value="2">2 themes</option><option value="3">3 themes</option><option value="4">4 themes</option><option value="5">5 themes</option><option value="6">6 themes</option></select></label><div class="event-time-field"><span id="studio-event-time-label">Daily start · local time</span><div class="event-start-time" role="group" aria-labelledby="studio-event-time-label"><select name="startHour" aria-label="Start hour (24-hour)">${Array.from({length:24},(_,i)=>`<option value="${String(i).padStart(2,'0')}">${String(i).padStart(2,'0')}</option>`).join('')}</select><span aria-hidden="true">:</span><select name="startMinute" aria-label="Start minute"><option value="00">00</option><option value="30">30</option></select></div><input type="hidden" name="startTime" value="10:00"></div><label>Take down by · local time (optional)<input type="time" name="teardownTime"></label></div><div id="studio-event-preview" class="event-plan-preview" aria-live="polite"></div>${crewAssignments()}<section id="studio-demo-preparation" class="demo-preparation" aria-live="polite"></section><p id="studio-event-connection" class="event-note" role="status" hidden></p><div class="studio-dialog-actions"><button id="studio-launch-event" type="submit" class="studio-primary" disabled>Give the brief to my crew</button></div></form>`);
  const form=el('crew-form');eventSubmitting=false;eventPreviewValid=false;syncEventLaunch();
@@ -226,7 +226,7 @@ eventPackage.onclick=async e=>{
   action.disabled=true;
   if(action.dataset.surveyAction==='refresh'){audienceReport=await api('survey-report?id='+encodeURIComponent(job.id));audienceJob=job.id;renderEventPackage();}
   if(action.dataset.surveyAction==='replan'){const next=await api('survey-replan',{id:job.id});selectedJob=next.id;eventPackageTab='plan';await refresh();alert('A new crew mission is using the audience interests. Your original package is preserved.');}
- }catch(error){alert(error.message);}finally{action.disabled=false;}
+ }catch(error){alert(error.message,'error');}finally{action.disabled=false;}
 };
 
 function resultDownloads(p,items){

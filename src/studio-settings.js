@@ -119,11 +119,11 @@ settingsButton.onclick=async()=>{
       if(!runtime.gateway){if(currentForm())status.textContent='Starting agent runtime…';await api('settings/start',{});await waitForAgentRuntime();}
       if(!runtime.ready){if(currentForm())status.textContent='Applying model connection';await waitForAgentRuntime(true);}
       runtimeBadge();render();
-      if(currentForm()){form.querySelector('#studio-api-key').value='';el('dialog').close();alert('Model and agent runtime connected.');}
+      if(currentForm()){form.querySelector('#studio-api-key').value='';el('dialog').close();alert('Model connected.','success');}
     }catch(error){if(currentForm()){status.dataset.state='error';status.textContent=error.message;}}
     finally{connecting=false;if(currentForm()){button.disabled=false;button.textContent='Connect model';controls.forEach(([node,disabled])=>node.disabled=disabled);}}
   };
- }catch(error){if(request===settingsOpenRequest)alert(error.message);}
+ }catch(error){if(request===settingsOpenRequest)alert(error.message,'error');}
 };
 el('dialog').addEventListener('close',()=>{if(el('api-key'))el('api-key').value='';if(el('telegram-token'))el('telegram-token').value='';});
 
@@ -162,7 +162,7 @@ async function resetStudio(scope,sourceButton=null){
   for(const agent of agents)await api('delete-agent',{name:agent.name},agent.key);
   if(agents.length){
    background=true;removingAgent=false;modal.removeEventListener('cancel',blockClose);modal.close();
-   alert('Removing '+agents.length+' agents in the background. Cleanup progress stays visible in their workspaces.');
+   alert('Removing '+agents.length+' agent'+(agents.length===1?'':'s')+'…','progress');
    await refresh();
   }
   for(const agent of agents){
@@ -178,10 +178,10 @@ async function resetStudio(scope,sourceButton=null){
    if(!changingAgent&&(agentId===originalSelection||agents.some(a=>a.key===agentId))){openAgentState(state);fillCreator(true);setRoom('workshop');}
   }
   status.textContent=scope==='all'?'All stages reset.':scope==='bac'?'Stage 3 reset.':'Lounge agents reset.';
-  if(background)alert('Cleanup complete. '+completed+' agents removed.');
+  if(background)alert(completed+' agent'+(completed===1?'':'s')+' removed.','success');
  }catch(error){
   const message=(scope==='all'&&teamCleared?'Stage 3 was reset. ':'')+(completed?`${completed} / ${total} removed. `:'')+error.message;
-  if(background)alert(message);
+  if(background)alert(message,'error');
   try{const state=await api('state',undefined,'');if(state.agentId===agentId){data=state;render();}else openAgentState(state);}catch{}
   // Refreshing controls while resetInProgress is true shows the busy notice.
   // Restore the failure afterward so the presenter can see why a retry is needed.
@@ -256,7 +256,7 @@ async function openModelConnections(){
  const request=++settingsOpenRequest,revision=dialogRevision;
  let state,settings;
  try{[state,settings]=await Promise.all([api('settings/connections'),api('settings')]);}
- catch(error){alert(error.message);return;}
+ catch(error){alert(error.message,'error');return;}
  if(request!==settingsOpenRequest||revision!==dialogRevision)return;
  dialog('Settings',`<div id="studio-model-connections">
   <nav class="connection-tabs"><button type="button" aria-current="page">Model</button><button type="button" data-connection-tab="location">Location</button><button type="button" data-connection-tab="telegram">Telegram</button><button type="button" data-connection-tab="reset">Reset</button></nav>

@@ -33,7 +33,7 @@ async function uploadDocuments(files){
  }finally{pendingWrites--;documentUploadTarget=null;documentUploadName='';renderDocuments();syncComposer();}
  if(errors.length){
   if(agentId===target&&dialogRevision===revision)dialog('Document upload','<p>'+errors.map(escape).join('<br>')+'</p>');
-  else alert(errors.join('\n'));
+  else alert(errors.join('\n'),'error');
  }
 }
 // Keep cancellation pending independently of DOM nodes replaced by polling.
@@ -50,7 +50,7 @@ async function stopChat(id,crew=false){
  try{await api('decision',{id,action:'cancel'},owner);await refresh();}
  catch(error){
   if(crew&&agentId===owner&&selectedCrewRole===role){el('crew-chat-error').textContent=error.message;el('crew-chat-error').hidden=false;}
-  else alert(error.message);
+  else alert(error.message,'error');
  }finally{pendingChatStops.delete(key);render();}
 }
 const documentDropZone=el('companion');
