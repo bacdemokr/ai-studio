@@ -101,8 +101,27 @@ function eventBefore(event, state, ctx) {
 }
 export function beforeTool(event, ctx) {
   const eventRun=eventState(ctx);
-  if(eventRun)return eventBefore(event,eventRun,ctx);
   const files = fileState(ctx);
+  let normalized;
+  // Models sometimes drop the leading slash from their own workspace path.
+  // Translate only this agent's exact prefix, never another owner's path.
+  if ((eventRun || files || reviewState(ctx)) && ['read','write','edit'].includes(event.toolName)) {
+    const identity=(ctx.agentId||'').match(/^bac-([a-f0-9]{24})-r(\d+)$/), params={...event.params};
+    for (const key of ['path','file_path']) {
+      const value=params[key];
+      if (!identity || typeof value!=='string') continue;
+      const prefix=`var/lib/bac/studio/workspaces/${identity[1]}-${identity[2]}/`;
+      const path=value.replace(/^\//,'');
+      if (path.startsWith(prefix)) {
+        const relative=path.slice(prefix.length);
+        if (/^(?:inbox|artifacts|skills)\//.test(relative) && !relative.split('/').includes('..')) {
+          params[key]=relative;normalized={params};
+        }
+      }
+    }
+    if (normalized) event={...event,params};
+  }
+  if(eventRun)return eventBefore(event,eventRun,ctx)||normalized;
   if (files && event.toolName === 'read') {
     const id = event.toolCallId || ctx.toolCallId;
     if (id && files.calls.has(id)) return files.calls.get(id);
@@ -150,7 +169,7 @@ export function beforeTool(event, ctx) {
     return result;
   }
   const key = keyFor(ctx);
-  if (!key || !['web_search', 'web_fetch'].includes(event.toolName)) return;
+  if (!key || !['web_search', 'web_fetch'].includes(event.toolName)) return normalized;
   const now = Date.now();
   for (const [k, v] of sessions) if (now - v.updated > TTL) sessions.delete(k);
   if (!sessions.has(key)) {

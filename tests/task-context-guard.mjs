@@ -72,3 +72,17 @@ for(const [kind,role] of [['plan',5],['plan',4],['crew',1]]) {
  assert(result.message.content[0].text.length<6300);
 }
 console.log('PASS: 3 megabyte-sized failure results preserve error status within the budget.');
+for(const [kind,role] of [['plan',4],['plan',5],['crew',1],['crew',3]]) {
+ for(const toolName of ['read','write','edit']) for(const key of ['path','file_path']) {
+  const ctx=context(role,kind),prefix='var/lib/bac/studio/workspaces/'+'d'.repeat(24)+'-'+role+'/';
+  const params={[key]:prefix+'artifacts/result.md',content:'Preserve authored text',oldText:'before',newText:'after'};
+  const result=beforeTool({toolName,params},ctx);
+  assert.equal(result.params[key],'artifacts/result.md');
+  assert.equal(result.params.content,'Preserve authored text');
+  const other=context(role,kind);
+  const foreign={toolName,params:{[key]:prefix.replace('d'.repeat(24),'e'.repeat(24))+'artifacts/result.md'}};
+  const untouched=beforeTool(foreign,other);
+  assert(!untouched || untouched.params?.[key]===foreign.params[key]);
+ }
+}
+console.log('PASS: 24 owned-workspace path corrections preserve content and never map another owner.');
