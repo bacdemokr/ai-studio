@@ -38,19 +38,19 @@ class HeartbeatRelayTests(unittest.TestCase):
         with self.studio.db() as db:
             db.execute("UPDATE jobs SET created=MIN(created,?) WHERE kind='prepare-agent'", (time.time()-tech_radar.HEARTBEAT_SECONDS,))
         with patch('runtime_settings.model_available',return_value=True):self.studio.heartbeat.tick()
-    def test_new_agent_waits_one_full_interval_before_enabling_native_search(self):
+    def test_new_agent_starts_after_ten_seconds_and_keeps_twenty_second_cadence(self):
         (self.root/tech_radar.OUTBOX).unlink()
         hired_at=time.time()
         with self.studio.db() as db:
             db.execute("UPDATE jobs SET created=? WHERE owner=? AND kind='prepare-agent'", (hired_at,self.owner))
         with patch('runtime_settings.model_available',return_value=True), patch.object(telegram,'send') as send:
-            for elapsed in (0, 5, 19.99):
+            for elapsed in (0, 5, 9.99):
                 with self.subTest(elapsed=elapsed), patch('studio_heartbeat.time.time',return_value=hired_at+elapsed):
                     self.studio.heartbeat.tick()
                     self.assertFalse(self.adapter.cadence[self.profile['id']])
                     self.assertEqual(self.studio.heartbeat.status(self.owner,self.profile)['state'],'starting soon')
                     self.assertEqual(self.studio.state(self.owner)['jobs'],[])
-            with patch('studio_heartbeat.time.time',return_value=hired_at+20):
+            with patch('studio_heartbeat.time.time',return_value=hired_at+10):
                 self.studio.heartbeat.tick()
                 self.assertTrue(self.adapter.cadence[self.profile['id']])
                 self.assertEqual(self.studio.heartbeat.status(self.owner,self.profile)['state'],'watching')

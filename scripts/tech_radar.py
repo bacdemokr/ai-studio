@@ -19,6 +19,7 @@ from urllib.parse import urlsplit, urlunsplit
 import xml.etree.ElementTree as ET
 
 HEARTBEAT_SECONDS = 20
+STARTUP_DELAY_SECONDS = 10
 
 SOURCES = (
     {'id':'nvidia','name':'NVIDIA Developer Blog','url':'https://developer.nvidia.com/blog/feed/','host':'developer.nvidia.com'},

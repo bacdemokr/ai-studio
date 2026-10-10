@@ -16,7 +16,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.reload();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Pixel');
   await page.evaluate(()=>BacStudio.setRoom('lounge'));
   await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
-  while(Date.now()-started<19000){
+  while(Date.now()-started<8500){
    const report=await page.evaluate(()=>fetch('/api/agent-policy').then(r=>r.json()));
    assert.deepEqual(report.pendingAccess,[]);assert.deepEqual(report.recentDenied,[]);
    assert.equal(await page.locator('#studio-agent-policy .policy-pending-badge').count(),0);
@@ -25,13 +25,14 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   }
   await page.waitForFunction(()=>BacStudio.inspect().jobs.some(job=>job.result?.systemNotice),null,{timeout:15000});
   const notice=await page.evaluate(()=>BacStudio.inspect().jobs.find(job=>job.result?.systemNotice));
-  assert(notice.created*1000-started>=20000,'First request must not run during the initial 20 seconds');
+  assert(notice.created*1000-started>=10000,'First request must not run during the initial 10 seconds');
+  assert(notice.created*1000-started<20000,'A ready agent should not still wait a full 20-second interval');
   await page.waitForFunction(()=>document.querySelector('#studio-agent-policy .policy-pending-badge')?.textContent==='2');
   const report=await page.evaluate(()=>fetch('/api/agent-policy').then(r=>r.json()));
   assert.deepEqual(report.pendingAccess.map(item=>item.reason),['blocked','blocked']);
   assert.equal(await page.locator('#studio-prompt').isDisabled(),true);
   assert.match(await page.locator('#studio-radar-monitor').textContent(),/every 20 seconds/);
   assert.deepEqual(errors,[]);
-  console.log('PASS: quiet onboarding with no premature policy badge; first attempted access after 20 seconds; two actual fixture denials become visible; mixed-skill chat stays disabled.');
+  console.log('PASS: quiet onboarding with no premature policy badge; first attempted access after 10 seconds; recurring cadence stays 20 seconds; two actual fixture denials become visible; mixed-skill chat stays disabled.');
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

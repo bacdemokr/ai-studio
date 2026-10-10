@@ -5,7 +5,7 @@
 3. OpenClaw checks every **20 seconds** for an unread article from NVIDIA Developer Blog or Hugging Face Blog. A completed summary includes the source link.
 4. Use **Pause / Resume** in the agent panel.
 
-The first check cannot start during the first 20 seconds after hiring or changing the agent's skills. Runtime preparation or the native scheduler can delay it further. Suggested feed hosts do not produce policy alerts before an access request; actual denials appear when OpenShell blocks a request.
+The first check cannot start during the first 10 seconds after hiring or changing the agent's skills. Runtime preparation or the native scheduler can delay it further. Suggested feed hosts do not produce policy alerts before an access request; actual denials appear when OpenShell blocks a request.
 
 While this skill is equipped, manual chat, attachments and scheduled follow-ups are disabled, and Run all agents excludes the agent. This applies even with additional skills or while Heartbeat is paused. Remove the Tech Radar skill to restore manual chat.
 

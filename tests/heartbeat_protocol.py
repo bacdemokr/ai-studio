@@ -83,15 +83,18 @@ def main():
                 if process.poll() is not None:raise RuntimeError('Native gateway exited: '+(folder/'gateway.log').read_text()[-3000:])
                 if not enabled:
                     assert Model.calls==0, 'Native model ran during initial quiet interval'
-                    if time.monotonic()-started>=20:
+                    if time.monotonic()-started>=tech_radar.STARTUP_DELAY_SECONDS:
                         runtime.set_radar_heartbeat(agent,True);enabled=True
                         assert json.loads(runtime.config_path().read_text())['agents']['entries'][agent]['heartbeat']['every']=='20s'
                 box=tech_radar.read(workspace,tech_radar.OUTBOX,{})
                 if len(box.get('events',[]))>=2:
                     assert len({e['id'] for e in box['events']})==len(box['events'])
                     assert box['events'][0]['answer'].startswith('PROTOCOL FIXTURE:')
-                    assert Model.starts[0]-started>=20
-                    print('PASS: quiet first 20 seconds, then two native 20-second heartbeats without a chat request; first start:',round(Model.starts[0]-started,1),'seconds; run gap:',round(Model.starts[1]-Model.starts[0],1),'seconds; protocol fixture calls:',Model.calls,flush=True)
+                    assert Model.starts[0]-started>=tech_radar.STARTUP_DELAY_SECONDS
+                    # First-turn setup and queueing affect model-call timestamps.
+                    # Check the native cadence itself rather than a wall-clock gap.
+                    assert json.loads(runtime.config_path().read_text())['agents']['entries'][agent]['heartbeat']['every']=='20s'
+                    print('PASS: quiet first 10 seconds, then two native 20-second heartbeats without a chat request; first start:',round(Model.starts[0]-started,1),'seconds; run gap:',round(Model.starts[1]-Model.starts[0],1),'seconds; protocol fixture calls:',Model.calls,flush=True)
                     return
                 time.sleep(1)
             raise RuntimeError('Heartbeat did not publish. Calls='+str(Model.calls)+' Log: '+(folder/'gateway.log').read_text()[-4000:])

@@ -242,8 +242,8 @@ class RadarHeartbeat:
                                 studio.queue_agent_preparation(db, owner, profile)
                         studio.signal.set()
                     # Native scheduling can choose a near-immediate first tick.
-                    # Keep it disabled for one interval after hiring/skill setup.
-                    starting = bool(preparation and time.time() < preparation['created'] + tech_radar.HEARTBEAT_SECONDS)
+                    # Keep the initial quiet period separate from the recurring cadence.
+                    starting = bool(preparation and time.time() < preparation['created'] + tech_radar.STARTUP_DELAY_SECONDS)
                     enabled = bool(connected and ready and gateway_ready and not current['deleting'] and not paused and not busy and not starting and not retrying and profile['id'] in studio.provisioned)
                     registered = toggle(profile['id'],enabled) if gateway_ready else False
                     state = 'paused' if paused else 'waiting for browser' if not connected else 'waiting for model' if not ready else 'waiting for runtime' if not gateway_ready else 'waiting for task' if busy else 'retrying preparation' if retrying else 'starting soon' if starting and profile['id'] in studio.provisioned else 'watching' if enabled and registered else 'preparing'

@@ -45,7 +45,7 @@ The key objectives are:
 
 ### Stage 2. Agent Lounge
 
-Use manual chat for task-driven skills. An agent with **Tech Radar** instead runs Heartbeat, even when other skills are equipped. Its first check waits at least 20 seconds; busy model queues can delay summaries. Pause stops future checks; remove the skill to restore manual chat.
+Use manual chat for task-driven skills. An agent with **Tech Radar** instead runs Heartbeat, even when other skills are equipped. Its first check waits at least 10 seconds; busy model queues can delay summaries. Pause stops future checks; remove the skill to restore manual chat.
 
 **Target:** Demonstrate how an individual agent performs a task and how [OpenShell](https://build.nvidia.com/openshell) changes its access to external resources.
 
