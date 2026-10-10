@@ -177,10 +177,10 @@ export function persistResult(event, ctx) {
   }
 
   const review = (event.toolName || ctx.toolName) === 'read' && reviewState(ctx);
-  if (review && !event.message?.isError && Array.isArray(event.message?.content)) {
+  if (review && Array.isArray(event.message?.content)) {
     const id = event.message.toolCallId || event.toolCallId;
     if (id && review.results.has(id)) return review.results.get(id);
-    let remaining = Math.min(5000, Math.max(0, 18000 - review.chars)), truncated = false;
+    let remaining = event.message.isError ? 500 : Math.min(5000, Math.max(0, 18000 - review.chars)), truncated = false;
     const content = event.message.content.map(block => {
       if (block.type !== 'text' || typeof block.text !== 'string') return block;
       const text = takeText(block.text, remaining), used=Buffer.byteLength(text);remaining -= used;review.chars += used;

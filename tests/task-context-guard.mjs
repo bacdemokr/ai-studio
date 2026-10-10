@@ -65,3 +65,10 @@ for(const [kind,role] of [['plan',5],['plan',4],['crew',1]]) {
  assert(result.message.content.reduce((n,b)=>n+Buffer.byteLength(b.text),0)<6300,'omission notices cannot multiply past the budget');
 }
 console.log('PASS: 3 ten-thousand-block stress cases keep omission notices bounded.');
+
+for(const [kind,role] of [['plan',5],['plan',4],['crew',1]]) {
+ const ctx=context(role,kind),result=persistResult({toolName:'read',message:{isError:true,content:[{type:'text',text:'Failed: '+('X'.repeat(1000000))}]}},ctx);
+ assert.equal(result.message.isError,true);
+ assert(result.message.content[0].text.length<6300);
+}
+console.log('PASS: 3 megabyte-sized failure results preserve error status within the budget.');
