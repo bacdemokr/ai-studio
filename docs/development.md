@@ -22,6 +22,8 @@ The normal installation path is the [Git + Docker setup](docker-setup.md). Host 
 
 `./bac dev --help` lists advanced commands. `launch.sh` is a development shortcut for `./bac dev preview`. See [host Ubuntu setup](ubuntu-setup.md) or [managed Spark model](spark-operations.md) only for those development paths.
 
+The source preview preserves data on restart; it does not run Docker's fresh-start reset. In both modes, [abandoned browser sessions are removed after 10 minutes](runtime-settings.md#demo-session-cleanup). A preserving restart gives browsers 10 minutes to reconnect. Use disposable fixtures for tests so test sessions never populate a presenter's runtime.
+
 Edit `src/` and run `python3 -B scripts/build.py`; refresh for UI changes. Restart for Python changes. Do not edit generated `app/index.html` directly. Docker installations load changed source files with `./bac start --keep-data` when preserving runtime data.
 
 ## Tests

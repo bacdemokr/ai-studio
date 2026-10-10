@@ -22,6 +22,7 @@ import ops_common as c
 from studio_policy import PolicyControls
 from crew_roundtable import RoundtableControls, participants as job_participants
 from crew_ownership import CrewOwnership
+from studio_sessions import SessionLifecycle
 from collaboration_plan import CollaborationPlans, is_plan, plan_task
 from event_scenario import EventScenario
 from webpage_artifacts import DEMO_CODING_INSTRUCTIONS, PAGE_INSTRUCTIONS, html_files, collect_pages
@@ -118,7 +119,7 @@ def safe_file(directory, relative, exists=False):
     return result
 
 
-class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, RoundtableControls):
+class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle, PolicyControls, RoundtableControls):
     def __init__(self, directory=None, adapter=runtime, start_worker=True, recover=False):
         self.directory = Path(directory) if directory else c.initialize() / 'studio'
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -207,6 +208,7 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
                 db.execute("UPDATE jobs SET status='error',result=?,updated=? WHERE status IN ('running','stopping')",
                            (json.dumps({'error': 'The app restarted during this task. Inspect saved files before retrying.'}), time.time()))
         self.initialize_crew_ownership()
+        self.initialize_session_lifecycle()
         from studio_heartbeat import RadarHeartbeat
         self.heartbeat = RadarHeartbeat(self)
         self.retire_host_file_grants()
@@ -233,7 +235,7 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
                 runtime.write_workspace(self.workspace(owner), profile)
             user_location.sync(self.workspace(owner))
         with self.db() as db:
-            teams = [r['owner'] for r in db.execute('SELECT owner FROM crew_contexts')]
+            teams = [r['owner'] for r in db.execute('SELECT c.owner FROM crew_contexts c JOIN participants p ON p.id=c.participant WHERE p.retiring=0')]
         for team in teams:
             self.initialize_workspace(team)
             self.initialize_crew_workspaces(team)
@@ -300,14 +302,17 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
 
     def session(self, token=None):
         with self.db() as db:
-            row = db.execute('SELECT * FROM participants WHERE token=?', (token,)).fetchone() if token else None
+            db.execute('BEGIN IMMEDIATE')
+            row = db.execute('SELECT * FROM participants WHERE token=? AND retiring=0', (token,)).fetchone() if token else None
             if row:
+                db.execute('UPDATE participants SET last_seen=? WHERE id=?', (time.time(),row['id']))
                 return dict(row), False
             if db.execute('SELECT count(*) FROM participants').fetchone()[0] >= 500:
                 raise Problem('This workshop is full. Ask the host to clear completed participants.', 503)
             row = {'id': secrets.token_hex(12), 'token': secrets.token_urlsafe(32),
                    'csrf': secrets.token_urlsafe(24), 'profile': None, 'created': time.time()}
             db.execute('INSERT INTO participants (id,token,csrf,profile,created) VALUES (:id,:token,:csrf,:profile,:created)', row)
+            db.execute('UPDATE participants SET last_seen=? WHERE id=?', (row['created'],row['id']))
             db.execute('INSERT INTO agents (id,participant,created) VALUES (?,?,?)', (row['id'], row['id'], row['created']))
             return row, True
 
@@ -654,6 +659,7 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
         while not self.stop.is_set():
             self.deletion_signal.clear()
             self.finish_pending_deletions()
+            self.clean_idle_sessions()
             self.deletion_signal.wait(1)
 
     def runtime_status(self, retry=False):

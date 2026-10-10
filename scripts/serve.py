@@ -79,7 +79,7 @@ class Handler(SimpleHTTPRequestHandler):
             return self.server.studio.session(token)
         with self.server.studio.db() as db:
             row = db.execute('SELECT * FROM participants WHERE token=?', (token,)).fetchone()
-        if not row:
+        if not row or not self.server.studio.touch_session(row['id']):
             raise Problem('Open the Agent Studio page to start a session.', 401)
         return dict(row), False
 
