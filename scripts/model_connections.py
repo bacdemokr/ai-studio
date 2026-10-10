@@ -11,6 +11,7 @@ import session_secrets as secrets
 _lock = threading.RLock()
 _checks = {}
 _pending = set()
+_discovered = {}
 
 
 def path():return c.home() / 'model-connections.json'
@@ -24,7 +25,7 @@ def persist(value):
     temp.write_text(json.dumps(value));temp.chmod(0o600);temp.replace(path())
 
 
-def profile(source):
+def profile(source, discovery=True):
     import team_models
     saved=read();provider='local' if source=='local' else saved.get('apiProvider','nvidia')
     value=copy.deepcopy(settings.read().get('profiles',{}).get(provider,{}))
@@ -42,6 +43,11 @@ def profile(source):
     if value.get('apiKey'):
         stored=team_models.saved_connection() if provider=='nvidia' else {}
         value['_keySource']=stored.get('source','host') if stored.get('apiKey')==value['apiKey'] else 'session'
+    if source == 'local' and discovery and not value.get('model'):
+        with _lock:
+            detected = _discovered.get((str(path()), signature(value)))
+        if detected:
+            value.update(detected, _autoDetected=True)
     return value
 
 
@@ -56,16 +62,46 @@ def catalog(rows):
 
 def probe(source,value):
     key=signature(value)
+    automatic = source == 'local' and (not value.get('model') or value.get('_autoDetected'))
+    baseline = profile(source, discovery=False) if automatic else None
+    discovery_key = (str(path()), signature(baseline)) if automatic else None
+    detected = None
     try:
         provider=value['_provider']
         result=settings.request(provider,value,'/v1/models?limit=1000' if provider=='anthropic' else '/models',timeout=8)
         rows=result.get('data',[]) if isinstance(result,dict) else []
-        ready=any(isinstance(row,dict) and row.get('id')==value.get('model') for row in rows)
-        state={'ready':ready,'message':'Ready' if ready else 'Selected model is not available.','checkedAt':time.time(),'models':catalog(rows)}
+        message = None
+        if automatic:
+            valid_ids = {model['id'] for model in catalog(rows)}
+            candidates = {row['id']:row for row in rows if isinstance(row, dict) and row.get('id') in valid_ids}
+            if len(candidates) == 1:
+                model, row = next(iter(candidates.items()))
+                limit = row.get('max_model_len')
+                context = baseline['contextWindow']
+                if type(limit) is int:
+                    context = min(context, limit)
+                if context >= 8192:
+                    detected = {'model':model, 'contextWindow':context}
+                    value = {**baseline, **detected, '_autoDetected':True}
+                else:
+                    message = 'Local model context is below the supported 8,192-token minimum.'
+            else:
+                message = ('Multiple local models found. Choose one in Settings.' if candidates else
+                           'No local model is available yet.')
+        ready=not message and any(isinstance(row,dict) and row.get('id')==value.get('model') for row in rows)
+        state={'ready':ready,'message':message or ('Ready' if ready else 'Selected model is not available.'),'checkedAt':time.time(),'models':catalog(rows)}
     except Exception as error:
         from studio import Problem
         state={'ready':False,'message':str(error) if isinstance(error,Problem) else 'Connection check failed.','checkedAt':time.time()}
     with _lock:
+        if automatic and signature(profile(source, discovery=False)) == discovery_key[1]:
+            # Discovery is runtime-only; explicit settings and routing stay intact.
+            if detected:
+                _discovered[discovery_key] = detected
+            elif 'models' in state:
+                _discovered.pop(discovery_key, None)
+            _checks[discovery_key[1]] = (time.monotonic(), state)
+            _checks[signature(value)] = (time.monotonic(), state)
         _checks[key]=(time.monotonic(),state);_pending.discard(key)
     return state
 
@@ -74,7 +110,7 @@ def status(source,refresh=False):
     value=profile(source);key=signature(value)
     basic={'provider':value['_provider'],'model':value.get('model',''),'baseUrl':value['baseUrl'],'contextWindow':value['contextWindow'],'keySource':value.get('_keySource'),'enabled':source not in read().get('disabled',[])}
     if source in read().get('disabled',[]):return {**basic,'ready':False,'message':'Disabled'}
-    if not value.get('model') or (source=='api' and not value.get('apiKey')):
+    if (source=='api' and (not value.get('model') or not value.get('apiKey'))) or (source=='local' and not value.get('model') and not enabled()):
         return {**basic,'ready':False,'message':'Not configured'}
     with _lock:
         cached=_checks.get(key)

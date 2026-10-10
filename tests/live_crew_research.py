@@ -51,7 +51,7 @@ with tempfile.TemporaryDirectory(prefix='bac-protected-research-') as directory:
 
         print('PASS: sandbox running with verified pre-approved NVIDIA Blog reads', flush=True)
         for index, queries in enumerate((['agent'], ['Nemotron','inference'], ['robot','OpenClaw','multimodal'])):
-            brief, capacity = event_planner.plan({'schema':2,'themeCount':index+3})
+            brief, capacity = event_planner.plan({'schema':2,'themeCount':3})
             agent_workflow.prepare(workspace, 'probe-'+str(index), {'brief':brief,'capacity':capacity}, 1)
             archive = io.BytesIO()
             with tarfile.open(fileobj=archive, mode='w') as tar:

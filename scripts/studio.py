@@ -200,9 +200,9 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, PolicyControls, R
             if 'progress' not in {r['name'] for r in db.execute('PRAGMA table_info(agent_deletions)')}:
                 db.execute("ALTER TABLE agent_deletions ADD COLUMN progress TEXT NOT NULL DEFAULT 'Queued for cleanup'")
             db.execute('CREATE INDEX IF NOT EXISTS agents_participant ON agents(participant)')
-            db.execute("UPDATE jobs SET status='cancelled',updated=? WHERE kind IN ('crew','prepare') AND status IN ('queued','running','waiting','stopping')", (time.time(),))
             # Never silently replay a potentially completed side effect after a crash.
             if start_worker or recover:
+                db.execute("UPDATE jobs SET status='cancelled',updated=? WHERE kind IN ('crew','prepare') AND status IN ('queued','running','waiting','stopping')", (time.time(),))
                 db.execute('UPDATE agent_policies SET updating=0')
                 db.execute("UPDATE jobs SET status='error',result=?,updated=? WHERE status IN ('running','stopping')",
                            (json.dumps({'error': 'The app restarted during this task. Inspect saved files before retrying.'}), time.time()))

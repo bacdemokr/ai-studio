@@ -121,7 +121,8 @@ class PlanInputs(unittest.TestCase):
         self.start()
         with self.assertRaisesRegex(RuntimeError, 'unavailable document'):
             self.app.execute(self.app.next_job())
-        self.assertEqual(len(self.adapter.calls), 1)
+        self.assertEqual(len(self.adapter.calls), 2)
+        self.assertTrue(all(agent.endswith('-r0') for agent,_,_ in self.adapter.calls))
 
     def test_input_copies_removed_on_failure(self):
         self.prepare_inputs()
@@ -193,6 +194,24 @@ class PlanInputs(unittest.TestCase):
                     if path.parent.name in ('bac-event-page', 'bac-nvidia-webpage', 'bac-nvidia-social', 'bac-nvidia-research', 'bac-event-scheduling', 'bac-event-tools'):
                         self.assertIn('SCOPE: Use this skill only', path.read_text())
 
+
+    def test_malformed_document_selection_gets_one_control_only_repair(self):
+        from unittest.mock import patch
+        for bad in (None, 'document-0', ['missing-document']):
+            with self.subTest(bad=bad):
+                self.adapter.plan={'summary':'Summarize requirements','tasks':[{'role':6,'task':'Summarize requirements','inputs':bad}]}
+                original=self.adapter.respond
+                def respond(agent,session,prompt,**kwargs):
+                    if session.endswith('-planning-input-repair'):
+                        self.assertTrue(agent.endswith('-r0'))
+                        self.assertIn('Available document IDs: []',prompt)
+                        return json.dumps({'summary':'Summarize the provided task','tasks':[{'role':6,'task':'Summarize requirements','inputs':[]}]})
+                    return original(agent,session,prompt,**kwargs)
+                with patch.object(self.adapter,'respond',side_effect=respond):
+                    result=self.start();self.app.execute(self.app.next_job())
+                plan=self.job(result)['payload']['collaboration']
+                self.assertEqual(plan['inputSelectionRecovery']['status'],'corrected')
+                self.assertEqual(plan['calledRoles'],[6])
 
 if __name__ == '__main__':
     unittest.main()

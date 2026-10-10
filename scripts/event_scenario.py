@@ -85,7 +85,9 @@ class EventScenario(EventControls, DemoReadiness):
             self.event(job_id, limit_name + ' limit reached - one concise recovery',
                        'Saved work is preserved. The agent will finish only missing work in a fresh context.',
                        stage, payload=json.dumps(payload))
-            recovery = (prompt + '\nLIMIT RECOVERY: This is the only limit retry for this role. '
+            recovery_base = ('Resume the current Demo producer mission using /sandbox/inbox/agent-task.json. '
+                             'The contract contains the schema and paths. Preserve saved work.' if context_recovery else prompt)
+            recovery = (recovery_base + '\nLIMIT RECOVERY: This is the only limit retry for this role. '
                         'Inspect existing deliverables first. Preserve successful research, tool results and valid files. '
                         'Finish only missing requirements using small targeted edits; do not restart the whole task. '
                         'If the deliverables are already complete, verify them and return a short receipt. '
@@ -94,7 +96,8 @@ class EventScenario(EventControls, DemoReadiness):
             if context_recovery:
                 recovery += ('\nFirst read /sandbox/inbox/agent-task.json, then run its validationCommand with '
                              'host=sandbox and workdir=/sandbox. If validation passes, return immediately. '
-                             'If it fails, inspect only the named missing or invalid fields and necessary saved evidence. '
+                             'If themes are missing or invalid, run python3 skills/bac-event-tools/scripts/event_agent_tools.py evidence '
+                             'to recover bounded saved source excerpts, then write or repair the themes. '
                              'Reuse saved research; do not repeat successful searches or article reads. '
                              'Do not read tool source, dump the full research bundle, or copy files to host paths.')
             try:
