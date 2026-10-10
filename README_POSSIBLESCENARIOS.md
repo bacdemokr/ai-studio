@@ -3,13 +3,11 @@ October 8, 2026
 
 These are example requests for **3-2 Open Task**, not additional rooms or new execution modes. Screenshots and timings below are Benjamin's observed NVIDIA Inference API runs. They have not been benchmarked on local Qwen here; endpoint load and task size change the timing.
 
-- **Travel:** requires live weather and web access. The historical prompt below says three days but spans four dates, and its result is partial. For a new demo, choose three explicit upcoming dates and ask the team to mark unavailable forecasts rather than invent them.
-- **Drone research:** requires internet access and produces a research dashboard, not a tested robotics implementation. Keep the number of papers small for a short demo.
-- **Store email review:** upload the short `.txt` example below. All task evidence is supplied, making it a candidate for a local offline rehearsal. This does not yet demonstrate filesystem permission enforcement.
+- **Travel:** requires live weather and web access to help anyone (me, you, my cousin,...) plan a Travel. 
+- **Drone research:** requires internet access and produces a research dashboard, to help some technical SOAT report creation.
+- **Store email buisness review:** upload the short `.txt` ('like an email') faking a past discussion between different managers and target is to determine and create a nice dashboard summarizing the current status of that virtual company
+- **Simple Ping-Pong:** a coding workload, for developper or not...classic, easy and fast. agent in coding, UI
 
-For a short business rehearsal:
-
-> /goal Use only the attached email thread. Summarize the year-over-year performance of the five stores and recommend three actions. Create one self-contained desktop HTML report with inline CSS, no external assets or network access. Keep the analysis concise and label missing data. Do not send emails or modify the source document.
 
 
 ## Table of contents

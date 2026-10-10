@@ -86,7 +86,7 @@ The scenarios keep their own agents, conversations and files. Hired Lounge agent
 - Rehearse the selected request on the actual model and hardware. Endpoint timings in the examples are observed runs, not local Spark benchmarks or guaranteed completion times.
 - Local inference does not make web research or live weather available offline. For an offline rehearsal, start with the attached store-email example and request no external sources. Filesystem read/write blocking is not implemented by that example.
 - **Usage & time** shows recorded tokens, elapsed time and agent turns after a Stage 3 run. Agent time includes tools; summed time can exceed elapsed time when turns overlap. It is not a provider billing report.
-- `./bac start` clears runtime data and starts fresh. Use `./bac start --keep-data` to retain a rehearsal. `./bac stop --all` stops the demo and its managed local model.
+- `./bac start` clears runtime data and starts fresh. Use `./bac start --keep-data` to retain a rehearsal. `./bac stop --all` stops the demo and its managed local model, then removes the Compose stack and its data volumes.
 
 
 ## Three scenario ideas linked to [README_POSSIBLESCENARIOS.md](README_POSSIBLESCENARIOS.md)

@@ -209,7 +209,7 @@ def serve():
                 time.sleep(1)
         if stopping:
             return
-        children.append(subprocess.Popen([sys.executable, str(common.REPO/'scripts/serve.py'), '--host', '127.0.0.1',
+        children.append(subprocess.Popen([sys.executable, str(common.REPO/'scripts/serve.py'), '--host', '0.0.0.0',
                                          '--port', str(ports()[0])], start_new_session=True))
         while not stopping:
             if any(child.poll() is not None for child in children):
