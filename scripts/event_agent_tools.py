@@ -134,11 +134,11 @@ def schedule_html(brief,calc):
 def source_view(source, research_file, article_budget=None):
     """Small, explicitly extractive tool reply; saved evidence is unchanged."""
     view={k:source[k] for k in ('id','title','url','published','readAt','readError') if k in source}
-    view['excerpt']=source.get('excerpt','')[:240]
+    view['excerpt']=source.get('excerpt','')[:120]
     if article_budget is not None and source.get('article'):
         article=source['article']
         view.update(article=article[:article_budget], articleTruncated=len(article)>article_budget,
-                    fullArticleChars=len(article), fullArticleFile=research_file)
+                    fullArticleChars=len(article), evidenceCommand='python3 skills/bac-event-tools/scripts/event_agent_tools.py evidence '+source['id'])
     return view
 
 
@@ -177,7 +177,9 @@ def run(workspace, action, values):
         research={'retrieved':stamp,'queries':queries,'sources':rows,'failedQueries':failures,'status':'available' if rows else 'unavailable','method':'Agent-selected NVIDIA Blog search queries'}
         research['networkFailures']=previous.get('networkFailures',0)+int(batch_failed)
         saved.write_text(json.dumps(research,ensure_ascii=False,indent=2))
-        result={**research,'sources':[source_view(s,files['research']) for s in rows]}
+        result={'retrieved':stamp,'queries':queries,'sources':[source_view(s,files['research']) for s in rows[:8]],
+                'totalSources':len(rows),'status':research['status'],'networkFailures':research['networkFailures'],
+                'failedQueries':failures,'note':'Bounded source index. Select only the sources needed for the requested themes.'}
     elif action=='read':
         research=json.loads((workspace/files['research']).read_text());selected=set(values)
         if not 1<=len(selected)<=6 or not selected.issubset({s['id'] for s in research['sources']}):raise ValueError('Read 1–6 retrieved source IDs.')
@@ -198,9 +200,17 @@ def run(workspace, action, values):
         (workspace/files['research']).write_text(json.dumps(research,ensure_ascii=False,indent=2))
         # Keep each selected source visible within the native tool output limit.
         # Full retrieved text stays in the saved research file; excerpts are explicit.
-        budget = min(1800, 7200 // len(chosen))
+        budget = min(1200, 3600 // len(chosen))
         result={'sources':[source_view(source,files['research'],budget) for source in chosen],
-                'note':'Article fields are leading excerpts, not full articles. Use these for supported claims; inspect only a specific saved passage if needed. Do not copy article text into your themes file.'}
+                'note':'Article fields are leading excerpts, not full articles. Use these for supported claims; use the evidence action for saved excerpts; never read the full research JSON. Do not copy article text into your themes file.'}
+    elif action=='evidence':
+        research=json.loads((workspace/files['research']).read_text())
+        selected=set(values)
+        chosen=[s for s in research.get('sources',[]) if s.get('article') and s.get('readAt') and not s.get('readError') and (not selected or s['id'] in selected)]
+        if not chosen:raise ValueError('No successful saved article reads. Use read with selected source IDs first.')
+        chosen=chosen[:6]
+        result={'sources':[source_view(s,files['research'],min(1200,3600//len(chosen))) for s in chosen],
+                'note':'Saved leading excerpts only; no network requests. Do not read the full research JSON.'}
     elif action=='validate-themes':
         from event_theme_content import validate_saved_themes
         research=json.loads((workspace/files['research']).read_text())
@@ -235,7 +245,7 @@ def run(workspace, action, values):
 
 
 if __name__=='__main__':
-    parser=argparse.ArgumentParser();parser.add_argument('action',choices=['search','read','validate-themes','draft-schedule','schedule']);parser.add_argument('values',nargs='*')
+    parser=argparse.ArgumentParser();parser.add_argument('action',choices=['search','read','evidence','validate-themes','draft-schedule','schedule']);parser.add_argument('values',nargs='*')
     args=parser.parse_args()
     try:print(json.dumps(run(Path.cwd(),args.action,args.values),ensure_ascii=False))
     except Exception as error:parser.exit(1,str(error)+'\n')

@@ -58,16 +58,26 @@ class EventAdapter(BrowserAdapter):
         return 'Dylan researches current topics while Alex checks rotation. Morgan uses both handoffs.'
 
 class ResearchedEventTests(unittest.TestCase):
-    def make_event(self,count=4):
+    def make_event(self,count=3):
         temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup)
-        self.adapter=EventAdapter();self.studio=Studio(temp.name,self.adapter,start_worker=False);self.owner=self.studio.session()[0]['id']
-        self.studio.enqueue(self.owner,{'kind':'crew','preset':True,'workflow':'showcase','brief':{'schema':2,'themeCount':count}})
+        self.adapter=EventAdapter();self.studio=Studio(temp.name,self.adapter,start_worker=False);self.participant=self.studio.session()[0]['id'];self.owner=self.studio.crew_owner(self.participant,'event-brief')
+        job=self.studio.enqueue(self.owner,{'kind':'crew','preset':True,'workflow':'showcase','brief':{'schema':2,'themeCount':count}})
         # Exercise historical host-research assembly only; current protected runs are tested separately.
         with patch.dict(CREW_CATALOG[1], {'protection':'standard'}), patch('nvidia_research.discover',return_value=SOURCES):self.studio.execute(self.studio.next_job())
-        return self.studio.state(self.owner)['jobs'][0]
+        with self.studio.db() as db:
+            return self.studio.public_job(db.execute('SELECT * FROM jobs WHERE id=?',(job['id'],)).fetchone())
+
+    def test_more_than_three_themes_never_enqueues_agents(self):
+        from studio import Problem
+        for count in (4,5,6,100):
+            with self.subTest(count=count):
+                with self.assertRaisesRegex(Problem,'Choose 2 or 3 themes'):
+                    self.make_event(count)
+                with self.studio.db() as db:
+                    self.assertEqual(db.execute('SELECT count(*) FROM jobs').fetchone()[0],0)
 
     def test_rotation_matches_booths_and_breaks_at_every_scale(self):
-        for n in range(2,7):
+        for n in range(2,4):
             for days in (1,2,5):
                 with self.subTest(themes=n,days=days):
                     b,c=plan({'schema':2,'themeCount':n,'attendees':n*100,'days':days,'duration':120})
@@ -92,10 +102,10 @@ class ResearchedEventTests(unittest.TestCase):
                     for person in set(r['presenter'] for r in c['schedule']):
                         self.assertEqual(len({r['topicId'] for r in c['schedule'] if r['presenter']==person}),1,'A presenter keeps the same topic on every day')
                     self.assertEqual(b['harnesses'],['openclaw'])
-        b,c=plan({'schema':2,'themeCount':6,'attendees':1});self.assertEqual(len(c['booths']),6)
+        b,c=plan({'schema':2,'themeCount':3,'attendees':1});self.assertEqual(len(c['booths']),3)
 
     def test_sparse_default_schedule_uses_one_presenter_when_breaks_fit(self):
-        for n in range(2,7):
+        for n in range(2,4):
             b,c=plan({'themeCount':n,'attendees':120})
             for booth in c['booths']:
                 people=[r['presenter'] for r in c['schedule'] if r['booth']==booth['booth']]
@@ -104,7 +114,7 @@ class ResearchedEventTests(unittest.TestCase):
                 self.assertEqual(len(set(people)),presenter_limit(b,c['session'],topic['groups']))
 
     def test_invalid_counts_and_impossible_capacity(self):
-        for n in (1,7,True,'4'):
+        for n in (0,1,4,5,6,7,100,True,'3',2.5,None):
             with self.assertRaises(ValueError):plan({'themeCount':n})
         with self.assertRaises(ValueError):plan({'themeCount':3,'attendees':3000,'duration':30,'groupSize':1})
 

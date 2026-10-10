@@ -24,11 +24,13 @@ The demo manages its own skill files. Native skill file watching and autonomous 
 
 External endpoints are fixed in the editor. A verified reusable key is disabled and labelled with its source, such as **API key verified · api.cfg**. New keys entered in Settings last for the browser tab's credential lease. A validated host-saved NVIDIA key can supply all stages after refresh. See [credential storage](session-credentials.md).
 
+An enabled, unconfigured Local connection automatically checks `http://127.0.0.1:8000/v1/models` (or its saved endpoint). If exactly one supported model is advertised, Studio uses that model ID with at most 32K context by default, bounded by the server’s advertised limit. Detection repeats in the background, so vLLM can start after Studio. Multiple advertised models require a choice in Settings. Explicit model choices, disabled connections and routing preferences are preserved. Discovery does not launch or take ownership of vLLM.
+
 Local endpoints must be reachable from the app/OpenClaw host, not from the presenter's browser computer. Use localhost or a private IP ending in `/v1`. Ollama normally uses `http://127.0.0.1:11434/v1`. The selected model must appear in the server's catalogue and support the tools needed by the demo. Readiness verifies model availability, not successful completion of every task.
 
 ## Scenario models
 
-- **3-1 Event Brief:** Riley, Dylan, Alex and Morgan all use the selected connection model.
+- **3-1 Event Brief:** Riley, Dylan, Alex and Morgan all use the selected connection model. New briefs support 2 or 3 themes; the server rejects larger theme counts before creating work.
 - **3-2 Open Task:** an external NVIDIA connection supports per-agent model choices. Expand **Standby specialists**, click an agent's model, search and select. Changes save immediately. Local and other providers use the shared connection model for the whole team.
 
 **Models & connection** opens these shared settings. Connection changes are blocked while queued or active work is present; per-agent choices are locked while the team is busy or resetting. See [Open Task models](plan-team-models.md).
@@ -41,7 +43,11 @@ Local endpoints must be reachable from the app/OpenClaw host, not from the prese
 
 Open **Configure → Advanced → Context limit** to inspect or change the budget. Advanced options start collapsed. The editor retains an existing provider context value or uses 32K for a new provider; it does not infer the model's capacity from its name. Set up local servers with sufficient context before presenting. This setting does not resize Ollama's `num_ctx` or vLLM's server context.
 
-The runtime bounds web excerpts and enables context compaction with a pre-call check. These reduce growth during research but cannot guarantee that every request fits. Generating a large file also adds its code to the conversation, so a context error can occur after the file was saved. Open Task allows one recovery in a fresh conversation using saved files and observed evidence, with focused reads instead of regenerating the whole output. This shares the existing single repair allowance and respects cancellation and the remaining time budget. It does not increase the model context, switch models or reset user data. If recovery fails, inspect the saved partial work, narrow the task or reset the appropriate conversation/scenario. See `scripts/runtime_settings.py` for the current limits.
+The runtime bounds web excerpts and enables context compaction with a pre-call check. Recent-context retention scales to one quarter of the smallest configured context, capped at 8K tokens. Event Brief and Open Task file reads are limited to 120 lines, 6KB per tool result and 24KB per turn; Dylan and Vera have stricter dedicated limits. UTF-8 byte budgets cover multilingual text as well as English. Saved files stay intact, writes and edits remain available, and shortened excerpts disclose missing coverage. These measures reduce context growth but cannot guarantee that every request fits. Generating a large file also adds its code to the conversation, so a context error can occur after the file was saved.
+
+For Dylan's Event Brief missions, the research guard blocks bulk research-file reads, tool-source inspection and arbitrary shell commands. It bounds repeated reads, research calls and retained tool output. Smaller search results, shorter skills and the `evidence` command let Dylan reuse saved excerpts without more network calls.
+
+Dylan's Event Brief missions and Open Task each support one fresh-conversation recovery after a context overflow. Dylan validates saved themes first and repairs only missing work. Open Task reuses saved files and observed evidence, with focused reads instead of regenerating the whole output. Recovery shares each workflow's existing single repair allowance and respects cancellation and the remaining time budget. It does not increase the model context, switch models or reset user data. A second failure stops with partial results. Inspect saved work, narrow the task or reset the appropriate conversation/scenario before trying again. See `scripts/runtime_settings.py` for the current limits.
 
 ## Optional api.cfg
 

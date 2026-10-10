@@ -5,6 +5,10 @@ import re
 EVENT_INTERNAL_INPUTS = {'handoffs.md', 'shared-brief.json'}
 
 
+class PlanInputError(RuntimeError):
+    """Invalid model-selected documents, before any specialist is dispatched."""
+
+
 def internal_team_input(path):
     name = path.rsplit('/', 1)[-1]
     return name in EVENT_INTERNAL_INPUTS or bool(re.match(r'^(?:plan-input|plan|chat)-[0-9a-f]{24}(?:-|\.)', name))
@@ -71,7 +75,7 @@ def validate_assignments(tasks, available, has_images):
         # never resolve arbitrary paths or inspect existing workspace files.
         selected = task.get('inputs', [])
         if any(key not in allowed and key not in earlier_outputs for key in selected):
-            raise RuntimeError('The Captain selected an unavailable document. No specialist was started.')
+            raise PlanInputError('The Captain selected an unavailable document. No specialist was started.')
         if task.get('useImages') and not has_images:
             raise RuntimeError('The Captain selected images that were not attached. No specialist was started.')
         task['inputs'] = [key for key in selected if key in allowed]

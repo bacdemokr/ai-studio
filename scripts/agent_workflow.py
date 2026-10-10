@@ -23,6 +23,10 @@ def prepare(workspace,job,payload,stage):
     contract={'job':job,'files':paths(job),'brief':payload['brief'],'capacity':payload['capacity']}
     if stage==1:
         contract['capacity']={'topics':[{'id':t['id']} for t in payload['capacity']['topics']]}
+        contract['workspaceGuidance']='Inside OpenShell, use /sandbox as the workspace. All files paths below are relative to it. Save directly there; workspace synchronization handles the host copy. Never copy to /var/lib/bac or create host directories.'
+        contract['demosSchema']={'demos':[{'topic':'supplied slot ID','theme':'technical subject','title':'concrete visitor activity','sourceId':'successfully read source ID','action':'participant action','outcome':'visible result','why':'connection to source','proof':'observable success','risk':'limitation','presenterExpertise':'needed skill'}]}
+        contract['validationCommand']='python3 /sandbox/skills/bac-event-tools/scripts/event_agent_tools.py validate-themes'
+        contract['executionGuidance']='Use host=sandbox, workdir=/sandbox and one direct tool command per exec call; no cd, chains or inline Python. Use the supplied schema and validator. Never read the full research JSON or tool source; use the evidence action for bounded saved excerpts. After validation passes, stop.'
         contract['outputGuidance']='Write only demos with the required short fields and sourceId. Each description: one brief phrase, usually 40–80 characters; use fewer when clear, hard limit 600. Never copy articles or search results. Topic IDs are neutral slots, not mandatory search subjects. Choose distinct evidence-backed subjects from retrieved articles. Final response: at most 30 words; do not repeat the JSON.'
     elif stage==2:
         contract['capacity']={k:v for k,v in payload['capacity'].items() if k not in ('schedule','presenterDuty','booths','assumptions')}

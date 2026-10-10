@@ -6,7 +6,7 @@ from time import monotonic
 from browser_capability import BROWSER_LIMIT
 from plan_artifacts import snapshot_files, collect_files
 from webpage_artifacts import DEMO_CODING_INSTRUCTIONS, PAGE_INSTRUCTIONS, html_files, collect_pages
-from plan_inputs import requested_inputs, input_manifest, validate_assignments
+from plan_inputs import requested_inputs, input_manifest, validate_assignments, PlanInputError
 from plan_handoff import required_files, missing_files
 from plan_revision import PLAN_TIME_BUDGET_SECONDS, PlanBudgetExceeded, read_revision, effective_outputs, revision_instructions
 from plan_review import requested_review, include_required_review, review_finished
@@ -89,7 +89,7 @@ def read_plan(answer):
             inputs = task['inputs']
             if (not isinstance(inputs, list) or len(inputs) > 10
                     or any(not isinstance(key, str) for key in inputs) or len(set(inputs)) != len(inputs)):
-                raise RuntimeError('The Captain returned invalid document inputs. No specialist was started.')
+                raise PlanInputError('The Captain returned invalid document inputs. No specialist was started.')
             assignment['inputs'] = inputs
         if 'useImages' in task:
             if type(task['useImages']) is not bool:
@@ -494,7 +494,7 @@ class CollaborationPlans:
                 selected = [t for t in assignments if t['role'] == role] if role else [
                     t for t in assignments if t['role'] in plan.get('calledRoles', [])]
                 keys = {key for t in selected for key in t.get('inputs', [])}
-                if role == 0 and phase == 'Planning':
+                if role == 0 and phase.startswith('Planning'):
                     keys = {item['id'] for item in inputs}  # Already scoped by the user's attachment list.
                 source_context = []
                 preview_budget = 6000 if role == 0 else 0
@@ -629,7 +629,7 @@ class CollaborationPlans:
                      'input rather than innerHTML. Do not present action="#" as a fix for an unwanted submission. '
                      if role == 4 else '') +
                     (('\nDecision output contract: return ONLY a JSON object with summary and tasks (integer role IDs) as specified above.'
-                      if phase == 'Planning' else
+                      if phase.startswith('Planning') else
                       '\nDecision output contract: return ONLY a JSON object with done (boolean), reason (string), and answer when done=true. '
                       'When done=true, include outcome:"complete", "partial", or "unavailable". If any original requirement is unfinished, '
                       'outcome must be "partial" and remaining must list those requirements; never mark a blocker or next-step promise complete. '
@@ -753,6 +753,16 @@ class CollaborationPlans:
                  result=json.dumps({'answer': str(answer), 'files': list(dict.fromkeys(files)), 'activity': getattr(answer, 'activity', None)}))
             if reactions and monotonic() < deadline and plan.get('outcome') != 'unavailable' and not self.stop_checkpoint(job_id):
                 self.run_roundtable(row, payload)
+            elif payload.get('roundtable') and not self.stop_checkpoint(job_id):
+                meeting = payload['roundtable']
+                reason = ('Personal reactions were skipped because the task time limit was reached.'
+                          if reactions and monotonic() >= deadline else
+                          'Personal reactions were skipped because the task ended without an eligible completed result.')
+                meeting.update(status='skipped', reason=reason)
+                replies = meeting.setdefault('replies', {})
+                for member in meeting.get('members', []):
+                    if replies.get(member['key'], {}).get('status') not in ('done', 'error'):
+                        replies[member['key']] = {'status':'skipped', 'reason':reason}
             if not self.stop_checkpoint(job_id):
                 save('BaC collaboration finished', 'The response and any personal reactions are saved.', status='done')
 
@@ -868,7 +878,30 @@ class CollaborationPlans:
                 'Use each chosen role once. No invented agents or changes to the output schema.', 'Planning')
             if answer is None:
                 return
-            plan.update(read_plan(answer))
+            try:
+                selection = read_plan(answer)
+                validate_assignments(selection['tasks'], inputs, bool(payload.get('images')))
+            except PlanInputError as error:
+                # A malformed selector must never grant access or dispatch work.
+                # Correct this control response once in a fresh, bounded session.
+                plan['inputSelectionRecovery'] = {'status':'working'}
+                corrected = invoke(0, 'Correct the initial plan document selections before anyone starts. '
+                    'Return ONLY compact plan JSON with summary and up to three tasks. Each task needs role, task, '
+                    'expected, inputs (an array of available document IDs), and requiredFiles (output paths). '
+                    'Use inputs:[] when no uploaded documents are needed; never null, a string, an object or a future file. '
+                    'Generated handoffs belong in task/expected and requiredFiles, not inputs. Preserve the current '
+                    'user request and explicitly requested independent review. Available document IDs: ' +
+                    json.dumps([item['id'] for item in inputs]) + '\nValidation error: ' + str(error), 'Planning-input-repair')
+                if corrected is None:
+                    return
+                try:
+                    selection = read_plan(corrected)
+                    validate_assignments(selection['tasks'], inputs, bool(payload.get('images')))
+                except RuntimeError:
+                    plan['inputSelectionRecovery']['status'] = 'failed'
+                    raise error
+                plan['inputSelectionRecovery']['status'] = 'corrected'
+            plan.update(selection)
             plan['reviewRequired'] = explicit_review or plan.get('reviewRequired', False)
             try:
                 include_required_review(plan)
@@ -990,6 +1023,9 @@ class CollaborationPlans:
                         'Do not skip a planned Vera review after Cody delivers code: saving or rereading a file does not verify its behavior. '
                         'Keep any testing or verification limitations explicit in the final answer; never imply that a skipped reviewer performed a review. '
                         'A done:false decision starts the NEXT listed specialist, never recalls an earlier specialist. '
+                        'If the next assignment is a requested independent review and the saved deliverable is available, '
+                        'return done:false, readyForNext:true. A review that has not started is pending work, not a blocker '
+                        'or reason for outcome:partial. Do not stop with an answer promising to dispatch the reviewer. '
                         'Include readyForNext:true only if the supplied evidence and files allow that next assignment to proceed. '
                         'If upstream evidence is missing or unusable, set readyForNext:false and explain the blocker; the app stops with a partial result. '
                         'A saved file alone does not prove that its claims are sourced. Read the brief when needed. '
@@ -1084,7 +1120,7 @@ class CollaborationPlans:
                             return
                         plan.update(outcome=check['outcome'], **partial_remaining(check))
                         plan['checks'].append({'afterRole': plan['tasks'][-1]['role'], **check})
-                        finish(check['answer'], reactions=False)
+                        finish(check['answer'], reactions=check['outcome'] == 'complete')
                         return
                     revision = {**requested, 'reason': check['reason'], 'status': 'requested', 'started': time.time()}
                     plan['revision'] = revision

@@ -121,7 +121,8 @@ class PlanInputs(unittest.TestCase):
         self.start()
         with self.assertRaisesRegex(RuntimeError, 'unavailable document'):
             self.app.execute(self.app.next_job())
-        self.assertEqual(len(self.adapter.calls), 1)
+        self.assertEqual(len(self.adapter.calls), 2)
+        self.assertTrue(all(agent.endswith('-r0') for agent,_,_ in self.adapter.calls))
 
     def test_input_copies_removed_on_failure(self):
         self.prepare_inputs()
@@ -193,6 +194,49 @@ class PlanInputs(unittest.TestCase):
                     if path.parent.name in ('bac-event-page', 'bac-nvidia-webpage', 'bac-nvidia-social', 'bac-nvidia-research', 'bac-event-scheduling', 'bac-event-tools'):
                         self.assertIn('SCOPE: Use this skill only', path.read_text())
 
+
+    def test_malformed_document_selection_gets_one_control_only_repair(self):
+        from unittest.mock import patch
+        for bad in (None, 'document-0', ['missing-document']):
+            with self.subTest(bad=bad):
+                self.adapter.plan={'summary':'Summarize requirements','tasks':[{'role':6,'task':'Summarize requirements','inputs':bad}]}
+                original=self.adapter.respond
+                def respond(agent,session,prompt,**kwargs):
+                    if session.endswith('-planning-input-repair'):
+                        self.assertTrue(agent.endswith('-r0'))
+                        self.assertIn('Available document IDs: []',prompt)
+                        self.assertIn('Decision output contract: return ONLY a JSON object with summary and tasks', prompt)
+                        self.assertNotIn('Decision output contract: return ONLY a JSON object with done', prompt)
+                        self.assertIn('No tools are available during this decision.', prompt)
+                        return json.dumps({'summary':'Summarize the provided task','tasks':[{'role':6,'task':'Summarize requirements','inputs':[]}]})
+                    return original(agent,session,prompt,**kwargs)
+                with patch.object(self.adapter,'respond',side_effect=respond):
+                    result=self.start();self.app.execute(self.app.next_job())
+                plan=self.job(result)['payload']['collaboration']
+                self.assertEqual(plan['inputSelectionRecovery']['status'],'corrected')
+                self.assertEqual(plan['calledRoles'],[6])
+
+    def test_input_repair_retains_scoped_document_preview(self):
+        self.prepare_inputs()
+        self.adapter.plan['tasks'] = [{'role': 6, 'task': 'Analyze sales', 'inputs': 'document-0'}]
+        original = self.adapter.respond
+        repaired = []
+        def respond(agent, session, prompt, **kwargs):
+            if session.endswith('-planning-input-repair'):
+                self.assertIn('month,sales', prompt)
+                self.assertNotIn('PRIVATE_NOT_REQUESTED', prompt)
+                self.assertIn('Available document IDs: ["document-0"]', prompt)
+                self.assertIn('No tools are available during this decision.', prompt)
+                repaired.append(session)
+                return json.dumps({'summary': 'Analyze sales', 'tasks': [
+                    {'role': 6, 'task': 'Analyze sales', 'inputs': ['document-0']}]})
+            return original(agent, session, prompt, **kwargs)
+        self.adapter.respond = respond
+        result = self.start('/plan Analyze sales (1).csv')
+        self.app.execute(self.app.next_job())
+        self.assertEqual(len(repaired), 1)
+        self.assertEqual(self.job(result)['payload']['collaboration']['calledRoles'], [6])
+        self.assertEqual(list(self.app.workspace(self.app.crew_owner(self.owner), 0).glob('inbox/plan-input-*')), [])
 
 if __name__ == '__main__':
     unittest.main()

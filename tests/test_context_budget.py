@@ -42,3 +42,25 @@ class ContextBudgetTests(unittest.TestCase):
             self.assertNotIn('private-details',str(result))
             self.assertIsNone(context_failure(p/'state','other','s',0))
             self.assertIsNone(context_failure(p/'state','a','s',9999999999))
+
+    def test_compaction_scales_to_smallest_configured_context(self):
+        for window in (8192, 16384, 32768, 65536, 131072, 262144):
+            for key in ('contextWindow', 'contextTokens'):
+                with self.subTest(window=window, key=key):
+                    config={'models':{'providers':{'test':{'models':[{key:window}]}}}}
+                    apply_context_limits(config)
+                    keep=config['agents']['defaults']['compaction']['keepRecentTokens']
+                    self.assertEqual(keep,min(8192,window//4))
+                    self.assertLess(keep,window//2)
+                    self.assertEqual(apply_context_limits(config),config)
+        config={'models':{'providers':{'large':{'models':[{'contextWindow':131072}]},
+                                     'small':{'models':[{'contextWindow':8192}]}}}}
+        apply_context_limits(config)
+        self.assertEqual(config['agents']['defaults']['compaction']['keepRecentTokens'],2048)
+
+    def test_invalid_model_metadata_does_not_override_context_budget(self):
+        for invalid in (None, '8192', False, -1, 0):
+            with self.subTest(invalid=invalid):
+                config={'models':{'providers':{'test':{'models':[{'contextWindow':invalid}]}}}}
+                apply_context_limits(config)
+                self.assertEqual(config['agents']['defaults']['compaction']['keepRecentTokens'],8192)

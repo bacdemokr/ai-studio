@@ -71,3 +71,15 @@ assert.equal(summary.agents[1].outputReported,true);
 ctx.selectedScenario='event-brief';ctx.selectedCrewRole=0;ctx.crewMission=()=>({created:100,updated:160,status:'done'});
 ctx.syncTeamTotalTime();assert.equal(clockNode.textContent,'Total time: 1m 0s');
 console.log('PASS: repeated turns, missing/zero metrics, parallel duration and Event Brief clock');
+
+// Completed older jobs must not show an invitation as permanently pending.
+const reactions=vm.createContext({escape:String,messageMarkup:String,customSkillMarkup:()=>''});
+vm.runInContext(fn(crew,'roundtableMarkup'),reactions);
+const reactionJob={id:'reaction-test',status:'done',payload:{collaboration:{responseReady:true,outcome:'complete'},roundtable:{status:'invited',members:[{key:'guest',name:'Guest'}],replies:{}}}};
+assert.match(reactions.roundtableMarkup(reactionJob),/No personal reaction was recorded/);
+assert.doesNotMatch(reactions.roundtableMarkup(reactionJob),/Waiting for the results/);
+reactionJob.payload.roundtable.replies.guest={status:'skipped',reason:'Personal reactions were skipped because the task time limit was reached.'};
+assert.match(reactions.roundtableMarkup(reactionJob),/time limit/);
+reactionJob.payload.roundtable.replies.guest={status:'done',answer:'An actual personal reaction.'};
+assert.match(reactions.roundtableMarkup(reactionJob),/An actual personal reaction/);
+console.log('PASS: completed and skipped reactions have truthful terminal labels');

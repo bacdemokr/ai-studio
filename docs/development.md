@@ -7,7 +7,7 @@ Current workflow (October 10, 2026):
 - `preview/stage3-scenarios`: active implementation and rehearsal, including the ping-pong example and subsequent fixes.
 - `dev`: testing snapshot from before the ping-pong example. Keep it unchanged until preview promotion is explicitly agreed.
 - `bac/1001-zurich`: frozen Zurich snapshot for existing event setups.
-- `main` and released tags: unchanged until a release is explicitly agreed. GitHub synchronization is currently deferred.
+- `main` and released tags require explicit release approval. GitHub `bacdemokr/ai-studio` is public; publication there requires a separate request. Spark fixes from its preview branch can be reviewed and merged into GitLab preview without updating `dev` or `main`.
 
 For this preview, use `git switch preview/stage3-scenarios`, then `git pull --ff-only`. Use `./bac start --keep-data` to preserve rehearsal data; plain `./bac start` clears it. Do not switch or merge branches while a demo is running.
 

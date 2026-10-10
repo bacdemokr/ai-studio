@@ -77,7 +77,7 @@ class AgentWorkflowTests(unittest.TestCase):
         return self.studio.state(self.owner)['jobs'][0]
 
 
-    def test_six_themes_and_agent_cli_export_from_shipped_skill(self):
+    def test_three_themes_and_agent_cli_export_from_shipped_skill(self):
         import agent_runtime as runtime
         from event_planner import plan
         with patch.dict(os.environ,{'BAC_DATA_DIR':self.temp.name}), patch.object(runtime,'gateway_config_patch') as publish:
@@ -86,7 +86,7 @@ class AgentWorkflowTests(unittest.TestCase):
             runtime.register('test-scheduling',workspace,{'name':'Alex','persona':'analyst','skills':['event-tools','event-scheduling']},'Operations planner')
             entry=publish.call_args.args[0]['agents']['entries']['test-scheduling']
             self.assertIn('exec',entry['tools']['allow']);self.assertEqual(entry['sandbox']['mode'],'off')
-            b,c=plan({'themeCount':6,'days':2,'attendees':180})
+            b,c=plan({'themeCount':3,'days':2,'attendees':180})
             payload={'brief':b,'capacity':c};agent_workflow.prepare(workspace,'cli-test',payload,2)
             contract=json.loads((workspace/'inbox/agent-task.json').read_text())
             script='skills/bac-event-tools/scripts/event_agent_tools.py'
@@ -140,16 +140,24 @@ class AgentWorkflowTests(unittest.TestCase):
             result = run(workspace, 'read', ids)
         saved = json.loads((workspace/agent_workflow.paths('batch-test')['research']).read_text())
         self.assertTrue(all(s['articleTruncated'] for s in result['sources']))
-        self.assertLessEqual(sum(len(s['article']) for s in result['sources']), 7200)
-        self.assertTrue(all(len(s['article'])<=1800 for s in result['sources']))
+        self.assertLessEqual(sum(len(s['article']) for s in result['sources']), 3600)
+        self.assertTrue(all(len(s['article'])<=1200 for s in result['sources']))
         self.assertTrue(all(len(s['article']) == 15300 for s in saved['sources'] if s['id'] in ids))
         self.assertEqual([s['id'] for s in result['sources']], ids)
         with patch('event_agent_tools.read_article',return_value='Evidence ' * 1700):
             all_sources=run(workspace,'read',[s['id'] for s in research['sources'][:6]])
-        self.assertLessEqual(sum(len(s['article']) for s in all_sources['sources']),7200)
+        self.assertLessEqual(sum(len(s['article']) for s in all_sources['sources']),3600)
         self.assertEqual(len(all_sources['sources']),6)
+        with patch('event_agent_tools.read_article',side_effect=AssertionError('Evidence must not fetch')):
+            evidence=run(workspace,'evidence',ids)
+        self.assertEqual([s['id'] for s in evidence['sources']],ids)
+        self.assertLessEqual(sum(len(s['article']) for s in evidence['sources']),3600)
+        self.assertTrue(all('fullArticleFile' not in s for s in evidence['sources']))
         contract=json.loads((workspace/'inbox/agent-task.json').read_text())
         self.assertEqual(set(contract['capacity']),{'topics'})
+        self.assertEqual(set(contract['demosSchema']['demos'][0]), {'topic','theme','title','sourceId','action','outcome','why','proof','risk','presenterExpertise'})
+        self.assertIn('/sandbox',contract['workspaceGuidance'])
+        self.assertTrue(contract['validationCommand'].endswith(' validate-themes'))
         self.assertLess(len(json.dumps(contract)),5000)
 
 
@@ -166,13 +174,13 @@ class AgentWorkflowTests(unittest.TestCase):
 
     def test_270_minutes_rejects_opening_cluster_and_accepts_spread(self):
         from event_planner import plan
-        b,c=plan({'themeCount':4,'attendees':100,'duration':270,'session':15,'groupSize':5,'startTime':'10:00'})
+        b,c=plan({'themeCount':3,'attendees':75,'duration':270,'session':15,'groupSize':5,'startTime':'10:00'})
         spec=schedule_spec({'brief':b,'capacity':c})
         for booth in spec['booths']:
             booth['days']=[{'day':1,'slots':[0,4,8,12,17],'rotation':[0]}]
         result=compile_schedule(b,c,spec)
-        self.assertEqual(len(result['schedule']),20)
-        self.assertEqual(sum(r['attendees'] for r in result['schedule']),100)
+        self.assertEqual(len(result['schedule']),15)
+        self.assertEqual(sum(r['attendees'] for r in result['schedule']),75)
         self.assertEqual(max(r['end'] for r in result['schedule']),'14:30')
         for cluster in ([0,1,2,3,4],[13,14,15,16,17],[0,1,2,16,17]):
             bad=copy.deepcopy(spec);bad['booths'][0]['days'][0]['slots']=cluster
