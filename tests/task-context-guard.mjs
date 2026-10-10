@@ -86,3 +86,9 @@ for(const [kind,role] of [['plan',4],['plan',5],['crew',1],['crew',3]]) {
  }
 }
 console.log('PASS: 24 owned-workspace path corrections preserve content and never map another owner.');
+
+for(const [kind,role] of [['plan',5],['plan',4],['crew',1]]) {
+ const ctx=context(role,kind),result=persistResult({toolName:'read',message:{isError:true,content:[{type:'text',text:'E'.repeat(100000)}],details:{status:'error',exitCode:1,durationMs:42,raw:'X'.repeat(100000)}}},ctx);
+ assert.equal(result.message.details.exitCode,1);assert.equal(result.message.details.status,'error');assert.equal(result.message.details.durationMs,42);assert.equal(result.message.details.raw,undefined);
+}
+console.log('PASS: 3 bounded error responses preserve failure/exit metadata without retaining raw output.');

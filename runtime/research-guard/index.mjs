@@ -3,6 +3,14 @@ const sessions = new Map();
 const reviews = new Map();
 const TTL = 15 * 60 * 1000;
 // UTF-8 bytes are a conservative bound for multilingual source text too.
+function boundedDetails(details, additions) {
+  const safe = {};
+  for (const key of ['status','exitCode','signal','durationMs','lineCount','totalLines']) {
+    const value=details?.[key];
+    if (typeof value==='number'||typeof value==='boolean'||(typeof value==='string'&&value.length<=500)) safe[key]=value;
+  }
+  return {...safe,...additions};
+}
 function takeText(value, limit) {
   const bytes = Buffer.from(value, 'utf8');
   if (bytes.length <= limit) return value;
@@ -174,7 +182,7 @@ export function persistResult(event, ctx) {
       const note=truncated?'':'\n[Task excerpt shortened; some content omitted. Read only a focused missing section if budget remains. Save useful work; report coverage limits honestly.]';
       truncated=true;return {...block,text:text+note};
     });
-    const result = truncated ? {message:{...event.message,content,details:{truncated:true,coverageLimited:true}}} : undefined;
+    const result = truncated ? {message:{...event.message,content,details:boundedDetails(event.message.details,{truncated:true,coverageLimited:true})}} : undefined;
     if (id) files.results.set(id,result);
     return result;
   }
@@ -190,7 +198,7 @@ export function persistResult(event, ctx) {
       const note=text.length<b.text.length&&!truncated?'\n[Event excerpt shortened; some content omitted. Use only visible evidence. Save themes and validate; do not dump full files.]':'';
       truncated ||= text.length<b.text.length;return {...b,text:text+note};
     });
-    const result={message:{...event.message,content,details:{bounded:true}}};
+    const result={message:{...event.message,content,details:boundedDetails(event.message.details,{bounded:true})}};
     if(id)eventRun.results.set(id,result);
     return result;
   }
@@ -207,7 +215,7 @@ export function persistResult(event, ctx) {
       const note=truncated?'':'\n[Review excerpt shortened. Some source was omitted. Use a focused, unread offset/limit range if budget remains; otherwise report limited coverage. Never claim the entire file was verified.]';
       truncated=true;return {...block,text:text+note};
     });
-    const result = truncated ? {message: {...event.message, content, details: {truncated: true, reviewCoverageLimited: true}}} : undefined;
+    const result = truncated ? {message: {...event.message, content, details: boundedDetails(event.message.details,{truncated: true, reviewCoverageLimited: true})}} : undefined;
     if (id) review.results.set(id, result);
     return result;
   }
