@@ -159,6 +159,13 @@ function openSurface(name,contribution='all'){
   if(name==='policies'){el('policy-panel').open=true;loadPolicy();}
   syncSurface();el('surface-body').scrollTop=0;
   if(!surfaceDialog.open)surfaceDialog.showModal();
+  if(name==='deliverables'&&selectedScenario==='event-brief')requestAnimationFrame(()=>navigateShowcaseContribution('instant'));
 }
 el('surface-close').onclick=closeSurface;
 root.addEventListener('click',e=>{const button=e.target.closest('[data-surface]');if(button)openSurface(button.dataset.surface);});
+el('lanes').addEventListener('click',event=>{
+  const button=event.target.closest('[data-role-output]');
+  if(!button||selectedScenario!=='event-brief')return;
+  const role=Number(button.dataset.roleOutput);
+  if(hasCrewDeliverable(crewMission(),role))openSurface('deliverables',role);
+});

@@ -21,6 +21,18 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
  await page.waitForFunction(()=>!document.querySelector('#studio-room-action').disabled,{},{timeout:30000});
  await page.locator('button[data-surface=deliverables]').click();await page.locator('#studio-event-package .event-showcase-preview').waitFor({state:'visible'});
   await page.screenshot({path:'/tmp/stage3-event-results.png'});await page.locator('#studio-surface-close').click();
+ for(const role of [1,2,3,1]){
+  await page.locator('button[data-surface=control]').click();
+  await page.locator('#studio-lanes [data-role-output="'+role+'"]').click();
+  await page.locator('#studio-event-package').waitFor({state:'visible'});
+  await page.waitForFunction(role=>{
+   const button=document.querySelector('#studio-event-package [data-contribution="'+role+'"]');
+   const section=document.querySelector('#bac-result-'+role),body=document.querySelector('#studio-surface-body');
+   const rect=section?.getBoundingClientRect(),bounds=body.getBoundingClientRect();
+   return button?.getAttribute('aria-pressed')==='true'&&rect&&rect.top<bounds.bottom&&rect.bottom>bounds.top;
+  },role);
+  await page.locator('#studio-surface-close').click();
+ }
  await page.locator('button[data-surface=usage]').click();
  assert.match(await page.locator('#studio-usage-time').innerText(),/Riley/);
  assert.match(await page.locator('#studio-usage-time').innerText(),/Morgan/);
