@@ -29,11 +29,12 @@ function availableAgentName(body){
   return name;
 }
 function updateDraft(){
-  root.querySelectorAll('[data-body]').forEach(b=>{if(b.tagName==='BUTTON')b.setAttribute('aria-pressed',b.dataset.body===draftAvatar.body);});
-  root.querySelectorAll('[data-avatar-color]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.avatarColor===draftAvatar.color));
+  el('body-picker').querySelectorAll('button[data-body]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.body===draftAvatar.body));
+  el('color-picker').querySelectorAll('button[data-avatar-color]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.avatarColor===draftAvatar.color));
   draftAvatar.accessory=el('accessory').value;
   const verbosity='balanced';
-  root.querySelectorAll('[data-tone]').forEach(b=>b.setAttribute('aria-pressed',matchesTonePrompt(b.dataset.tone,creatorPrompt().tonePrompt)));
+  // Status badges elsewhere in the studio are not editor controls.
+  el('tone-picker').querySelectorAll('button[data-tone]').forEach(b=>b.setAttribute('aria-pressed',matchesTonePrompt(b.dataset.tone,creatorPrompt().tonePrompt)));
   window.BacCampus?.setDraft({name:el('name').value.trim()||'Your new agent',...creatorPrompt(),persona,tone:draftTone,verbosity,protection:el('onboarding').querySelector('[name=protection]:checked')?.value||'standard',avatar:{...draftAvatar}});
 }
 function fillCreator(creating){
