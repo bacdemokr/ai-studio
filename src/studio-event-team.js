@@ -98,7 +98,7 @@ function renderEventCrewPassport(){
  const request=j.direct?(j.payload.prompt||'Describe the attached image.'):i===0?crewBriefMessage(j):'';
  const status={queued:'Waiting to start…',running:'Working on your message…',waiting:'Waiting for a decision.',stopping:'Stopping…',cancelled:'Stopped.',error:'This message could not finish.'}[j.status];
  return '<article class="chat-turn">'+(i!==0?handoffs:'')+(request?'<div class="chat-message chat-user"><small>You</small><div>'+escape(request).replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images,j.id)+'</div></div>':'')+(held?'':social)+'<div class="chat-message chat-agent"><small>'+escape(name)+(j.direct?'':' · Event mission')+'</small>'+(held?shieldReplyWait:customSkillMarkup(j.direct?j.result?.activity:j.payload.activity?.[i])+'<div class="chat-prose">'+messageMarkup(answer||(!j.direct&&pending?(i===0?'Your event brief is with the crew.':(i===3&&j.payload.socialDraft?.status==='ready'?'LinkedIn draft ready. Writing the webpage…':'Working on the assigned task…')):status)||'No text reply was returned.')+'</div>'+crewActivityMarkup(j,i)+webpage+(j.direct&&pending?'<div class="chat-progress">'+chatStopButton(j.id,true,j.status==='stopping')+'</div>':''))+'</div>'+(i===0?handoffs+roundtableMarkup(j):'')+'</article>';
- }).join(''):'<p class="chat-empty">'+escape(roles[i][2])+'</p>';
+ }).join(''):'<div class="chat-empty chat-prose">'+messageMarkup(window.BacCrewCatalog[i].event?.description||roles[i][2])+'</div>';
  loadChatImages(log,agentId);
  if(follow)log.scrollTop=log.scrollHeight;else log.scrollTop=top;
 }
