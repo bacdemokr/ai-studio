@@ -150,7 +150,7 @@ async function resetStudio(scope,sourceButton=null){
   if(scope==='bac'||scope==='all'){
    let reset=await api('bac-reset',{scope:scope==='all'?'all':'scenario'},latest.agentId);
    while(reset.resetting){
-    status.textContent='Stopping BaC work and resetting…';
+    status.textContent=scope==='all'?'Stopping all scenarios and resetting…':'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…';
     await new Promise(resolve=>setTimeout(resolve,1000));
     const snapshot=await api('state',undefined,'');
     reset={resetting:!!snapshot.bacResetting};

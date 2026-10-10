@@ -81636,7 +81636,7 @@ function syncCrewComposer(){
  const commandOnly=selectedScenario==='plan'&&selectedCrewRole===0&&/^\s*\/(?:goals?|plans?)\s*$/i.test(el('crew-prompt').value);
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending||commandOnly;
  el('crew-chat-connection').hidden=!blocked;
- el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping BaC work and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':eventPreparing?'Preparing the Event Brief team…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(teamRuntime().teamModel??runtime.model)?'Model not connected. Enable Local or External Endpoint in Settings.':'Run ./bac start on this computer to connect the team runtime.';
+ el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':eventPreparing?'Preparing the Event Brief team…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(teamRuntime().teamModel??runtime.model)?'Model not connected. Enable Local or External Endpoint in Settings.':'Run ./bac start on this computer to connect the team runtime.';
 }
 function renderCrewPassport(){
  syncFileButtons();
@@ -83550,7 +83550,7 @@ async function resetStudio(scope,sourceButton=null){
   if(scope==='bac'||scope==='all'){
    let reset=await api('bac-reset',{scope:scope==='all'?'all':'scenario'},latest.agentId);
    while(reset.resetting){
-    status.textContent='Stopping BaC work and resetting…';
+    status.textContent=scope==='all'?'Stopping all scenarios and resetting…':'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…';
     await new Promise(resolve=>setTimeout(resolve,1000));
     const snapshot=await api('state',undefined,'');
     reset={resetting:!!snapshot.bacResetting};
