@@ -56,7 +56,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
  await page.locator('#studio-bac-reset').click();await page.locator('#studio-team-reset-confirm').click();
  await page.waitForFunction(()=>!document.querySelector('#studio-crew-conversation').textContent.includes('event hello'));
  await page.waitForFunction(()=>document.querySelector('#studio-bac-reset').disabled);
- await page.locator('#studio-config').click();await page.locator('[data-connection-tab=reset]').click();assert(await page.locator('#studio-settings-bac-reset').isDisabled());assert(!await page.locator('#studio-reset-all').isDisabled());await page.locator('#studio-dialog').evaluate(d=>d.close());
+ await page.locator('#studio-config').click();await page.locator('[data-connection-tab=reset]').click();assert(await page.locator('#studio-settings-event-reset').isDisabled());assert(!await page.locator('#studio-settings-plan-reset').isDisabled());assert(!await page.locator('#studio-reset-all').isDisabled());await page.locator('#studio-dialog').evaluate(d=>d.close());
  await choose('plan');assert((await page.locator('#studio-crew-conversation').textContent()).includes('plan hello'));
  assert.deepEqual(errors,[]);console.log('PASS: separate 3D floors, map navigation, direct chat/history and draft isolation, complete Event Brief results, repeated entry, reload and scenario-only Reset.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

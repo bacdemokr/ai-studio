@@ -36,9 +36,9 @@ const active = job => ['queued', 'running', 'waiting', 'stopping'].includes(job.
   async function reset(scenario, all=false) {
     await settings();
     assert((await page.locator('#studio-settings-reset-panel').textContent()).includes(scenario==='plan'?'Open Task':'Event Brief'));
-    await page.locator(all?'#studio-reset-all':'#studio-settings-bac-reset').click();
+    await page.locator(all?'#studio-reset-all':scenario==='plan'?'#studio-settings-plan-reset':'#studio-settings-event-reset').click();
     await waitFor(async()=>{const s=await state(scenario);return !s.bacResetting&&!s.crewChats.length&&(s.crewDocuments||[]).length===0&&(!all||!s.agents.length);}, 'reset finished');
-    await page.waitForFunction(()=>document.querySelector('#studio-settings-bac-reset')?.disabled);
+    await page.waitForFunction(scenario=>document.querySelector(scenario==='plan'?'#studio-settings-plan-reset':'#studio-settings-event-reset')?.disabled,scenario);
     await close();
   }
   async function upload() {
@@ -123,9 +123,10 @@ const active = job => ['queued', 'running', 'waiting', 'stopping'].includes(job.
     await choose('event-brief');
     await page.locator('#studio-crew-prompt').fill('event hello [fixture:slow]');await page.locator('#studio-crew-send').click();
     await page.waitForFunction(()=>document.querySelector('#studio-crew-prompt').disabled);
-    await reset('event-brief');assert.equal((await state('plan')).crewChats.length,cases.length);
+    await choose('plan');await reset('event-brief');assert.equal((await state('plan')).crewChats.length,cases.length);
     console.log('PASS event: reset while active, Open Task history/results preserved');
-    await choose('plan');await page.locator('#studio-crew-prompt').fill('hello [fixture:error]');await page.locator('#studio-crew-send').click();
+    await page.waitForFunction(()=>!document.querySelector('#studio-crew-prompt').disabled);
+    await page.locator('#studio-crew-prompt').fill('hello [fixture:error]');await page.locator('#studio-crew-send').click();
     await waitFor(async()=> (await state('plan')).crewChats.some(j=>j.status==='error'), 'visible model error');
     await page.waitForFunction(()=>!document.querySelector('#studio-crew-prompt').disabled);
     await page.locator('#studio-crew-prompt').fill('hello [fixture:slow]');await page.locator('#studio-crew-send').click();
@@ -141,7 +142,7 @@ const active = job => ['queued', 'running', 'waiting', 'stopping'].includes(job.
     assert.equal(await page.locator('#studio-crew-prompt').isDisabled(),true);
     await choose('event-brief');assert((await state('plan')).crewChats.some(active),'Scenario switch must not stop other work');
     assert.equal(await page.locator('#studio-crew-prompt').isDisabled(),false);
-    await choose('plan');await reset('plan');
+    await reset('plan');assert.equal(await page.locator('#studio-crew-name').textContent(),'Riley');
     assert((await state('event-brief')).crewChats.some(j=>j.status==='done'),'Reset during plan must preserve event history');
     console.log('PASS running plan: switch preserves work, Casey is locked, reset stops it without clearing Event Brief');
     await api('plan','jobs',{kind:'crew-chat',crewRole:0,prompt:'hello [fixture:slow]'});

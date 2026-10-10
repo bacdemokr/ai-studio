@@ -26,15 +26,17 @@ with tempfile.TemporaryDirectory() as d:
   await p.waitForFunction(()=>!document.querySelector('#studio-dialog').open);
   await openReset();
   assert.match(await p.locator('#studio-settings-status').innerText(),/Reset in progress/);
-  for(const id of ['agent-reset','settings-bac-reset','reset-all']){
+  for(const id of ['agent-reset','settings-plan-reset','reset-all']){
    assert(await p.locator('#studio-'+id).isDisabled(),id+' must stay locked while background cleanup runs');
    await p.locator('#studio-'+id).evaluate(e=>e.click());
   }
   await p.waitForTimeout(1100);assert.equal(deletions,2);assert.equal(bacCalls,0);
   complete=true;
-  await p.waitForFunction(()=>!document.querySelector('#studio-settings-bac-reset').disabled);
+  await p.waitForFunction(()=>!document.querySelector('#studio-settings-plan-reset').disabled);
+  if(!await p.locator('#studio-dialog').evaluate(d=>d.open))await openReset();
   assert(await p.locator('#studio-agent-reset').isDisabled());
-  await p.locator('#studio-settings-bac-reset').click();await p.getByText('Stage 3 reset.',{exact:true}).waitFor();assert.equal(bacCalls,1);
+  await p.locator('[data-connection-tab=reset]').click();
+  await p.locator('#studio-settings-plan-reset').click();await p.getByText('Open Task reset.',{exact:true}).waitFor();assert.equal(bacCalls,1);
   await p.locator('#studio-reset-all').click();await p.getByText('All stages reset.',{exact:true}).waitFor();assert.equal(bacCalls,2);
   assert.deepEqual(errors,[]);console.log('PASS: reopened Reset controls remain locked during background cleanup, recover afterward, and preserve stage scope.');
  }finally{await b.close()}

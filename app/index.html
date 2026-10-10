@@ -83332,9 +83332,9 @@ function scenarioHasWork(id=selectedScenario){
 }
 function syncResetButtons(){
  const hasAgents=!!(data.agents||[]).length,hasAnyScenario=(data.scenarios||[]).some(s=>s.hasWork||s.busy);
- for(const id of ['agent-reset','settings-bac-reset','reset-all','bac-reset']){
+ for(const id of ['agent-reset','settings-event-reset','settings-plan-reset','reset-all','bac-reset']){
   const button=el(id);if(!button)continue;
-  const empty=id==='agent-reset'?!hasAgents:id==='reset-all'?!hasAgents&&!hasAnyScenario:!scenarioHasWork();
+  const empty=id==='agent-reset'?!hasAgents:id==='reset-all'?!hasAgents&&!hasAnyScenario:!scenarioHasWork(button.dataset.resetScenario||selectedScenario);
   button.disabled=resetInProgress||!!data.bacResetting||removingAgent||empty;
   button.title=empty?'Nothing to reset':'';
  }
@@ -83350,7 +83350,7 @@ function settingsUtilityPanels(){return `  <section id="studio-settings-location
   <p id="studio-telegram-status" role="status" hidden></p><div id="studio-telegram-controls" hidden><div class="studio-dialog-actions"><button type="button" id="studio-telegram-test" class="studio-secondary">Send test</button><button type="button" id="studio-telegram-disconnect" class="studio-secondary">Disconnect</button></div></div></section>
   <section id="studio-settings-reset-panel" role="tabpanel" aria-labelledby="studio-settings-reset-tab" class="studio-agent-reset" hidden>
    <div class="studio-reset-row"><div><small class="studio-reset-stage">STAGES 01 / 02</small><h3>Hiring &amp; Agent lounge</h3><p>Remove hired agents and their chats, files, and workspaces.</p></div><button type="button" id="studio-agent-reset" class="studio-secondary" aria-label="Remove Stage 1 and 2 agents" ${(data.agents||[]).length?'':'disabled'}>Remove agents</button></div>
-   <div class="studio-reset-row"><div><small class="studio-reset-stage">STAGE ${selectedScenario==='event-brief'?'03-1':'03-2'}</small><h3>${escape(stageScenarios.find(s=>s.id===selectedScenario)?.title||'Multi-Agent demo')}</h3><p>Stop this scenario’s work and clear its chats, documents and results. Other scenarios are preserved.</p></div><button type="button" id="studio-settings-bac-reset" class="studio-secondary" aria-label="Reset Stage 3">Reset scenario</button></div>
+   ${[['event-brief','03-1','Event Brief','event'],['plan','03-2','Open Task','plan']].map(([scenario,stage,title,id])=>`<div class="studio-reset-row"><div><small class="studio-reset-stage">STAGE ${stage}</small><h3>${title}</h3><p>Clear this scenario’s chats, documents and results.</p></div><button type="button" id="studio-settings-${id}-reset" data-reset-scenario="${scenario}" class="studio-secondary" aria-label="Reset ${title}">Reset scenario</button></div>`).join('')}
    <div class="studio-reset-footer"><p>Reset all stages. Model and connection settings are kept.</p><button type="button" id="studio-reset-all" class="studio-danger">Reset all</button></div>
   </section>
 `;}
@@ -83363,7 +83363,7 @@ function confirmTeamReset(sourceButton){
  el('team-reset-cancel').focus();
 }
 
-async function resetStudio(scope,sourceButton=null){
+async function resetStudio(scope,sourceButton=null,scenario=selectedScenario){
  if(resetInProgress||removingAgent||pendingWrites||changingAgent)return;
  resetInProgress=true;removingAgent=true;++refreshVersion;
  const modal=el('dialog'),status=sourceButton?el('team-reset-status'):el('settings-status'),blockClose=e=>e.preventDefault();
@@ -83373,17 +83373,17 @@ async function resetStudio(scope,sourceButton=null){
  let completed=0,total=0,next=agentId,background=false,teamCleared=false;
  const originalSelection=agentId;
  try{
-  const latest=await api('state',undefined,'');
+  const latest=await api('state',undefined,'',scenario);
   const agents=scope==='bac'?[]:latest.agents||[];total=agents.length;
   if(scope==='bac'||scope==='all'){
-   let reset=await api('bac-reset',{scope:scope==='all'?'all':'scenario'},latest.agentId);
+   let reset=await api('bac-reset',{scope:scope==='all'?'all':'scenario'},latest.agentId,scenario);
    while(reset.resetting){
-    status.textContent=scope==='all'?'Stopping all scenarios and resetting…':'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…';
+    status.textContent=scope==='all'?'Stopping all scenarios and resetting…':'Stopping '+(stageScenarios.find(s=>s.id===scenario)?.title||'the scenario')+' and resetting…';
     await new Promise(resolve=>setTimeout(resolve,1000));
-    const snapshot=await api('state',undefined,'');
+    const snapshot=await api('state',undefined,'',scenario);
     reset={resetting:!!snapshot.bacResetting};
    }
-   selectedJob=null;teamCleared=true;
+   if(scope==='all'||scenario===selectedScenario)selectedJob=null;teamCleared=true;
   }
   // Persist every request first. Closing Settings or reloading must not lose
   // the remainder of a bulk deletion while the native runtime drains it.
@@ -83405,7 +83405,7 @@ async function resetStudio(scope,sourceButton=null){
    clearTimeout(comparisonTimer);comparison=null;comparePanel.replaceChildren();delete comparePanel.dataset.batch;
    if(!changingAgent&&(agentId===originalSelection||agents.some(a=>a.key===agentId))){openAgentState(state);fillCreator(true);setRoom('workshop');}
   }
-  status.textContent=scope==='all'?'All stages reset.':scope==='bac'?'Stage 3 reset.':'Lounge agents reset.';
+  status.textContent=scope==='all'?'All stages reset.':scope==='bac'?(stageScenarios.find(s=>s.id===scenario)?.title||'Scenario')+' reset.':'Lounge agents reset.';
   if(background)alert(completed+' agent'+(completed===1?'':'s')+' removed.','success');
  }catch(error){
   const message=(scope==='all'&&teamCleared?'Stage 3 was reset. ':'')+(completed?`${completed} / ${total} removed. `:'')+error.message;
@@ -83420,6 +83420,7 @@ async function resetStudio(scope,sourceButton=null){
   resetInProgress=false;modal.removeEventListener('cancel',blockClose);
   buttons.forEach(([button,disabled])=>button.disabled=disabled);
   if(background&&el('settings-status')&&el('settings-status')!==status)el('settings-status').textContent=status.textContent;
+  render(); // Release composer locks even when the next state poll returns 304.
   syncResetButtons();
   refresh();
  }
@@ -83500,7 +83501,7 @@ async function openModelConnections(){
   };
  }
  el('location-city').value=settings.location?.city||'Zurich';
- el('agent-reset').onclick=()=>resetStudio('lounge');el('settings-bac-reset').onclick=()=>resetStudio('bac');el('reset-all').onclick=()=>resetStudio('all');syncResetButtons();
+ el('agent-reset').onclick=()=>resetStudio('lounge');for(const button of el('settings-reset-panel').querySelectorAll('[data-reset-scenario]'))button.onclick=()=>resetStudio('bac',null,button.dataset.resetScenario);el('reset-all').onclick=()=>resetStudio('all');syncResetButtons();
  async function utilityAction(action){
   if(working||!current())return;
   working=true;paint();

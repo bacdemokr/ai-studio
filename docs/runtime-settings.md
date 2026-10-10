@@ -53,7 +53,7 @@ Startup installs a Git clean filter that stages an empty `api.cfg` while preserv
 
 **Telegram** sends new summaries from agents with the Tech Radar skill only. Ordinary chat and Multi-Agent results are not sent. See [Heartbeat and Telegram](heartbeat.md).
 
-**Reset** offers Remove agents for Stages 1/2, Reset scenario for the selected Stage 3 scenario, and Reset all for both scenarios and hired agents. Model and connection settings remain. The Reset button beside Mission Control also clears only the selected scenario.
+**Reset** offers Remove agents for Stages 1/2, separate Reset scenario buttons for Event Brief and Open Task from any room, and Reset all for both scenarios and hired agents. Model and connection settings remain. The Reset button beside Mission Control also clears only the selected scenario.
 
 ## Access and verification
 
