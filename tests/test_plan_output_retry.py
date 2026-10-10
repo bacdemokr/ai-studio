@@ -88,6 +88,48 @@ class OutputRetryTests(unittest.TestCase):
         self.assertEqual(len(self.attempts),1)
         self.assertNotIn('outputLimitRetry',self.job(result)['payload']['collaboration'])
 
+    def test_context_overflow_recovers_saved_page_without_rewriting_and_continues(self):
+        self.adapter.plan={'summary':'Build then review','tasks':[
+            {'role':5,'task':'Save the survey page','requiredFiles':['artifacts/survey.html']},
+            {'role':4,'task':'Review the saved survey'}]}
+        original=self.adapter.respond
+        calls=[]
+        page='<!doctype html><html><head><title>Survey</title></head><body><h1>Survey</h1>'+('<p>Question</p>'*4000)+'</body></html>'
+        def respond(agent,session,prompt,**kwargs):
+            if agent.endswith('-r5'):
+                calls.append((session,prompt))
+                if session.endswith('-working'):
+                    (self.app.workspace(self.app.crew_owner(self.owner),5)/'artifacts/survey.html').write_text(page)
+                    raise GatewayError('Context filled after successful write','context-overflow')
+                self.assertTrue(session.endswith('-output-retry'))
+                self.assertIn('CONTEXT RECOVERY',prompt)
+                self.assertIn('at most 80 lines',prompt)
+                self.assertIn('artifacts/survey.html',prompt)
+                self.assertNotIn(page,prompt)
+                return 'Saved survey confirmed at artifacts/survey.html. Static inspection only.'
+            return original(agent,session,prompt,**kwargs)
+        self.adapter.respond=respond
+        result=self.start('/goal Build and review a survey webpage');self.app.execute(self.app.next_job())
+        plan=self.job(result)['payload']['collaboration']
+        self.assertEqual(len(calls),2)
+        self.assertEqual(plan['outputLimitRetry']['reason'],'context-overflow')
+        self.assertEqual(plan['outputLimitRetry']['status'],'recovered')
+        self.assertEqual(plan['outcome'],'complete')
+        self.assertEqual(plan['calledRoles'],[5,4])
+        files=plan['outputs']['5']['files']
+        self.assertEqual(len(files),1)
+        self.assertEqual((self.app.workspace(self.app.crew_owner(self.owner))/files[0]).read_text(),page)
+        self.assertFalse(plan['outputs']['5'].get('incomplete'))
+
+    def test_repeated_context_overflow_stops_with_partial_files(self):
+        self.install_failure(reason='context-overflow',always=True)
+        result=self.start();self.app.execute(self.app.next_job())
+        plan=self.job(result)['payload']['collaboration']
+        self.assertEqual(len(self.attempts),2)
+        self.assertEqual(plan['outputLimitRetry']['status'],'failed')
+        self.assertEqual(plan['outcome'],'partial')
+        self.assertTrue(plan['outputs']['7']['files'])
+
     def test_captain_can_retry_compact_decision(self):
         self.install_failure(captain=True)
         result=self.start();self.app.execute(self.app.next_job())

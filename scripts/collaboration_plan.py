@@ -421,15 +421,22 @@ class CollaborationPlans:
                 try:
                     return invoke_locked(role, instruction, phase)
                 except GatewayError as error:
-                    if error.reason not in ('output-limit', 'tool-call-output-limit', 'unexecuted-tool-call') or plan.get('outputLimitRetry') or plan.get('handoffRecovery') or plan.get('revision') or self.stop_checkpoint(job_id) or min(deadline, research_deadline if role == 8 else deadline) - monotonic() < 30:
+                    if error.reason not in ('output-limit', 'tool-call-output-limit', 'unexecuted-tool-call', 'context-overflow') or plan.get('outputLimitRetry') or plan.get('handoffRecovery') or plan.get('revision') or self.stop_checkpoint(job_id) or min(deadline, research_deadline if role == 8 else deadline) - monotonic() < 30:
                         raise
                     retry = {'role': role, 'phase': phase, 'status': 'working', 'reason': error.reason, 'started': time.time()}
                     plan['outputLimitRetry'] = retry
-                    save('Casey · Requesting a shorter retry',
-                         roster[role]['name'] + ' could not complete a valid model response or file write. One shorter retry will use saved work.')
+                    context_recovery = error.reason == 'context-overflow'
+                    save('Casey · Resuming saved work' if context_recovery else 'Casey · Requesting a shorter retry',
+                         roster[role]['name'] + (' reached the context limit. One fresh conversation will use saved files and evidence.' if context_recovery else
+                         ' could not complete a valid model response or file write. One shorter retry will use saved work.'))
                     try:
                         answer = invoke_locked(role, instruction +
-                            '\nOUTPUT-LIMIT RECOVERY: Casey requests one concise retry. Inspect the saved files listed below first. '
+                            ('\nCONTEXT RECOVERY: The previous conversation filled up, possibly after saving the deliverable. '
+                             'This is a fresh conversation, not a restart of the task. Prior completed tool calls must not be repeated. '
+                             'Use the saved files and observed evidence supplied below; do not assume discarded conversation details. '
+                             'Inspect only relevant sections with explicit read offset and limit (at most 80 lines per read). '
+                             'Never load the entire generated page or copy its code into your reply. '
+                             if context_recovery else '\nOUTPUT-LIMIT RECOVERY: Casey requests one concise retry. Inspect the saved files listed below first. ') +
                             'Keep completed work; do not repeat successful searches or writes. Finish only the missing core requirement '
                             'with small targeted edits. Skip optional polish. Save a complete minimal deliverable before writing a '
                             'short summary (at most 100 words). If the saved deliverable already satisfies the assignment, '
@@ -444,8 +451,10 @@ class CollaborationPlans:
                     except Exception as retry_error:
                         if isinstance(retry_error, GatewayError) and retry_error.reason == 'output-limit':
                             retry_error.args = ('The model reached its output limit again after one concise retry. Saved work is preserved; no further retry will run.',)
+                        elif isinstance(retry_error, GatewayError) and retry_error.reason == 'context-overflow':
+                            retry_error.args = ('The model reached its context limit after one recovery attempt. Saved work is preserved; narrow the task before trying again.',)
                         retry['status'] = 'failed'
-                        save('Shorter retry did not finish', 'Saved work is preserved; no further output-limit retry will run.')
+                        save('Recovery did not finish', 'Saved work is preserved; no further automatic retry will run.')
                         raise
                     finally:
                         retry['finished'] = time.time()

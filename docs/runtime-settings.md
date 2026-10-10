@@ -41,7 +41,7 @@ Local endpoints must be reachable from the app/OpenClaw host, not from the prese
 
 Open **Configure → Advanced → Context limit** to inspect or change the budget. Advanced options start collapsed. The editor retains an existing provider context value or uses 32K for a new provider; it does not infer the model's capacity from its name. Set up local servers with sufficient context before presenting. This setting does not resize Ollama's `num_ctx` or vLLM's server context.
 
-The runtime bounds web excerpts and enables context compaction with a pre-call check. These reduce growth during research but cannot guarantee that every request fits. A large document, accumulated conversation or model-specific limit can still cause a failure. Inspect saved work, narrow the task or reset the appropriate conversation/scenario before trying again. See `scripts/runtime_settings.py` for the current limits.
+The runtime bounds web excerpts and enables context compaction with a pre-call check. These reduce growth during research but cannot guarantee that every request fits. Generating a large file also adds its code to the conversation, so a context error can occur after the file was saved. Open Task allows one recovery in a fresh conversation using saved files and observed evidence, with focused reads instead of regenerating the whole output. This shares the existing single repair allowance and respects cancellation and the remaining time budget. It does not increase the model context, switch models or reset user data. If recovery fails, inspect the saved partial work, narrow the task or reset the appropriate conversation/scenario. See `scripts/runtime_settings.py` for the current limits.
 
 ## Optional api.cfg
 
