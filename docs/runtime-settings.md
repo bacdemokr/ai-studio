@@ -41,7 +41,7 @@ Local endpoints must be reachable from the app/OpenClaw host, not from the prese
 
 Open **Configure → Advanced → Context limit** to inspect or change the budget. Advanced options start collapsed. The editor retains an existing provider context value or uses 32K for a new provider; it does not infer the model's capacity from its name. Set up local servers with sufficient context before presenting. This setting does not resize Ollama's `num_ctx` or vLLM's server context.
 
-The runtime bounds web excerpts and enables context compaction with a pre-call check. These reduce growth during research but cannot guarantee that every request fits. A large document, accumulated conversation or model-specific limit can still cause a failure. Inspect saved work, narrow the task or reset the appropriate conversation/scenario before trying again. See `scripts/runtime_settings.py` for the current limits.
+The runtime bounds web excerpts and enables context compaction with a pre-call check. These reduce growth during research but cannot guarantee that every request fits. A large document, accumulated conversation or model-specific limit can still cause a failure. Dylan gets one fresh-context recovery for an Event Brief context overflow: validate saved themes first, reuse successful research and repair only missing work. This shares the existing one-retry allowance with output-limit recovery; a second failure stops. Other context failures still require inspecting saved work, narrowing the task or resetting the appropriate conversation/scenario before trying again. See `scripts/runtime_settings.py` for the current limits.
 
 ## Optional api.cfg
 
