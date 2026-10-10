@@ -142,7 +142,7 @@ function syncComposer(){
   el('chat-connect').hidden=radar||!unavailable||(runtime.gateway&&settingsButton.hidden);
   el('chat-connect').textContent=!runtime.gateway?'Retry connection':'Connect model';
   el('chat-connect').disabled=runtimeRetrying;
-  el('prompt').placeholder=data.deleting?'This agent is paused for deletion…':radar?'Heartbeat updates only':!runtime.gateway?'Waiting for the agent runtime…':!runtime.model?'Connect a model to message your agent…':'Message your agent…';
+  el('prompt').placeholder=data.deleting?'This agent is paused for deletion…':radar?'':!runtime.gateway?'Waiting for the agent runtime…':!runtime.model?'Connect a model to message your agent…':'Message your agent…';
   el('equipped').querySelectorAll('button').forEach(button=>button.disabled=blocked);
 }
 el('chat-connect').onclick=connectionAction;
