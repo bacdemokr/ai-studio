@@ -1282,6 +1282,16 @@ body{margin:0;padding:0;width:100%;max-width:none}
 #studio-team-total-time{margin:0;color:#b9d88a;font:500 13px/1.4 Arial,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
 #studio-team-total-time[hidden]{display:none}
 
+.studio-radar-info{min-width:0}
+.studio-radar-heading{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px}
+.studio-radar-monitor>button{flex-shrink:0}
+.studio-heartbeat-status{display:inline-flex;align-items:center;gap:6px;max-width:100%;box-sizing:border-box;padding:4px 8px;border:1px solid #80bedd30;border-radius:7px;background:#80bedd0d;color:#a7cee3;font-size:12px;font-weight:500;line-height:1.4;overflow-wrap:anywhere}
+.studio-heartbeat-status::before{content:"";width:5px;height:5px;flex-shrink:0;border-radius:50%;background:currentColor}
+.studio-heartbeat-status[data-tone=active]{color:#b3d68b;background:#a1d65e0d;border-color:#a1d65e30}
+.studio-heartbeat-status[data-tone=paused]{color:#aab8c3;background:#aab8c308;border-color:#aab8c324}
+.studio-heartbeat-status[data-tone=attention]{color:#e3c28a;background:#e3c28a0d;border-color:#e3c28a30}
+.studio-heartbeat-status[data-tone=error]{color:#e9a49a;background:#e9a49a0d;border-color:#e9a49a30}
+
 .event-templates{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:24px 0 28px}
 #studio-dialog .event-templates button{display:flex;flex-direction:column;text-align:left;background:#14212c;color:#eef4fa;border:1px solid #455d6d;border-radius:5px;padding:17px;gap:10px;min-width:0}
 #studio-dialog .event-templates button[aria-pressed=true]{border-color:#76b900;box-shadow:inset 0 3px #76b900;background:#1b2924}
@@ -81152,7 +81162,10 @@ render();
     el('agent-policy').disabled=!!data.deleting;
     let monitor=el('radar-monitor');if(!monitor){monitor=document.createElement('div');monitor.id='studio-radar-monitor';monitor.className='studio-radar-monitor';el('agent-policy').after(monitor);}
     const watch=data.techRadar;monitor.hidden=!watch;
-    if(watch){monitor.innerHTML='<span><b>Heartbeat</b> · '+escape(watch.paused?'Paused':watch.state)+'<small>Checks every 20 seconds'+(watch.lastChecked?' · Last checked '+new Date(watch.lastChecked*1000).toLocaleTimeString(): '')+'</small></span><button type="button" class="studio-secondary">'+(watch.paused?'Resume':'Pause')+'</button>';const button=monitor.querySelector('button');button.disabled=!!data.deleting;button.onclick=async()=>{button.disabled=true;try{await api('heartbeat',{paused:!watch.paused});await refresh();}catch(error){alert(error.message,'error');button.disabled=false;}};}
+    if(watch){
+      const status=watch.paused?'Paused':watch.state||'preparing';
+      const tone=watch.paused||status==='paused'?'paused':/failed/.test(status)?'error':/unavailable|approval|delayed/.test(status)?'attention':status==='watching'?'active':'waiting';
+      monitor.innerHTML='<div class="studio-radar-info"><div class="studio-radar-heading"><b>Heartbeat</b><span class="studio-heartbeat-status" data-tone="'+tone+'">'+escape(status.charAt(0).toUpperCase()+status.slice(1))+'</span></div><small>Checks every 20 seconds'+(watch.lastChecked?' · Last checked '+new Date(watch.lastChecked*1000).toLocaleTimeString(): '')+'</small></div><button type="button" class="studio-secondary">'+(watch.paused?'Resume':'Pause')+'</button>';const button=monitor.querySelector('button');button.disabled=!!data.deleting;button.onclick=async()=>{button.disabled=true;try{await api('heartbeat',{paused:!watch.paused});await refresh();}catch(error){alert(error.message,'error');button.disabled=false;}};}
 
     el('edit-agent').disabled=!!data.deleting;el('send').disabled=!!data.deleting;
     if(data.deleting){const waiting=data.agents?.find(a=>a.key===agentId)?.deletionWaiting;el('task-state').textContent=waiting?'DELETING':'DELETION NEEDS ATTENTION';el('task-summary').textContent=waiting?'Stopping work. This agent will be removed automatically after the current call ends.':'Cleanup could not finish. Retry Delete agent.';}
