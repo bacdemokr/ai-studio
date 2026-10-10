@@ -79230,7 +79230,7 @@ function createScene() {
   let azimuth=.43,elevation=.76,zoom=1,drag=null,moved=false;
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
   let motion=!reduced.matches,visible=true,lastFrame=0,clock=0,phase=-2,state=snapshot,activeSelection=selected;
-  let lost=false,lastKey='',lastActive=-1,lastJob=null;
+  let lost=false,sceneReady=false,lastKey='',lastActive=-1,lastJob=null;
   scene.add(new THREE.HemisphereLight(0xf4f7ff,0x161c26,1.65));
   const sun=new THREE.DirectionalLight(0xffffff,3.0);sun.position.set(-5,15,8);sun.castShadow=true;
   sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-12;sun.shadow.camera.right=12;sun.shadow.camera.top=10;sun.shadow.camera.bottom=-10;sun.shadow.normalBias=.035;scene.add(sun);scene.add(sun.target);
@@ -79904,9 +79904,13 @@ const draftRing=ring(workshopRoom,0,.345,.5,1.57,0x76b900);
 for(const x of [-4.5,4.5]){box(workshopRoom,x,.75,-2.2,1.25,1.5,.85,0x314356);for(let y=.25;y<1.4;y+=.22)box(workshopRoom,x,y,-1.765,1.0,.065,.02,0x768d9f);box(workshopRoom,x+.42,1.32,-1.74,.08,.08,.02,0x76b900,true);}
 const workBrand=displayTitle(workshopRoom,'Welcome to Build-a-Claw!',0,.025,3.25,7.6,.60,'#c1d0de');workBrand.rotation.x=-Math.PI/2;
 function setDraft(profile){
-  draftProfile=profile;const avatar={...(profile.avatar||avatarDefaults[0]),protection:profile.protection||'standard'},key=JSON.stringify(avatar);if(key===draftKey)return;draftKey=key;
+  draftProfile=profile;const avatar={...(profile.avatar||avatarDefaults[0]),protection:profile.protection||'standard'},key=JSON.stringify(avatar);if(key===draftKey)return;
+  const next=createCharacter(avatar);next.group.scale.setScalar(2.05);next.group.position.set(0,.35,.5);
   if(draftRig){workshopRoom.remove(draftRig.group);clearGeometry(draftRig.group);}
-  draftRig=createCharacter(avatar);draftRig.group.scale.setScalar(2.05);draftRig.group.position.set(0,.35,.5);workshopRoom.add(draftRig.group);draftRing.material=mat(draftRig.color,true);
+  draftRig=next;draftKey=key;workshopRoom.add(draftRig.group);draftRing.material=mat(draftRig.color,true);
+  // Input feedback must not wait for the ambient animation loop to resume.
+  // The initial draft is built before the camera and room layout are ready.
+  if(sceneReady&&!lost&&!document.hidden&&!root.hidden&&!studioDialog?.open&&viewport.clientWidth)renderer.render(scene,camera);
 }
 // Saved profile arrival is visual only; native runtime registration still happens on Run.
 let arrival=null;
@@ -80881,7 +80885,7 @@ function animateProtection(now){
     animateProtection(now);
     renderer.render(scene,camera);
   }
-  setScenario('plan');motionButton();resize();update(snapshot,0);requestAnimationFrame(animate);root.dataset.renderer='webgl';
+  setScenario('plan');motionButton();resize();update(snapshot,0);sceneReady=true;requestAnimationFrame(animate);root.dataset.renderer='webgl';
   return {resize,update,setRoom,setScenario,setScenarioStatus,scenarios:showScenarios,setCollection,observeProtection,observeExternalActivity,protectionReplyDelay,setDraft,welcomeAgent,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',protectionHits:[...protectionHits.values()].map(h=>({id:h.event.id,owner:h.event.owner,role:h.event.role,action:h.event.action,source:h.event.source,globeRotation:h.earth?.rotation.y,visible:h.group.visible,animated:motion&&h.phase!=='blocked',phase:h.phase})),roundtable:roundtableInfo(),arrival:arrival?{key:arrival.key,avatar:{...arrival.rig.appearance},phase:arrival.time<1.8?'loading':'walking',position:arrival.rig.group.position.toArray()}:null,room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,draftShield:!!draftRig?.body.getObjectByName('openshell-shield'),crewExchange:robots.map((r,role)=>({role,visible:r.robot.visible,phase:r.exchange,wanted:r.wanted})),deskAssignments:[...deskAssignments],crewHomes:robots.map(r=>r.home.toArray()),selectedTeam:state.crewMission?.enabledRoles||[0],crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,captain:{position:robots[0].robot.position.toArray(),job:captainJob,received:[...receivedDocuments],assigned:[...assignedDocuments],pending:documentQueue.map(d=>({...d})),inFlight:documentFlight?{...documentFlight}:null},robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
 }
 

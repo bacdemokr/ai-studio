@@ -30,9 +30,13 @@ const draftRing=ring(workshopRoom,0,.345,.5,1.57,0x76b900);
 for(const x of [-4.5,4.5]){box(workshopRoom,x,.75,-2.2,1.25,1.5,.85,0x314356);for(let y=.25;y<1.4;y+=.22)box(workshopRoom,x,y,-1.765,1.0,.065,.02,0x768d9f);box(workshopRoom,x+.42,1.32,-1.74,.08,.08,.02,0x76b900,true);}
 const workBrand=displayTitle(workshopRoom,'Welcome to Build-a-Claw!',0,.025,3.25,7.6,.60,'#c1d0de');workBrand.rotation.x=-Math.PI/2;
 function setDraft(profile){
-  draftProfile=profile;const avatar={...(profile.avatar||avatarDefaults[0]),protection:profile.protection||'standard'},key=JSON.stringify(avatar);if(key===draftKey)return;draftKey=key;
+  draftProfile=profile;const avatar={...(profile.avatar||avatarDefaults[0]),protection:profile.protection||'standard'},key=JSON.stringify(avatar);if(key===draftKey)return;
+  const next=createCharacter(avatar);next.group.scale.setScalar(2.05);next.group.position.set(0,.35,.5);
   if(draftRig){workshopRoom.remove(draftRig.group);clearGeometry(draftRig.group);}
-  draftRig=createCharacter(avatar);draftRig.group.scale.setScalar(2.05);draftRig.group.position.set(0,.35,.5);workshopRoom.add(draftRig.group);draftRing.material=mat(draftRig.color,true);
+  draftRig=next;draftKey=key;workshopRoom.add(draftRig.group);draftRing.material=mat(draftRig.color,true);
+  // Input feedback must not wait for the ambient animation loop to resume.
+  // The initial draft is built before the camera and room layout are ready.
+  if(sceneReady&&!lost&&!document.hidden&&!root.hidden&&!studioDialog?.open&&viewport.clientWidth)renderer.render(scene,camera);
 }
 // Saved profile arrival is visual only; native runtime registration still happens on Run.
 let arrival=null;
