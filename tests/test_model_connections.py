@@ -177,7 +177,7 @@ class LocalDiscoveryTests(unittest.TestCase):
         env = patch.dict(os.environ, {'BAC_DATA_DIR':temp.name})
         env.start(); self.addCleanup(env.stop)
         connections._checks.clear(); connections._pending.clear(); connections._discovered.clear()
-        connections.initialize()
+        connections.persist(connections.read())
         background = patch.object(connections, 'threading')
         self.thread = background.start().Thread; self.addCleanup(background.stop)
 
