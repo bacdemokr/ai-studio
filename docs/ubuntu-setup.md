@@ -53,19 +53,19 @@ This applies to the app's user services, not the lifecycle of an independently i
 
 For the project's Qwen3.6 NVFP4 vLLM launch example and the recommended `enable_thinking` setting, see [Qwen3.6 with vLLM](qwen3-vllm.md).
 
-Open **http://localhost:8080 → Settings → Model → Local / on-prem**. The endpoint fields open automatically for this provider.
+Open **http://localhost:8080 → Settings → Model → Local → Configure**.
 
 | Server on the Ubuntu host | API endpoint | Model ID | API key |
 | --- | --- | --- | --- |
-| Ollama | `http://127.0.0.1:11434/v1` | Choose an installed model via **Load models** | Leave blank for standard local Ollama |
+| Ollama | `http://127.0.0.1:11434/v1` | Search and choose an installed model | Leave blank for standard local Ollama |
 | vLLM / another compatible server | `http://127.0.0.1:8000/v1` (use its actual port) | Choose its served model ID | Blank unless your server requires one |
 | Another machine on the private network | `http://192.168.1.50:8000/v1` (example) | Choose its served model ID | As configured on that server |
 
-Use **Load models**, select a text model with working tool calling, then **Connect model**. There is one endpoint for all agents. Local endpoints accept localhost or a private IP; arbitrary DNS names are not currently supported. Local/private HTTP requests bypass environment proxy settings. Hosted providers keep their normal proxy behavior.
+Search the **Model** field, select a text model with working tool calling, then **Connect & enable**. Under **Stage connections**, choose which stages use Local. Local endpoints accept localhost or a private IP; arbitrary DNS names are not currently supported. Local/private HTTP requests bypass environment proxy settings. Hosted providers keep their normal proxy behavior.
 
 With Ollama running in Docker, publish its API to the host's loopback interface, for example `-p 127.0.0.1:11434:11434`. The app's `127.0.0.1` refers to Ubuntu, not your laptop or the container. GPU access belongs to the model container; verify it using the [official Ollama Docker instructions](https://docs.ollama.com/docker) and `ollama ps` (inside the container if applicable). The app does not install the NVIDIA Container Toolkit.
 
-**Context must match on both sides.** The app defaults to 32,768 tokens. Its Context limit describes the server's capacity; it does not configure Ollama's `num_ctx`. Configure the model server for that context, or lower the app setting to its actual supported value (at least 8,192). Ollama supports a model-specific `Modelfile` with `PARAMETER num_ctx 32768`; see [Ollama's OpenAI compatibility guide](https://docs.ollama.com/api/openai-compatibility#setting-the-local-context-size). The [upstream request conversion](https://github.com/ollama/ollama/blob/main/openai/openai.go) maps output-token limits separately from context. A model that lists successfully can still lack reliable tool calling or enough GPU memory for concurrent work.
+**Context must match on both sides.** The app defaults to 32,768 tokens. Its Context limit describes the server's capacity; it does not configure Ollama's `num_ctx`. Configure the model server for the app’s context. The compact editor retains existing context settings but does not expose a context field; see [context and output budgets](runtime-settings.md#context-and-output-budgets). Ollama supports a model-specific `Modelfile` with `PARAMETER num_ctx 32768`; see [Ollama's OpenAI compatibility guide](https://docs.ollama.com/api/openai-compatibility#setting-the-local-context-size). The [upstream request conversion](https://github.com/ollama/ollama/blob/main/openai/openai.go) maps output-token limits separately from context. A model that lists successfully can still lack reliable tool calling or enough GPU memory for concurrent work.
 
 API keys, when used, remain in memory and require reconnecting after tab refresh/closure or app restart. A local endpoint without a key has no credential to re-enter; its saved endpoint/model remain usable while the model server and agent gateway are reachable.
 

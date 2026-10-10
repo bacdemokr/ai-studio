@@ -3,12 +3,16 @@ October 8, 2026
 
 These are example requests for **3-2 Open Task**, not additional rooms or new execution modes. Screenshots and timings below are Benjamin's observed NVIDIA Inference API runs. They have not been benchmarked on local Qwen here; endpoint load and task size change the timing.
 
-- **Travel:** requires live weather and web access to help anyone (me, you, my cousin,...) plan a Travel. 
-- **Drone research:** requires internet access and produces a research dashboard, to help some technical SOAT report creation.
-- **Store email buisness review:** upload the short `.txt` ('like an email') faking a past discussion between different managers and target is to determine and create a nice dashboard summarizing the current status of that virtual company
-- **Simple Ping-Pong:** a coding workload, for developper or not...classic, easy and fast. agent in coding, UI
+| Example | Audience | Internet needed for task tools? |
+| --- | --- | --- |
+| Travel | Personal planning | Yes: live weather and attractions |
+| Drone research | Technical audience | Yes: source research |
+| Store email review | Managers and business teams | No, when using only the supplied email |
+| Ping-pong | Coding / general audience | No, for a self-contained game |
 
+For offline use, the model must also run locally and be prepared before the demo. Select **Local** for Open Task under **Settings → Model → Stage connections**. Rehearse the exact prompt and inspect the generated result; the recorded API timings below are not local-model benchmarks.
 
+Send these prompts to **Casey in 3-2 Open Task** with `/goal`. Attach the sample email to that conversation before the business example. Open **Usage & time** after a run to compare tokens and elapsed time. The traces below record earlier runs; current team selection and recovery decisions may differ.
 
 ## Table of contents
 

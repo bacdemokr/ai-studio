@@ -1,68 +1,73 @@
 # Studio settings
 
-Open the Settings gear at the top right on localhost or the host’s LAN IP and select **Model**. Configure Local and/or External Endpoint, search for a text model with tool calling, then select a connection for Hiring/Lounge, Event Brief and Open Task. Open Task also supports per-agent NVIDIA model choices in its specialist roster. Each agent retains its own persona, tools, memory and protection settings. Pending missions must finish or be cancelled before shared settings change.
+Open the Settings gear on localhost or the host's trusted LAN address. **Model**, **Location**, **Telegram** and **Reset** use the same dialog size.
 
-| Provider | Default base URL | Native OpenClaw API |
+## Model connections
+
+1. Enable **Local** and/or **External Endpoint**, then choose **Configure**.
+2. Select the provider and search the **Model** field. The catalogue loads automatically; there is no separate Load models button.
+3. Choose **Connect & enable**.
+4. Under **Stage connections**, choose a connection for Hiring & Agent lounge, Event Brief and Open Task, then **Save changes**.
+
+With both connections ready, the initial defaults prefer Local for Stages 1/2 and External for Stage 3. Saved manual choices take precedence. If the preferred connection becomes unavailable, new requests use the other ready connection. If neither is ready, the app shows **Model not connected**. Active model requests are not replayed on another connection.
+
+Open Task shows a warning when using Local because complex tasks may take longer or produce less reliable results. Event Brief supports Local without that warning. Starting Studio or selecting Local does not start a model server; use `./bac vllm` or an existing server first.
+
+| Provider | Default endpoint | OpenClaw API format |
 | --- | --- | --- |
 | NVIDIA Inference (Employee only) | `https://inference-api.nvidia.com/v1` | `openai-completions` |
 | OpenAI | `https://api.openai.com/v1` | `openai-responses` |
 | Anthropic | `https://api.anthropic.com` | `anthropic-messages` |
 | Local / on-prem | `http://127.0.0.1:8000/v1` | `openai-completions` |
 
-NVIDIA keys come from [key management](https://inference.nvidia.com/key-management). Model IDs depend on the key's entitlement, so the app retrieves them instead of hardcoding a model catalogue. The explicit NVIDIA endpoint alias `https://inference.nvidia.com/v1` can also be entered under Connection options. Credentials never follow HTTP redirects. Local endpoints accept localhost or a private IP, ending in `/v1`; local/private app requests bypass environment HTTP proxies. Ollama normally uses `http://127.0.0.1:11434/v1` with no key. Its model ID must match an installed model returned by Load models. See [Ubuntu setup](ubuntu-setup.md).
+External endpoints are fixed in the editor. A verified reusable key is disabled and labelled with its source, such as **API key verified · api.cfg**. New keys entered in Settings last for the browser tab's credential lease. A validated host-saved NVIDIA key can supply all stages after refresh. See [credential storage](session-credentials.md).
 
-The context limit defaults to 32,768 tokens and must match the chosen model server. It declares capacity to OpenClaw; it does not configure Ollama’s server-side `num_ctx`. Model listing checks access without generating a completion; it does not guarantee that every listed model supports the agent's tool calls. The readiness check currently requires the selected ID to appear in the model list. Anthropic lists up to 1,000 models; the dialog indicates if more exist.
+Local endpoints must be reachable from the app/OpenClaw host, not from the presenter's browser computer. Use localhost or a private IP ending in `/v1`. Ollama normally uses `http://127.0.0.1:11434/v1`. The selected model must appear in the server's catalogue and support the tools needed by the demo. Readiness verifies model availability, not successful completion of every task.
 
-Set the default city in Settings → Location. Supply task-specific requirements in Casey's Open Task `/plan` message. Event Brief uses its own Plan an event form for dates, venue and event requirements.
+## Scenario models
 
-## Stage 3 connection and models
+- **3-1 Event Brief:** Riley, Dylan, Alex and Morgan all use the selected connection model.
+- **3-2 Open Task:** an external NVIDIA connection supports per-agent model choices. Expand **Standby specialists**, click an agent's model, search and select. Changes save immediately. Local and other providers use the shared connection model for the whole team.
 
-`./bac start` optionally loads the NVIDIA inference key from `api.cfg`. Empty, rejected or unreachable credentials do not block Studio from starting; configure Local or External Endpoint in Settings instead. Valid keys are checked with a small inference request and saved on the host. Browser refreshes do not clear this host key. To replace it, edit `api.cfg` and restart with `./bac start --keep-data` if existing runtime data should be preserved.
+**Models & connection** opens these shared settings. Connection changes are blocked while queued or active work is present; per-agent choices are locked while the team is busy or resetting. See [Open Task models](plan-team-models.md).
 
-Stage 3's **Models & connection** opens the shared Model settings. Event Brief uses its selected connection model for the entire team. For Open Task with NVIDIA, click the model beside each agent in **Standby specialists** to search and save a different model. Other external providers and Local use the selected connection model. Model changes apply to new requests.
+## Context and output budgets
 
-The Git clean filter installed by startup keeps the tracked `api.cfg` empty while preserving its local contents. Configure it with `bash scripts/setup-key-filter.sh` before editing the key if you plan to use Git before the first startup. Release packages contain an empty placeholder.
+- **Context: 32,768 tokens by default.** This is the capacity the demo configures for one agent session: instructions, conversation, tool results and room for the reply. Agents have separate sessions even when they use the same model.
+- **Output: at most 16,384 tokens per response.** Shared connections use `min(16,384, context / 2)`. For example, a 16K context allows at most 8K output. This is a cap, not a target reply length.
+- These are application settings, not fixed OpenClaw or OpenShell limits. The model server must support the configured context and output. A larger-capacity model does not require increasing the demo budget.
 
-## Storage and access
+The compact editor keeps context configuration out of the normal workflow. It retains an existing provider context value or uses 32K for a new provider; it does not infer the model's capacity from its name. Set up local servers with sufficient context before presenting. This setting does not resize Ollama's `num_ctx` or vLLM's server context.
 
-Non-secret preferences live at `$BAC_DATA_DIR/host-settings.json`. Stages 1 and 2 API keys exist only in the app process memory, leased to the owning browser document. OpenClaw uses a loopback proxy with a non-secret placeholder; real provider credentials are never written to native config. Reload, tab closure, lease expiry or server restart requires reconnecting. See [session credentials](session-credentials.md).
+The runtime bounds web excerpts and enables context compaction with a pre-call check. These reduce growth during research but cannot guarantee that every request fits. A large document, accumulated conversation or model-specific limit can still cause a failure. Inspect saved work, narrow the task or reset the appropriate conversation/scenario before trying again. See `scripts/runtime_settings.py` for the current limits.
 
-Localhost and trusted-LAN visitors have the same Settings access, including shared model and location changes. The API still requires a browser session, a supported Host header, matching request origins and CSRF protection for writes. An SSH tunnel is optional. The demo does not distinguish remote attendees from presenters. Hosted inference sends model requests to the selected provider; OpenShell controls for agent tools remain separate.
+## Optional api.cfg
 
-For the Docker release, `./bac start` prepares a fresh runtime and clears saved runtime data. Use `./bac start --keep-data` to refresh existing services without clearing agents, work, context or usage. For host/development installations only, install once with `./bac dev setup`; Linux user services use `./bac dev start --model external`, and copied/edited source or macOS uses `./bac dev preview`. Save starts the installed runtime if it is offline. Start agents can start it explicitly. On Linux with systemd, Settings starts the same managed gateway service as the CLI. Without systemd (including macOS), the gateway runs as a detached process and logs to `$BAC_DATA_DIR/openclaw/gateway.log`; the app never installs runtime software from a browser request.
+`api.cfg` contains one NVIDIA key beside `bac`. Startup validates it with model discovery and a small inference request before saving it on the host. Missing, rejected or unreachable keys do not block opening Settings. To replace the key while keeping runtime data, edit the file and run `./bac start --keep-data`.
 
-## Evidence and focused checks
+Startup installs a Git clean filter that stages an empty `api.cfg` while preserving its local contents. If editing the key before the first start, run `bash scripts/setup-key-filter.sh` first. Release packages contain an empty placeholder.
 
-Endpoint references:
-- [NVIDIA Inference Hub — OpenAI-style API](https://nvidia.atlassian.net/wiki/spaces/NVEXAPJ/pages/3654919692): internal Glean search excerpts confirm the inference-api endpoint, bearer authorization and model discovery. Full page retrieval was unavailable.
-- [NVIDIA models in Cursor guide](https://docs.google.com/document/d/1QfIUP5zgpz9oQWrmu_bw3rWMkmssdWl2FFeZUrzaCBw): internal search excerpts show the alternate inference.nvidia.com endpoint.
-- [OpenAI model listing](https://developers.openai.com/api/reference/resources/models/methods/list).
-- [Anthropic model listing](https://platform.claude.com/docs/en/api/models/list).
-- [Pinned OpenClaw provider documentation](https://github.com/openclaw/openclaw/blob/v2026.9.4/docs/concepts/model-providers.md).
+## Location, Telegram and Reset
 
-Focused checks cover provider isolation, key masking and file permissions, pending-job protection, authorization headers, localhost/LAN access, settings persistence and event defaults. All four native provider configurations were accepted by the installed OpenClaw 2026.9.4 validator. Provider-format checks use fixtures; rehearse live completions and tool calls with the actual target model. The Ubuntu porting audit also exercises local model discovery, streamed completions, provider errors and key handling through a real HTTP fixture, without claiming GPU inference.
+**Location** sets the default city, initially Zurich. Explicit locations in a task or event brief take precedence. Saving updates the managed location in agent preferences without changing memory, permissions or credentials.
 
-```bash
-python3 -B -m unittest discover -s tests -p test_runtime_settings.py
-# Disposable browser fixture; never use the attendee database for these checks:
-python3 -B tests/fixture_settings.py
-# In another terminal, with Playwright and Chrome installed:
-node tests/settings.cjs
-```
+**Telegram** sends new summaries from agents with the Tech Radar skill only. Ordinary chat and Multi-Agent results are not sent. See [Heartbeat and Telegram](heartbeat.md).
 
-Settings has Model, Location, Telegram and Reset tabs. Settings → Reset provides Remove agents (Stages 1 & 2), Reset scenario (the selected Stage 3 scenario), and Reset all (both scenarios and hired agents). Model and connection settings are preserved. The separate Reset button beside Mission Control clears only the selected scenario after confirmation. The Model search loads the model list automatically; connection errors appear beside the controls.
+**Reset** offers Remove agents for Stages 1/2, Reset scenario for the selected Stage 3 scenario, and Reset all for both scenarios and hired agents. Model and connection settings remain. The Reset button beside Mission Control also clears only the selected scenario.
 
-Remote HTTP regression checks cover Settings, model selection, Usage, file previews/downloads, Copy and fullscreen using a disposable server:
+## Access and verification
+
+Localhost and trusted-LAN visitors have the same controls. The server still checks browser sessions, agent ownership, request origins and CSRF tokens. The demo does not distinguish remote attendees from presenters. Model inference and OpenShell tool permissions are separate.
+
+Provider-format, key isolation and connection checks use fixtures; rehearse tool calls with the actual target model. Focused checks:
 
 ```bash
+python3 -B -m unittest discover -s tests -p test_model_connections.py
 python3 -B -m unittest discover -s tests -p test_remote_settings.py
+# Disposable server; run the browser scripts in another terminal:
 python3 -B tests/fixture_scenarios.py
-# In another terminal, with Playwright and Chrome installed:
+node tests/connection-editor-browser.cjs
 node tests/remote-access-browser.cjs
 ```
 
-## Location
-
-Location accepts one city (default Zurich), stored under `location.city` in host settings. It is independent of the legacy event defaults and the current BaC brief. Saving is allowed while work is pending: existing work continues; future model calls receive the new default.
-
-Only the managed location block in each existing agent/crew `USER.md` is replaced; custom notes and MEMORY.md remain. Newly hired agents inherit the same setting. The native adapter also sends the latest location on every model request so a reused OpenClaw session or sandbox cannot rely solely on a stale bootstrap file. Explicit task/event locations take precedence. Location changes do not restart services, change permissions or clear model credentials.
+Browser checks require Playwright and Chrome/Chromium. See [development and verification](development.md).

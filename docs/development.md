@@ -2,14 +2,16 @@
 
 ## Branches and versions
 
-- `main`: the stable demo used by normal installations.
-- `v0.1`: a fixed tag for the baseline before Stage 3 OpenShell work. Keep released tags unchanged.
-- `dev`: integrated development and testing, including Stage 3 OpenShell protection, connection visualization, Tech Radar, Telegram and Arxivbot.
-- `heartbeat`: the original feature branch, now merged into `dev`. Continue development on `dev`.
+Current workflow (October 10, 2026):
 
-For development, switch once with `git switch dev`, then use `git pull --ff-only` and `./bac start`. Normal users stay on `main`.
+- `preview/stage3-scenarios`: active implementation and rehearsal, including the ping-pong example and subsequent fixes.
+- `dev`: testing snapshot from before the ping-pong example. Keep it unchanged until preview promotion is explicitly agreed.
+- `bac/1001-zurich`: frozen Zurich snapshot for existing event setups.
+- `main` and released tags: unchanged until a release is explicitly agreed. GitHub synchronization is currently deferred.
 
-Merge `dev` into `main` through a reviewed GitLab merge request after relevant tests and a live demo rehearsal pass. Create a new version tag on `main` for each release. A tag preserves code, not a backup of application data.
+For this preview, use `git switch preview/stage3-scenarios`, then `git pull --ff-only`. Use `./bac start --keep-data` to preserve rehearsal data; plain `./bac start` clears it. Do not switch or merge branches while a demo is running.
+
+Promote a tested preview only after target-hardware rehearsal and review. A release tag can point to the approved commit on any branch; it does not require first merging to `main`. Tags preserve code, not runtime data. Keep published tags and event snapshots unchanged.
 
 The normal installation path is the [Git + Docker setup](docker-setup.md). Host development is separate:
 
@@ -20,7 +22,7 @@ The normal installation path is the [Git + Docker setup](docker-setup.md). Host 
 
 `./bac dev --help` lists advanced commands. `launch.sh` is a development shortcut for `./bac dev preview`. See [host Ubuntu setup](ubuntu-setup.md) or [managed Spark model](spark-operations.md) only for those development paths.
 
-Edit `src/` and run `python3 -B scripts/build.py`; refresh for UI changes. Restart for Python changes. Do not edit generated `app/index.html` directly. Docker installations load changed source files with `./bac start`.
+Edit `src/` and run `python3 -B scripts/build.py`; refresh for UI changes. Restart for Python changes. Do not edit generated `app/index.html` directly. Docker installations load changed source files with `./bac start --keep-data` when preserving runtime data.
 
 ## Tests
 
@@ -41,6 +43,14 @@ BAC_TEST_URL=http://127.0.0.1:8094 node tests/agent-reset.cjs
 ```
 
 Test URL variables differ in older browser scripts; inspect each before running it. Infrastructure checks and deterministic fixtures do not establish real model quality or Spark performance. Rehearse a personal task and a complete event on the target PC/model. [OpenShell verification](openshell-verification.md) covers real sandbox scenarios.
+
+## Exploratory rehearsal
+
+For stability work, test complete journeys as well as individual fixes: first use, mixed skills, repeated questions, simultaneous Heartbeat and foreground work, connection loss/recovery, cancellation/reset, agent switching, and localhost versus LAN HTTP. Inspect the actual outputs and recovery, not just Ready indicators.
+
+Use disposable participants or fixture data for destructive tests. Record which checks used real model responses, simulated endpoints or target Spark hardware. A Mac/API run does not establish local Spark performance.
+
+Focused resilience coverage: `tests/test_lounge_resilience.py`, `tests/test_runtime_startup.py` and `tests/agent-switching-browser.cjs`. The browser switching test uses `tests/fixture_heartbeat.py`; pass its URL through `BASE_URL`.
 
 ## Twelve-agent scenarios
 

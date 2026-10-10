@@ -2,23 +2,27 @@
 
 Hire personal agents, try their skills, and collaborate with Riley or Casey and their specialist agents in the **Multi-Agent demo**.
 
+This guide describes **`preview/stage3-scenarios`** on GitLab. The frozen Zurich branch and older releases have different controls.
+
+[Presenter runbook](docs/demo-runbook.md) · [Demo workflow](DEMO_WORKFLOW.md) · [Example scenarios](README_POSSIBLESCENARIOS.md)
+
 ## Start on a new PC
 
 **Requires:** Ubuntu 24.04, rootful Docker Engine 28+, Docker Compose 2.24+, internet access, and permission to run `docker info`. Intel/AMD and ARM64 (DGX Spark) are supported.
 
-Clone the private GitHub repository with an account that has access:
+Clone the preview with an account that has access to the GitLab repository:
 
 ```bash
-git clone https://github.com/bacdemokr/ai-studio.git
-cd ai-studio
+git clone --branch preview/stage3-scenarios https://gitlab-master.nvidia.com/jinhol/bacdemo-tier2.git
+cd bacdemo-tier2
 ./bac start
 ```
 
-Startup optionally loads the NVIDIA inference API key from `api.cfg`. If the file is empty, invalid or the API cannot be reached, Studio still starts so you can configure Local or External Endpoint in Settings. A failed validation preserves previously saved connections and prints a warning. Valid keys are checked with a small inference request before being saved.
+Startup optionally loads the NVIDIA inference API key from `api.cfg`. If the file is empty, invalid or the API cannot be reached, Studio still starts so you can configure Local or External Endpoint in Settings. A failed validation prints a warning and does not overwrite a saved key. Use `--keep-data` when retaining runtime data and settings. Valid keys are checked with a small inference request before being saved.
 
-Open **http://localhost:8080** on the host, or **http://SPARK_IP:8080** from another computer on the same trusted network. Both provide the same Settings and demo controls. The validated key is available automatically under **Settings → Model → External Endpoint**. Enable **Local** and/or **External Endpoint**, then choose stage preferences below. The initial preference is Local for Stages 1/2 and External Endpoint for Stage 3.
+Open **http://localhost:8080** on the host, or **http://SPARK_IP:8080** from another computer on the same trusted network. Both provide the same Settings and demo controls. The validated key is available automatically under **Settings → Model → External Endpoint**. Enable **Local** and/or **External Endpoint**, then choose each stage under **Stage connections**. The initial preference is Local for Stages 1/2 and External Endpoint for Stage 3.
 
-The first start builds the runtime image for your PC and downloads the pinned OpenShell images. OpenClaw and OpenShell are included; no host Python or Node installation is needed. BaC does not install model weights. A local model server, if used for Stages 1 and 2, runs separately.
+The first start builds the runtime image for your PC and downloads the pinned OpenShell images. OpenClaw and OpenShell are included; no host Python or Node installation is needed. BaC does not install model weights. A local model server can serve any stage and runs separately.
 
 ## Prepare a local model (optional)
 
@@ -106,7 +110,7 @@ independently. Failed new launches print the final startup-log lines automatical
 - The validated key is saved on this computer with owner-only file permissions. Refreshing the browser does not require re-entry.
 - Missing or rejected keys do not block startup. No unverified key is saved.
 - API validation failures preserve any previously saved connection. Settings checks the currently configured connection before marking it ready.
-- GitHub tracks an **empty `api.cfg` placeholder**. Startup installs a local Git clean filter that stages an empty file while preserving your working key. Release packages also contain an empty file; the Docker image excludes it.
+- The repository tracks an **empty `api.cfg` placeholder**. Startup installs a local Git clean filter that stages an empty file while preserving your working key. Release packages also contain an empty file; the Docker image excludes it.
 
 If you want to edit `api.cfg` and use Git **before your first start**, install the filter first:
 
@@ -126,7 +130,7 @@ Open **Settings → Model → Local → Configure**, search the model list, and 
 | vLLM on this PC | `http://127.0.0.1:8000/v1` (use its actual port) |
 | Other OpenAI-compatible server | Its API URL ending in `/v1` |
 
-Keyless local servers need no API key. Provider keys entered in these settings are kept in memory for the current tab and must be re-entered after refresh, tab closure, or app restart. The same enabled connections are available to all stages, with separate stage preferences.
+Keyless local servers need no API key. Provider keys entered in these settings are kept in memory for the current tab and must be re-entered after refresh, tab closure, or app restart. The same enabled connections are available to all stages under **Stage connections**. A host-saved NVIDIA key from `api.cfg` remains available after refresh; only keys entered in the browser need re-entry.
 
 ## Try the demo
 
@@ -138,7 +142,7 @@ Keyless local servers need no API key. Provider keys entered in these settings a
 
 **Open Task** uses the Zurich Plan collaboration flow: message Casey with `/goal` and a concrete task, optionally attaching documents. Casey selects the needed specialists. Each scenario has its own team identities, chat history, model selections, documents and results. They share the Stage 3 API connection and hired-agent collection. Choosing another scenario does not cancel active work.
 
-`/plan` and `/plans` remain supported aliases for `/goal`. Only Open Task's Casey chat supports these team commands. Lounge agents accept direct messages; Event Brief uses **Plan an event**. Casey's Open Task chat starts with `/goal ` and restores it after a successful send. Delete the prefix to send a direct message. Specialists accept direct messages only, without `/goal` hints or suggestions; send team tasks to Casey. Their inputs start empty and clear after sending; existing drafts stay intact when switching characters.
+`/plan` and `/plans` remain supported aliases for `/goal`. Only Open Task's Casey chat supports these team commands. Lounge agents without Tech Radar accept direct messages; Event Brief uses **Plan an event**. Casey's Open Task chat starts with `/goal ` and restores it after a successful send. Delete the prefix to send a direct message. Specialists accept direct messages only, without `/goal` hints or suggestions; send team tasks to Casey. Their inputs start empty and clear after sending; existing drafts stay intact when switching characters.
 
 The room starts with Casey. The selected specialists join together and execute in assignment order. The pool is Scout (Web Researcher), Ada (Data analyst), Iris (UX designer), Cody (Programmer), and Vera (Reviewer). Dylan, Alex and Morgan appear only in Event Brief; they are not in the Plan specialist pool. Coding tasks prioritize a compact, usable desktop demo: no mobile layouts or touch controls, no optional polish loops, and no extra design pass unless needed. Cody aims to save the core implementation in one pass and returns once required work is delivered. Explicitly requested independent review is still required. Casey reserves a repair for an observed defect, not a repeated save/read confirmation.
 
@@ -151,7 +155,7 @@ Example:
 attached CSV. Use only the supplied data and include a clear comparison chart.
 ```
 
-**Heartbeat:** equip an agent with the **Tech Radar skill** to share one previously unshared technical article every 20 seconds, with a source link. Pause or resume in the agent panel. Any agent with this skill is automatic-only, including agents with additional skills: manual chat and attachments are disabled, and group chat requests exclude it. Remove the skill to restore manual chat; pausing Heartbeat does not enable it. [Heartbeat and Telegram details](docs/heartbeat.md).
+**Heartbeat:** equip an agent with the **Tech Radar skill** to check for an unread technical article every 20 seconds and share a summary with a source link. The first check waits at least 20 seconds; runtime preparation or other model work may delay it further. Pause or resume in the agent panel. Any agent with this skill is automatic-only, including agents with additional skills: manual chat and attachments are disabled, and group chat requests exclude it. Remove the skill to restore manual chat; pausing Heartbeat does not enable it. [Heartbeat and Telegram details](docs/heartbeat.md).
 
 **Settings → Location** sets the default city (Zurich). **Settings → Reset** offers **Remove agents** for Stages 1 & 2, **Reset scenario** for the selected Stage 3 scenario, and **Reset all** for both. Reset all stops and clears both Stage 3 scenarios before removing hired agents; model and connection settings are preserved. The **Reset button in the team utility row** stops work and clears data only in the selected scenario after confirmation; the other scenario, personal agents and model settings are preserved. **Settings → Telegram** optionally relays new Heartbeat summaries while the connected tab stays open.
 
@@ -178,7 +182,7 @@ Static review uses bounded source excerpts: at most eight reads, 120 lines per r
 
 Scout uses keyless Parallel Search: one focused search and 2–3 useful findings by default, then saves a short cited brief. Fewer findings are acceptable; stale or irrelevant results are reported honestly. No separate search API key is needed.
 
-The bundled research guard enforces at most two searches (three bounded excerpts each), or five bounded page reads, per research job. After a search, Scout saves the available excerpts instead of opening more pages. These limits apply only to Scout’s `/goal` research; other agents and OpenShell policies are unchanged.
+The bundled research guard enforces at most two searches (three bounded excerpts each), or five bounded page reads, per research job. After a search, Scout saves the available excerpts instead of opening more pages. These enforced job limits apply to Scout’s `/goal` research. Lounge research also receives concise research instructions and bounded fetched excerpts, with runtime context compaction. Neither changes OpenShell permissions or guarantees every request fits the model context.
 
 Small saved evidence briefs and bounded excerpts from observed tool results are passed directly to Casey for synthesis. If the final reply cites a public URL absent from those results and their returned links, it is withheld as partial rather than labeled complete. This citation check does not verify every factual claim or establish that sources are current.
 
@@ -218,11 +222,11 @@ Scenario presentation lives in `src/stage-scenarios.json`, shared by the scene, 
 
 ### Files and Event Brief recovery
 
-Use **Files** beside the team API controls to browse the selected specialist’s uploads and results. In the Lounge, use **Files** beside **Instructions** for the selected hired agent. The button is hidden when that agent has no files, and the file dialog has no agent selector. Open a file to preview or download it. Agent definition files provide a read-only view and a Copy button. These are browser-based views of the server workspace, so they work when the demo runs on another computer. They do not open the presenter’s OS file manager.
+Use **Files** in the team utility row to browse the selected specialist’s uploads and results. In the Lounge, use **Files** beside **Instructions** for the selected hired agent. The button is hidden when that agent has no files, and the file dialog has no agent selector. Open a file to preview or download it. **Instructions** shows AGENTS.md, IDENTITY.md and SOUL.md side by side, with Copy and no Download. Click the agent name or portrait for all saved definitions, including skills and memory. These are browser-based views of the server workspace, so they work when the demo runs on another computer. They do not open the presenter’s OS file manager.
 
 Empty scenarios have Reset disabled. Event preparation, conversations, uploaded documents and results count as saved work. Reset clears only the selected scenario; the built-in Event Brief template remains available for the next run.
 
-The maximum output budget is 16,384 tokens per response. Connections configured with less than 32,768 context tokens use at most half of their context for output, leaving the rest for input and tools. If a model hits its output limit, that role gets at most one concise retry in a fresh context, preserving saved files and completed tool results. Existing deliverable checks still apply. Other connection or provider failures are not automatically retried. To resume after a full shutdown, run `./bac vllm` if needed, then `./bac start`.
+The default context budget is 32,768 tokens per agent session; the output cap is 16,384 tokens per response. These are demo settings, not universal model or OpenShell limits. Connections configured with less than 32,768 context tokens use at most half of their context for output, leaving the rest for input and tools. If a model hits its output limit, that role gets at most one concise retry in a fresh context, preserving saved files and completed tool results. Existing deliverable checks still apply. Failed model requests are not automatically replayed for other provider errors. Runtime preparation and read-only readiness checks have separate bounded recovery. To resume, run `./bac vllm` if needed, then `./bac start --keep-data` when preserving runtime data. See [context and output budgets](docs/runtime-settings.md#context-and-output-budgets).
 
 ### Shared model connections
 

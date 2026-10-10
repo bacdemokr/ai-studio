@@ -1,5 +1,5 @@
 # Demo workflow: what, why, and how
-October 8, 2026
+Updated October 10, 2026
 
 ## Understanding the workflow and its objectives
 
@@ -21,7 +21,7 @@ October 8, 2026
 
 The audience may range from beginners and students to technical experts and C-level executives. Adapt both the message and the depth of the demonstration accordingly.
 
-Each stage provides several ways to explain the underlying concepts. The visual experience makes the demo approachable and attracts attention, while the configuration, prompts, and agent definitions provide additional detail for technical audiences.
+Use the room guides for a short introduction. For more detail, open **Instructions** to inspect AGENTS.md, IDENTITY.md and SOUL.md, or **Usage & time** after a Stage 3 run. These are optional views, not separate attendee modes.
 
 For experts, use the demo as a starting point for discussion. Listen to their requirements and learn what capabilities they are looking for.
 
@@ -44,6 +44,8 @@ The key objectives are:
 - Whether the agent operates with or without [OpenShell](https://build.nvidia.com/openshell)
 
 ### Stage 2. Agent Lounge
+
+Use manual chat for task-driven skills. An agent with **Tech Radar** instead runs Heartbeat, even when other skills are equipped. Its first check waits at least 20 seconds; busy model queues can delay summaries. Pause stops future checks; remove the skill to restore manual chat.
 
 **Target:** Demonstrate how an individual agent performs a task and how [OpenShell](https://build.nvidia.com/openshell) changes its access to external resources.
 
@@ -82,14 +84,15 @@ The scenarios keep their own agents, conversations and files. Hired Lounge agent
 
 ## 2. Before presenting
 
-- Connect Local and/or External Endpoint in **Settings > Model**. Select the connection for Hiring & Agent Lounge, Event Brief and Open Task separately. With both ready, the defaults favor Local for Stages 1 and 2, and External for Stage 3.
+- Connect Local and/or External Endpoint in **Settings > Model**. Under **Stage connections**, select Hiring & Agent lounge, Event Brief and Open Task separately. With both ready, the defaults favor Local for Stages 1 and 2, and External for Stage 3.
 - Rehearse the selected request on the actual model and hardware. Endpoint timings in the examples are observed runs, not local Spark benchmarks or guaranteed completion times.
-- Local inference does not make web research or live weather available offline. For an offline rehearsal, start with the attached store-email example and request no external sources. Filesystem read/write blocking is not implemented by that example.
+- For an offline rehearsal, select Local and try Event Brief with Riley, Alex and Morgan (omit Dylan’s live research), or the store-email / ping-pong Open Task examples without external sources. Web research, live weather and Telegram still need internet. The email example does not demonstrate enforced filesystem blocking; that remains separate work.
+- **Files** shows uploads/results for the selected agent only and is hidden when empty. Definition files use **Instructions → Copy**; result files support preview/download.
 - **Usage & time** shows recorded tokens, elapsed time and agent turns after a Stage 3 run. Agent time includes tools; summed time can exceed elapsed time when turns overlap. It is not a provider billing report.
 - `./bac start` clears runtime data and starts fresh. Use `./bac start --keep-data` to retain a rehearsal. `./bac stop --all` stops the demo and its managed local model, then removes the Compose stack and its data volumes.
 
 
-## Three scenario ideas linked to [README_POSSIBLESCENARIOS.md](README_POSSIBLESCENARIOS.md)
+## Scenario ideas in [README_POSSIBLESCENARIOS.md](README_POSSIBLESCENARIOS.md)
 
 ### Audiences and objectives
 
@@ -101,9 +104,11 @@ The scenarios keep their own agents, conversations and files. Hired Lounge agent
 
 - **Coding practitioners: development or monitoring**
   - **Audience:** Developers investigating a technical topic and IT operations teams monitoring systems or services.
-  - **Objective:** Demonstrate a work-related task that identifies how to solve a technical issue or determines the steps needed to implement a solution. This may combine web research, analysis, decision-making, coding, and testing.
+  - **Objective:** Demonstrate a work-related task that identifies how to solve a technical issue or determines the steps needed to implement a solution. Use drone research for public-source analysis or ping-pong for a compact coding example. Do not present a generated game or a static review as proof of execution testing.
 
 - **Decision-makers and managers: monitoring, decision support, and work preparation**
   - **Audience:** Managers and other decision-makers who need to understand the current state of a topic and potentially decide what to do next.
   - **Objective:** Demonstrate a virtual personal assistant that summarizes recent developments in a chosen field, such as finance, research, or global news.
   - **Alternative objective:** Review an ongoing discussion using emails, messages, and documents; compare developments year over year; identify what went wrong; and recommend changes.
+
+For exact controls, recovery steps and model-budget explanations, use the [presenter runbook](docs/demo-runbook.md).

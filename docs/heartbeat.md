@@ -2,7 +2,7 @@
 
 1. Add the **Tech Radar skill** to any personal agent in Hiring or Edit agent. The Tech Radar preset is a shortcut; the skill controls Heartbeat.
 2. Connect the model. No upload or chat prompt is needed.
-3. Every **20 seconds**, OpenClaw asks the agent to introduce one technical article or announcement it has not shared before, from NVIDIA Developer Blog or Hugging Face Blog.
+3. OpenClaw checks every **20 seconds** for an unread article from NVIDIA Developer Blog or Hugging Face Blog. A completed summary includes the source link.
 4. Use **Pause / Resume** in the agent panel.
 
 The first check cannot start during the first 20 seconds after hiring or changing the agent's skills. Runtime preparation or the native scheduler can delay it further. Suggested feed hosts do not produce policy alerts before an access request; actual denials appear when OpenShell blocks a request.
@@ -16,6 +16,16 @@ Shared URLs and skipped items are remembered in the agent workspace across resta
 20 seconds is the native heartbeat cadence, not a response deadline. Model calls and ongoing tasks may delay an update. Checks pause while the model is disconnected, the agent is assigned other work, or its owning browser session is disconnected. Authenticated browser activity renews a 90-second lease, including for keyless local models. Closing the last tab ends its lease; a lost close signal expires within 90 seconds plus the relay check interval. Other browser sessions cannot keep this session’s agents running. Restart leaves all Radar timers disabled until their owner reconnects. Keep the app server, runtime and owning browser tab running. Pause stops future checks; an in-flight turn may finish, and its queued result appears after Resume.
 
 With **OpenShell on**, approve `developer.nvidia.com` and `huggingface.co` in the agent's **OpenShell Policy** panel. The fixed feed requests run inside the sandbox; blocked requests are not retried through a host connection.
+
+## Waiting states
+
+- **Waiting for model:** neither enabled connection is ready. Check Settings → Model.
+- **Waiting for runtime:** OpenClaw is not ready.
+- **Waiting for other agents:** the native request queue is busy with foreground work.
+- **Retrying preparation:** runtime setup failed; retries back off for 15, 30, then up to 60 seconds.
+- **Waiting for browser:** reopen the owning browser session.
+
+Heartbeat follows the effective Hiring/Lounge connection, including a ready fallback or host-saved NVIDIA key. A changed route is prepared again before checks resume. Preparation is separate from article generation; a failed setup does not mark the agent ready or replay a submitted model request.
 
 ## Arxivbot is a chat assistant
 
@@ -45,4 +55,4 @@ App chat is saved first. If Telegram fails or delivery times out, the summary re
 - **The feed tool** fetches the two fixed HTTPS feeds, supplies excerpts, validates the selected source and records the model-authored text once. It never authors the summary.
 - **The app** imports the result into chat and optionally sends it to Telegram. Telegram delivery is an app integration, separate from OpenShell; the model never receives the bot token.
 
-This work is integrated into `dev`, together with the other demo features. Use `dev` for development and the local preview.
+This guide describes the current `preview/stage3-scenarios` behavior. See [development branches](development.md#branches-and-versions).

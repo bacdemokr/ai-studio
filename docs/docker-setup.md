@@ -4,11 +4,11 @@
 
 ## First start
 
-Clone the repository on your PC, then start it. The same commands work on Intel/AMD and ARM64 (DGX Spark):
+For the current preview, clone the GitLab branch on your PC. The same commands work on Intel/AMD and ARM64 (DGX Spark):
 
 ```bash
-git clone https://github.com/bacdemokr/ai-studio.git
-cd ai-studio
+git clone --branch preview/stage3-scenarios https://gitlab-master.nvidia.com/jinhol/bacdemo-tier2.git
+cd bacdemo-tier2
 ./bac start
 ```
 
@@ -28,13 +28,15 @@ The model stays on the host; Linux host networking reaches localhost. BaC instal
 
 | Action | Command |
 | --- | --- |
-| Install / start / apply updated code | `./bac start` |
+| Start fresh, clearing runtime data | `./bac start` |
+| Apply updated code and keep runtime data | `./bac start --keep-data` |
 | Check status | `./bac status` |
 | View recent logs | `./bac logs` |
 | Stop, keep data | `./bac stop` |
+| Stop managed model and remove the Compose stack/data volumes | `./bac stop --all` |
 | **Uninstall BaC and its data** | **`./bac remove`** |
 
-`./bac start` may interrupt active work. Stage 3 keeps its validated key across refreshes. Reconnect API-key providers for Stages 1 and 2 afterward. Keyless local models need no credential re-entry.
+`./bac start` may interrupt active work and clears runtime data by default. Keys entered in the browser need reconnecting after refresh or restart; a validated NVIDIA key from `api.cfg` can supply all stages. Keyless local models need no credential re-entry.
 
 ## Update
 
@@ -42,7 +44,7 @@ Finish active tasks, then run inside the same repository folder:
 
 ```bash
 git pull --ff-only
-./bac start
+./bac start --keep-data
 ```
 
 Keep your local `.env`, `shared` and `backups`; Git excludes them. If Git reports local edits or a diverged branch, resolve those before starting so you run the intended version.
@@ -50,8 +52,8 @@ Keep your local `.env`, `shared` and `backups`; Git excludes them. If Git report
 | Layer | Updates |
 | --- | --- |
 | Runtime image: Python, Node, OpenClaw, OpenShell | Only when dependencies change |
-| App files: UI, server, skills, characters | `git pull --ff-only`, then `./bac start` |
-| User data: agents, conversations, results | Preserved separately |
+| App files: UI, server, skills, characters | `git pull --ff-only`, then `./bac start --keep-data` |
+| User data: agents, conversations, results | Preserved with `--keep-data`; cleared by plain `start` |
 
 Keep the repository folder: app files are copied into the container at startup, so host edits do not alter a running session. `./bac start` checks compatibility and rebuilds the runtime image only when necessary.
 
@@ -59,7 +61,7 @@ Keep the repository folder: app files are copied into the container at startup, 
 
 | Message or symptom | Action |
 | --- | --- |
-| Missing or rejected inference key | Put a valid key in `api.cfg`; run `./bac start` again |
+| Missing or rejected inference key | Startup continues; choose Local in Settings, or replace the key and use `./bac start --keep-data` |
 | Inference API unavailable or rate-limited | Check connectivity or wait, then retry; the existing key is not replaced |
 | Docker unavailable | Start Docker; check `docker info` works for your account |
 | Wrong architecture | Use Docker running locally on this PC and its native architecture |
@@ -86,13 +88,13 @@ docker compose exec studio python3 scripts/container_runtime.py idle
 ./bac stop
 mkdir -p backups
 docker compose run --rm --no-deps --user 0 -v "$PWD/backups:/backup" init backup
-./bac start
+./bac start --keep-data
 ```
 
 Backups contain app data and gateway metadata/certificates, not every sandbox's mutable filesystem. They are not complete machine-migration backups. Never use `docker compose down -v` for an update.
 
 ### Inference API key
 
-`./bac start` creates an empty `api.cfg` beside `bac` if needed. Put only your NVIDIA inference API key on its first line. There is no interactive key prompt. Startup checks access to the team models and makes a small inference request. Missing or rejected keys stop startup with instructions to edit the file. Empty files are detected before Docker is invoked. Network/service failures stop startup without replacing your key or restarting running services.
+`api.cfg` is optional and contains only the NVIDIA key on one line. There is no interactive key prompt. Startup checks model access and a small inference request before saving it. Empty, rejected or unreachable credentials produce a warning but do not block Settings or replace a valid saved connection. A fresh default start still clears runtime settings; use `--keep-data` when retaining them.
 
-A validated key is saved with owner-only file permissions and used for Stage 3 automatically. `api.cfg` is tracked as an empty placeholder and excluded from the Docker image; release packages always include an empty file. `./bac start` installs a local Git clean filter that keeps the key out of commits while preserving it in your working file. After cloning, run `bash scripts/setup-key-filter.sh` before entering a key if you plan to use Git before starting the demo. Startup uses this file, never silently falls back to the previous saved key.
+A validated key is saved with owner-only file permissions and can supply all stages through External Endpoint. The tracked placeholder and release packages contain no key, and the Docker image excludes `api.cfg`. Startup installs a Git clean filter that keeps the key out of commits while preserving the local file. Run `bash scripts/setup-key-filter.sh` first if you plan to edit the key and use Git before the first start.

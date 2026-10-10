@@ -1,17 +1,24 @@
 # External credentials
 
-Stage 1/2 model API keys are held only in the app process memory. They are never written to host settings, OpenClaw model configuration, browser storage, or job payloads. Model, endpoint, context limit and event preferences remain persistent.
+Credential lifetime depends on how the key was supplied, not on the stage using it.
 
-Stage 3 uses a host-persisted team credential at `BAC_DATA_DIR/credentials/stage3.json`, with directory mode 0700 and file mode 0600. Its connection survives tab refresh, lease expiry and restart. Only the server-side team proxy reads this key; it is never returned to the browser or placed in agent configuration or prompts. The `./bac start` helper reads `api.cfg`, verifies model access and a small inference request, then saves or replaces it. The Stage 3 panel has no key-entry form; it changes per-agent model selections only. The session-only lifecycle below applies to Stage 1/2 and Telegram.
+| Source | Lifetime | Available to |
+| --- | --- | --- |
+| Key entered in Settings | Current browser tab's credential lease | Stages using the shared External Endpoint |
+| Validated NVIDIA key from `api.cfg` | Saved on the app host | All stages through the NVIDIA connection |
+| Telegram bot token | Current browser tab's credential lease | That participant's Tech Radar delivery |
+| Keyless local server | No credential needed | Stages using Local |
 
-For Stages 1 and 2, Connect model makes a fresh authenticated model-list request before replacing the saved connection. During verification the button shows Connecting; a failure keeps the typed key and model and displays the provider error. The password field clears only after successful connection, or when the dialog closes. This checks access to the selected model, without generating a response. Background availability checks cache success for 60 seconds and failure for five seconds; explicit Connect never reuses that cache.
+`./bac start` optionally validates `api.cfg` with model discovery and a small inference request. A valid key is stored at `$BAC_DATA_DIR/credentials/stage3.json` (directory mode 0700, file mode 0600). The filename is historical: this saved NVIDIA key can also supply Hiring and Lounge. Empty, rejected or unreachable credentials do not block opening Settings and are not saved. Use `./bac start --keep-data` when replacing the key while preserving runtime data.
 
-Each loaded browser document has a random credential session ID. Authenticated requests bind it to the participant; another tab cannot retain a blank key from this session. A heartbeat every 20 seconds renews a 90-second lease. Page teardown (including refresh) revokes its credentials with a keepalive request. If that notification cannot arrive, expiry rejects new calls after 90 seconds and the five-second sweeper releases stored references. A closed session cannot be resurrected by a late save. A request already sent upstream can finish; this is not a remote request cancellation mechanism. Python cannot guarantee secure erasure of freed memory or OS swap.
+The browser shows **API key verified · api.cfg** or the applicable saved-key status without returning the key itself. Keys entered in Settings are held in process memory, never in host settings, browser storage, jobs or OpenClaw configuration. Model, endpoint, context budget and stage choices are saved separately. Refreshing or closing the tab requires re-entry unless a valid host-saved NVIDIA key supplies the connection.
 
-OpenClaw connects to a loopback-only, ephemeral-port proxy using a non-secret `session-only` placeholder. The proxy looks up a valid in-memory credential, injects the upstream authentication header and forwards model responses, including SSE. It allows only recognized provider paths, does not follow redirects, does not log requests, and never returns upstream error bodies containing possible credentials. Real API keys do not enter OpenClaw, so its configuration copies and session stores cannot persist them. Saved gateway endpoints become unusable after an app restart until the model is reconnected.
+Each browser document has its own credential session. Authenticated activity renews a 90-second lease every 20 seconds. Teardown revokes the session; if that signal is lost, expiry prevents new calls and the five-second sweeper releases stored references. Another tab cannot reuse a session-only key by leaving its key field blank. Already submitted model calls can finish.
 
-At normal app startup the migration removes old external `apiKey` fields from app settings and OpenClaw JSON/config copies, drops prior Telegram credential files, and redacts discovered old key values from app-owned runtime logs and state copies. This does not revoke keys at the provider or erase copies outside this app. Internal generated gateway authentication tokens remain part of local runtime access control; they are not external API keys.
+OpenClaw connects through a loopback proxy with a non-secret placeholder. The proxy adds the provider key, forwards supported API paths and streamed responses, and does not follow redirects or log credentials. Host-saved NVIDIA credentials survive browser refresh and preserving restarts; session-only credentials do not.
 
-Persistent CLI search-key configuration is disabled. Scout uses the bundled keyless Parallel Search provider; no separate search API credential is required. Public-URL reading also needs no search API key.
+Startup removes legacy external keys from app-managed settings and OpenClaw configuration copies, and redacts discovered old key values in app-owned runtime logs/state. This does not revoke provider keys or erase copies outside the app. Internal gateway authentication tokens remain separate.
 
-Checks: `test_session_secrets.py` covers disk absence, loopback forwarding with a fake upstream, expiry, isolation, teardown and migration. Settings browser checks verify refreshing requires the key again. No real provider key is used in these tests.
+Scout uses keyless Parallel Search; no separate search API key is required. Telegram credentials never enter model prompts. See [Heartbeat and Telegram](heartbeat.md).
+
+Verification: `tests/test_session_secrets.py` covers storage, proxy forwarding, expiry, isolation and migration using fake credentials. `tests/connection-editor-browser.cjs` covers saved-key reuse and provider changes with a disposable fixture.

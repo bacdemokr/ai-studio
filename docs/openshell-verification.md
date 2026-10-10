@@ -93,7 +93,7 @@ Using a disposable OpenClaw 2026.9.4 gateway on this macOS host, deleting three 
 
 ### Inspect Dylan in the app
 
-Select Dylan in Multi-Agent demo, then **OpenShell Policy**. Lounge agents and Dylan use the same policy panel and approval/revocation implementation. Dylan starts with NVIDIA Blog read access as a default; edits are saved for his identity separately from personal-agent approvals. Revoking access stays revoked across preparation, subsequent tasks, and server restarts. **Approve** restores access explicitly. Before a sandbox exists, saved access is shown as unverified. Opening the panel never provisions or changes permissions. OpenShell is an execution protection setting, not a custom skill.
+Select Dylan in **3-1 Event Brief**, then **OpenShell Policy**. Lounge agents and Dylan use the same policy panel and approval/revocation implementation. Dylan starts with NVIDIA Blog read access as a default; edits are saved for his identity separately from personal-agent approvals. Revoking access stays revoked across preparation, subsequent tasks, and server restarts. **Approve** restores access explicitly. Before a sandbox exists, saved access is shown as unverified. Opening the panel never provisions or changes permissions. OpenShell is an execution protection setting, not a custom skill.
 
 A disposable native Dylan sandbox verified the shared controls: the default NVIDIA Blog request returned HTTP 200; revocation removed access, and another preparation kept it blocked (curl exit 56 with an OpenShell deny record); explicit approval restored HTTP 200. The test sandbox was removed afterward. Browser fixtures also cover revocation before the first task, re-approval, and separation from personal-agent policies.
 

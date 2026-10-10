@@ -57,7 +57,7 @@ From a laptop:
 ssh -N -L 8080:127.0.0.1:8080 USER@SPARK
 ```
 
-Open **http://localhost:8080 → Settings → Model**. For the managed model choose Local / on-prem, endpoint `http://127.0.0.1:8000/v1`, model `bac-local`, then connect. There is no per-agent endpoint configuration.
+Open **http://localhost:8080 → Settings → Model**. For the managed model choose **Local → Configure**, endpoint `http://127.0.0.1:8000/v1`, model `bac-local`, then **Connect & enable**. Choose the stages that use it under **Stage connections**; endpoint configuration is shared.
 
 `./bac dev preview` is the foreground development/preview alternative, not another required setup step. Stop it before starting a managed app on the same port. `./bac dev start --port 8081` uses another app port; adjust the tunnel. `--host 0.0.0.0` enables trusted workshop LAN access, while Settings still requires localhost/tunnel access. Model and agent gateways bind to loopback.
 
@@ -74,7 +74,7 @@ Open **http://localhost:8080 → Settings → Model**. For the managed model cho
 | Diagnose the app | `./bac dev app logs` |
 | Stop one service | `./bac dev app stop`, `./bac dev runtime stop`, `./bac dev llm stop` |
 
-Finish or stop pending missions and policy updates before updates, rollback or service changes. A repeated healthy start preserves current connections. An actual app restart expires in-memory API credentials; reconnect keyed providers in Settings. Update does not install packages or warm/restart the model. A dirty or diverged checkout is rejected without discarding changes. Release snapshots include only committed source, so commit intended changes before deploying.
+Finish or stop pending missions and policy updates before updates, rollback or service changes. A repeated healthy start preserves current connections. An actual app restart expires browser-entered API credentials; reconnect in Settings unless a host-saved NVIDIA key supplies the connection. Update does not install packages or warm/restart the model. A dirty or diverged checkout is rejected without discarding changes. Release snapshots include only committed source, so commit intended changes before deploying.
 
 ## Optional OpenShell protection
 

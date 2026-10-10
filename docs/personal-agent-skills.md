@@ -30,13 +30,15 @@ On September 25, 2026, BaC-container checks showed arXiv HTML category listings 
 
 ## Registration
 
-Profiles and selected skill IDs persist at Hiring; workspace definitions are written at Hiring. Protected agents and Tech Radar warm their native runtime in the background; other agents register on the next Run. The four permanent crew members receive their role definitions and skills at studio creation, so they can also chat before an event. Source of truth: `scripts/agent_runtime.py::SKILLS` and `register()`. `src/studio.js` provides the matching capability cards and example requests. Existing IDs are preserved so saved agents do not lose their loadouts. Restarting the app refreshes the in-process registration cache; the next run rewrites the equipped skill instructions. Restart also invalidates session-only credentials.
+Profiles and selected skill IDs persist at Hiring; workspace definitions are written at Hiring. Protected agents and Tech Radar warm their native runtime in the background; other agents register on the next Run. Scenario crew members receive separate role definitions at studio creation: Riley’s Event Brief team and Casey’s Open Task pool do not share native identities. Source of truth: `scripts/agent_runtime.py::SKILLS` and `register()`. `src/studio.js` provides the matching capability cards and example requests. Existing IDs are preserved so saved agents do not lose their loadouts. Restarting the app refreshes the in-process registration cache; the next run rewrites the equipped skill instructions. Restart also invalidates session-only credentials.
 
 ## Persona transparency
 
+**Instructions** opens AGENTS.md, IDENTITY.md and SOUL.md side by side. Each supports Copy; definition downloads are omitted. Click the agent name or portrait to browse all saved definitions, skills and memory. **Files** shows only that agent’s uploads/results and is hidden when empty.
+
 The editor’s Tone and Role are written verbatim into SOUL.md (outer whitespace is trimmed; internal line breaks are preserved). Preset buttons insert their visible label and description. Bare words such as Cynical are not secretly expanded. The separate Shared boundaries section asks the agent to follow that persona while avoiding severe profanity, abuse, hate/threats, invented evidence and permission bypass. Tool/security instructions remain in AGENTS.md and the equipped skills; they are not hidden personality rewrites. Existing native files update on the next run after restart or profile edit.
 
-Default role shortcuts: Weather buddy, Paper scout, Three Takeaways and Slack Announcer. Quick missions request short answers and no new generated file: 4 weather bullets, 3 papers with a short comparison, exactly 3 numbered takeaways, or a short emoji-led announcement. These are requested output bounds, not measured latency guarantees or hard token limits.
+Default role shortcuts: Weather buddy, Tech Radar, Arxivbot and Slack Announcer. Three Takeaways remains available as a skill. Tech Radar disables manual chat while equipped, including in mixed-skill agents; see [Heartbeat](heartbeat.md). Quick missions request short answers and no new generated file: 4 weather bullets, 3 papers with a short comparison, exactly 3 numbered takeaways, or a short emoji-led announcement. These are requested output bounds, not measured latency guarantees or hard token limits.
 
 ## In-character detours
 
