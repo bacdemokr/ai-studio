@@ -150,6 +150,9 @@ class AgentWorkflowTests(unittest.TestCase):
         self.assertEqual(len(all_sources['sources']),6)
         contract=json.loads((workspace/'inbox/agent-task.json').read_text())
         self.assertEqual(set(contract['capacity']),{'topics'})
+        self.assertEqual(set(contract['demosSchema']['demos'][0]), {'topic','theme','title','sourceId','action','outcome','why','proof','risk','presenterExpertise'})
+        self.assertIn('/sandbox',contract['workspaceGuidance'])
+        self.assertTrue(contract['validationCommand'].endswith(' validate-themes'))
         self.assertLess(len(json.dumps(contract)),5000)
 
 

@@ -109,15 +109,15 @@ class FeedbackBoundaries(unittest.TestCase):
 
 
 class EventRecoveryTests(unittest.TestCase):
-    def call(self, failure='output-limit', second_failure=False, stopped=False):
-        self.payload={}
+    def call(self, failure='output-limit', second_failure=False, stopped=False, stage=3, agent_led=True):
+        self.payload={'executionMode':'agent-led-v1'} if agent_led else {}
         self.error=GatewayError('Stopped',failure)
         self.error.activity={'available':True,'calls':[{'id':'first','tool':'write','status':'completed'}]}
         reply=Reply('Saved',{})
         reply.activity={'available':True,'calls':[{'id':'second','tool':'read','status':'completed'}]}
-        self.fake=SimpleNamespace(protected_response=Mock(side_effect=[self.error,GatewayError('Stopped','output-limit') if second_failure else reply]),
+        self.fake=SimpleNamespace(protected_response=Mock(side_effect=[self.error,GatewayError('Stopped',failure) if second_failure else reply]),
             files=Mock(return_value=[{'path':'artifacts/saved.md'}]),event=Mock(),stop_checkpoint=Mock(return_value=stopped))
-        return EventScenario.event_response(self.fake,'job',self.payload,3,'agent','original','Write the assigned section','owner',3)
+        return EventScenario.event_response(self.fake,'job',self.payload,stage,'agent','original','Write the assigned section','owner',stage)
 
     def test_recovers_once_in_fresh_context_and_retains_observations(self):
         answer=self.call()
@@ -137,26 +137,51 @@ class EventRecoveryTests(unittest.TestCase):
             self.call(second_failure=True)
         self.assertEqual(self.payload['outputLimitRecovery']['3']['status'],'failed')
 
+    def test_dylan_context_recovery_validates_saved_work_and_shares_retry_budget(self):
+        answer=self.call('context-overflow',stage=1)
+        args=self.fake.protected_response.call_args.args
+        self.assertEqual(args[1],'original-context-recovery')
+        self.assertIn('validationCommand',args[2])
+        self.assertIn('do not repeat successful searches',args[2])
+        self.assertEqual([c['id'] for c in answer.activity['calls']],['first','second'])
+        self.fake.protected_response.side_effect=GatewayError('again','output-limit')
+        with self.assertRaises(GatewayError):
+            EventScenario.event_response(self.fake,'job',self.payload,1,'agent','another','Repair','owner',1)
+        self.assertEqual(self.fake.protected_response.call_count,3)
+
+    def test_context_recovery_requires_agent_led_contract_and_honors_stop(self):
+        for agent_led, stopped in ((False, False), (True, True)):
+            with self.subTest(agent_led=agent_led, stopped=stopped), self.assertRaises(GatewayError):
+                self.call('context-overflow', stage=1, agent_led=agent_led, stopped=stopped)
+            self.assertEqual(self.fake.protected_response.call_count,1)
+
+    def test_context_recovery_stops_after_one_failure(self):
+        with self.assertRaisesRegex(GatewayError,'after one shorter retry'):
+            self.call('context-overflow',second_failure=True,stage=1)
+        self.assertEqual(self.fake.protected_response.call_count,2)
+        self.assertEqual(self.payload['outputLimitRecovery']['1']['status'],'failed')
+
     def test_network_failure_and_stop_do_not_replay(self):
-        for reason,stopped in [('request_failed',False),('output-limit',True)]:
+        for reason,stopped in [('request_failed',False),('output-limit',True),('context-overflow',False)]:
             with self.subTest(reason=reason,stopped=stopped),self.assertRaises(GatewayError):
                 self.call(reason,stopped=stopped)
             self.assertEqual(self.fake.protected_response.call_count,1)
 
 
 class SavedWorkLimitAdapter(AgentToolsAdapter):
-    def __init__(self, repeat=False):
+    def __init__(self, repeat=False, failure="output-limit"):
         super().__init__()
         self.repeat = repeat
+        self.failure = failure
         self.limited = set()
         self.recovered = []
 
     def respond(self, agent, session, prompt):
         stage = int(agent.rsplit('-r', 1)[1])
-        if session.endswith('-output-recovery'):
+        if session.endswith(('-output-recovery', '-context-recovery')):
             self.recovered.append(stage)
             if self.repeat:
-                raise GatewayError('Second output limit', 'output-limit')
+                raise GatewayError('Second limit', self.failure)
             # A real recovery must be able to validate previous writes without
             # repeating searches or resaving already valid deliverables.
             result = Reply('Inspected the saved deliverables. They are complete.', {})
@@ -165,7 +190,7 @@ class SavedWorkLimitAdapter(AgentToolsAdapter):
         answer = super().respond(agent, session, prompt)
         if stage in (1, 2, 3) and stage not in self.limited and not prompt.startswith('LINKEDIN-FIRST:'):
             self.limited.add(stage)
-            error = GatewayError('Final receipt truncated', 'output-limit')
+            error = GatewayError('Final receipt truncated', self.failure if stage == 1 else 'output-limit')
             error.activity = answer.activity
             raise error
         return answer
@@ -173,9 +198,9 @@ class SavedWorkLimitAdapter(AgentToolsAdapter):
 
 class EventRecoveryFlowTests(unittest.TestCase):
     def test_saved_work_survives_limits_in_parallel_stages_and_page_authoring(self):
-        for repeat in (False, True):
-            with self.subTest(repeat=repeat), tempfile.TemporaryDirectory() as folder:
-                adapter = SavedWorkLimitAdapter(repeat)
+        for repeat, failure in ((False, "output-limit"), (True, "output-limit"), (False, "context-overflow"), (True, "context-overflow")):
+            with self.subTest(repeat=repeat, failure=failure), tempfile.TemporaryDirectory() as folder:
+                adapter = SavedWorkLimitAdapter(repeat, failure)
                 app = Studio(folder, adapter, start_worker=False)
                 owner = app.session()[0]['id']
                 team = app.crew_owner(owner, 'event-brief')

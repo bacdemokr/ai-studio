@@ -65,7 +65,7 @@ def capacity(brief):
 
 class EventScenario(EventControls, DemoReadiness):
     def event_response(self, job_id, payload, stage, agent_id, session, prompt, owner, role):
-        """One bounded output-limit recovery per specialist, never a blanket replay."""
+        """One limit recovery per specialist; Dylan can also resume context overflow."""
         prompt += ('\nKeep final chat output under 150 words unless the assignment requires JSON. '
                    'Save deliverables with native tools; do not repeat their full contents in chat. '
                    'Use small section writes instead of one large HTML response. Target desktop only.')
@@ -74,28 +74,39 @@ class EventScenario(EventControls, DemoReadiness):
         except runtime.GatewayError as error:
             key = str(stage)
             retries = payload.setdefault('outputLimitRecovery', {})
-            if error.reason not in ('output-limit', 'tool-call-output-limit') or key in retries or self.stop_checkpoint(job_id):
+            context_recovery = (error.reason == 'context-overflow' and stage == 1 and role == 1
+                                and payload.get('executionMode') == 'agent-led-v1')
+            if (error.reason not in ('output-limit', 'tool-call-output-limit') and not context_recovery) or key in retries or self.stop_checkpoint(job_id):
                 raise
             retries[key] = {'status': 'working', 'reason': error.reason}
             # File names only. Existing task contracts and saved files remain in the workspace.
             saved = [f['path'] for f in self.files(owner, role)][:30]
-            self.event(job_id, 'Output limit reached - one concise recovery',
+            limit_name = 'Context' if context_recovery else 'Output'
+            self.event(job_id, limit_name + ' limit reached - one concise recovery',
                        'Saved work is preserved. The agent will finish only missing work in a fresh context.',
                        stage, payload=json.dumps(payload))
-            recovery = (prompt + '\nOUTPUT LIMIT RECOVERY: This is the only output-limit retry for this role. '
+            recovery = (prompt + '\nLIMIT RECOVERY: This is the only limit retry for this role. '
                         'Inspect existing deliverables first. Preserve successful research, tool results and valid files. '
                         'Finish only missing requirements using small targeted edits; do not restart the whole task. '
                         'If the deliverables are already complete, verify them and return a short receipt. '
                         'Use at most 100 words for the final reply unless the original task requires JSON. '
                         'If anything cannot be finished, state the missing part honestly. Saved files:\n' + '\n'.join(saved))
+            if context_recovery:
+                recovery += ('\nFirst read /sandbox/inbox/agent-task.json, then run its validationCommand with '
+                             'host=sandbox and workdir=/sandbox. If validation passes, return immediately. '
+                             'If it fails, inspect only the named missing or invalid fields and necessary saved evidence. '
+                             'Reuse saved research; do not repeat successful searches or article reads. '
+                             'Do not read tool source, dump the full research bundle, or copy files to host paths.')
             try:
                 if self.stop_checkpoint(job_id):
                     raise RuntimeError('Event work stopped; saved files are preserved.')
-                answer = self.protected_response(agent_id, session + '-output-recovery', recovery, owner, role)
+                answer = self.protected_response(agent_id, session + ('-context-recovery' if context_recovery else '-output-recovery'), recovery, owner, role)
             except Exception as retry_error:
                 retries[key]['status'] = 'failed'
-                self.event(job_id, 'Output recovery did not finish', 'Saved work is preserved; no further output-limit retry.',
+                self.event(job_id, limit_name + ' recovery did not finish', 'Saved work is preserved; no further limit retry.',
                            stage, payload=json.dumps(payload))
+                if isinstance(retry_error, runtime.GatewayError) and retry_error.reason == 'context-overflow':
+                    retry_error.args = ('The model exceeded its context limit after one shorter retry. Saved work is preserved; no further retry will run.',)
                 if isinstance(retry_error, runtime.GatewayError) and retry_error.reason in ('output-limit', 'tool-call-output-limit'):
                     retry_error.args = ('The model reached its output limit again after one shorter retry. Saved work is preserved. Try a smaller event brief or another team model.',)
                 raise

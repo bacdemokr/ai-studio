@@ -57,3 +57,7 @@ Settings has Lounge model, Location, Telegram and Reset tabs. Settings → Reset
 Settings has Model, Location and Reset tabs. Location accepts one city (default Zurich), stored under `location.city` in host settings. It is independent of the legacy event defaults and the current BaC brief. Saving is allowed while work is pending: existing work continues; future model calls receive the new default.
 
 Only the managed location block in each existing agent/crew `USER.md` is replaced; custom notes and MEMORY.md remain. Newly hired agents inherit the same setting. The native adapter also sends the latest location on every model request so a reused OpenClaw session or sandbox cannot rely solely on a stale bootstrap file. Explicit task/event locations take precedence. Location changes do not restart services, change permissions or clear model credentials.
+
+## Event Brief context recovery
+
+Dylan gets one fresh-context recovery after a context overflow in an agent-led Event Brief: validate saved themes first, reuse successful research and repair only missing work. The task contract supplies the exact output schema, sandbox paths and validation command. This shares the existing one-retry allowance with output-limit recovery; a second failure stops and preserves saved work. Other context failures still require inspecting saved work, narrowing the task or resetting the appropriate conversation before trying again.
