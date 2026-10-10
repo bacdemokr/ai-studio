@@ -71,6 +71,7 @@ def setup():
     with r.config_lock():
         config = c.read_json(r.config_path()) or r.initial_config()
         config.setdefault('skills', {}).setdefault('workshop', {})['autonomous'] = {'mode': 'off'}
+        config['skills'].setdefault('load', {})['watch'] = False
         r.save_config(configure(config, r.root()))
     r.bootstrap_host()
     print(r.cli('config', 'validate'))

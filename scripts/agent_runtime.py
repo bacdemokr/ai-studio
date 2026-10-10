@@ -156,7 +156,9 @@ def initial_config():
                                 'timeoutSeconds': settings.AGENT_TIMEOUT_SECONDS}, 'entries': {}},
         # Native weekly skill reviews use the same scheduler as Heartbeat.
         # Demo skills are app-managed; unattended maintenance must not delay them.
-        'skills': {'workshop': {'autonomous': {'mode': 'off'}}},
+        # The app publishes skill edits with agent registration. Native file
+        # watchers otherwise rebuild chat metadata for every retained agent.
+        'skills': {'load': {'watch': False}, 'workshop': {'autonomous': {'mode': 'off'}}},
         'plugins': {'entries': {'memory-core': {'enabled': False}}},
         'tools': {'fs': {'workspaceOnly': False}, 'deny': ['exec', 'process', 'browser', 'message',
                    'sessions_spawn', 'sessions_send', 'cron', 'gateway', 'nodes'],
@@ -367,8 +369,14 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
         files['AGENTS.md'] += '\n# Event Brief assignment\n' + expertise['scope'] + '\n'
         files['EVENT_WORKFLOW.md'] = files['EVENT_WORKFLOW.md'].replace('Casey', 'Riley')
     def write(target, content):
-        if overwrite or not target.exists() or (target.name in legacy_files and target.read_text(encoding='utf-8') == legacy_files[target.name]):
+        previous = target.read_text(encoding='utf-8', errors='replace') if target.exists() else None
+        if previous != content and (overwrite or previous is None or (target.name in legacy_files and previous == legacy_files[target.name])):
             target.write_text(content, encoding='utf-8')
+    def copy(source, target, replace=overwrite):
+        content = source.read_bytes()
+        previous = target.read_bytes() if target.exists() else None
+        if previous != content and (replace or previous is None):
+            target.write_bytes(content)
     import user_location
     user_location.sync(workspace)
     for name, content in files.items():
@@ -409,20 +417,18 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
         if skill == 'nvidia-webpage':
             scripts = directory/'scripts';scripts.mkdir(exist_ok=True)
             target = scripts/'event_page_sections.py'
-            if overwrite or not target.exists():shutil.copyfile(Path(__file__).with_name('event_page_sections.py'), target)
+            copy(Path(__file__).with_name('event_page_sections.py'), target)
             assets=directory/'assets'
             assets.mkdir(exist_ok=True)
             write(assets/'event.css', (Path(__file__).resolve().parents[1]/'skills/bac-nvidia-webpage/assets/event.css').read_text())
         if skill == 'radar':
-            import shutil
             scripts=directory/'scripts';scripts.mkdir(exist_ok=True)
-            shutil.copyfile(Path(__file__).with_name('tech_radar.py'),scripts/'tech_radar.py')
+            copy(Path(__file__).with_name('tech_radar.py'), scripts/'tech_radar.py', replace=True)
         if skill == 'event-tools':
-            import shutil
             scripts=directory/'scripts';scripts.mkdir(exist_ok=True)
             for module in ('event_agent_tools','event_planner','event_rotation','event_staffing','event_dates','event_timetable','nvidia_research','event_theme_content','research_http'):
                 target=scripts/(module+'.py')
-                if overwrite or not target.exists():shutil.copyfile(Path(__file__).with_name(module+'.py'),target)
+                copy(Path(__file__).with_name(module+'.py'), target)
 
 
 def bootstrap_host():
@@ -550,11 +556,19 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
         if radar_exec:
             entry['heartbeat'] = {'every':'0m', 'target':'none', 'session':'agent:'+agent_id+':heartbeat-radar', 'isolatedSession':True, 'timeoutSeconds':60,
                 'prompt':'Read HEARTBEAT.md and skills/bac-radar/SKILL.md in your workspace. Execute the Tech Radar poll. Publish a concise in-character summary about one relevant technical article not previously shared, including older feed entries. Otherwise return HEARTBEAT_OK.'}
-        stamp = 'bac-config-' + hashlib.sha256(json.dumps(entry, sort_keys=True).encode()).hexdigest()[:20]
+        # Publish real instruction edits even when the equipped skill names and
+        # model stay the same. File watching is disabled for app-managed skills.
+        revision = hashlib.sha256(json.dumps(entry, sort_keys=True).encode())
+        definitions = [workspace/name for name in ('IDENTITY.md', 'SOUL.md', 'AGENTS.md', 'HEARTBEAT.md', 'EVENT_WORKFLOW.md')]
+        definitions += [workspace/'skills'/('bac-'+skill)/'SKILL.md' for skill in equipped]
+        for definition in definitions:
+            if definition.is_file():
+                revision.update(str(definition.relative_to(workspace)).encode() + b'\0' + definition.read_bytes() + b'\0')
+        stamp = 'bac-config-' + revision.hexdigest()[:20]
         entry['identity'] = {'theme': stamp}
         patch = {'agents': {'defaults': {'maxConcurrent': 2}, 'ownership': 'explicit',
                             'entries': {agent_id: entry}},
-                 'skills': {'workshop': {'autonomous': {'mode': 'off'}}},
+                 'skills': {'load': {'watch': False}, 'workshop': {'autonomous': {'mode': 'off'}}},
                  'tools': {'fs': {'workspaceOnly': False}}}
         patch['agents']['defaults']['compaction'] = config['agents']['defaults']['compaction']
         patch['tools']['web'] = {'fetch': config['tools']['web']['fetch']}
@@ -1101,6 +1115,8 @@ def set_radar_heartbeat(agent_id, enabled):
         # skill-collection-review jobs, preserving user tasks and Radar timers.
         if config.get('skills', {}).get('workshop', {}).get('autonomous', {}).get('mode') != 'off':
             patch['skills'] = {'workshop': {'autonomous': {'mode': 'off'}}}
+        if config.get('skills', {}).get('load', {}).get('watch') is not False:
+            patch.setdefault('skills', {})['load'] = {'watch': False}
         if heartbeat.get('every') != every:
             heartbeat['every'] = every
             patch['agents'] = {'entries': {agent_id: {'heartbeat': heartbeat}}}

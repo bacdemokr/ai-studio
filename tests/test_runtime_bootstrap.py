@@ -53,12 +53,31 @@ class BootstrapTests(unittest.TestCase):
         runtime.save_config(config)
         with patch.object(runtime, 'gateway_config_patch') as apply:
             self.assertTrue(runtime.set_radar_heartbeat(agent, True))
-            apply.assert_called_once_with({'skills': {'workshop': {'autonomous': {'mode': 'off'}}}}, [])
-        config['skills'] = {'workshop': {'autonomous': {'mode': 'off'}}}
+            apply.assert_called_once_with({'skills': {'workshop': {'autonomous': {'mode': 'off'}}, 'load': {'watch': False}}}, [])
+        config['skills'] = {'load': {'watch': False}, 'workshop': {'autonomous': {'mode': 'off'}}}
         runtime.save_config(config)
         with patch.object(runtime, 'gateway_config_patch') as apply:
             self.assertTrue(runtime.set_radar_heartbeat(agent, True))
             apply.assert_not_called()
+
+    def test_workspace_preparation_does_not_rewrite_unchanged_skills(self):
+        import os
+        workspace = self.root/'workspace'
+        profile = {'name':'Fixture', 'persona':'guide', 'skills':['documents','radar']}
+        runtime.write_workspace(workspace, profile)
+        paths = [workspace/'IDENTITY.md', workspace/'skills/bac-documents/SKILL.md',
+                 workspace/'skills/bac-radar/scripts/tech_radar.py']
+        for path in paths:os.utime(path, ns=(1234567890000000000,1234567890000000000))
+        before = {path: path.stat().st_mtime_ns for path in paths}
+        runtime.write_workspace(workspace, profile)
+        self.assertEqual({path:path.stat().st_mtime_ns for path in paths}, before)
+        # Real changes still propagate; repeat preparation is not a stale cache.
+        paths[1].write_text('outdated skill')
+        paths[2].write_text('outdated helper')
+        runtime.write_workspace(workspace, {**profile, 'name':'Updated'})
+        self.assertIn('Updated', paths[0].read_text())
+        self.assertIn('description:', paths[1].read_text())
+        self.assertEqual(paths[2].read_bytes(), (Path(runtime.__file__).parent/'tech_radar.py').read_bytes())
 
     def test_bootstrap_cannot_register_a_personal_or_protected_agent(self):
         runtime.save_config(runtime.initial_config())
@@ -68,6 +87,23 @@ class BootstrapTests(unittest.TestCase):
                 runtime.register(agent, self.root/'workspace', {**profile, **overrides}, bootstrap=True)
         self.assertFalse((self.root/'workspace').exists())
         self.assertEqual(json.loads(runtime.config_path().read_text())['agents']['entries'], {})
+
+    def test_instruction_edit_publishes_revision_without_file_watcher(self):
+        from native_config_fixture import offline_config
+        runtime.save_config(runtime.initial_config())
+        agent = 'bac-'+'b'*24
+        profile = {'name':'Fixture', 'persona':'guide', 'skills':['documents']}
+        def revision():
+            return json.loads(runtime.config_path().read_text())['agents']['entries'][agent]['identity']['theme']
+        with offline_config:
+            runtime.register(agent, self.root/'workspace', profile)
+            first = revision()
+            runtime.register(agent, self.root/'workspace', profile)
+            self.assertEqual(revision(), first)
+            title, instruction = runtime.SKILLS['documents']
+            with patch.dict(runtime.SKILLS, {'documents':(title, instruction+'\nUpdated instruction.')}):
+                runtime.register(agent, self.root/'workspace', profile)
+            self.assertNotEqual(revision(), first)
 
     def test_live_registration_failure_never_falls_back_to_disk(self):
         runtime.save_config(runtime.initial_config())

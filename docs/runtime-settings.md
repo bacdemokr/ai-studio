@@ -13,6 +13,8 @@ With both connections ready, the initial defaults prefer Local for Stages 1/2 an
 
 Open Task shows a warning when using Local because complex tasks may take longer or produce less reliable results. Event Brief supports Local without that warning. Starting Studio or selecting Local does not start a model server; use `./bac vllm` or an existing server first.
 
+The demo manages its own skill files. Native skill file watching and autonomous skill reviews are disabled: repeated file-change notifications can rebuild metadata for every retained agent and delay the gateway. Unchanged files are left untouched; registration publishes an instruction revision when content changes. After editing skill files directly outside the app, re-prepare the agent or restart the runtime.
+
 | Provider | Default endpoint | OpenClaw API format |
 | --- | --- | --- |
 | NVIDIA Inference (Employee only) | `https://inference-api.nvidia.com/v1` | `openai-completions` |
