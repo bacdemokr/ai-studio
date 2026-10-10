@@ -63,6 +63,17 @@ class SessionCleanupTests(unittest.TestCase):
         self.studio.retire_idle_sessions()
         self.assert_retained()
 
+    def test_disconnected_browser_has_a_full_hour_before_retirement(self):
+        now = time.time()
+        with self.studio.db() as db:
+            db.execute('UPDATE participants SET last_seen=? WHERE id=?', (now, self.owner))
+        for elapsed in (10 * 60, 60 * 60 - 1):
+            self.studio.retire_idle_sessions(now + elapsed)
+            self.assert_retained()
+        self.studio.retire_idle_sessions(now + 60 * 60)
+        with self.studio.db() as db:
+            self.assertEqual(db.execute('SELECT retiring FROM participants WHERE id=?', (self.owner,)).fetchone()[0], 1)
+
     def test_running_work_and_final_writes_are_protected(self):
         self.studio.enqueue(self.owner, {'prompt':'Fixture work'})
         with self.studio.db() as db:

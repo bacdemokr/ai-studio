@@ -90,7 +90,7 @@ The scenarios keep their own agents, conversations and files. Hired Lounge agent
 - **Files** shows uploads/results for the selected agent only and is hidden when empty. Definition files use **Instructions → Copy**; result files support preview/download.
 - **Usage & time** shows recorded tokens, elapsed time and agent turns after a Stage 3 run. Agent time includes tools; summed time can exceed elapsed time when turns overlap. It is not a provider billing report.
 - `./bac start` clears runtime data and starts fresh. Use `./bac start --keep-data` to retain a rehearsal. `./bac stop --all` stops the demo and its managed local model, then removes the Compose stack and its data volumes.
-- Keep the demo tab open to retain its session. After 10 minutes disconnected, its agents and results are automatically cleared once active work finishes. A preserving restart gives the browser 10 minutes to reconnect.
+- Keep the demo tab open to retain its session. After 60 minutes disconnected, its agents and results are automatically cleared once active work finishes. A preserving restart gives the browser 60 minutes to reconnect.
 
 
 ## Scenario ideas in [README_POSSIBLESCENARIOS.md](README_POSSIBLESCENARIOS.md)

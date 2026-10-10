@@ -5,7 +5,7 @@ import re
 import shutil
 import time
 
-SESSION_IDLE_SECONDS = 600
+SESSION_IDLE_SECONDS = 60 * 60
 
 
 class SessionLifecycle:

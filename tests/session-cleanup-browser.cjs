@@ -21,7 +21,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
    const secondId=await second.evaluate(()=>BacStudio.inspect().agentId);
    assert.notEqual(firstId,secondId);
    await first.reload();await first.waitForFunction(id=>BacStudio.inspect().agentId===id,firstId);
-   // Finish any queued fixture work before simulating 10 minutes offline.
+   // Finish any queued fixture work before simulating 60 minutes offline.
    await first.waitForTimeout(1500);
    await first.evaluate(()=>fetch('/api/fixture-expire',{method:'POST',body:'{}'}));
    await first.waitForFunction(id=>BacStudio.inspect().agentId&&BacStudio.inspect().agentId!==id,firstId,{timeout:15000});
