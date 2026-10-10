@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),{chromium}=require('playwright');
 (async()=>{const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});try{
  const page=await browser.newPage({viewport:{width:1500,height:1100}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto('http://127.0.0.1:8083');await page.waitForFunction(()=>window.BacStudio&&window.BacCampus?.inspect().navigation?.overview);
+ await page.goto(process.env.BASE_URL||'http://127.0.0.1:8083');await page.waitForFunction(()=>window.BacStudio&&window.BacCampus?.inspect().navigation?.overview);
  await page.waitForFunction(()=>BacStudio.inspect().runtime.version==='SCENARIO TEST FIXTURE');
  await page.locator('#studio-config').click();await page.locator('#studio-model-connections').waitFor();
  assert.equal(await page.getByRole('button',{name:'Recommended defaults'}).count(),0);await page.locator('#studio-connections-save').click();await page.waitForFunction(()=>document.querySelector('#studio-connections-status').textContent.startsWith('Saved.'));

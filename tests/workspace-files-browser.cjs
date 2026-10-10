@@ -22,7 +22,7 @@ const { chromium } = require('playwright');
   const close=()=>page.locator('#studio-dialog-close').click();
   async function files(){await page.locator('.studio-team-utilities').getByRole('button',{name:'Files',exact:true}).click();}
   try {
-    await page.goto('http://127.0.0.1:8083');
+    await page.goto(process.env.BASE_URL||'http://127.0.0.1:8083');
     await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.version==='SCENARIO TEST FIXTURE');
     await choose('plan');
     assert.equal(await page.locator('.studio-team-utilities').getByRole('button',{name:'Files',exact:true}).isVisible(),false);

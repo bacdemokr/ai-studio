@@ -5,7 +5,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
  try{
   const page=await browser.newPage({viewport:{width:1500,height:1000}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
-  await page.goto('http://127.0.0.1:8083');
+  await page.goto(process.env.BASE_URL||'http://127.0.0.1:8083');
   await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.version==='SCENARIO TEST FIXTURE');
   async function api(scenario,path,body){return page.evaluate(async({scenario,path,body})=>{
    const session=await fetch('/api/session').then(r=>r.json());

@@ -14,7 +14,18 @@ await page.screenshot({path:'/tmp/bac-telegram-before-connect.png'});
 const modalClock=await page.evaluate(()=>BacCampus.inspect().clock);
 await page.evaluate(()=>{window.telegramPasteCount=0;document.querySelector('#studio-telegram-token').addEventListener('paste',()=>window.telegramPasteCount++);});
 for(let attempt=0;attempt<3;attempt++){
- await page.evaluate(()=>navigator.clipboard.writeText('123456789:'+'x'.repeat(30)));
+ if(await page.evaluate(()=>!!navigator.clipboard))await page.evaluate(()=>navigator.clipboard.writeText('123456789:'+'x'.repeat(30)));
+ else{
+  // HTTP LAN origins have no Clipboard API. Seed the native clipboard from
+  // a user click, then test the same real paste event into the token field.
+  await page.evaluate(()=>{
+   const button=document.createElement('button');button.id='qa-seed-clipboard';button.textContent='Seed fixture clipboard';
+   button.onclick=()=>{const field=document.createElement('textarea');field.value='123456789:'+'x'.repeat(30);button.after(field);field.select();window.qaClipboardSeeded=document.execCommand('copy');field.remove();};
+   document.querySelector('#studio-dialog').append(button);
+  });
+  await page.locator('#qa-seed-clipboard').click();assert(await page.evaluate(()=>window.qaClipboardSeeded));
+  await page.locator('#qa-seed-clipboard').evaluate(e=>e.remove());
+ }
  await page.locator('#studio-telegram-token').focus();
  await page.keyboard.press(process.platform==='darwin'?'Meta+A':'Control+A');
  await page.keyboard.press(process.platform==='darwin'?'Meta+V':'Control+V');

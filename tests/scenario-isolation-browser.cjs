@@ -1,7 +1,7 @@
 // Integration coverage against fixture_scenarios.py only. Never resets a real preview.
 const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
-const BASE = 'http://127.0.0.1:8083';
+const BASE = process.env.BASE_URL||'http://127.0.0.1:8083';
 const ULTRA = 'nvidia/nvidia/nemotron-3-ultra-nvfp4';
 const LIGHTNING = 'nvidia/nvidia/nemotron-3.5-lightning';
 const active = job => ['queued', 'running', 'waiting', 'stopping'].includes(job.status);

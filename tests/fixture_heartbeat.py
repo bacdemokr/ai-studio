@@ -38,7 +38,7 @@ telegram_notifications.request=telegram_request
 with tempfile.TemporaryDirectory() as tmp:
     os.environ['BAC_DATA_DIR']=tmp
     studio=Studio(Path(tmp)/'studio',Adapter())
-    server=create_server('127.0.0.1',int(os.environ.get('BAC_TEST_PORT','8087')),studio)
+    server=create_server(os.environ.get('BAC_TEST_HOST','127.0.0.1'),int(os.environ.get('BAC_TEST_PORT','8087')),studio)
     print('HEARTBEAT BROWSER FIXTURE - NO REAL MODEL OR TELEGRAM',flush=True)
     try:server.serve_forever()
     except KeyboardInterrupt:pass

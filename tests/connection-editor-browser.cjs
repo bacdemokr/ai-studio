@@ -12,7 +12,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
  },{path,body,keySession});
  const leaseTimer=setInterval(()=>api('credential-session',{}).catch(()=>{}),15000);
  try{
-  await page.goto('http://127.0.0.1:8083');await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.version==='SCENARIO TEST FIXTURE');
+  await page.goto(process.env.BASE_URL||'http://127.0.0.1:8083');await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.version==='SCENARIO TEST FIXTURE');
   await api('settings/connections',{source:'api',provider:'nvidia',apiKey:'fixture-new-key',model:'fixture-local-model',contextWindow:131072});
   await page.locator('#studio-config').click();
   const open=()=>page.locator('[data-connection-edit=api]').click();

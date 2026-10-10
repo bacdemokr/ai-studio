@@ -24,7 +24,7 @@ class Fixture(AgentToolsAdapter):
    return 'Fixture reply: '+('event hello' if 'event hello' in prompt else 'plan hello')
   return super().respond(agent,session,prompt)
 with tempfile.TemporaryDirectory(prefix='bac-scenarios-ui-') as folder,patch.dict(os.environ,{'BAC_DATA_DIR':folder}),patch('nvidia_research.search_one',return_value=copy.deepcopy(SOURCES['sources'])),patch('event_agent_tools.read_article',return_value='Fixture article read by the agent tool.'),patch('runtime_settings.request',return_value={'data':[{'id':m} for m in ('fixture-local-model','fixture-other-model','nvidia/nvidia/nemotron-3-ultra-nvfp4','nvidia/nvidia/nemotron-3.5-lightning')]}):
- app=Studio(folder,Fixture());server=create_server('127.0.0.1',8083,app)
+ app=Studio(folder,Fixture());server=create_server(os.environ.get('BAC_TEST_HOST','127.0.0.1'),int(os.environ.get('BAC_TEST_PORT','8083')),app)
  print('Scenario fixture 8083',flush=True)
  try:server.serve_forever()
  finally:app.stop.set();server.server_close()

@@ -14,7 +14,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
  const refresh=()=>page.evaluate(()=>BacStudio.refresh());
  const close=()=>page.locator('#studio-dialog-close').click();
  try{
-  await page.goto('http://127.0.0.1:8083');await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.version==='SCENARIO TEST FIXTURE');
+  await page.goto(process.env.BASE_URL||'http://127.0.0.1:8083');await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.version==='SCENARIO TEST FIXTURE');
   await api('settings/connections',{source:'api',provider:'nvidia',apiKey:'fixture-key',model:'fixture-local-model'});
   await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.version==='SCENARIO TEST FIXTURE');
   await page.route('**/api/state',async route=>{

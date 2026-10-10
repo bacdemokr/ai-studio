@@ -1,15 +1,16 @@
-// Run against fixture_scenarios.py only. Forward a private-IP HTTP origin to
-// the disposable server, preserving Host/Origin and the browser's real HTTP
-// security context. No live model, credentials or preview data are used.
+// Run against fixture_scenarios.py only. BAC_TEST_REMOTE_URL uses a real LAN
+// HTTP origin; otherwise forward a private-IP origin to the disposable server,
+// preserving Host/Origin and the browser's HTTP security context. No live model,
+// credentials or preview data are used.
 const assert=require('node:assert/strict'),fs=require('node:fs/promises'),{chromium}=require('playwright');
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});
- const origin='http://10.0.0.5:8083',page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[],failures=[];
+ const origin=process.env.BAC_TEST_REMOTE_URL||'http://10.0.0.5:8083',page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[],failures=[];
  page.setDefaultTimeout(15000);
  page.on('pageerror',e=>errors.push(e.message));
  page.on('response',r=>{if(r.status()>=400&&new URL(r.url()).pathname.startsWith('/api/'))failures.push([new URL(r.url()).pathname,r.status()]);});
  let keySession='';page.on('request',r=>{keySession=r.headers()['x-bac-key-session']||keySession;});
- await page.route(origin+'/**',async route=>{
+ if(!process.env.BAC_TEST_REMOTE_URL)await page.route(origin+'/**',async route=>{
   const req=route.request(),headers=await req.allHeaders();headers.host=new URL(origin).host;
   const response=await route.fetch({url:req.url().replace(origin,'http://127.0.0.1:8083'),headers});
   await route.fulfill({response});
@@ -90,7 +91,12 @@ const assert=require('node:assert/strict'),fs=require('node:fs/promises'),{chrom
   await page.locator('.team-model-dialog').waitFor({state:'hidden'});
   assert.equal((await api('state')).teamSelections[0].id,'fixture-other-model');
   await api('upload',{crewRole:0,name:'remote-notes.md',content:'Remote file preview and download.'});
-  await page.reload();await page.waitForFunction(()=>window.BacCampus?.inspect().navigation.overview);await choose('plan');
+  await page.reload();await page.waitForFunction(()=>window.BacCampus?.inspect().navigation.overview);
+  // A real network reload revokes the previous document's session-only key.
+  // Reconnect this tab before submitting work; host-saved api.cfg keys differ.
+  assert.equal((await api('settings')).profiles.nvidia.hasKey,false);
+  await api('settings/connections',{source:'api',provider:'nvidia',apiKey:'fixture-remote-key',model:'fixture-local-model'});
+  await page.evaluate(()=>BacStudio.refresh());await choose('plan');
   await page.locator('.studio-team-utilities').getByRole('button',{name:'Files',exact:true}).click();await page.locator('[data-browse-file="inbox/remote-notes.md"]').click();
   assert.equal(await page.locator('#studio-dialog-body pre').innerText(),'Remote file preview and download.');
   const pendingDownload=page.waitForEvent('download');await page.locator('#studio-download').click();const download=await pendingDownload;
