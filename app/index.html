@@ -82140,11 +82140,18 @@ function warmCrewOnOpen(){
  const key=runtime.instance+':event-brief',now=Date.now();
  if((crewWarmups.get(key)||0)>now)return;
  const target=agentId;crewWarmups.set(key,Infinity);
- api('prepare-demo',{background:true},target,'event-brief').catch(()=>{
+ // A successful request is not permanent readiness: Reset removes it and
+ // model changes invalidate native identities, even in another browser tab.
+ // Reconcile server state without recreating work or retrying failed inference.
+ let delay=10000;
+ api('state',undefined,target,'event-brief').then(state=>{
+  if(state.bacResetting||state.deleting||state.preparation?.valid)return;
+  return api('prepare-demo',{background:true},target,'event-brief');
+ }).catch(()=>{
   // A policy edit or current mission can briefly hold the preparation fence.
   // The server deduplicates attempts, including terminal preparation failures.
-  crewWarmups.set(key,Date.now()+30000);
- });
+  delay=30000;
+ }).finally(()=>crewWarmups.set(key,Date.now()+delay));
 }
 const excludedDemoGuests=new Set();
 function demoGuestChoices(){

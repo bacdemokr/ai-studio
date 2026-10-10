@@ -46,7 +46,9 @@ class CrewOwnership:
             result=[]
             for scenario in SCENARIOS:
                 team=db.execute('SELECT owner FROM crew_contexts WHERE scenario=? AND participant=(SELECT participant FROM agents WHERE id=?)',(scenario,owner)).fetchone()
-                latest=db.execute("SELECT status,updated FROM jobs WHERE owner=? AND kind IN ('crew','crew-chat','prepare') ORDER BY created DESC LIMIT 1",(team['owner'],)).fetchone() if team else None
+                # Completed automatic warmup is infrastructure, not saved user
+                # work. Otherwise Reset immediately enables itself again.
+                latest=db.execute("SELECT status,updated FROM jobs WHERE owner=? AND kind IN ('crew','crew-chat','prepare') AND NOT (kind='prepare' AND status='done' AND COALESCE(json_extract(payload,'$.background'),0)=1) ORDER BY created DESC LIMIT 1",(team['owner'],)).fetchone() if team else None
                 busy=bool(team and db.execute("SELECT 1 FROM jobs WHERE owner=? AND status IN ('queued','running','waiting','stopping') LIMIT 1",(team['owner'],)).fetchone())
                 reset=self.crew_chat_reset_state(db,team['owner'])['at'] if team else 0
                 if latest and latest['updated']<reset:latest=None

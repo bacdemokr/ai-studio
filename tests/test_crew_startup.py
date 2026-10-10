@@ -82,6 +82,23 @@ class CrewStartupTests(unittest.TestCase):
         self.assertEqual(self.studio.demo_preparation(self.owner)['status'], 'done')
         self.assertEqual(self.adapter.calls, [])
 
+    def test_reset_rewarms_without_making_empty_scenario_resettable(self):
+        first = self.warmup()
+        self.run_next()
+        self.studio.reset_crew_chats(self.owner, reset_event=True)
+        self.assertIsNone(self.studio.demo_preparation(self.owner))
+        second = self.warmup()
+        self.assertNotEqual(first['id'], second['id'])
+        self.run_next()
+        status = next(s for s in self.studio.scenario_status(self.personal) if s['id'] == 'event-brief')
+        self.assertFalse(status['hasWork'])
+        self.assertFalse(status['busy'])
+        self.assertTrue(self.studio.demo_preparation(self.owner)['valid'])
+        # New files must still enable Reset even when the newest job is a warmup.
+        artifact = self.studio.workspace(self.owner, 3) / 'artifacts' / 'report.md'
+        artifact.write_text('Saved result')
+        self.assertTrue(next(s for s in self.studio.scenario_status(self.personal) if s['id'] == 'event-brief')['hasWork'])
+
 
 if __name__ == '__main__':
     unittest.main()
