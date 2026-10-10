@@ -1,7 +1,7 @@
 <style>/* STUDIO_CSS */</style>
 <button class="studio-secondary" id="studio-room-action" hidden></button>
 <nav hidden class="studio-safety-bar" id="studio-safety-bar" aria-label="Studio controls"><span>YOU STAY IN CONTROL</span><button id="studio-security">◇ Security lab</button><button id="studio-help">Help &amp; fallback</button><button id="studio-reset">Reset mission board</button></nav>
-<section id="studio-collection" class="studio-collection" hidden aria-label="My agents"><div class="studio-collection-heading"><div><span class="studio-kicker">MY AGENTS</span><p></p></div></div><div id="studio-agent-list" class="studio-agent-list"></div><small class="studio-muted" id="studio-collection-note">Select an agent to open its own conversation, memory and files.</small></section>
+<section id="studio-collection" class="studio-collection" hidden aria-label="My agents"><div class="studio-collection-heading"><div><span class="studio-kicker">MY AGENTS</span><p></p></div></div><div id="studio-agent-list" class="studio-agent-list"></div><small class="studio-muted" id="studio-collection-note"></small></section>
 <div id="studio-board" hidden><div class="studio-board-intro"><span class="studio-kicker">MISSION CONTROL</span><h3>Different roles. Shared evidence.</h3><p>Each specialist receives the brief and the previous deliverables. The reviewer checks the whole plan.</p><p class="mission-plan-inputs" data-mission-total></p></div><div id="studio-lanes"></div></div>
 <aside id="studio-workshop"><div class="studio-passport-head"><span class="studio-kicker">DESIGN YOUR AGENT</span><span class="studio-spark">✦</span></div>
   <form id="studio-onboarding">
@@ -21,9 +21,9 @@
     <label for="studio-purpose" class="studio-custom-role-label">Or create your own</label>
     <textarea id="studio-purpose" rows="6" maxlength="1100" required aria-describedby="studio-role-hint" placeholder="- Tone: Warm, curious and a little witty.&#10;- Role: Help me plan memorable trips within my budget."></textarea>
     <button type="button" class="studio-secondary" id="studio-apply-prompt">Apply prompt &amp; suggest skills</button>
-    <small id="studio-role-hint" class="studio-muted" role="status">Choose an example, or write your own and press Enter.</small>
+    <small id="studio-role-hint" class="studio-muted" role="status"></small>
     <fieldset class="studio-style-group"><legend>What can it do?</legend><div id="studio-skill-picker"></div></fieldset>
-    <fieldset class="studio-protection-picker"><legend>OpenShell protection</legend><label><input type="radio" name="protection" value="standard" checked><span><b>OpenShell off</b><small>Tools run on the host and can read or edit files you request.</small></span></label><label><input type="radio" name="protection" value="openshell"><span><b>OpenShell on</b><small>Tools run in an isolated sandbox. OpenShell restricts file access and blocks internet connections unless allowed by policy.</small></span></label></fieldset>
+    <fieldset class="studio-protection-picker"><legend>OpenShell protection</legend><label><input type="radio" name="protection" value="standard" checked><span><b>OpenShell off</b><small>Tools can read and edit files on this computer.</small></span></label><label><input type="radio" name="protection" value="openshell"><span><b>OpenShell on</b><small>Sandboxed tools with restricted file and internet access.</small></span></label></fieldset>
     <div class="studio-creator-actions"><button type="button" class="studio-secondary" id="studio-cancel-create" hidden>Cancel</button><button type="submit" class="studio-primary" id="studio-create">Hire my agent <span>↗</span></button></div>
     <small class="studio-muted"></small>
   </form>
@@ -45,7 +45,7 @@
     <button id="studio-assigned-crew" class="studio-secondary" hidden>Open assigned crew</button>
     <section id="studio-documents" aria-label="Agent documents" hidden></section><section id="studio-conversation" aria-label="Conversation history" role="log" aria-live="polite"></section><form id="studio-chat"><div id="studio-equipped" class="studio-equipped" aria-label="Message templates"></div><div id="studio-chat-connection" role="status" hidden><span id="studio-chat-connection-text"></span><button type="button" id="studio-chat-connect">Connect model</button></div><p id="studio-chat-error" role="alert" hidden></p><label for="studio-prompt">Message your agent</label><textarea id="studio-prompt" rows="3" maxlength="6000" placeholder="Ask a question or give your agent a task…" required></textarea><div class="studio-compose-actions"><button type="button" id="studio-attach">＋ Add a document</button><div id="studio-run-control"><button type="submit" class="studio-primary" id="studio-send">Run this agent</button><button type="button" class="studio-primary" id="studio-run-options" aria-label="More run options" aria-expanded="false" aria-controls="studio-run-menu">▾</button><div id="studio-run-menu" hidden><button type="submit" class="studio-secondary" id="studio-send-all">Run all agents</button></div></div></div></form>
     <details class="studio-agent-extras"><summary>Memory &amp; scheduling</summary><div class="studio-quick-links"><button id="studio-memory">View saved memory</button><button id="studio-schedule">Schedule a task</button></div></details>
-    <div class="studio-native-note"><span>OPENCLAW</span><p>Native persona · skills · persistent conversation<br></p></div>
+
   </div>
 </aside>
 <aside id="studio-crew-passport" hidden aria-label="Selected crew member">
@@ -64,10 +64,10 @@
 <section class="studio-workspace" id="studio-workspace">
   <div class="studio-workspace-main"><div class="studio-section-heading"><div><span class="studio-kicker">RESULT</span><h3 id="studio-result-title">Result</h3></div><button class="studio-secondary" id="studio-read-aloud" hidden>▷ Hear the answer</button></div>
     <div id="studio-mission-controls" class="studio-mission-controls" aria-label="Current mission controls"></div>
-    <div id="studio-result" class="studio-result"><div class="studio-empty-art"><span>↗</span><div><strong>Go from an idea to something real.</strong><p>A playable mini app. A brief with sources. A plan your whole crew can use.</p></div></div></div>
+    <div id="studio-result" class="studio-result"><div class="studio-empty-art"><span>↗</span><div><strong>No results yet.</strong></div></div></div>
     <div id="studio-job-history" class="studio-history"></div>
   </div>
-  <aside class="studio-evidence"><div class="studio-section-heading"><span class="studio-kicker">VISIBLE EVIDENCE</span><span class="studio-evidence-dot"></span></div><ol id="studio-events"><li><b>No mission has run yet.</b><small>Gateway requests, role handoffs and saved files appear here as they happen.</small></li></ol><div class="studio-files-head"><span class="studio-kicker">YOUR WORKSPACE</span><button id="studio-refresh-files">↻</button></div><div id="studio-files"><p class="studio-muted">Uploaded documents and deliverables live here.</p></div></aside>
+  <aside class="studio-evidence"><div class="studio-section-heading"><span class="studio-kicker">VISIBLE EVIDENCE</span><span class="studio-evidence-dot"></span></div><ol id="studio-events"><li><b>No mission has run yet.</b></li></ol><div class="studio-files-head"><span class="studio-kicker">YOUR WORKSPACE</span><button id="studio-refresh-files">↻</button></div><div id="studio-files"><p class="studio-muted">No files yet.</p></div></aside>
 </section>
 <div id="studio-alert" class="studio-alert" role="alert" hidden><span></span><button aria-label="Dismiss message">×</button></div>
 <input type="file" id="studio-upload" multiple accept=".pdf,.pptx,.xlsx,.csv,.txt,.md" hidden>

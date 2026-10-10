@@ -15,12 +15,12 @@ async function openAgentDocuments(role=null,codeView=false){
   const documents=result.documents||[];
   if(codeView){
    const definitions=[
-    {filename:'AGENTS.md',label:'Working instructions',question:'What work should I do, and how?'},
-    {filename:'IDENTITY.md',label:'Identity',question:'Who am I?'},
-    {filename:'SOUL.md',label:'Character and boundaries',question:'How do I behave?'}
+    {filename:'AGENTS.md',label:'Working instructions'},
+    {filename:'IDENTITY.md',label:'Identity'},
+    {filename:'SOUL.md',label:'Character and boundaries'}
    ];
    const core=definitions.map(definition=>({...definition,...(documents.find(doc=>doc.group==='agent'&&doc.filename===definition.filename)||{status:'missing'})}));
-   host.innerHTML='<div class="studio-identity-heading"><div><h3>'+escape(result.name)+'</h3><p>'+escape(result.description)+'</p></div><span>Read only</span></div><p class="studio-code-intro"><a href="https://docs.openclaw.ai/cli/agents" target="_blank" rel="noopener noreferrer">The three OpenClaw definitions that shape how this agent works. Tool permissions are enforced separately by the runtime and OpenShell.</a></p><div class="studio-code-layout">'+core.map((doc,index)=>'<article class="studio-code-panel" data-status="'+escape(doc.status)+'"><header><div><small>0'+(index+1)+' / AGENT DEFINITION: '+escape(doc.label).toUpperCase()+'</small><span class="studio-code-question">“'+escape(doc.question)+'”</span><h4>'+escape(doc.filename)+'</h4></div><button type="button" class="studio-secondary" data-code-copy="'+index+'" '+(doc.status==='ready'?'':'disabled')+'>Copy</button></header>'+(doc.status==='ready'?'<pre tabindex="0"><code>'+escape(doc.content||'')+'</code></pre>':'<p role="status">'+(doc.status==='missing'?'This file has not been created yet. It will appear when this agent’s runtime is prepared.':'This saved file could not be opened.')+'</p>')+'</article>').join('')+'</div>';
+   host.innerHTML='<div class="studio-identity-heading"><div><h3>'+escape(result.name)+'</h3><p>'+escape(result.description)+'</p></div><span>Read only</span></div><div class="studio-code-layout">'+core.map((doc,index)=>'<article class="studio-code-panel" data-status="'+escape(doc.status)+'"><header><div><small>'+escape(doc.label)+'</small><h4>'+escape(doc.filename)+'</h4></div><button type="button" class="studio-secondary" data-code-copy="'+index+'" '+(doc.status==='ready'?'':'disabled')+'>Copy</button></header>'+(doc.status==='ready'?'<pre tabindex="0"><code>'+escape(doc.content||'')+'</code></pre>':'<p role="status">'+(doc.status==='missing'?'File not created yet.':'Could not open this file.')+'</p>')+'</article>').join('')+'</div>';
    host.querySelector('.studio-code-layout').onclick=async event=>{
     const button=event.target.closest('[data-code-copy]');if(!button)return;
     const doc=core[Number(button.dataset.codeCopy)];if(doc?.status!=='ready')return;
@@ -45,7 +45,7 @@ async function openAgentDocuments(role=null,codeView=false){
    el('identity-source').querySelector('code').textContent=doc.content||'';
    el('identity-source').scrollTop=0;
    el('identity-unavailable').hidden=doc.status==='ready';
-   el('identity-unavailable').textContent=doc.status==='missing'?'This file has not been created yet. It will appear when this agent’s runtime is prepared.':'This saved file could not be opened.';
+   el('identity-unavailable').textContent=doc.status==='missing'?'File not created yet.':'Could not open this file.';
   };
   host.querySelector('nav').onclick=event=>{const button=event.target.closest('[data-identity-document]');if(button)show(Number(button.dataset.identityDocument));};
   el('identity-copy').onclick=async()=>{

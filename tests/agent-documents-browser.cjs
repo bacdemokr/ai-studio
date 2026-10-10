@@ -17,7 +17,7 @@ const {execFileSync}=require('node:child_process'),{chromium}=require('playwrigh
    await r.fulfill({json:fixture.documents[role]});
   });
   await page.goto('http://127.0.0.1:8080');await page.waitForFunction(()=>window.BacStudio);
-  const room=async name=>{await page.locator('.world-room-map [data-world-room='+name+']').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);};
+  const room=async name=>{await page.locator(name==='mission'?'.world-room-map [data-world-scenario=event-brief]':'.world-room-map [data-world-room='+name+']').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);};
   await room('lounge');await page.locator('#studio-agent-name').focus();await page.keyboard.press('Enter');
   const source=page.locator('#studio-identity-source'),modal=page.locator('#studio-dialog');
   await source.waitFor();assert.equal(await source.innerText(),fixture.documents.personal.documents[0].content);
@@ -25,17 +25,17 @@ const {execFileSync}=require('node:child_process'),{chromium}=require('playwrigh
   await modal.getByRole('button',{name:'MEMORY.md Saved memory'}).click();assert.match(await source.innerText(),/Prefers concise answers/);
   await modal.getByRole('button',{name:'Three Takeaways SKILL.md'}).click();assert.match(await source.innerText(),/name: bac-documents/);
   await page.locator('#studio-identity-copy').click();assert.equal(await page.evaluate(()=>window.copiedDefinition),await source.innerText());
-  await modal.getByRole('button',{name:'USER.md User preferences'}).click();assert.match(await page.locator('#studio-identity-unavailable').innerText(),/has not been created/);assert(await page.locator('#studio-identity-copy').isDisabled());assert(await source.isHidden());
+  await modal.getByRole('button',{name:'USER.md User preferences'}).click();assert.match(await page.locator('#studio-identity-unavailable').innerText(),/File not created yet/);assert(await page.locator('#studio-identity-copy').isDisabled());assert(await source.isHidden());
   await modal.getByRole('button',{name:'SOUL.md Personality & role'}).click();
   const directory=path.resolve('../../work/agent-documents-visual');fs.mkdirSync(directory,{recursive:true});
   await modal.screenshot({path:path.join(directory,'personal-files.png')});
   await page.keyboard.press('Escape');assert(!(await modal.isVisible()));
   // A late response from the closed personal viewer cannot replace the crew file.
   delay=true;await page.locator('#studio-portrait').click();await page.waitForTimeout(100);await page.locator('#studio-dialog-close').click();
-  await room('mission');await page.locator('[data-campus-agent="0"]').click();await page.locator('#studio-crew-name').click();
+  await room('mission');await page.locator('[data-crew-member="0"]').click();await page.locator('#studio-crew-name').click();
   await source.waitFor();assert.match(await source.innerText(),/Casey has these distinct/);
   release?.();delay=false;await page.waitForTimeout(100);assert.match(await source.innerText(),/Casey has these distinct/);
-  await page.keyboard.press('Escape');await page.locator('[data-campus-agent="1"]').click();
+  await page.keyboard.press('Escape');await page.locator('[data-crew-member="1"]').click();
   await page.locator('#studio-focus').click();await page.locator('#studio-crew-portrait').click();await source.waitFor();
   assert.match(await source.innerText(),/Dylan has these distinct/);assert(await modal.isVisible());
   await modal.screenshot({path:path.join(directory,'crew-files.png')});

@@ -293,7 +293,7 @@ function renderMissionControl(){
  el('board').classList.toggle('has-plan',!!job);
  intro.querySelector('h3').textContent=job?'Execution trace':'No active plan';
  intro.querySelector('[data-mission-total]').textContent=job?collaborationTime(job):'';
- intro.querySelector('p').textContent=job?job.payload.collaboration.task:'Send /goal to Casey to start. Assigned specialists and progress will appear here.';
+ intro.querySelector('p').textContent=job?job.payload.collaboration.task:'Send /goal to Casey to start.';
  if(!job){el('lanes').innerHTML='';delete el('lanes').dataset.traceJob;delete el('lanes')._traceMarkup;return;}
  updateMissionControlTrace(el('lanes'),job.id,missionControlTraceMarkup(job));
 }
@@ -469,7 +469,7 @@ el('crew-conversation').onclick=async e=>{const file=e.target.closest('[data-pla
 
 function roundtableMarkup(job){
  const meeting=job.payload.roundtable,plan=job.payload.collaboration;if((!meeting?.members?.length&&!meeting?.skipped?.length)||(plan&&(!plan.responseReady||plan.outcome==='unavailable')))return '';
- const intro=plan?'Personal reactions to the result, in each agent’s own voice. Opinions, not independent tests.':meeting.status==='invited'?'Your hired agents are joining the table. Their reactions follow the finished package.':'Personal reactions to this event · opinions, not independent tests.';
+ const intro=plan?'Personal reactions, not independent reviews.':meeting.status==='invited'?'Your agents will react when the results are ready.':'Personal reactions, not independent reviews.';
  return '<section class="crew-roundtable-log"><h4>Your agents’ take</h4><p>'+(meeting.members.length?intro:'No personal agents are joining this event.')+'</p>'+(meeting.skipped||[]).map(m=>'<p class="studio-muted" data-roundtable-skipped="'+escape(m.key)+'">'+escape(m.name)+' · Skipped: '+escape(m.detail)+'</p>').join('')+meeting.members.map(member=>{const reply=meeting.replies?.[member.key]||{},text=reply.answer||reply.error||((meeting.status==='cancelled'||job.status==='cancelled')?'Roundtable stopped before this reaction.':reply.status==='running'?'Considering the plan…':'Waiting for the results.');return '<article class="chat-message chat-agent" data-roundtable-reply="'+escape(member.key)+'"><small>'+escape(member.name)+' · '+escape(member.tonePrompt||member.tone||'')+'</small>'+customSkillMarkup(reply.activity)+'<div class="chat-prose">'+messageMarkup(text)+'</div>'+(reply.status==='error'&&job.status==='done'?'<button type="button" class="studio-secondary" data-retry-reaction="'+escape(member.key)+'" data-reaction-job="'+escape(job.id)+'">Retry this reaction</button>':'')+'</article>'}).join('')+'</section>';
 }
 

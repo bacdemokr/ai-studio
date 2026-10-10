@@ -14,5 +14,7 @@ try:
         case.save('SOUL.md','# Role\n'+name+' has these distinct saved crew instructions.\n',role)
         case.save('IDENTITY.md','# Identity\nName: '+name+'\n',role)
     state=case.studio.state(case.owner)
+    # Onboarding now creates USER.md; keep this fixture's missing-file case explicit.
+    (case.studio.workspace(case.owner)/'USER.md').unlink(missing_ok=True)
     print(json.dumps({'state':state,'documents':{'personal':read_documents(case.studio,case.owner),'0':read_documents(case.studio,case.owner,0),'1':read_documents(case.studio,case.owner,1)}}))
 finally:case.doCleanups()

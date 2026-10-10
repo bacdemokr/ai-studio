@@ -63,7 +63,7 @@ function renderUsageTime(job){
  usageTime.innerHTML='<section class="studio-usage-task"><small>Task</small><p>'+escape(scenarioTaskSummary(job))+'</p></section>'+
   '<div class="studio-usage-totals"><article><small>Input tokens</small><strong>'+amount(summary.input,summary.inputReported)+'</strong></article><article><small>Output tokens</small><strong>'+amount(summary.output,summary.outputReported)+'</strong></article><article><small>Combined tokens</small><strong>'+amount(summary.total,summary.totalReported)+'</strong></article><article><small>Total elapsed</small><strong>'+usageDuration(summary.elapsed)+'</strong></article><article><small>Combined agent time</small><strong>'+usageDuration(summary.timeReported?summary.apiSeconds:null)+'</strong></article></div>'+
   (rows?'<h3>Usage and time by agent</h3><div class="studio-usage-table-wrap"><table><thead><tr><th>Agent</th><th>Endpoint</th><th>Input</th><th>Output</th><th>Combined</th><th>Agent time</th><th>Turns</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p class="studio-usage-note">No usage reported for this run.</p>')+
-  warning+'<p class="studio-usage-note">Total elapsed is submission-to-completion wall time. Agent time includes model responses and tool execution. Parallel turns can make the combined time longer than elapsed time. Only recorded responses are counted.</p>';
+  warning+'<p class="studio-usage-note">Agent time includes tools; parallel work can exceed total elapsed time. Recorded responses only.</p>';
 }
 
 const surfaceDefinitions={

@@ -49,14 +49,14 @@ function fillCreator(creating){
   el('name').value=p.name;writeCreatorPrompt(savedTonePrompt(p),p.purpose||(creating?'':personas[p.persona]));persona=p.persona;draftAvatar={...(p.avatar||defaults)};el('accessory').value=draftAvatar.accessory;
   draftTone=p.tone||'kind';
   el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(roleTemplates[Number(b.dataset.roleTemplate)]?.purpose===p.purpose)));
-  el('role-hint').textContent='Buttons fill the prompt. Edit either line freely.';
+  el('role-hint').textContent='';
   el('skill-picker').querySelectorAll('input').forEach(i=>i.checked=p.skills.includes(i.value));
   el('onboarding').querySelectorAll('[name=protection]').forEach(i=>i.checked=i.value===(p.protection||'standard'));
   el('onboarding').querySelector('.studio-protection-picker').hidden=!creating;
   el('onboarding').querySelectorAll('[name=protection]').forEach(i=>i.disabled=!creating);
   el('creator-title').textContent=creating?'Hire your own Agent.':'Edit '+p.name;
-  el('creator-note').hidden=creating;
-  el('creator-note').textContent=creating?'':'Update its look, working style, voice and abilities. Memory and files stay with this agent.';
+  el('creator-note').hidden=true;
+  el('creator-note').textContent='';
   el('create').textContent=creating?'Hire my agent':'Save my agent';el('cancel-create').hidden=!data.profile;el('create').disabled=creating&&n>=(data.agentLimit||12);
   updateDraft();el('workshop').scrollTop=0;
 }
@@ -118,11 +118,11 @@ const roleTemplates=[
 el('role-templates').innerHTML=roleTemplates.map((t,i)=>`<button type="button" data-role-template="${i}" aria-pressed="false">${t.label}</button>`).join('');
 function selectRoleSkills(skills){
   el('skill-picker').querySelectorAll('input').forEach(input=>input.checked=skills.includes(input.value));
-  el('role-hint').textContent=skills.length?'Suggested skills selected. Adjust them below.':'No matching skills found. Choose below.';
+  el('role-hint').textContent=skills.length?'Suggested skills selected.':'No matching skills found. Choose below.';
   updateDraft();
 }
 el('role-templates').onclick=e=>{const button=e.target.closest('[data-role-template]');if(!button)return;const template=roleTemplates[Number(button.dataset.roleTemplate)];writeCreatorPrompt(creatorPrompt().tonePrompt,template.purpose);el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));selectRoleSkills(template.skills);};
-el('purpose').addEventListener('input',()=>{el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed','false'));el('role-hint').textContent='Apply to suggest skills. Your prompt is also saved when you hire.';syncCreatorTone();updateDraft();});
+el('purpose').addEventListener('input',()=>{el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed','false'));el('role-hint').textContent='';syncCreatorTone();updateDraft();});
 el('apply-prompt').onclick=()=>{
   syncCreatorTone();
   const role=creatorPrompt().purpose.toLowerCase();
@@ -161,7 +161,7 @@ async function waitForAgentDeletion(target,name,onWaiting=()=>{}){
 el('delete-agent').onclick=()=>{
   if(!data.profile||pendingWrites||changingAgent||removingAgent)return;
   const target=agentId,name=data.profile.name;
-  dialog('YOUR COLLECTION',`<div class="studio-delete-identity">${avatarBadge(data.profile.avatar)}<span>REMOVE A TEAMMATE</span></div><h3>Delete ${escape(name)}?</h3><p>Permanently delete this agent, its chats, memory and files.</p><p class="studio-muted">Pending and scheduled tasks will be cancelled, and any running task involving this agent will stop.</p><p id="studio-delete-error" role="alert" hidden></p><div class="studio-delete-actions"><button class="studio-secondary" id="studio-delete-cancel" autofocus>Keep agent</button><button class="studio-danger" id="studio-delete-confirm">Delete ${escape(name)}</button></div>`);
+  dialog('YOUR COLLECTION',`<div class="studio-delete-identity">${avatarBadge(data.profile.avatar)}<span>REMOVE A TEAMMATE</span></div><h3>Delete ${escape(name)}?</h3><p>Permanently delete this agent, its chats, memory and files.</p><p class="studio-muted">Pending and scheduled tasks are cancelled; active tasks involving this agent stop.</p><p id="studio-delete-error" role="alert" hidden></p><div class="studio-delete-actions"><button class="studio-secondary" id="studio-delete-cancel" autofocus>Keep agent</button><button class="studio-danger" id="studio-delete-confirm">Delete ${escape(name)}</button></div>`);
   el('delete-cancel').onclick=()=>el('dialog').close();el('delete-cancel').focus();
   el('delete-confirm').onclick=async()=>{
     if(target!==agentId)return;

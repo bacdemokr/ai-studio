@@ -4,7 +4,7 @@ function drawComparison(){
   comparePanel.hidden=room!=='lounge'||!comparison;if(!comparison)return;
   if(comparePanel.dataset.batch!==comparison.id){
     comparePanel.dataset.batch=comparison.id;
-    comparePanel.innerHTML=`<div class="studio-section-heading"></div><p class="studio-compare-prompt"></p><small>Each agent keeps its own persona, skills, memory and access. Requests share the model queue. Attachments stay with their original agent.</small><div class="studio-compare-grid"></div>`;
+    comparePanel.innerHTML=`<div class="studio-section-heading"></div><p class="studio-compare-prompt"></p><small>Requests share a model queue. Attachments stay with their original agent.</small><div class="studio-compare-grid"></div>`;
     comparePanel.querySelector('.studio-compare-prompt').textContent=comparison.prompt;
     comparePanel.querySelector('.studio-compare-grid').innerHTML=comparison.rows.map((r,i)=>`<article data-compare-row="${i}"><div class="studio-companion-name">${avatarBadge(r.avatar)}<div><h3>${escape(r.name)}</h3><small>${escape(r.purpose||'Personal agent')} · ${escape(voiceSummary(r))}</small></div></div><b class="compare-status"></b><p class="compare-answer"></p></article>`).join('');
   }
