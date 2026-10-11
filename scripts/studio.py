@@ -981,6 +981,9 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
                     payload['roundtable'] = self.capture_roundtable(db, owner, selected=[member['key'] for member in visitors])
                 else:
                     require_opt_in(db, owner, task)
+                    # OFF keeps the established built-in task + personal reactions flow.
+                    # The toggle controls specialist assignments, not closing reactions.
+                    payload['roundtable'] = self.capture_roundtable(db, owner)
             # An immediate personal request can do the same preparation itself.
             if kind == 'chat':
                 reserved = db.execute("SELECT payload FROM jobs WHERE kind='crew-chat' AND status IN ('queued','running','waiting','stopping') "

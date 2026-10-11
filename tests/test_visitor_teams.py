@@ -76,16 +76,18 @@ class VisitorTeamTests(unittest.TestCase):
             with self.subTest(options=options), patch('visitor_teams.capture', side_effect=AssertionError('Must not capture hired team')):
                 result = self.app.enqueue(self.manager, {'kind': 'crew-chat', 'crewRole': 0,
                                                          'prompt': '/goal Build a counter.', **options})
-                with self.app.db() as db:
-                    self.app.require_idle(db, self.owner)
                 job = self.execute(result)
                 self.assertEqual(job['status'], 'done')
                 self.assertIs(job['payload']['includeHiredAgents'], False)
                 self.assertNotIn('roster', job['payload'])
-                self.assertNotIn('roundtable', job['payload'])
+                self.assertEqual(job['payload']['roundtable']['replies'][self.owner]['status'], 'done')
                 self.assertFalse(job['payload']['collaboration'].get('visitorBindings'))
                 self.assertTrue(self.specialists()[-1][0].endswith('-r5'))
-        self.assertFalse(any(c[0] == 'bac-' + self.owner for c in self.adapter.calls))
+        personal_calls = [c for c in self.adapter.calls if c[0] == 'bac-' + self.owner]
+        self.assertEqual(len(personal_calls), 2)
+        self.assertTrue(all(c[1].startswith('bac-roundtable-') for c in personal_calls))
+        self.assertIn('The team delivered the counter.', personal_calls[-1][2])
+        self.assertIn('not as an assigned specialist', personal_calls[-1][2])
         self.assertFalse(any('VISITOR TEAM SELECTION' in c[2] for c in self.adapter.calls))
 
     def test_off_named_agent_explains_opt_in_before_queuing_any_work(self):
@@ -107,13 +109,14 @@ class VisitorTeamTests(unittest.TestCase):
         self.assertEqual(job['status'], 'done')
         self.assertTrue(self.specialists()[-1][0].endswith('-r5'))
 
-    def test_off_allows_hired_edits_chat_and_deletion_without_cancelling_team(self):
+    def test_off_keeps_existing_reaction_guest_reservation_and_deletion_rules(self):
         result = self.start('/goal Build a counter.', includeHiredAgents=False)
-        self.app.configure(self.owner, {**self.app.profile(self.owner), 'tonePrompt': 'Concise.'})
-        personal = self.app.enqueue(self.owner, {'kind': 'chat', 'prompt': 'Weather now?'})
-        self.app.decision(self.owner, personal['id'], 'cancel')
+        with self.assertRaises(Problem):
+            self.app.configure(self.owner, {**self.app.profile(self.owner), 'tonePrompt': 'Concise.'})
+        with self.assertRaises(Problem):
+            self.app.enqueue(self.owner, {'kind': 'chat', 'prompt': 'Weather now?'})
         self.app.delete_agent(self.owner, {'name': 'Pixel'}, enqueue_only=True)
-        self.assertEqual(self.execute(result)['status'], 'done')
+        self.assertEqual(self.execute(result)['status'], 'cancelled')
 
     def test_flag_is_boolean_and_client_cannot_inject_a_roster_when_off(self):
         for value in ('false', 'true', 0, 1, None, []):
@@ -134,6 +137,9 @@ class VisitorTeamTests(unittest.TestCase):
         self.assertTrue(first['payload']['collaboration']['visitorBindings'])
         self.assertFalse(second['payload']['collaboration'].get('visitorBindings'))
         self.assertTrue(third['payload']['collaboration']['visitorBindings'])
+        self.assertFalse(first['payload']['roundtable']['members'])
+        self.assertEqual(second['payload']['roundtable']['replies'][self.owner]['status'], 'done')
+        self.assertFalse(third['payload']['roundtable']['members'])
 
     def test_pre_toggle_queued_job_retains_its_captured_team(self):
         result = self.start()

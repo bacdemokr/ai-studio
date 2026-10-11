@@ -8,11 +8,8 @@ from studio import Problem
 
 class PlanRoundtableTests(unittest.TestCase):
     setUp = fixture.CollaborationTests.setUp
+    start = fixture.CollaborationTests.start
     job = fixture.CollaborationTests.job
-
-    def start(self, prompt='/plan Prepare a practical NVIDIA workshop proposal.'):
-        return self.app.enqueue(self.app.crew_owner(self.owner), {'kind': 'crew-chat', 'crewRole': 0,
-                                                                 'prompt': prompt, 'includeHiredAgents': True})
 
     def test_guest_reacts_to_repaired_result_without_stale_contribution(self):
         from crew_roundtable import reaction_context

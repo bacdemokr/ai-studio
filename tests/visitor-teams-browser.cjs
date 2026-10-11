@@ -67,19 +67,22 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.waitForFunction(()=>document.querySelector('[data-campus-agent="5"] b')?.textContent==='Pixel');
   await page.locator('[data-campus-agent="5"]').click();
   await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Pixel');
-  // Switching off after a hired-team run must not reuse that run's identities or reservations.
+  // OFF returns work to the built-ins while preserving the original closing reactions.
   await page.locator('[data-campus-agent="0"]').click();
   await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Casey');
   await page.locator('#studio-crew-prompt').fill('/goal Build a counter.');await page.locator('#studio-crew-send').click();
   await page.waitForFunction(()=>BacCampus.inspect().crewLabels?.some(c=>c.name==='Cody')||document.querySelector('[data-campus-agent="5"] b')?.textContent==='Cody');
   let backup;for(let i=0;i<100;i++){backup=(await state()).crewChats.find(j=>j.id!==job.id&&j.payload.includeHiredAgents===false&&j.created>job.created);if(backup?.status==='done')break;await page.waitForTimeout(100);}
-  assert.equal(backup.status,'done');assert.equal(backup.payload.roster,undefined);assert.equal(backup.payload.roundtable,undefined);
+  assert.equal(backup.status,'done');assert.equal(backup.payload.roster,undefined);
+  const guestKey=backup.payload.roundtable.members.find(m=>m.name==='Pixel').key;
+  assert.equal(backup.payload.roundtable.replies[guestKey].status,'done');
+  await page.locator('#studio-crew-conversation [data-roundtable-reply="'+guestKey+'"]').filter({hasText:'Fixture personal reply.'}).waitFor({state:'visible'});
   assert.equal(backup.payload.collaboration.visitorBindings,undefined);
   assert.equal(await page.evaluate(()=>BacCampus.inspect().visitorTravel.length),0);
   await toggle.check();await page.locator('#studio-bac-reset').click();await page.locator('#studio-team-reset-confirm').click();
   await page.waitForFunction(()=>!document.querySelector('#studio-crew-include-hired').checked&&!document.querySelector('#studio-crew-include-hired').disabled);
   assert.equal((await state()).profile.id,original.id);
   assert.deepEqual(errors,[]);await page.screenshot({path:'/tmp/bac-visitor-teams-browser.png'});
-  console.log('PASS: default OFF, named-agent opt-in, locked running choice, ON hired Pixel coding, identity/policy/files, generated preview, Event Brief isolation, reload OFF, and ON-to-OFF built-in team without reservations. Model inference simulated.');
+  console.log('PASS: default OFF, named-agent opt-in, locked running choice, ON hired Pixel coding, identity/policy/files, generated preview, Event Brief isolation, reload OFF, and ON-to-OFF built-in work with personal reactions. Model inference simulated.');
  }finally{if(browser)await browser.close();if(server.exitCode===null){server.kill('SIGTERM');await new Promise(resolve=>server.once('exit',resolve));}}
 })().catch(error=>{console.error(error);process.exitCode=1;});
