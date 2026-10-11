@@ -85,7 +85,7 @@ function loungePointerPoint(e){
 }
 function beginResidentDrag(e,key){
  if(e.button!==0||room!=='lounge'||overview||journey||arrival||drag)return false;
- const r=residents.find(r=>r.key===key),point=loungePointerPoint(e);if(!r||!point)return false;
+ const r=residents.find(r=>r.key===key),point=loungePointerPoint(e);if(!r||!point||r.atOpenTask||r.atRoundtable)return false;
  endLoungeSpeech();r.target=null;
  drag={resident:r,x:e.clientX,y:e.clientY,start:r.group.position.clone(),offset:r.group.position.clone().sub(point),pointerId:e.pointerId};moved=false;
  r.dragging=true;e.currentTarget.setPointerCapture(e.pointerId);e.preventDefault();return true;
@@ -192,6 +192,7 @@ function setCollection(agents,key){
   });
   residentMeshes.length=0;residents.forEach(r=>r.group.traverse(o=>{if(o.isMesh){o.userData.resident=r.key;residentMeshes.push(o);}}));
   if(!residents.length){lastLoungeSpeaker='';nextLoungeSpeech=loungeTime+.9;}
+  syncVisitorCollection();
 }
 function chooseLoungeTarget(r){
   const p=r.group.position;
@@ -232,10 +233,10 @@ function moveResident(r,dt){
 }
 function startLoungeSpeech(){
   if(loungeSpeaker||loungeTime<nextLoungeSpeech||overview||journey||arrival||room!=='lounge'||drag)return;
-  while(welcomeSpeakers.length&&!residents.some(r=>r.key===welcomeSpeakers[0]&&!r.pending&&!r.deleting))welcomeSpeakers.shift();
+  while(welcomeSpeakers.length&&!residents.some(r=>r.key===welcomeSpeakers[0]&&!r.pending&&!r.deleting&&!r.atOpenTask&&!r.atRoundtable))welcomeSpeakers.shift();
   const newcomer=residents.find(r=>r.key===welcomeSpeakers[0]);
   if(!motion&&!newcomer&&!residents.some(r=>r.completionCue))return;
-  const eligible=residents.filter(r=>!r.deleting&&!r.atRoundtable&&!r.pending&&(!r.hasMission||r.completionCue)&&(r.completionCue||(!r.hovered&&!r.focused)));if(!eligible.length&&!newcomer)return;
+  const eligible=residents.filter(r=>!r.deleting&&!r.atRoundtable&&!r.atOpenTask&&!r.pending&&(!r.hasMission||r.completionCue)&&(r.completionCue||(!r.hovered&&!r.focused)));if(!eligible.length&&!newcomer)return;
   const start=(residents.findIndex(r=>r.key===lastLoungeSpeaker)+1)%Math.max(1,residents.length);
   const ordered=[...residents.slice(start),...residents.slice(0,start)].filter(r=>eligible.includes(r));
   const r=newcomer||ordered.find(r=>r.completionCue)||ordered.find(r=>!r.saidIntro)||ordered[0];
@@ -267,7 +268,7 @@ function animateLounge(dt){
     startLoungeSpeech();
   }
   residents.forEach((r,index)=>{
-    if(r.atRoundtable){r.mount.visible=false;r.node.hidden=true;return;}
+    if(r.atRoundtable||r.atOpenTask){r.mount.visible=false;r.node.hidden=true;return;}
     if(arrival?.key===r.key){r.mount.visible=false;r.node.hidden=true;return;}
     if(motion){
       const walking=moveResident(r,dt),speaking=loungeSpeaker===r,beat=loungeTime*(walking?8:1.7)+index;

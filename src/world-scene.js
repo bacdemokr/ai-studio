@@ -206,16 +206,16 @@ function createScene() {
     // Count all waiting recipients independently, including during other flights.
     for(const d of documentQueue){
       if(d.kind!=='assignment')continue;
-      const r=robots[d.role],seated=r?.robot.visible&&!r.exchange&&!r.path.length&&r.robot.position.distanceTo(r.home)<.12;
+      const r=crewPresentation(d.role),seated=r?.robot.visible&&!r.exchange&&!r.path.length&&r.robot.position.distanceTo(r.home)<.12;
       d.settledFor=seated?Math.min(1.5,d.settledFor+dt):0;
     }
-    if(!documentFlight&&documentQueue.length&&!robots[documentQueue[0].role]?.robot.visible)return;
+    if(!documentFlight&&documentQueue.length&&!crewPresentation(documentQueue[0].role)?.robot.visible)return;
     if(!documentFlight&&documentQueue[0]?.kind==='assignment'&&documentQueue[0].settledFor<1.5)return;
     if(!documentFlight&&documentQueue.length){documentFlight=documentQueue.shift();documentProgress=0;documentStripe.material=mat(colors[documentFlight.role],true);}
     if(!documentFlight)return;
     documentProgress=Math.min(1,documentProgress+dt/1.65);const t=documentProgress,p=t*t*(3-2*t),d=documentFlight;
     const captain=robots[0].robot.position.clone().add(new THREE.Vector3(0,1,.25));
-    const specialist=robots[d.role].robot.position.clone().add(new THREE.Vector3(.25,1,.15));
+    const specialist=crewPresentation(d.role).robot.position.clone().add(new THREE.Vector3(.25,1,.15));
     const tray=new THREE.Vector3(.62,1,.58);
     flyingDocument.visible=true;flyingDocument.position.lerpVectors(d.kind==='return'?specialist:captain,d.kind==='return'?tray:specialist,p);
     flyingDocument.position.y+=Math.sin(t*Math.PI)*1.3;flyingDocument.rotation.set(-.2,Math.sin(t*Math.PI)*.45,Math.sin(t*Math.PI*2)*.1);
@@ -259,6 +259,7 @@ function createScene() {
     if(!motion)settleCrewExchange();
   }
   /* WORLD_CREW_EXCHANGE */
+  /* WORLD_VISITOR_TRAVEL */
   const workLines=['Organizing the brief and assigning the team…','Comparing sources and choosing demo themes…','Reviewing presenter coverage and breaks…','Writing the webpage and LinkedIn post…','Preparing the survey and reviewing the plan…','Building the event page…'];
   function crewWorking(i){
     if(state.agents[i].included===false||state.agents[i].lane!==1)return false;
@@ -284,14 +285,14 @@ function createScene() {
       b.setAttribute('aria-pressed',String(activeSelection===i));b.setAttribute('aria-label','Select '+state.agents[i].name+(working?', working':''));b.classList.toggle('working',working);b.classList.toggle('selected',activeSelection===i);b.classList.toggle('excluded',state.agents[i].included===false);b.classList.toggle('waiting',state.agents[i].lane===2);
     });}
 
-  function update(next,index){state=next;placeTeam();if(scenarioMoved)settleCrewExchange();syncCaptain();syncRoundtable();activeSelection=index;phase=state.phase;dressCrew();const key=[state.jobId,state.phase,state.missionSkill,state.crewMission?.id,state.crewMission?.enabledRoles?.join(),state.agents.map(a=>a.lane).join('')].join(':');if(key!==lastKey){lastKey=key;movement();}renderCrewLabels();}
+  function update(next,index){state=next;placeTeam();if(scenarioMoved)settleCrewExchange();syncVisitorTeam();syncCaptain();syncRoundtable();activeSelection=index;phase=state.phase;dressCrew();const key=[state.jobId,state.phase,state.missionSkill,state.crewMission?.id,state.crewMission?.enabledRoles?.join(),state.agents.map(a=>a.lane).join('')].join(':');if(key!==lastKey){lastKey=key;movement();}renderCrewLabels();}
 
   /* WORLD_PROTECTION */
 
   function motionButton(){el('motion').textContent=motion?'Ⅱ':'▶';el('motion').setAttribute('aria-label',motion?'Pause scene motion':'Resume scene motion');}
   el('motion').onclick=()=>{motion=!motion;if(!motion)studioSound.stop();motionButton();};reduced.addEventListener('change',()=>{motion=!reduced.matches;if(!motion)studioSound.stop();motionButton();});
   el('camera').onclick=resetNavigation;
-  renderer.domElement.addEventListener('pointerdown',e=>{if(journey||e.button!==0)return;if(room==='lounge'&&!overview){const rect=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);const hit=raycaster.intersectObjects(residentMeshes,true)[0];if(hit&&beginResidentDrag(e,hit.object.userData.resident))return;}drag={x:e.clientX,y:e.clientY};moved=false;renderer.domElement.setPointerCapture(e.pointerId);});
+  renderer.domElement.addEventListener('pointerdown',e=>{if(journey||e.button!==0)return;if(room==='lounge'&&!overview){const rect=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);const hit=raycaster.intersectObjects(roomHitTargets(),true)[0];if(hit&&beginResidentDrag(e,hit.object.userData.resident))return;}drag={x:e.clientX,y:e.clientY};moved=false;renderer.domElement.setPointerCapture(e.pointerId);});
   renderer.domElement.addEventListener('pointermove',e=>{if(moveResidentDrag(e))return;if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>2)moved=true;azimuth-=dx*.005;elevation=Math.max(room==='workshop'?.2:.5,Math.min(1.35,elevation+dy*.003));drag={x:e.clientX,y:e.clientY};cam();});
   renderer.domElement.addEventListener('pointerup',e=>{if(endResidentDrag())return;if(!drag)return;if(!moved){const rect=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);if(!journey){const hits=raycaster.intersectObjects(navigationTargets(),true);if(hits.length){const object=hits[0].object;if(!selectNavigationObject(object)){if(room==='mission')choose(object.userData.agent);else selectRoomObject(object);}}}}drag=null;});
   renderer.domElement.addEventListener('pointercancel',()=>{endResidentDrag(true);drag=null;});
@@ -303,7 +304,7 @@ function createScene() {
   // inputs the WebGL, label layout and backdrop recompositing on every frame.
   const studioDialog=document.getElementById('studio-dialog');
   function animate(now){requestAnimationFrame(animate);if(document.hidden||root.hidden||studioDialog?.open||!viewport.clientWidth||lost){lastFrame=now;return;}if(now-lastFrame<32)return;const dt=Math.min((now-lastFrame)/1000,.06);lastFrame=now;if(motion)clock+=dt;
-    animateNavigation(now);animateRooms(dt);animateRoundtable(dt);animateCrewExchange(dt);
+    animateNavigation(now);animateRooms(dt);animateRoundtable(dt);animateCrewExchange(dt);animateVisitors(dt);
     // Keep idle name buttons at the desk while the character fidgets; walking labels still follow.
     robots.forEach((r,i)=>{if(!r.robot.visible){r.halo.visible=false;labels[i].hidden=true;return;}labels[i].hidden=false;let walking=false;if(motion){if(r.path.length){const delta=r.path[0].clone().sub(r.robot.position),dist=delta.length();if(dist<.1)r.path.shift();else{walking=true;r.robot.position.addScaledVector(delta.normalize(),Math.min(dist,dt*(r.exchange?4:1.65)));r.robot.rotation.y=Math.atan2(delta.x,delta.z);}}else if(!r.exchange&&state.agents[i].lane===0&&state.agents[i].included!==false&&i!==0&&state.crewMission?.kind!=='plan'){const target=r.home.clone().add(new THREE.Vector3(Math.sin(clock*.45+i)*.32,0,Math.cos(clock*.45+i)*.18));const delta=target.clone().sub(r.robot.position);walking=delta.length()>.05;r.robot.position.lerp(target,.025);r.robot.rotation.y=THREE.MathUtils.lerp(r.robot.rotation.y,Math.atan2(delta.x,delta.z),.04);}else r.robot.rotation.y=THREE.MathUtils.lerp(r.robot.rotation.y,crewWorking(i)?Math.PI:0,.08);r.body.position.y=walking?Math.abs(Math.sin(clock*8+i))*.04:Math.sin(clock*2+i)*.02;r.legs.forEach((l,j)=>l.rotation.x=walking?Math.sin(clock*9+i+j*Math.PI)*.4:0);r.arms.forEach((a,j)=>a.rotation.x=!walking&&crewWorking(i)?-.85+Math.sin(clock*9+j*Math.PI+i)*.16:Math.sin(clock*(walking?8:1.6)+j*Math.PI+i)*(walking ? .38 : .08));}
       r.halo.position.set(r.robot.position.x,.086,r.robot.position.z);r.halo.visible=i===activeSelection||state.agents[i].lane!==0;const labelAnchor=state.agents[i].lane===0&&!r.path.length?r.home:r.robot.position;positionLabel(labels[i],missionRoom.localToWorld(labelAnchor.clone().add(new THREE.Vector3(0,1.65,0))));});
@@ -316,5 +317,5 @@ function createScene() {
     renderer.render(scene,camera);
   }
   setScenario('plan');motionButton();resize();update(snapshot,0);sceneReady=true;requestAnimationFrame(animate);root.dataset.renderer='webgl';
-  return {resize,update,setRoom,setScenario,setScenarioStatus,scenarios:showScenarios,setCollection,observeProtection,observeExternalActivity,protectionReplyDelay,setDraft,welcomeAgent,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',protectionHits:[...protectionHits.values()].map(h=>({id:h.event.id,owner:h.event.owner,role:h.event.role,action:h.event.action,source:h.event.source,globeRotation:h.earth?.rotation.y,visible:h.group.visible,animated:motion&&h.phase!=='blocked',phase:h.phase})),roundtable:roundtableInfo(),arrival:arrival?{key:arrival.key,avatar:{...arrival.rig.appearance},phase:arrival.time<1.8?'loading':'walking',position:arrival.rig.group.position.toArray()}:null,room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,draftPreview:draftRig?{avatar:{...draftRig.appearance},visible:draftRig.group.visible&&draftRig.group.parent===workshopRoom}:null,draftShield:!!draftRig?.body.getObjectByName('openshell-shield'),crewExchange:robots.map((r,role)=>({role,visible:r.robot.visible,phase:r.exchange,wanted:r.wanted})),deskAssignments:[...deskAssignments],crewHomes:robots.map(r=>r.home.toArray()),selectedTeam:state.crewMission?.enabledRoles||[0],crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,captain:{position:robots[0].robot.position.toArray(),job:captainJob,received:[...receivedDocuments],assigned:[...assignedDocuments],pending:documentQueue.map(d=>({...d})),inFlight:documentFlight?{...documentFlight}:null},robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
+  return {resize,update,setRoom,setScenario,setScenarioStatus,scenarios:showScenarios,setCollection,observeProtection,observeExternalActivity,protectionReplyDelay,setDraft,welcomeAgent,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',protectionHits:[...protectionHits.values()].map(h=>({id:h.event.id,owner:h.event.owner,role:h.event.role,action:h.event.action,source:h.event.source,globeRotation:h.earth?.rotation.y,visible:h.group.visible,animated:motion&&h.phase!=='blocked',phase:h.phase})),visitorTravel:visitorTravelInfo(),roundtable:roundtableInfo(),arrival:arrival?{key:arrival.key,avatar:{...arrival.rig.appearance},phase:arrival.time<1.8?'loading':'walking',position:arrival.rig.group.position.toArray()}:null,room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,draftPreview:draftRig?{avatar:{...draftRig.appearance},visible:draftRig.group.visible&&draftRig.group.parent===workshopRoom}:null,draftShield:!!draftRig?.body.getObjectByName('openshell-shield'),crewExchange:robots.map((r,role)=>({role,visible:r.robot.visible,phase:r.exchange,wanted:r.wanted})),deskAssignments:[...deskAssignments],crewHomes:robots.map(r=>r.home.toArray()),selectedTeam:state.crewMission?.enabledRoles||[0],crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,captain:{position:robots[0].robot.position.toArray(),job:captainJob,received:[...receivedDocuments],assigned:[...assignedDocuments],pending:documentQueue.map(d=>({...d})),inFlight:documentFlight?{...documentFlight}:null},robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
 }

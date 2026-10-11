@@ -11,7 +11,7 @@ function enterCrew(r){
 }
 function placeTeam(){
   const initial=state.live&&!crewPresenceInitialized;if(state.live)crewPresenceInitialized=true;
-  const selected=state.agents.map((a,i)=>a.displayed===false?null:i).filter(i=>i!==null),key=(state.crewMission?.kind==='plan'?'plan:':'event:')+selected.join();
+  const selected=state.agents.map((a,i)=>a.displayed===false||a.visitorKey&&!state.crewMission?.visitorsActive?null:i).filter(i=>i!==null),key=(state.crewMission?.kind==='plan'?'plan:':'event:')+selected.map(i=>i+':'+(state.agents[i].visitorKey||'builtin')).join();
   if(key!==exchangeTeamKey){
     exchangeTeamKey=key;
     // Keep returning specialists at their existing desks, fill only free seats.
@@ -21,10 +21,11 @@ function placeTeam(){
       const free=deskAssignments.indexOf(null);if(free>=0)deskAssignments[free]=role;
     }
     robots.forEach((r,i)=>{
-      r.wanted=selected.includes(i);
+      r.wanted=selected.includes(i)&&!state.agents[i].visitorKey;
       const slot=deskAssignments.indexOf(i);
       r.home.copy(slot>=0?originalHomes[slot]:exchangeExit);
       if(i===0)return;
+      if(state.agents[i].visitorKey){r.robot.visible=false;r.exchange=null;r.path=[];labels[i].hidden=true;return;}
       if(!r.wanted){
         if(r.robot.visible){r.exchange='leaving';r.path=[new THREE.Vector3(r.robot.position.x,.05,0),exchangeEntry.clone(),exchangeExit.clone()];}
         else{r.exchange=null;r.path=[];}

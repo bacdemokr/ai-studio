@@ -35,6 +35,7 @@ world_scene = (ROOT / 'src/world-scene.js').read_text(encoding='utf-8').replace(
 stage_scenarios = json.dumps(json.loads((ROOT / 'src/stage-scenarios.json').read_text(encoding='utf-8'))).replace('</', '<\\/')
 world_scene = world_scene.replace('/* STAGE_SCENARIOS */', stage_scenarios)
 world_scene = world_scene.replace('/* AGENT_CHARACTER */', (ROOT / 'src/agent-character.js').read_text(encoding='utf-8')).replace('/* WORLD_ROOMS */', (ROOT / 'src/world-rooms.js').read_text(encoding='utf-8').replace('/* LOUNGE_LIFE */', (ROOT / 'src/world-lounge.js').read_text(encoding='utf-8'))).replace('/* WORLD_NAVIGATION */', (ROOT / 'src/world-navigation.js').read_text(encoding='utf-8'))
+world_scene = world_scene.replace('/* WORLD_VISITOR_TRAVEL */', (ROOT / 'src/world-visitor-travel.js').read_text(encoding='utf-8'))
 world_scene = world_scene.replace('/* WORLD_CREW_EXCHANGE */', (ROOT / 'src/world-crew-exchange.js').read_text(encoding='utf-8'))
 world_scene = world_scene.replace('/* WORLD_SCENARIOS */', (ROOT / 'src/world-scenarios.js').read_text(encoding='utf-8'))
 world_scene = world_scene.replace('/* WORLD_PROTECTION */', (ROOT / 'src/world-protection.js').read_text(encoding='utf-8'))

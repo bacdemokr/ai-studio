@@ -110,7 +110,7 @@ function animateRooms(dt){
   if((room==='workshop'||overview||journey)&&draftRig){if(motion){draftRig.group.rotation.y=Math.sin(clock*.35)*.24;draftRig.body.position.y=Math.sin(clock*1.8)*.025;draftRig.arms[0].rotation.x=Math.sin(clock*1.5)*.12;}}
   if(room==='lounge'||overview||journey||arrival)animateLounge(dt);
 }
-function roomHitTargets(){return room==='lounge'?residentMeshes:[];}
+function roomHitTargets(){return room==='lounge'?residentMeshes.filter(o=>residents.some(r=>r.key===o.userData.resident&&!r.atOpenTask&&!r.atRoundtable)):[];}
 function selectRoomObject(object){if(object.userData.resident)root.dispatchEvent(new CustomEvent('bac:collection-select',{detail:object.userData.resident}));}
-function residentInfo(){return residents.map(r=>({key:r.key,avatar:r.appearance,persona:r.persona,tone:r.tone,verbosity:r.verbosity,position:r.group.position.toArray(),activity:r.activity,atRoundtable:!!r.atRoundtable,visible:r.mount.visible,speech:r.speechText||null}));}
+function residentInfo(){return residents.map(r=>({key:r.key,avatar:r.appearance,persona:r.persona,tone:r.tone,verbosity:r.verbosity,position:r.group.position.toArray(),activity:r.activity,atRoundtable:!!r.atRoundtable,atOpenTask:!!r.atOpenTask,visible:r.mount.visible,speech:r.speechText||null}));}
 setDraft(draftProfile);

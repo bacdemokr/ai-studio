@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),{spawn}=require('node:child_process'),{chromium}=require('playwright');
 (async()=>{
  const port=Number(process.env.BAC_TEST_PORT||18240);
- const server=spawn('python3',['-B','tests/fixture_visitor_teams.py'],{env:{...process.env,BAC_TEST_PORT:String(port)},stdio:['ignore','pipe','inherit']});let browser;
+ const server=spawn('python3',['-B','tests/fixture_visitor_teams.py'],{env:{...process.env,BAC_TEST_PORT:String(port),BAC_TEST_VISITOR_DELAY:'8'},stdio:['ignore','pipe','inherit']});let browser;
  try{
   await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Fixture startup timed out')),15000);server.stdout.on('data',b=>{if(b.toString().includes('VISITOR FIXTURE READY')){clearTimeout(timer);resolve();}});server.once('exit',code=>{clearTimeout(timer);reject(Error('Fixture exited '+code));});});
   browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});
@@ -19,9 +19,15 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   const original=await page.evaluate(()=>BacStudio.inspect().profile);
   await choose('plan');await page.locator('#studio-crew-prompt').fill('/goal Pixel이 Coding작업들을 대신하게 해줘. Build a counter.');await page.locator('#studio-crew-send').click();
   await page.waitForFunction(()=>document.querySelectorAll('[data-collaboration-job]').length>=2&&document.querySelector('#studio-crew-conversation').textContent.includes('Hired team: Pixel'));
+  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel?.some(v=>v.name==='Pixel'&&v.phase==='working'));
+  await page.locator('[data-visitor-agent]').filter({hasText:'Pixel'}).click();
+  await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Pixel');
+  assert.equal(await page.evaluate(()=>BacCampus.inspect().residents.find(r=>r.key===BacStudio.inspect().agentId).visible),false);
+  await page.screenshot({path:'/tmp/bac-visitor-working-ui.png'});
   const state=()=>page.evaluate(async()=>{const response=await fetch('/api/state',{headers:{'X-BaC-Agent':BacStudio.inspect().agentId,'X-BaC-Scenario':'plan'}});if(!response.ok)throw Error(await response.text());return response.json();});
   let job;for(let i=0;i<100;i++){const value=await state();job=value.crewChats.find(j=>j.payload.collaboration?.visitorBindings?.[5]?.name==='Pixel');if(job?.status==='done')break;await page.waitForTimeout(100);}
   assert.equal(job.status,'done');assert.equal(job.payload.collaboration.outputs[5].agentId,original.id);
+  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===0&&BacCampus.inspect().residents.find(r=>r.key===BacStudio.inspect().agentId).visible);
   const value=await state();assert.deepEqual(value.profile.skills,original.skills);assert.equal(value.agents.length,1);
   const html=job.payload.collaboration.webpages[5][0];
   await page.locator('[data-preview-file="'+html+'"]').filter({visible:true}).first().click();

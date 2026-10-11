@@ -4,6 +4,7 @@ from pathlib import Path
 import signal
 import sys
 import tempfile
+import time
 from unittest.mock import patch
 
 sys.path[:0] = [str(Path(__file__).resolve().parent), str(Path(__file__).resolve().parents[1] / 'scripts')]
@@ -13,6 +14,11 @@ from serve import create_server
 
 
 class BrowserAdapter(VisitorAdapter):
+    def respond(self, agent, session, prompt, **kwargs):
+        if '-working' in session and agent.count('-') == 1:
+            time.sleep(min(15, max(0, float(os.environ.get('BAC_TEST_VISITOR_DELAY', '0')))))
+        return super().respond(agent, session, prompt, **kwargs)
+
     def status(self):
         return {**super().status(), 'teamReady': True, 'teamModel': True,
                 'testFixture': True, 'sharedModel': 'SIMULATED MODEL', 'openshell': 'Not configured'}
