@@ -31,11 +31,88 @@ const termGuides={
   skill:{title:'Skill : What is it',body:['A skill is a reusable set of instructions that teaches an agent how to approach a particular kind of work.','Equipping a skill makes that guidance available to the agent. It does not bypass permissions or guarantee that the skill was used in every answer.','Runtime activity and result evidence show what the agent actually read or used while completing a task.']}
 };
 const roomPaper=document.createElement('aside');roomPaper.className='world-room-paper';roomPaper.hidden=true;roomPaper.setAttribute('role','dialog');roomPaper.setAttribute('aria-modal','false');roomPaper.setAttribute('aria-labelledby','world-room-paper-title');
-roomPaper.innerHTML='<button type="button" class="world-room-paper-close" aria-label="Close room information">×</button><small></small><h2 id="world-room-paper-title"></h2><p class="world-room-paper-intro"></p><ol></ol><p class="world-room-paper-note"></p>';
+roomPaper.innerHTML='<button type="button" class="world-room-paper-close" aria-label="Close room information">×</button><div class="world-room-paper-content"><div class="world-room-paper-drag" title="Drag to move"><span aria-hidden="true">•••</span><small></small><h2 id="world-room-paper-title"></h2></div><p class="world-room-paper-intro"></p><ol></ol><p class="world-room-paper-note"></p></div><button type="button" class="world-room-paper-resize" aria-label="Resize information window" title="Drag to resize"></button>';
 navigationLayer.append(roomPaper);
 const termPaper=document.createElement('aside');termPaper.className='world-room-paper world-term-paper';termPaper.hidden=true;termPaper.setAttribute('role','dialog');termPaper.setAttribute('aria-modal','false');termPaper.setAttribute('aria-labelledby','world-term-paper-title');
-termPaper.innerHTML='<button type="button" class="world-room-paper-close" aria-label="Close definition">×</button><small>FIELD NOTES / GLOSSARY</small><h2 id="world-term-paper-title"></h2><div class="world-term-paper-body"></div>';
+termPaper.innerHTML='<button type="button" class="world-room-paper-close" aria-label="Close definition">×</button><div class="world-room-paper-content"><div class="world-room-paper-drag" title="Drag to move"><span aria-hidden="true">•••</span><small>FIELD NOTES / GLOSSARY</small><h2 id="world-term-paper-title"></h2></div><div class="world-term-paper-body"></div></div><button type="button" class="world-room-paper-resize" aria-label="Resize definition window" title="Drag to resize"></button>';
 navigationLayer.append(termPaper);
+function movablePaper(paper){
+  const handle=paper.querySelector('.world-room-paper-drag'),resizer=paper.querySelector('.world-room-paper-resize'),margin=10;
+  let moving=null,resizing=null,lastSize=null;
+  function resetMobile(){
+    for(const name of ['left','top','right','bottom','width','height'])paper.style.removeProperty(name);
+    paper.classList.remove('world-room-paper-positioned');
+  }
+  function position(){
+    if(navigationLayer.clientWidth<=700){resetMobile();return false;}
+    if(!paper.classList.contains('world-room-paper-positioned')){
+      const bounds=navigationLayer.getBoundingClientRect(),rect=paper.getBoundingClientRect();
+      paper.style.left=(rect.left-bounds.left)+'px';paper.style.top=(rect.top-bounds.top)+'px';
+      paper.style.right='auto';paper.style.bottom='auto';paper.classList.add('world-room-paper-positioned');
+    }
+    return true;
+  }
+  function constrain(){
+    if(paper.hidden||!position())return;
+    const bounds=navigationLayer.getBoundingClientRect(),rect=paper.getBoundingClientRect();
+    const width=Math.min(rect.width,Math.max(280,bounds.width-margin*2));
+    const height=Math.min(rect.height,Math.max(180,bounds.height-margin*2));
+    if(Math.abs(width-rect.width)>.5)paper.style.width=width+'px';
+    if(Math.abs(height-rect.height)>.5)paper.style.height=height+'px';
+    const left=Math.max(margin,Math.min(rect.left-bounds.left,bounds.width-width-margin));
+    const top=Math.max(margin,Math.min(rect.top-bounds.top,bounds.height-height-margin));
+    paper.style.left=left+'px';paper.style.top=top+'px';
+  }
+  handle.addEventListener('pointerdown',event=>{
+    if(event.button!==0||!position())return;
+    const bounds=navigationLayer.getBoundingClientRect(),rect=paper.getBoundingClientRect();
+    moving={pointer:event.pointerId,dx:event.clientX-rect.left,dy:event.clientY-rect.top,bounds};
+    handle.setPointerCapture(event.pointerId);handle.classList.add('is-dragging');event.preventDefault();
+  });
+  handle.addEventListener('pointermove',event=>{
+    if(!moving||moving.pointer!==event.pointerId)return;
+    const rect=paper.getBoundingClientRect();
+    const left=Math.max(margin,Math.min(event.clientX-moving.bounds.left-moving.dx,moving.bounds.width-rect.width-margin));
+    const top=Math.max(margin,Math.min(event.clientY-moving.bounds.top-moving.dy,moving.bounds.height-rect.height-margin));
+    paper.style.left=left+'px';paper.style.top=top+'px';
+  });
+  const finish=event=>{
+    if(!moving||moving.pointer!==event.pointerId)return;
+    moving=null;handle.classList.remove('is-dragging');
+  };
+  handle.addEventListener('pointerup',finish);handle.addEventListener('pointercancel',finish);
+  resizer.addEventListener('pointerdown',event=>{
+    if(event.button!==0||!position())return;
+    const bounds=navigationLayer.getBoundingClientRect(),rect=paper.getBoundingClientRect();
+    resizing={pointer:event.pointerId,x:event.clientX,y:event.clientY,width:rect.width,height:rect.height,
+              maxWidth:bounds.right-rect.left-margin,maxHeight:bounds.bottom-rect.top-margin};
+    resizer.setPointerCapture(event.pointerId);paper.classList.add('is-resizing');event.preventDefault();event.stopPropagation();
+  });
+  resizer.addEventListener('pointermove',event=>{
+    if(!resizing||resizing.pointer!==event.pointerId)return;
+    paper.style.width=Math.max(280,Math.min(resizing.maxWidth,resizing.width+event.clientX-resizing.x))+'px';
+    paper.style.height=Math.max(180,Math.min(resizing.maxHeight,resizing.height+event.clientY-resizing.y))+'px';
+  });
+  const finishResize=event=>{
+    if(!resizing||resizing.pointer!==event.pointerId)return;
+    resizing=null;paper.classList.remove('is-resizing');constrain();
+  };
+  resizer.addEventListener('pointerup',finishResize);resizer.addEventListener('pointercancel',finishResize);
+  new ResizeObserver(()=>{
+    if(paper.hidden)return;
+    const size=[paper.offsetWidth,paper.offsetHeight];
+    const scale=Math.max(1,Math.min(1.45,size[0]/480));
+    paper.style.setProperty('--world-paper-body-size',(15*scale)+'px');
+    paper.style.setProperty('--world-paper-title-size',(32*scale)+'px');
+    paper.style.setProperty('--world-paper-label-size',(11*scale)+'px');
+    paper.style.setProperty('--world-paper-step-size',(12*scale)+'px');
+    if(lastSize&&(size[0]!==lastSize[0]||size[1]!==lastSize[1]))constrain();
+    lastSize=size;
+  }).observe(paper);
+  return constrain;
+}
+const constrainRoomPaper=movablePaper(roomPaper),constrainTermPaper=movablePaper(termPaper);
+new ResizeObserver(()=>{constrainRoomPaper();constrainTermPaper();}).observe(navigationLayer);
 let roomInfoReturn=null,termInfoReturn=null;
 function closeTermInfo(restoreFocus=true){
   if(termPaper.hidden)return;
