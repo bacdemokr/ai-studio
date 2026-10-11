@@ -6,13 +6,6 @@ Keep the current dispatcher so cancellation, verified handoffs and recovery are 
 import json
 import re
 
-ROLE_SKILLS = {4: {'documents'}, 5: {'builder'}, 6: {'documents'}, 7: {'builder'}, 8: {'web', 'weather'}}
-ROLE_WORDS = [(5, r'(?<![A-Za-z0-9_])(?:cod(?:e|ing)|programming|developer|implement|build)(?![A-Za-z0-9_])|코딩|개발|구현'),
-              (4, r'(?<![A-Za-z0-9_])(?:review|reviewer|check)(?![A-Za-z0-9_])|검토|검증|리뷰'),
-              (8, r'(?<![A-Za-z0-9_])(?:research|researcher|search)(?![A-Za-z0-9_])|조사|검색|리서치'),
-              (7, r'(?<![A-Za-z0-9_])(?:design|designer|UX)(?![A-Za-z0-9_])|디자인|설계'),
-              (6, r'(?<![A-Za-z0-9_])(?:analysis|analyst|analy[sz]e)(?![A-Za-z0-9_])|분석')]
-
 
 def mentions(text, name):
     return re.search(r'(?<![\w])' + re.escape(name) + r'(?![A-Za-z0-9_])', text, re.I)
@@ -42,12 +35,9 @@ def requirements(task, members):
             continue
         if not re.search(r'\b(?:use|ask|let|have|include|involve|assign|instead|replace|must)\b|참여|대신|맡|해줘|해주세요|시켜|써줘|사용', clause, re.I):
             continue
-        tail = text[match.end():]
-        next_names = [m.start() for other in members if other['key'] != member['key']
-                      for m in [mentions(tail, other['name'])] if m]
-        span = tail[:min(next_names)] if next_names else re.split(r'[\n.!?;]', tail)[0]
-        role = next((role for role, pattern in ROLE_WORDS if re.search(pattern, span, re.I)), None)
-        found.append({'key': member['key'], 'name': member['name'], 'role': role})
+        # Detect explicit participants only. Role semantics belong to Casey;
+        # neighboring words may describe a different agent or an input file.
+        found.append({'key': member['key'], 'name': member['name'], 'role': None})
     return found
 
 
@@ -106,8 +96,10 @@ def instructions(members, required):
     return ('\nVISITOR TEAM SELECTION - overrides generic recommendations to pick Scout/Cody/Vera by name. '
             'Role numbers describe the assignment (4 review, 5 coding, 6 analysis, 7 design, 8 research), '
             'not who must do it. Prefer suitable hired agents below; use the built-in expert only when no suitable '
-            'hired agent is available. Add agent:"exact key" to each hired assignment; agent:"builtin" selects '
+            'hired agent is available. Every task MUST include agent:"exact key" for a hired assignment; agent:"builtin" selects '
             'the backup for that role. Each agent and role can appear only once. '
+            'Interpret the visitor\'s natural-language assignments, including informal requests and references to earlier sentences. '
+            'Explicitly named built-in specialists must be kept when requested. '
             'If the visitor names an agent, it MUST actually contribute, even outside its usual skills or expertise. '
             'If they say Pixel should code instead, give Pixel role 5; do not leave coding to Cody and give Pixel '
             'a token reaction. User role assignments override saved interests, but never expand tool permissions. '
@@ -120,61 +112,48 @@ def instructions(members, required):
             '\nRequired participants detected from the direct request:\n' + json.dumps(required, ensure_ascii=False) + '\n')
 
 
-def bind(plan, roster, members, required, task):
-    """Enforce named assignments before dispatch, without changing saved profiles."""
+class TeamSelectionError(RuntimeError):
+    """A planner response needs explicit identities before any work may start."""
+
+
+def validate_selection(plan, members, required):
     available = {m['key']: m for m in members}
-    tasks = plan['tasks']
-    for assignment in tasks:
-        key = assignment.get('agent', 'builtin')
-        if key != 'builtin' and key not in available:
-            raise RuntimeError('Casey selected an agent outside the available hired team. No specialist was started.')
-    for item in required:
-        assigned = next((t for t in tasks if t.get('agent') == item['key']), None)
-        target = item['role']
-        if assigned and (target is None or assigned['role'] == target):
+    seen = set()
+    for assignment in plan['tasks']:
+        key = assignment.get('agent')
+        if key is None:
+            if members:
+                raise TeamSelectionError('Identify who performs every task using agent: an exact hired key or "builtin". '
+                                         'Role numbers identify the job, not the agent. Read the original request to assign each person.')
             continue
-        if assigned:
-            tasks.remove(assigned)
-        existing = next((t for t in tasks if t['role'] == target), None) if target else None
-        if existing:
-            if existing.get('agent') in {r['key'] for r in required if r['key'] != item['key']}:
-                raise RuntimeError('Two named agents were assigned the same demo role. Split their assignments into separate tasks.')
-            existing['agent'] = item['key']
-        else:
-            unused = [r for r in (5, 8, 6, 7, 4) if not any(t['role'] == r for t in tasks)]
-            if not unused or len(tasks) >= 3:
-                raise RuntimeError('Casey must leave a specialist slot for ' + item['name'] + '. No specialist was started.')
-            role = target or next((r for r in unused if ROLE_SKILLS[r].intersection(available[item['key']].get('skills', []))), unused[0])
-            tasks.append({'role': role, 'agent': item['key'], 'task': 'The visitor explicitly assigns you this work. '
-                          'Perform your contribution yourself within the requested role; preserve your voice. Request: ' + task[:1600],
-                          'expected': 'Your actual contribution and honest limitations, not a reaction or a substitute agent.',
-                          'inputs': [], 'requiredFiles': []})
-    used = {t['agent'] for t in tasks if t.get('agent') not in (None, 'builtin')}
-    for assignment in tasks:
-        role = assignment['role']
-        if 'agent' not in assignment and not mentions(task, roster[role]['name']):
-            candidate = next((m for m in members if m['key'] not in used and 'radar' not in m.get('skills', [])
-                              and ROLE_SKILLS[role].intersection(m.get('skills', []))), None)
-            if candidate:
-                assignment['agent'] = candidate['key']
-                used.add(candidate['key'])
-    bindings, seen = {}, set()
-    for assignment in tasks:
-        key = assignment.get('agent', 'builtin')
         if key == 'builtin':
             continue
+        if key not in available:
+            raise RuntimeError('Casey selected an agent outside the available hired team. No specialist was started.')
         if key in seen:
-            raise RuntimeError('An agent cannot both produce and independently review the same work. Choose distinct agents.')
+            raise TeamSelectionError('Each hired agent can perform only one specialist assignment. '
+                                     'An independent reviewer must be a different agent.')
         seen.add(key)
-        member = available[key]
-        bindings[str(assignment['role'])] = member
-        roster[assignment['role']] = member
-        assignment['name'] = member['name']
+    missing = [m['name'] for m in required if m['key'] not in seen]
+    if missing:
+        raise TeamSelectionError('The visitor explicitly requested ' + ', '.join(missing) +
+                                 '. Assign their actual requested work, not a reaction or a replacement.')
+
+
+def bind(plan, roster, members, required, task):
+    """Apply Casey's explicit choices. Never infer or rewrite roles from prose."""
+    validate_selection(plan, members, required)
+    available = {m['key']: m for m in members}
+    bindings = {}
+    for assignment in plan['tasks']:
+        key = assignment.get('agent', 'builtin')
+        if key != 'builtin':
+            member = available[key]
+            bindings[str(assignment['role'])] = member
+            roster[assignment['role']] = member
+        assignment['name'] = roster[assignment['role']]['name']
     plan['visitorBindings'] = bindings
     plan['requiredAgents'] = required
-    # Keep the UI's explanation consistent when the deterministic backstop corrected the planner.
-    if bindings:
-        plan['summary'] += ' Hired team: ' + ', '.join(m['name'] for m in bindings.values()) + '.'
 
 
 def validate(studio, owner, member):

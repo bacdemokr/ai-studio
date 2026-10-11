@@ -27,7 +27,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await choose('plan');assert.equal(await toggle.isChecked(),true);
   await page.screenshot({path:'/tmp/bac-hired-team-toggle.png'});
   await page.locator('#studio-crew-send').click();
-  await page.waitForFunction(()=>document.querySelectorAll('[data-collaboration-job]').length>=2&&document.querySelector('#studio-crew-conversation').textContent.includes('Hired team: Pixel'));
+  await page.waitForFunction(()=>document.querySelectorAll('[data-collaboration-job]').length>=2&&BacCampus.inspect().visitorTravel?.some(v=>v.name==='Pixel'));
   assert.equal(await toggle.isChecked(),true);assert.equal(await toggle.isDisabled(),true);
   await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.name==='Pixel');
   await choose('plan');assert.equal(await toggle.isChecked(),true);assert.equal(await toggle.isDisabled(),true);

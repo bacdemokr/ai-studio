@@ -225,6 +225,9 @@ class CollaborationPlans:
         include_hired = payload.get('includeHiredAgents', bool(payload.get('roster')))
         visitors = payload.get('roster', []) if include_hired else []
         required_visitors = payload.get('requiredVisitors', []) if include_hired else []
+        # Old queued jobs may contain a role inferred from neighboring keywords.
+        # Keep their required participants, but let Casey interpret their work.
+        required_visitors = [{**member, 'role': None} for member in required_visitors]
         visitor_rules = (visitor_teams.instructions(visitors, required_visitors) if include_hired else
                          '\nTEAM SELECTION: Include hired agents is off for this task. Use only the built-in '
                          'specialists listed above. Do not assign Lounge agents mentioned in earlier conversations.\n')
@@ -939,7 +942,11 @@ class CollaborationPlans:
                 'Always include inputs for every task. Put the document IDs the specialist must read in that array, not only in the task prose. '
                 'Alternatively return {"summary":"why no delegation is necessary","tasks":[],"answer":"complete answer"}. '
                 'For unsupported work return {"summary":"which required expertise or tool is missing","tasks":[],"outcome":"unavailable","answer":"honest explanation of the limitation and next step"}. '
-                'Use each chosen role once. No invented agents or changes to the output schema.', 'Planning')
+                'Use each chosen role once. No invented agents or changes to the output schema.' +
+                (' Each task MUST also include agent:"exact hired key" or agent:"builtin". '
+                 'Interpret who should do what from the current request; preserve named people and their requested work. '
+                 'The role number is the assignment type, not a fixed identity. A name in the summary alone is not an assignment.'
+                 if include_hired and visitors else ''), 'Planning')
             if answer is None:
                 return
             try:
@@ -985,6 +992,33 @@ class CollaborationPlans:
                            'No specialist work was started. Narrow the scope or split the request to continue.', reactions=False)
                     return
             if include_hired:
+                try:
+                    visitor_teams.validate_selection(plan, visitors, required_visitors)
+                except visitor_teams.TeamSelectionError as error:
+                    plan['teamSelectionRecovery'] = {'status': 'working'}
+                    corrected = invoke(0, 'Complete the team selection before any specialist starts. '
+                        'Interpret the original user request, not keyword matches. Preserve each requested person\'s actual work '
+                        'and the necessary handoffs and task order. Do not replace a named builtin with a hired agent or vice versa. '
+                        'Return the complete plan JSON with summary and up to three tasks. EVERY task must contain role '
+                        '(4 review, 5 coding, 6 analysis, 7 design, 8 research), agent (an exact hired key or "builtin"), '
+                        'task, expected, inputs and requiredFiles. Hired names and their exact keys appear in Hired agents above. '
+                        'No tools.\nValidation issue: ' + str(error) + '\nOriginal request:\n' + plan['task'] +
+                        '\nPrevious selection:\n' + json.dumps(plan['tasks'], ensure_ascii=False), 'Planning-team-repair')
+                    if corrected is None:
+                        return
+                    try:
+                        selection = read_plan(corrected)
+                        selection['reviewRequired'] = plan.get('reviewRequired', False) or selection.get('reviewRequired', False)
+                        include_required_review(selection)
+                        validate_assignments(selection['tasks'], inputs, bool(payload.get('images')))
+                        visitor_teams.validate_selection(selection, visitors, required_visitors)
+                    except (RuntimeError, ValueError):
+                        plan['teamSelectionRecovery']['status'] = 'failed'
+                        plan.update(tasks=[], outcome='partial', calledRoles=[])
+                        finish('Casey could not confirm the requested team. No specialist work was started. Please try again.', reactions=False)
+                        return
+                    plan.update(selection)
+                    plan['teamSelectionRecovery']['status'] = 'corrected'
                 visitor_teams.bind(plan, roster, visitors, required_visitors, plan['task'])
             if plan.get('visitorBindings'):
                 visitor_rules += ('\nActual selected assignments (use these identities in progress and final answers):\n' +

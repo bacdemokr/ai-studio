@@ -10,11 +10,32 @@ from agent_runtime import GatewayError
 from visitor_teams import requirements
 
 
+BARCELONA_REQUEST = '''/goal Have Pixel and the built-in researcher Scout work together on a small Barcelona travel guide.
+
+Scout: Find three interesting places to visit, using official tourism sources. Keep the research brief and provide one useful fact and a source link for each place.
+
+Pixel: Turn Scout's findings into one self-contained HTML page with three attractive cards and a button to show or hide each place's details. Use no external libraries.'''
+
+
+class NamedAssignmentTests(unittest.TestCase):
+    def test_prose_never_determines_a_named_agents_runtime_role(self):
+        for request in (BARCELONA_REQUEST,
+                        'Have Pixel and the built-in researcher Scout work together on a travel guide.',
+                        "Have Scout find places, then get Pixel to turn the findings into a page.",
+                        'Pixel이 코딩을 맡아줘. Scout가 조사해서 바르셀로나 여행 페이지 만들어줘.'):
+            with self.subTest(request=request):
+                self.assertEqual(requirements(request, [{'name': 'Pixel', 'key': 'pixel'}]),
+                                 [{'key': 'pixel', 'name': 'Pixel', 'role': None}])
+
+
+
 class VisitorAdapter(Adapter):
     def __init__(self):
         super().__init__()
         self.selection = {'summary': 'Build the requested page.', 'tasks': [
             {'role': 5, 'task': 'Build the requested counter.', 'inputs': [], 'requiredFiles': ['artifacts/counter.html']}]}
+        self.auto_agents = True
+        self.repaired_selection = None
         self.writes = True
         self.fail_once = False
         self.check_done = False
@@ -26,7 +47,15 @@ class VisitorAdapter(Adapter):
         if self.after:
             self.after(agent, session)
         if session.endswith('-planning') or '-planning-' in session:
-            return json.dumps(self.selection)
+            selection = json.loads(json.dumps(self.repaired_selection if '-planning-team-repair' in session
+                                              and self.repaired_selection is not None else self.selection))
+            # Simulated planner identities, not natural-language interpretation.
+            if self.auto_agents and 'Hired agents:\n' in prompt:
+                required, _ = json.JSONDecoder().raw_decode(prompt.split('Required participants detected from the direct request:\n', 1)[1])
+                preferred_role = 5 if any(t['role'] == 5 for t in selection['tasks']) else next((t['role'] for t in selection['tasks']), None)
+                for task in selection['tasks']:
+                    task.setdefault('agent', required[0]['key'] if required and task['role'] == preferred_role else 'builtin')
+            return json.dumps(selection)
         if '-checking-' in session:
             return json.dumps({'done': self.check_done, 'reason': 'Fixture checkpoint.', 'answer': 'Saved work.',
                                'outcome': 'partial' if self.check_partial else 'complete', 'remaining': ['Evidence is incomplete.']})
@@ -166,6 +195,7 @@ class VisitorTeamTests(unittest.TestCase):
 
     def test_suitable_hired_builder_is_preferred_without_explicit_name(self):
         builder = self.app.add_agent(self.owner, {'name': 'Maker', 'skills': ['builder']})['agentId']
+        self.adapter.selection['tasks'][0]['agent'] = builder
         job = self.execute(self.start('/goal Build a counter.'))
         self.assertEqual(job['payload']['collaboration']['visitorBindings']['5']['key'], builder)
 
@@ -200,7 +230,77 @@ class VisitorTeamTests(unittest.TestCase):
         job = self.execute(self.start('/goal Ask Cody to build a counter.'))
         self.assertTrue(self.specialists()[0][0].endswith('-r5'))
 
+    def test_reported_mixed_team_dispatches_scout_then_pixel_with_verified_handoff(self):
+        # Replay Casey's observed response: correct role tasks, but no agent IDs.
+        # Also cover a complete initial response needing no extra model call.
+        for missing_ids in (True, False):
+            with self.subTest(missing_ids=missing_ids):
+                self.adapter.selection = {'summary': 'Scout researches; Pixel builds the page.', 'tasks': [
+                    {'role': 8, 'task': 'Research three Barcelona places.', 'inputs': [],
+                     'requiredFiles': ['artifacts/research-brief.md']},
+                    {'role': 5, 'task': 'Build the page from the research brief.', 'inputs': [],
+                     'requiredFiles': ['artifacts/counter.html']}]}
+                self.adapter.auto_agents = False
+                corrected = json.loads(json.dumps(self.adapter.selection))
+                corrected['tasks'][0]['agent'] = 'builtin'
+                corrected['tasks'][1]['agent'] = self.owner
+                self.adapter.repaired_selection = corrected
+                if not missing_ids:
+                    self.adapter.selection = corrected
+                original = self.adapter.respond
+                def reply(agent, session, prompt, **kwargs):
+                    if agent.endswith('-r8') and '-working' in session:
+                        self.adapter.calls.append((agent, session, prompt))
+                        safe_file(self.adapter.agents[agent], 'artifacts/research-brief.md').write_text(
+                            '# Fixture research\nThree fixture places with source https://example.org/tourism.')
+                        return 'Saved artifacts/research-brief.md.'
+                    return original(agent, session, prompt, **kwargs)
+                with patch.object(self.adapter, 'respond', side_effect=reply):
+                    job = self.execute(self.start(BARCELONA_REQUEST))
+                plan = job['payload']['collaboration']
+                self.assertEqual(job['status'], 'done')
+                self.assertEqual(plan['outcome'], 'complete', plan.get('finalAnswer'))
+                self.assertEqual(plan['calledRoles'], [8, 5])
+                self.assertEqual(plan.get('teamSelectionRecovery', {}).get('status'), 'corrected' if missing_ids else None)
+                self.assertEqual({role: m['name'] for role, m in plan['visitorBindings'].items()}, {'5': 'Pixel'})
+                self.assertEqual([c[0] for c in self.specialists()[-2:]],
+                                 ['bac-' + self.manager + '-r8', 'bac-' + self.owner])
+                self.assertTrue(plan['verifiedSources']['8'])
+                self.assertTrue(plan['webpages']['5'])
+                self.assertNotIn('Cody', [p['name'] for p in self.adapter.profiles.values()])
+                self.app.reset_crew_chats(self.manager)
+
+    def test_missing_identities_are_not_guessed_after_one_failed_repair(self):
+        self.adapter.auto_agents = False
+        job = self.execute(self.start(BARCELONA_REQUEST))
+        plan = job['payload']['collaboration']
+        self.assertEqual(plan['teamSelectionRecovery']['status'], 'failed')
+        self.assertEqual(plan['outcome'], 'partial')
+        self.assertEqual(self.specialists(), [])
+        self.assertEqual(sum('-planning-team-repair' in c[1] for c in self.adapter.calls), 1)
+
+    def test_explicit_model_bindings_are_not_rewritten_by_old_role_hints(self):
+        from visitor_teams import bind
+        pixel = {**self.app.profile(self.owner), 'key': self.owner}
+        with self.app.db() as db:
+            roster = self.app.crew_roster(db, self.manager, {}, preset=True)
+        plan = {'summary': 'Scout researches and Pixel codes.', 'tasks': [
+            {'role': 8, 'agent': 'builtin', 'task': 'Find places.'},
+            {'role': 5, 'agent': self.owner, 'task': 'Build the guide.'}]}
+        required = [{'key': self.owner, 'name': 'Pixel', 'role': 8}]
+        bind(plan, roster, [pixel], required, BARCELONA_REQUEST)
+        self.assertEqual([t['name'] for t in plan['tasks']], ['Scout', 'Pixel'])
+        self.assertEqual([t['role'] for t in plan['tasks']], [8, 5])
+
+    def test_confirmed_builtin_choice_is_not_replaced_by_a_suitable_hire(self):
+        self.app.configure(self.owner, {**self.app.profile(self.owner), 'skills': ['builder']})
+        self.adapter.selection['tasks'][0]['agent'] = 'builtin'
+        job = self.execute(self.start('/goal Let Cody build a counter.'))
+        self.assertEqual(job['payload']['collaboration']['visitorBindings'], {})
+        self.assertTrue(self.specialists()[0][0].endswith('-r5'))
+
     def test_required_participant_is_added_when_casey_attempts_direct_answer(self):
+        self.adapter.repaired_selection = self.adapter.selection
         self.adapter.selection = {'summary': 'No help needed.', 'tasks': [], 'answer': 'Here is a draft.'}
         job = self.execute(self.start())
         self.assertEqual([c[0] for c in self.specialists()], ['bac-' + self.owner])

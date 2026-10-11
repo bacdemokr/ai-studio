@@ -150,6 +150,8 @@ To choose who does the work, turn on **Include hired agents**, then name them an
 /goal Let Pixel handle the coding instead of Cody. Build a small desktop counter page.
 ```
 
+Natural phrasing is supported, including mixed teams such as “Let Scout find three places in Barcelona, then have Pixel turn the findings into a page.” Casey selects each agent and its work explicitly. If that selection is incomplete, Casey gets one chance to clarify it before any specialist starts; the app does not guess roles from nearby keywords.
+
 Pixel actually performs the coding, even if its saved role is weather advice. Its identity, voice, skills, workspace and OpenShell policy stay the same; the assignment does not grant extra tools. Named agents are not replaced because they lack expertise. When upstream output is incomplete, named agents still attempt their assignments with the available evidence and the result stays partial. Busy or unavailable agents are reported; cancellation, connection failures and the overall time budget can still stop the task. The existing maximum of three specialists applies, with a different agent required for independent review.
 
 The choice is captured when you submit a task and cannot change while it runs. Room changes keep your choice; reloading the page or resetting Open Task starts with it off for new tasks. Naming a hired agent while it is off asks you to enable it before any work starts.
