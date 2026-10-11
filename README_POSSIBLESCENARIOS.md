@@ -10,7 +10,7 @@ These are example requests for **3-2 Open Task**, not additional rooms or new ex
 | Store email review | Managers and business teams | No, when using only the supplied email |
 | Ping-pong | Coding / general audience | No, for a self-contained game |
 
-For offline use, the model must also run locally and be prepared before the demo. Select **Local** under **Settings → Model → Built-in teams → Team connection**. To change only Open Task, choose **Choose separately by scenario…**. Rehearse the exact prompt and inspect the generated result; the recorded API timings below are not local-model benchmarks.
+For offline use, the model must also run locally and be prepared before the demo. Select **Local** under **Settings → Model → Models → Open Task**. Event Brief has a separate connection selector. Rehearse the exact prompt and inspect the generated result; the recorded API timings below are not local-model benchmarks.
 
 Send these prompts to **Casey in 3-2 Open Task** with `/goal`. Attach the sample email to that conversation before the business example. Open **Usage & time** after a run to compare tokens and elapsed time. The traces below record earlier runs; current team selection and recovery decisions may differ.
 

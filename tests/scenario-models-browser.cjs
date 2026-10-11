@@ -13,49 +13,58 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.goto('http://'+host+':'+port);await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.version==='SCENARIO TEST FIXTURE');
   const open=async()=>{await page.locator('#studio-config').click();await page.locator('#studio-model-connections').waitFor();await page.locator('#studio-dialog-body').evaluate(n=>n.scrollTop=0);};
   const close=()=>page.locator('#studio-dialog-close').click();
-  const select=page.locator('#studio-team-route'),save=page.locator('#studio-connections-save');
+  const select=page.locator('#studio-route-plan'),eventSelect=page.locator('#studio-route-event-brief'),save=page.locator('#studio-connections-save');
   const saveChanges=async()=>{await save.click();await page.waitForFunction(()=>document.querySelector('#studio-connections-status').textContent.startsWith('Saved.'));assert(await save.isDisabled());};
-  await open();assert.equal(await select.inputValue(),'auto');assert(await save.isDisabled());
+  await open();assert.equal(await select.inputValue(),'auto');assert.equal(await eventSelect.inputValue(),'auto');assert(await save.isDisabled());
   assert.equal(await page.locator('#studio-route-lounge').count(),0,'No Lounge override for individually configured agents');
-  assert(!await page.locator('#studio-scenario-routes').isVisible());
+  assert(await eventSelect.isVisible());assert(await select.isVisible());assert.equal(await page.locator('#studio-team-route').count(),0);
+  const dialogBox=await page.locator('#studio-dialog').boundingBox();assert(dialogBox.width<=722&&dialogBox.height<=642,'Compact settings dimensions');
   assert(!(await page.locator('#studio-model-connections').innerText()).includes('Stage connections'));
   // Local only, both, API only, neither. An effective fallback never rewrites the chosen preference.
   if(await page.locator('[data-connection-enable=api]').isChecked()){await page.locator('[data-connection-enable=api]').uncheck();await page.waitForFunction(()=>document.querySelector('[data-connection-status=api]').textContent==='Disabled');}
   await page.locator('[data-connection-edit=local]').click();await page.waitForFunction(()=>document.querySelector('#studio-connect-models').options.length>0);
   await page.locator('#studio-connect-model').fill('fixture-local-model');await page.locator('#studio-connect-apply').click();await page.waitForFunction(()=>document.querySelector('#studio-connect-status').textContent==='Connected.');
-  assert.match(await page.locator('#studio-connection-team-effective').innerText(),/Using Local/);assert.equal(await select.inputValue(),'auto');
+  assert.match(await page.locator('#studio-connection-plan-effective').innerText(),/Using Local/);assert.equal(await select.inputValue(),'auto');
   await page.locator('#studio-connect-cancel').click();await page.locator('[data-connection-edit=api]').click();
   await page.locator('#studio-connect-provider').selectOption('openai');await page.locator('#studio-connect-key').fill('fixture-key-not-real');await page.locator('#studio-connect-model').fill('fixture-local-model');
   await page.locator('#studio-connect-apply').click();await page.waitForFunction(()=>document.querySelector('#studio-connect-status').textContent==='Connected.');
   assert.equal(await page.locator('#studio-connect-key').inputValue(),'');await page.locator('#studio-connect-cancel').click();
-  assert.match(await page.locator('#studio-connection-team-effective').innerText(),/Using External/);
-  await select.selectOption('api');await saveChanges();
+  assert.match(await page.locator('#studio-connection-plan-effective').innerText(),/Using External/);
+  await select.selectOption('api');assert.equal(await eventSelect.inputValue(),'auto');await saveChanges();assert.equal(writes.at(-1).scenarios['event-brief'],'auto');
   await page.locator('[data-connection-enable=api]').uncheck();await page.waitForFunction(()=>document.querySelector('[data-connection-status=api]').textContent==='Disabled');
-  assert.match(await page.locator('#studio-connection-team-effective').innerText(),/External Endpoint unavailable · Using Local/);assert.equal(await select.inputValue(),'api');
-  await page.locator('[data-connection-enable=local]').uncheck();await page.waitForFunction(()=>document.querySelector('#studio-connection-team-effective').textContent==='No connection ready');
+  assert.match(await page.locator('#studio-connection-plan-effective').innerText(),/External Endpoint unavailable · Using Local/);assert.equal(await select.inputValue(),'api');
+  await page.locator('[data-connection-enable=local]').uncheck();await page.waitForFunction(()=>document.querySelector('#studio-connection-plan-effective').textContent==='No connection ready');
   assert.equal(await select.inputValue(),'api');assert(await save.isDisabled());
   await page.locator('[data-connection-enable=api]').check();await page.waitForFunction(()=>document.querySelector('[data-connection-status=api]').textContent==='Ready');
   await page.locator('[data-connection-enable=local]').check();await page.waitForFunction(()=>document.querySelector('[data-connection-status=local]').textContent==='Ready');
-  // Shared selection applies both scenarios; custom mode does nothing until a choice changes.
+  // Each scenario is always directly selectable; neither choice overwrites the other.
   await page.locator('#studio-dialog-body').evaluate(n=>n.scrollTop=0);await page.screenshot({path:'/tmp/bac-model-settings.png'});
-  await select.selectOption('custom');assert(await save.isDisabled());
   await page.locator('#studio-route-event-brief').selectOption('local');assert(await save.isEnabled());
   await page.locator('[data-connection-tab=location]').click();await page.locator('#studio-settings-model-tab').click();
   await Promise.all([page.waitForResponse(r=>r.url().endsWith('/settings/connections/check')&&r.status()===200),page.locator('#studio-connections-check').click()]);
   assert.equal(await page.locator('#studio-route-event-brief').inputValue(),'local');assert.equal(await page.locator('#studio-route-plan').inputValue(),'api');
   await saveChanges();assert.deepEqual(writes.at(-1),{lounge:'auto',scenarios:{'event-brief':'local',plan:'api'}});
-  await close();await open();assert.equal(await select.inputValue(),'custom');assert(await page.locator('#studio-scenario-routes').isVisible());assert(await save.isDisabled());
+  await close();await open();assert.equal(await select.inputValue(),'api');assert.equal(await eventSelect.inputValue(),'local');assert(await save.isDisabled());
   await page.screenshot({path:'/tmp/bac-model-settings-custom.png'});
   // Narrow view must not clip the controls or labels.
   await page.setViewportSize({width:540,height:900});
   assert(await page.locator('#studio-dialog-body').evaluate(n=>n.scrollWidth<=n.clientWidth+2));
+  await select.scrollIntoViewIfNeeded();
+  assert(await select.evaluate(n=>{const r=n.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===n;}),'Open Task selector stays clickable above the footer');
   await page.screenshot({path:'/tmp/bac-model-settings-narrow.png'});await page.setViewportSize({width:1440,height:1080});
   await select.selectOption('local');await saveChanges();assert.deepEqual(writes.at(-1).scenarios,{'event-brief':'local',plan:'local'});await close();
   const choose=async id=>{await page.locator('.world-room-map [data-world-scenario="'+id+'"]').click();await page.waitForFunction(id=>BacCampus.inspect().navigation.activeScenario===id&&!BacCampus.inspect().navigation.travelling,id);};
   await choose('plan');await page.locator('#studio-local-task-warning').waitFor({state:'visible'});
   await choose('event-brief');assert(!await page.locator('#studio-local-task-warning').isVisible());
-  await page.locator('#studio-team-setup').click();await select.selectOption('custom');await page.locator('#studio-route-plan').selectOption('api');await saveChanges();await close();
+  await page.locator('#studio-team-setup').click();await page.locator('#studio-route-plan').selectOption('api');await saveChanges();await close();
   await choose('plan');await page.locator('#studio-local-task-warning').waitFor({state:'hidden'});
+  await open();
+  for(const tab of ['location','telegram','reset','model']){
+   await page.locator('#studio-settings-'+tab+'-tab').click();
+   await page.locator('#studio-settings-'+tab+'-panel').waitFor({state:'visible'});
+   assert(await page.locator('#studio-dialog-body').evaluate(n=>n.scrollWidth<=n.clientWidth+2));
+  }
+  await close();
   // Simulate an earlier agent's saved shared choice; the new UI must retain its separate default.
   await page.evaluate(()=>BacStudio.setRoom('workshop'));
   await page.route('**/api/onboard',async route=>{await route.continue({postData:JSON.stringify({...route.request().postDataJSON(),model:'shared'})});});
@@ -66,7 +75,8 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.locator('#studio-route-lounge').selectOption('api');await saveChanges();await close();await open();
   await select.selectOption('local');await saveChanges();assert.equal(writes.at(-1).lounge,'api','Team changes preserve earlier agents');
   await close();await page.reload();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Earlier agent');await open();
-  assert.equal(await select.inputValue(),'local');await page.locator('.connection-inherited summary').click();assert.equal(await page.locator('#studio-route-lounge').inputValue(),'api');assert(await save.isDisabled());
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,host,checks:['one shared team selector','custom scenarios survive save, reopen and polling','local/API readiness and honest fallback status','no unnecessary saves','individual and earlier agent settings preserved','scenario-specific Local warnings','narrow layout','no browser errors']}));
+  assert.equal(await select.inputValue(),'local');assert.equal(await eventSelect.inputValue(),'local');await page.locator('.connection-inherited summary').click();assert.equal(await page.locator('#studio-route-lounge').inputValue(),'api');assert(await save.isDisabled());
+  await page.locator('.connection-inherited summary').click();await page.locator('#studio-dialog-body').evaluate(n=>n.scrollTop=0);await page.screenshot({path:'/tmp/bac-model-settings-existing.png'});
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,host,checks:['independent Event Brief and Open Task selectors','separate choices survive save, reopen and polling','compact Settings dimensions','local/API readiness and honest fallback status','no unnecessary saves','individual and earlier agent settings preserved','scenario-specific Local warnings','narrow layout','no browser errors']}));
  }finally{if(browser)await browser.close();server.kill('SIGTERM');}
 })().catch(e=>{console.error(e);process.exitCode=1;});

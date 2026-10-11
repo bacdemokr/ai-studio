@@ -20,7 +20,7 @@ cd bacdemo-tier2
 
 Startup optionally loads the NVIDIA inference API key from `api.cfg`. If the file is empty, invalid or the API cannot be reached, Studio still starts so you can configure Local or External Endpoint in Settings. A failed validation prints a warning and does not overwrite a saved key. Use `--keep-data` when retaining runtime data and settings. Valid keys are checked with a small inference request before being saved.
 
-Open **http://localhost:8080** on the host, or **http://SPARK_IP:8080** from another computer on the same trusted network. Both provide the same Settings and demo controls. The validated key is available automatically under **Settings → Model → External Endpoint**. Enable **Local** and/or **External Endpoint** once. Hired agents choose their model in Hiring or Edit agent and default to Local. Under **Built-in teams**, choose a shared **Team connection** for Event Brief and Open Task, or **Choose separately by scenario…**. Automatic prefers External for built-in teams.
+Open **http://localhost:8080** on the host, or **http://SPARK_IP:8080** from another computer on the same trusted network. Both provide the same Settings and demo controls. The validated key is available automatically under **Settings → Model → External Endpoint**. Enable **Local** and/or **External Endpoint** once. Hired agents choose their model in Hiring or Edit agent and default to Local. Under **Models**, choose the connections for **Event Brief** and **Open Task** independently. Automatic prefers External for built-in teams.
 
 The first start builds the runtime image for your PC and downloads the pinned OpenShell images. OpenClaw and OpenShell are included; no host Python or Node installation is needed. BaC does not install model weights. A local model server can serve any stage and runs separately.
 
@@ -130,7 +130,7 @@ Open **Settings → Model → Local → Configure**, search the model list, and 
 | vLLM on this PC | `http://127.0.0.1:8000/v1` (use its actual port) |
 | Other OpenAI-compatible server | Its API URL ending in `/v1` |
 
-Keyless local servers need no API key. Provider keys entered in these settings are kept in memory for the current tab and must be re-entered after refresh, tab closure, or app restart. The enabled connections supply individual hired-agent models and the built-in teams’ **Team connection**. A host-saved NVIDIA key from `api.cfg` remains available after refresh; only keys entered in the browser need re-entry.
+Keyless local servers need no API key. Provider keys entered in these settings are kept in memory for the current tab and must be re-entered after refresh, tab closure, or app restart. The enabled connections supply individual hired-agent models and the separate **Event Brief** and **Open Task** selections. A host-saved NVIDIA key from `api.cfg` remains available after refresh; only keys entered in the browser need re-entry.
 
 ## Try the demo
 

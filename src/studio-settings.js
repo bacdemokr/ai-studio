@@ -120,28 +120,19 @@ async function openModelConnections(){
  if(request!==settingsOpenRequest||revision!==dialogRevision)return;
  const inherited=(data.agents||[]).filter(agent=>(agent.model||'shared')==='shared');
  const routeOptions=(legacy=false)=>`<option value="auto">Automatic (${legacy?'Local':'External'} first)</option><option value="local">Local</option><option value="api">External Endpoint</option>`;
- const scenarioRoute=(key,title)=>`<div class="connection-scenario"><label for="studio-route-${key}">${title}</label><select id="studio-route-${key}" data-route="${key}" aria-describedby="studio-connection-${key}-effective">${routeOptions()}</select><span id="studio-connection-${key}-effective" class="connection-effective" role="status"></span></div>`;
+ const scenarioRoute=(key,title)=>`<div class="connection-scenario"><div><label for="studio-route-${key}">${title}</label><span id="studio-connection-${key}-effective" class="connection-effective" role="status"></span></div><select id="studio-route-${key}" data-route="${key}" aria-describedby="studio-connection-${key}-effective">${routeOptions()}</select></div>`;
  dialog('Settings',`<form id="studio-config-form" novalidate>
   <nav class="connection-tabs" role="tablist" aria-label="Settings">${['model','location','telegram','reset'].map((tab,index)=>`<button type="button" role="tab" id="studio-settings-${tab}-tab" data-connection-tab="${tab}" data-settings-tab="${tab}" aria-controls="studio-settings-${tab}-panel" aria-selected="${index===0}" tabindex="${index===0?0:-1}" ${index===0?'aria-current="page"':''}>${tab[0].toUpperCase()+tab.slice(1)}</button>`).join('')}</nav>
   <section id="studio-settings-model-panel" role="tabpanel" aria-labelledby="studio-settings-model-tab"><div id="studio-model-connections">
   <div class="connection-section-heading"><h3>Available connections</h3><button type="button" class="connection-text-button" id="studio-connections-check">↻ Refresh</button></div>
   <div class="connection-grid">${['local','api'].map(source=>`<section class="connection-card" data-source="${source}"><header><label class="connection-toggle"><input type="checkbox" data-connection-enable="${source}"><strong>${source==='local'?'Local':'External Endpoint'}</strong></label><span data-connection-status="${source}" role="status"></span></header><p data-connection-summary="${source}"></p><button type="button" class="connection-text-button" data-connection-edit="${source}">Configure →</button></section>`).join('')}</div>
   <div id="studio-connection-editor" hidden></div>
-  <div class="connection-section-heading"><h3>Model assignment</h3></div>
-  <section class="connection-assignment connection-personal">
-   <div class="connection-assignment-heading"><h4>Hired agents</h4><span class="connection-tag">Individual models</span></div>
-   <p>New agents start with Local. Choose a model in Hiring or Edit agent.</p>
-   ${inherited.length?`<details class="connection-inherited"><summary>Earlier agents <span>${inherited.length} using a shared default</span></summary><p>${escape(inherited.map(agent=>agent.name).join(', '))}</p><label for="studio-route-lounge">Shared default</label><select id="studio-route-lounge" data-route="lounge" aria-describedby="studio-connection-lounge-effective">${routeOptions(true)}</select><span id="studio-connection-lounge-effective" class="connection-effective" role="status"></span></details>`:''}
-  </section>
-  <section class="connection-assignment connection-team">
-   <div class="connection-assignment-heading"><h4>Built-in teams</h4><span class="connection-tag">Event Brief · Open Task</span></div>
-   <p>Hired agents keep their own models when joining Open Task.</p>
-   <label for="studio-team-route">Team connection</label>
-   <select id="studio-team-route" aria-controls="studio-scenario-routes" aria-describedby="studio-connection-team-effective">${routeOptions()}<option value="custom">Choose separately by scenario…</option></select>
-   <span id="studio-connection-team-effective" class="connection-effective" role="status"></span>
-   <div id="studio-scenario-routes" class="connection-scenarios" hidden>${scenarioRoute('event-brief','Event Brief')}${scenarioRoute('plan','Open Task')}</div>
-   <small class="connection-fallback-note">If unavailable, built-in teams use the other ready connection.</small>
-  </section>
+  <div class="connection-section-heading"><h3>Models</h3></div>
+  <div class="connection-personal">
+   <strong>Hired agents</strong><p>Local by default. Change in Hiring or Edit agent.</p>
+   ${inherited.length?`<details class="connection-inherited"><summary>Shared default <span>${inherited.length} earlier agents</span></summary><p>${escape(inherited.map(agent=>agent.name).join(', '))}</p><label for="studio-route-lounge">Connection</label><select id="studio-route-lounge" data-route="lounge" aria-describedby="studio-connection-lounge-effective">${routeOptions(true)}</select><span id="studio-connection-lounge-effective" class="connection-effective" role="status"></span></details>`:''}
+  </div>
+  <div class="connection-scenarios">${scenarioRoute('event-brief','Event Brief')}${scenarioRoute('plan','Open Task')}</div>
   <div class="connection-footer"><p id="studio-connections-status" role="status"></p><button type="button" id="studio-connections-save" class="studio-primary">Save changes</button></div></div></section>
   ${settingsUtilityPanels()}
   <p id="studio-settings-status" role="status"></p><div class="studio-dialog-actions"><button type="button" id="studio-start-agents" class="studio-secondary" ${runtime.gateway?'hidden':''}>Start agents</button><button type="submit" class="studio-primary" id="studio-save-settings" hidden>Save location</button></div></form>`);
@@ -150,7 +141,7 @@ async function openModelConnections(){
  let working=false,editing=false,inventoryRevision=0,tab='model',telegram=null,telegramRevision=0;
  const current=()=>el('model-connections')===panel&&el('dialog').open&&agentId===owner&&selectedScenario===scenario;
  const prefs={lounge:state.loungePreference||'auto','event-brief':state.scenarioPreferences?.['event-brief']||'auto',plan:state.scenarioPreferences?.plan||'auto'};
- let savedPrefs={...prefs},separate=prefs['event-brief']!==prefs.plan;
+ let savedPrefs={...prefs};
  const dirty=()=>Object.keys(prefs).some(key=>prefs[key]!==savedPrefs[key]);
  function showEffective(kind,target){
   if(!target)return;
@@ -166,15 +157,11 @@ async function openModelConnections(){
    select.value=prefs[select.dataset.route];select.disabled=working;
    showEffective(select.dataset.route,el('connection-'+select.dataset.route+'-effective'));
   }
-  el('team-route').value=separate?'custom':prefs.plan;el('team-route').disabled=working;
-  el('scenario-routes').hidden=!separate;el('connection-team-effective').hidden=separate;
-  showEffective('plan',el('connection-team-effective'));
   el('connections-save').disabled=working||!dirty();el('connections-check').disabled=working;
  }
  function changed(){notice.textContent=dirty()?'Unsaved changes':'';paint();}
  paint();
  for(const select of panel.querySelectorAll('select[data-route]'))select.onchange=()=>{if(working)return;prefs[select.dataset.route]=select.value;changed();};
- el('team-route').onchange=()=>{if(working)return;const value=el('team-route').value;separate=value==='custom';if(!separate)prefs['event-brief']=prefs.plan=value;changed();};
  async function refreshConnections(force=false){const revision=inventoryRevision;try{const next=await api('settings/connections'+(force?'/check':''),force?{}:undefined);if(current()&&revision===inventoryRevision&&!working){state=next;paint();}}catch(error){if(current())notice.textContent=error.message;}}
  const timer=setInterval(()=>{if(!current()){clearInterval(timer);return;}if(!working&&!editing)refreshConnections();},2500);
  el('connections-check').onclick=()=>refreshConnections(true);

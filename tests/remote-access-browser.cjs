@@ -64,7 +64,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs/promises'),{chrom
   await page.locator('#studio-connect-model').fill('fixture-local-model');await page.locator('#studio-connect-apply').click();
   await page.waitForFunction(()=>document.querySelector('#studio-connect-status').textContent==='Connected.');
   assert.equal((await api('settings/connections')).connections.api.model,'fixture-local-model');
-  await page.locator('#studio-connect-cancel').click();await page.locator('#studio-team-route').selectOption('api');await page.locator('#studio-connections-save').click();
+  await page.locator('#studio-connect-cancel').click();await page.locator('#studio-route-plan').selectOption('api');await page.locator('#studio-connections-save').click();
   await page.waitForFunction(()=>document.querySelector('#studio-connections-status').textContent.startsWith('Saved.'));await close();
   await presenter.close();
   console.log('PASS: remote Settings, all tabs, persisted location, model catalog/connection and stage choices.');

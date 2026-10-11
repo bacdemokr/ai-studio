@@ -991,40 +991,36 @@ body{margin:0;padding:0;width:100%;max-width:none}
 
 #studio-local-task-warning{margin:12px 0;padding:12px 16px;border:1px solid #766338;border-left:3px solid #d5aa4d;border-radius:10px;background:#29271e;color:#e4cc92;font-size:13px;line-height:1.6}#studio-local-task-warning[hidden]{display:none}
 /* Configure connections once; individual agents and built-in teams choose separately. */
-#studio-model-connections .connection-section-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:22px 0 12px}
-#studio-model-connections .connection-section-heading h3{font-size:16px;margin:0;font-weight:650;letter-spacing:0}
+#studio-model-connections .connection-section-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:14px 0 10px}
+#studio-model-connections .connection-section-heading h3{font-size:14px;margin:0;font-weight:650;letter-spacing:0}
 #studio-model-connections .connection-text-button{border:0;background:transparent;color:#aebfcb;font-size:12px;font-weight:500;padding:6px 0;border-radius:4px;box-shadow:none}
 #studio-model-connections .connection-text-button:hover{color:#d9efb9;background:transparent}
-#studio-model-connections .connection-grid{margin:0 0 26px;gap:14px}
-#studio-model-connections .connection-card{padding:18px 20px;border-color:#304451;border-radius:12px;background:#14212a}
+#studio-model-connections .connection-grid{margin:0 0 18px;gap:12px}
+#studio-model-connections .connection-card{padding:12px 14px;border-color:#304451;border-radius:12px;background:#14212a}
 #studio-model-connections .connection-toggle strong{font-size:15px}
 #studio-model-connections .connection-card header span{font-size:11px;max-width:115px;text-align:right}
-#studio-model-connections .connection-card p{font-size:12px;line-height:1.6;margin:14px 0 10px;min-height:20px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#studio-model-connections .connection-card p{font-size:12px;line-height:1.5;margin:8px 0 4px;min-height:18px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 #studio-model-connections .connection-hint{font-size:12px;color:#8fa5b4;margin:0 0 16px;line-height:1.6}
-#studio-model-connections .connection-assignment{padding:18px 20px;border:1px solid #304451;border-radius:12px;background:#111c24;margin-top:12px}
-#studio-model-connections .connection-personal{border-left:3px solid #78adc4}
-#studio-model-connections .connection-team{border-left:3px solid #91bb53}
-#studio-model-connections .connection-assignment-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}
-#studio-model-connections .connection-assignment h4{margin:0;font-size:15px;font-weight:650;letter-spacing:0}
-#studio-model-connections .connection-tag{color:#a0b6c5;font-size:11px;line-height:1.5;text-align:right}
-#studio-model-connections .connection-assignment p{margin:8px 0 0;font-size:12px;line-height:1.6;color:#9aafbd}
-#studio-model-connections .connection-assignment label{font-size:12px;color:#bdcdd8;display:block;margin:16px 0 6px}
-#studio-model-connections .connection-assignment select{box-sizing:border-box;width:100%;margin:0;padding:10px 12px;border:1px solid #3a505f;border-radius:8px;background:#192934;color:#e0ebf2;font:inherit;font-size:13px}
-#studio-model-connections .connection-assignment select:focus-visible{outline:2px solid #91bb53;outline-offset:2px}
-#studio-model-connections .connection-effective{display:block;font-size:11px;line-height:1.5;margin-top:8px;color:#a9cb85}
+#studio-model-connections .connection-personal{padding:8px 0 14px}
+#studio-model-connections .connection-personal strong{font-size:14px;font-weight:600}
+#studio-model-connections .connection-personal p{margin:4px 0 0;font-size:12px;line-height:1.5;color:#9aafbd}
+#studio-model-connections .connection-scenarios{border-top:1px solid #293d49}
+#studio-model-connections .connection-scenario{display:grid;grid-template-columns:minmax(0,1fr) 250px;align-items:center;gap:18px;padding:14px 0}
+#studio-model-connections .connection-scenario+.connection-scenario{border-top:1px solid #293d49}
+#studio-model-connections .connection-scenario label{font-size:14px;font-weight:600;display:block;margin:0;color:#e0ebf2}
+#studio-model-connections select[data-route]{box-sizing:border-box;width:100%;min-width:0;margin:0;padding:9px 10px;border:1px solid #3a505f;border-radius:7px;background:#192934;color:#e0ebf2;font:inherit;font-size:12px}
+#studio-model-connections select[data-route]:focus-visible{outline:2px solid #91bb53;outline-offset:2px}
+#studio-model-connections .connection-effective{display:block;font-size:11px;line-height:1.5;margin-top:4px;color:#a9cb85}
 #studio-model-connections .connection-effective[data-state=fallback]{color:#e1bf80}
 #studio-model-connections .connection-effective[data-state=unavailable]{color:#ee9c91}
-#studio-model-connections .connection-effective[hidden],#studio-scenario-routes[hidden]{display:none}
-#studio-model-connections .connection-fallback-note{display:block;color:#91a7b6;font-size:11px;line-height:1.6;margin-top:12px}
-#studio-model-connections .connection-scenarios{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;padding-top:14px;border-top:1px solid #293d49}
-#studio-model-connections .connection-scenario{min-width:0}
-#studio-model-connections .connection-scenario label{margin-top:0}
-#studio-model-connections .connection-inherited{border-top:1px solid #293d49;margin-top:14px;padding-top:12px}
-#studio-model-connections .connection-inherited summary{cursor:pointer;color:#b6c8d5;font-size:12px}
+#studio-model-connections .connection-inherited{margin-top:8px}
+#studio-model-connections .connection-inherited summary{width:fit-content;cursor:pointer;color:#b6c8d5;font-size:12px}
 #studio-model-connections .connection-inherited summary span{color:#91a7b6;margin-left:8px;font-size:11px}
-#studio-model-connections .connection-inherited p{overflow-wrap:anywhere}
-@media(max-width:600px){#studio-model-connections .connection-grid,#studio-model-connections .connection-scenarios{grid-template-columns:1fr}#studio-model-connections .connection-assignment-heading{align-items:flex-start}#studio-model-connections .connection-assignment{padding:16px}#studio-model-connections .connection-inherited summary span{display:block;margin:4px 0 0}}
-#studio-model-connections .connection-footer{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:12px 0 4px;margin-top:18px;border-top:1px solid #2b3c47;position:sticky;bottom:-2px;z-index:1;background:#141b23;box-shadow:0 -10px 16px #141b23}
+#studio-model-connections .connection-inherited p{overflow-wrap:anywhere;margin:8px 0}
+#studio-model-connections .connection-inherited label{display:block;font-size:12px;margin:8px 0 4px}
+#studio-model-connections .connection-inherited select{max-width:250px}
+@media(max-width:560px){#studio-model-connections .connection-grid{grid-template-columns:1fr}#studio-model-connections .connection-scenario{grid-template-columns:1fr;gap:8px;padding:12px 0}}
+#studio-model-connections .connection-footer{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:12px 0 4px;margin-top:4px;border-top:1px solid #2b3c47;position:sticky;bottom:-2px;z-index:1;background:#141b23;box-shadow:0 -10px 16px #141b23}
 #studio-model-connections .connection-footer .studio-primary{margin-left:auto;border-radius:8px;padding:10px 20px;font-size:13px}
 #studio-model-connections .connection-footer .studio-primary:disabled{opacity:.45;cursor:default}
 #studio-model-connections #studio-connections-status{font-size:12px;line-height:1.5;min-height:18px;margin:0;color:#a7bbc7}
@@ -1172,15 +1168,15 @@ body{margin:0;padding:0;width:100%;max-width:none}
 @media(prefers-reduced-motion:reduce){#bac-planner #agent-campus :is(button,summary,#studio-crew-chat){transition:none}}
 
 /* Compact settings rows: one label, one action, with the combined reset separated below. */
-#studio-dialog:has(#studio-config-form,#studio-model-connections){width:min(850px,calc(100vw - 32px));padding:28px;border-color:#34434e;border-radius:10px}
+#studio-dialog:has(#studio-config-form,#studio-model-connections){width:min(720px,calc(100vw - 32px));padding:24px;border-color:#34434e;border-radius:10px}
 #studio-dialog:has(#studio-config-form,#studio-model-connections) #studio-config-form{max-width:none}
-#studio-dialog:has(#studio-config-form,#studio-model-connections) .studio-dialog-heading{margin-bottom:20px}
+#studio-dialog:has(#studio-config-form,#studio-model-connections) .studio-dialog-heading{margin-bottom:14px}
 #studio-dialog:has(#studio-config-form,#studio-model-connections) #studio-dialog-kicker{font-size:24px;line-height:1.25;letter-spacing:-.4px}
 /* Keep Settings anchored when switching between short and long tabs. */
-#studio-dialog[open]:has(#studio-config-form,#studio-model-connections){display:flex;flex-direction:column;height:min(800px,90dvh);max-height:90dvh;overflow:hidden}
+#studio-dialog[open]:has(#studio-config-form,#studio-model-connections){display:flex;flex-direction:column;height:min(640px,90dvh);max-height:90dvh;overflow:hidden}
 #studio-dialog:has(#studio-config-form,#studio-model-connections) .studio-dialog-heading{flex-shrink:0}
 #studio-dialog:has(#studio-config-form,#studio-model-connections) #studio-dialog-body{flex:1;min-height:0;overflow-y:auto;scrollbar-gutter:stable;padding:2px 4px}
-#studio-dialog .connection-tabs{position:sticky;top:0;z-index:2;background:#141b23;display:flex;gap:24px;margin:0 0 24px;border-bottom:1px solid #354e5d}
+#studio-dialog .connection-tabs{position:sticky;top:0;z-index:2;background:#141b23;display:flex;gap:24px;margin:0 0 16px;border-bottom:1px solid #354e5d}
 #studio-dialog .connection-tabs button{box-sizing:border-box;background:none!important;border:0!important;border-bottom:2px solid transparent!important;border-radius:0!important;padding:12px 2px!important;color:#b7c7d2!important;font:inherit;font-size:14px;font-weight:600;line-height:20px}
 #studio-dialog .connection-tabs button:is([aria-selected=true],[aria-current=page]){color:#fff!important;border-bottom-color:#76b900!important}
 
@@ -83634,28 +83630,19 @@ async function openModelConnections(){
  if(request!==settingsOpenRequest||revision!==dialogRevision)return;
  const inherited=(data.agents||[]).filter(agent=>(agent.model||'shared')==='shared');
  const routeOptions=(legacy=false)=>`<option value="auto">Automatic (${legacy?'Local':'External'} first)</option><option value="local">Local</option><option value="api">External Endpoint</option>`;
- const scenarioRoute=(key,title)=>`<div class="connection-scenario"><label for="studio-route-${key}">${title}</label><select id="studio-route-${key}" data-route="${key}" aria-describedby="studio-connection-${key}-effective">${routeOptions()}</select><span id="studio-connection-${key}-effective" class="connection-effective" role="status"></span></div>`;
+ const scenarioRoute=(key,title)=>`<div class="connection-scenario"><div><label for="studio-route-${key}">${title}</label><span id="studio-connection-${key}-effective" class="connection-effective" role="status"></span></div><select id="studio-route-${key}" data-route="${key}" aria-describedby="studio-connection-${key}-effective">${routeOptions()}</select></div>`;
  dialog('Settings',`<form id="studio-config-form" novalidate>
   <nav class="connection-tabs" role="tablist" aria-label="Settings">${['model','location','telegram','reset'].map((tab,index)=>`<button type="button" role="tab" id="studio-settings-${tab}-tab" data-connection-tab="${tab}" data-settings-tab="${tab}" aria-controls="studio-settings-${tab}-panel" aria-selected="${index===0}" tabindex="${index===0?0:-1}" ${index===0?'aria-current="page"':''}>${tab[0].toUpperCase()+tab.slice(1)}</button>`).join('')}</nav>
   <section id="studio-settings-model-panel" role="tabpanel" aria-labelledby="studio-settings-model-tab"><div id="studio-model-connections">
   <div class="connection-section-heading"><h3>Available connections</h3><button type="button" class="connection-text-button" id="studio-connections-check">↻ Refresh</button></div>
   <div class="connection-grid">${['local','api'].map(source=>`<section class="connection-card" data-source="${source}"><header><label class="connection-toggle"><input type="checkbox" data-connection-enable="${source}"><strong>${source==='local'?'Local':'External Endpoint'}</strong></label><span data-connection-status="${source}" role="status"></span></header><p data-connection-summary="${source}"></p><button type="button" class="connection-text-button" data-connection-edit="${source}">Configure →</button></section>`).join('')}</div>
   <div id="studio-connection-editor" hidden></div>
-  <div class="connection-section-heading"><h3>Model assignment</h3></div>
-  <section class="connection-assignment connection-personal">
-   <div class="connection-assignment-heading"><h4>Hired agents</h4><span class="connection-tag">Individual models</span></div>
-   <p>New agents start with Local. Choose a model in Hiring or Edit agent.</p>
-   ${inherited.length?`<details class="connection-inherited"><summary>Earlier agents <span>${inherited.length} using a shared default</span></summary><p>${escape(inherited.map(agent=>agent.name).join(', '))}</p><label for="studio-route-lounge">Shared default</label><select id="studio-route-lounge" data-route="lounge" aria-describedby="studio-connection-lounge-effective">${routeOptions(true)}</select><span id="studio-connection-lounge-effective" class="connection-effective" role="status"></span></details>`:''}
-  </section>
-  <section class="connection-assignment connection-team">
-   <div class="connection-assignment-heading"><h4>Built-in teams</h4><span class="connection-tag">Event Brief · Open Task</span></div>
-   <p>Hired agents keep their own models when joining Open Task.</p>
-   <label for="studio-team-route">Team connection</label>
-   <select id="studio-team-route" aria-controls="studio-scenario-routes" aria-describedby="studio-connection-team-effective">${routeOptions()}<option value="custom">Choose separately by scenario…</option></select>
-   <span id="studio-connection-team-effective" class="connection-effective" role="status"></span>
-   <div id="studio-scenario-routes" class="connection-scenarios" hidden>${scenarioRoute('event-brief','Event Brief')}${scenarioRoute('plan','Open Task')}</div>
-   <small class="connection-fallback-note">If unavailable, built-in teams use the other ready connection.</small>
-  </section>
+  <div class="connection-section-heading"><h3>Models</h3></div>
+  <div class="connection-personal">
+   <strong>Hired agents</strong><p>Local by default. Change in Hiring or Edit agent.</p>
+   ${inherited.length?`<details class="connection-inherited"><summary>Shared default <span>${inherited.length} earlier agents</span></summary><p>${escape(inherited.map(agent=>agent.name).join(', '))}</p><label for="studio-route-lounge">Connection</label><select id="studio-route-lounge" data-route="lounge" aria-describedby="studio-connection-lounge-effective">${routeOptions(true)}</select><span id="studio-connection-lounge-effective" class="connection-effective" role="status"></span></details>`:''}
+  </div>
+  <div class="connection-scenarios">${scenarioRoute('event-brief','Event Brief')}${scenarioRoute('plan','Open Task')}</div>
   <div class="connection-footer"><p id="studio-connections-status" role="status"></p><button type="button" id="studio-connections-save" class="studio-primary">Save changes</button></div></div></section>
   ${settingsUtilityPanels()}
   <p id="studio-settings-status" role="status"></p><div class="studio-dialog-actions"><button type="button" id="studio-start-agents" class="studio-secondary" ${runtime.gateway?'hidden':''}>Start agents</button><button type="submit" class="studio-primary" id="studio-save-settings" hidden>Save location</button></div></form>`);
@@ -83664,7 +83651,7 @@ async function openModelConnections(){
  let working=false,editing=false,inventoryRevision=0,tab='model',telegram=null,telegramRevision=0;
  const current=()=>el('model-connections')===panel&&el('dialog').open&&agentId===owner&&selectedScenario===scenario;
  const prefs={lounge:state.loungePreference||'auto','event-brief':state.scenarioPreferences?.['event-brief']||'auto',plan:state.scenarioPreferences?.plan||'auto'};
- let savedPrefs={...prefs},separate=prefs['event-brief']!==prefs.plan;
+ let savedPrefs={...prefs};
  const dirty=()=>Object.keys(prefs).some(key=>prefs[key]!==savedPrefs[key]);
  function showEffective(kind,target){
   if(!target)return;
@@ -83680,15 +83667,11 @@ async function openModelConnections(){
    select.value=prefs[select.dataset.route];select.disabled=working;
    showEffective(select.dataset.route,el('connection-'+select.dataset.route+'-effective'));
   }
-  el('team-route').value=separate?'custom':prefs.plan;el('team-route').disabled=working;
-  el('scenario-routes').hidden=!separate;el('connection-team-effective').hidden=separate;
-  showEffective('plan',el('connection-team-effective'));
   el('connections-save').disabled=working||!dirty();el('connections-check').disabled=working;
  }
  function changed(){notice.textContent=dirty()?'Unsaved changes':'';paint();}
  paint();
  for(const select of panel.querySelectorAll('select[data-route]'))select.onchange=()=>{if(working)return;prefs[select.dataset.route]=select.value;changed();};
- el('team-route').onchange=()=>{if(working)return;const value=el('team-route').value;separate=value==='custom';if(!separate)prefs['event-brief']=prefs.plan=value;changed();};
  async function refreshConnections(force=false){const revision=inventoryRevision;try{const next=await api('settings/connections'+(force?'/check':''),force?{}:undefined);if(current()&&revision===inventoryRevision&&!working){state=next;paint();}}catch(error){if(current())notice.textContent=error.message;}}
  const timer=setInterval(()=>{if(!current()){clearInterval(timer);return;}if(!working&&!editing)refreshConnections();},2500);
  el('connections-check').onclick=()=>refreshConnections(true);
