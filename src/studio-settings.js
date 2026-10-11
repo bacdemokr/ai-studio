@@ -130,7 +130,7 @@ async function openModelConnections(){
   <div class="connection-section-heading"><h3>Models</h3></div>
   <div class="connection-personal">
    <strong>Hired agents</strong><p>Local by default. Change in Hiring or Edit agent.</p>
-   ${inherited.length?`<details class="connection-inherited"><summary>Shared default <span>${inherited.length} earlier agents</span></summary><p>${escape(inherited.map(agent=>agent.name).join(', '))}</p><label for="studio-route-lounge">Connection</label><select id="studio-route-lounge" data-route="lounge" aria-describedby="studio-connection-lounge-effective">${routeOptions(true)}</select><span id="studio-connection-lounge-effective" class="connection-effective" role="status"></span></details>`:''}
+   ${inherited.length?`<details class="connection-inherited"><summary>Shared default <span>${inherited.length} earlier ${inherited.length===1?'agent':'agents'}</span></summary><p>${escape(inherited.map(agent=>agent.name).join(', '))}</p><label for="studio-route-lounge">Connection</label><select id="studio-route-lounge" data-route="lounge" aria-describedby="studio-connection-lounge-effective">${routeOptions(true)}</select><span id="studio-connection-lounge-effective" class="connection-effective" role="status"></span></details>`:''}
   </div>
   <div class="connection-scenarios">${scenarioRoute('event-brief','Event Brief')}${scenarioRoute('plan','Open Task')}</div>
   <div class="connection-footer"><p id="studio-connections-status" role="status"></p><button type="button" id="studio-connections-save" class="studio-primary">Save changes</button></div></div></section>

@@ -76,7 +76,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await select.selectOption('local');await saveChanges();assert.equal(writes.at(-1).lounge,'api','Team changes preserve earlier agents');
   await close();await page.reload();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Earlier agent');await open();
   assert.equal(await select.inputValue(),'local');assert.equal(await eventSelect.inputValue(),'local');await page.locator('.connection-inherited summary').click();assert.equal(await page.locator('#studio-route-lounge').inputValue(),'api');assert(await save.isDisabled());
-  await page.locator('.connection-inherited summary').click();await page.locator('#studio-dialog-body').evaluate(n=>n.scrollTop=0);await page.screenshot({path:'/tmp/bac-model-settings-existing.png'});
+  await page.locator('.connection-inherited summary').click();await page.locator('#studio-dialog-body').evaluate(n=>n.scrollTop=0);assert(await select.evaluate(n=>{const r=n.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===n;}),'Both scenario selectors fit with earlier agents collapsed');await page.screenshot({path:'/tmp/bac-model-settings-existing.png'});
   assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,host,checks:['independent Event Brief and Open Task selectors','separate choices survive save, reopen and polling','compact Settings dimensions','local/API readiness and honest fallback status','no unnecessary saves','individual and earlier agent settings preserved','scenario-specific Local warnings','narrow layout','no browser errors']}));
  }finally{if(browser)await browser.close();server.kill('SIGTERM');}
 })().catch(e=>{console.error(e);process.exitCode=1;});
