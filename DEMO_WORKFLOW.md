@@ -82,6 +82,8 @@ Stage 3 has two separate workflows:
 
 Event Brief keeps its own fixed agents, conversations and files. With **Include hired agents** off, the built-in team performs Open Task and available hired agents give short personal reactions afterward, as before. The toggle only controls specialist assignments. With it on, hires use their existing Lounge identity and model connection; Casey and the backups use the Open Task connection. Personal reactions also use the Lounge connection. Agents already contributing do not receive another call for a closing reaction. Other available hires can still give reactions. The toggle is locked while a task runs; a page reload or Open Task reset defaults it to off for new tasks.
 
+For a fresh demonstration, reset Open Task before choosing the next team. Reset is optional between completed tasks; switching the toggle alone keeps earlier conversations and results. After stopping active work, wait for the current call to finish before starting again.
+
 ## 2. Before presenting
 
 - Connect Local and/or External Endpoint in **Settings > Model**. Under **Stage connections**, select Hiring & Agent lounge, Event Brief and Open Task separately. With both ready, the defaults favor Local for Stages 1 and 2, and External for Stage 3.

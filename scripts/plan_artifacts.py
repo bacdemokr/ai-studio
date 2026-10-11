@@ -1,11 +1,57 @@
 """Bounded, verified text handoffs from the current collaboration only."""
 import hashlib
+import json
 import os
 from pathlib import Path
 
 TEXT_TYPES = {'.txt', '.md', '.json', '.csv', '.py', '.js', '.css'}
 MAX_BYTES = 1024 * 1024
 MAX_FILES = 12
+
+
+def reusable_code(studio, owner, job_id, agent, before, answer, required):
+    """Recognize inspected, unchanged code from this agent's completed task.
+
+    A model's path claim alone is insufficient. Require a successful read in
+    this turn and a matching immutable export from this team's pre-reset history.
+    This proves artifact provenance, not correctness for the new request; Casey
+    still reviews the contribution against the current acceptance criteria.
+    """
+    from studio import safe_file, Problem
+    from plan_revision import effective_outputs
+    activity = getattr(answer, 'activity', None) or {}
+    if activity.get('source') != 'OpenClaw transcript' or not activity.get('available'):
+        return set()
+    read = {call.get('target') for call in activity.get('calls', [])
+            if call.get('tool') == 'read' and call.get('status') == 'completed'}
+    candidates = {p for p in required if p in before and p in read
+                  and Path(p).suffix.lower() in {'.html', '.js', '.css', '.py'}}
+    if not candidates:
+        return set()
+    with studio.db() as db:
+        reset = studio.crew_chat_reset_state(db, owner)['at']
+        rows = db.execute("SELECT payload FROM jobs WHERE owner=? AND kind='crew-chat' AND status='done' "
+                          "AND created>=? AND created<(SELECT created FROM jobs WHERE id=?) "
+                          "ORDER BY created DESC LIMIT 6", (owner, reset, job_id)).fetchall()
+    verified = set()
+    for row in rows:
+        plan = json.loads(row['payload']).get('collaboration', {})
+        if plan.get('outcome') != 'complete':
+            continue
+        for output in effective_outputs(plan).values():
+            if output.get('agentId') != agent:
+                continue
+            for exported in output.get('files', []):
+                source = plan.get('artifactSources', {}).get(exported)
+                if source not in candidates:
+                    continue
+                try:
+                    raw = safe_file(studio.workspace(owner), exported, True).read_bytes()
+                    if hashlib.sha256(raw).hexdigest() == before[source][0]:
+                        verified.add(source)
+                except (Problem, OSError):
+                    continue
+    return verified
 
 
 def snapshot_files(workspace):

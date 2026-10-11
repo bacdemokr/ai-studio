@@ -4,7 +4,7 @@ import re
 import time
 from time import monotonic
 from browser_capability import BROWSER_LIMIT
-from plan_artifacts import snapshot_files, collect_files
+from plan_artifacts import snapshot_files, collect_files, reusable_code
 from webpage_artifacts import DEMO_CODING_INSTRUCTIONS, PAGE_INSTRUCTIONS, html_files, collect_pages
 from plan_inputs import requested_inputs, input_manifest, validate_assignments, PlanInputError
 from plan_handoff import required_files, missing_files
@@ -405,6 +405,14 @@ class CollaborationPlans:
 
         def collect_delivery(role, phase, pages_before, files_before, answer):
             source_map = plan.setdefault('artifactSources', {})
+            if role == 5:
+                assignment = next((t for t in plan.get('tasks', []) if t['role'] == role), {})
+                reused = reusable_code(self, owner, job_id, roster[role]['id'],
+                                       {**pages_before, **files_before}, answer, assignment.get('requiredFiles', []))
+                if reused:
+                    pages_before = {p: v for p, v in pages_before.items() if p not in reused}
+                    files_before = {p: v for p, v in files_before.items() if p not in reused}
+                    plan.setdefault('reusedSources', {})[str(role)] = sorted(reused)
             pages = collect_pages(self, owner, job_id, role, pages_before, answer, source_map, source_workspace=member_workspace(role))
             if pages and role not in (4, 5):
                 # Keep the specialist's source, but never promote an unsolicited
@@ -505,6 +513,12 @@ class CollaborationPlans:
                     raise RuntimeError(member['name'] + ' needs its Hiring & Lounge model connection. Reconnect it in Settings.')
                 self.ensure_agent(member['key'], profile)
                 self.check_protected_run(member['key'], profile)
+                if 'radar' in profile.get('skills', []):
+                    # The native timer must stop before this assignment starts,
+                    # even when the background Heartbeat tick has not run yet.
+                    # Its normal tick resumes after the reservation drains and
+                    # still honors the user's Pause setting.
+                    self.heartbeat.disable(profile['id'])
             else:
                 self.prepare_builtin_crew(owner, role, member)
             if self.stop_checkpoint(job_id):

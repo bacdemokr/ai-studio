@@ -82,7 +82,40 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await toggle.check();await page.locator('#studio-bac-reset').click();await page.locator('#studio-team-reset-confirm').click();
   await page.waitForFunction(()=>!document.querySelector('#studio-crew-include-hired').checked&&!document.querySelector('#studio-crew-include-hired').disabled);
   assert.equal((await state()).profile.id,original.id);
+  // Stop an actual in-flight fixture call, then switch OFF both with and without Reset.
+  for(const resetDuringCall of [false,true]){
+   await toggle.check();
+   await page.locator('#studio-crew-prompt').fill('/goal Have Pixel do the coding. Build a counter.');
+   await page.locator('#studio-crew-send').click();
+   await page.waitForFunction(()=>BacCampus.inspect().visitorTravel?.some(v=>v.name==='Pixel'&&v.phase==='working'));
+   const pending=(await state()).crewChats.find(j=>j.status==='running'&&j.payload.collaboration?.visitorBindings?.[5]);
+   assert(pending,'A hired specialist must be working before cancellation');
+   if(resetDuringCall){
+    await page.locator('#studio-bac-reset').click();await page.locator('#studio-team-reset-confirm').click();
+   }else{
+    await page.locator('[data-crew-chat-stop="'+pending.id+'"]').click();
+   }
+   assert.equal(await toggle.isDisabled(),true);
+   await page.waitForFunction(()=>!document.querySelector('#studio-crew-include-hired').disabled);
+   if(resetDuringCall)assert.equal(await toggle.isChecked(),false);
+   else await toggle.uncheck();
+   await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===0);
+   const settled=(await state()).crewChats.find(j=>j.id===pending.id);
+   if(resetDuringCall)assert.equal(settled,undefined);
+   else assert.equal(settled.status,'cancelled');
+   await page.locator('#studio-crew-prompt').fill('/goal Build a counter.');await page.locator('#studio-crew-send').click();
+   let retry;
+   for(let i=0;i<150;i++){
+    retry=(await state()).crewChats.find(j=>j.created>pending.created&&j.payload.includeHiredAgents===false);
+    if(retry?.status==='done')break;
+    await page.waitForTimeout(100);
+   }
+   assert.equal(retry?.status,'done');assert.equal(retry.payload.collaboration.visitorBindings,undefined);
+   assert.equal(retry.payload.roundtable.replies[guestKey].status,'done');
+   await choose('event-brief');assert.equal(await page.locator('#studio-crew-name').innerText(),'Riley');
+   await choose('plan');
+  }
   assert.deepEqual(errors,[]);await page.screenshot({path:'/tmp/bac-visitor-teams-browser.png'});
-  console.log('PASS: default OFF, named-agent opt-in, locked running choice, ON hired Pixel coding, identity/policy/files, generated preview, Event Brief isolation, reload OFF, and ON-to-OFF built-in work with personal reactions. Model inference simulated.');
+  console.log('PASS: default OFF, named-agent opt-in, locked running choice, ON hired Pixel coding, identity/policy/files, generated preview, Event Brief isolation, reload OFF, ON-to-OFF built-in work with personal reactions, cancellation and Reset during in-flight work followed by OFF retry. Model inference simulated.');
  }finally{if(browser)await browser.close();if(server.exitCode===null){server.kill('SIGTERM');await new Promise(resolve=>server.once('exit',resolve));}}
 })().catch(error=>{console.error(error);process.exitCode=1;});
