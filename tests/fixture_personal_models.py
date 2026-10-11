@@ -26,7 +26,7 @@ class ModelAdapter(BrowserAdapter):
 if __name__ == '__main__':
     def stop(*_): raise KeyboardInterrupt
     signal.signal(signal.SIGTERM, stop)
-    rows = {'data': [{'id': model} for model in ['fixture-a', 'fixture-b', *team_models.MODELS, *[f'example/model-{i:03}' for i in range(90)]]]}
+    rows = {'data': [{'id': model} for model in ['fixture-b', 'fixture-a', *team_models.MODELS, *[f'example/model-{i:03}' for i in range(90)]]]}
     with tempfile.TemporaryDirectory(prefix='bac-personal-models-') as folder, \
          patch.dict(os.environ, {'BAC_DATA_DIR': folder}), patch.object(settings, 'request', return_value=rows):
         studio = Studio(Path(folder) / 'studio', ModelAdapter())

@@ -16,12 +16,20 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   const choose=async(id,query)=>{await expand();await search.fill(query);await choice(id).click();assert.equal(await panel.evaluate(n=>n.open),false);};
   const settings=async()=>{await page.locator('#studio-config').click();await page.locator('#studio-model-connections').waitFor();};
   const closeSettings=()=>page.locator('#studio-dialog-close').click();
-  assert.equal(await panel.evaluate(n=>n.open),false);assert.equal(await summary.innerText(),'Choose a model');
+  assert.equal(await panel.evaluate(n=>n.open),false);assert.equal(await summary.innerText(),'fixture-a');
   assert(await panel.evaluate(n=>n.previousElementSibling.classList.contains('studio-protection-picker')));
-  assert(await page.locator('#studio-create').isDisabled(),'No unconnected Local default or silent API substitution');
+  assert(await page.locator('#studio-create').isEnabled(),'Use the configured API default when Local is unavailable');
+  await settings();await page.locator('[data-connection-enable=api]').uncheck();await page.waitForFunction(()=>document.querySelector('[data-connection-status=api]').textContent==='Disabled');await closeSettings();
+  await page.waitForFunction(()=>document.querySelector('#studio-agent-model-summary').textContent==='Not connected');assert(await page.locator('#studio-create').isDisabled());
+  await settings();await page.locator('[data-connection-enable=api]').check();await page.waitForFunction(()=>document.querySelector('[data-connection-status=api]').textContent==='Ready');await closeSettings();
+  await page.waitForFunction(()=>document.querySelector('#studio-agent-model-summary').textContent==='fixture-a');assert.equal(await panel.evaluate(n=>n.open),false);
+  await page.locator('#studio-name').fill('Pixel');await page.getByRole('button',{name:'Slack Announcer',exact:true}).click();await page.locator('#studio-create').scrollIntoViewIfNeeded();await page.screenshot({path:'/tmp/bac-hiring-default-model.png'});
+  await page.locator('#studio-create').click();await page.locator('#studio-onboarding').waitFor({state:'hidden'});assert.equal(await page.evaluate(()=>BacStudio.inspect().profile.model),'api/nvidia/fixture-a');
+  await page.locator('#studio-prompt').fill('Hello default model');await page.locator('#studio-send').click();await page.waitForFunction(()=>document.querySelector('#studio-conversation').textContent.includes('Simulated model: fixture-a'));
+  await page.locator('#studio-edit-agent').click();assert.equal(await summary.innerText(),'fixture-a');
   await expand();assert(await choice('local').isDisabled());assert.equal(await results.locator('button').count(),40);
   assert((await results.boundingBox()).height<=222,'Large catalogue stays compact');
-  await search.fill('nonexistent model');assert.match(await results.innerText(),/No matching models/);await search.press('Enter');assert.equal(await page.evaluate(()=>BacStudio.inspect().profile?.name||''),'');
+  await search.fill('nonexistent model');assert.match(await results.innerText(),/No matching models/);await search.press('Enter');assert.equal(await page.evaluate(()=>BacStudio.inspect().profile.model),'api/nvidia/fixture-a');
   await search.fill('MODEL-089');assert.equal(await results.locator('button').count(),1);
   const matched=await results.locator('button').elementHandle();await page.evaluate(()=>BacStudio.refresh());assert.equal(await search.inputValue(),'MODEL-089');assert(await matched.evaluate(n=>n.isConnected),'Polling preserves result buttons');
   await search.press('ArrowDown');assert.equal(await choice('api/nvidia/example/model-089').evaluate(n=>n===document.activeElement),true);
@@ -31,7 +39,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.locator('#studio-name').fill('Pixel');await page.getByRole('button',{name:'Slack Announcer',exact:true}).click();await page.getByRole('button',{name:/^Cynical/}).click();
   await expand();await search.fill('fixture');await page.locator('#studio-create').scrollIntoViewIfNeeded();await page.screenshot({path:'/tmp/bac-personal-model-search.png'});
   await search.press('Escape');assert.equal(await panel.evaluate(n=>n.open),false);
-  await page.locator('#studio-create').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Pixel');
+  await page.locator('#studio-create').click();await page.locator('#studio-onboarding').waitFor({state:'hidden'});
   assert.equal(await page.evaluate(()=>BacStudio.inspect().profile.model),'api/nvidia/fixture-b');
   await page.evaluate(()=>BacStudio.setRoom('lounge'));await page.locator('#studio-prompt').fill('Hello model test');await page.locator('#studio-send').click();
   await page.waitForFunction(()=>document.querySelector('#studio-conversation').textContent.includes('Simulated model: fixture-b'));
@@ -39,7 +47,9 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.locator('#studio-edit-agent').click();await expand();assert(await choice('local').isDisabled());
   await page.locator('#studio-cancel-create').click();await settings();await page.locator('[data-connection-edit=local]').click();
   await page.locator('#studio-connect-model').fill('fixture-a');await page.locator('#studio-connect-apply').click();await page.waitForFunction(()=>document.querySelector('#studio-connect-status').textContent==='Connected.');await closeSettings();
-  await page.locator('#studio-edit-agent').click();await expand();await choice('local').waitFor();assert(await choice('local').isEnabled());
+  await page.evaluate(()=>BacStudio.setRoom('workshop'));assert.equal(await summary.innerText(),'Local');assert.equal(await panel.evaluate(n=>n.open),false);assert(await page.locator('#studio-create').isEnabled());
+  assert.equal(await page.evaluate(()=>BacStudio.inspect().profile.model),'api/nvidia/fixture-b','A new-hire default must not change an existing agent');
+  await page.evaluate(()=>BacStudio.setRoom('lounge'));await page.locator('#studio-edit-agent').click();assert.equal(await summary.innerText(),'fixture-b');await expand();await choice('local').waitFor();assert(await choice('local').isEnabled());
   await choose('local','Local');await page.locator('#studio-create').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.model==='local');
   // Losing that connection preserves the selected model and allows unrelated edits.
   await settings();await page.locator('[data-connection-enable=local]').uncheck();await page.waitForFunction(()=>document.querySelector('[data-connection-status=local]').textContent==='Disabled');await closeSettings();
@@ -54,6 +64,6 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.getByRole('switch',{name:'Include hired agents'}).check();await page.locator('#studio-crew-prompt').fill('/goal Have Pixel build a counter.');await page.locator('#studio-crew-send').click();
   await page.waitForFunction(()=>document.querySelector('#studio-crew-conversation').textContent.includes('The team delivered the counter.'));
   await page.locator('[data-campus-agent="5"]').click();await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Pixel');assert.equal(await page.locator('#studio-crew-model').innerText(),'fixture-b');
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,host,checks:['search with a 94-model catalogue','bounded list and no-match state','keyboard selection and Escape','query survives polling','offline Local disabled and no silent default','connected Local can be selected','saved offline choice preserved during editing','own model retained in chat/reload/Open Task','no browser errors']}));
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,host,checks:['search with a 94-model catalogue','bounded list and no-match state','keyboard selection and Escape','query survives polling','connected Local first, otherwise configured API default','hire and chat without opening Model','neither connection ready blocks hiring','explicit choices and existing profiles preserved','connected Local can be selected','saved offline choice preserved during editing','own model retained in chat/reload/Open Task','no browser errors']}));
  }finally{if(browser)await browser.close();server.kill('SIGTERM');}
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -22,8 +22,12 @@ function updateCreatorSubmit(){
 }
 function renderCreatorModels(){
  const input=el('agent-model-search'),results=el('agent-model-results'),choices=creatorModelChoices();
- if(draftMode==='new'&&!draftModelChosen)draftModel=choices.find(row=>row.id==='local')?.connected?'local':'';
- const query=input.value.trim().toLowerCase(),defaultApi=runtime.modelConnections?.connections?.api?.model;
+ const apiConnection=runtime.modelConnections?.connections?.api,defaultApi=apiConnection?.model;
+ if(draftMode==='new'&&!draftModelChosen){
+  const apiDefault=apiConnection?.ready&&choices.find(row=>row.id===`api/${apiConnection.provider}/${defaultApi}`&&row.connected);
+  draftModel=choices.find(row=>row.id==='local')?.connected?'local':apiDefault?.id||'';
+ }
+ const query=input.value.trim().toLowerCase();
  const sourceName=row=>row.source==='api'?'External Endpoint':row.source==='local'?'Local':'Shared default';
  const matches=choices.filter(row=>(row.label+' '+row.id+' '+sourceName(row)).toLowerCase().includes(query));
  const priority=row=>row.source==='local'?0:row.id===draftModel?1:row.id.split('/').slice(2).join('/')===defaultApi?2:3;
@@ -37,9 +41,9 @@ function renderCreatorModels(){
  // Replacing unchanged rows on each poll can interrupt clicks or keyboard selection.
  if(creatorModelMarkup!==html){creatorModelMarkup=html;results.innerHTML=html;if(focused)[...results.querySelectorAll('button')].find(button=>button.dataset.agentModelChoice===focused&&!button.disabled)?.focus({preventScroll:true});}
  const chosen=draftModel?personalModel({model:draftModel}):null,summary=el('agent-model-summary');
- summary.textContent=chosen?(draftModel==='local'?'Local':chosen.label.split('/').at(-1)):'Choose a model';summary.title=chosen?.label||'';summary.dataset.ready=String(!!chosen?.connected);
+ summary.textContent=chosen?(draftModel==='local'?'Local':chosen.label.split('/').at(-1)):'Not connected';summary.title=chosen?.label||'';summary.dataset.ready=String(!!chosen?.connected);
  const missing=!chosen?.connected;
- el('agent-model-note').textContent=matches.length>40?'Showing 40 models. Refine your search.':!chosen?'Choose a connected model.':missing?'Selected model is not connected.':'';
+ el('agent-model-note').textContent=!chosen?'Connect a model in Settings.':missing?'Selected model is not connected.':matches.length>40?'Showing 40 models. Refine your search.':'';
  el('agent-model-note').hidden=!el('agent-model-note').textContent;el('agent-model-settings').hidden=!missing;
  updateCreatorSubmit();
 }

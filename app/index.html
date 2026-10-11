@@ -1502,7 +1502,7 @@ body{margin:0;padding:0;width:100%;max-width:none}
     <small id="studio-role-hint" class="studio-muted" role="status"></small>
     <fieldset class="studio-style-group"><legend>What can it do?</legend><div id="studio-skill-picker"></div></fieldset>
     <fieldset class="studio-protection-picker"><legend>OpenShell protection</legend><label><input type="radio" name="protection" value="standard" checked><span><b>OpenShell off</b><small>Tools can read and edit files on this computer.</small></span></label><label><input type="radio" name="protection" value="openshell"><span><b>OpenShell on</b><small>Sandboxed tools with restricted file and internet access.</small></span></label></fieldset>
-    <details id="studio-agent-model-panel" class="studio-agent-model-panel"><summary>Model <span id="studio-agent-model-summary">Local</span></summary><input id="studio-agent-model-search" type="search" aria-label="Search models" placeholder="Search models or providers…" autocomplete="off" aria-controls="studio-agent-model-results" aria-describedby="studio-agent-model-note"><div id="studio-agent-model-results" class="studio-agent-model-results" role="group" aria-label="Model choices"></div><div class="studio-agent-model-help"><small id="studio-agent-model-note" class="studio-muted" role="status"></small><button type="button" id="studio-agent-model-settings" class="studio-model-settings-link">Model settings</button></div></details>
+    <details id="studio-agent-model-panel" class="studio-agent-model-panel"><summary>Model <span id="studio-agent-model-summary">Not connected</span></summary><input id="studio-agent-model-search" type="search" aria-label="Search models" placeholder="Search models or providers…" autocomplete="off" aria-controls="studio-agent-model-results" aria-describedby="studio-agent-model-note"><div id="studio-agent-model-results" class="studio-agent-model-results" role="group" aria-label="Model choices"></div><div class="studio-agent-model-help"><small id="studio-agent-model-note" class="studio-muted" role="status"></small><button type="button" id="studio-agent-model-settings" class="studio-model-settings-link">Model settings</button></div></details>
     <div class="studio-creator-actions"><button type="button" class="studio-secondary" id="studio-cancel-create" hidden>Cancel</button><button type="submit" class="studio-primary" id="studio-create">Hire my agent <span>↗</span></button></div>
     <small class="studio-muted"></small>
   </form>
@@ -81257,7 +81257,7 @@ render();
     modelBadge.setAttribute('role',actionable?'button':'status');modelBadge.tabIndex=actionable?0:-1;
     modelBadge.setAttribute('aria-live','polite');
     modelBadge.title=runtimeRetrying?'Checking the local agent runtime':!runtime.gateway?'Retry connection':slow?'Checking automatically. Tasks already running are not cancelled.':actionable?'Open model settings':'Agent runtime ready';
-    if(roomsReady)renderRooms();syncComposer();
+    if(roomsReady){renderCreatorModels();renderRooms();}syncComposer();
   }
 
   function current(){return data.jobs.find(j=>j.id===selectedJob)||data.jobs[0];}
@@ -83090,8 +83090,12 @@ function updateCreatorSubmit(){
 }
 function renderCreatorModels(){
  const input=el('agent-model-search'),results=el('agent-model-results'),choices=creatorModelChoices();
- if(draftMode==='new'&&!draftModelChosen)draftModel=choices.find(row=>row.id==='local')?.connected?'local':'';
- const query=input.value.trim().toLowerCase(),defaultApi=runtime.modelConnections?.connections?.api?.model;
+ const apiConnection=runtime.modelConnections?.connections?.api,defaultApi=apiConnection?.model;
+ if(draftMode==='new'&&!draftModelChosen){
+  const apiDefault=apiConnection?.ready&&choices.find(row=>row.id===`api/${apiConnection.provider}/${defaultApi}`&&row.connected);
+  draftModel=choices.find(row=>row.id==='local')?.connected?'local':apiDefault?.id||'';
+ }
+ const query=input.value.trim().toLowerCase();
  const sourceName=row=>row.source==='api'?'External Endpoint':row.source==='local'?'Local':'Shared default';
  const matches=choices.filter(row=>(row.label+' '+row.id+' '+sourceName(row)).toLowerCase().includes(query));
  const priority=row=>row.source==='local'?0:row.id===draftModel?1:row.id.split('/').slice(2).join('/')===defaultApi?2:3;
@@ -83105,9 +83109,9 @@ function renderCreatorModels(){
  // Replacing unchanged rows on each poll can interrupt clicks or keyboard selection.
  if(creatorModelMarkup!==html){creatorModelMarkup=html;results.innerHTML=html;if(focused)[...results.querySelectorAll('button')].find(button=>button.dataset.agentModelChoice===focused&&!button.disabled)?.focus({preventScroll:true});}
  const chosen=draftModel?personalModel({model:draftModel}):null,summary=el('agent-model-summary');
- summary.textContent=chosen?(draftModel==='local'?'Local':chosen.label.split('/').at(-1)):'Choose a model';summary.title=chosen?.label||'';summary.dataset.ready=String(!!chosen?.connected);
+ summary.textContent=chosen?(draftModel==='local'?'Local':chosen.label.split('/').at(-1)):'Not connected';summary.title=chosen?.label||'';summary.dataset.ready=String(!!chosen?.connected);
  const missing=!chosen?.connected;
- el('agent-model-note').textContent=matches.length>40?'Showing 40 models. Refine your search.':!chosen?'Choose a connected model.':missing?'Selected model is not connected.':'';
+ el('agent-model-note').textContent=!chosen?'Connect a model in Settings.':missing?'Selected model is not connected.':matches.length>40?'Showing 40 models. Refine your search.':'';
  el('agent-model-note').hidden=!el('agent-model-note').textContent;el('agent-model-settings').hidden=!missing;
  updateCreatorSubmit();
 }
@@ -83813,7 +83817,7 @@ async function openModelConnections(){
  for(const toggle of panel.querySelectorAll('[data-connection-enable]'))toggle.onchange=async()=>{
   if(working)return;const source=toggle.dataset.connectionEnable,on=toggle.checked;
   if(on&&state.connections[source].message==='Not configured'){editConnection(source);paint();return;}
-  working=true;++inventoryRevision;paint();try{state=await api('settings/connections/preferences',{lounge:state.loungePreference,[on?'enable':'disable']:source},owner);if(current())notice.textContent=on?'Enabled.':'Disabled.';}catch(error){if(current())notice.textContent=error.message;}finally{working=false;if(current()){paint();await refresh();}}
+  working=true;++inventoryRevision;paint();try{state=await api('settings/connections/preferences',{lounge:state.loungePreference,[on?'enable':'disable']:source},owner);runtime=await api('runtime');if(current()){runtimeBadge();notice.textContent=on?'Enabled.':'Disabled.';}}catch(error){if(current())notice.textContent=error.message;}finally{working=false;if(current()){paint();await refresh();}}
  };
  for(const button of panel.querySelectorAll('[data-connection-edit]'))button.onclick=()=>editConnection(button.dataset.connectionEdit);
  function editConnection(source){
@@ -83830,7 +83834,7 @@ async function openModelConnections(){
   el('connect-cancel').onclick=()=>{if(!working){editor.replaceChildren();editor.hidden=true;editing=false;}};
   async function action(){if(working)return;const context=el('connect-context');if(!context.checkValidity()){context.closest('details').open=true;context.reportValidity();return;}working=true;++inventoryRevision;paint();const values=payload(),message=el('connect-status');editor.querySelectorAll('input,select,button').forEach(e=>e.disabled=true);message.textContent='Checking connection…';try{
    const result=await api('settings/connections',values,owner);if(!current()||!editor.contains(message))return;
-   {state=result;settings.profiles[values.provider]={baseUrl:values.baseUrl,model:values.model,contextWindow:values.contextWindow,hasKey:source==='api'};if(el('connect-key'))el('connect-key').value='';runtime=await api('runtime');if(current()){await refresh();paint();message.textContent='Connected.';}}
+   {state=result;settings.profiles[values.provider]={baseUrl:values.baseUrl,model:values.model,contextWindow:values.contextWindow,hasKey:source==='api'};if(el('connect-key'))el('connect-key').value='';runtime=await api('runtime');if(current()){runtimeBadge();await refresh();paint();message.textContent='Connected.';}}
   }catch(error){if(current())message.textContent=error.message;}finally{working=false;if(current()){editor.querySelectorAll('input,select,button').forEach(e=>e.disabled=false);lockFields();paint();}}}
   let catalogVersion=0,catalogLoaded='',catalogPending='';
   async function loadCatalog(){

@@ -241,7 +241,7 @@
     modelBadge.setAttribute('role',actionable?'button':'status');modelBadge.tabIndex=actionable?0:-1;
     modelBadge.setAttribute('aria-live','polite');
     modelBadge.title=runtimeRetrying?'Checking the local agent runtime':!runtime.gateway?'Retry connection':slow?'Checking automatically. Tasks already running are not cancelled.':actionable?'Open model settings':'Agent runtime ready';
-    if(roomsReady)renderRooms();syncComposer();
+    if(roomsReady){renderCreatorModels();renderRooms();}syncComposer();
   }
 
   function current(){return data.jobs.find(j=>j.id===selectedJob)||data.jobs[0];}

@@ -241,7 +241,7 @@ async function openModelConnections(){
  for(const toggle of panel.querySelectorAll('[data-connection-enable]'))toggle.onchange=async()=>{
   if(working)return;const source=toggle.dataset.connectionEnable,on=toggle.checked;
   if(on&&state.connections[source].message==='Not configured'){editConnection(source);paint();return;}
-  working=true;++inventoryRevision;paint();try{state=await api('settings/connections/preferences',{lounge:state.loungePreference,[on?'enable':'disable']:source},owner);if(current())notice.textContent=on?'Enabled.':'Disabled.';}catch(error){if(current())notice.textContent=error.message;}finally{working=false;if(current()){paint();await refresh();}}
+  working=true;++inventoryRevision;paint();try{state=await api('settings/connections/preferences',{lounge:state.loungePreference,[on?'enable':'disable']:source},owner);runtime=await api('runtime');if(current()){runtimeBadge();notice.textContent=on?'Enabled.':'Disabled.';}}catch(error){if(current())notice.textContent=error.message;}finally{working=false;if(current()){paint();await refresh();}}
  };
  for(const button of panel.querySelectorAll('[data-connection-edit]'))button.onclick=()=>editConnection(button.dataset.connectionEdit);
  function editConnection(source){
@@ -258,7 +258,7 @@ async function openModelConnections(){
   el('connect-cancel').onclick=()=>{if(!working){editor.replaceChildren();editor.hidden=true;editing=false;}};
   async function action(){if(working)return;const context=el('connect-context');if(!context.checkValidity()){context.closest('details').open=true;context.reportValidity();return;}working=true;++inventoryRevision;paint();const values=payload(),message=el('connect-status');editor.querySelectorAll('input,select,button').forEach(e=>e.disabled=true);message.textContent='Checking connection…';try{
    const result=await api('settings/connections',values,owner);if(!current()||!editor.contains(message))return;
-   {state=result;settings.profiles[values.provider]={baseUrl:values.baseUrl,model:values.model,contextWindow:values.contextWindow,hasKey:source==='api'};if(el('connect-key'))el('connect-key').value='';runtime=await api('runtime');if(current()){await refresh();paint();message.textContent='Connected.';}}
+   {state=result;settings.profiles[values.provider]={baseUrl:values.baseUrl,model:values.model,contextWindow:values.contextWindow,hasKey:source==='api'};if(el('connect-key'))el('connect-key').value='';runtime=await api('runtime');if(current()){runtimeBadge();await refresh();paint();message.textContent='Connected.';}}
   }catch(error){if(current())message.textContent=error.message;}finally{working=false;if(current()){editor.querySelectorAll('input,select,button').forEach(e=>e.disabled=false);lockFields();paint();}}}
   let catalogVersion=0,catalogLoaded='',catalogPending='';
   async function loadCatalog(){

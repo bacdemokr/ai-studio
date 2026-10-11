@@ -8,7 +8,7 @@ Open the Settings gear on localhost or the host's trusted LAN address. **Model**
 2. Select the provider and search the **Model** field. The catalogue loads automatically; there is no separate Load models button.
 3. Choose **Connect & enable**.
 4. Under **Models**, choose a connection for **Event Brief** and **Open Task** in their separate rows, then **Save changes**. Changing one never changes the other; existing preferences are preserved.
-5. Hired agents use their own **Model** choice from Hiring or Edit agent. New hires default to connected Local; team settings never overwrite their choices.
+5. Hired agents use their own **Model** choice from Hiring or Edit agent. New hires prefer connected Local, otherwise the configured External Endpoint model; team settings never overwrite their choices.
 
 The selectors show **Local** or **External Endpoint**, whichever connection new work will use. There is no Automatic option. Built-in teams prefer External Endpoint by default; opening Settings or refreshing connection status does not change saved preferences. Earlier agents without an individual model keep their previous shared default, available in the collapsed **Shared default** section. Saved manual choices take precedence. When upgrading a data directory that predates shared connections, the selected host provider is retained. For built-in teams and earlier agents using the shared default, an unavailable preferred connection falls back to the other ready connection for new requests. When a fallback is needed, the selector shows the connection in use and the status explains which preferred connection is unavailable. Unsaved selections stay visible with **Save to use** until saved. If neither is ready, Settings shows **No connection ready**. Active model requests are not replayed on another connection.
 
@@ -38,7 +38,7 @@ Local endpoints must be reachable from the app/OpenClaw host, not from the prese
 
 ## Per-agent models in Hiring
 
-Expand **Model** below **OpenShell protection**, then search by model or provider name. Results stay in a compact scrollable list; unavailable connections are disabled. New agents default to Local only when it is connected. Otherwise, choose an available external model or connect Local in Settings before hiring. The section starts closed and is available in **Edit agent** too.
+Expand **Model** below **OpenShell protection**, then search by model or provider name. Results stay in a compact scrollable list; unavailable connections are disabled. New agents default to connected Local. If Local is unavailable, they use the configured External Endpoint default model, not the first catalogue entry. The collapsed summary shows the selected model, so presenters can hire without opening this section. If neither connection is ready, it shows **Not connected** and hiring waits for a connection. Explicit model choices and existing agents are preserved. The section starts closed and is available in **Edit agent** too.
 
 An existing offline model remains selected. You can still edit that agent’s name or persona without changing its model; choosing a different model requires a ready connection.
 
