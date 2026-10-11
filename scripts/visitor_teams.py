@@ -51,12 +51,24 @@ def requirements(task, members):
     return found
 
 
-def capture(studio, db, owner, task):
-    from studio import Problem
+def hired_members(db, owner):
     rows = db.execute("SELECT id,profile FROM agents WHERE kind='personal' AND participant="
                       "(SELECT participant FROM agents WHERE id=?) AND profile IS NOT NULL AND deleting=0 "
                       "ORDER BY created,id", (owner,)).fetchall()
-    all_members = [{**json.loads(row['profile']), 'key': row['id'], 'role': 'Hired specialist'} for row in rows]
+    return [{**json.loads(row['profile']), 'key': row['id'], 'role': 'Hired specialist'} for row in rows]
+
+
+def require_opt_in(db, owner, task):
+    """Do not silently replace an explicitly requested person when participation is off."""
+    from studio import Problem
+    required = requirements(task, hired_members(db, owner))
+    if required:
+        raise Problem('Turn on Include hired agents to assign ' + ', '.join(m['name'] for m in required) + '.', 409)
+
+
+def capture(studio, db, owner, task):
+    from studio import Problem
+    all_members = hired_members(db, owner)
     required = requirements(task, all_members)
     connection_ready = not all_members or studio.runtime_status().get('ready')
     request = direct_request(task)

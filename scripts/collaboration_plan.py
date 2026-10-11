@@ -221,9 +221,13 @@ class CollaborationPlans:
         origin = plan.get('origin', {'owner': owner, 'role': 0})
         inputs = requested_inputs(self, origin, plan['task'])
         import visitor_teams
-        visitors = payload.get('roster', [])
-        required_visitors = payload.get('requiredVisitors', [])
-        visitor_rules = visitor_teams.instructions(visitors, required_visitors)
+        # Older queued tasks already captured a roster before the opt-in existed.
+        include_hired = payload.get('includeHiredAgents', bool(payload.get('roster')))
+        visitors = payload.get('roster', []) if include_hired else []
+        required_visitors = payload.get('requiredVisitors', []) if include_hired else []
+        visitor_rules = (visitor_teams.instructions(visitors, required_visitors) if include_hired else
+                         '\nTEAM SELECTION: Include hired agents is off for this task. Use only the built-in '
+                         'specialists listed above. Do not assign Lounge agents mentioned in earlier conversations.\n')
         def member_workspace(role):
             member = roster[role]
             return self.workspace(member['key']) if member.get('key') else self.workspace(owner, role)
@@ -966,7 +970,8 @@ class CollaborationPlans:
                     finish('Casey could not fit the requested work and independent review within the three-specialist limit. '
                            'No specialist work was started. Narrow the scope or split the request to continue.', reactions=False)
                     return
-            visitor_teams.bind(plan, roster, visitors, required_visitors, plan['task'])
+            if include_hired:
+                visitor_teams.bind(plan, roster, visitors, required_visitors, plan['task'])
             if plan.get('visitorBindings'):
                 visitor_rules += ('\nActual selected assignments (use these identities in progress and final answers):\n' +
                                   json.dumps([{'role': t['role'], 'name': roster[t['role']]['name']} for t in plan['tasks']]) + '\n')

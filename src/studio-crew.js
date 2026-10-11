@@ -4,6 +4,9 @@ function visitorAvailable(visitor){return !!visitor&&(data.agents||[]).some(agen
 // Each specialist has a durable direct conversation, separate from crew execution.
 const defaultCrewPrompt=role=>selectedScenario==='plan'&&role===0?'/goal ':'';
 const crewDrafts=new Map();let crewChatKey='',crewChatSignature='',crewChatSending=false,crewResetEpoch='';
+// A fresh page starts with the built-in team; room changes keep the visitor's choice.
+let includeHiredAgents=false;
+el('crew-include-hired').onchange=()=>{includeHiredAgents=el('crew-include-hired').checked;el('crew-chat-error').hidden=true;};
 // Shared by Lounge, crew chat, event replies and roundtable reactions.
 function customSkillMarkup(activity){
  if(!activity?.available||!Array.isArray(activity.calls))return '';
@@ -353,7 +356,8 @@ for(const type of ['dragover','drop'])el('crew-chat').addEventListener(type,even
  event.preventDefault();if(type==='drop')uploadCrewDocuments([...event.dataTransfer.files]);
 });
 function syncCrewComposer(){
- const captainPlanning=selectedCrewRole===0&&(data.crewChats||[]).some(j=>j.payload?.collaboration&&['queued','running','waiting','stopping'].includes(j.status));
+ const activePlan=(data.crewChats||[]).find(j=>j.payload?.collaboration&&['queued','running','waiting','stopping'].includes(j.status));
+ const captainPlanning=selectedCrewRole===0&&!!activePlan;
  const visitor=assignedVisitor(selectedCrewRole);
  const visitorMissing=visitor&&!visitorAvailable(visitor);
  const memberWorking=!!visitor&&(data.agents||[]).some(a=>a.key===visitor.key&&a.pending>0)||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status)&&(j.payload?.collaboration?(['running','stopping'].includes(j.status)&&j.payload.collaboration.activeRole===selectedCrewRole):j.payload?.crewRole===selectedCrewRole));
@@ -364,6 +368,10 @@ function syncCrewComposer(){
  renderCrewDocuments();
  const commandOnly=selectedScenario==='plan'&&selectedCrewRole===0&&/^\s*\/(?:goals?|plans?)\s*$/i.test(el('crew-prompt').value);
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending||commandOnly;
+ el('crew-hired-option').hidden=selectedScenario!=='plan'||selectedCrewRole!==0;
+ const hiredToggle=el('crew-include-hired');
+ hiredToggle.checked=activePlan?!!(activePlan.payload.includeHiredAgents??activePlan.payload.roster?.length):includeHiredAgents;
+ hiredToggle.disabled=!!activePlan||crewChatSending||!!data.bacResetting||scenarioSwitching||scenarioChoosing;
  el('crew-chat-connection').hidden=!blocked;
  el('crew-chat-connection').textContent=visitorMissing?'This agent was removed. Start a new task with Casey.':visitor?.skills?.includes('radar')?'Tech Radar uses Heartbeat. Manual chat is disabled.':crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':eventPreparing?'Preparing the Event Brief team…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(visitor?runtime.model:(teamRuntime().teamModel??runtime.model))?'Model not connected. Enable Local or External Endpoint in Settings.':'Run ./bac start on this computer to connect the team runtime.';
 }
@@ -371,7 +379,7 @@ function renderCrewPassport(){
  syncFileButtons();
  const epoch=selectedScenario+':'+(data.crewChatReset?.epoch||'');
  if(epoch!==crewResetEpoch){
-  const resetChanged=crewResetEpoch.split(':')[0]===selectedScenario;crewResetEpoch=epoch;if(resetChanged)for(const key of crewDrafts.keys())if(key.startsWith(selectedScenario+':'))crewDrafts.delete(key);crewChatKey='';crewChatSignature='';el('crew-prompt').value=defaultCrewPrompt(selectedCrewRole);
+  const resetChanged=crewResetEpoch.split(':')[0]===selectedScenario;crewResetEpoch=epoch;if(resetChanged){if(selectedScenario==='plan')includeHiredAgents=false;for(const key of crewDrafts.keys())if(key.startsWith(selectedScenario+':'))crewDrafts.delete(key);}crewChatKey='';crewChatSignature='';el('crew-prompt').value=defaultCrewPrompt(selectedCrewRole);
   for(const key of chatImageDrafts.keys())if(key.includes(':crew:')&&key.includes(':'+selectedScenario+':'))chatImageDrafts.delete(key);
  }
  if(room!=='mission')return;
@@ -412,7 +420,7 @@ function renderCrewPassport(){
 el('crew-policy').onclick=async()=>{const visitor=assignedVisitor(selectedCrewRole);if(visitor){await switchAgent(visitor.key);if(agentId===visitor.key)openPolicy();}else openPolicy(selectedCrewRole);};
 el('crew-chat').onsubmit=async e=>{
  e.preventDefault();syncCrewComposer();if(el('crew-send').disabled)return;
- const owner=agentId,index=selectedCrewRole,key=crewDraftKey(index),draft=captureChatDraft(true);
+ const owner=agentId,index=selectedCrewRole,key=crewDraftKey(index),draft=captureChatDraft(true),hiredChoice=includeHiredAgents;
  if(isPlanCommand(draft.prompt)&&(selectedScenario!=='plan'||index!==0)){
   el('crew-chat-error').textContent=selectedScenario==='event-brief'?eventPlanLocationHint:planLocationHint;
   el('crew-chat-error').hidden=false;return;
@@ -420,7 +428,7 @@ el('crew-chat').onsubmit=async e=>{
  let requestPrompt=draft.prompt;
  if(index===0){const docs=renderCrewDocuments();if(docs.length)requestPrompt+='\n\nAttached documents (use these files):\n'+docs.map(f=>f.path.slice(6)).join('\n');}
  crewChatSending=true;syncCrewComposer();el('crew-chat-error').hidden=true;
- try{const visitor=assignedVisitor(index);const result=await api('jobs',visitor?{kind:'chat',prompt:requestPrompt,images:draft.images}:{kind:'crew-chat',crewRole:index,prompt:requestPrompt,images:draft.images},visitor?.key||owner);acknowledgeChatDraft(draft);if(visitor){await switchAgent(visitor.key);setRoom('lounge');}await refresh();if(result.collaboration)stageCollaboration(result);}
+ try{const visitor=assignedVisitor(index);const result=await api('jobs',visitor?{kind:'chat',prompt:requestPrompt,images:draft.images}:{kind:'crew-chat',crewRole:index,prompt:requestPrompt,images:draft.images,...(selectedScenario==='plan'&&index===0&&isPlanCommand(draft.prompt)?{includeHiredAgents:hiredChoice}:{})},visitor?.key||owner);acknowledgeChatDraft(draft);if(visitor){await switchAgent(visitor.key);setRoom('lounge');}await refresh();if(result.collaboration)stageCollaboration(result);}
  catch(error){if(crewChatKey===key){el('crew-chat-error').textContent=error.message;el('crew-chat-error').hidden=false;}}
  finally{crewChatSending=false;syncCrewComposer();}
 };

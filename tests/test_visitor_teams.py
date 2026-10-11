@@ -55,8 +55,9 @@ class VisitorTeamTests(unittest.TestCase):
         self.app.onboard(self.owner, {'name': 'Pixel', 'skills': ['weather'], 'purpose': 'Weather advice.', 'tonePrompt': 'Dry and funny.'})
         self.manager = self.app.crew_owner(self.owner)
 
-    def start(self, prompt='/goal Pixel이 Coding작업들을 대신하게 해줘. Build a counter.'):
-        return self.app.enqueue(self.manager, {'kind': 'crew-chat', 'crewRole': 0, 'prompt': prompt})
+    def start(self, prompt='/goal Pixel이 Coding작업들을 대신하게 해줘. Build a counter.', **options):
+        return self.app.enqueue(self.manager, {'kind': 'crew-chat', 'crewRole': 0, 'prompt': prompt,
+                                               'includeHiredAgents': True, **options})
 
     def execute(self, result):
         with self.app.db() as db:
@@ -68,6 +69,80 @@ class VisitorTeamTests(unittest.TestCase):
 
     def specialists(self):
         return [c for c in self.adapter.calls if '-working' in c[1] or '-recovering' in c[1]]
+
+    def test_default_and_explicit_off_use_only_builtins_with_suitable_hires(self):
+        self.app.configure(self.owner, {**self.app.profile(self.owner), 'skills': ['builder']})
+        for options in ({}, {'includeHiredAgents': False}):
+            with self.subTest(options=options), patch('visitor_teams.capture', side_effect=AssertionError('Must not capture hired team')):
+                result = self.app.enqueue(self.manager, {'kind': 'crew-chat', 'crewRole': 0,
+                                                         'prompt': '/goal Build a counter.', **options})
+                with self.app.db() as db:
+                    self.app.require_idle(db, self.owner)
+                job = self.execute(result)
+                self.assertEqual(job['status'], 'done')
+                self.assertIs(job['payload']['includeHiredAgents'], False)
+                self.assertNotIn('roster', job['payload'])
+                self.assertNotIn('roundtable', job['payload'])
+                self.assertFalse(job['payload']['collaboration'].get('visitorBindings'))
+                self.assertTrue(self.specialists()[-1][0].endswith('-r5'))
+        self.assertFalse(any(c[0] == 'bac-' + self.owner for c in self.adapter.calls))
+        self.assertFalse(any('VISITOR TEAM SELECTION' in c[2] for c in self.adapter.calls))
+
+    def test_off_named_agent_explains_opt_in_before_queuing_any_work(self):
+        with self.assertRaisesRegex(Problem, 'Turn on Include hired agents to assign Pixel'):
+            self.start(includeHiredAgents=False)
+        with self.app.db() as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM jobs WHERE kind='crew-chat'").fetchone()[0], 0)
+
+    def test_off_ignores_names_in_quotes_and_negative_requests(self):
+        for prompt in ('/goal Build a counter.\n> Ask Pixel to code.', "/goal Don't use Pixel. Build a counter."):
+            job = self.execute(self.start(prompt, includeHiredAgents=False))
+            self.assertEqual(job['status'], 'done')
+
+    def test_off_does_not_require_lounge_model_or_idle_hired_agents(self):
+        self.app.enqueue(self.owner, {'kind': 'chat', 'prompt': 'Weather now?'})
+        status = {'ready': False, 'gateway': True, 'model': False, 'teamReady': True, 'teamModel': True}
+        with patch.object(self.app, 'runtime_status', return_value=status):
+            job = self.execute(self.start('/goal Build a counter.', includeHiredAgents=False))
+        self.assertEqual(job['status'], 'done')
+        self.assertTrue(self.specialists()[-1][0].endswith('-r5'))
+
+    def test_off_allows_hired_edits_chat_and_deletion_without_cancelling_team(self):
+        result = self.start('/goal Build a counter.', includeHiredAgents=False)
+        self.app.configure(self.owner, {**self.app.profile(self.owner), 'tonePrompt': 'Concise.'})
+        personal = self.app.enqueue(self.owner, {'kind': 'chat', 'prompt': 'Weather now?'})
+        self.app.decision(self.owner, personal['id'], 'cancel')
+        self.app.delete_agent(self.owner, {'name': 'Pixel'}, enqueue_only=True)
+        self.assertEqual(self.execute(result)['status'], 'done')
+
+    def test_flag_is_boolean_and_client_cannot_inject_a_roster_when_off(self):
+        for value in ('false', 'true', 0, 1, None, []):
+            with self.subTest(value=value), self.assertRaisesRegex(Problem, 'must be on or off'):
+                self.start('/goal Build a counter.', includeHiredAgents=value)
+        job = self.execute(self.start('/goal Build a counter.', includeHiredAgents=False,
+                                     roster=[{**self.app.profile(self.owner), 'key': self.owner}],
+                                     requiredVisitors=[{'key': self.owner, 'name': 'Pixel', 'role': 5}]))
+        self.assertNotIn('roster', job['payload'])
+        self.assertTrue(self.specialists()[-1][0].endswith('-r5'))
+
+    def test_switching_on_then_off_does_not_reuse_visitor_bindings(self):
+        first = self.execute(self.start())
+        second = self.execute(self.start('/goal Build a counter.', includeHiredAgents=False))
+        third = self.execute(self.start())
+        self.assertEqual([call[0] for call in self.specialists()],
+                         ['bac-' + self.owner, 'bac-' + self.manager + '-r5', 'bac-' + self.owner])
+        self.assertTrue(first['payload']['collaboration']['visitorBindings'])
+        self.assertFalse(second['payload']['collaboration'].get('visitorBindings'))
+        self.assertTrue(third['payload']['collaboration']['visitorBindings'])
+
+    def test_pre_toggle_queued_job_retains_its_captured_team(self):
+        result = self.start()
+        with self.app.db() as db:
+            payload = json.loads(db.execute('SELECT payload FROM jobs WHERE id=?', (result['id'],)).fetchone()[0])
+            del payload['includeHiredAgents']
+            db.execute('UPDATE jobs SET payload=? WHERE id=?', (json.dumps(payload), result['id']))
+        job = self.execute(result)
+        self.assertEqual(job['payload']['collaboration']['visitorBindings']['5']['key'], self.owner)
 
     def test_named_weather_agent_replaces_coder_with_same_identity_and_workspace(self):
         before = self.app.profile(self.owner)

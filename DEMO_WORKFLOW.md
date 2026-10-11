@@ -78,9 +78,9 @@ Similarly, each agent has specialized skills that help it produce the best possi
 Stage 3 has two separate workflows:
 
 - **3-1 Event Brief:** Riley coordinates the fixed team of Dylan, Alex and Morgan. The application runs the event workflow; demo research and operations can run in parallel after Riley's brief. All team members use the model selected for this scenario's connection.
-- **3-2 Open Task:** Casey prefers suitable visitor-hired agents and uses built-in specialists as backup. Name an agent to require its actual participation, e.g. `/goal Let Pixel do the coding instead of Cody. Build a counter page.` Pixel keeps its identity and tools even if coding is outside its usual role. Contributions run sequentially, with Casey checking their handoffs and keeping research and implementation focused.
+- **3-2 Open Task:** Casey uses the built-in specialists by default. Turn on **Include hired agents** above Casey's message box to prefer visitor-hired agents, with built-in specialists as backup. Then name an agent to require its actual participation, e.g. `/goal Let Pixel do the coding instead of Cody. Build a counter page.` Pixel keeps its identity and tools even if coding is outside its usual role. Contributions run sequentially, with Casey checking their handoffs and keeping research and implementation focused.
 
-Event Brief keeps its own fixed agents, conversations and files. In Open Task, hired agents use their existing Lounge identity and model connection; Casey and the backups use the Open Task connection. Make sure both connections are ready. Agents already contributing do not receive another call for a closing reaction. Unselected agents can still give optional reactions.
+Event Brief keeps its own fixed agents, conversations and files. With **Include hired agents** off, Open Task only needs its own model connection and leaves hired agents out of assignments and closing reactions. With it on, hires use their existing Lounge identity and model connection; Casey and the backups use the Open Task connection. Connect both for a mixed team. Agents already contributing do not receive another call for a closing reaction. Other available hires can still give reactions. The toggle is locked while a task runs; a page reload or Open Task reset defaults it to off for new tasks.
 
 ## 2. Before presenting
 

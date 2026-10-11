@@ -889,6 +889,9 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
         if collaborative and event_scenario:
             raise Problem('Use Plan an event for Event Brief, or send /goal to Casey in Open Task.')
         if collaborative:
+            include_hired = data.get('includeHiredAgents', False)
+            if type(include_hired) is not bool:
+                raise Problem('Include hired agents must be on or off.')
             origin_role = data.get('crewRole')
             if type(origin_role) is not int or not 0 <= origin_role < len(ROLES):
                 raise Problem('Choose a crew member.')
@@ -929,6 +932,7 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
         if kind == 'crew-chat':
             payload['crewRole'] = role
             if collaborative:
+                payload['includeHiredAgents'] = include_hired
                 payload['collaboration'] = {'task':task, 'origin':origin, 'activeRole':0, 'outputs':{}, 'handoffs':{}}
         if kind == 'reminder':
             delay = data.get('delay', 60)
@@ -968,12 +972,15 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
                     original = self.require_available(db, origin['owner'])
                     self.require_manual_chat(json.loads(original['profile']))
                 self.require_team_idle(db, owner)
-                from visitor_teams import capture
-                visitors, required, unavailable = capture(self, db, owner, task)
-                payload['roster'] = visitors
-                payload['requiredVisitors'] = required
-                payload['unavailableVisitors'] = unavailable
-                payload['roundtable'] = self.capture_roundtable(db, owner, selected=[member['key'] for member in visitors])
+                from visitor_teams import capture, require_opt_in
+                if include_hired:
+                    visitors, required, unavailable = capture(self, db, owner, task)
+                    payload['roster'] = visitors
+                    payload['requiredVisitors'] = required
+                    payload['unavailableVisitors'] = unavailable
+                    payload['roundtable'] = self.capture_roundtable(db, owner, selected=[member['key'] for member in visitors])
+                else:
+                    require_opt_in(db, owner, task)
             # An immediate personal request can do the same preparation itself.
             if kind == 'chat':
                 reserved = db.execute("SELECT payload FROM jobs WHERE kind='crew-chat' AND status IN ('queued','running','waiting','stopping') "
