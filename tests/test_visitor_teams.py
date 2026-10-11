@@ -320,7 +320,7 @@ class VisitorTeamTests(unittest.TestCase):
     def test_disconnected_lounge_uses_backups_unless_personal_agent_is_named(self):
         status = {'ready': False, 'gateway': True, 'model': False, 'teamReady': True, 'teamModel': True}
         with patch.object(self.app, 'runtime_status', return_value=status):
-            with self.assertRaisesRegex(Problem, 'Hiring & Lounge model connection'):
+            with self.assertRaisesRegex(Problem, 'Local model is not connected'):
                 self.start()
             job = self.execute(self.start('/goal Build a counter.'))
         self.assertEqual(job['payload']['roster'], [])

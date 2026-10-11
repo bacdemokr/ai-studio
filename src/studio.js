@@ -217,7 +217,7 @@
   const modelBadge=root.querySelector('.campus-sim');
   function gatewayState(){return runtime.gatewayState||(runtime.gateway?'ready':'unavailable');}
   function gatewayLabel(){return gatewayState()==='slow'?'Agent runtime responding slowly':gatewayState()==='ready'?'Ready':'Agent runtime unavailable';}
-  function openModelSettings(){if(!runtime.model&&!runtime.testFixture&&!settingsButton.hidden)settingsButton.click();}
+  function openModelSettings(){if(!runtime.testFixture&&!settingsButton.hidden)settingsButton.click();}
   let runtimeRetrying=false;
   async function retryRuntime(){
     if(runtimeRetrying)return;
@@ -232,7 +232,7 @@
   function runtimeBadge(){
     warmCrewOnOpen();
     syncCrewComposer();
-    const state=gatewayState(),slow=state==='slow',modelConnected=room==='mission'?(teamRuntime().teamModel??runtime.model):runtime.model,viewReady=room==='mission'?teamReady():runtime.ready,ready=!!viewReady&&!runtime.testFixture;
+    const state=gatewayState(),slow=state==='slow',modelConnected=room==='mission'?(teamRuntime().teamModel??runtime.model):room==='lounge'&&data.profile?personalModel(data.profile).connected:runtime.model,viewReady=room==='mission'?teamReady():room==='lounge'&&data.profile?personalReady(data.profile):runtime.ready,ready=!!viewReady&&!runtime.testFixture;
     const actionable=!runtime.testFixture&&!runtimeRetrying&&(!runtime.gateway||(!modelConnected&&!settingsButton.hidden));
     modelBadge.textContent=runtime.testFixture?'TEST FIXTURE · NO REAL MODEL':runtimeRetrying?'Checking connection…':slow?'◷ '+gatewayLabel():!runtime.gateway?'⚠ Agent runtime unavailable · Retry connection':!modelConnected?'○ Model not connected':'● Ready';
     modelBadge.dataset.warning=String(!runtime.testFixture&&!slow&&!viewReady);
@@ -246,6 +246,7 @@
 
   function current(){return data.jobs.find(j=>j.id===selectedJob)||data.jobs[0];}
   function render() {
+    renderCreatorModels();
     const profile=data.profile, job=current();
     renderCollection();
     window.BacCampus?.observeProtection(data.protectionEvents||[]);
@@ -288,7 +289,7 @@
     el('job-history').innerHTML=data.jobs.slice(0,12).map((j,i)=>`<button data-studio-job="${j.id}" aria-pressed="${job?.id===j.id}">${j.kind==='crew'?'Crew':j.kind==='reminder'?'Follow-up':'Mission'} ${data.jobs.length-i} · ${escape(j.status)}</button>`).join('');
     if(job){
       const events=[...job.events].reverse();
-      el('events').innerHTML=events.length?events.map(e=>`<li><b>${escape(e.title)}</b><small>${new Date(e.time*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · ${escape(e.detail)}</small></li>`).join(''):'<li><b>Waiting in the shared queue</b><small>All agents share one model. Scheduled jobs run when their time arrives.</small></li>';
+      el('events').innerHTML=events.length?events.map(e=>`<li><b>${escape(e.title)}</b><small>${new Date(e.time*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · ${escape(e.detail)}</small></li>`).join(''):'<li><b>Waiting in the shared queue</b><small>Scheduled jobs run when their time arrives.</small></li>';
       const key=job.id+job.status+job.events.length;
       if(key!==resultKey){
         resultKey=key;el('result-title').textContent=job.status==='done'?'Result':job.status==='error'?'This mission needs attention.':job.kind==='crew'?'Your crew is building the plan.':'Working…';
@@ -345,7 +346,7 @@
       notice.querySelector('button').onclick=async()=>{const action=notice.querySelector('button');action.disabled=true;try{if(agentId!==target)throw new Error('The selected agent changed. Choose a mission again.');await api('profile',{...data.profile,skills:[...new Set([...data.profile.skills,mission.id])]},target);await refresh();notice.remove();if(agentId===target)button.click();}catch(error){notice.querySelector('p').textContent=error.message;action.disabled=false;}};
       notice.scrollIntoView({block:'nearest'});return;
     }el('mission-skill-notice')?.remove();closeSurface();setRoom('lounge');if(mission.id==='radar'){el('radar-monitor')?.scrollIntoView({block:'nearest'});return;}skill=mission.id;const city=runtime.location?.city||'Zurich';el('prompt').value=['weather','writer'].includes(mission.id)?mission.prompt.replaceAll('Zurich',city):mission.prompt;el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===button));if(mission.id==='documents'&&!data.files.some(f=>f.kind==='inbox')){sampleDocument();}el('prompt').focus({preventScroll:true});};
-  el('chat').onsubmit=async e=>{e.preventDefault();if(radarChatDisabled()||!runtime.ready||data.deleting||chatSending||comparisonSending||documentUploadTarget===agentId){syncComposer();return;}el('chat-error').hidden=true;if(rejectLoungePlan())return;if(e.submitter?.id==='studio-send-all')return askAllAgents();const draft=captureChatDraft();chatSending=true;syncComposer();try{const result=await api('jobs',{kind:'chat',prompt:draft.prompt,skill,images:draft.images});selectedJob=result.id;acknowledgeChatDraft(draft);await refresh();el('conversation').scrollTop=el('conversation').scrollHeight;}catch(error){el('chat-error').textContent=error.message;el('chat-error').hidden=false;}finally{chatSending=false;syncComposer();}};
+  el('chat').onsubmit=async e=>{e.preventDefault();if(radarChatDisabled()||!personalReady(data.profile)||data.deleting||chatSending||comparisonSending||documentUploadTarget===agentId){syncComposer();return;}el('chat-error').hidden=true;if(rejectLoungePlan())return;if(e.submitter?.id==='studio-send-all')return askAllAgents();const draft=captureChatDraft();chatSending=true;syncComposer();try{const result=await api('jobs',{kind:'chat',prompt:draft.prompt,skill,images:draft.images});selectedJob=result.id;acknowledgeChatDraft(draft);await refresh();el('conversation').scrollTop=el('conversation').scrollHeight;}catch(error){el('chat-error').textContent=error.message;el('chat-error').hidden=false;}finally{chatSending=false;syncComposer();}};
   el('prompt').addEventListener('input',()=>{skill=null;clearPlanLocationHint();syncComposer();});
   function sampleDocument(){dialog('Upload notes','<p>PDF, PPTX, XLSX, CSV, Markdown or text.</p><div class="studio-dialog-actions"><button class="studio-secondary" id="studio-own-document">Upload my file</button><button class="studio-primary" id="studio-sample-document">Use sample notes (fictional)</button></div>');el('own-document').onclick=()=>{el('dialog').close();el('upload').click();};el('sample-document').onclick=async()=>{try{await api('upload',{name:'sample-meeting-notes.md',content:'# Sample meeting notes — fictional demo data\n\nWe agreed to keep the agent demo to 10 minutes.\nDylan will check the weather-demo endpoint by Thursday.\nMorgan will draft a short invitation; no deadline was agreed.\nWe still need someone to confirm the venue.\nDo not send invitations until the venue is confirmed.\n'});el('dialog').close();await refresh();}catch(e){alert(e.message,'error');}};}
   el('attach').onclick=()=>el('upload').click();

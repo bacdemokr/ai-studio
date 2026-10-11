@@ -101,21 +101,22 @@ class HeartbeatRelayTests(unittest.TestCase):
         self.tick()
         self.assertTrue(self.adapter.cadence[self.profile['id']])
     def test_disconnected_model_disables_timer(self):
-        with patch('runtime_settings.model_available',return_value=False):self.studio.heartbeat.tick()
+        with patch.object(self.studio,'runtime_status',return_value={'gateway':True,'model':False,'ready':False}):self.studio.heartbeat.tick()
         self.assertFalse(self.adapter.cadence[self.profile['id']])
 
     def test_shared_lounge_connection_controls_mixed_skill_heartbeat(self):
-        self.profile = self.studio.configure(self.owner, {**self.profile, 'skills':['radar','weather']})
+        self.profile = self.studio.configure(self.owner, {**self.profile, 'skills':['radar','weather'], 'model':'shared'})
         self.studio.execute(self.studio.next_job())
         with self.studio.db() as db:
             db.execute("UPDATE jobs SET created=? WHERE kind='prepare-agent'", (time.time()-30,))
         self.studio._connection_routes = {}
         with patch('model_connections.enabled',return_value=True), \
-             patch.object(self.studio,'runtime_status',return_value={'gateway':True}), \
+             patch.object(self.studio,'runtime_status',return_value={'gateway':True,'ready':True}) as runtime_status, \
              patch('model_connections.prepare'), \
              patch('runtime_settings.model_available',return_value=False) as legacy:
             for source in ('api','local',None):
-                with self.subTest(source=source), patch('model_connections.public',return_value={'loungeSource':source}):
+                with self.subTest(source=source):
+                    runtime_status.return_value={'gateway':True,'ready':bool(source)}
                     self.studio.heartbeat.tick()
                     self.assertEqual(self.adapter.cadence[self.profile['id']],bool(source))
                     self.assertEqual(self.studio.heartbeat.status(self.owner,self.profile)['state'],

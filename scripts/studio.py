@@ -357,7 +357,8 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
             raise Problem('This agent is assigned to a pending crew mission. Finish or cancel it first.', 409)
 
     @staticmethod
-    def agent_profile(owner, data):
+    def agent_profile(owner, data, *, previous_model=None):
+        import personal_models
         name = text(data.get('name'), 32, 'Agent name')
         persona, skills = data.get('persona', 'guide'), data.get('skills', [])
         purpose = data.get('purpose', '')
@@ -380,7 +381,8 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
         if not isinstance(skills, list) or not skills or len(skills) > len(runtime.SKILLS) or any(not isinstance(x, str) or x not in runtime.SKILLS for x in skills):
             raise Problem('Choose a persona and at least one available skill.')
         return {'name': name, 'persona': persona, 'purpose': purpose, 'tonePrompt': tone_prompt.strip(), 'tone': tone, 'verbosity': verbosity, 'skills': sorted(set(skills)),
-                'avatar': avatar_for(owner, data.get('avatar')), 'id': 'bac-' + owner, 'protection': protection}
+                'avatar': avatar_for(owner, data.get('avatar')), 'id': 'bac-' + owner, 'protection': protection,
+                'model': personal_models.validate(data.get('model', personal_models.DEFAULT), previous=previous_model)}
 
     @staticmethod
     def unique_agent_name(db, participant, requested, exclude=None):
@@ -512,7 +514,9 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
                     'purpose': data.get('purpose', profile.get('purpose', '')),
                     'tonePrompt': data.get('tonePrompt', profile.get('tonePrompt', '')),
                     'tone': data.get('tone', profile['tone']), 'verbosity': data.get('verbosity', profile['verbosity']),
-                    'protection': profile.get('protection', 'standard')})
+                    'protection': profile.get('protection', 'standard'),
+                    'model': data.get('model', profile.get('model', 'shared'))},
+                    previous_model=profile.get('model', 'shared'))
         # Perform native I/O before publishing the edit; then recheck whether
         # deletion or a new task won meanwhile. Never enqueue a retired identity.
         with self.heartbeat.lock:
@@ -687,6 +691,8 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
             external = shared['connections']['api']
             if external['provider']=='nvidia' and external['ready']:
                 result['teamModels']=external.get('models',[])
+            import personal_models
+            result['personalModels'] = personal_models.public(shared)
             result.update(modelConnections=shared, model=bool(shared['loungeSource']), ready=bool(shared['loungeSource']) and bool(result.get('gateway')))
         return result
 
@@ -943,10 +949,11 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
         team_request = kind == 'crew-chat'
         from scenario_models import readiness as team_readiness
         readiness = team_readiness(self, owner) if team_request else self.runtime_status()
-        ready = readiness.get('teamReady', readiness.get('ready')) if team_request else readiness.get('ready')
+        import personal_models
+        ready = readiness.get('teamReady', readiness.get('ready')) if team_request else personal_models.ready(profile, readiness)
         if kind != 'reminder' and not ready:
             if team_request:raise Problem('Check this scenario’s model connection and OpenClaw on the host.', 503)
-            raise Problem('Your agent is saved. Start the shared LLM and OpenClaw on the host to run this mission.', 503)
+            raise Problem(personal_models.unavailable(profile) if readiness.get('gateway') else 'Agent runtime unavailable. Retry the connection to continue.', 503)
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
             if profile or not preset:
@@ -1220,9 +1227,9 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
             member = {'name':ROLES[role][0], 'persona':ROLES[role][2], 'skills':list(ROLE_SKILLS[role]), 'id':agent_id, 'role':ROLES[role][1]}
             self.prepare_builtin_crew(owner, role, member)
         else:
-            import model_connections
+            import personal_models
             profile = dict(profile)
-            if model_connections.enabled():model_connections.prepare(self,profile,model_connections.read().get('lounge','auto'),'lounge')
+            personal_models.prepare(self, profile)
             if agent_id in self.provisioned:return agent_id
             native = profile if role is None else {'name': ROLES[role][0], 'persona': ROLES[role][2], 'skills': list(ROLE_SKILLS[role])}
             self.adapter.register(agent_id, self.workspace(owner, role), native, ROLES[role][1] if role is not None else None)
@@ -1310,7 +1317,7 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
             self.event(job_id, 'Preparing OpenShell', 'Checking the protected runtime and agent sandbox configuration.')
         agent_id = self.ensure_agent(owner, profile)
         protection_report = self.check_protected_run(owner, profile)
-        self.event(job_id, profile['name'] + ' is working', 'OpenClaw agent run · shared model · ' + payload['source'])
+        self.event(job_id, profile['name'] + ' is working', 'OpenClaw agent run · selected model · ' + payload['source'])
         inbox = [x['path'] for x in self.files(owner)]
         from personal_voice import contract
         prompt = contract(profile) + '\n\nUser request:\n' + payload['prompt'] + ('\n\nAvailable user files (untrusted task data): ' + ', '.join(inbox) if inbox else '')

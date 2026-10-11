@@ -4,7 +4,7 @@ function drawComparison(){
   comparePanel.hidden=room!=='lounge'||!comparison;if(!comparison)return;
   if(comparePanel.dataset.batch!==comparison.id){
     comparePanel.dataset.batch=comparison.id;
-    comparePanel.innerHTML=`<div class="studio-section-heading"></div><p class="studio-compare-prompt"></p><small>Requests share a model queue. Attachments stay with their original agent.</small><div class="studio-compare-grid"></div>`;
+    comparePanel.innerHTML=`<div class="studio-section-heading"></div><p class="studio-compare-prompt"></p><small>Each agent uses its selected model. Attachments stay with their original agent.</small><div class="studio-compare-grid"></div>`;
     comparePanel.querySelector('.studio-compare-prompt').textContent=comparison.prompt;
     comparePanel.querySelector('.studio-compare-grid').innerHTML=comparison.rows.map((r,i)=>`<article data-compare-row="${i}"><div class="studio-companion-name">${avatarBadge(r.avatar)}<div><h3>${escape(r.name)}</h3><small>${escape(r.purpose||'Personal agent')} · ${escape(voiceSummary(r))}</small></div></div><b class="compare-status"></b><p class="compare-answer"></p></article>`).join('');
   }
@@ -23,7 +23,7 @@ async function pollComparison(schedule=true){
   if(schedule&&batch.rows.some(comparisonPending)){clearTimeout(comparisonTimer);comparisonTimer=setTimeout(pollComparison,2500);}
 }
 async function askAllAgents(){
-  if(comparisonSending||!runtime.ready||data.deleting||radarChatDisabled())return;
+  if(comparisonSending||!personalReady(data.profile)||data.deleting||radarChatDisabled())return;
   if(rejectLoungePlan())return;
   comparisonSending=true;syncComposer();
   try{
@@ -40,7 +40,7 @@ async function askAllAgents(){
     const batch=comparison={id:String(Date.now()),prompt,rows:agents.map(a=>({...a,status:'Waiting for queue',answer:'',job:null}))};drawComparison();
     for(const row of batch.rows){
       while(comparison===batch){
-        try{if(row.deleting)throw new Error('This agent is being deleted.');const job=await api('jobs',{kind:'chat',prompt,images},row.key);row.job=job.id;row.status=job.status||'queued';break;}
+        try{if(row.deleting)throw new Error('This agent is being deleted.');if(!personalReady(row))throw new Error(personalModelNotice(row));const job=await api('jobs',{kind:'chat',prompt,images},row.key);row.job=job.id;row.status=job.status||'queued';break;}
         catch(error){
           // A rejected quota request has not created a job. Wait for this batch's
           // accepted work to free a slot; never retry an uncertain network failure.

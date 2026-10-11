@@ -363,7 +363,7 @@ function syncCrewComposer(){
  const memberWorking=!!visitor&&(data.agents||[]).some(a=>a.key===visitor.key&&a.pending>0)||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status)&&(j.payload?.collaboration?(['running','stopping'].includes(j.status)&&j.payload.collaboration.activeRole===selectedCrewRole):j.payload?.crewRole===selectedCrewRole));
  const eventWorking=eventTeamWorking(['crew']);
  const eventPreparing=selectedScenario==='event-brief'&&['queued','running','stopping'].includes(data.preparation?.status);
- const blocked=scenarioChoosing||scenarioSwitching||visitorMissing||(visitor?!runtime.ready:!teamReady())||!!visitor?.skills?.includes('radar')||!!data.bacResetting||captainPlanning||memberWorking||eventWorking||eventPreparing||crewDocumentUpload;
+ const blocked=scenarioChoosing||scenarioSwitching||visitorMissing||(visitor?!personalReady(visitor):!teamReady())||!!visitor?.skills?.includes('radar')||!!data.bacResetting||captainPlanning||memberWorking||eventWorking||eventPreparing||crewDocumentUpload;
  el('crew-document-add').hidden=selectedCrewRole!==0||selectedScenario==='event-brief';el('crew-document-add').disabled=blocked;
  renderCrewDocuments();
  const commandOnly=selectedScenario==='plan'&&selectedCrewRole===0&&/^\s*\/(?:goals?|plans?)\s*$/i.test(el('crew-prompt').value);
@@ -373,7 +373,7 @@ function syncCrewComposer(){
  hiredToggle.checked=activePlan?!!(activePlan.payload.includeHiredAgents??activePlan.payload.roster?.length):includeHiredAgents;
  hiredToggle.disabled=!!activePlan||crewChatSending||!!data.bacResetting||scenarioSwitching||scenarioChoosing;
  el('crew-chat-connection').hidden=!blocked;
- el('crew-chat-connection').textContent=visitorMissing?'This agent was removed. Start a new task with Casey.':visitor?.skills?.includes('radar')?'Tech Radar uses Heartbeat. Manual chat is disabled.':crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':eventPreparing?'Preparing the Event Brief team…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(visitor?runtime.model:(teamRuntime().teamModel??runtime.model))?'Model not connected. Enable Local or External Endpoint in Settings.':'Run ./bac start on this computer to connect the team runtime.';
+ el('crew-chat-connection').textContent=visitorMissing?'This agent was removed. Start a new task with Casey.':visitor?.skills?.includes('radar')?'Tech Radar uses Heartbeat. Manual chat is disabled.':crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':eventPreparing?'Preparing the Event Brief team…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(visitor?personalModel(visitor).connected:(teamRuntime().teamModel??runtime.model))?(visitor?personalModelNotice(visitor):'Model not connected. Enable Local or External Endpoint in Settings.'):'Run ./bac start on this computer to connect the team runtime.';
 }
 function renderCrewPassport(){
  syncFileButtons();
@@ -388,7 +388,7 @@ function renderCrewPassport(){
  const avatar=visitor?.avatar||window.BacCampus?.inspect().crewAvatars?.[i]||{};
  el('crew-number').textContent=String(i+1).padStart(2,'0')+' / '+roles.length;
  el('crew-name').textContent=name;syncTeamTotalTime();el('crew-role').textContent=role;
- const model=visitor?(runtime.sharedModel?{id:runtime.sharedModel,label:runtime.sharedModel}:null):teamModel(i);el('crew-model').textContent=model?.label||'';el('crew-model').title=model?.id||'';el('crew-model').hidden=!model;
+ const model=visitor?personalModel(visitor):teamModel(i);el('crew-model').textContent=model?.label||'';el('crew-model').title=model?.id||'';el('crew-model').hidden=!model;
  const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';portrait.style.setProperty('--avatar-accent',appearanceColors[avatar.color]||appearanceColors.green);
  const skills=[];
  const skillLabels={...titles,'event-tools':'Event tools','event-scheduling':'Presenter scheduling'};

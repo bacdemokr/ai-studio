@@ -94,6 +94,8 @@ class RoundtableControls:
         from studio import Problem
         if selected is not None and (not isinstance(selected, list) or any(not isinstance(key, str) for key in selected) or len(set(selected)) != len(selected) or not set(selected).issubset({m['key'] for m in members})):
             raise Problem('Choose guests from this studio.')
+        import personal_models
+        runtime = self.runtime_status() if members else {}
         ready, skipped = [], []
         prepared_members = {m['key']:m for m in prepared.get('roundtable', {}).get('members', [])} if prepared is not None else None
         previous_skips = {m['key']:m for m in prepared.get('roundtable', {}).get('skipped', [])} if prepared is not None else {}
@@ -109,6 +111,8 @@ class RoundtableControls:
                     self.require_idle(db, member['key'])
                 except Problem:
                     reason = 'Busy with another task.'
+            if not reason and not personal_models.ready(member, runtime):
+                reason = personal_models.unavailable(member)
             if not reason and prepared_members is not None and prepared_members.get(member['key']) != member:
                 reason = previous_skips.get(member['key'], {}).get('detail', 'Not prepared for this event. Check again to include this agent.')
             if reason:
@@ -132,8 +136,7 @@ class RoundtableControls:
 
     def retry_reaction(self, owner, data):
         from studio import Problem
-        if not self.runtime_status().get('ready'):
-            raise Problem('Reconnect the model before retrying this reaction.', 503)
+        import personal_models
         key = data.get('member')
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
@@ -147,7 +150,10 @@ class RoundtableControls:
             member = next((m for m in meeting.get('members', []) if m.get('key') == key), None)
             if not member or meeting.get('replies', {}).get(key, {}).get('status') != 'error':
                 raise Problem('Only a failed reaction can be retried.', 409)
-            self.require_available(db, key)
+            current = json.loads(self.require_available(db, key)['profile'])
+            member['model'] = current.get('model', 'shared')
+            if not personal_models.ready(member, self.runtime_status()):
+                raise Problem(personal_models.unavailable(member), 503)
             self.require_idle(db, owner)
             self.require_idle(db, key)
             meeting['replies'][key] = {'status': 'queued', 'attempt': meeting['replies'][key].get('attempt', 1) + 1}

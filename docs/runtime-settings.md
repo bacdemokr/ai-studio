@@ -35,6 +35,12 @@ Local endpoints must be reachable from the app/OpenClaw host, not from the prese
 
 **Models & connection** opens these shared settings. Connection changes are blocked while queued or active work is present; per-agent choices are locked while the team is busy or resetting. See [Open Task models](plan-team-models.md).
 
+## Per-agent models in Hiring
+
+Expand **Model** below **OpenShell protection**. New agents default to Local; the dropdown also lists models from the configured External Endpoint. This compact section starts closed and is available in **Edit agent** too.
+
+Each agent uses its choice for Lounge chat, Heartbeat and Open Task assignments. Explicit choices never fall back to another source. If Local is unavailable, connect it in Settings or select an external model. Agents created before this feature keep **Use Lounge settings** until explicitly changed. Model selection does not change tools, OpenShell protection or Event Brief.
+
 ## Context and output budgets
 
 - **Context: 32,768 tokens by default.** This is the capacity the demo configures for one agent session: instructions, conversation, tool results and room for the reply. Agents have separate sessions even when they use the same model.

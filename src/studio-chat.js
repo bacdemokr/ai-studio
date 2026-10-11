@@ -129,20 +129,20 @@ function rejectLoungePlan(){
 function radarChatDisabled(profile=data.profile){return profile?.skills?.includes('radar')||false;}
 function syncComposer(){
   if(!connected)return;
-  const radar=radarChatDisabled(),unavailable=!runtime.ready,blocked=radar||unavailable||!!data.deleting;
+  const radar=radarChatDisabled(),unavailable=!personalReady(data.profile),blocked=radar||unavailable||!!data.deleting;
   el('prompt').disabled=blocked;
   el('send').disabled=blocked||chatSending||comparisonSending||documentUploadTarget===agentId;
-  el('send-all').disabled=!runtime.ready||blocked||chatSending||comparisonSending||documentUploadTarget===agentId||(data.agents||[]).filter(agent=>!radarChatDisabled(agent)).length<2;
+  el('send-all').disabled=blocked||chatSending||comparisonSending||documentUploadTarget===agentId||(data.agents||[]).filter(agent=>!radarChatDisabled(agent)).length<2;
   el('run-options').disabled=el('send-all').disabled;
   if(el('run-options').disabled)setRunOptions(false);
   el('attach').disabled=radar||!!data.deleting||!data.profile||documentUploadTarget!==null;
   el('schedule').disabled=radar||!!data.deleting;
   el('chat-connection').hidden=!blocked;
-  el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':radar?'Tech Radar uses Heartbeat. Manual chat is disabled.':!runtime.gateway?(gatewayState()==='slow'?'Waiting for the agent runtime to respond. Checking automatically.':'Agent runtime unavailable. Retry the connection to continue.'):'Model not connected. Connect a model to start chatting.';
+  el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':radar?'Tech Radar uses Heartbeat. Manual chat is disabled.':!runtime.gateway?(gatewayState()==='slow'?'Waiting for the agent runtime to respond. Checking automatically.':'Agent runtime unavailable. Retry the connection to continue.'):personalModelNotice(data.profile);
   el('chat-connect').hidden=radar||!unavailable||(runtime.gateway&&settingsButton.hidden);
   el('chat-connect').textContent=!runtime.gateway?'Retry connection':'Connect model';
   el('chat-connect').disabled=runtimeRetrying;
-  el('prompt').placeholder=data.deleting?'This agent is paused for deletion…':radar?'':!runtime.gateway?'Waiting for the agent runtime…':!runtime.model?'Connect a model to message your agent…':'Message your agent…';
+  el('prompt').placeholder=data.deleting?'This agent is paused for deletion…':radar?'':!runtime.gateway?'Waiting for the agent runtime…':!personalModel(data.profile).connected?'Connect a model to message your agent…':'Message your agent…';
   el('equipped').querySelectorAll('button').forEach(button=>button.disabled=blocked);
 }
 el('chat-connect').onclick=connectionAction;

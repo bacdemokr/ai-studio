@@ -512,8 +512,9 @@ class CollaborationPlans:
             save(member['name'] + ' · ' + ('Reviewing progress' if phase.startswith('Checking') else phase), instruction[:300])
             if member.get('key'):
                 profile = visitor_teams.validate(self, owner, member)
-                if not self.runtime_status().get('ready'):
-                    raise RuntimeError(member['name'] + ' needs its Hiring & Lounge model connection. Reconnect it in Settings.')
+                import personal_models
+                if not personal_models.ready(profile, self.runtime_status()):
+                    raise RuntimeError(member['name'] + ': ' + personal_models.unavailable(profile))
                 self.ensure_agent(member['key'], profile)
                 self.check_protected_run(member['key'], profile)
                 if 'radar' in profile.get('skills', []):

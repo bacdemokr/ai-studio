@@ -113,7 +113,7 @@ class StudioTests(unittest.TestCase):
         def become_radar():
             with self.studio.db() as db:
                 db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(radar), self.owner))
-            return {'ready': True, 'teamReady': True}
+            return {'ready': True, 'teamReady': True, 'gateway': True, 'model': True}
         # /plan is rejected before runtime preparation; test actual direct-chat races.
         for kind, prompt in [('chat', 'Hi'), ('reminder', 'Check later')]:
             with self.subTest(kind=kind, prompt=prompt):

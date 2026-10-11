@@ -60,7 +60,8 @@ def capture(studio, db, owner, task):
     from studio import Problem
     all_members = hired_members(db, owner)
     required = requirements(task, all_members)
-    connection_ready = not all_members or studio.runtime_status().get('ready')
+    import personal_models
+    runtime = studio.runtime_status() if all_members else {}
     request = direct_request(task)
     members, unavailable = [], []
     for member in all_members:
@@ -68,10 +69,10 @@ def capture(studio, db, owner, task):
         if match and excluded(request, match):
             unavailable.append({'name': member['name'], 'reason': 'Excluded by the visitor.'})
             continue
-        if not connection_ready:
+        if not personal_models.ready(member, runtime):
             if any(item['key'] == member['key'] for item in required):
-                raise Problem(member['name'] + ' needs its Hiring & Lounge model connection. Reconnect it in Settings.', 409)
-            unavailable.append({'name': member['name'], 'reason': 'Hiring & Lounge model is not connected.'})
+                raise Problem(member['name'] + ': ' + personal_models.unavailable(member), 409)
+            unavailable.append({'name': member['name'], 'reason': personal_models.unavailable(member)})
             continue
         try:
             studio.require_available(db, member['key'])

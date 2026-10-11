@@ -9,8 +9,8 @@ import time
 from datetime import datetime, timezone
 
 import tech_radar
-import runtime_settings
 import model_connections
+import personal_models
 import telegram_notifications
 
 
@@ -196,17 +196,18 @@ class RadarHeartbeat:
         if not toggle:return
         with studio.db() as db:
             agents = [dict(r) for r in db.execute('SELECT id,participant,profile,deleting FROM agents WHERE profile IS NOT NULL')]
-        ready = False
+        readiness = {}
         gateway_ready = False
         if any('radar' in json.loads(r['profile']).get('skills',[]) for r in agents):
             # Match Lounge provisioning, including host credentials and disabled
             # sources. The legacy session-only key can be absent while API is ready.
-            ready = bool(model_connections.public()['loungeSource']) if model_connections.enabled() else runtime_settings.model_available()
-            gateway_ready = bool(studio.runtime_status().get('gateway'))
+            readiness = studio.runtime_status()
+            gateway_ready = bool(readiness.get('gateway'))
         deliveries = []
         for row in agents:
             owner=row['id']; profile=json.loads(row['profile'])
             if 'radar' not in profile.get('skills',[]):continue
+            ready = personal_models.ready(profile, readiness)
             try:
                 # Re-read under the same lock as Pause; a stale tick cannot re-enable it.
                 with self.lock:
@@ -231,7 +232,7 @@ class RadarHeartbeat:
                         studio.provisioned.discard(profile['id'])
                     if connected and ready and gateway_ready and not current['deleting'] and not paused and not busy and model_connections.enabled():
                         old_route = studio.__dict__.get('_connection_routes',{}).get(profile['id'])
-                        model_connections.prepare(studio,profile,model_connections.read().get('lounge','auto'),'lounge')
+                        personal_models.prepare(studio, profile)
                         if old_route != studio._connection_routes.get(profile['id']):retry_at = 0
                     retrying = time.time() < retry_at
                     if connected and ready and gateway_ready and not current['deleting'] and not paused and not busy and not retrying and profile['id'] not in studio.provisioned:

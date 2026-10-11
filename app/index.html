@@ -1027,6 +1027,15 @@ body{margin:0;padding:0;width:100%;max-width:none}
 #studio-connection-editor details{margin-top:18px}
 #studio-connection-editor summary{cursor:pointer;color:#a7bbc7;font-size:14px}
 
+.studio-agent-model-panel{margin:18px 0 22px;border-top:1px solid #344650;padding-top:12px;min-width:0}
+.studio-agent-model-panel summary{cursor:pointer;display:flex;align-items:center;gap:10px;color:#dce7ee;font-weight:600}
+.studio-agent-model-panel summary::before{content:"›";color:#a9c779;transition:transform .15s}
+.studio-agent-model-panel[open] summary::before{transform:rotate(90deg)}
+.studio-agent-model-panel summary span{margin-left:auto;max-width:75%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#aebfca;font-size:12px;font-weight:400}
+.studio-agent-model-panel label{display:block;margin-top:14px}
+.studio-agent-model-panel select{display:block;width:100%;min-width:0;margin:8px 0}
+.studio-agent-model-panel small{display:block;line-height:1.5}
+
 .studio-sound{display:flex;align-items:center;gap:3px;flex-shrink:0}
 #agent-campus #campus-sound-toggle{width:auto;min-height:35px;height:auto;padding:4px 9px;font-size:15px;white-space:nowrap;color:#b8c9d7;border:1px solid #526071;background:#191e25;border-radius:3px}
 #agent-campus #campus-sound-toggle[aria-pressed=true]{color:#d3edb5;border-color:#5f843c;background:#1d2a22}
@@ -1470,6 +1479,7 @@ body{margin:0;padding:0;width:100%;max-width:none}
     <small id="studio-role-hint" class="studio-muted" role="status"></small>
     <fieldset class="studio-style-group"><legend>What can it do?</legend><div id="studio-skill-picker"></div></fieldset>
     <fieldset class="studio-protection-picker"><legend>OpenShell protection</legend><label><input type="radio" name="protection" value="standard" checked><span><b>OpenShell off</b><small>Tools can read and edit files on this computer.</small></span></label><label><input type="radio" name="protection" value="openshell"><span><b>OpenShell on</b><small>Sandboxed tools with restricted file and internet access.</small></span></label></fieldset>
+    <details id="studio-agent-model-panel" class="studio-agent-model-panel"><summary>Model <span id="studio-agent-model-summary">Local</span></summary><label for="studio-agent-model">Choose a model</label><select id="studio-agent-model" aria-describedby="studio-agent-model-note"></select><small id="studio-agent-model-note" class="studio-muted"></small></details>
     <div class="studio-creator-actions"><button type="button" class="studio-secondary" id="studio-cancel-create" hidden>Cancel</button><button type="submit" class="studio-primary" id="studio-create">Hire my agent <span>↗</span></button></div>
     <small class="studio-muted"></small>
   </form>
@@ -81200,7 +81210,7 @@ render();
   const modelBadge=root.querySelector('.campus-sim');
   function gatewayState(){return runtime.gatewayState||(runtime.gateway?'ready':'unavailable');}
   function gatewayLabel(){return gatewayState()==='slow'?'Agent runtime responding slowly':gatewayState()==='ready'?'Ready':'Agent runtime unavailable';}
-  function openModelSettings(){if(!runtime.model&&!runtime.testFixture&&!settingsButton.hidden)settingsButton.click();}
+  function openModelSettings(){if(!runtime.testFixture&&!settingsButton.hidden)settingsButton.click();}
   let runtimeRetrying=false;
   async function retryRuntime(){
     if(runtimeRetrying)return;
@@ -81215,7 +81225,7 @@ render();
   function runtimeBadge(){
     warmCrewOnOpen();
     syncCrewComposer();
-    const state=gatewayState(),slow=state==='slow',modelConnected=room==='mission'?(teamRuntime().teamModel??runtime.model):runtime.model,viewReady=room==='mission'?teamReady():runtime.ready,ready=!!viewReady&&!runtime.testFixture;
+    const state=gatewayState(),slow=state==='slow',modelConnected=room==='mission'?(teamRuntime().teamModel??runtime.model):room==='lounge'&&data.profile?personalModel(data.profile).connected:runtime.model,viewReady=room==='mission'?teamReady():room==='lounge'&&data.profile?personalReady(data.profile):runtime.ready,ready=!!viewReady&&!runtime.testFixture;
     const actionable=!runtime.testFixture&&!runtimeRetrying&&(!runtime.gateway||(!modelConnected&&!settingsButton.hidden));
     modelBadge.textContent=runtime.testFixture?'TEST FIXTURE · NO REAL MODEL':runtimeRetrying?'Checking connection…':slow?'◷ '+gatewayLabel():!runtime.gateway?'⚠ Agent runtime unavailable · Retry connection':!modelConnected?'○ Model not connected':'● Ready';
     modelBadge.dataset.warning=String(!runtime.testFixture&&!slow&&!viewReady);
@@ -81229,6 +81239,7 @@ render();
 
   function current(){return data.jobs.find(j=>j.id===selectedJob)||data.jobs[0];}
   function render() {
+    renderCreatorModels();
     const profile=data.profile, job=current();
     renderCollection();
     window.BacCampus?.observeProtection(data.protectionEvents||[]);
@@ -81271,7 +81282,7 @@ render();
     el('job-history').innerHTML=data.jobs.slice(0,12).map((j,i)=>`<button data-studio-job="${j.id}" aria-pressed="${job?.id===j.id}">${j.kind==='crew'?'Crew':j.kind==='reminder'?'Follow-up':'Mission'} ${data.jobs.length-i} · ${escape(j.status)}</button>`).join('');
     if(job){
       const events=[...job.events].reverse();
-      el('events').innerHTML=events.length?events.map(e=>`<li><b>${escape(e.title)}</b><small>${new Date(e.time*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · ${escape(e.detail)}</small></li>`).join(''):'<li><b>Waiting in the shared queue</b><small>All agents share one model. Scheduled jobs run when their time arrives.</small></li>';
+      el('events').innerHTML=events.length?events.map(e=>`<li><b>${escape(e.title)}</b><small>${new Date(e.time*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · ${escape(e.detail)}</small></li>`).join(''):'<li><b>Waiting in the shared queue</b><small>Scheduled jobs run when their time arrives.</small></li>';
       const key=job.id+job.status+job.events.length;
       if(key!==resultKey){
         resultKey=key;el('result-title').textContent=job.status==='done'?'Result':job.status==='error'?'This mission needs attention.':job.kind==='crew'?'Your crew is building the plan.':'Working…';
@@ -81684,7 +81695,7 @@ function syncCrewComposer(){
  const memberWorking=!!visitor&&(data.agents||[]).some(a=>a.key===visitor.key&&a.pending>0)||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status)&&(j.payload?.collaboration?(['running','stopping'].includes(j.status)&&j.payload.collaboration.activeRole===selectedCrewRole):j.payload?.crewRole===selectedCrewRole));
  const eventWorking=eventTeamWorking(['crew']);
  const eventPreparing=selectedScenario==='event-brief'&&['queued','running','stopping'].includes(data.preparation?.status);
- const blocked=scenarioChoosing||scenarioSwitching||visitorMissing||(visitor?!runtime.ready:!teamReady())||!!visitor?.skills?.includes('radar')||!!data.bacResetting||captainPlanning||memberWorking||eventWorking||eventPreparing||crewDocumentUpload;
+ const blocked=scenarioChoosing||scenarioSwitching||visitorMissing||(visitor?!personalReady(visitor):!teamReady())||!!visitor?.skills?.includes('radar')||!!data.bacResetting||captainPlanning||memberWorking||eventWorking||eventPreparing||crewDocumentUpload;
  el('crew-document-add').hidden=selectedCrewRole!==0||selectedScenario==='event-brief';el('crew-document-add').disabled=blocked;
  renderCrewDocuments();
  const commandOnly=selectedScenario==='plan'&&selectedCrewRole===0&&/^\s*\/(?:goals?|plans?)\s*$/i.test(el('crew-prompt').value);
@@ -81694,7 +81705,7 @@ function syncCrewComposer(){
  hiredToggle.checked=activePlan?!!(activePlan.payload.includeHiredAgents??activePlan.payload.roster?.length):includeHiredAgents;
  hiredToggle.disabled=!!activePlan||crewChatSending||!!data.bacResetting||scenarioSwitching||scenarioChoosing;
  el('crew-chat-connection').hidden=!blocked;
- el('crew-chat-connection').textContent=visitorMissing?'This agent was removed. Start a new task with Casey.':visitor?.skills?.includes('radar')?'Tech Radar uses Heartbeat. Manual chat is disabled.':crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':eventPreparing?'Preparing the Event Brief team…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(visitor?runtime.model:(teamRuntime().teamModel??runtime.model))?'Model not connected. Enable Local or External Endpoint in Settings.':'Run ./bac start on this computer to connect the team runtime.';
+ el('crew-chat-connection').textContent=visitorMissing?'This agent was removed. Start a new task with Casey.':visitor?.skills?.includes('radar')?'Tech Radar uses Heartbeat. Manual chat is disabled.':crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':eventPreparing?'Preparing the Event Brief team…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(visitor?personalModel(visitor).connected:(teamRuntime().teamModel??runtime.model))?(visitor?personalModelNotice(visitor):'Model not connected. Enable Local or External Endpoint in Settings.'):'Run ./bac start on this computer to connect the team runtime.';
 }
 function renderCrewPassport(){
  syncFileButtons();
@@ -81709,7 +81720,7 @@ function renderCrewPassport(){
  const avatar=visitor?.avatar||window.BacCampus?.inspect().crewAvatars?.[i]||{};
  el('crew-number').textContent=String(i+1).padStart(2,'0')+' / '+roles.length;
  el('crew-name').textContent=name;syncTeamTotalTime();el('crew-role').textContent=role;
- const model=visitor?(runtime.sharedModel?{id:runtime.sharedModel,label:runtime.sharedModel}:null):teamModel(i);el('crew-model').textContent=model?.label||'';el('crew-model').title=model?.id||'';el('crew-model').hidden=!model;
+ const model=visitor?personalModel(visitor):teamModel(i);el('crew-model').textContent=model?.label||'';el('crew-model').title=model?.id||'';el('crew-model').hidden=!model;
  const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';portrait.style.setProperty('--avatar-accent',appearanceColors[avatar.color]||appearanceColors.green);
  const skills=[];
  const skillLabels={...titles,'event-tools':'Event tools','event-scheduling':'Presenter scheduling'};
@@ -81780,7 +81791,7 @@ el('crew-conversation').addEventListener('click',event=>{if(event.target.closest
       notice.querySelector('button').onclick=async()=>{const action=notice.querySelector('button');action.disabled=true;try{if(agentId!==target)throw new Error('The selected agent changed. Choose a mission again.');await api('profile',{...data.profile,skills:[...new Set([...data.profile.skills,mission.id])]},target);await refresh();notice.remove();if(agentId===target)button.click();}catch(error){notice.querySelector('p').textContent=error.message;action.disabled=false;}};
       notice.scrollIntoView({block:'nearest'});return;
     }el('mission-skill-notice')?.remove();closeSurface();setRoom('lounge');if(mission.id==='radar'){el('radar-monitor')?.scrollIntoView({block:'nearest'});return;}skill=mission.id;const city=runtime.location?.city||'Zurich';el('prompt').value=['weather','writer'].includes(mission.id)?mission.prompt.replaceAll('Zurich',city):mission.prompt;el('missions').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===button));if(mission.id==='documents'&&!data.files.some(f=>f.kind==='inbox')){sampleDocument();}el('prompt').focus({preventScroll:true});};
-  el('chat').onsubmit=async e=>{e.preventDefault();if(radarChatDisabled()||!runtime.ready||data.deleting||chatSending||comparisonSending||documentUploadTarget===agentId){syncComposer();return;}el('chat-error').hidden=true;if(rejectLoungePlan())return;if(e.submitter?.id==='studio-send-all')return askAllAgents();const draft=captureChatDraft();chatSending=true;syncComposer();try{const result=await api('jobs',{kind:'chat',prompt:draft.prompt,skill,images:draft.images});selectedJob=result.id;acknowledgeChatDraft(draft);await refresh();el('conversation').scrollTop=el('conversation').scrollHeight;}catch(error){el('chat-error').textContent=error.message;el('chat-error').hidden=false;}finally{chatSending=false;syncComposer();}};
+  el('chat').onsubmit=async e=>{e.preventDefault();if(radarChatDisabled()||!personalReady(data.profile)||data.deleting||chatSending||comparisonSending||documentUploadTarget===agentId){syncComposer();return;}el('chat-error').hidden=true;if(rejectLoungePlan())return;if(e.submitter?.id==='studio-send-all')return askAllAgents();const draft=captureChatDraft();chatSending=true;syncComposer();try{const result=await api('jobs',{kind:'chat',prompt:draft.prompt,skill,images:draft.images});selectedJob=result.id;acknowledgeChatDraft(draft);await refresh();el('conversation').scrollTop=el('conversation').scrollHeight;}catch(error){el('chat-error').textContent=error.message;el('chat-error').hidden=false;}finally{chatSending=false;syncComposer();}};
   el('prompt').addEventListener('input',()=>{skill=null;clearPlanLocationHint();syncComposer();});
   function sampleDocument(){dialog('Upload notes','<p>PDF, PPTX, XLSX, CSV, Markdown or text.</p><div class="studio-dialog-actions"><button class="studio-secondary" id="studio-own-document">Upload my file</button><button class="studio-primary" id="studio-sample-document">Use sample notes (fictional)</button></div>');el('own-document').onclick=()=>{el('dialog').close();el('upload').click();};el('sample-document').onclick=async()=>{try{await api('upload',{name:'sample-meeting-notes.md',content:'# Sample meeting notes — fictional demo data\n\nWe agreed to keep the agent demo to 10 minutes.\nDylan will check the weather-demo endpoint by Thursday.\nMorgan will draft a short invitation; no deadline was agreed.\nWe still need someone to confirm the venue.\nDo not send invitations until the venue is confirmed.\n'});el('dialog').close();await refresh();}catch(e){alert(e.message,'error');}};}
   el('attach').onclick=()=>el('upload').click();
@@ -82888,20 +82899,20 @@ function rejectLoungePlan(){
 function radarChatDisabled(profile=data.profile){return profile?.skills?.includes('radar')||false;}
 function syncComposer(){
   if(!connected)return;
-  const radar=radarChatDisabled(),unavailable=!runtime.ready,blocked=radar||unavailable||!!data.deleting;
+  const radar=radarChatDisabled(),unavailable=!personalReady(data.profile),blocked=radar||unavailable||!!data.deleting;
   el('prompt').disabled=blocked;
   el('send').disabled=blocked||chatSending||comparisonSending||documentUploadTarget===agentId;
-  el('send-all').disabled=!runtime.ready||blocked||chatSending||comparisonSending||documentUploadTarget===agentId||(data.agents||[]).filter(agent=>!radarChatDisabled(agent)).length<2;
+  el('send-all').disabled=blocked||chatSending||comparisonSending||documentUploadTarget===agentId||(data.agents||[]).filter(agent=>!radarChatDisabled(agent)).length<2;
   el('run-options').disabled=el('send-all').disabled;
   if(el('run-options').disabled)setRunOptions(false);
   el('attach').disabled=radar||!!data.deleting||!data.profile||documentUploadTarget!==null;
   el('schedule').disabled=radar||!!data.deleting;
   el('chat-connection').hidden=!blocked;
-  el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':radar?'Tech Radar uses Heartbeat. Manual chat is disabled.':!runtime.gateway?(gatewayState()==='slow'?'Waiting for the agent runtime to respond. Checking automatically.':'Agent runtime unavailable. Retry the connection to continue.'):'Model not connected. Connect a model to start chatting.';
+  el('chat-connection-text').textContent=data.deleting?'This agent is paused for deletion.':radar?'Tech Radar uses Heartbeat. Manual chat is disabled.':!runtime.gateway?(gatewayState()==='slow'?'Waiting for the agent runtime to respond. Checking automatically.':'Agent runtime unavailable. Retry the connection to continue.'):personalModelNotice(data.profile);
   el('chat-connect').hidden=radar||!unavailable||(runtime.gateway&&settingsButton.hidden);
   el('chat-connect').textContent=!runtime.gateway?'Retry connection':'Connect model';
   el('chat-connect').disabled=runtimeRetrying;
-  el('prompt').placeholder=data.deleting?'This agent is paused for deletion…':radar?'':!runtime.gateway?'Waiting for the agent runtime…':!runtime.model?'Connect a model to message your agent…':'Message your agent…';
+  el('prompt').placeholder=data.deleting?'This agent is paused for deletion…':radar?'':!runtime.gateway?'Waiting for the agent runtime…':!personalModel(data.profile).connected?'Connect a model to message your agent…':'Message your agent…';
   el('equipped').querySelectorAll('button').forEach(button=>button.disabled=blocked);
 }
 el('chat-connect').onclick=connectionAction;
@@ -83033,7 +83044,25 @@ for(const id of ['crew-prompt']){
 }
 
   // Three places in one studio: creation, a growing personal collection, and crew work.
-let editingInPlace=false,hiringArrival=false,draftNameEdited=false;
+let editingInPlace=false,hiringArrival=false,draftNameEdited=false,draftModel='local';
+function personalModel(profile){
+ profile=(profile?.key&&(data.agents||[]).find(row=>row.key===profile.key))||profile;
+ const id=profile?.model||'shared',choice=runtime.personalModels?.models?.find(row=>row.id===id);
+ return choice||{id,label:id==='local'?'Local':id==='shared'?'Use Lounge settings':id.split('/').slice(2).join('/'),connected:id==='shared'?!!runtime.model:id==='local'&&!runtime.personalModels?!!runtime.model:false};
+}
+function personalReady(profile){return !!runtime.gateway&&personalModel(profile).connected;}
+function personalModelNotice(profile){return profile?.model==='local'?'Local model is not connected. Connect Local in Settings or choose another model in Edit agent.':'This agent’s model is unavailable. Check Settings or choose another model in Edit agent.';}
+function renderCreatorModels(){
+ const select=el('agent-model'),rows=runtime.personalModels?.models||[{id:'local',label:'Local',source:'local',connected:!!runtime.model},{id:'shared',label:'Use Lounge settings',source:'shared',connected:!!runtime.model}];
+ const choices=rows.filter(row=>row.id!=='shared'||draftModel==='shared');
+ if(!choices.some(row=>row.id===draftModel))choices.push({...personalModel({model:draftModel}),source:'api'});
+ const options=source=>choices.filter(row=>row.source===source).map(row=>`<option value="${escape(row.id)}">${escape(row.label)}</option>`).join('');
+ const html=options('local')+(choices.some(row=>row.source==='api')?'<optgroup label="External Endpoint">'+options('api')+'</optgroup>':'')+options('shared');
+ if(select.innerHTML!==html)select.innerHTML=html;select.value=draftModel;
+ const chosen=personalModel({model:draftModel});el('agent-model-summary').textContent=draftModel==='local'?'Local':chosen.label;
+ el('agent-model-note').textContent=chosen.connected?'Uses the connections configured in Settings.':personalModelNotice({model:draftModel});
+}
+el('agent-model').onchange=()=>{draftModel=el('agent-model').value;renderCreatorModels();};
 const appearanceColors={green:'#76b900',cyan:'#55bfff',amber:'#f4b34f',coral:'#ff8873',violet:'#b49aff',ice:'#cbddea'};
 const appearanceNames={classic:'Jinny',round:'Orbit',rover:'Scout',operative:'Smith',claw:'Pixel',crab:'Sage'};
 const roomCopy={
@@ -83081,6 +83110,7 @@ function fillCreator(creating){
   const p=creating?{name,persona:'guide',purpose:roleTemplates[0].purpose,skills:[...roleTemplates[0].skills],avatar:defaults}:data.profile;
   if(!p)return fillCreator(true);
   draftNameEdited=!creating;
+  draftModel=creating?'local':p.model||'shared';el('agent-model-panel').open=false;renderCreatorModels();
   el('name').value=p.name;writeCreatorPrompt(savedTonePrompt(p),p.purpose||(creating?'':personas[p.persona]));persona=p.persona;draftAvatar={...(p.avatar||defaults)};el('accessory').value=draftAvatar.accessory;
   draftTone=p.tone||'kind';
   el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(roleTemplates[Number(b.dataset.roleTemplate)]?.purpose===p.purpose)));
@@ -83222,7 +83252,7 @@ el('delete-agent').onclick=()=>{
 el('connection-setup').onclick=setup;el('connection-security').onclick=()=>setRoom('policies');
 el('onboarding').onsubmit=async e=>{
   e.preventDefault();if(hiringArrival)return;syncCreatorTone();const mode=draftMode,target=mode==='new'?agentId:draftOwner,first=!data.agents?.length;
-  const payload={name:el('name').value,...creatorPrompt(),persona,tone:draftTone,verbosity:'balanced',skills:[...el('skill-picker').querySelectorAll('input:checked')].map(x=>x.value),avatar:{...draftAvatar},protection:el('onboarding').querySelector('[name=protection]:checked').value};
+  const payload={model:draftModel,name:el('name').value,...creatorPrompt(),persona,tone:draftTone,verbosity:'balanced',skills:[...el('skill-picker').querySelectorAll('input:checked')].map(x=>x.value),avatar:{...draftAvatar},protection:el('onboarding').querySelector('[name=protection]:checked').value};
   hiringArrival=true;el('create').disabled=true;el('onboarding').inert=true;
   try{
     const result=await api(mode==='edit'?'profile':first?'onboard':'agents',payload,mode==='new'&&!first?'':target);
@@ -83231,7 +83261,7 @@ el('onboarding').onsubmit=async e=>{
     if(mode==='new'){++refreshVersion;openAgentState(await api('state',undefined,createdId));}else await refresh();
     if(mode==='new'&&room==='workshop'){hiringArrival=true;el('create').textContent='Joining your lounge…';await window.BacCampus?.welcomeAgent(createdId);if(room!=='workshop'||root.dataset.worldOverview==='true'){fillCreator(true);return;}}
     const stayHere=mode==='edit'&&editingInPlace;editingInPlace=false;fillCreator(true);if(stayHere)renderRoomVisibility();else setRoom('lounge');el('workshop').scrollTop=0;
-    alert(mode==='edit'?'Your agent’s look, working style, voice and abilities are saved.':(data.profile?.name||payload.name)+' has joined your lounge. Give your new teammate a mission.');
+    alert(mode==='edit'?'Your agent is updated.':(data.profile?.name||payload.name)+' has joined your lounge. Give your new teammate a mission.');
   }catch(error){alert(error.message,'error');}finally{hiringArrival=false;el('onboarding').inert=false;el('create').disabled=draftMode==='new'&&(data.agents?.length||0)>=(data.agentLimit||12);}
 };
 // Selecting a resident updates its workspace without moving the visitor's view.
@@ -83414,7 +83444,7 @@ function drawComparison(){
   comparePanel.hidden=room!=='lounge'||!comparison;if(!comparison)return;
   if(comparePanel.dataset.batch!==comparison.id){
     comparePanel.dataset.batch=comparison.id;
-    comparePanel.innerHTML=`<div class="studio-section-heading"></div><p class="studio-compare-prompt"></p><small>Requests share a model queue. Attachments stay with their original agent.</small><div class="studio-compare-grid"></div>`;
+    comparePanel.innerHTML=`<div class="studio-section-heading"></div><p class="studio-compare-prompt"></p><small>Each agent uses its selected model. Attachments stay with their original agent.</small><div class="studio-compare-grid"></div>`;
     comparePanel.querySelector('.studio-compare-prompt').textContent=comparison.prompt;
     comparePanel.querySelector('.studio-compare-grid').innerHTML=comparison.rows.map((r,i)=>`<article data-compare-row="${i}"><div class="studio-companion-name">${avatarBadge(r.avatar)}<div><h3>${escape(r.name)}</h3><small>${escape(r.purpose||'Personal agent')} · ${escape(voiceSummary(r))}</small></div></div><b class="compare-status"></b><p class="compare-answer"></p></article>`).join('');
   }
@@ -83433,7 +83463,7 @@ async function pollComparison(schedule=true){
   if(schedule&&batch.rows.some(comparisonPending)){clearTimeout(comparisonTimer);comparisonTimer=setTimeout(pollComparison,2500);}
 }
 async function askAllAgents(){
-  if(comparisonSending||!runtime.ready||data.deleting||radarChatDisabled())return;
+  if(comparisonSending||!personalReady(data.profile)||data.deleting||radarChatDisabled())return;
   if(rejectLoungePlan())return;
   comparisonSending=true;syncComposer();
   try{
@@ -83450,7 +83480,7 @@ async function askAllAgents(){
     const batch=comparison={id:String(Date.now()),prompt,rows:agents.map(a=>({...a,status:'Waiting for queue',answer:'',job:null}))};drawComparison();
     for(const row of batch.rows){
       while(comparison===batch){
-        try{if(row.deleting)throw new Error('This agent is being deleted.');const job=await api('jobs',{kind:'chat',prompt,images},row.key);row.job=job.id;row.status=job.status||'queued';break;}
+        try{if(row.deleting)throw new Error('This agent is being deleted.');if(!personalReady(row))throw new Error(personalModelNotice(row));const job=await api('jobs',{kind:'chat',prompt,images},row.key);row.job=job.id;row.status=job.status||'queued';break;}
         catch(error){
           // A rejected quota request has not created a job. Wait for this batch's
           // accepted work to free a slot; never retry an uncertain network failure.

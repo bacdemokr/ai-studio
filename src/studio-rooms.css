@@ -668,3 +668,12 @@
 #studio-connection-editor h3{font-size:18px;letter-spacing:0;margin:0 0 20px}
 #studio-connection-editor details{margin-top:18px}
 #studio-connection-editor summary{cursor:pointer;color:#a7bbc7;font-size:14px}
+
+.studio-agent-model-panel{margin:18px 0 22px;border-top:1px solid #344650;padding-top:12px;min-width:0}
+.studio-agent-model-panel summary{cursor:pointer;display:flex;align-items:center;gap:10px;color:#dce7ee;font-weight:600}
+.studio-agent-model-panel summary::before{content:"›";color:#a9c779;transition:transform .15s}
+.studio-agent-model-panel[open] summary::before{transform:rotate(90deg)}
+.studio-agent-model-panel summary span{margin-left:auto;max-width:75%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#aebfca;font-size:12px;font-weight:400}
+.studio-agent-model-panel label{display:block;margin-top:14px}
+.studio-agent-model-panel select{display:block;width:100%;min-width:0;margin:8px 0}
+.studio-agent-model-panel small{display:block;line-height:1.5}

@@ -124,7 +124,7 @@ class ConnectionTests(unittest.TestCase):
             connections.probe('api',connections.profile('api'))
         self.assertFalse(settings.model_available())
         self.assertEqual(connections.public()['loungeSource'],'api')
-        profile=self.app.onboard(self.owner,{'name':'Jinny','skills':['radar','weather']})
+        profile=self.app.onboard(self.owner,{'name':'Jinny','skills':['radar','weather'],'model':'api/nvidia/test-model'})
         self.app.execute(self.app.next_job())
         self.app.heartbeat.presence(self.owner,'fixture-tab')
         with self.app.db() as db:

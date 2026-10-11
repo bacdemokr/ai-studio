@@ -264,7 +264,7 @@ def apply_to_config(config, provider, profile):
     config['agents']['defaults']['timeoutSeconds']=AGENT_TIMEOUT_SECONDS
     import team_models
     for agent_id,agent in config['agents']['entries'].items():
-        if team_models.role_for(agent_id) is not None:continue
+        if team_models.role_for(agent_id) is not None or agent.get('model', '').startswith('bac-connection-'):continue
         agent['model']=ref;agent['modelPolicy']={'allow':[ref]}
         agent['identity']={'theme':'bac-model-'+str(time.time_ns())}
     return apply_context_limits(team_models.apply(config))

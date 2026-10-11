@@ -241,13 +241,17 @@ def prepare(studio,member,preference='auto',stage='team'):
             if selected not in {m['id'] for m in team_models.available_models()}:
                 raise Problem('This agent’s selected model is unavailable on the current API connection. Choose another model for this agent.',503)
             value['model']=selected
+    bind(studio,member,value,stage)
+    return source,value
+
+
+def bind(studio,member,value,stage='team'):
     provider=native(value)
     if stage=='lounge':provider['models'][0]['input']=['text','image']
     member['_connectionConfig']=provider
     stamp=signature(provider)
     routes=studio.__dict__.setdefault('_connection_routes',{})
     if routes.get(member['id'])!=stamp:studio.provisioned.discard(member['id']);routes[member['id']]=stamp
-    return source,value
 
 
 def provider_id(agent):

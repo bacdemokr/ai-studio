@@ -1,5 +1,23 @@
 // Three places in one studio: creation, a growing personal collection, and crew work.
-let editingInPlace=false,hiringArrival=false,draftNameEdited=false;
+let editingInPlace=false,hiringArrival=false,draftNameEdited=false,draftModel='local';
+function personalModel(profile){
+ profile=(profile?.key&&(data.agents||[]).find(row=>row.key===profile.key))||profile;
+ const id=profile?.model||'shared',choice=runtime.personalModels?.models?.find(row=>row.id===id);
+ return choice||{id,label:id==='local'?'Local':id==='shared'?'Use Lounge settings':id.split('/').slice(2).join('/'),connected:id==='shared'?!!runtime.model:id==='local'&&!runtime.personalModels?!!runtime.model:false};
+}
+function personalReady(profile){return !!runtime.gateway&&personalModel(profile).connected;}
+function personalModelNotice(profile){return profile?.model==='local'?'Local model is not connected. Connect Local in Settings or choose another model in Edit agent.':'This agent’s model is unavailable. Check Settings or choose another model in Edit agent.';}
+function renderCreatorModels(){
+ const select=el('agent-model'),rows=runtime.personalModels?.models||[{id:'local',label:'Local',source:'local',connected:!!runtime.model},{id:'shared',label:'Use Lounge settings',source:'shared',connected:!!runtime.model}];
+ const choices=rows.filter(row=>row.id!=='shared'||draftModel==='shared');
+ if(!choices.some(row=>row.id===draftModel))choices.push({...personalModel({model:draftModel}),source:'api'});
+ const options=source=>choices.filter(row=>row.source===source).map(row=>`<option value="${escape(row.id)}">${escape(row.label)}</option>`).join('');
+ const html=options('local')+(choices.some(row=>row.source==='api')?'<optgroup label="External Endpoint">'+options('api')+'</optgroup>':'')+options('shared');
+ if(select.innerHTML!==html)select.innerHTML=html;select.value=draftModel;
+ const chosen=personalModel({model:draftModel});el('agent-model-summary').textContent=draftModel==='local'?'Local':chosen.label;
+ el('agent-model-note').textContent=chosen.connected?'Uses the connections configured in Settings.':personalModelNotice({model:draftModel});
+}
+el('agent-model').onchange=()=>{draftModel=el('agent-model').value;renderCreatorModels();};
 const appearanceColors={green:'#76b900',cyan:'#55bfff',amber:'#f4b34f',coral:'#ff8873',violet:'#b49aff',ice:'#cbddea'};
 const appearanceNames={classic:'Jinny',round:'Orbit',rover:'Scout',operative:'Smith',claw:'Pixel',crab:'Sage'};
 const roomCopy={
@@ -47,6 +65,7 @@ function fillCreator(creating){
   const p=creating?{name,persona:'guide',purpose:roleTemplates[0].purpose,skills:[...roleTemplates[0].skills],avatar:defaults}:data.profile;
   if(!p)return fillCreator(true);
   draftNameEdited=!creating;
+  draftModel=creating?'local':p.model||'shared';el('agent-model-panel').open=false;renderCreatorModels();
   el('name').value=p.name;writeCreatorPrompt(savedTonePrompt(p),p.purpose||(creating?'':personas[p.persona]));persona=p.persona;draftAvatar={...(p.avatar||defaults)};el('accessory').value=draftAvatar.accessory;
   draftTone=p.tone||'kind';
   el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(roleTemplates[Number(b.dataset.roleTemplate)]?.purpose===p.purpose)));
@@ -188,7 +207,7 @@ el('delete-agent').onclick=()=>{
 el('connection-setup').onclick=setup;el('connection-security').onclick=()=>setRoom('policies');
 el('onboarding').onsubmit=async e=>{
   e.preventDefault();if(hiringArrival)return;syncCreatorTone();const mode=draftMode,target=mode==='new'?agentId:draftOwner,first=!data.agents?.length;
-  const payload={name:el('name').value,...creatorPrompt(),persona,tone:draftTone,verbosity:'balanced',skills:[...el('skill-picker').querySelectorAll('input:checked')].map(x=>x.value),avatar:{...draftAvatar},protection:el('onboarding').querySelector('[name=protection]:checked').value};
+  const payload={model:draftModel,name:el('name').value,...creatorPrompt(),persona,tone:draftTone,verbosity:'balanced',skills:[...el('skill-picker').querySelectorAll('input:checked')].map(x=>x.value),avatar:{...draftAvatar},protection:el('onboarding').querySelector('[name=protection]:checked').value};
   hiringArrival=true;el('create').disabled=true;el('onboarding').inert=true;
   try{
     const result=await api(mode==='edit'?'profile':first?'onboard':'agents',payload,mode==='new'&&!first?'':target);
@@ -197,7 +216,7 @@ el('onboarding').onsubmit=async e=>{
     if(mode==='new'){++refreshVersion;openAgentState(await api('state',undefined,createdId));}else await refresh();
     if(mode==='new'&&room==='workshop'){hiringArrival=true;el('create').textContent='Joining your lounge…';await window.BacCampus?.welcomeAgent(createdId);if(room!=='workshop'||root.dataset.worldOverview==='true'){fillCreator(true);return;}}
     const stayHere=mode==='edit'&&editingInPlace;editingInPlace=false;fillCreator(true);if(stayHere)renderRoomVisibility();else setRoom('lounge');el('workshop').scrollTop=0;
-    alert(mode==='edit'?'Your agent’s look, working style, voice and abilities are saved.':(data.profile?.name||payload.name)+' has joined your lounge. Give your new teammate a mission.');
+    alert(mode==='edit'?'Your agent is updated.':(data.profile?.name||payload.name)+' has joined your lounge. Give your new teammate a mission.');
   }catch(error){alert(error.message,'error');}finally{hiringArrival=false;el('onboarding').inert=false;el('create').disabled=draftMode==='new'&&(data.agents?.length||0)>=(data.agentLimit||12);}
 };
 // Selecting a resident updates its workspace without moving the visitor's view.

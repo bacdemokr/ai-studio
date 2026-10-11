@@ -1,0 +1,44 @@
+const assert=require('node:assert/strict'),{spawn}=require('node:child_process'),{chromium}=require('playwright');
+(async()=>{
+ const port=Number(process.env.BAC_TEST_PORT||18243),host=process.env.BAC_TEST_HOST||'127.0.0.1';
+ const server=spawn('python3',['-B','tests/fixture_personal_models.py'],{env:{...process.env,BAC_TEST_PORT:String(port)},stdio:['ignore','pipe','pipe']});let browser;
+ server.stderr.on('data',()=>{});
+ try{
+  await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Fixture startup timed out')),15000);server.stdout.on('data',b=>{if(b.toString().includes('PERSONAL MODEL FIXTURE READY')){clearTimeout(timer);resolve();}});server.once('exit',code=>{clearTimeout(timer);reject(Error('Fixture exited '+code));});});
+  browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});
+  const page=await browser.newPage({viewport:{width:1600,height:1050},reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('http://'+host+':'+port);await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.personalModels);
+  await page.evaluate(()=>BacStudio.setRoom('workshop'));
+  const panel=page.locator('#studio-agent-model-panel'),model=page.locator('#studio-agent-model');
+  assert.equal(await panel.evaluate(n=>n.open),false);assert.equal(await model.inputValue(),'local');
+  assert(await panel.evaluate(n=>n.previousElementSibling.classList.contains('studio-protection-picker')));
+  await panel.locator('summary').click();assert.match(await page.locator('#studio-agent-model-note').innerText(),/Local model is not connected/);
+  await model.selectOption('api/nvidia/fixture-b');
+  await page.evaluate(()=>BacStudio.refresh());assert.equal(await model.inputValue(),'api/nvidia/fixture-b');
+  await page.locator('#studio-name').fill('Pixel');await page.getByRole('button',{name:'Slack Announcer',exact:true}).click();await page.getByRole('button',{name:/^Cynical/}).click();
+  await panel.locator('summary').click();await page.screenshot({path:'/tmp/bac-personal-model-collapsed.png'});
+  await page.locator('#studio-create').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Pixel');
+  assert.equal(await page.evaluate(()=>BacStudio.inspect().profile.model),'api/nvidia/fixture-b');
+  await page.evaluate(()=>BacStudio.setRoom('lounge'));await page.locator('#studio-prompt').fill('Hello model test');await page.locator('#studio-send').click();
+  await page.waitForFunction(()=>document.querySelector('#studio-conversation').textContent.includes('Simulated model: fixture-b'));
+  await page.locator('#studio-edit-agent').click();assert.equal(await panel.evaluate(n=>n.open),false);
+  await panel.locator('summary').click();assert.equal(await model.inputValue(),'api/nvidia/fixture-b');
+  await model.selectOption('local');await page.locator('#studio-create').click();
+  await page.waitForFunction(()=>BacStudio.inspect().profile?.model==='local');
+  assert.equal(await page.locator('#studio-send').isDisabled(),true);
+  assert.match(await page.locator('#studio-chat-connection-text').innerText(),/Local model is not connected/);
+  await page.locator('#studio-edit-agent').click();await panel.locator('summary').click();await model.selectOption('api/nvidia/fixture-b');await page.locator('#studio-create').click();
+  await page.waitForFunction(()=>BacStudio.inspect().profile?.model==='api/nvidia/fixture-b');
+  await page.reload();await page.waitForFunction(()=>BacStudio.inspect().profile?.model==='api/nvidia/fixture-b');
+  await page.evaluate(()=>BacStudio.setRoom('lounge'));await page.locator('#studio-edit-agent').click();await panel.locator('summary').click();
+  await page.screenshot({path:'/tmp/bac-personal-model-expanded.png'});await page.locator('#studio-cancel-create').click();
+  await page.locator('.world-room-map [data-world-scenario="plan"]').click();
+  await page.waitForFunction(()=>BacCampus.inspect().navigation.activeScenario==='plan'&&!BacCampus.inspect().navigation.travelling);
+  await page.getByRole('switch',{name:'Include hired agents'}).check();
+  await page.locator('#studio-crew-prompt').fill('/goal Have Pixel build a counter.');await page.locator('#studio-crew-send').click();
+  await page.waitForFunction(()=>document.querySelector('#studio-crew-conversation').textContent.includes('The team delivered the counter.'));
+  await page.locator('[data-campus-agent="5"]').click();await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Pixel');
+  assert.equal(await page.locator('#studio-crew-model').innerText(),'fixture-b');
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,host,checks:['collapsed below protection','Local default without API fallback','API choice survives refresh/edit/reload','own model used for chat','own model retained in Open Task','no browser errors']}));
+ }finally{if(browser)await browser.close();server.kill('SIGTERM');}
+})().catch(error=>{console.error(error);process.exitCode=1;});

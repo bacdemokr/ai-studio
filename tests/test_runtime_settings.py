@@ -35,7 +35,7 @@ class SettingsTests(unittest.TestCase):
 
     def test_model_reconnect_requeues_autonomous_agent_preparation(self):
         owner=self.studio.session()[0]['id']
-        profile=self.studio.onboard(owner,{'name':'Pixel','skills':['radar']})
+        profile=self.studio.onboard(owner,{'name':'Pixel','skills':['radar'],'model':'shared'})
         self.studio.execute(self.studio.next_job())
         self.assertIn(profile['id'],self.studio.provisioned)
         s.save(self.studio,self.data())
