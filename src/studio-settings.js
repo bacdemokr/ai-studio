@@ -119,7 +119,7 @@ async function openModelConnections(){
  catch(error){alert(error.message,'error');return;}
  if(request!==settingsOpenRequest||revision!==dialogRevision)return;
  const inherited=(data.agents||[]).filter(agent=>(agent.model||'shared')==='shared');
- const routeOptions=(legacy=false)=>`<option value="auto">Automatic (${legacy?'Local':'External'} first)</option><option value="local">Local</option><option value="api">External Endpoint</option>`;
+ const routeOptions=()=>`<option value="" disabled hidden>No connection ready</option><option value="local">Local</option><option value="api">External Endpoint</option>`;
  const scenarioRoute=(key,title)=>`<div class="connection-scenario"><div><label for="studio-route-${key}">${title}</label><span id="studio-connection-${key}-effective" class="connection-effective" role="status"></span></div><select id="studio-route-${key}" data-route="${key}" aria-describedby="studio-connection-${key}-effective">${routeOptions()}</select></div>`;
  dialog('Settings',`<form id="studio-config-form" novalidate>
   <nav class="connection-tabs" role="tablist" aria-label="Settings">${['model','location','telegram','reset'].map((tab,index)=>`<button type="button" role="tab" id="studio-settings-${tab}-tab" data-connection-tab="${tab}" data-settings-tab="${tab}" aria-controls="studio-settings-${tab}-panel" aria-selected="${index===0}" tabindex="${index===0?0:-1}" ${index===0?'aria-current="page"':''}>${tab[0].toUpperCase()+tab.slice(1)}</button>`).join('')}</nav>
@@ -130,7 +130,7 @@ async function openModelConnections(){
   <div class="connection-section-heading"><h3>Models</h3></div>
   <div class="connection-personal">
    <strong>Hired agents</strong><p>Choose in Hiring or Edit agent.</p>
-   ${inherited.length?`<details class="connection-inherited"><summary>Shared default <span>${inherited.length} earlier ${inherited.length===1?'agent':'agents'}</span></summary><p>${escape(inherited.map(agent=>agent.name).join(', '))}</p><label for="studio-route-lounge">Connection</label><select id="studio-route-lounge" data-route="lounge" aria-describedby="studio-connection-lounge-effective">${routeOptions(true)}</select><span id="studio-connection-lounge-effective" class="connection-effective" role="status"></span></details>`:''}
+   ${inherited.length?`<details class="connection-inherited"><summary>Shared default <span>${inherited.length} earlier ${inherited.length===1?'agent':'agents'}</span></summary><p>${escape(inherited.map(agent=>agent.name).join(', '))}</p><label for="studio-route-lounge">Connection</label><select id="studio-route-lounge" data-route="lounge" aria-describedby="studio-connection-lounge-effective">${routeOptions()}</select><span id="studio-connection-lounge-effective" class="connection-effective" role="status"></span></details>`:''}
   </div>
   <div class="connection-scenarios">${scenarioRoute('event-brief','Event Brief')}${scenarioRoute('plan','Open Task')}</div>
   <div class="connection-footer"><p id="studio-connections-status" role="status"></p><button type="button" id="studio-connections-save" class="studio-primary">Save changes</button></div></div></section>
@@ -143,26 +143,34 @@ async function openModelConnections(){
  const prefs={lounge:state.loungePreference||'auto','event-brief':state.scenarioPreferences?.['event-brief']||'auto',plan:state.scenarioPreferences?.plan||'auto'};
  let savedPrefs={...prefs};
  const dirty=()=>Object.keys(prefs).some(key=>prefs[key]!==savedPrefs[key]);
- function showEffective(kind,target){
-  if(!target)return;
+ function routeState(kind){
   const preferred=prefs[kind]==='auto'?(kind==='lounge'?'local':'api'):prefs[kind],other=preferred==='local'?'api':'local';
   const effective=state.connections[preferred].ready?preferred:state.connections[other].ready?other:null;
+  return {preferred,effective};
+ }
+ function showEffective(kind,target){
+  if(!target)return;
+  const {preferred,effective}=routeState(kind),pending=prefs[kind]!==savedPrefs[kind];
   const name=source=>source==='local'?'Local':'External Endpoint';
-  target.textContent=!effective?'No connection ready':effective!==preferred?name(preferred)+' unavailable · Using '+name(effective):'Using '+name(effective);
+  const use=pending?'Save to use ':'Using ';
+  target.textContent=!effective?'No connection ready':effective!==preferred?name(preferred)+' unavailable · '+use+name(effective):use+name(effective);
   target.dataset.state=!effective?'unavailable':effective!==preferred?'fallback':'ready';
  }
  function paint(){
   for(const source of ['local','api']){const c=state.connections[source],badge=panel.querySelector(`[data-connection-status="${source}"]`);badge.textContent=c.ready?'Ready':['Not configured','Disabled','Checking…'].includes(c.message)?c.message:'Unavailable';badge.title=c.message;badge.dataset.ready=String(c.ready);const summary=panel.querySelector(`[data-connection-summary="${source}"]`);summary.textContent=c.model?[c.provider==='local'?'':({nvidia:'NVIDIA Inference',openai:'OpenAI',anthropic:'Anthropic'}[c.provider]),c.model].filter(Boolean).join(' · '):source==='local'?'Connect a model running on your host.':'NVIDIA · OpenAI · Anthropic';summary.title=c.model||'';const toggle=panel.querySelector(`[data-connection-enable="${source}"]`);if(!working)toggle.checked=c.enabled&&c.message!=='Not configured';toggle.disabled=working;}
   for(const select of panel.querySelectorAll('select[data-route]')){
-   select.value=prefs[select.dataset.route];select.disabled=working;
-   for(const option of select.options)option.disabled=option.value!=='auto'&&!state.connections[option.value].ready;
+   const kind=select.dataset.route,{effective}=routeState(kind);
+   // Show the connection new work will use, without rewriting saved defaults on open/poll.
+   // Keep an explicit unsaved selection visible until the presenter saves or changes it.
+   select.value=effective?(prefs[kind]!==savedPrefs[kind]?prefs[kind]:effective):'';select.disabled=working||!effective;
+   for(const option of select.options)option.disabled=!option.value||!state.connections[option.value].ready;
    showEffective(select.dataset.route,el('connection-'+select.dataset.route+'-effective'));
   }
   el('connections-save').disabled=working||!dirty();el('connections-check').disabled=working;
  }
  function changed(){notice.textContent=dirty()?'Unsaved changes':'';paint();}
  paint();
- for(const select of panel.querySelectorAll('select[data-route]'))select.onchange=()=>{if(working)return;prefs[select.dataset.route]=select.value;changed();};
+ for(const select of panel.querySelectorAll('select[data-route]'))select.onchange=()=>{if(working||!state.connections[select.value]?.ready)return;prefs[select.dataset.route]=select.value;changed();};
  async function refreshConnections(force=false){const revision=inventoryRevision;try{const next=await api('settings/connections'+(force?'/check':''),force?{}:undefined);if(current()&&revision===inventoryRevision&&!working){state=next;paint();}}catch(error){if(current())notice.textContent=error.message;}}
  const timer=setInterval(()=>{if(!current()){clearInterval(timer);return;}if(!working&&!editing)refreshConnections();},2500);
  el('connections-check').onclick=()=>refreshConnections(true);
