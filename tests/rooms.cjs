@@ -6,6 +6,17 @@ const {chromium}=require('playwright');
  await page.goto(process.env.BASE_URL||'http://127.0.0.1:8082');await page.waitForFunction(()=>BacStudio.inspect().runtime.testFixture);
  assert.equal(await page.evaluate(()=>BacStudio.inspect().room),'workshop');
  assert.equal(await page.evaluate(()=>BacCampus.inspect().room),'workshop');
+ const info=page.locator('[data-room-info=workshop]'),paper=page.locator('.world-room-paper:not(.world-term-paper)'),handle=paper.locator('.world-room-paper-drag'),resizer=paper.locator('.world-room-paper-resize');
+ await info.click();assert(await paper.isVisible());assert(await resizer.isVisible());
+ const before=await paper.boundingBox(),beforeFont=await paper.locator('.world-room-paper-intro').evaluate(node=>parseFloat(getComputedStyle(node).fontSize)),drag=await handle.boundingBox();
+ await page.mouse.move(drag.x+drag.width/2,drag.y+drag.height/2);await page.mouse.down();await page.mouse.move(drag.x+drag.width/2-180,drag.y+drag.height/2+100,{steps:5});await page.mouse.up();
+ const moved=await paper.boundingBox();assert(moved.x<before.x-100&&moved.y>before.y+50,'Quick guide must move by its heading');
+ const resizeHandle=await resizer.boundingBox();await page.mouse.move(resizeHandle.x+resizeHandle.width/2,resizeHandle.y+resizeHandle.height/2);await page.mouse.down();await page.mouse.move(resizeHandle.x+resizeHandle.width/2+230,resizeHandle.y+resizeHandle.height/2+70,{steps:5});await page.mouse.up();await page.waitForTimeout(50);
+ const resized=await paper.boundingBox(),viewport=await page.locator('#campus-viewport').boundingBox();
+ assert(resized.width>moved.width+40&&resized.height>moved.height+30,'Quick guide must resize from its lower-right corner');
+ assert(await paper.locator('.world-room-paper-intro').evaluate(node=>parseFloat(getComputedStyle(node).fontSize))>beforeFont,'Quick guide text must grow with the window');
+ assert(resized.x>=viewport.x&&resized.y>=viewport.y&&resized.x+resized.width<=viewport.x+viewport.width&&resized.y+resized.height<=viewport.y+viewport.height,'Quick guide must remain inside the main view');
+ await paper.locator('.world-room-paper-close').click();assert.equal(await paper.isVisible(),false);
  await page.locator('button[data-room=lounge]').click();assert.equal(await page.locator('[data-resident]').count(),0);assert(await page.locator('#studio-lounge-empty').isVisible());await page.locator('#studio-empty-create').click();
  const looks=[{body:'classic',color:'green',accessory:'antenna'},{body:'round',color:'cyan',accessory:'headset'},{body:'rover',color:'coral',accessory:'glasses'}],keys=[];
  for(let i=0;i<looks.length;i++){

@@ -236,6 +236,25 @@ Abandoned browser sessions and their agents are [automatically removed after 60 
 
 [Setup & troubleshooting](docs/docker-setup.md) · [Model settings](docs/runtime-settings.md) · [Development & tests](docs/development.md)
 
+### Optional browser testing
+
+Playwright automates browser checks on Windows, Linux and macOS. It is a development dependency only: BaC, its Docker services and the movable information windows run normally without Playwright, Node.js on the host, or any Playwright-managed browser. In a source checkout, `./bac start` reports when the optional local Playwright package is absent but does not delay or block startup.
+
+To prepare Chromium, Firefox and Microsoft Edge for tests, run from the repository root:
+
+```bash
+npm install --save-dev playwright
+npx playwright install chromium firefox msedge
+```
+
+On supported Linux systems, Playwright can install the required OS libraries too:
+
+```bash
+npx playwright install --with-deps chromium firefox msedge
+```
+
+Microsoft Edge availability depends on the operating system and CPU architecture; it may not be available on ARM64 Linux systems such as DGX Spark. Installing a browser does not automatically run every test against it: tests launch Chromium with `chromium.launch()`, Edge with `chromium.launch({channel: 'msedge'})`, or Firefox with `firefox.launch()`. Do not add Playwright to `docker/runtime/package.json`, which contains production runtime dependencies.
+
 ### Scenario preview provenance
 
 This preview starts from the frozen Zurich snapshot (`feba7df`). The viewport improvements, room information guides and side-by-side agent definition viewer adapt Benjamin Bayart’s contributions (`ee717f3`, `8993a20`, `09b4794`, `3c54aba`); the initial Stage 3 picker took inspiration from his scenario cards; scenarios now appear as separate 3D floors. The fixed Event Brief workflow is restored from `archive/bac-planning` (`94198b6`). Default startup clears runtime data; `./bac start --keep-data` retains agents and previous work. There is no `./bac restart` command. Existing Zurich team ownership migrates to Plan without changing native identities; Event Brief creates a separate team when first used.

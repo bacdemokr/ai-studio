@@ -241,6 +241,11 @@ if action=='connect' and state.get('connection_failure'):sys.exit(1)
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertTrue((self.root/'.env').exists())
         self.assertIn(['build'],self.operations())
+        self.assertIn('Playwright is not installed',result.stdout)
+        package=self.root/'node_modules/playwright/package.json';package.parent.mkdir(parents=True);package.write_text('{}')
+        result=self.run_bac('start')
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertNotIn('Playwright is not installed',result.stdout)
 
     def test_keep_data_start_stops_both_services_then_waits_without_deleting_data(self):
         self.configure(image=True)

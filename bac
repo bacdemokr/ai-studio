@@ -94,6 +94,9 @@ else
 fi
 if [[ $command_name == start ]]; then
   bash scripts/setup-key-filter.sh
+  if [[ -f Dockerfile && ! -f release.json && ! -f node_modules/playwright/package.json ]]; then
+    echo 'Optional browser testing: Playwright is not installed in this source checkout. BaC will run normally; see README.md#optional-browser-testing.'
+  fi
   [[ ! -L api.cfg ]] || die 'api.cfg must be a regular file, not a symlink.'
   if [[ ! -e api.cfg ]]; then (umask 077; touch api.cfg); fi
   [[ -f api.cfg ]] || die 'api.cfg must be a regular file.'
