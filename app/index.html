@@ -1214,6 +1214,8 @@ body{margin:0;padding:0;width:100%;max-width:none}
 #studio-dialog .studio-reset-row h3{font-size:17px;line-height:1.4;letter-spacing:0;font-weight:600;margin:0 0 5px}
 #studio-dialog .studio-reset-row p{font-size:14px;line-height:1.5;color:#99a9b6;margin:0}
 #studio-dialog #studio-settings-reset-panel button{box-sizing:border-box;flex-shrink:0;min-width:112px;height:40px;padding:0 18px;border-radius:5px;font-size:14px;line-height:1;font-weight:600;white-space:nowrap}
+#studio-dialog #studio-settings-reset-panel button:disabled{cursor:not-allowed}
+#studio-dialog #studio-settings-reset-panel[aria-busy=true] button:disabled{cursor:wait}
 #studio-dialog .studio-reset-row button{background:#1a252e;border:1px solid #41515e;color:#e5edf2}
 #studio-dialog .studio-reset-row button:hover:not(:disabled){background:#26343f;border-color:#738696}
 #studio-dialog #studio-settings-status:empty{display:none}
@@ -83676,6 +83678,7 @@ function scenarioHasWork(id=selectedScenario){
 }
 function syncResetButtons(){
  const hasAgents=!!(data.agents||[]).length,hasAnyScenario=(data.scenarios||[]).some(s=>s.hasWork||s.busy);
+ el('settings-reset-panel')?.setAttribute('aria-busy',String(resetInProgress||!!data.bacResetting));
  for(const id of ['agent-reset','settings-event-reset','settings-plan-reset','reset-all','bac-reset']){
   const button=el(id);if(!button)continue;
   const empty=id==='agent-reset'?!hasAgents:id==='reset-all'?!hasAgents&&!hasAnyScenario:!scenarioHasWork(button.dataset.resetScenario||selectedScenario);
@@ -83714,6 +83717,7 @@ async function resetStudio(scope,sourceButton=null,scenario=selectedScenario){
  const buttons=(sourceButton?[sourceButton]:[...modal.querySelectorAll('button')]).map(button=>[button,button.disabled]);
  modal.addEventListener('cancel',blockClose);buttons.forEach(([button])=>button.disabled=true);
  status.hidden=false;status.textContent='Resetting…';
+ el('settings-reset-panel')?.setAttribute('aria-busy','true');
  let completed=0,total=0,next=agentId,background=false,teamCleared=false;
  const originalSelection=agentId;
  try{
