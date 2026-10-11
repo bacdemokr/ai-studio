@@ -82079,7 +82079,8 @@ function warmCrewOnOpen(){
  // Reconcile server state without recreating work or retrying failed inference.
  let delay=10000;
  api('state',undefined,target,'event-brief').then(state=>{
-  if(state.bacResetting||state.deleting||state.preparation?.valid)return;
+  if(state.bacResetting||state.deleting)return;
+  if(state.preparation?.valid&&[0,1,2,3].every(role=>state.preparation.payload.enabledRoles.includes(role)))return;
   return api('prepare-demo',{background:true},target,'event-brief');
  }).catch(()=>{
   // A policy edit or current mission can briefly hold the preparation fence.
@@ -82108,14 +82109,16 @@ function syncDemoPreparation(){
  const guests=demoGuestChoices();
  box.innerHTML='<div class="demo-ready-heading"><b>BaC crew</b><span>'+escape(error?'Needs attention':status==='done'?'Ready':status==='idle'?'Not checked':status==='queued'?'Queued':'Preparing')+'</span></div>'+(error?'<p class="event-plan-error" role="alert">'+escape(error)+'</p>':'')+(prep?.payload.checks||[]).filter(c=>c.required).map(c=>'<div class="demo-ready-row" data-status="'+escape(c.status)+'"><span>'+escape(c.name)+'</span><small>'+escape(c.detail||(c.status==='ready'?'Ready':c.status==='preparing'?'Preparing':'Needs attention'))+'</small></div>').join('')+'<button type="button" class="studio-secondary" id="studio-prepare-demo" '+(!runtime.gateway||preparing||eventTeamWorking()||data.bacResetting?'disabled':'')+'>'+(preparing?'Preparing…':status==='done'?'Check again':error?'Retry preparation':'Prepare demo')+'</button>'+(guests.length?'<div class="demo-guests"><b>Personal reactions · optional</b><div class="demo-guest-list">'+guests.map(g=>'<label class="demo-guest" data-available="'+String(!g.reason)+'"><input type="checkbox" data-demo-guest="'+escape(g.key)+'" '+(!g.reason&&!excludedDemoGuests.has(g.key)?'checked ':'')+(g.reason?'disabled ':'')+'><span>'+escape(g.name)+'</span>'+(g.reason?'<small>'+escape(g.reason)+'</small>':'')+'</label>').join('')+'</div></div>':'');
  box.querySelectorAll('[data-demo-guest]').forEach(input=>input.onchange=()=>{if(input.checked)excludedDemoGuests.delete(input.dataset.demoGuest);else excludedDemoGuests.add(input.dataset.demoGuest);});
- el('prepare-demo').onclick=prepareDemo;
+ el('prepare-demo').onclick=()=>prepareDemo();
  syncEventLaunch();
- if(demoAutoPrepare&&runtime.gateway&&!demoPreparing){demoAutoPrepare=false;queueMicrotask(prepareDemo);}
+ if(demoAutoPrepare&&runtime.gateway&&!demoPreparing){demoAutoPrepare=false;queueMicrotask(()=>prepareDemo(true));}
 }
-async function prepareDemo(){
+// Automatic form checks reuse server readiness; an explicit Retry/Check again
+// remains a fresh policy/runtime check. A stale UI snapshot is not invalidation.
+async function prepareDemo(automatic=false){
  if(demoPreparing||eventTeamWorking()||!el('demo-preparation')||!el('dialog').open||!runtime.gateway||data.bacResetting)return;
  const form=el('crew-form');demoAutoPrepare=false;demoPreparing=true;demoPreparationError='';demoPreparationId=null;syncDemoPreparation();
- try{const prepared=await api('prepare-demo',{enabledRoles:selectedDemoRoles()});if(el('crew-form')!==form)return;demoPreparationId=prepared.id;await refresh();}
+ try{const prepared=await api('prepare-demo',{enabledRoles:selectedDemoRoles(),...(automatic?{background:true}:{})});if(el('crew-form')!==form)return;demoPreparationId=prepared.id;await refresh();}
  catch(error){if(el('crew-form')===form)demoPreparationError=error.message;}
  finally{demoPreparing=false;if(el('crew-form')===form)syncDemoPreparation();}
 }

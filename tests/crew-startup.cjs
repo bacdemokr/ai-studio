@@ -3,21 +3,21 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});
  const context=await browser.newContext({viewport:{width:1500,height:1000}});
- let release;const gate=new Promise(resolve=>release=resolve);
+ let release,entered;const gate=new Promise(resolve=>release=resolve),intercepted=new Promise(resolve=>entered=resolve);
  try {
   const base=process.env.BAC_TEST_URL||'http://127.0.0.1:8083',page=await context.newPage(),errors=[];
   let inference=0,requests=0;
   page.on('pageerror',e=>errors.push(e.message));
   page.on('request',r=>{if(r.url().endsWith('/api/jobs')&&r.method()==='POST')inference++;});
   await page.route('**/api/prepare-demo',async route=>{
-   requests++;assert.equal(route.request().headers()['x-bac-scenario'],'event-brief');
+   requests++;entered();assert.equal(route.request().headers()['x-bac-scenario'],'event-brief');
    assert.equal(route.request().postDataJSON().background,true);
    const response=await route.fetch();await gate;await route.fulfill({response});
   });
   const prep=()=>page.evaluate(()=>fetch('/api/state',{headers:{'X-BaC-Scenario':'event-brief'}}).then(r=>r.json()).then(s=>s.preparation));
   const started=page.waitForRequest(r=>r.url().endsWith('/api/prepare-demo'),{timeout:15000});
   await page.goto(base);await page.waitForFunction(()=>window.BacStudio?.inspect().agentId);
-  await started;
+  await started;await intercepted;
   assert.equal(requests,1,'Prepare begins before visiting Stage 3');
   assert.equal(await page.locator('#studio-crew-form').count(),0);
   // Pending background POST must not block navigating to either scenario.
@@ -50,17 +50,22 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.reload();await page.waitForFunction(id=>window.BacStudio?.inspect().agentId===id,selected);
   assert.equal((await prep()).id,first.id);assert.equal(inference,0);assert.deepEqual(errors,[]);
   // Connection can become ready after boot, without entering either scenario.
-  const late=await browser.newContext(),latePage=await late.newPage();let ready=false,lateRequests=0;
+  const late=await browser.newContext({storageState:await context.storageState()}),latePage=await late.newPage();let ready=false,lateRequests=0;
   latePage.on('request',r=>{if(r.url().endsWith('/api/prepare-demo'))lateRequests++;});
   for(const endpoint of ['session','runtime'])await latePage.route('**/api/'+endpoint,async route=>{
    const response=await route.fetch(),json=await response.json(),runtime=endpoint==='session'?json.runtime:json;
    runtime.gateway=true;runtime.modelConnections={enabled:true,connections:{api:{enabled:true,ready}}};
    await route.fulfill({json});
   });
+  await latePage.route('**/api/state',async route=>{
+   const response=await route.fetch({headers:{...route.request().headers(),'if-none-match':''}}),state=await response.json();
+   if(state.scenario==='event-brief')state.preparation=null;
+   await route.fulfill({response,json:state});
+  });
   await latePage.goto(base);await latePage.waitForFunction(()=>window.BacStudio?.inspect().agentId);
   assert.equal(lateRequests,0,'No failed preparation while the model is disconnected');ready=true;
   await latePage.waitForRequest(r=>r.url().endsWith('/api/prepare-demo'),{timeout:15000});
-  assert.equal(lateRequests,1);await late.close();
+  assert.equal(lateRequests,1);await latePage.unrouteAll({behavior:'wait'});await late.close();
   console.log('PASS: startup without stage visit, nonblocking navigation, ready form/reopen, tab/reload/agent deduplication, late connection and no inference. Fixture runtime.');
- } finally {release();await context.unrouteAll({behavior:'wait'});await browser.close();}
+ } finally {release();for(const page of context.pages())await page.unrouteAll({behavior:'ignoreErrors'});await context.unrouteAll({behavior:'wait'});await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
