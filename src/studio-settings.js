@@ -16,6 +16,7 @@ function scenarioHasWork(id=selectedScenario){
 }
 function syncResetButtons(){
  const hasAgents=!!(data.agents||[]).length,hasAnyScenario=(data.scenarios||[]).some(s=>s.hasWork||s.busy);
+ el('settings-reset-panel')?.setAttribute('aria-busy',String(resetInProgress||!!data.bacResetting));
  for(const id of ['agent-reset','settings-event-reset','settings-plan-reset','reset-all','bac-reset']){
   const button=el(id);if(!button)continue;
   const empty=id==='agent-reset'?!hasAgents:id==='reset-all'?!hasAgents&&!hasAnyScenario:!scenarioHasWork(button.dataset.resetScenario||selectedScenario);
@@ -54,6 +55,7 @@ async function resetStudio(scope,sourceButton=null,scenario=selectedScenario){
  const buttons=(sourceButton?[sourceButton]:[...modal.querySelectorAll('button')]).map(button=>[button,button.disabled]);
  modal.addEventListener('cancel',blockClose);buttons.forEach(([button])=>button.disabled=true);
  status.hidden=false;status.textContent='Resetting…';
+ el('settings-reset-panel')?.setAttribute('aria-busy','true');
  let completed=0,total=0,next=agentId,background=false,teamCleared=false;
  const originalSelection=agentId;
  try{
