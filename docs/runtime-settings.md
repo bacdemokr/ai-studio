@@ -8,7 +8,7 @@ Open the Settings gear on localhost or the host's trusted LAN address. **Model**
 2. Select the provider and search the **Model** field. The catalogue loads automatically; there is no separate Load models button.
 3. Choose **Connect & enable**.
 4. Under **Models**, choose a connection for **Event Brief** and **Open Task** in their separate rows, then **Save changes**. Changing one never changes the other; existing preferences are preserved.
-5. Hired agents use their own **Model** choice from Hiring or Edit agent. New hires default to Local; team settings never overwrite their choices.
+5. Hired agents use their own **Model** choice from Hiring or Edit agent. New hires default to connected Local; team settings never overwrite their choices.
 
 The built-in teams default to **Automatic (External first)**. Earlier agents without an individual model keep their previous shared default, available in the collapsed **Shared default** section. Saved manual choices take precedence. When upgrading a data directory that predates shared connections, the selected host provider is retained. For built-in teams and earlier agents using the shared default, an unavailable preferred connection falls back to the other ready connection for new requests. The selected preference stays visible alongside the actual connection in use. If neither is ready, Settings shows **No connection ready**. Active model requests are not replayed on another connection.
 
@@ -38,7 +38,9 @@ Local endpoints must be reachable from the app/OpenClaw host, not from the prese
 
 ## Per-agent models in Hiring
 
-Expand **Model** below **OpenShell protection**. New agents default to Local; the dropdown also lists models from the configured External Endpoint. This compact section starts closed and is available in **Edit agent** too.
+Expand **Model** below **OpenShell protection**, then search by model or provider name. Results stay in a compact scrollable list; unavailable connections are disabled. New agents default to Local only when it is connected. Otherwise, choose an available external model or connect Local in Settings before hiring. The section starts closed and is available in **Edit agent** too.
+
+An existing offline model remains selected. You can still edit that agent’s name or persona without changing its model; choosing a different model requires a ready connection.
 
 Each agent uses its choice for Lounge chat, Heartbeat and Open Task assignments. Explicit choices never fall back to another source. If Local is unavailable, connect it in Settings or select an external model. Agents created before this feature keep **Shared default** until explicitly changed. Model selection does not change tools, OpenShell protection or Event Brief.
 

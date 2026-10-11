@@ -683,5 +683,20 @@
 .studio-agent-model-panel[open] summary::before{transform:rotate(90deg)}
 .studio-agent-model-panel summary span{margin-left:auto;max-width:75%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#aebfca;font-size:12px;font-weight:400}
 .studio-agent-model-panel label{display:block;margin-top:14px}
-.studio-agent-model-panel select{display:block;width:100%;min-width:0;margin:8px 0}
+#agent-campus .studio-agent-model-panel input[type=search]{box-sizing:border-box;display:block;width:100%;min-width:0;margin:12px 0 8px;padding:10px 12px;border:1px solid #405563;border-radius:8px;background:#101b23;color:#e4edf4;font:inherit;font-size:13px}
+.studio-agent-model-results{display:grid;gap:4px;max-height:220px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+#agent-campus .studio-agent-model-results button{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:9px 10px;border:1px solid transparent;border-radius:7px;background:#172630;color:#dce7ee;text-align:left;box-shadow:none;cursor:pointer}
+#agent-campus .studio-agent-model-results button>span:first-child{min-width:0}
+#agent-campus .studio-agent-model-results strong{display:block;font-size:13px;font-weight:600;overflow-wrap:anywhere}
+#agent-campus .studio-agent-model-results small{margin-top:3px;color:#94aab9;font-size:11px;overflow-wrap:anywhere}
+#agent-campus .studio-agent-model-results button:hover:not(:disabled),#agent-campus .studio-agent-model-results button:focus-visible{border-color:#76b900;background:#24342a}
+#agent-campus .studio-agent-model-results button[aria-pressed=true]{border-color:#6b8f46;background:#203025}
+#agent-campus .studio-agent-model-results button:disabled{opacity:.45;cursor:not-allowed}
+#agent-campus .studio-model-choice-state{font-size:10px;color:#b1c7a0;flex-shrink:0;max-width:85px;text-align:right}
+#agent-campus .studio-model-empty{margin:10px 2px;color:#a7bac7;font-size:12px}
+.studio-agent-model-help{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:8px}
+.studio-agent-model-help small{font-size:12px}
+#agent-campus .studio-model-settings-link{background:none;border:0;padding:0;color:#b9d598;font-size:12px;white-space:nowrap;box-shadow:none}
+#agent-campus .studio-model-settings-link[hidden],.studio-agent-model-help small[hidden]{display:none}
+#studio-agent-model-summary[data-ready=false]{color:#c7b185}
 .studio-agent-model-panel small{display:block;line-height:1.5}

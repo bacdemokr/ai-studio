@@ -1041,7 +1041,22 @@ body{margin:0;padding:0;width:100%;max-width:none}
 .studio-agent-model-panel[open] summary::before{transform:rotate(90deg)}
 .studio-agent-model-panel summary span{margin-left:auto;max-width:75%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#aebfca;font-size:12px;font-weight:400}
 .studio-agent-model-panel label{display:block;margin-top:14px}
-.studio-agent-model-panel select{display:block;width:100%;min-width:0;margin:8px 0}
+#agent-campus .studio-agent-model-panel input[type=search]{box-sizing:border-box;display:block;width:100%;min-width:0;margin:12px 0 8px;padding:10px 12px;border:1px solid #405563;border-radius:8px;background:#101b23;color:#e4edf4;font:inherit;font-size:13px}
+.studio-agent-model-results{display:grid;gap:4px;max-height:220px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+#agent-campus .studio-agent-model-results button{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:9px 10px;border:1px solid transparent;border-radius:7px;background:#172630;color:#dce7ee;text-align:left;box-shadow:none;cursor:pointer}
+#agent-campus .studio-agent-model-results button>span:first-child{min-width:0}
+#agent-campus .studio-agent-model-results strong{display:block;font-size:13px;font-weight:600;overflow-wrap:anywhere}
+#agent-campus .studio-agent-model-results small{margin-top:3px;color:#94aab9;font-size:11px;overflow-wrap:anywhere}
+#agent-campus .studio-agent-model-results button:hover:not(:disabled),#agent-campus .studio-agent-model-results button:focus-visible{border-color:#76b900;background:#24342a}
+#agent-campus .studio-agent-model-results button[aria-pressed=true]{border-color:#6b8f46;background:#203025}
+#agent-campus .studio-agent-model-results button:disabled{opacity:.45;cursor:not-allowed}
+#agent-campus .studio-model-choice-state{font-size:10px;color:#b1c7a0;flex-shrink:0;max-width:85px;text-align:right}
+#agent-campus .studio-model-empty{margin:10px 2px;color:#a7bac7;font-size:12px}
+.studio-agent-model-help{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:8px}
+.studio-agent-model-help small{font-size:12px}
+#agent-campus .studio-model-settings-link{background:none;border:0;padding:0;color:#b9d598;font-size:12px;white-space:nowrap;box-shadow:none}
+#agent-campus .studio-model-settings-link[hidden],.studio-agent-model-help small[hidden]{display:none}
+#studio-agent-model-summary[data-ready=false]{color:#c7b185}
 .studio-agent-model-panel small{display:block;line-height:1.5}
 
 .studio-sound{display:flex;align-items:center;gap:3px;flex-shrink:0}
@@ -1487,7 +1502,7 @@ body{margin:0;padding:0;width:100%;max-width:none}
     <small id="studio-role-hint" class="studio-muted" role="status"></small>
     <fieldset class="studio-style-group"><legend>What can it do?</legend><div id="studio-skill-picker"></div></fieldset>
     <fieldset class="studio-protection-picker"><legend>OpenShell protection</legend><label><input type="radio" name="protection" value="standard" checked><span><b>OpenShell off</b><small>Tools can read and edit files on this computer.</small></span></label><label><input type="radio" name="protection" value="openshell"><span><b>OpenShell on</b><small>Sandboxed tools with restricted file and internet access.</small></span></label></fieldset>
-    <details id="studio-agent-model-panel" class="studio-agent-model-panel"><summary>Model <span id="studio-agent-model-summary">Local</span></summary><label for="studio-agent-model">Choose a model</label><select id="studio-agent-model" aria-describedby="studio-agent-model-note"></select><small id="studio-agent-model-note" class="studio-muted"></small></details>
+    <details id="studio-agent-model-panel" class="studio-agent-model-panel"><summary>Model <span id="studio-agent-model-summary">Local</span></summary><input id="studio-agent-model-search" type="search" aria-label="Search models" placeholder="Search models or providers…" autocomplete="off" aria-controls="studio-agent-model-results" aria-describedby="studio-agent-model-note"><div id="studio-agent-model-results" class="studio-agent-model-results" role="group" aria-label="Model choices"></div><div class="studio-agent-model-help"><small id="studio-agent-model-note" class="studio-muted" role="status"></small><button type="button" id="studio-agent-model-settings" class="studio-model-settings-link">Model settings</button></div></details>
     <div class="studio-creator-actions"><button type="button" class="studio-secondary" id="studio-cancel-create" hidden>Cancel</button><button type="submit" class="studio-primary" id="studio-create">Hire my agent <span>↗</span></button></div>
     <small class="studio-muted"></small>
   </form>
@@ -83052,7 +83067,7 @@ for(const id of ['crew-prompt']){
 }
 
   // Three places in one studio: creation, a growing personal collection, and crew work.
-let editingInPlace=false,hiringArrival=false,draftNameEdited=false,draftModel='local';
+let editingInPlace=false,hiringArrival=false,draftNameEdited=false,draftModel='',draftModelChosen=false,creatorModelMarkup='';
 function personalModel(profile){
  profile=(profile?.key&&(data.agents||[]).find(row=>row.key===profile.key))||profile;
  const id=profile?.model||'shared',choice=runtime.personalModels?.models?.find(row=>row.id===id);
@@ -83060,17 +83075,64 @@ function personalModel(profile){
 }
 function personalReady(profile){return !!runtime.gateway&&personalModel(profile).connected;}
 function personalModelNotice(profile){return profile?.model==='local'?'Local model is not connected. Connect Local in Settings or choose another model in Edit agent.':'This agent’s model is unavailable. Check Settings or choose another model in Edit agent.';}
-function renderCreatorModels(){
- const select=el('agent-model'),rows=runtime.personalModels?.models||[{id:'local',label:'Local',source:'local',connected:!!runtime.model},{id:'shared',label:'Shared default',source:'shared',connected:!!runtime.model}];
+function creatorModelChoices(){
+ const rows=runtime.personalModels?.models||[{id:'local',label:'Local',source:'local',connected:!!runtime.model},{id:'shared',label:'Shared default',source:'shared',connected:!!runtime.model}];
  const choices=rows.filter(row=>row.id!=='shared'||draftModel==='shared');
- if(!choices.some(row=>row.id===draftModel))choices.push({...personalModel({model:draftModel}),source:'api'});
- const options=source=>choices.filter(row=>row.source===source).map(row=>`<option value="${escape(row.id)}">${escape(row.label)}</option>`).join('');
- const html=options('local')+(choices.some(row=>row.source==='api')?'<optgroup label="External Endpoint">'+options('api')+'</optgroup>':'')+options('shared');
- if(select.innerHTML!==html)select.innerHTML=html;select.value=draftModel;
- const chosen=personalModel({model:draftModel});el('agent-model-summary').textContent=draftModel==='local'?'Local':chosen.label;
- el('agent-model-note').textContent=chosen.connected?'Uses the connections configured in Settings.':personalModelNotice({model:draftModel});
+ if(draftModel&&!choices.some(row=>row.id===draftModel))choices.push({...personalModel({model:draftModel}),source:'api'});
+ return choices;
 }
-el('agent-model').onchange=()=>{draftModel=el('agent-model').value;renderCreatorModels();};
+function creatorModelAllowed(){
+ // Existing agents can still change their name/persona while their saved model is offline.
+ return !!draftModel&&(personalModel({model:draftModel}).connected||(draftMode==='edit'&&draftModel===(data.profile?.model||'shared')));
+}
+function updateCreatorSubmit(){
+ el('create').disabled=hiringArrival||!creatorModelAllowed()||(draftMode==='new'&&(data.agents?.length||0)>=(data.agentLimit||12));
+}
+function renderCreatorModels(){
+ const input=el('agent-model-search'),results=el('agent-model-results'),choices=creatorModelChoices();
+ if(draftMode==='new'&&!draftModelChosen)draftModel=choices.find(row=>row.id==='local')?.connected?'local':'';
+ const query=input.value.trim().toLowerCase(),defaultApi=runtime.modelConnections?.connections?.api?.model;
+ const sourceName=row=>row.source==='api'?'External Endpoint':row.source==='local'?'Local':'Shared default';
+ const matches=choices.filter(row=>(row.label+' '+row.id+' '+sourceName(row)).toLowerCase().includes(query));
+ const priority=row=>row.source==='local'?0:row.id===draftModel?1:row.id.split('/').slice(2).join('/')===defaultApi?2:3;
+ matches.sort((a,b)=>priority(a)-priority(b)||a.label.localeCompare(b.label));
+ const html=matches.slice(0,40).map(row=>{
+  const title=row.source==='local'?'Local':row.label.split('/').at(-1),description=row.source==='local'?(row.label.replace(/^Local(?: - )?/,'')||'On this host'):row.source==='api'?row.id.split('/').slice(2).join('/'):'Uses the shared connection';
+  return `<button type="button" data-agent-model-choice="${escape(row.id)}" aria-pressed="${row.id===draftModel}" ${row.connected?'':'disabled'} title="${escape(row.label)}"><span><strong>${escape(title)}</strong><small>${escape(description)}</small></span><span class="studio-model-choice-state">${row.connected?(row.id===draftModel?'Selected':sourceName(row)):'Not connected'}</span></button>`;
+ }).join('')||'<p class="studio-model-empty">No matching models</p>';
+ const focused=document.activeElement?.closest('[data-agent-model-choice]')?.dataset.agentModelChoice;
+ // Compare the source markup: the browser normalizes boolean attributes and spacing.
+ // Replacing unchanged rows on each poll can interrupt clicks or keyboard selection.
+ if(creatorModelMarkup!==html){creatorModelMarkup=html;results.innerHTML=html;if(focused)[...results.querySelectorAll('button')].find(button=>button.dataset.agentModelChoice===focused&&!button.disabled)?.focus({preventScroll:true});}
+ const chosen=draftModel?personalModel({model:draftModel}):null,summary=el('agent-model-summary');
+ summary.textContent=chosen?(draftModel==='local'?'Local':chosen.label.split('/').at(-1)):'Choose a model';summary.title=chosen?.label||'';summary.dataset.ready=String(!!chosen?.connected);
+ const missing=!chosen?.connected;
+ el('agent-model-note').textContent=matches.length>40?'Showing 40 models. Refine your search.':!chosen?'Choose a connected model.':missing?'Selected model is not connected.':'';
+ el('agent-model-note').hidden=!el('agent-model-note').textContent;el('agent-model-settings').hidden=!missing;
+ updateCreatorSubmit();
+}
+function chooseCreatorModel(id){
+ if(!creatorModelChoices().some(row=>row.id===id&&row.connected))return;
+ draftModel=id;draftModelChosen=true;el('agent-model-search').value='';renderCreatorModels();
+ el('agent-model-panel').open=false;el('agent-model-panel').querySelector('summary').focus({preventScroll:true});
+}
+el('agent-model-search').oninput=renderCreatorModels;
+el('agent-model-search').onkeydown=event=>{
+ if(event.key==='Enter'){
+  event.preventDefault();const enabled=el('agent-model-results').querySelectorAll('button:not(:disabled)');
+  if(enabled.length===1)chooseCreatorModel(enabled[0].dataset.agentModelChoice);
+ }else if(event.key==='ArrowDown'){event.preventDefault();el('agent-model-results').querySelector('button:not(:disabled)')?.focus();}
+};
+el('agent-model-results').onclick=event=>{const button=event.target.closest('[data-agent-model-choice]');if(button&&!button.disabled)chooseCreatorModel(button.dataset.agentModelChoice);};
+el('agent-model-results').onkeydown=event=>{
+ if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;
+ const buttons=[...el('agent-model-results').querySelectorAll('button:not(:disabled)')];if(!buttons.length)return;
+ event.preventDefault();const index=buttons.indexOf(document.activeElement);
+ buttons[event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+(event.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length].focus();
+};
+el('agent-model-panel').addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();el('agent-model-panel').open=false;el('agent-model-panel').querySelector('summary').focus();}});
+el('agent-model-panel').addEventListener('toggle',()=>{if(el('agent-model-panel').open)renderCreatorModels();});
+el('agent-model-settings').onclick=openModelSettings;
 const appearanceColors={green:'#76b900',cyan:'#55bfff',amber:'#f4b34f',coral:'#ff8873',violet:'#b49aff',ice:'#cbddea'};
 const appearanceNames={classic:'Jinny',round:'Orbit',rover:'Scout',operative:'Smith',claw:'Pixel',crab:'Sage'};
 const roomCopy={
@@ -83118,7 +83180,7 @@ function fillCreator(creating){
   const p=creating?{name,persona:'guide',purpose:roleTemplates[0].purpose,skills:[...roleTemplates[0].skills],avatar:defaults}:data.profile;
   if(!p)return fillCreator(true);
   draftNameEdited=!creating;
-  draftModel=creating?'local':p.model||'shared';el('agent-model-panel').open=false;renderCreatorModels();
+  draftModel=creating?'':p.model||'shared';draftModelChosen=!creating;el('agent-model-search').value='';el('agent-model-panel').open=false;renderCreatorModels();
   el('name').value=p.name;writeCreatorPrompt(savedTonePrompt(p),p.purpose||(creating?'':personas[p.persona]));persona=p.persona;draftAvatar={...(p.avatar||defaults)};el('accessory').value=draftAvatar.accessory;
   draftTone=p.tone||'kind';
   el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(roleTemplates[Number(b.dataset.roleTemplate)]?.purpose===p.purpose)));
@@ -83130,7 +83192,7 @@ function fillCreator(creating){
   el('creator-title').textContent=creating?'Hire your own Agent.':'Edit '+p.name;
   el('creator-note').hidden=true;
   el('creator-note').textContent='';
-  el('create').textContent=creating?'Hire my agent':'Save my agent';el('cancel-create').hidden=!data.profile;el('create').disabled=creating&&n>=(data.agentLimit||12);
+  el('create').textContent=creating?'Hire my agent':'Save my agent';el('cancel-create').hidden=!data.profile;updateCreatorSubmit();
   updateDraft();el('workshop').scrollTop=0;
 }
 function setRoom(next,options={}){
@@ -83259,7 +83321,7 @@ el('delete-agent').onclick=()=>{
 };
 el('connection-setup').onclick=setup;el('connection-security').onclick=()=>setRoom('policies');
 el('onboarding').onsubmit=async e=>{
-  e.preventDefault();if(hiringArrival)return;syncCreatorTone();const mode=draftMode,target=mode==='new'?agentId:draftOwner,first=!data.agents?.length;
+  e.preventDefault();if(hiringArrival)return;if(!creatorModelAllowed()){el('agent-model-panel').open=true;el('agent-model-search').focus();return;}syncCreatorTone();const mode=draftMode,target=mode==='new'?agentId:draftOwner,first=!data.agents?.length;
   const payload={model:draftModel,name:el('name').value,...creatorPrompt(),persona,tone:draftTone,verbosity:'balanced',skills:[...el('skill-picker').querySelectorAll('input:checked')].map(x=>x.value),avatar:{...draftAvatar},protection:el('onboarding').querySelector('[name=protection]:checked').value};
   hiringArrival=true;el('create').disabled=true;el('onboarding').inert=true;
   try{
@@ -83270,7 +83332,7 @@ el('onboarding').onsubmit=async e=>{
     if(mode==='new'&&room==='workshop'){hiringArrival=true;el('create').textContent='Joining your lounge…';await window.BacCampus?.welcomeAgent(createdId);if(room!=='workshop'||root.dataset.worldOverview==='true'){fillCreator(true);return;}}
     const stayHere=mode==='edit'&&editingInPlace;editingInPlace=false;fillCreator(true);if(stayHere)renderRoomVisibility();else setRoom('lounge');el('workshop').scrollTop=0;
     alert(mode==='edit'?'Your agent is updated.':(data.profile?.name||payload.name)+' has joined your lounge. Give your new teammate a mission.');
-  }catch(error){alert(error.message,'error');}finally{hiringArrival=false;el('onboarding').inert=false;el('create').disabled=draftMode==='new'&&(data.agents?.length||0)>=(data.agentLimit||12);}
+  }catch(error){alert(error.message,'error');}finally{hiringArrival=false;el('onboarding').inert=false;updateCreatorSubmit();}
 };
 // Selecting a resident updates its workspace without moving the visitor's view.
 root.addEventListener('bac:collection-select',e=>{editingInPlace=false;renderRoomVisibility();switchAgent(e.detail);});
@@ -83639,7 +83701,7 @@ async function openModelConnections(){
   <div id="studio-connection-editor" hidden></div>
   <div class="connection-section-heading"><h3>Models</h3></div>
   <div class="connection-personal">
-   <strong>Hired agents</strong><p>Local by default. Change in Hiring or Edit agent.</p>
+   <strong>Hired agents</strong><p>Choose in Hiring or Edit agent.</p>
    ${inherited.length?`<details class="connection-inherited"><summary>Shared default <span>${inherited.length} earlier ${inherited.length===1?'agent':'agents'}</span></summary><p>${escape(inherited.map(agent=>agent.name).join(', '))}</p><label for="studio-route-lounge">Connection</label><select id="studio-route-lounge" data-route="lounge" aria-describedby="studio-connection-lounge-effective">${routeOptions(true)}</select><span id="studio-connection-lounge-effective" class="connection-effective" role="status"></span></details>`:''}
   </div>
   <div class="connection-scenarios">${scenarioRoute('event-brief','Event Brief')}${scenarioRoute('plan','Open Task')}</div>
@@ -83665,6 +83727,7 @@ async function openModelConnections(){
   for(const source of ['local','api']){const c=state.connections[source],badge=panel.querySelector(`[data-connection-status="${source}"]`);badge.textContent=c.ready?'Ready':['Not configured','Disabled','Checking…'].includes(c.message)?c.message:'Unavailable';badge.title=c.message;badge.dataset.ready=String(c.ready);const summary=panel.querySelector(`[data-connection-summary="${source}"]`);summary.textContent=c.model?[c.provider==='local'?'':({nvidia:'NVIDIA Inference',openai:'OpenAI',anthropic:'Anthropic'}[c.provider]),c.model].filter(Boolean).join(' · '):source==='local'?'Connect a model running on your host.':'NVIDIA · OpenAI · Anthropic';summary.title=c.model||'';const toggle=panel.querySelector(`[data-connection-enable="${source}"]`);if(!working)toggle.checked=c.enabled&&c.message!=='Not configured';toggle.disabled=working;}
   for(const select of panel.querySelectorAll('select[data-route]')){
    select.value=prefs[select.dataset.route];select.disabled=working;
+   for(const option of select.options)option.disabled=option.value!=='auto'&&!state.connections[option.value].ready;
    showEffective(select.dataset.route,el('connection-'+select.dataset.route+'-effective'));
   }
   el('connections-save').disabled=working||!dirty();el('connections-check').disabled=working;

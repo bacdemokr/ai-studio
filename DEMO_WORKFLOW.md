@@ -86,7 +86,7 @@ For a fresh demonstration, reset Open Task before choosing the next team. Reset 
 
 ## 2. Before presenting
 
-- Connect Local and/or External Endpoint in **Settings > Model**. Under **Models**, choose the **Event Brief** and **Open Task** connections independently. New hired agents default to Local. To choose another model, expand **Model** below **OpenShell protection** during Hiring or in **Edit agent**. Earlier agents without an individual choice retain their shared default; built-in teams default to Automatic (External first).
+- Connect Local and/or External Endpoint in **Settings > Model**. Under **Models**, choose the **Event Brief** and **Open Task** connections independently. New hired agents default to Local when connected. To choose another model, expand **Model** below **OpenShell protection** during Hiring or in **Edit agent**. Earlier agents without an individual choice retain their shared default; built-in teams default to Automatic (External first).
 - Rehearse the selected request on the actual model and hardware. Endpoint timings in the examples are observed runs, not local Spark benchmarks or guaranteed completion times.
 - For an offline rehearsal, select Local and try Event Brief with Riley, Alex and Morgan (omit Dylan’s live research), or the store-email / ping-pong Open Task examples without external sources. Web research, live weather and Telegram still need internet. The email example does not demonstrate enforced filesystem blocking; that remains separate work.
 - **Files** shows uploads/results for the selected agent only and is hidden when empty. Definition files use **Instructions → Copy**; result files support preview/download.

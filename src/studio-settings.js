@@ -129,7 +129,7 @@ async function openModelConnections(){
   <div id="studio-connection-editor" hidden></div>
   <div class="connection-section-heading"><h3>Models</h3></div>
   <div class="connection-personal">
-   <strong>Hired agents</strong><p>Local by default. Change in Hiring or Edit agent.</p>
+   <strong>Hired agents</strong><p>Choose in Hiring or Edit agent.</p>
    ${inherited.length?`<details class="connection-inherited"><summary>Shared default <span>${inherited.length} earlier ${inherited.length===1?'agent':'agents'}</span></summary><p>${escape(inherited.map(agent=>agent.name).join(', '))}</p><label for="studio-route-lounge">Connection</label><select id="studio-route-lounge" data-route="lounge" aria-describedby="studio-connection-lounge-effective">${routeOptions(true)}</select><span id="studio-connection-lounge-effective" class="connection-effective" role="status"></span></details>`:''}
   </div>
   <div class="connection-scenarios">${scenarioRoute('event-brief','Event Brief')}${scenarioRoute('plan','Open Task')}</div>
@@ -155,6 +155,7 @@ async function openModelConnections(){
   for(const source of ['local','api']){const c=state.connections[source],badge=panel.querySelector(`[data-connection-status="${source}"]`);badge.textContent=c.ready?'Ready':['Not configured','Disabled','Checking…'].includes(c.message)?c.message:'Unavailable';badge.title=c.message;badge.dataset.ready=String(c.ready);const summary=panel.querySelector(`[data-connection-summary="${source}"]`);summary.textContent=c.model?[c.provider==='local'?'':({nvidia:'NVIDIA Inference',openai:'OpenAI',anthropic:'Anthropic'}[c.provider]),c.model].filter(Boolean).join(' · '):source==='local'?'Connect a model running on your host.':'NVIDIA · OpenAI · Anthropic';summary.title=c.model||'';const toggle=panel.querySelector(`[data-connection-enable="${source}"]`);if(!working)toggle.checked=c.enabled&&c.message!=='Not configured';toggle.disabled=working;}
   for(const select of panel.querySelectorAll('select[data-route]')){
    select.value=prefs[select.dataset.route];select.disabled=working;
+   for(const option of select.options)option.disabled=option.value!=='auto'&&!state.connections[option.value].ready;
    showEffective(select.dataset.route,el('connection-'+select.dataset.route+'-effective'));
   }
   el('connections-save').disabled=working||!dirty();el('connections-check').disabled=working;

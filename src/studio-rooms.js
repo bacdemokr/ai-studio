@@ -1,5 +1,5 @@
 // Three places in one studio: creation, a growing personal collection, and crew work.
-let editingInPlace=false,hiringArrival=false,draftNameEdited=false,draftModel='local';
+let editingInPlace=false,hiringArrival=false,draftNameEdited=false,draftModel='',draftModelChosen=false,creatorModelMarkup='';
 function personalModel(profile){
  profile=(profile?.key&&(data.agents||[]).find(row=>row.key===profile.key))||profile;
  const id=profile?.model||'shared',choice=runtime.personalModels?.models?.find(row=>row.id===id);
@@ -7,17 +7,64 @@ function personalModel(profile){
 }
 function personalReady(profile){return !!runtime.gateway&&personalModel(profile).connected;}
 function personalModelNotice(profile){return profile?.model==='local'?'Local model is not connected. Connect Local in Settings or choose another model in Edit agent.':'This agent’s model is unavailable. Check Settings or choose another model in Edit agent.';}
-function renderCreatorModels(){
- const select=el('agent-model'),rows=runtime.personalModels?.models||[{id:'local',label:'Local',source:'local',connected:!!runtime.model},{id:'shared',label:'Shared default',source:'shared',connected:!!runtime.model}];
+function creatorModelChoices(){
+ const rows=runtime.personalModels?.models||[{id:'local',label:'Local',source:'local',connected:!!runtime.model},{id:'shared',label:'Shared default',source:'shared',connected:!!runtime.model}];
  const choices=rows.filter(row=>row.id!=='shared'||draftModel==='shared');
- if(!choices.some(row=>row.id===draftModel))choices.push({...personalModel({model:draftModel}),source:'api'});
- const options=source=>choices.filter(row=>row.source===source).map(row=>`<option value="${escape(row.id)}">${escape(row.label)}</option>`).join('');
- const html=options('local')+(choices.some(row=>row.source==='api')?'<optgroup label="External Endpoint">'+options('api')+'</optgroup>':'')+options('shared');
- if(select.innerHTML!==html)select.innerHTML=html;select.value=draftModel;
- const chosen=personalModel({model:draftModel});el('agent-model-summary').textContent=draftModel==='local'?'Local':chosen.label;
- el('agent-model-note').textContent=chosen.connected?'Uses the connections configured in Settings.':personalModelNotice({model:draftModel});
+ if(draftModel&&!choices.some(row=>row.id===draftModel))choices.push({...personalModel({model:draftModel}),source:'api'});
+ return choices;
 }
-el('agent-model').onchange=()=>{draftModel=el('agent-model').value;renderCreatorModels();};
+function creatorModelAllowed(){
+ // Existing agents can still change their name/persona while their saved model is offline.
+ return !!draftModel&&(personalModel({model:draftModel}).connected||(draftMode==='edit'&&draftModel===(data.profile?.model||'shared')));
+}
+function updateCreatorSubmit(){
+ el('create').disabled=hiringArrival||!creatorModelAllowed()||(draftMode==='new'&&(data.agents?.length||0)>=(data.agentLimit||12));
+}
+function renderCreatorModels(){
+ const input=el('agent-model-search'),results=el('agent-model-results'),choices=creatorModelChoices();
+ if(draftMode==='new'&&!draftModelChosen)draftModel=choices.find(row=>row.id==='local')?.connected?'local':'';
+ const query=input.value.trim().toLowerCase(),defaultApi=runtime.modelConnections?.connections?.api?.model;
+ const sourceName=row=>row.source==='api'?'External Endpoint':row.source==='local'?'Local':'Shared default';
+ const matches=choices.filter(row=>(row.label+' '+row.id+' '+sourceName(row)).toLowerCase().includes(query));
+ const priority=row=>row.source==='local'?0:row.id===draftModel?1:row.id.split('/').slice(2).join('/')===defaultApi?2:3;
+ matches.sort((a,b)=>priority(a)-priority(b)||a.label.localeCompare(b.label));
+ const html=matches.slice(0,40).map(row=>{
+  const title=row.source==='local'?'Local':row.label.split('/').at(-1),description=row.source==='local'?(row.label.replace(/^Local(?: - )?/,'')||'On this host'):row.source==='api'?row.id.split('/').slice(2).join('/'):'Uses the shared connection';
+  return `<button type="button" data-agent-model-choice="${escape(row.id)}" aria-pressed="${row.id===draftModel}" ${row.connected?'':'disabled'} title="${escape(row.label)}"><span><strong>${escape(title)}</strong><small>${escape(description)}</small></span><span class="studio-model-choice-state">${row.connected?(row.id===draftModel?'Selected':sourceName(row)):'Not connected'}</span></button>`;
+ }).join('')||'<p class="studio-model-empty">No matching models</p>';
+ const focused=document.activeElement?.closest('[data-agent-model-choice]')?.dataset.agentModelChoice;
+ // Compare the source markup: the browser normalizes boolean attributes and spacing.
+ // Replacing unchanged rows on each poll can interrupt clicks or keyboard selection.
+ if(creatorModelMarkup!==html){creatorModelMarkup=html;results.innerHTML=html;if(focused)[...results.querySelectorAll('button')].find(button=>button.dataset.agentModelChoice===focused&&!button.disabled)?.focus({preventScroll:true});}
+ const chosen=draftModel?personalModel({model:draftModel}):null,summary=el('agent-model-summary');
+ summary.textContent=chosen?(draftModel==='local'?'Local':chosen.label.split('/').at(-1)):'Choose a model';summary.title=chosen?.label||'';summary.dataset.ready=String(!!chosen?.connected);
+ const missing=!chosen?.connected;
+ el('agent-model-note').textContent=matches.length>40?'Showing 40 models. Refine your search.':!chosen?'Choose a connected model.':missing?'Selected model is not connected.':'';
+ el('agent-model-note').hidden=!el('agent-model-note').textContent;el('agent-model-settings').hidden=!missing;
+ updateCreatorSubmit();
+}
+function chooseCreatorModel(id){
+ if(!creatorModelChoices().some(row=>row.id===id&&row.connected))return;
+ draftModel=id;draftModelChosen=true;el('agent-model-search').value='';renderCreatorModels();
+ el('agent-model-panel').open=false;el('agent-model-panel').querySelector('summary').focus({preventScroll:true});
+}
+el('agent-model-search').oninput=renderCreatorModels;
+el('agent-model-search').onkeydown=event=>{
+ if(event.key==='Enter'){
+  event.preventDefault();const enabled=el('agent-model-results').querySelectorAll('button:not(:disabled)');
+  if(enabled.length===1)chooseCreatorModel(enabled[0].dataset.agentModelChoice);
+ }else if(event.key==='ArrowDown'){event.preventDefault();el('agent-model-results').querySelector('button:not(:disabled)')?.focus();}
+};
+el('agent-model-results').onclick=event=>{const button=event.target.closest('[data-agent-model-choice]');if(button&&!button.disabled)chooseCreatorModel(button.dataset.agentModelChoice);};
+el('agent-model-results').onkeydown=event=>{
+ if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;
+ const buttons=[...el('agent-model-results').querySelectorAll('button:not(:disabled)')];if(!buttons.length)return;
+ event.preventDefault();const index=buttons.indexOf(document.activeElement);
+ buttons[event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+(event.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length].focus();
+};
+el('agent-model-panel').addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();el('agent-model-panel').open=false;el('agent-model-panel').querySelector('summary').focus();}});
+el('agent-model-panel').addEventListener('toggle',()=>{if(el('agent-model-panel').open)renderCreatorModels();});
+el('agent-model-settings').onclick=openModelSettings;
 const appearanceColors={green:'#76b900',cyan:'#55bfff',amber:'#f4b34f',coral:'#ff8873',violet:'#b49aff',ice:'#cbddea'};
 const appearanceNames={classic:'Jinny',round:'Orbit',rover:'Scout',operative:'Smith',claw:'Pixel',crab:'Sage'};
 const roomCopy={
@@ -65,7 +112,7 @@ function fillCreator(creating){
   const p=creating?{name,persona:'guide',purpose:roleTemplates[0].purpose,skills:[...roleTemplates[0].skills],avatar:defaults}:data.profile;
   if(!p)return fillCreator(true);
   draftNameEdited=!creating;
-  draftModel=creating?'local':p.model||'shared';el('agent-model-panel').open=false;renderCreatorModels();
+  draftModel=creating?'':p.model||'shared';draftModelChosen=!creating;el('agent-model-search').value='';el('agent-model-panel').open=false;renderCreatorModels();
   el('name').value=p.name;writeCreatorPrompt(savedTonePrompt(p),p.purpose||(creating?'':personas[p.persona]));persona=p.persona;draftAvatar={...(p.avatar||defaults)};el('accessory').value=draftAvatar.accessory;
   draftTone=p.tone||'kind';
   el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(roleTemplates[Number(b.dataset.roleTemplate)]?.purpose===p.purpose)));
@@ -77,7 +124,7 @@ function fillCreator(creating){
   el('creator-title').textContent=creating?'Hire your own Agent.':'Edit '+p.name;
   el('creator-note').hidden=true;
   el('creator-note').textContent='';
-  el('create').textContent=creating?'Hire my agent':'Save my agent';el('cancel-create').hidden=!data.profile;el('create').disabled=creating&&n>=(data.agentLimit||12);
+  el('create').textContent=creating?'Hire my agent':'Save my agent';el('cancel-create').hidden=!data.profile;updateCreatorSubmit();
   updateDraft();el('workshop').scrollTop=0;
 }
 function setRoom(next,options={}){
@@ -206,7 +253,7 @@ el('delete-agent').onclick=()=>{
 };
 el('connection-setup').onclick=setup;el('connection-security').onclick=()=>setRoom('policies');
 el('onboarding').onsubmit=async e=>{
-  e.preventDefault();if(hiringArrival)return;syncCreatorTone();const mode=draftMode,target=mode==='new'?agentId:draftOwner,first=!data.agents?.length;
+  e.preventDefault();if(hiringArrival)return;if(!creatorModelAllowed()){el('agent-model-panel').open=true;el('agent-model-search').focus();return;}syncCreatorTone();const mode=draftMode,target=mode==='new'?agentId:draftOwner,first=!data.agents?.length;
   const payload={model:draftModel,name:el('name').value,...creatorPrompt(),persona,tone:draftTone,verbosity:'balanced',skills:[...el('skill-picker').querySelectorAll('input:checked')].map(x=>x.value),avatar:{...draftAvatar},protection:el('onboarding').querySelector('[name=protection]:checked').value};
   hiringArrival=true;el('create').disabled=true;el('onboarding').inert=true;
   try{
@@ -217,7 +264,7 @@ el('onboarding').onsubmit=async e=>{
     if(mode==='new'&&room==='workshop'){hiringArrival=true;el('create').textContent='Joining your lounge…';await window.BacCampus?.welcomeAgent(createdId);if(room!=='workshop'||root.dataset.worldOverview==='true'){fillCreator(true);return;}}
     const stayHere=mode==='edit'&&editingInPlace;editingInPlace=false;fillCreator(true);if(stayHere)renderRoomVisibility();else setRoom('lounge');el('workshop').scrollTop=0;
     alert(mode==='edit'?'Your agent is updated.':(data.profile?.name||payload.name)+' has joined your lounge. Give your new teammate a mission.');
-  }catch(error){alert(error.message,'error');}finally{hiringArrival=false;el('onboarding').inert=false;el('create').disabled=draftMode==='new'&&(data.agents?.length||0)>=(data.agentLimit||12);}
+  }catch(error){alert(error.message,'error');}finally{hiringArrival=false;el('onboarding').inert=false;updateCreatorSubmit();}
 };
 // Selecting a resident updates its workspace without moving the visitor's view.
 root.addEventListener('bac:collection-select',e=>{editingInPlace=false;renderRoomVisibility();switchAgent(e.detail);});

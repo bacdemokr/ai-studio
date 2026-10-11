@@ -160,7 +160,7 @@ While a `/goal` invocation is running, Casey's chat and the active specialist's 
 
 ### Shared connections and scenario models
 
-Settings → Model configures Local and External Endpoint once, then **Models** provides separate **Event Brief** and **Open Task** connection selectors. Hired agents use their individual models from Hiring/Edit agent; new hires default to Local. For built-in teams and earlier agents using the shared default, an unavailable preferred source can fall back to the other ready source; active calls are not replayed. Neither connection being ready blocks model work without blocking Settings.
+Settings → Model configures Local and External Endpoint once, then **Models** provides separate **Event Brief** and **Open Task** connection selectors. Hired agents use their individual models from Hiring/Edit agent; new hires default to Local when connected. For built-in teams and earlier agents using the shared default, an unavailable preferred source can fall back to the other ready source; active calls are not replayed. Neither connection being ready blocks model work without blocking Settings.
 
 Event Brief uses one connection model for Riley, Dylan, Alex and Morgan. Open Task on NVIDIA supports per-agent choices directly in **Standby specialists**. Defaults are Ultra for Casey, Cody and Iris, and Lightning for Scout, Ada and Vera. Local and other external providers use their selected connection model for all members. See [model selection](plan-team-models.md).
 
