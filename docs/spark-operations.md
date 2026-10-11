@@ -57,7 +57,7 @@ From a laptop:
 ssh -N -L 8080:127.0.0.1:8080 USER@SPARK
 ```
 
-Open **http://localhost:8080 → Settings → Model**. For the managed model choose **Local → Configure**, endpoint `http://127.0.0.1:8000/v1`, model `bac-local`, then **Connect & enable**. Choose the stages that use it under **Stage connections**; endpoint configuration is shared.
+Open **http://localhost:8080 → Settings → Model**. For the managed model choose **Local → Configure**, endpoint `http://127.0.0.1:8000/v1`, model `bac-local`, then **Connect & enable**. Select Local under **Built-in teams → Team connection** for both scenarios, or **Choose separately by scenario…**. Hired agents default to Local; their model can be changed in Hiring or Edit agent.
 
 `./bac dev preview` is the foreground development/preview alternative, not another required setup step. Stop it before starting a managed app on the same port. `./bac dev start --port 8081` uses another app port; adjust the tunnel. `--host 0.0.0.0` enables trusted workshop LAN access, while Settings still requires localhost/tunnel access. Model and agent gateways bind to loopback.
 

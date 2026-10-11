@@ -47,7 +47,7 @@ def public(state=None):
         choices.append({'id': 'api/' + api['provider'] + '/' + model,
                         'label': row.get('label', model), 'source': 'api',
                         'connected': bool(api['ready'])})
-    choices.append({'id': LEGACY, 'label': 'Use Lounge settings', 'source': 'shared',
+    choices.append({'id': LEGACY, 'label': 'Shared default', 'source': 'shared',
                     'connected': bool(state['loungeSource'])})
     return {'default': DEFAULT, 'models': choices}
 

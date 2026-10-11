@@ -12,6 +12,9 @@ from test_studio import Adapter
 
 class ConnectionTests(unittest.TestCase):
     def setUp(self):
+        for name, empty in [('_checks', {}), ('_pending', set()), ('_discovered', {})]:
+            cache = patch.object(connections, name, empty)
+            cache.start(); self.addCleanup(cache.stop)
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         env=patch.dict(os.environ,{'BAC_DATA_DIR':self.temp.name});env.start();self.addCleanup(env.stop)
         # Connection fixtures must not discover a real host model in the background.
@@ -217,7 +220,9 @@ class LocalDiscoveryTests(unittest.TestCase):
         self.addCleanup(temp.cleanup)
         env = patch.dict(os.environ, {'BAC_DATA_DIR':temp.name})
         env.start(); self.addCleanup(env.stop)
-        connections._checks.clear(); connections._pending.clear(); connections._discovered.clear()
+        for name, empty in [('_checks', {}), ('_pending', set()), ('_discovered', {})]:
+            cache = patch.object(connections, name, empty)
+            cache.start(); self.addCleanup(cache.stop)
         connections.initialize()
         background = patch.object(connections, 'threading')
         self.thread = background.start().Thread; self.addCleanup(background.stop)

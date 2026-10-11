@@ -7,7 +7,7 @@
 ## Choose models
 
 1. Open **Settings → Model** and configure Local and/or External Endpoint.
-2. Under **Stage connections**, select the connection for Open Task and save.
+2. Under **Built-in teams**, select the **Team connection** and save. Use **Choose separately by scenario…** to change Open Task independently of Event Brief. Hired participants keep their individual models.
 3. With an external NVIDIA connection, expand **Standby specialists** in Open Task and click the model beside an agent. Search and select a model; the choice saves immediately.
 
 NVIDIA defaults are **Nemotron 3 Ultra** for Casey, Cody and Iris, and **Nemotron 3.5 Lightning** for Scout, Ada and Vera. The picker lists models available to the configured key. Saved choices apply to new work and cannot change while the team is busy or resetting.

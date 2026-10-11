@@ -628,11 +628,11 @@
 .studio-team-connection-bar i{width:6px;height:6px;border-radius:50%;background:#8e9aa3}
 .studio-team-connection-bar[data-connected=true] i{background:#76b900;box-shadow:0 0 8px #76b90040}
 #agent-campus .studio-team-connection-bar button{font-size:12px;border:1px solid #3b505c;background:#1b2b35;color:#dce8ef;border-radius:7px;padding:7px 10px;white-space:nowrap}
-#studio-model-connections{max-width:850px}.connection-intro{color:#a7bbc7;line-height:1.6}.connection-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:24px 0 16px}.connection-card{padding:22px;border:1px solid #354e5d;border-radius:16px;background:#14232d}.connection-card header{display:flex;align-items:center;justify-content:space-between;gap:14px}.connection-card h3{margin:0}.connection-card p{overflow-wrap:anywhere;color:#a7bbc7;min-height:2.8em}.connection-card header span{font-size:12px;color:#efa6a0}.connection-card header span[data-ready=true]{color:#b8e275;background:#293d22;padding:5px 10px;border-radius:20px}.connection-card button{font-size:13px;margin-right:8px}.connection-heading{margin-top:30px}.connection-routes{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:20px 0}.connection-routes small{display:block;margin:10px 0}.connection-routes small[data-error=true]{color:#efa6a0}#studio-connection-editor{padding:22px;margin-top:20px;border:1px solid #49602e;border-radius:16px;background:#15242d}
+#studio-model-connections{max-width:850px}.connection-intro{color:#a7bbc7;line-height:1.6}.connection-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:24px 0 16px}.connection-card{padding:22px;border:1px solid #354e5d;border-radius:16px;background:#14232d}.connection-card header{display:flex;align-items:center;justify-content:space-between;gap:14px}.connection-card h3{margin:0}.connection-card p{overflow-wrap:anywhere;color:#a7bbc7;min-height:2.8em}.connection-card header span{font-size:12px;color:#efa6a0}.connection-card header span[data-ready=true]{color:#b8e275;background:#293d22;padding:5px 10px;border-radius:20px}.connection-card button{font-size:13px;margin-right:8px}#studio-connection-editor{padding:22px;margin-top:20px;border:1px solid #49602e;border-radius:16px;background:#15242d}
 .connection-tabs{display:flex;gap:24px;border-bottom:1px solid #354e5d;margin-bottom:24px}.connection-tabs button{background:none!important;border:0!important;border-radius:0!important;padding:12px 0!important;color:#b7c7d2!important}.connection-tabs button[aria-current=page]{color:#fff!important;border-bottom:2px solid #76b900!important}.connection-toggle{display:flex!important;align-items:center;gap:10px;margin:0!important}.connection-toggle input{width:18px!important;height:18px!important;margin:0!important;accent-color:#76b900}.connection-toggle strong{font-size:18px;white-space:nowrap}
 
 #studio-local-task-warning{margin:12px 0;padding:12px 16px;border:1px solid #766338;border-left:3px solid #d5aa4d;border-radius:10px;background:#29271e;color:#e4cc92;font-size:13px;line-height:1.6}#studio-local-task-warning[hidden]{display:none}
-/* Model settings: connection inventory above three independent stage rows. */
+/* Configure connections once; individual agents and built-in teams choose separately. */
 #studio-model-connections .connection-section-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:22px 0 12px}
 #studio-model-connections .connection-section-heading h3{font-size:16px;margin:0;font-weight:650;letter-spacing:0}
 #studio-model-connections .connection-text-button{border:0;background:transparent;color:#aebfcb;font-size:12px;font-weight:500;padding:6px 0;border-radius:4px;box-shadow:none}
@@ -641,23 +641,35 @@
 #studio-model-connections .connection-card{padding:18px 20px;border-color:#304451;border-radius:12px;background:#14212a}
 #studio-model-connections .connection-toggle strong{font-size:15px}
 #studio-model-connections .connection-card header span{font-size:11px;max-width:115px;text-align:right}
-#studio-model-connections .connection-card p{font-size:12px;line-height:1.6;margin:14px 0 10px;min-height:38px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#studio-model-connections .connection-card p{font-size:12px;line-height:1.6;margin:14px 0 10px;min-height:20px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 #studio-model-connections .connection-hint{font-size:12px;color:#8fa5b4;margin:0 0 16px;line-height:1.6}
-#studio-model-connections .connection-routes{display:block;margin:0;border:1px solid #304451;border-radius:12px;overflow:hidden}
-#studio-model-connections .connection-route{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:17px 20px;border-bottom:1px solid #293d49}
-#studio-model-connections .connection-route:last-child{border-bottom:0}
-#studio-model-connections .connection-route-name{display:grid;grid-template-columns:46px 1fr;gap:4px 10px;align-items:baseline}
-#studio-model-connections .connection-route-name small{margin:0;color:#76909f;font-size:11px}
-#studio-model-connections .connection-route-name strong{font-size:14px;font-weight:600}
-#studio-model-connections .connection-route-name span{grid-column:2;color:#90a7b5;font-size:11px;line-height:1.5}
-#studio-model-connections .connection-route-name span[data-error=true]{color:#ee9c91}
-#studio-model-connections .connection-choice{display:flex;padding:3px;gap:3px;border:1px solid #334956;border-radius:9px;background:#0f1921;flex-shrink:0}
-#studio-model-connections .connection-choice button{min-width:86px;border:0;border-radius:6px;background:transparent;color:#9db0bd;padding:8px 12px;font-size:12px;box-shadow:none;font-weight:500}
-#studio-model-connections .connection-choice button[aria-pressed=true]{background:#2d4124;color:#d1eda6}
-#studio-model-connections .connection-choice button:disabled{opacity:.35;cursor:not-allowed}
-#studio-model-connections .connection-footer{display:flex;justify-content:space-between;align-items:center;gap:20px;padding-top:18px;margin-top:8px;border-top:1px solid #2b3c47}
+#studio-model-connections .connection-assignment{padding:18px 20px;border:1px solid #304451;border-radius:12px;background:#111c24;margin-top:12px}
+#studio-model-connections .connection-personal{border-left:3px solid #78adc4}
+#studio-model-connections .connection-team{border-left:3px solid #91bb53}
+#studio-model-connections .connection-assignment-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}
+#studio-model-connections .connection-assignment h4{margin:0;font-size:15px;font-weight:650;letter-spacing:0}
+#studio-model-connections .connection-tag{color:#a0b6c5;font-size:11px;line-height:1.5;text-align:right}
+#studio-model-connections .connection-assignment p{margin:8px 0 0;font-size:12px;line-height:1.6;color:#9aafbd}
+#studio-model-connections .connection-assignment label{font-size:12px;color:#bdcdd8;display:block;margin:16px 0 6px}
+#studio-model-connections .connection-assignment select{box-sizing:border-box;width:100%;margin:0;padding:10px 12px;border:1px solid #3a505f;border-radius:8px;background:#192934;color:#e0ebf2;font:inherit;font-size:13px}
+#studio-model-connections .connection-assignment select:focus-visible{outline:2px solid #91bb53;outline-offset:2px}
+#studio-model-connections .connection-effective{display:block;font-size:11px;line-height:1.5;margin-top:8px;color:#a9cb85}
+#studio-model-connections .connection-effective[data-state=fallback]{color:#e1bf80}
+#studio-model-connections .connection-effective[data-state=unavailable]{color:#ee9c91}
+#studio-model-connections .connection-effective[hidden],#studio-scenario-routes[hidden]{display:none}
+#studio-model-connections .connection-fallback-note{display:block;color:#91a7b6;font-size:11px;line-height:1.6;margin-top:12px}
+#studio-model-connections .connection-scenarios{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;padding-top:14px;border-top:1px solid #293d49}
+#studio-model-connections .connection-scenario{min-width:0}
+#studio-model-connections .connection-scenario label{margin-top:0}
+#studio-model-connections .connection-inherited{border-top:1px solid #293d49;margin-top:14px;padding-top:12px}
+#studio-model-connections .connection-inherited summary{cursor:pointer;color:#b6c8d5;font-size:12px}
+#studio-model-connections .connection-inherited summary span{color:#91a7b6;margin-left:8px;font-size:11px}
+#studio-model-connections .connection-inherited p{overflow-wrap:anywhere}
+@media(max-width:600px){#studio-model-connections .connection-grid,#studio-model-connections .connection-scenarios{grid-template-columns:1fr}#studio-model-connections .connection-assignment-heading{align-items:flex-start}#studio-model-connections .connection-assignment{padding:16px}#studio-model-connections .connection-inherited summary span{display:block;margin:4px 0 0}}
+#studio-model-connections .connection-footer{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:12px 0 4px;margin-top:18px;border-top:1px solid #2b3c47;position:sticky;bottom:-2px;z-index:1;background:#141b23;box-shadow:0 -10px 16px #141b23}
 #studio-model-connections .connection-footer .studio-primary{margin-left:auto;border-radius:8px;padding:10px 20px;font-size:13px}
-#studio-model-connections #studio-connections-status{font-size:12px;line-height:1.5;min-height:18px;margin:14px 0 0;color:#a7bbc7}
+#studio-model-connections .connection-footer .studio-primary:disabled{opacity:.45;cursor:default}
+#studio-model-connections #studio-connections-status{font-size:12px;line-height:1.5;min-height:18px;margin:0;color:#a7bbc7}
 #studio-model-connections .connection-card header span[data-ready=false]{color:#91a5b2}
 
 #studio-standby #studio-standby-list .specialist-model-edit{display:flex;align-items:center;gap:12px;padding:8px 12px;border:1px solid #425b69;border-radius:8px;background:#1b2e3a;color:#e1ebf1;cursor:pointer;text-align:left}

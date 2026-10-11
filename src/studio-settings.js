@@ -118,15 +118,31 @@ async function openModelConnections(){
  try{[state,settings]=await Promise.all([api('settings/connections'),api('settings')]);}
  catch(error){alert(error.message,'error');return;}
  if(request!==settingsOpenRequest||revision!==dialogRevision)return;
+ const inherited=(data.agents||[]).filter(agent=>(agent.model||'shared')==='shared');
+ const routeOptions=(legacy=false)=>`<option value="auto">Automatic (${legacy?'Local':'External'} first)</option><option value="local">Local</option><option value="api">External Endpoint</option>`;
+ const scenarioRoute=(key,title)=>`<div class="connection-scenario"><label for="studio-route-${key}">${title}</label><select id="studio-route-${key}" data-route="${key}" aria-describedby="studio-connection-${key}-effective">${routeOptions()}</select><span id="studio-connection-${key}-effective" class="connection-effective" role="status"></span></div>`;
  dialog('Settings',`<form id="studio-config-form" novalidate>
   <nav class="connection-tabs" role="tablist" aria-label="Settings">${['model','location','telegram','reset'].map((tab,index)=>`<button type="button" role="tab" id="studio-settings-${tab}-tab" data-connection-tab="${tab}" data-settings-tab="${tab}" aria-controls="studio-settings-${tab}-panel" aria-selected="${index===0}" tabindex="${index===0?0:-1}" ${index===0?'aria-current="page"':''}>${tab[0].toUpperCase()+tab.slice(1)}</button>`).join('')}</nav>
   <section id="studio-settings-model-panel" role="tabpanel" aria-labelledby="studio-settings-model-tab"><div id="studio-model-connections">
-  <div class="connection-section-heading"><h3>Connections</h3><button type="button" class="connection-text-button" id="studio-connections-check">↻ Refresh</button></div>
+  <div class="connection-section-heading"><h3>Available connections</h3><button type="button" class="connection-text-button" id="studio-connections-check">↻ Refresh</button></div>
   <div class="connection-grid">${['local','api'].map(source=>`<section class="connection-card" data-source="${source}"><header><label class="connection-toggle"><input type="checkbox" data-connection-enable="${source}"><strong>${source==='local'?'Local':'External Endpoint'}</strong></label><span data-connection-status="${source}" role="status"></span></header><p data-connection-summary="${source}"></p><button type="button" class="connection-text-button" data-connection-edit="${source}">Configure →</button></section>`).join('')}</div>
   <div id="studio-connection-editor" hidden></div>
-  <div class="connection-section-heading"><h3>Stage connections</h3></div>
-  <div class="connection-routes">${[['lounge','01 / 02','Hiring & Agent lounge'],['event-brief','03-1','Event Brief'],['plan','03-2','Open Task']].map(([key,number,title])=>`<section class="connection-route"><div class="connection-route-name"><small>${number}</small><strong>${escape(title)}</strong><span id="studio-connection-${key}-effective" role="status"></span></div><div class="connection-choice" role="group" aria-label="${escape(title)} connection">${['local','api'].map(source=>`<button type="button" data-route="${key}" data-route-source="${source}" aria-pressed="false">${source==='local'?'Local':'External'}</button>`).join('')}</div></section>`).join('')}</div>
-  <p id="studio-connections-status" role="status"></p><div class="connection-footer"><button type="button" id="studio-connections-save" class="studio-primary">Save changes</button></div></div></section>
+  <div class="connection-section-heading"><h3>Model assignment</h3></div>
+  <section class="connection-assignment connection-personal">
+   <div class="connection-assignment-heading"><h4>Hired agents</h4><span class="connection-tag">Individual models</span></div>
+   <p>New agents start with Local. Choose a model in Hiring or Edit agent.</p>
+   ${inherited.length?`<details class="connection-inherited"><summary>Earlier agents <span>${inherited.length} using a shared default</span></summary><p>${escape(inherited.map(agent=>agent.name).join(', '))}</p><label for="studio-route-lounge">Shared default</label><select id="studio-route-lounge" data-route="lounge" aria-describedby="studio-connection-lounge-effective">${routeOptions(true)}</select><span id="studio-connection-lounge-effective" class="connection-effective" role="status"></span></details>`:''}
+  </section>
+  <section class="connection-assignment connection-team">
+   <div class="connection-assignment-heading"><h4>Built-in teams</h4><span class="connection-tag">Event Brief · Open Task</span></div>
+   <p>Hired agents keep their own models when joining Open Task.</p>
+   <label for="studio-team-route">Team connection</label>
+   <select id="studio-team-route" aria-controls="studio-scenario-routes" aria-describedby="studio-connection-team-effective">${routeOptions()}<option value="custom">Choose separately by scenario…</option></select>
+   <span id="studio-connection-team-effective" class="connection-effective" role="status"></span>
+   <div id="studio-scenario-routes" class="connection-scenarios" hidden>${scenarioRoute('event-brief','Event Brief')}${scenarioRoute('plan','Open Task')}</div>
+   <small class="connection-fallback-note">If unavailable, built-in teams use the other ready connection.</small>
+  </section>
+  <div class="connection-footer"><p id="studio-connections-status" role="status"></p><button type="button" id="studio-connections-save" class="studio-primary">Save changes</button></div></div></section>
   ${settingsUtilityPanels()}
   <p id="studio-settings-status" role="status"></p><div class="studio-dialog-actions"><button type="button" id="studio-start-agents" class="studio-secondary" ${runtime.gateway?'hidden':''}>Start agents</button><button type="submit" class="studio-primary" id="studio-save-settings" hidden>Save location</button></div></form>`);
  const form=el('config-form');
@@ -134,17 +150,31 @@ async function openModelConnections(){
  let working=false,editing=false,inventoryRevision=0,tab='model',telegram=null,telegramRevision=0;
  const current=()=>el('model-connections')===panel&&el('dialog').open&&agentId===owner&&selectedScenario===scenario;
  const prefs={lounge:state.loungePreference||'auto','event-brief':state.scenarioPreferences?.['event-brief']||'auto',plan:state.scenarioPreferences?.plan||'auto'};
- function paint(){
-  for(const source of ['local','api']){const c=state.connections[source],badge=panel.querySelector(`[data-connection-status="${source}"]`);badge.textContent=c.ready?'Ready':['Not configured','Disabled','Checking…'].includes(c.message)?c.message:'Unavailable';badge.title=c.message;badge.dataset.ready=String(c.ready);const summary=panel.querySelector(`[data-connection-summary="${source}"]`);summary.textContent=c.model?[c.provider==='local'?'':({nvidia:'NVIDIA Inference',openai:'OpenAI',anthropic:'Anthropic'}[c.provider]),c.model].filter(Boolean).join(' · '):source==='local'?'':'NVIDIA · OpenAI · Anthropic';summary.title=c.model||'';const toggle=panel.querySelector(`[data-connection-enable="${source}"]`);if(!working)toggle.checked=c.enabled&&c.message!=='Not configured';toggle.disabled=working;}
-  for(const kind of ['lounge','event-brief','plan']){
-   const preferred=prefs[kind]==='auto'?(kind==='lounge'?'local':'api'):prefs[kind],other=preferred==='local'?'api':'local',effective=state.connections[preferred].ready?preferred:state.connections[other].ready?other:null;
-   for(const button of panel.querySelectorAll(`[data-route="${kind}"]`)){const source=button.dataset.routeSource;button.setAttribute('aria-pressed',String(effective===source));button.disabled=working||!state.connections[source].ready;button.title=state.connections[source].ready?'Prefer '+(source==='local'?'Local':'External Endpoint'):'Connection not ready';}
-   const label=el('connection-'+kind+'-effective');label.textContent=!effective?'Model not connected':effective!==preferred?(preferred==='local'?'Local':'External')+' unavailable · Using '+(effective==='local'?'Local':'External'):'Using '+(effective==='local'?'Local':'External Endpoint');label.dataset.error=String(!effective);
-  }
-  el('connections-save').disabled=working;el('connections-check').disabled=working;
+ let savedPrefs={...prefs},separate=prefs['event-brief']!==prefs.plan;
+ const dirty=()=>Object.keys(prefs).some(key=>prefs[key]!==savedPrefs[key]);
+ function showEffective(kind,target){
+  if(!target)return;
+  const preferred=prefs[kind]==='auto'?(kind==='lounge'?'local':'api'):prefs[kind],other=preferred==='local'?'api':'local';
+  const effective=state.connections[preferred].ready?preferred:state.connections[other].ready?other:null;
+  const name=source=>source==='local'?'Local':'External Endpoint';
+  target.textContent=!effective?'No connection ready':effective!==preferred?name(preferred)+' unavailable · Using '+name(effective):'Using '+name(effective);
+  target.dataset.state=!effective?'unavailable':effective!==preferred?'fallback':'ready';
  }
+ function paint(){
+  for(const source of ['local','api']){const c=state.connections[source],badge=panel.querySelector(`[data-connection-status="${source}"]`);badge.textContent=c.ready?'Ready':['Not configured','Disabled','Checking…'].includes(c.message)?c.message:'Unavailable';badge.title=c.message;badge.dataset.ready=String(c.ready);const summary=panel.querySelector(`[data-connection-summary="${source}"]`);summary.textContent=c.model?[c.provider==='local'?'':({nvidia:'NVIDIA Inference',openai:'OpenAI',anthropic:'Anthropic'}[c.provider]),c.model].filter(Boolean).join(' · '):source==='local'?'Connect a model running on your host.':'NVIDIA · OpenAI · Anthropic';summary.title=c.model||'';const toggle=panel.querySelector(`[data-connection-enable="${source}"]`);if(!working)toggle.checked=c.enabled&&c.message!=='Not configured';toggle.disabled=working;}
+  for(const select of panel.querySelectorAll('select[data-route]')){
+   select.value=prefs[select.dataset.route];select.disabled=working;
+   showEffective(select.dataset.route,el('connection-'+select.dataset.route+'-effective'));
+  }
+  el('team-route').value=separate?'custom':prefs.plan;el('team-route').disabled=working;
+  el('scenario-routes').hidden=!separate;el('connection-team-effective').hidden=separate;
+  showEffective('plan',el('connection-team-effective'));
+  el('connections-save').disabled=working||!dirty();el('connections-check').disabled=working;
+ }
+ function changed(){notice.textContent=dirty()?'Unsaved changes':'';paint();}
  paint();
- for(const button of panel.querySelectorAll('[data-route]'))button.onclick=()=>{if(working)return;prefs[button.dataset.route]=button.dataset.routeSource;notice.textContent='Unsaved changes';paint();};
+ for(const select of panel.querySelectorAll('select[data-route]'))select.onchange=()=>{if(working)return;prefs[select.dataset.route]=select.value;changed();};
+ el('team-route').onchange=()=>{if(working)return;const value=el('team-route').value;separate=value==='custom';if(!separate)prefs['event-brief']=prefs.plan=value;changed();};
  async function refreshConnections(force=false){const revision=inventoryRevision;try{const next=await api('settings/connections'+(force?'/check':''),force?{}:undefined);if(current()&&revision===inventoryRevision&&!working){state=next;paint();}}catch(error){if(current())notice.textContent=error.message;}}
  const timer=setInterval(()=>{if(!current()){clearInterval(timer);return;}if(!working&&!editing)refreshConnections();},2500);
  el('connections-check').onclick=()=>refreshConnections(true);
@@ -208,14 +238,14 @@ async function openModelConnections(){
    utilityAction(async status=>{status.textContent='Checking bot…';const value=await api('telegram',values);if(current()){telegram=value;showTelegram();el('telegram-token').value='';status.textContent='Bot connected. Send a test to check delivery.';}});
   }
  };
- el('connections-save').onclick=async()=>{if(working)return;working=true;++inventoryRevision;paint();notice.textContent='Applying…';try{
-  const result=await api('settings/connections/preferences',{lounge:prefs.lounge,scenarios:{'event-brief':prefs['event-brief'],plan:prefs.plan}},owner);if(!current())return;state=result;
+ el('connections-save').onclick=async()=>{if(working||!dirty())return;working=true;++inventoryRevision;paint();notice.textContent='Applying…';try{
+  const result=await api('settings/connections/preferences',{lounge:prefs.lounge,scenarios:{'event-brief':prefs['event-brief'],plan:prefs.plan}},owner);if(!current())return;state=result;savedPrefs={...prefs};
   ++refreshVersion;stateCache.clear();data.teamConnection=result.teamConnection;runtime=await api('runtime');if(!current())return;render();notice.textContent='Saved. Applies to new requests.';
  }catch(error){if(current())notice.textContent=error.message;}finally{working=false;if(current())paint();}};
  for(const toggle of panel.querySelectorAll('[data-connection-enable]'))toggle.onchange=async()=>{
   if(working)return;const source=toggle.dataset.connectionEnable,on=toggle.checked;
   if(on&&state.connections[source].message==='Not configured'){editConnection(source);paint();return;}
-  working=true;++inventoryRevision;paint();try{state=await api('settings/connections/preferences',{lounge:state.loungePreference,[on?'enable':'disable']:source},owner);if(current())notice.textContent=on?'Enabled. Checking connection…':'Disabled.';}catch(error){if(current())notice.textContent=error.message;}finally{working=false;if(current()){paint();await refresh();}}
+  working=true;++inventoryRevision;paint();try{state=await api('settings/connections/preferences',{lounge:state.loungePreference,[on?'enable':'disable']:source},owner);if(current())notice.textContent=on?'Enabled.':'Disabled.';}catch(error){if(current())notice.textContent=error.message;}finally{working=false;if(current()){paint();await refresh();}}
  };
  for(const button of panel.querySelectorAll('[data-connection-edit]'))button.onclick=()=>editConnection(button.dataset.connectionEdit);
  function editConnection(source){

@@ -1,30 +1,72 @@
-const assert=require('node:assert/strict'),{chromium}=require('playwright');
-(async()=>{const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});try{
- const page=await browser.newPage({viewport:{width:1500,height:1100}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto(process.env.BASE_URL||'http://127.0.0.1:8083');await page.waitForFunction(()=>window.BacStudio&&window.BacCampus?.inspect().navigation?.overview);
- await page.waitForFunction(()=>BacStudio.inspect().runtime.version==='SCENARIO TEST FIXTURE');
- await page.locator('#studio-config').click();await page.locator('#studio-model-connections').waitFor();
- assert.equal(await page.getByRole('button',{name:'Recommended defaults'}).count(),0);await page.locator('#studio-connections-save').click();await page.waitForFunction(()=>document.querySelector('#studio-connections-status').textContent.startsWith('Saved.'));
- if(await page.locator('[data-connection-enable=api]').isChecked()){await page.locator('[data-connection-enable=api]').uncheck();await page.waitForFunction(()=>document.querySelector('[data-connection-status=api]').textContent==='Disabled');}
- await page.locator('[data-connection-edit=local]').click();await page.waitForFunction(()=>document.querySelector('#studio-connect-models').options.length>0);await page.locator('#studio-connect-model').fill('fixture-local-model');await page.locator('#studio-connect-apply').click();await page.waitForFunction(()=>document.querySelector('#studio-connect-status').textContent.startsWith('Connected.'));
- assert((await page.locator('#studio-connection-lounge-effective').textContent()).includes('Local'));assert((await page.locator('#studio-connection-plan-effective').textContent()).includes('Local'));
- await page.locator('#studio-connect-cancel').click();await page.locator('[data-connection-edit=api]').click();await page.locator('#studio-connect-provider').selectOption('openai');await page.locator('#studio-connect-key').fill('fixture-key-not-real');await page.locator('#studio-connect-model').fill('fixture-local-model');await page.locator('#studio-connect-apply').click();await page.waitForFunction(()=>document.querySelector('#studio-connect-status').textContent.startsWith('Connected.'));
- assert.equal(await page.locator('#studio-connect-key').inputValue(),'');
- assert((await page.locator('#studio-connection-lounge-effective').textContent()).includes('Local'));assert((await page.locator('#studio-connection-plan-effective').textContent()).includes('External'));
- await page.locator('#studio-connect-cancel').click();await page.locator('[data-connection-enable=api]').uncheck();await page.waitForFunction(()=>document.querySelector('[data-connection-status=api]').textContent==='Disabled');
- assert((await page.locator('#studio-connection-plan-effective').textContent()).includes('Local'));
- await page.locator('[data-connection-enable=local]').uncheck();await page.waitForFunction(()=>document.querySelector('#studio-connection-plan-effective').textContent==='Model not connected');
- assert.equal(await page.locator('#studio-connection-lounge-effective').textContent(),'Model not connected');
- await page.locator('[data-connection-enable=api]').check();await page.waitForFunction(()=>document.querySelector('[data-connection-status=api]').textContent==='Ready');assert((await page.locator('#studio-connection-lounge-effective').textContent()).includes('External'));
- await page.locator('[data-connection-enable=local]').check();await page.waitForFunction(()=>document.querySelector('[data-connection-status=local]').textContent==='Ready');
- await page.locator('[data-route=lounge][data-route-source=api]').click();await page.locator('[data-route=event-brief][data-route-source=api]').click();await page.locator('[data-route=plan][data-route-source=local]').click();await page.locator('#studio-connections-save').click();await page.waitForFunction(()=>document.querySelector('#studio-connections-status').textContent.startsWith('Saved.'));
- await page.screenshot({path:'/tmp/model-connections-settings.png'});
- await page.locator('[data-connection-tab=location]').click();await page.locator('#studio-settings-location-panel').waitFor({state:'visible'});await page.locator('#studio-settings-model-tab').click();await page.locator('#studio-model-connections').waitFor();assert.equal(await page.locator('[data-route=lounge][data-route-source=api]').getAttribute('aria-pressed'),'true');assert.equal(await page.locator('[data-route=event-brief][data-route-source=api]').getAttribute('aria-pressed'),'true');assert.equal(await page.locator('[data-route=plan][data-route-source=local]').getAttribute('aria-pressed'),'true');assert(!(await page.locator('#studio-model-connections').innerText()).includes('Auto'));
- await page.locator('#studio-dialog').evaluate(d=>d.close());
- const choose=async id=>{await page.locator('.world-room-map [data-world-scenario="'+id+'"]').click();await page.waitForFunction(id=>BacCampus.inspect().navigation.activeScenario===id&&!BacCampus.inspect().navigation.travelling,id);};
- await choose('plan');await page.locator('#studio-local-task-warning').waitFor({state:'visible'});
- await choose('event-brief');assert(!await page.locator('#studio-local-task-warning').isVisible());
- await page.locator('#studio-team-setup').click();await page.locator('[data-route=event-brief][data-route-source=local]').click();await page.locator('#studio-connections-save').click();await page.waitForFunction(()=>document.querySelector('#studio-connections-status').textContent.startsWith('Saved.'));await page.locator('#studio-dialog').evaluate(d=>d.close());assert(!await page.locator('#studio-local-task-warning').isVisible());
- await choose('plan');await page.locator('#studio-local-task-warning').waitFor({state:'visible'});await page.locator('#studio-team-setup').click();await page.locator('[data-route=plan][data-route-source=api]').click();await page.locator('#studio-connections-save').click();await page.waitForFunction(()=>document.querySelector('#studio-connections-status').textContent.startsWith('Saved.'));await page.locator('#studio-dialog').evaluate(d=>d.close());await page.locator('#studio-local-task-warning').waitFor({state:'hidden'});
- assert.deepEqual(errors,[]);console.log('PASS: Local/External setup and checkboxes, all readiness combinations, stage preferences, navigation, credential clearing and scenario-specific local warning.');
-}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
+// Disposable real-browser settings journey. Model discovery/inference are simulated.
+const assert=require('node:assert/strict'),{spawn}=require('node:child_process'),{chromium}=require('playwright');
+(async()=>{
+ const host=process.env.BAC_TEST_HOST||'127.0.0.1',port=Number(process.env.BAC_TEST_PORT||18245);
+ const server=spawn('python3',['-B','tests/fixture_scenarios.py'],{env:{...process.env,BAC_TEST_HOST:'0.0.0.0',BAC_TEST_PORT:String(port)},stdio:['ignore','pipe','pipe']});
+ server.stderr.on('data',()=>{});let browser;
+ try{
+  await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Fixture startup timed out')),15000);server.stdout.on('data',b=>{if(b.toString().includes('Scenario fixture')){clearTimeout(timer);resolve();}});server.once('exit',code=>{clearTimeout(timer);reject(Error('Fixture exited '+code));});});
+  browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});
+  const page=await browser.newPage({viewport:{width:1440,height:1080},reducedMotion:'reduce'}),errors=[],writes=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  page.on('request',r=>{if(r.url().endsWith('/settings/connections/preferences')&&r.method()==='POST')writes.push(r.postDataJSON());});
+  await page.goto('http://'+host+':'+port);await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.version==='SCENARIO TEST FIXTURE');
+  const open=async()=>{await page.locator('#studio-config').click();await page.locator('#studio-model-connections').waitFor();await page.locator('#studio-dialog-body').evaluate(n=>n.scrollTop=0);};
+  const close=()=>page.locator('#studio-dialog-close').click();
+  const select=page.locator('#studio-team-route'),save=page.locator('#studio-connections-save');
+  const saveChanges=async()=>{await save.click();await page.waitForFunction(()=>document.querySelector('#studio-connections-status').textContent.startsWith('Saved.'));assert(await save.isDisabled());};
+  await open();assert.equal(await select.inputValue(),'auto');assert(await save.isDisabled());
+  assert.equal(await page.locator('#studio-route-lounge').count(),0,'No Lounge override for individually configured agents');
+  assert(!await page.locator('#studio-scenario-routes').isVisible());
+  assert(!(await page.locator('#studio-model-connections').innerText()).includes('Stage connections'));
+  // Local only, both, API only, neither. An effective fallback never rewrites the chosen preference.
+  if(await page.locator('[data-connection-enable=api]').isChecked()){await page.locator('[data-connection-enable=api]').uncheck();await page.waitForFunction(()=>document.querySelector('[data-connection-status=api]').textContent==='Disabled');}
+  await page.locator('[data-connection-edit=local]').click();await page.waitForFunction(()=>document.querySelector('#studio-connect-models').options.length>0);
+  await page.locator('#studio-connect-model').fill('fixture-local-model');await page.locator('#studio-connect-apply').click();await page.waitForFunction(()=>document.querySelector('#studio-connect-status').textContent==='Connected.');
+  assert.match(await page.locator('#studio-connection-team-effective').innerText(),/Using Local/);assert.equal(await select.inputValue(),'auto');
+  await page.locator('#studio-connect-cancel').click();await page.locator('[data-connection-edit=api]').click();
+  await page.locator('#studio-connect-provider').selectOption('openai');await page.locator('#studio-connect-key').fill('fixture-key-not-real');await page.locator('#studio-connect-model').fill('fixture-local-model');
+  await page.locator('#studio-connect-apply').click();await page.waitForFunction(()=>document.querySelector('#studio-connect-status').textContent==='Connected.');
+  assert.equal(await page.locator('#studio-connect-key').inputValue(),'');await page.locator('#studio-connect-cancel').click();
+  assert.match(await page.locator('#studio-connection-team-effective').innerText(),/Using External/);
+  await select.selectOption('api');await saveChanges();
+  await page.locator('[data-connection-enable=api]').uncheck();await page.waitForFunction(()=>document.querySelector('[data-connection-status=api]').textContent==='Disabled');
+  assert.match(await page.locator('#studio-connection-team-effective').innerText(),/External Endpoint unavailable · Using Local/);assert.equal(await select.inputValue(),'api');
+  await page.locator('[data-connection-enable=local]').uncheck();await page.waitForFunction(()=>document.querySelector('#studio-connection-team-effective').textContent==='No connection ready');
+  assert.equal(await select.inputValue(),'api');assert(await save.isDisabled());
+  await page.locator('[data-connection-enable=api]').check();await page.waitForFunction(()=>document.querySelector('[data-connection-status=api]').textContent==='Ready');
+  await page.locator('[data-connection-enable=local]').check();await page.waitForFunction(()=>document.querySelector('[data-connection-status=local]').textContent==='Ready');
+  // Shared selection applies both scenarios; custom mode does nothing until a choice changes.
+  await page.locator('#studio-dialog-body').evaluate(n=>n.scrollTop=0);await page.screenshot({path:'/tmp/bac-model-settings.png'});
+  await select.selectOption('custom');assert(await save.isDisabled());
+  await page.locator('#studio-route-event-brief').selectOption('local');assert(await save.isEnabled());
+  await page.locator('[data-connection-tab=location]').click();await page.locator('#studio-settings-model-tab').click();
+  await Promise.all([page.waitForResponse(r=>r.url().endsWith('/settings/connections/check')&&r.status()===200),page.locator('#studio-connections-check').click()]);
+  assert.equal(await page.locator('#studio-route-event-brief').inputValue(),'local');assert.equal(await page.locator('#studio-route-plan').inputValue(),'api');
+  await saveChanges();assert.deepEqual(writes.at(-1),{lounge:'auto',scenarios:{'event-brief':'local',plan:'api'}});
+  await close();await open();assert.equal(await select.inputValue(),'custom');assert(await page.locator('#studio-scenario-routes').isVisible());assert(await save.isDisabled());
+  await page.screenshot({path:'/tmp/bac-model-settings-custom.png'});
+  // Narrow view must not clip the controls or labels.
+  await page.setViewportSize({width:540,height:900});
+  assert(await page.locator('#studio-dialog-body').evaluate(n=>n.scrollWidth<=n.clientWidth+2));
+  await page.screenshot({path:'/tmp/bac-model-settings-narrow.png'});await page.setViewportSize({width:1440,height:1080});
+  await select.selectOption('local');await saveChanges();assert.deepEqual(writes.at(-1).scenarios,{'event-brief':'local',plan:'local'});await close();
+  const choose=async id=>{await page.locator('.world-room-map [data-world-scenario="'+id+'"]').click();await page.waitForFunction(id=>BacCampus.inspect().navigation.activeScenario===id&&!BacCampus.inspect().navigation.travelling,id);};
+  await choose('plan');await page.locator('#studio-local-task-warning').waitFor({state:'visible'});
+  await choose('event-brief');assert(!await page.locator('#studio-local-task-warning').isVisible());
+  await page.locator('#studio-team-setup').click();await select.selectOption('custom');await page.locator('#studio-route-plan').selectOption('api');await saveChanges();await close();
+  await choose('plan');await page.locator('#studio-local-task-warning').waitFor({state:'hidden'});
+  // Simulate an earlier agent's saved shared choice; the new UI must retain its separate default.
+  await page.evaluate(()=>BacStudio.setRoom('workshop'));
+  await page.route('**/api/onboard',async route=>{await route.continue({postData:JSON.stringify({...route.request().postDataJSON(),model:'shared'})});});
+  await page.locator('#studio-name').fill('Earlier agent');await page.locator('#studio-create').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Earlier agent');
+  assert.equal(await page.evaluate(()=>BacStudio.inspect().profile.model),'shared');
+  await open();assert.equal(await page.locator('.connection-inherited').evaluate(n=>n.open),false);
+  await page.locator('.connection-inherited summary').click();assert.equal(await page.locator('#studio-route-lounge').inputValue(),'auto');
+  await page.locator('#studio-route-lounge').selectOption('api');await saveChanges();await close();await open();
+  await select.selectOption('local');await saveChanges();assert.equal(writes.at(-1).lounge,'api','Team changes preserve earlier agents');
+  await close();await page.reload();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Earlier agent');await open();
+  assert.equal(await select.inputValue(),'local');await page.locator('.connection-inherited summary').click();assert.equal(await page.locator('#studio-route-lounge').inputValue(),'api');assert(await save.isDisabled());
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,host,checks:['one shared team selector','custom scenarios survive save, reopen and polling','local/API readiness and honest fallback status','no unnecessary saves','individual and earlier agent settings preserved','scenario-specific Local warnings','narrow layout','no browser errors']}));
+ }finally{if(browser)await browser.close();server.kill('SIGTERM');}
+})().catch(e=>{console.error(e);process.exitCode=1;});

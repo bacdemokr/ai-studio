@@ -8,7 +8,7 @@ Use the intended branch on the target PC. This guide describes `preview/stage3-s
 2. Run `./bac start` for a clean demo, or `./bac start --keep-data` to retain agents and rehearsals. Studio does not start the model server automatically.
 3. Open `http://localhost:8080` on the host or `http://SPARK_IP:8080` over the trusted LAN. Both provide Settings and the same demo controls.
 4. In **Settings → Model**, configure Local and/or External Endpoint. A validated `api.cfg` supplies NVIDIA automatically; the file is optional.
-5. Under **Stage connections**, select Hiring & Agent lounge, Event Brief and Open Task separately. With both connections ready, the initial defaults are Local for Stages 1/2 and External for Stage 3. Saved choices remain in effect.
+5. Hired agents default to Local; choose another model in Hiring or Edit agent. Under **Built-in teams**, one **Team connection** covers Event Brief and Open Task. Automatic prefers External. Use **Choose separately by scenario…** only when needed; saved choices remain in effect.
 
 Rehearse the selected tasks on the actual model and hardware. Use **Full screen** for presenting. Identify saved results as previous runs.
 

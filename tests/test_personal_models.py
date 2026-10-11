@@ -17,6 +17,9 @@ import visitor_teams
 
 class PersonalModelTests(unittest.TestCase):
     def setUp(self):
+        for name, empty in [('_checks', {}), ('_pending', set()), ('_discovered', {})]:
+            cache = patch.object(connections, name, empty)
+            cache.start(); self.addCleanup(cache.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         environment = patch.dict(os.environ, {'BAC_DATA_DIR': self.temp.name})

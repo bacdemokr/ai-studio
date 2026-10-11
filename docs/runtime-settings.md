@@ -7,9 +7,10 @@ Open the Settings gear on localhost or the host's trusted LAN address. **Model**
 1. Enable **Local** and/or **External Endpoint**, then choose **Configure**.
 2. Select the provider and search the **Model** field. The catalogue loads automatically; there is no separate Load models button.
 3. Choose **Connect & enable**.
-4. Under **Stage connections**, choose a connection for Hiring & Agent lounge, Event Brief and Open Task, then **Save changes**.
+4. Under **Built-in teams**, choose one **Team connection** for Event Brief and Open Task, then **Save changes**. Choose **Choose separately by scenario…** only when they need different connections. Existing separate choices reopen in that mode.
+5. Hired agents use their own **Model** choice from Hiring or Edit agent. New hires default to Local; team settings never overwrite their choices.
 
-With both connections ready, the initial defaults prefer Local for Stages 1/2 and External for Stage 3. Saved manual choices take precedence. When upgrading a data directory that predates shared connections, the selected host provider is retained. If the preferred connection becomes unavailable, new requests use the other ready connection. If neither is ready, the app shows **Model not connected**. Active model requests are not replayed on another connection.
+The built-in teams default to **Automatic (External first)**. Earlier agents without an individual model keep their previous shared default, available in the collapsed **Earlier agents** section. Saved manual choices take precedence. When upgrading a data directory that predates shared connections, the selected host provider is retained. For built-in teams and earlier agents using the shared default, an unavailable preferred connection falls back to the other ready connection for new requests. The selected preference stays visible alongside the actual connection in use. If neither is ready, Settings shows **No connection ready**. Active model requests are not replayed on another connection.
 
 Open Task shows a warning when using Local because complex tasks may take longer or produce less reliable results. Event Brief supports Local without that warning. Starting Studio or selecting Local does not start a model server; use `./bac vllm` or an existing server first.
 
@@ -39,7 +40,7 @@ Local endpoints must be reachable from the app/OpenClaw host, not from the prese
 
 Expand **Model** below **OpenShell protection**. New agents default to Local; the dropdown also lists models from the configured External Endpoint. This compact section starts closed and is available in **Edit agent** too.
 
-Each agent uses its choice for Lounge chat, Heartbeat and Open Task assignments. Explicit choices never fall back to another source. If Local is unavailable, connect it in Settings or select an external model. Agents created before this feature keep **Use Lounge settings** until explicitly changed. Model selection does not change tools, OpenShell protection or Event Brief.
+Each agent uses its choice for Lounge chat, Heartbeat and Open Task assignments. Explicit choices never fall back to another source. If Local is unavailable, connect it in Settings or select an external model. Agents created before this feature keep **Shared default** until explicitly changed. Model selection does not change tools, OpenShell protection or Event Brief.
 
 ## Context and output budgets
 

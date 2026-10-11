@@ -3,12 +3,12 @@ let editingInPlace=false,hiringArrival=false,draftNameEdited=false,draftModel='l
 function personalModel(profile){
  profile=(profile?.key&&(data.agents||[]).find(row=>row.key===profile.key))||profile;
  const id=profile?.model||'shared',choice=runtime.personalModels?.models?.find(row=>row.id===id);
- return choice||{id,label:id==='local'?'Local':id==='shared'?'Use Lounge settings':id.split('/').slice(2).join('/'),connected:id==='shared'?!!runtime.model:id==='local'&&!runtime.personalModels?!!runtime.model:false};
+ return choice||{id,label:id==='local'?'Local':id==='shared'?'Shared default':id.split('/').slice(2).join('/'),connected:id==='shared'?!!runtime.model:id==='local'&&!runtime.personalModels?!!runtime.model:false};
 }
 function personalReady(profile){return !!runtime.gateway&&personalModel(profile).connected;}
 function personalModelNotice(profile){return profile?.model==='local'?'Local model is not connected. Connect Local in Settings or choose another model in Edit agent.':'This agent’s model is unavailable. Check Settings or choose another model in Edit agent.';}
 function renderCreatorModels(){
- const select=el('agent-model'),rows=runtime.personalModels?.models||[{id:'local',label:'Local',source:'local',connected:!!runtime.model},{id:'shared',label:'Use Lounge settings',source:'shared',connected:!!runtime.model}];
+ const select=el('agent-model'),rows=runtime.personalModels?.models||[{id:'local',label:'Local',source:'local',connected:!!runtime.model},{id:'shared',label:'Shared default',source:'shared',connected:!!runtime.model}];
  const choices=rows.filter(row=>row.id!=='shared'||draftModel==='shared');
  if(!choices.some(row=>row.id===draftModel))choices.push({...personalModel({model:draftModel}),source:'api'});
  const options=source=>choices.filter(row=>row.source===source).map(row=>`<option value="${escape(row.id)}">${escape(row.label)}</option>`).join('');
