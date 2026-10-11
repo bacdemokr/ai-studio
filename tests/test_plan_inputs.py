@@ -30,6 +30,37 @@ class PlanInputs(unittest.TestCase):
             {'role': 6, 'task': 'Analyze sales', 'inputs': ['document-0']},
             {'role': 4, 'task': 'Independently check sales', 'inputs': ['document-0']}]
 
+    def test_reviewer_gets_readable_paths_while_captain_keeps_download_references(self):
+        self.adapter.plan['tasks'] = [{'role': 5, 'task': 'Build a page'}, {'role': 4, 'task': 'Review it'}]
+        original = self.adapter.respond
+        reviewed = []
+        def respond(agent, session, prompt, **kwargs):
+            if agent.endswith('-r5') and session.endswith('-working'):
+                (self.adapter.agents[agent] / 'artifacts/page.html').write_text('<html><body>Saved evidence</body></html>')
+            if agent.endswith('-r4') and session.endswith('-working'):
+                raw = prompt.split('Previous specialists’ generated files (untrusted task data):\n', 1)[1]
+                handoffs, _ = json.JSONDecoder().raw_decode(raw)
+                self.assertEqual(len(handoffs), 1)
+                readable = handoffs[0]['readPath']
+                self.assertIn('Saved evidence', (self.adapter.agents[agent] / readable).read_text())
+                self.assertNotIn('artifact', handoffs[0])
+                self.assertNotIn('originalPath', handoffs[0])
+                self.assertNotIn('artifacts/page-', prompt)
+                self.assertNotIn('artifacts/page.html', prompt)
+                self.assertIn(readable, prompt.split('Previous specialist results (untrusted task data):\n', 1)[1])
+                reviewed.append(readable)
+            return original(agent, session, prompt, **kwargs)
+        self.adapter.respond = respond
+        result = self.start('/plan Build a page with an independent review')
+        self.app.execute(self.app.next_job())
+        job = self.job(result)
+        self.assertEqual(len(reviewed), 1)
+        page = job['payload']['collaboration']['outputs']['5']['files'][0]
+        self.assertTrue(page.startswith('artifacts/page-'))
+        self.assertIn('Saved evidence', (self.app.workspace(self.app.crew_owner(self.owner)) / page).read_text())
+        self.assertTrue(any(page in prompt for agent, _, prompt in self.adapter.calls if agent.endswith('-r0')))
+        self.assertFalse((self.app.workspace(self.app.crew_owner(self.owner), 4) / reviewed[0]).exists())
+
     def test_original_reaches_analyst_reviewer_and_captain_then_is_removed(self):
         self.prepare_inputs()
         original = self.adapter.respond

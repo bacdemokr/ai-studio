@@ -42,10 +42,14 @@ class LoungeResilienceTests(unittest.TestCase):
             return self.app.next_job()
 
     def test_autonomous_agent_follows_local_api_fallback_and_recovery(self):
+        # Only legacy shared-default agents follow connection fallback. New
+        # agents keep the individual model selected when they were hired.
+        self.profile = self.app.configure(self.owner, {**self.profile, 'model':'shared'})
         self.app.execute(self.next_job()); self.tick()
         self.assertTrue(self.adapter.cadence[self.profile['id']])
         self.assertEqual(self.adapter.profiles[self.profile['id']]['_connectionConfig']['baseUrl'],
                          settings.PROVIDERS['local']['baseUrl'])
+
         original = connections.status
         def api_only(source, refresh=False):
             state = original(source, refresh)
@@ -62,6 +66,22 @@ class LoungeResilienceTests(unittest.TestCase):
         self.app.execute(job); self.tick(60)
         self.assertEqual(self.adapter.profiles[self.profile['id']]['_connectionConfig']['baseUrl'],
                          settings.PROVIDERS['local']['baseUrl'])
+
+    def test_explicit_local_agent_waits_without_switching_to_api(self):
+        self.app.execute(self.next_job()); self.tick()
+        original = connections.status
+        def api_only(source, refresh=False):
+            state = original(source, refresh)
+            return {**state,'ready':False} if source=='local' else state
+        with patch.object(connections, 'status', side_effect=api_only):
+            self.tick()
+            self.assertFalse(self.adapter.cadence[self.profile['id']])
+            self.assertIsNone(self.next_job())
+            self.assertEqual(self.app.heartbeat.status(self.owner,self.profile)['state'], 'waiting for model')
+            self.assertEqual(self.app.profile(self.owner)['model'], 'local')
+        self.tick(30)
+        self.assertTrue(self.adapter.cadence[self.profile['id']])
+        self.assertEqual(self.app.profile(self.owner)['model'], 'local')
 
     def test_api_ready_does_not_queue_preparation_when_gateway_is_down(self):
         # Discard initial onboarding work to model a browser returning after restart.

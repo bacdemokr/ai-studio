@@ -19,7 +19,7 @@ const {execFileSync}=require('node:child_process'),{chromium}=require('playwrigh
   for(const endpoint of ['session','state'])await page.route('**/api/'+endpoint,r=>r.fulfill({json:state}));
   await page.route('**/api/runtime',r=>r.fulfill({json:{ready:true,model:true,gateway:true}}));
   await page.goto(process.env.BAC_TEST_URL||'http://127.0.0.1:8080');await page.waitForFunction(()=>window.BacStudio);
-  const room=async name=>{await page.locator('.world-room-map [data-world-room='+name+']').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);};
+  const room=async name=>{await page.locator('.world-room-map '+(name==='mission'?'[data-world-scenario=event-brief]':'[data-world-room='+name+']')+'').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);};
   await room('lounge');
   const personal=page.locator('[data-chat-turn="custom-skill-personal"]');
   await personal.locator('.chat-custom-skill').waitFor();

@@ -16,7 +16,6 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
  try{
   await page.goto(process.env.BASE_URL||'http://127.0.0.1:8083');await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.version==='SCENARIO TEST FIXTURE');
   await api('settings/connections',{source:'api',provider:'nvidia',apiKey:'fixture-key',model:'fixture-local-model'});
-  await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.version==='SCENARIO TEST FIXTURE');
   await page.route('**/api/state',async route=>{
    const response=await route.fetch({headers:{...route.request().headers(),'if-none-match':''}}),state=await response.json();
    if(state.scenario==='event-brief'){
@@ -35,6 +34,12 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
    if(preparationRequests===1)await gate;
    await route.fulfill({response});
   });
+  await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.version==='SCENARIO TEST FIXTURE');
+  await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.gateway);
+  // Let background preparation start before entering its room. The first response
+  // stays pending while the form is opened and reopened.
+  const until=Date.now()+15000;while(!preparationRequests&&Date.now()<until)await page.waitForTimeout(100);
+  assert.equal(preparationRequests,1,'App boot starts Event Brief preparation before room entry');
   await page.locator('.world-room-map [data-world-scenario=event-brief]').click();
   await page.waitForFunction(()=>BacCampus.inspect().navigation.activeScenario==='event-brief'&&!BacCampus.inspect().navigation.travelling);
   await page.locator('#studio-room-action').click();
@@ -47,7 +52,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert(await page.locator('#studio-room-action').isEnabled(),'Can reopen preparation while it is running');
   await page.locator('#studio-room-action').click();
   assert.equal(await page.locator('#studio-prepare-demo').textContent(),'Preparing…');
-  assert.equal(preparationRequests,0,'Reopening watches the preparation already started at app boot');
+  assert.equal(preparationRequests,1,'Reopening watches the preparation already started at app boot');
   phase='queued';await refresh();assert.equal(await page.locator('#studio-launch-event').textContent(),'Preparing…');
   phase='error';await refresh();
   assert.equal(await page.locator('#studio-prepare-demo').textContent(),'Retry preparation');

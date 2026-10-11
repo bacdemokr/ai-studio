@@ -156,6 +156,7 @@
 .studio-usage-time thead th{background:#111c25;color:#9fb2bf;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
 .studio-usage-time :is(th:first-child,td:first-child){text-align:left}
 .studio-usage-time .studio-usage-endpoint{max-width:310px;text-align:left;white-space:normal;overflow-wrap:anywhere;color:#b9cbd6}
+.studio-usage-model{display:block;margin-bottom:4px;color:#e4edf3;font-weight:600}
 .studio-usage-time tbody tr:last-child :is(th,td){border-bottom:0}
 .studio-usage-note{margin:14px 0 0;color:#9fb2bf;font-size:13px;line-height:1.55}
 @media(max-width:900px){.studio-usage-totals{grid-template-columns:repeat(2,minmax(120px,1fr))}}

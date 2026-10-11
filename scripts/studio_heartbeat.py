@@ -247,7 +247,9 @@ class RadarHeartbeat:
                     starting = bool(preparation and time.time() < preparation['created'] + tech_radar.STARTUP_DELAY_SECONDS)
                     enabled = bool(connected and ready and gateway_ready and not current['deleting'] and not paused and not busy and not starting and not retrying and profile['id'] in studio.provisioned)
                     registered = toggle(profile['id'],enabled) if gateway_ready else False
-                    state = 'paused' if paused else 'waiting for browser' if not connected else 'waiting for model' if not ready else 'waiting for runtime' if not gateway_ready else 'waiting for task' if busy else 'retrying preparation' if retrying else 'starting soon' if starting and profile['id'] in studio.provisioned else 'watching' if enabled and registered else 'preparing'
+                    # Per-agent readiness also requires the gateway. Report its
+                    # outage first instead of blaming a working model connection.
+                    state = 'paused' if paused else 'waiting for browser' if not connected else 'waiting for runtime' if not gateway_ready else 'waiting for model' if not ready else 'waiting for task' if busy else 'retrying preparation' if retrying else 'starting soon' if starting and profile['id'] in studio.provisioned else 'watching' if enabled and registered else 'preparing'
                     # Native Heartbeat defers while its main request queue is busy,
                     # including work for a different agent. Keep its timer intact.
                     if state == 'watching' and any(j['kind'] in ('chat','crew','crew-chat') for j in pending):

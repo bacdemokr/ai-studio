@@ -62,7 +62,7 @@ await page.locator('#studio-telegram-token').fill('123456789:'+'x'.repeat(30));a
 await page.waitForFunction(()=>!document.querySelector('#studio-telegram-controls').hidden);
 assert(await page.locator('#studio-telegram-test').isVisible());
 await page.locator('#studio-telegram-disconnect').click();await page.waitForFunction(()=>document.querySelector('#studio-telegram-controls').hidden);
-assert(await page.locator('#studio-telegram-status').isHidden());assert.equal(await page.locator('#studio-settings-status').textContent(),'');
+assert(await page.locator('#studio-telegram-status').isHidden());assert.equal(await page.locator('#studio-settings-status').textContent(),'Disconnected.');
 assert(await page.locator('#studio-save-settings').isEnabled());
 await page.locator('#studio-dialog').evaluate(node=>node.close());
 await page.locator('.world-room-map [data-world-room=workshop]').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);

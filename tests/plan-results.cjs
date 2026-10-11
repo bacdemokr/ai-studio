@@ -83,3 +83,16 @@ assert.match(reactions.roundtableMarkup(reactionJob),/time limit/);
 reactionJob.payload.roundtable.replies.guest={status:'done',answer:'An actual personal reaction.'};
 assert.match(reactions.roundtableMarkup(reactionJob),/An actual personal reaction/);
 console.log('PASS: completed and skipped reactions have truthful terminal labels');
+
+// Recording an endpoint must not hide the actual model; retain all models used.
+const usageJob={id:'models',status:'done',created:1,updated:2,payload:{metrics:{
+ a:{agent:'pixel',name:'Pixel',model:'model-one',endpoint:'External endpoint',total:10},
+ b:{agent:'pixel',name:'Pixel',model:'model-two',endpoint:'External endpoint',total:20},
+ c:{agent:'scout',name:'Scout',model:'legacy-model',total:30}
+}}};
+ctx.renderUsageTime(usageJob);
+assert.match(ctx.usageTime.innerHTML,/model-one, model-two/);
+assert.match(ctx.usageTime.innerHTML,/External endpoint/);
+assert.match(ctx.usageTime.innerHTML,/legacy-model/);
+assert.doesNotMatch(ctx.usageTime.innerHTML,/Model · legacy-model/);
+console.log('PASS: Usage & time shows models with endpoints and supports older model-only records');

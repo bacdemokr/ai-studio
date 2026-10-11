@@ -40,10 +40,10 @@ function scenarioUsageSummary(job){
   const recordInput=usageNumber(record.input),recordOutput=usageNumber(record.output);
   const recordTotal=usageNumber(record.total)??(recordInput!==null&&recordOutput!==null?recordInput+recordOutput:null);
   const seconds=usageNumber(record.runSeconds),key=record.agent||record.name||'unknown';
-  if(!agents.has(key))agents.set(key,{name:record.name||'Unknown agent',endpoints:new Set(),input:0,output:0,total:0,seconds:0,calls:0,inputReported:false,outputReported:false,totalReported:false,timeReported:false});
+  if(!agents.has(key))agents.set(key,{name:record.name||'Unknown agent',models:new Set(),endpoints:new Set(),input:0,output:0,total:0,seconds:0,calls:0,inputReported:false,outputReported:false,totalReported:false,timeReported:false});
   const agent=agents.get(key);agent.calls++;
   if(typeof record.endpoint==='string'&&record.endpoint)agent.endpoints.add(record.endpoint);
-  else if(typeof record.model==='string'&&record.model)agent.endpoints.add('Model · '+record.model);
+  if(typeof record.model==='string'&&record.model)agent.models.add(record.model);
   if(recordInput!==null){input+=recordInput;agent.input+=recordInput;inputReported=agent.inputReported=true;}
   if(recordOutput!==null){output+=recordOutput;agent.output+=recordOutput;outputReported=agent.outputReported=true;}
   if(recordTotal!==null){total+=recordTotal;agent.total+=recordTotal;totalReported=agent.totalReported=true;}
@@ -58,11 +58,11 @@ function renderUsageTime(job){
  const summary=scenarioUsageSummary(job),key=JSON.stringify([job.id,job.status,job.updated,job.payload?.metrics,job.payload?.prompt,job.payload?.brief,job.payload?.collaboration?.task]);
  if(usageTime.dataset.key===key)return;usageTime.dataset.key=key;
  const amount=(value,reported)=>reported?Math.round(value).toLocaleString():'—';
- const rows=summary.agents.map(agent=>'<tr><th scope="row">'+escape(agent.name)+'</th><td class="studio-usage-endpoint">'+escape([...agent.endpoints].join(', ')||'Not reported')+'</td><td>'+amount(agent.input,agent.inputReported)+'</td><td>'+amount(agent.output,agent.outputReported)+'</td><td>'+amount(agent.total,agent.totalReported)+'</td><td>'+usageDuration(agent.timeReported?agent.seconds:null)+'</td><td>'+agent.calls+'</td></tr>').join('');
+ const rows=summary.agents.map(agent=>'<tr><th scope="row">'+escape(agent.name)+'</th><td class="studio-usage-endpoint">'+(agent.models.size?'<strong class="studio-usage-model">'+escape([...agent.models].join(', '))+'</strong>':'')+escape([...agent.endpoints].join(', ')||(agent.models.size?'':'Not reported'))+'</td><td>'+amount(agent.input,agent.inputReported)+'</td><td>'+amount(agent.output,agent.outputReported)+'</td><td>'+amount(agent.total,agent.totalReported)+'</td><td>'+usageDuration(agent.timeReported?agent.seconds:null)+'</td><td>'+agent.calls+'</td></tr>').join('');
  const warning=summary.unreportedCalls?'<p class="studio-usage-note">'+summary.unreportedCalls+' recorded agent turn'+(summary.unreportedCalls===1?' did':'s did')+' not report token counts, so token totals are partial.</p>':'';
  usageTime.innerHTML='<section class="studio-usage-task"><small>Task</small><p>'+escape(scenarioTaskSummary(job))+'</p></section>'+
   '<div class="studio-usage-totals"><article><small>Input tokens</small><strong>'+amount(summary.input,summary.inputReported)+'</strong></article><article><small>Output tokens</small><strong>'+amount(summary.output,summary.outputReported)+'</strong></article><article><small>Combined tokens</small><strong>'+amount(summary.total,summary.totalReported)+'</strong></article><article><small>Total elapsed</small><strong>'+usageDuration(summary.elapsed)+'</strong></article><article><small>Combined agent time</small><strong>'+usageDuration(summary.timeReported?summary.apiSeconds:null)+'</strong></article></div>'+
-  (rows?'<h3>Usage and time by agent</h3><div class="studio-usage-table-wrap"><table><thead><tr><th>Agent</th><th>Endpoint</th><th>Input</th><th>Output</th><th>Combined</th><th>Agent time</th><th>Turns</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p class="studio-usage-note">No usage reported for this run.</p>')+
+  (rows?'<h3>Usage and time by agent</h3><div class="studio-usage-table-wrap"><table><thead><tr><th>Agent</th><th>Model / endpoint</th><th>Input</th><th>Output</th><th>Combined</th><th>Agent time</th><th>Turns</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p class="studio-usage-note">No usage reported for this run.</p>')+
   warning+'<p class="studio-usage-note">Agent time includes tools; parallel work can exceed total elapsed time. Recorded responses only.</p>';
 }
 

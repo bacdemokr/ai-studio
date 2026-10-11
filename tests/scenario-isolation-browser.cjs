@@ -46,7 +46,11 @@ const active = job => ['queued', 'running', 'waiting', 'stopping'].includes(job.
     await page.locator('[data-crew-document="inbox/notes.md"]').waitFor();
     await page.waitForFunction(()=>!document.querySelector('#studio-crew-document-add').disabled);
   }
+  async function idleTeams() {
+    await waitFor(async()=>{const states=await Promise.all(['plan','event-brief'].map(state));return states.every(s=>!s.bacResetting&&!s.jobs.some(active)&&!s.crewChats.some(active)&&(!s.preparation||!active(s.preparation)));},'background preparation is idle');
+  }
   async function model(scenario, id) {
+    await idleTeams();
     if(scenario==='event-brief'){
       await api(scenario,'settings/connections',{source:'api',provider:'nvidia',model:id,apiKey:'fixture-key'});
     }else{
@@ -70,6 +74,7 @@ const active = job => ['queued', 'running', 'waiting', 'stopping'].includes(job.
     await page.goto(BASE);
     await page.waitForFunction(()=>window.BacStudio&&window.BacCampus?.inspect().navigation?.overview);
     await page.waitForFunction(()=>BacStudio.inspect().runtime.version==='SCENARIO TEST FIXTURE');
+    await idleTeams();
     await api('plan','settings/connections',{source:'api',provider:'nvidia',apiKey:'fixture-key',model:'fixture-local-model'});
     await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.modelConnections?.connections.api.ready);
     await page.locator('.world-campus-room[data-world-room=workshop]').click();

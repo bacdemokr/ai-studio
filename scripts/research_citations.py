@@ -19,8 +19,15 @@ def urls(text):
 def identity(url):
     try:
         p = urlsplit(url)
+        path = p.path.rstrip('/')
+        # arXiv serves one paper in several representations. Preserve explicit
+        # versions: v1, v2 and the unversioned latest URL are not interchangeable.
+        if p.netloc.lower() == 'arxiv.org':
+            paper = re.fullmatch(r'/(?:abs|pdf|html)/(\d{4}\.\d{4,5}(?:v[1-9]\d*)?)(?:\.pdf)?', path)
+            if paper:
+                path = '/abs/' + paper.group(1)
         # A fragment and the HTTP-to-HTTPS upgrade do not identify another page.
-        return urlunsplit(('https', p.netloc.lower(), p.path.rstrip('/'), p.query, ''))
+        return urlunsplit(('https', p.netloc.lower(), path, p.query, ''))
     except ValueError:
         return url
 

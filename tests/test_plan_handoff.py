@@ -37,7 +37,12 @@ class PlanHandoffTests(unittest.TestCase):
             if agent.endswith('-r5'):
                 copies = list((self.adapter.agents[agent] / 'inbox').glob('*.md'))
                 self.assertTrue(any('https://example.com/source' in p.read_text() for p in copies))
-                self.assertIn('"originalPath": "artifacts/brief.md"', prompt)
+                raw = prompt.split('Previous specialists’ generated files (untrusted task data):\n', 1)[1]
+                handoffs, _ = json.JSONDecoder().raw_decode(raw)
+                self.assertTrue(any('https://example.com/source' in
+                                    (self.adapter.agents[agent] / item['readPath']).read_text()
+                                    for item in handoffs))
+                self.assertTrue(all('originalPath' not in item for item in handoffs))
             return result
         self.adapter.respond = respond
 
