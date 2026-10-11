@@ -4,15 +4,19 @@ from pathlib import PurePosixPath
 from plan_artifacts import TEXT_TYPES
 
 
+class PlanHandoffError(RuntimeError):
+    """An invalid output declaration that the planner can correct before dispatch."""
+
+
 def required_files(task):
     explicit = task.get('requiredFiles', [])
     if not isinstance(explicit, list) or len(explicit) > 12:
-        raise RuntimeError('Invalid required handoff files in the plan.')
+        raise PlanHandoffError('Invalid required handoff files in the plan.')
     for path in explicit:
         if (not isinstance(path, str) or len(path) > 300 or not path.startswith('artifacts/')
                 or any(part in ('', '.', '..') for part in path.split('/')) or '\\' in path
                 or PurePosixPath(path).suffix.lower() not in TEXT_TYPES | {'.html'}):
-            raise RuntimeError('Required handoff files must be supported files inside artifacts/.')
+            raise PlanHandoffError('Required handoff files must be supported files inside artifacts/.')
     # Older plans can name the required output in their assignment instead.
     prose = task.get('task', '') + '\n' + task.get('expected', '')
     inferred = re.findall(r'(?:\bsave(?:d)?\b|\bwrite\b|\bwritten\b|\bcreate(?:d)?\b|\bproduce\b|\boutput\b|\bupdate\b|저장)'
