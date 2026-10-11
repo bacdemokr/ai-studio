@@ -73,14 +73,14 @@ def html_files(workspace):
     return found
 
 
-def collect_pages(studio, owner, job_id, role, before, answer, source_map=None):
+def collect_pages(studio, owner, job_id, role, before, answer, source_map=None, *, source_workspace=None):
     """Export changed pages into job-specific immutable, account-owned paths.
 
     Never trust paths mentioned in a model reply. Only actual artifact files or
     complete HTML documents returned by the model can become previews.
     """
     from studio import safe_file, Problem
-    workspace = studio.workspace(owner, role)
+    workspace = source_workspace if source_workspace is not None else studio.workspace(owner, role)
     sources = []
     source_names = {}
     for relative, signature in html_files(workspace).items():

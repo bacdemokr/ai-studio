@@ -33,9 +33,9 @@ def snapshot_files(workspace):
     return found
 
 
-def collect_files(studio, owner, job_id, role, before, source_map=None):
+def collect_files(studio, owner, job_id, role, before, source_map=None, *, source_workspace=None):
     from studio import safe_file, Problem
-    workspace = studio.workspace(owner, role)
+    workspace = source_workspace if source_workspace is not None else studio.workspace(owner, role)
     paths, total = [], 0
     for relative, signature in snapshot_files(workspace).items():
         if before.get(relative) == signature:

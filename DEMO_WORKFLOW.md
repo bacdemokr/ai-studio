@@ -78,9 +78,9 @@ Similarly, each agent has specialized skills that help it produce the best possi
 Stage 3 has two separate workflows:
 
 - **3-1 Event Brief:** Riley coordinates the fixed team of Dylan, Alex and Morgan. The application runs the event workflow; demo research and operations can run in parallel after Riley's brief. All team members use the model selected for this scenario's connection.
-- **3-2 Open Task:** Casey selects specialists for the attendee's `/goal` request. Specialist contributions run sequentially, with Casey checking their handoffs. External NVIDIA connections support per-agent model choices.
+- **3-2 Open Task:** Casey prefers suitable visitor-hired agents and uses built-in specialists as backup. Name an agent to require its actual participation, e.g. `/goal Let Pixel do the coding instead of Cody. Build a counter page.` Pixel keeps its identity and tools even if coding is outside its usual role. Contributions run sequentially, with Casey checking their handoffs and keeping research and implementation focused.
 
-The scenarios keep their own agents, conversations and files. Hired Lounge agents can join at the end with optional personal reactions.
+Event Brief keeps its own fixed agents, conversations and files. In Open Task, hired agents use their existing Lounge identity and model connection; Casey and the backups use the Open Task connection. Make sure both connections are ready. Agents already contributing do not receive another call for a closing reaction. Unselected agents can still give optional reactions.
 
 ## 2. Before presenting
 

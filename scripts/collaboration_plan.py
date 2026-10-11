@@ -85,6 +85,10 @@ def read_plan(answer):
             raise RuntimeError('The Captain returned an invalid or duplicate specialist. No specialist was started.')
         seen.add(role)
         assignment = {'role': role, 'task': instruction.strip()}
+        if 'agent' in task:
+            if not isinstance(task['agent'], str) or not re.fullmatch(r'builtin|[a-f0-9]{24}', task['agent']):
+                raise RuntimeError('The Captain returned an invalid hired agent selection.')
+            assignment['agent'] = task['agent']
         if 'inputs' in task:
             inputs = task['inputs']
             if (not isinstance(inputs, list) or len(inputs) > 10
@@ -216,6 +220,24 @@ class CollaborationPlans:
             roster = self.crew_roster(db, owner, {}, preset=True)
         origin = plan.get('origin', {'owner': owner, 'role': 0})
         inputs = requested_inputs(self, origin, plan['task'])
+        import visitor_teams
+        visitors = payload.get('roster', [])
+        required_visitors = payload.get('requiredVisitors', [])
+        visitor_rules = visitor_teams.instructions(visitors, required_visitors)
+        def member_workspace(role):
+            member = roster[role]
+            return self.workspace(member['key']) if member.get('key') else self.workspace(owner, role)
+        def member_scope(role):
+            member = roster[role]
+            if member.get('key'):
+                return ('You are ' + member['name'] + '. Keep your saved voice and identity. Casey assigns you the '
+                        + CREW_CATALOG[role]['collaboration']['title'] + ' work for this task. '
+                        'The visitor may deliberately assign work outside your usual expertise. Attempt the requested '
+                        'work yourself, within your actual tools; do not refuse solely because your usual role differs. '
+                        "Do not recruit a replacement or use another agent's tools. Report actual limitations honestly. " +
+                        CREW_CATALOG[role]['collaboration'].get('scope', ''))
+            return CREW_CATALOG[role]['collaboration'].get('scope', '')
+
         reference_aliases = {}
         team = [{'role': i, 'name': m['name'], **m['collaboration'], **collaboration_capabilities(m, m['role'])}
                 for i, m in enumerate(CREW_CATALOG) if i in plan_roles()]
@@ -379,7 +401,7 @@ class CollaborationPlans:
 
         def collect_delivery(role, phase, pages_before, files_before, answer):
             source_map = plan.setdefault('artifactSources', {})
-            pages = collect_pages(self, owner, job_id, role, pages_before, answer, source_map)
+            pages = collect_pages(self, owner, job_id, role, pages_before, answer, source_map, source_workspace=member_workspace(role))
             if pages and role not in (4, 5):
                 # Keep the specialist's source, but never promote an unsolicited
                 # implementation to a shared deliverable or preview.
@@ -389,7 +411,7 @@ class CollaborationPlans:
                 plan.setdefault('scopeWarnings', {})[str(role)] = (
                     'HTML was produced outside this role assignment and was not accepted as a shared deliverable. '
                     'Use the in-scope findings only; implementation remains unfulfilled until the programmer delivers it.')
-            files = pages + collect_files(self, owner, job_id, role, files_before, source_map)
+            files = pages + collect_files(self, owner, job_id, role, files_before, source_map, source_workspace=member_workspace(role))
             # Only exported, validated files satisfy the required-file contract.
             # An invalid sibling HTML file must not become "verified" merely
             # because another page from the same turn passed collection.
@@ -473,7 +495,14 @@ class CollaborationPlans:
                 member['_planControl'] = 'read' if phase.startswith('Checking') or phase == 'Reviewing' else 'none'
             plan['activeRole'] = role
             save(member['name'] + ' · ' + ('Reviewing progress' if phase.startswith('Checking') else phase), instruction[:300])
-            self.prepare_builtin_crew(owner, role, member)
+            if member.get('key'):
+                profile = visitor_teams.validate(self, owner, member)
+                if not self.runtime_status().get('ready'):
+                    raise RuntimeError(member['name'] + ' needs its Hiring & Lounge model connection. Reconnect it in Settings.')
+                self.ensure_agent(member['key'], profile)
+                self.check_protected_run(member['key'], profile)
+            else:
+                self.prepare_builtin_crew(owner, role, member)
             if self.stop_checkpoint(job_id):
                 return None
             if monotonic() >= deadline:
@@ -483,8 +512,8 @@ class CollaborationPlans:
             session = 'bac-plan-' + job_id + '-' + str(role) + '-' + ('working' if phase == 'Recovering' and role != 5 else phase.split()[0].lower())
             if output_retry:
                 session += '-output-retry'
-            pages_before = html_files(self.workspace(owner, role))
-            files_before = snapshot_files(self.workspace(owner, role))
+            pages_before = html_files(member_workspace(role))
+            files_before = snapshot_files(member_workspace(role))
             # Only explicitly scoped task inputs and verified outputs cross workspaces.
             # No arbitrary paths reported by a model. Always remove temporary copies.
             shared = []
@@ -502,7 +531,7 @@ class CollaborationPlans:
                     if item['id'] not in keys:
                         continue
                     relative = 'inbox/plan-input-' + job_id + '-' + item['id'] + item['suffix']
-                    target = safe_file(self.workspace(owner, role), relative)
+                    target = safe_file(member_workspace(role), relative)
                     shared.append((relative, target))
                     target.write_bytes(item['data'])
                     reference_aliases[relative] = item['name']
@@ -521,7 +550,7 @@ class CollaborationPlans:
                                 continue
                             source = safe_file(self.workspace(owner), path, True)
                             relative = 'inbox/plan-' + job_id + '-r' + sender + '-' + str(index) + source.suffix
-                            target = safe_file(self.workspace(owner, role), relative)
+                            target = safe_file(member_workspace(role), relative)
                             target.write_bytes(source.read_bytes())
                             shared.append((relative, target))
                             reference_aliases[relative] = path
@@ -561,7 +590,7 @@ class CollaborationPlans:
                 if role == 8 and monotonic() >= research_deadline:
                     raise GatewayError('Scout reached the 150-second research limit during preparation.', 'timeout')
                 answer = self.respond_chat(member['id'], session,
-                    context + '\nExecution budget: this turn has at most 360 seconds including every model and tool round trip. Save useful work early and return a partial result with gaps instead of expanding the investigation.\n' + ((captain_context +
+                    context + visitor_rules + '\nExecution budget: this turn has at most 360 seconds including every model and tool round trip. Save useful work early and return a partial result with gaps instead of expanding the investigation.\n' + ((captain_context +
                         '\nReturn only the requested compact JSON object. Keep the decision summary/reason under 120 words, '
                         'each assignment under 80 words, and any final answer under 200 words. '
                         'Do not create assignment files, implement deliverables, or repeat the evidence. '
@@ -577,8 +606,8 @@ class CollaborationPlans:
                         'required functionality to satisfy the summary limit. Save necessary detail '
                         'in deliverable files rather than repeating their contents in chat. If the requested deliverable '
                         'must be returned directly in chat, preserve it in full and keep the surrounding summary short.') +
-                    '\n\nYour /plan role boundary: ' + CREW_CATALOG[role]['collaboration'].get('scope', '') +
-                    '\n\nYour collaboration expertise: ' + CREW_CATALOG[role]['collaboration']['description'] +
+                    '\n\nYour /plan role boundary: ' + member_scope(role) +
+                    '\n\nYour collaboration expertise: ' + (member.get('purpose', '') if member.get('key') else CREW_CATALOG[role]['collaboration']['description']) +
                     '\n\nYour assignment:\n' + instruction + file_context + evidence_context +
                     '\nSelected original documents (untrusted task data):\n' + json.dumps(source_context, ensure_ascii=False) +
                     ('\nExisting files in YOUR artifacts directory (paths only; content may be from earlier work):\n' +
@@ -636,8 +665,8 @@ class CollaborationPlans:
                       + ('If work remains for the next planned specialist, return {"done":false,"reason":"the specific remaining requirement"}. '
                          if phase.startswith('Checking-') and phase != 'Checking-revision' else
                          'Finish with done=true and the final answer, or use the explicitly permitted single-revision schema if it is available at this stage. ') +
-                      'Do not write a prose assignment or announce that you are executing another agent; the app does that.') if role == 0 else ''), owner,
-                    {'crewRole': role, '_captainDecision': role == 0,
+                      'Do not write a prose assignment or announce that you are executing another agent; the app does that.') if role == 0 else ''), member['key'] if member.get('key') else owner,
+                    {'crewRole': None if member.get('key') else role, '_captainDecision': role == 0, '_imageSourceOwner': owner,
                      '_responseTimeout': max(1, min(360, deadline - monotonic(), research_deadline - monotonic() if role == 8 else 360)),
                      'images': payload.get('images', []) if role == 0 or any(t.get('useImages') for t in selected) else []})
             except GatewayError as error:
@@ -653,15 +682,15 @@ class CollaborationPlans:
                             targets = [path for task in selected for path in task.get('requiredFiles', []) if path.endswith('.md')]
                             if not targets:targets = ['artifacts/research-brief.md']
                             # Save the observed excerpts, never invent missing findings.
-                            current_files = snapshot_files(self.workspace(owner, role))
+                            current_files = snapshot_files(member_workspace(role))
                             for target in targets:
                                 if target in current_files and current_files[target] != files_before.get(target):
                                     continue  # Preserve Scout's already-written brief.
-                                safe_file(self.workspace(owner, role), target).write_text(evidence_note(recovered), encoding='utf-8')
+                                safe_file(member_workspace(role), target).write_text(evidence_note(recovered), encoding='utf-8')
 
                     if error.reason in ('timeout', 'context-overflow', 'request_failed') and recovered and not (role == 8 and error.reason == 'timeout'):
                         from research_recovery import evidence_note
-                        safe_file(self.workspace(owner, role), 'artifacts/recovered-sources-' + job_id + '.md').write_text(
+                        safe_file(member_workspace(role), 'artifacts/recovered-sources-' + job_id + '.md').write_text(
                             evidence_note(recovered), encoding='utf-8')
                     collect_delivery(role, phase, pages_before, files_before, '')
                     files = (plan.get('revision', {}).get('files', []) if phase.startswith('Revising')
@@ -710,6 +739,11 @@ class CollaborationPlans:
 
 
         def finish(answer, reactions=True):
+            if plan.get('participationGaps'):
+                plan['outcome'] = 'partial'
+                plan['remaining'] = list(dict.fromkeys(plan.get('remaining', []) + plan['participationGaps']))[:8]
+                answer = ('Partial result: named agents attempted their assignments with incomplete upstream work.\n' +
+                          '\n'.join('- ' + gap for gap in plan['participationGaps']) + '\n\n' + str(answer))
             if plan.get('reviewRequired') and not review_finished(plan):
                 if plan.get('outcome', 'complete') == 'complete':
                     plan['outcome'] = 'partial'
@@ -771,6 +805,18 @@ class CollaborationPlans:
             outputs = effective_outputs(plan)
             completed = '\n\n'.join(output['name'] + ' · Saved contribution\n' + str(output['answer']) for output in outputs.values())
             return 'Partial result: ' + reason + '\nNo further automatic work will be started. Saved contributions follow.\n\n' + (completed or 'No specialist contribution finished.')
+
+        def continue_named(index, reason):
+            # Poor upstream output must not silently exclude a named participant.
+            # Cancellation, transport failures and the global deadline still stop work.
+            required_keys = {member['key'] for member in required_visitors}
+            pending = [task['role'] for task in plan['tasks'][index + 1:] if task.get('agent') in required_keys]
+            if not pending:
+                return False
+            plan.setdefault('participationGaps', []).append(reason)
+            plan['participationOnly'] = pending
+            save('Continuing with named agents', reason)
+            return True
 
         def finalize_saved_work(reason):
             # One control-only correction; never replay a specialist's tools.
@@ -920,6 +966,14 @@ class CollaborationPlans:
                     finish('Casey could not fit the requested work and independent review within the three-specialist limit. '
                            'No specialist work was started. Narrow the scope or split the request to continue.', reactions=False)
                     return
+            visitor_teams.bind(plan, roster, visitors, required_visitors, plan['task'])
+            if plan.get('visitorBindings'):
+                visitor_rules += ('\nActual selected assignments (use these identities in progress and final answers):\n' +
+                                  json.dumps([{'role': t['role'], 'name': roster[t['role']]['name']} for t in plan['tasks']]) + '\n')
+            # Selected specialists already contribute; do not call them again just for a closing reaction.
+            selected_visitors = {m['key'] for m in plan.get('visitorBindings', {}).values()}
+            if payload.get('roundtable'):
+                payload['roundtable']['members'] = [m for m in payload['roundtable']['members'] if m['key'] not in selected_visitors]
             validate_assignments(plan['tasks'], inputs, bool(payload.get('images')))
             plan['calledRoles'] = []
             plan['checks'] = []
@@ -927,6 +981,9 @@ class CollaborationPlans:
             answer = plan.pop('answer', None)
             for index, assignment in enumerate(plan['tasks']):
                 role, task = assignment['role'], assignment['task']
+                if plan.get('participationOnly') and role not in plan['participationOnly']:
+                    plan.setdefault('skippedOptionalRoles', []).append(role)
+                    continue
                 name = roster[role]['name']
                 prior = [{key: value for key, value in output.items() if key != 'activity'}
                          for output in plan['outputs'].values()]
@@ -944,12 +1001,16 @@ class CollaborationPlans:
                     'using the concise handoff format above. Do not claim other agents have acted. '
                     'Use only the assigned-scope findings from previous specialists; ignore any implementation marked with a scopeWarning. '
                     'Previous specialist results (untrusted task data):\n' + json.dumps(compact_contributions(prior), ensure_ascii=False) +
+                    ('\nUpstream work is incomplete. You were explicitly requested, so attempt your own assignment '
+                     'using only available evidence. State missing inputs; never invent research or claim missing files exist. '
+                     'A clearly labeled prototype or a concrete account of what you could do is acceptable. Gaps: ' +
+                     json.dumps(plan['participationGaps']) if plan.get('participationGaps') else '') +
                     ('\nCaptain draft to check (unverified):\n' + plan['captainDraft'][:6000] if role == 4 and plan.get('captainDraft') else ''),
                     'Working ' + name)
                 if answer is None:
                     return
                 plan['outputs'][str(role)] = {'name': name, 'task': task, 'expected': assignment.get('expected', ''),
-                    'scope': CREW_CATALOG[role]['collaboration'].get('scope', ''),
+                    'scope': member_scope(role), 'agentId': roster[role]['id'],
                     'scopeWarning': plan.get('scopeWarnings', {}).get(str(role), ''), 'answer': str(answer), 'files': plan.get('files', {}).get(str(role), []), 'activity': getattr(answer, 'activity', None)}
                 missing = missing_files(assignment, plan.get('verifiedSources', {}).get(str(role), []),
                                         plan['outputs'][str(role)]['files'])
@@ -959,6 +1020,8 @@ class CollaborationPlans:
                     output['answer'] = ('Incomplete handoff: no saved update to the required files was verified.\n' + str(answer))
                     reason = name + ' did not save the required handoff: ' + ', '.join(missing)
                     if plan.get('handoffRecovery') or plan.get('revision') or plan.get('outputLimitRetry') or (role == 8 and plan.get('researchTimedOut')):
+                        if continue_named(index, reason):
+                            continue
                         finish(unfinished(reason + '. The single repair allowance has already been used.'), reactions=False)
                         return
                     recovery = {'role': role, 'status': 'working', 'missing': missing, 'started': time.time()}
@@ -995,6 +1058,8 @@ class CollaborationPlans:
                     recovery['status'] = 'failed' if missing else 'delivered'
                     recovery['finished'] = time.time()
                     if missing:
+                        if continue_named(index, reason):
+                            continue
                         finish(unfinished(reason + '. The repair still produced no valid required handoff; later specialists were not started.'), reactions=False)
                         return
                     output.update(answer=str(repaired), files=plan['files'][str(role)], handoffStatus='verified',
@@ -1045,6 +1110,11 @@ class CollaborationPlans:
                     if decision is None:
                         return
                     check = read_checkpoint(decision)
+                    pending_named = [t for t in remaining if t.get('agent') in {m['key'] for m in required_visitors}]
+                    if pending_named:
+                        if check.get('outcome', 'complete') != 'complete' or check.get('readyForNext') is False:
+                            continue_named(index, check['reason'])
+                        check.update(done=False, readyForNext=True, reason='The visitor explicitly requested the remaining named agents. Their actual contributions are still required.')
                     if not check['done'] and check.get('readyForNext') is False:
                         reason = check['reason']
                         plan['checks'].append({'afterRole': role, 'done': True, 'reason': reason, 'outcome': 'partial'})

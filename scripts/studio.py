@@ -50,9 +50,15 @@ def personal_agent_activity(jobs, owner):
     for job in jobs:
         payload, kind = job['payload'], job['kind']
         # Background readiness keeps its reservation but is not personal work.
-        if kind in ('prepare', 'prepare-agent') or (kind == 'crew-chat' and not payload.get('roundtable')):
+        if kind in ('prepare', 'prepare-agent') or (kind == 'crew-chat' and not payload.get('roundtable') and not payload.get('collaboration')):
             continue
         roster_member = any(m.get('key') == owner for m in payload.get('roster', []))
+        if payload.get('collaboration') and roster_member:
+            bindings = payload['collaboration'].get('visitorBindings', {})
+            active = bindings.get(str(payload['collaboration'].get('activeRole')), {}).get('key') == owner
+            activities.append({'kind': 'mission', 'label': 'Working with Casey' if active else 'Waiting for Casey',
+                               'job': job['id'], 'status': job['status']})
+            continue
         guest = any(m.get('key') == owner for m in payload.get('roundtable', {}).get('members', []))
         if kind in ('crew','crew-chat') and not roster_member:
             reply = payload.get('roundtable', {}).get('replies', {}).get(owner, {})
@@ -721,7 +727,7 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
             collection = db.execute('SELECT id,profile,deleting FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?) AND profile IS NOT NULL ORDER BY created,id', (owner,)).fetchall()
             active = [dict(j, payload=json.loads(j['payload'])) for j in db.execute("SELECT id,owner,status,payload,kind,due FROM jobs WHERE status IN ('queued','running','waiting','stopping') AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) ORDER BY created", (owner,))]
             agents = [{'key': r['id'], **json.loads(r['profile']), 'deleting': bool(r['deleting']), 'deletionWaiting': r['deleting'] == 2,
-                       'pending': sum((j['owner'] == r['id'] and j['kind'] not in ('crew','prepare','prepare-agent')) or any(m.get('key') == r['id'] for m in job_participants(j['payload'])) for j in active if j['kind'] != 'crew-chat' or j['payload'].get('roundtable')),
+                       'pending': sum((j['owner'] == r['id'] and j['kind'] not in ('crew','prepare','prepare-agent')) or any(m.get('key') == r['id'] for m in job_participants(j['payload'])) for j in active if j['kind'] != 'crew-chat' or j['payload'].get('roundtable') or j['payload'].get('collaboration')),
                        'activity': personal_agent_activity(active, r['id'])} for r in collection]
             for agent in agents:
                 deletion = db.execute('SELECT progress FROM agent_deletions WHERE owner=?', (agent['key'],)).fetchone()
@@ -962,9 +968,18 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
                     original = self.require_available(db, origin['owner'])
                     self.require_manual_chat(json.loads(original['profile']))
                 self.require_team_idle(db, owner)
-                payload['roundtable'] = self.capture_roundtable(db, owner)
+                from visitor_teams import capture
+                visitors, required, unavailable = capture(self, db, owner, task)
+                payload['roster'] = visitors
+                payload['requiredVisitors'] = required
+                payload['unavailableVisitors'] = unavailable
+                payload['roundtable'] = self.capture_roundtable(db, owner, selected=[member['key'] for member in visitors])
             # An immediate personal request can do the same preparation itself.
             if kind == 'chat':
+                reserved = db.execute("SELECT payload FROM jobs WHERE kind='crew-chat' AND status IN ('queued','running','waiting','stopping') "
+                    "AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?))", (owner,)).fetchall()
+                if any(any(m.get('key') == owner for m in job_participants(json.loads(job['payload']))) for job in reserved):
+                    raise Problem('This agent is collaborating with Casey. Finish or stop the team task first.', 409)
                 db.execute("UPDATE jobs SET status='cancelled',updated=? WHERE owner=? AND kind='prepare-agent' AND status='queued'", (time.time(), owner))
             # Internal warmups retain deletion/policy fences, but do not spend the
             # attendee's three user-request slots while they open agent workspaces.
@@ -1328,7 +1343,7 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
             options['timeout'] = payload['_responseTimeout']
         if payload.get('images'):
             import base64
-            options['images'] = [{'mime': image['mime'], 'data': base64.b64encode(safe_file(self.workspace(owner), image['path'], True).read_bytes()).decode()} for image in payload['images']]
+            options['images'] = [{'mime': image['mime'], 'data': base64.b64encode(safe_file(self.workspace(payload.get('_imageSourceOwner', owner)), image['path'], True).read_bytes()).decode()} for image in payload['images']]
         answer = self.protected_response(agent_id, session, prompt, owner, payload.get('crewRole'), **options)
         return relative_references(answer, self.workspace(owner, payload.get('crewRole')),
                                    structured=options.get('json_response', False))

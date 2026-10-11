@@ -938,7 +938,7 @@ def respond(agent_id, session, prompt, images=None, json_response=False, timeout
             error.recovered_sources = recovered_sources(root() / 'state', agent_id, session, started)
         if isinstance(error, GatewayError) and error.reason == 'timeout' and timeout is not None:
             import team_models
-            if team_models.role_for(agent_id) == 8:
+            if team_models.role_for(agent_id) == 8 or re.fullmatch(r'bac-plan-[a-f0-9]{24}-8-[a-z0-9-]+', session):
                 try:
                     cli('gateway','call','sessions.abort','--params',json.dumps({'agentId':agent_id,'key':'agent:'+agent_id+':openai-user:'+session,'clearQueued':True}),timeout=5)
                 except (RuntimeError, subprocess.TimeoutExpired):
@@ -973,7 +973,7 @@ def respond(agent_id, session, prompt, images=None, json_response=False, timeout
     metrics['endpoint']=model_endpoint(agent_id)
     answer=Reply(content, metrics)
     answer.activity = observed_activity(agent_id, session, started)
-    if agent_id.endswith('-r8') and session.startswith('bac-plan-'):
+    if re.fullmatch(r'bac-plan-[a-f0-9]{24}-8-[a-z0-9-]+', session):
         from research_recovery import recovered_sources
         answer.sources = recovered_sources(root() / 'state', agent_id, session, started)
     return answer

@@ -22,7 +22,8 @@ function visiblePolicyBadges(){
  const targets=[];
  if(room==='lounge'&&data.profile?.protection==='openshell'&&!data.deleting)targets.push({button:el('agent-policy'),owner:agentId,key:agentId+':personal',name:data.profile.name,route:'agent-policy',role:null});
  const member=window.BacCrewCatalog[selectedCrewRole];
- if(room==='mission'&&member?.protection==='openshell')targets.push({button:el('crew-policy'),owner:agentId,key:agentId+':crew:'+selectedCrewRole,name:member.name,route:'crew-policy?role='+selectedCrewRole,role:selectedCrewRole});
+ const visitor=assignedVisitor(selectedCrewRole);
+ if(room==='mission'&&(visitor||member)?.protection==='openshell')targets.push(visitor?{button:el('crew-policy'),owner:visitor.key,key:visitor.key+':personal',name:visitor.name,route:'agent-policy',role:null}:{button:el('crew-policy'),owner:agentId,key:agentId+':crew:'+selectedCrewRole,name:member.name,route:'crew-policy?role='+selectedCrewRole,role:selectedCrewRole});
  return targets;
 }
 function paintVisiblePolicyBadges(){for(const target of visiblePolicyBadges())paintPolicyBadge(target.button,target.key,target.name);}
@@ -31,7 +32,7 @@ function syncPolicyBadges(){
  for(const key of policyBadgeReports.keys())if(!live.has(key.split(':')[0]))policyBadgeReports.delete(key);
  for(const target of visiblePolicyBadges()){
   paintPolicyBadge(target.button,target.key,target.name);
-  const jobs=target.role===null?(data.jobs||[]).filter(j=>!['crew','crew-chat','prepare','prepare-agent'].includes(j.kind)):[...(data.jobs||[]).filter(j=>j.kind==='crew'),...(data.crewChats||[]).filter(j=>(j.payload.crewRole===target.role||j.payload.collaboration))];
+  const jobs=target.role===null?[...(data.jobs||[]).filter(j=>!['crew','crew-chat','prepare','prepare-agent'].includes(j.kind)),...(data.crewChats||[]).filter(j=>Object.values(j.payload.collaboration?.visitorBindings||{}).some(m=>m.key===target.owner))]:[...(data.jobs||[]).filter(j=>j.kind==='crew'),...(data.crewChats||[]).filter(j=>(j.payload.crewRole===target.role||j.payload.collaboration))];
   const signature=JSON.stringify([jobs.map(j=>[j.id,j.status]),(data.protectionEvents||[]).filter(e=>e.role===target.role&&(target.role!==null||e.owner===target.owner)).map(e=>e.id),target.role===null?data.agents?.find(a=>a.key===target.owner)?.workspacePreparation:data.preparation]);
   let entry=policyBadgeReports.get(target.key);
   if(entry?.loading||entry?.signature===signature||Date.now()<(entry?.retryAfter||0))continue;

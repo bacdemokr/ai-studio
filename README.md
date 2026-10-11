@@ -140,11 +140,23 @@ Keyless local servers need no API key. Provider keys entered in these settings a
 
 **Event Brief** restores the fixed Riley, Dylan, Alex and Morgan crew. The app prepares this crew in the background once a model connection is available, without running inference. Open **Plan an event**, enter event details, and launch when preparation is ready. Reopening the form reuses the prepared team. While the app is open, it checks readiness in the background and prepares again after model changes, scenario resets or server restarts, without requiring a visit to Stage 3. A failed preparation waits for a manual retry. The team produces researched demo ideas, an operations timetable and an event webpage. Dylan retains his OpenShell protection.
 
-**Open Task** uses the Zurich Plan collaboration flow: message Casey with `/goal` and a concrete task, optionally attaching documents. Casey selects the needed specialists. Each scenario has its own team identities, chat history, model selections, documents and results. They share the Stage 3 API connection and hired-agent collection. Choosing another scenario does not cancel active work.
+**Open Task**: message Casey with `/goal` and a concrete task, optionally attaching documents. Casey prefers suitable agents you hired, with the built-in specialists available as backup. Event Brief keeps its fixed team. Each scenario retains its own history, documents and results. Choosing another scenario does not cancel active work.
+
+This experimental `preview/visitor-agent-teams` branch adapts Paul Roeseler's hired-agent collaboration from `proeseler/stage3-demo` to the current dispatcher, preserving its verified handoffs, bounded recovery and cancellation.
+
+To choose who does the work, name them and their assignment:
+
+```text
+/goal Let Pixel handle the coding instead of Cody. Build a small desktop counter page.
+```
+
+Pixel actually performs the coding, even if its saved role is weather advice. Its identity, voice, skills, workspace and OpenShell policy stay the same; the assignment does not grant extra tools. Named agents are not replaced because they lack expertise. When upstream output is incomplete, named agents still attempt their assignments with the available evidence and the result stays partial. Busy or unavailable agents are reported; cancellation, connection failures and the overall time budget can still stop the task. The existing maximum of three specialists applies, with a different agent required for independent review.
+
+Hired agents use their **Hiring & Agent lounge** model connection. Casey and built-in backups use **Open Task** settings, including its existing per-agent NVIDIA model choices. Connect both when combining the two. During a team task, participating agents are reserved so chat, Heartbeat and edits do not overlap their work. Follow-up messages to a hired specialist open its existing Lounge conversation. Scenario reset clears the shared team history and exported results, while preserving the hired agent's own files and identity.
 
 `/plan` and `/plans` remain supported aliases for `/goal`. Only Open Task's Casey chat supports these team commands. Lounge agents without Tech Radar accept direct messages; Event Brief uses **Plan an event**. Casey's Open Task chat starts with `/goal ` and restores it after a successful send. Delete the prefix to send a direct message. Specialists accept direct messages only, without `/goal` hints or suggestions; send team tasks to Casey. Their inputs start empty and clear after sending; existing drafts stay intact when switching characters.
 
-The room starts with Casey. The selected specialists join together and execute in assignment order. The pool is Scout (Web Researcher), Ada (Data analyst), Iris (UX designer), Cody (Programmer), and Vera (Reviewer). Dylan, Alex and Morgan appear only in Event Brief; they are not in the Plan specialist pool. Coding tasks prioritize a compact, usable desktop demo: no mobile layouts or touch controls, no optional polish loops, and no extra design pass unless needed. Cody aims to save the core implementation in one pass and returns once required work is delivered. Explicitly requested independent review is still required. Casey reserves a repair for an observed defect, not a repeated save/read confirmation.
+The room starts with Casey. Selected specialists join together and execute in assignment order. The backup pool is Scout (Web Researcher), Ada (Data analyst), Iris (UX designer), Cody (Programmer), and Vera (Reviewer). Dylan, Alex and Morgan appear only in Event Brief. Coding assignments, including those given to hired agents, prioritize a compact, usable desktop demo: no mobile layouts or touch controls, no optional polish loops, and no extra design pass unless needed. Save the core implementation in one pass and return once required work is delivered. Explicitly requested independent review is still required. Casey reserves a repair for an observed defect, not a repeated save/read confirmation.
 
 **Mission Control** shows assignments, expected results, contributions, and Casey’s decisions in execution order. **Results** shows the current plan’s response and saved files, with previews for generated HTML pages. While a plan is running, Casey’s composer and the working specialist’s composer are disabled. Stop immediately shows a pending state and prevents duplicate clicks while cancellation is being sent; an in-flight runtime call may still need to settle. Partial and failed work remains visible rather than being presented as complete.
 
@@ -182,13 +194,13 @@ Static review uses bounded source excerpts: at most eight reads, 120 lines per r
 
 Scout uses keyless Parallel Search: one focused search and 2–3 useful findings by default, then saves a short cited brief. Fewer findings are acceptable; stale or irrelevant results are reported honestly. No separate search API key is needed.
 
-The bundled research guard enforces at most two searches (three bounded excerpts each), or five bounded page reads, per research job. After a search, Scout saves the available excerpts instead of opening more pages. These enforced job limits apply to Scout’s `/goal` research. Lounge research also receives concise research instructions and bounded fetched excerpts, with runtime context compaction. Neither changes OpenShell permissions or guarantees every request fits the model context.
+The bundled research guard enforces at most two searches (three bounded excerpts each), or five bounded page reads, per research job. After a search, save the available excerpts instead of opening more pages. Hired specialists inherit these Open Task budgets, bounded file responses and review limits. Their protected command calls have a five-call budget and a 20-second timeout per call. Lounge research also receives concise research instructions and bounded fetched excerpts, with runtime context compaction. Neither changes OpenShell permissions or guarantees every request fits the model context.
 
 Lounge research answers ordinary questions directly; it saves a brief when requested or assigned as a team handoff. Its generated research instructions use the agent's actual transport: native web tools for standard agents, approved sandbox requests for OpenShell agents. Personal tone and reply styles remain in `SOUL.md`; Event Brief and Open Task use their own role and delivery contracts.
 
 Small saved evidence briefs and bounded excerpts from observed tool results are passed directly to Casey for synthesis. If the final reply cites a public URL absent from those results and their returned links, it is withheld as partial rather than labeled complete. This citation check does not verify every factual claim or establish that sources are current.
 
-Scout has a 150-second research budget across retries. At the deadline, saved work and completed search/page excerpts are preserved for the team; missing evidence is reported honestly.
+Research assignments have a 150-second budget across retries, whether Scout or a hired agent performs them. At the deadline, saved work and completed search/page excerpts are preserved for the team; missing evidence is reported honestly.
 
 ## Everyday commands
 

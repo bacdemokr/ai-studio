@@ -1,3 +1,6 @@
+function planNames(plan){return defaultNames.map((name,role)=>plan?.visitorBindings?.[role]?.name||name);}
+function assignedVisitor(role){return selectedScenario==='plan'?currentCollaboration()?.payload.collaboration.visitorBindings?.[role]:null;}
+function visitorAvailable(visitor){return !!visitor&&(data.agents||[]).some(agent=>agent.key===visitor.key&&!agent.deleting);}
 // Each specialist has a durable direct conversation, separate from crew execution.
 const defaultCrewPrompt=role=>selectedScenario==='plan'&&role===0?'/goal ':'';
 const crewDrafts=new Map();let crewChatKey='',crewChatSignature='',crewChatSending=false,crewResetEpoch='';
@@ -41,7 +44,7 @@ function missionControlPlan(){
  return latest||null;
 }
 function renderStandbySpecialists(agents){
- const occupied=new Set(agents.flatMap((agent,i)=>agent.displayed?[i]:[]));
+ const occupied=new Set(agents.flatMap((agent,i)=>agent.displayed&&!assignedVisitor(i)?[i]:[]));
  const available=window.BacCrewCatalog.map((member,role)=>({...member,roleIndex:role}))
   .filter(member=>member.planEligible!==false);
  el('standby-count').textContent=String(available.length);
@@ -164,6 +167,7 @@ function collaborationTimeMarkup(job){
  return label?'<p class="mission-plan-inputs" data-plan-total="'+escape(job.id)+'" title="From submission to completion, including queueing, planning, specialists and review.">'+escape(label)+'</p>':'';
 }
 function missionControlTraceMarkup(job){
+ const defaultNames=planNames(job.payload.collaboration);
  const plan=job.payload.collaboration,active=['queued','running','waiting','stopping'].includes(job.status),tasks=plan.tasks||[],checks=plan.checks||[];
  let sequence=-1;
  const row=(kind,name,status,content,attrs='',recorded=true,state='')=>'<article class="mission-plan-step" data-trace-key="'+escape(kind+':'+attrs)+'" data-trace-kind="'+kind+'" data-step-state="'+state+'" '+attrs+'><header><small>'+(recorded?String(++sequence).padStart(2,'0')+' · '+({plan:'PLAN',contribution:'CONTRIBUTION',review:'REVIEW',revision:'REVISION REQUEST','revision-work':'REVISION',response:'RESPONSE',stopped:'STOPPED'}[kind]||kind.toUpperCase()):kind==='skipped'?'NOT CALLED':'PLANNED')+'</small><h4>'+escape(name)+'</h4><span>'+escape(status)+'</span></header><div class="mission-plan-content">'+content+'</div></article>';
@@ -253,6 +257,7 @@ function collaborationRevisionBody(revision,jobId){
  return '<strong>Casey’s revision assignment</strong><div>'+messageMarkup(revision.task)+'</div><div class="mission-expectation"><small>Expected result</small>'+messageMarkup(revision.expected)+'</div>'+(revision.output?'<details class="mission-trace-detail" data-trace-details="revision-output"><summary>Revised contribution</summary><div class="chat-prose">'+messageMarkup(revision.output.answer)+'</div>'+webpageButtons(revision.output.files,jobId)+collaborationFileButtons(revision.output.files,jobId)+'</details>':'')+(revision.status==='failed'?'<p>The revision did not finish. Previous contributions are preserved.</p>':'');
 }
 function collaborationRevisionMarkup(job){
+ const defaultNames=planNames(job.payload.collaboration);
  const r=job.payload.collaboration.revision;if(!r)return '';
  return '<section class="chat-message chat-handoff" data-plan-revision><small>Casey · One targeted revision</small><div class="chat-prose">'+messageMarkup(r.reason)+'</div><p>'+escape(r.issue)+'</p><small>'+escape(defaultNames[r.role])+' · '+(r.output?'Revised contribution':r.status==='working'&&['running','stopping'].includes(job.status)?'Revising':'Revision '+r.status)+'</small>'+collaborationRevisionBody(r,job.id)+'</section>'+collaborationDecisionMarkup({...job.payload.collaboration,checks:(job.payload.collaboration.checks||[]).filter(check=>check.afterRevision)});
 }
@@ -264,6 +269,7 @@ function collaborationDecisionMarkup(plan){
 // Keep the final reply self-contained, including saved plans whose answer omitted
 // the Captain's separately recorded stopping reason. Never invent a rationale.
 function collaborationCompletionMarkup(plan,answer){
+ const defaultNames=planNames(plan);
  if(!answer)return '';
  const decision=(plan.checks||[]).filter(check=>check.done).at(-1)||(plan.outcome==='partial'?{outcome:'partial',reason:plan.summary,remaining:plan.remaining}:null);
  if(!decision)return '';
@@ -278,6 +284,7 @@ function collaborationFileButtons(files,jobId,label='Open supporting file'){
  return paths.map((path,index)=>'<button type="button" class="studio-secondary" data-plan-file="'+escape(path)+'" data-plan-job="'+escape(jobId)+'">'+escape(label)+(paths.length>1?' '+(index+1):'')+'</button>').join('');
 }
 function livePlanActivityMarkup(plan,role,jobId){
+ const defaultNames=planNames(plan);
  const activity=plan.liveActivity;
  if(!activity||(role!==0&&role!==activity.role))return '';
  const labels={web_fetch:'Read webpage',web_search:'Search web',read:'Read file',write:'Save file',edit:'Edit file',apply_patch:'Update files',exec:'Run tool',tool:'Tool call'};
@@ -287,6 +294,7 @@ function livePlanActivityMarkup(plan,role,jobId){
  return '<section class="plan-live-activity" aria-label="Observed activity"><strong>'+escape(defaultNames[activity.role])+' · Live activity</strong><ol>'+activity.calls.map(call=>'<li data-activity-status="'+escape(call.status)+'"><span>'+escape(labels[call.tool]||'Tool call')+(call.target?' · '+escape(call.target):'')+'</span><small>'+escape((statuses[call.status]||'Started')+(call.status==='failed'&&call.errorLabel?' ('+call.errorLabel+')':''))+'</small></li>').join('')+'</ol><p>'+waiting+' · '+'<span data-plan-elapsed="'+escape(jobId)+'">'+Number(activity.elapsed)+'</span>s since request</p></section>';
 }
 function collaborationMarkup(job,role){
+ const defaultNames=planNames(job.payload.collaboration);
  const plan=job.payload.collaboration,pending=['queued','running','waiting','stopping'].includes(job.status);
  const held=shieldReplyHeld(job,role),piece=plan.outputs?.[role],captain=role===0;
  const finalAnswer=collaborationAnswer(job),answer=captain?(finalAnswer||job.result?.error||''):piece?.answer||'';
@@ -346,16 +354,18 @@ for(const type of ['dragover','drop'])el('crew-chat').addEventListener(type,even
 });
 function syncCrewComposer(){
  const captainPlanning=selectedCrewRole===0&&(data.crewChats||[]).some(j=>j.payload?.collaboration&&['queued','running','waiting','stopping'].includes(j.status));
- const memberWorking=(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status)&&(j.payload?.collaboration?(['running','stopping'].includes(j.status)&&j.payload.collaboration.activeRole===selectedCrewRole):j.payload?.crewRole===selectedCrewRole));
+ const visitor=assignedVisitor(selectedCrewRole);
+ const visitorMissing=visitor&&!visitorAvailable(visitor);
+ const memberWorking=!!visitor&&(data.agents||[]).some(a=>a.key===visitor.key&&a.pending>0)||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status)&&(j.payload?.collaboration?(['running','stopping'].includes(j.status)&&j.payload.collaboration.activeRole===selectedCrewRole):j.payload?.crewRole===selectedCrewRole));
  const eventWorking=eventTeamWorking(['crew']);
  const eventPreparing=selectedScenario==='event-brief'&&['queued','running','stopping'].includes(data.preparation?.status);
- const blocked=scenarioChoosing||scenarioSwitching||!teamReady()||!!data.bacResetting||captainPlanning||memberWorking||eventWorking||eventPreparing||crewDocumentUpload;
+ const blocked=scenarioChoosing||scenarioSwitching||visitorMissing||(visitor?!runtime.ready:!teamReady())||!!visitor?.skills?.includes('radar')||!!data.bacResetting||captainPlanning||memberWorking||eventWorking||eventPreparing||crewDocumentUpload;
  el('crew-document-add').hidden=selectedCrewRole!==0||selectedScenario==='event-brief';el('crew-document-add').disabled=blocked;
  renderCrewDocuments();
  const commandOnly=selectedScenario==='plan'&&selectedCrewRole===0&&/^\s*\/(?:goals?|plans?)\s*$/i.test(el('crew-prompt').value);
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending||commandOnly;
  el('crew-chat-connection').hidden=!blocked;
- el('crew-chat-connection').textContent=crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':eventPreparing?'Preparing the Event Brief team…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(teamRuntime().teamModel??runtime.model)?'Model not connected. Enable Local or External Endpoint in Settings.':'Run ./bac start on this computer to connect the team runtime.';
+ el('crew-chat-connection').textContent=visitorMissing?'This agent was removed. Start a new task with Casey.':visitor?.skills?.includes('radar')?'Tech Radar uses Heartbeat. Manual chat is disabled.':crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':eventPreparing?'Preparing the Event Brief team…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(visitor?runtime.model:(teamRuntime().teamModel??runtime.model))?'Model not connected. Enable Local or External Endpoint in Settings.':'Run ./bac start on this computer to connect the team runtime.';
 }
 function renderCrewPassport(){
  syncFileButtons();
@@ -366,15 +376,15 @@ function renderCrewPassport(){
  }
  if(room!=='mission')return;
  if(selectedScenario==='event-brief')return renderEventCrewPassport();
- const i=selectedCrewRole,name=defaultNames[i],role=window.BacCrewCatalog[i].collaboration.title;
- const avatar=window.BacCampus?.inspect().crewAvatars?.[i]||{};
+ const i=selectedCrewRole,visitor=assignedVisitor(i),name=visitor?.name||defaultNames[i],role=window.BacCrewCatalog[i].collaboration.title;
+ const avatar=visitor?.avatar||window.BacCampus?.inspect().crewAvatars?.[i]||{};
  el('crew-number').textContent=String(i+1).padStart(2,'0')+' / '+roles.length;
  el('crew-name').textContent=name;syncTeamTotalTime();el('crew-role').textContent=role;
- const model=teamModel(i);el('crew-model').textContent=model?.label||'';el('crew-model').title=model?.id||'';el('crew-model').hidden=!model;
+ const model=visitor?(runtime.sharedModel?{id:runtime.sharedModel,label:runtime.sharedModel}:null):teamModel(i);el('crew-model').textContent=model?.label||'';el('crew-model').title=model?.id||'';el('crew-model').hidden=!model;
  const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';portrait.style.setProperty('--avatar-accent',appearanceColors[avatar.color]||appearanceColors.green);
  const skills=[];
  const skillLabels={...titles,'event-tools':'Event tools','event-scheduling':'Presenter scheduling'};
- el('crew-policy').hidden=window.BacCrewCatalog[i].protection!=='openshell';
+ el('crew-policy').hidden=(visitor&&!visitorAvailable(visitor))||(visitor?.protection||window.BacCrewCatalog[i].protection)!=='openshell';
  syncPolicyBadges();
  const markup=skills.map(s=>'<span>'+escape(skillLabels[s]||s)+'</span>').join('');if(el('crew-skills').innerHTML!==markup)el('crew-skills').innerHTML=markup;
  const key=crewDraftKey(i),switched=key!==crewChatKey;
@@ -399,7 +409,7 @@ function renderCrewPassport(){
  loadChatImages(log,agentId);
  if(follow)log.scrollTop=log.scrollHeight;else log.scrollTop=top;
 }
-el('crew-policy').onclick=()=>openPolicy(selectedCrewRole);
+el('crew-policy').onclick=async()=>{const visitor=assignedVisitor(selectedCrewRole);if(visitor){await switchAgent(visitor.key);if(agentId===visitor.key)openPolicy();}else openPolicy(selectedCrewRole);};
 el('crew-chat').onsubmit=async e=>{
  e.preventDefault();syncCrewComposer();if(el('crew-send').disabled)return;
  const owner=agentId,index=selectedCrewRole,key=crewDraftKey(index),draft=captureChatDraft(true);
@@ -410,7 +420,7 @@ el('crew-chat').onsubmit=async e=>{
  let requestPrompt=draft.prompt;
  if(index===0){const docs=renderCrewDocuments();if(docs.length)requestPrompt+='\n\nAttached documents (use these files):\n'+docs.map(f=>f.path.slice(6)).join('\n');}
  crewChatSending=true;syncCrewComposer();el('crew-chat-error').hidden=true;
- try{const result=await api('jobs',{kind:'crew-chat',crewRole:index,prompt:requestPrompt,images:draft.images},owner);acknowledgeChatDraft(draft);await refresh();if(result.collaboration)stageCollaboration(result);}
+ try{const visitor=assignedVisitor(index);const result=await api('jobs',visitor?{kind:'chat',prompt:requestPrompt,images:draft.images}:{kind:'crew-chat',crewRole:index,prompt:requestPrompt,images:draft.images},visitor?.key||owner);acknowledgeChatDraft(draft);if(visitor){await switchAgent(visitor.key);setRoom('lounge');}await refresh();if(result.collaboration)stageCollaboration(result);}
  catch(error){if(crewChatKey===key){el('crew-chat-error').textContent=error.message;el('crew-chat-error').hidden=false;}}
  finally{crewChatSending=false;syncCrewComposer();}
 };

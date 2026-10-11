@@ -28,7 +28,8 @@ class PlanAdapter(Adapter):
         if role == self.fail_role and role is not None:
             raise RuntimeError('Fixture policy denial')
         if session.endswith('-planning'):
-            return json.dumps(self.plan)
+            # These legacy dispatcher tests explicitly select the built-in backup team.
+            return json.dumps({**self.plan, 'tasks': [{**task, 'agent': task.get('agent', 'builtin')} for task in self.plan['tasks']]})
         if '-checking-' in session:
             return json.dumps({'done':False,'reason':'The remaining assigned work is still required.'})
         if session.endswith('-reviewing'):

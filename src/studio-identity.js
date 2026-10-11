@@ -59,17 +59,19 @@ async function openAgentDocuments(role=null,codeView=false){
 }
 for(const id of ['portrait','agent-name'])el(id).onclick=()=>openAgentDocuments();
 el('agent-code').onclick=()=>openAgentDocuments(null,true);
-for(const id of ['crew-portrait','crew-name'])el(id).onclick=()=>openAgentDocuments(selectedCrewRole);
+for(const id of ['crew-portrait','crew-name'])el(id).onclick=async()=>{const visitor=assignedVisitor(selectedCrewRole);if(visitor){await switchAgent(visitor.key);if(agentId===visitor.key)openAgentDocuments();}else openAgentDocuments(selectedCrewRole);};
 el('dialog').addEventListener('close',()=>{if(!el('dialog').open)identityRequest++;});
 
 // Browser-based folder access works on both local and remote installations.
 function syncFileButtons(){
  personalFilesButton.hidden=!data.hasFiles;
- scenarioFilesButton.hidden=!(data.fileWorkspaces||[]).includes(String(selectedCrewRole));
+ const visitor=assignedVisitor(selectedCrewRole);
+ scenarioFilesButton.hidden=visitor?!visitorAvailable(visitor):!(data.fileWorkspaces||[]).includes(String(selectedCrewRole));
 }
-async function openWorkspaceFiles(team=false){
+async function openWorkspaceFiles(team=false,allowEmpty=false){
+ const visitor=team?assignedVisitor(selectedCrewRole):null;if(visitor){await switchAgent(visitor.key);if(agentId===visitor.key)return openWorkspaceFiles(false,true);return;}
  const target=agentId,scenario=selectedScenario,role=selectedCrewRole,workspace=team?String(role):'personal';
- if(team?!(data.fileWorkspaces||[]).includes(workspace):!data.hasFiles)return;
+ if(!allowEmpty&&(team?!(data.fileWorkspaces||[]).includes(workspace):!data.hasFiles))return;
  const name=team?defaultNames[role]:data.profile?.name;
  dialog('FILES','<section id="studio-workspace-browser"><header><h3>'+escape(name?name+' files':'Agent files')+'</h3></header><p id="studio-file-status" role="status">Loading files…</p><div id="studio-file-folders"></div></section>');
  const host=el('workspace-browser');

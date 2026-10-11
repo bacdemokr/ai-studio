@@ -36,7 +36,7 @@ function loungeState(event, ctx) {
 }
 const spillFile = /(?:^|[\\/])openclaw-web-fetch-[a-f0-9]+\.log$/i;
 function reviewState(ctx) {
-  if (!/^bac-[a-f0-9]{24}-r4$/.test(ctx.agentId || '')) return null;
+  if (!/^bac-[a-f0-9]{24}(?:-r4)?$/.test(ctx.agentId || '')) return null;
   const match = (ctx.sessionKey || '').match(/:openai-user:bac-plan-([a-f0-9]{24})-4-(?:working|revising)(?:-output-retry)?$/);
   if (!match) return null;
   const now = Date.now(), key = ctx.agentId + ':' + match[1];
@@ -48,21 +48,22 @@ function reviewState(ctx) {
   const state = reviews.get(key);state.updated = now;return state;
 }
 function keyFor(ctx) {
-  if (!/^bac-[a-f0-9]{24}-r8$/.test(ctx.agentId || '')) return null;
-  const match = (ctx.sessionKey || '').match(/:openai-user:bac-plan-([a-f0-9]{24})-8-(?:working|revising)(?:-output-retry)?$/);
-  return match ? ctx.agentId + ':' + match[1] : null;
+  if (!/^bac-[a-f0-9]{24}(?:-r8)?$/.test(ctx.agentId || '')) return null;
+  const match = (ctx.sessionKey || '').match(/:openai-user:bac-plan-([a-f0-9]{24})-([4-8])-(?:working|revising)(?:-output-retry)?$/);
+  if (!match || (ctx.agentId.endsWith('-r8') && match[2] !== '8')) return null;
+  return ctx.agentId + ':' + match[1];
 }
 const eventRuns = new Map();
 const fileRuns = new Map();
 function fileState(ctx) {
-  const agent = (ctx.agentId || '').match(/^bac-[a-f0-9]{24}-r(\d+)$/);
+  const agent = (ctx.agentId || '').match(/^bac-[a-f0-9]{24}(?:-r(\d+))?$/);
   if (!agent) return null;
   const role = agent[1], session = ctx.sessionKey || '';
   const plan = session.match(/:openai-user:(bac-plan-[a-f0-9]{24}-(\d+)-[a-z0-9-]+)$/);
   const event = session.match(/:openai-user:(bac-crew-[a-f0-9]{24}-(\d+)(?:-social|-page-repair-\d+)?(?:-(?:context|output)-recovery)?)$/);
   const match = plan || event;
   // Dylan and Vera have stricter, dedicated guards below.
-  if (!match || match[2] !== role || (plan && role === '4') || (event && role === '1')) return null;
+  if (!match || (role && match[2] !== role) || (!role && !plan) || (plan && match[2] === '4') || (event && role === '1')) return null;
   const now = Date.now(), key = ctx.agentId + ':' + match[1];
   for (const [k,v] of fileRuns) if (now-v.updated>TTL) fileRuns.delete(k);
   if (!fileRuns.has(key)) {
@@ -114,11 +115,11 @@ export function beforeTool(event, ctx) {
   // Models sometimes drop the leading slash from their own workspace path.
   // Translate only this agent's exact prefix, never another owner's path.
   if ((eventRun || files || reviewState(ctx)) && ['read','write','edit'].includes(event.toolName)) {
-    const identity=(ctx.agentId||'').match(/^bac-([a-f0-9]{24})-r(\d+)$/), params={...event.params};
+    const identity=(ctx.agentId||'').match(/^bac-([a-f0-9]{24})(?:-r(\d+))?$/), params={...event.params};
     for (const key of ['path','file_path']) {
       const value=params[key];
       if (!identity || typeof value!=='string') continue;
-      const prefix=`var/lib/bac/studio/workspaces/${identity[1]}-${identity[2]}/`;
+      const prefix=`var/lib/bac/studio/workspaces/${identity[1]}${identity[2] ? "-"+identity[2] : ""}/`;
       const path=value.replace(/^\//,'');
       if (path.startsWith(prefix)) {
         const relative=path.slice(prefix.length);
@@ -177,7 +178,7 @@ export function beforeTool(event, ctx) {
     return result;
   }
   const key = keyFor(ctx);
-  if (!key || !['web_search', 'web_fetch'].includes(event.toolName)) return normalized;
+  if (!key || !['web_search', 'web_fetch', ...(/^bac-[a-f0-9]{24}$/.test(ctx.agentId||'')?['exec']:[])].includes(event.toolName)) return normalized;
   const now = Date.now();
   for (const [k, v] of sessions) if (now - v.updated > TTL) sessions.delete(k);
   if (!sessions.has(key)) {
@@ -195,6 +196,7 @@ export function beforeTool(event, ctx) {
     return {params: {...event.params, count: Math.min(3, Math.max(1, Number(event.params.count) || 3))}};
   }
   state.fetches++;
+  if(event.toolName==='exec')return {params:{...event.params,timeout:Math.min(20,Math.max(1,Number(event.params.timeout)||20))}};
   return {params: {...event.params, maxChars: Math.min(4000, Math.max(1, Number(event.params.maxChars) || 3000))}};
 }
 function excerpt(value, limit) {
