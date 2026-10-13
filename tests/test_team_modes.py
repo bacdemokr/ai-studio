@@ -29,10 +29,42 @@ class TeamModeTests(unittest.TestCase):
 
     def test_hired_only_never_falls_back_after_invalid_repair(self):
         self.adapter.auto_agents = False
-        self.adapter.selection['tasks'][0]['agent'] = 'builtin'
+        for role in (4, 5, 6, 7, 8):
+            with self.subTest(role=role):
+                self.adapter.selection['tasks'][0].update(role=role, agent='builtin')
+                job = self.execute(self.start(teamMode='hired'))
+                self.assertFalse(self.specialists())
+                self.assertEqual(job['payload']['collaboration']['teamSelectionRecovery']['status'], 'failed')
+        self.assertEqual({c[0] for c in self.adapter.calls}, {'bac-' + self.manager + '-r0'})
+
+    def test_hired_only_missing_identity_is_not_treated_as_standby(self):
+        self.adapter.auto_agents = False
         job = self.execute(self.start(teamMode='hired'))
         self.assertFalse(self.specialists())
         self.assertEqual(job['payload']['collaboration']['teamSelectionRecovery']['status'], 'failed')
+
+    def test_hired_only_dispatch_guard_survives_missing_binding(self):
+        # Simulate a binding regression after a valid plan: the execution boundary
+        # must still reject the built-in occupant of this assignment's role.
+        with patch('visitor_teams.bind', return_value=None), self.assertRaisesRegex(RuntimeError, 'built-in specialist cannot be started'):
+            self.execute(self.start(teamMode='hired'))
+        self.assertFalse(self.specialists())
+        self.assertEqual({c[0] for c in self.adapter.calls}, {'bac-' + self.manager + '-r0'})
+
+    def test_hired_only_context_recovery_keeps_the_same_hired_agent(self):
+        self.adapter.fail_once = True
+        job = self.execute(self.start(teamMode='hired'))
+        self.assertEqual(job['payload']['collaboration']['outputLimitRetry']['status'], 'recovered')
+        self.assertEqual([c[0] for c in self.specialists()], ['bac-' + self.owner] * 2)
+        self.assertEqual({c[0] for c in self.adapter.calls}, {'bac-' + self.manager + '-r0', 'bac-' + self.owner})
+
+    def test_hired_only_missing_handoff_does_not_recruit_standby(self):
+        self.adapter.writes = False
+        job = self.execute(self.start(teamMode='hired'))
+        self.assertEqual(job['payload']['collaboration']['outcome'], 'partial')
+        self.assertTrue(self.specialists())
+        self.assertEqual({c[0] for c in self.specialists()}, {'bac-' + self.owner})
+        self.assertEqual({c[0] for c in self.adapter.calls}, {'bac-' + self.manager + '-r0', 'bac-' + self.owner})
 
     def test_hired_only_requires_an_available_hire_before_enqueue(self):
         with patch('visitor_teams.capture', return_value=([], [], [])), self.assertRaisesRegex(Problem, 'No hired agents are ready'):

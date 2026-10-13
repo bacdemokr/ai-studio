@@ -2,6 +2,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const source=fs.readFileSync('src/studio-crew.js','utf8');
 const escape=value=>String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const context=vm.createContext({escape,messageMarkup:escape,webpageButtons:()=>'',data:{crewChats:[]},window:{BacCrewCatalog:JSON.parse(fs.readFileSync('src/crew-catalog.json','utf8'))},defaultNames:['Casey','Dylan','Alex','Morgan','Vera','Cody','Ada','Iris','Scout']});
+vm.runInContext(source.slice(0,source.indexOf('function assignedVisitor(')),context);
 vm.runInContext(source.slice(source.indexOf('function collaborationRoleOrder('),source.indexOf('function renderMissionControl(')),context);
 const render=(plan,status='running',result={})=>context.missionControlTraceMarkup({id:'fixture',status,result,payload:{collaboration:plan}});
 const kinds=html=>[...html.matchAll(/data-trace-kind="([^"]+)"/g)].map(m=>m[1]);
@@ -10,6 +11,16 @@ assert.equal(JSON.stringify(context.collaborationTeam({...base,calledRoles:[8]})
 assert.equal(JSON.stringify(context.collaborationTeam({...base,calledRoles:[8],skippedRoles:[4]})),'[0,8,4]');
 assert.equal(JSON.stringify(context.collaborationTeam({tasks:[],calledRoles:[]})),'[0]');
 assert.equal(JSON.stringify(context.collaborationTeam({calledRoles:[8,4]})),'[0,8,4]');
+// A new plan must never inherit only role numbers from previous hired work.
+context.data.crewChats=[{created:1,payload:{collaboration:{tasks:[{role:8},{role:5}],visitorBindings:{8:{key:'orbit'},5:{key:'jinny'}}}}}];
+assert.equal(JSON.stringify(context.collaborationTeam({})),'[0]');
+assert.equal(JSON.stringify(context.collaborationTeam({},'hired')),'[0]');
+assert.equal(JSON.stringify(context.collaborationTeam(base,'hired')),'[0]');
+assert.equal(JSON.stringify(context.collaborationTeam(base,'mixed')),'[0]');
+assert.equal(JSON.stringify(context.collaborationTeam({...base,visitorBindings:{}},'hired')),'[0]');
+assert.equal(JSON.stringify(context.collaborationTeam({...base,visitorBindings:{}},'mixed')),'[0,8,4]');
+assert.equal(JSON.stringify(context.collaborationTeam({...base,visitorBindings:{8:{key:'orbit'},4:{key:'jinny'}}},'hired')),'[0,8,4]');
+context.data.crewChats=[];
 assert.deepEqual(kinds(render(base)),['user','plan','planned','planned']);
 const delivered={...base,calledRoles:[8],activeRole:0,handoffs:{8:{task:'Find sources.',started:1,receivedFrom:[]}},outputs:{8:{answer:'Research result.'}}};
 assert.deepEqual(kinds(render(delivered)),['user','plan','contribution','review','planned']);

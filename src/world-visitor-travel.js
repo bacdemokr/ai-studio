@@ -41,7 +41,7 @@ function syncVisitorTeam(){
   const reacting=new Set(meetingGuests.filter(g=>g.phase!=='returned').map(g=>g.key));
   const available=collection.filter(a=>!a.deleting&&!reacting.has(a.key)&&(!a.activity||a.activity.job===job?.id));
   const waiting=following?available:[];
-  const desired=new Map(waiting.map(a=>[a.key,{...a,role:null,taskTitle:'Waiting for Casey'}]));
+  const desired=new Map(waiting.map(a=>[a.key,{...a,role:null,taskTitle:'Standby'}]));
   selected.forEach((value,key)=>desired.set(key,value));
   for(const v of visitorTravel.values())if(!desired.has(v.key)){
     if(reacting.has(v.key))disposeVisitor(v);else returnVisitor(v);
@@ -102,7 +102,7 @@ function animateVisitors(dt){
     v.body.position.y=seated?.18:stepping?Math.abs(Math.sin(clock*9))*.04:0;
     v.legs.forEach((leg,j)=>leg.rotation.x=seated?-Math.PI/2:stepping?Math.sin(clock*9+j*Math.PI)*.4:0);
     v.arms.forEach((arm,j)=>arm.rotation.x=seated?-.35:stepping?Math.sin(clock*9+j*Math.PI)*.3:working?-.7:0);
-    v.node.querySelector('small').textContent=v.phase==='returning'?'Returning to Lounge':v.phase==='entering'?(v.destination==='seated'?'Joining Open Task':'Taking a workbench'):seated?'Waiting for Casey':working?'Working':v.title;
+    v.node.querySelector('small').textContent=v.phase==='returning'?'Returning to Lounge':v.phase==='entering'?(v.destination==='seated'?'Joining Open Task':'Taking a workbench'):seated?'Standby':working?'Working':v.title;
     v.node.classList.toggle('visitor-waiting',seated);v.node.classList.toggle('working',working);v.node.classList.toggle('selected',v.role!==null&&activeScenario==='plan'&&activeSelection===v.role);
     v.node.hidden=!(overview||journey||room==='mission'&&activeScenario==='plan'||room==='lounge'&&stepping);
     positionLabel(v.node,v.group.position.clone().add(new THREE.Vector3(0,2.2,0)));

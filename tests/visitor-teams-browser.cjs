@@ -12,7 +12,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   const teamControl=page.locator('#studio-crew-team-mode');
   const toggle={selectOption:async value=>teamControl.locator('[data-team-mode="'+value+'"]').click(),inputValue:async()=>teamControl.locator('[aria-pressed=true]').getAttribute('data-team-mode'),isDisabled:async()=>teamControl.locator('button').first().isDisabled(),isVisible:async()=>teamControl.isVisible()};
   // A first-time visitor can still use the backup team without hiring anyone.
-  await choose('plan');assert.equal((await toggle.inputValue()!=='builtin'),false);await page.locator('#studio-crew-prompt').fill('/goal Build a counter.');await page.locator('#studio-crew-send').click();
+  await choose('plan');assert.equal(await toggle.inputValue(),'hired');await toggle.selectOption('mixed');await page.locator('#studio-crew-prompt').fill('/goal Build a counter.');await page.locator('#studio-crew-send').click();
   await page.waitForFunction(()=>document.querySelector('#studio-crew-conversation').textContent.includes('The team delivered the counter.'));
   assert.match(await page.locator('#studio-crew-conversation').innerText(),/Cody/);
   await page.evaluate(()=>BacStudio.setRoom('workshop'));await page.locator('#studio-name').fill('Pixel');
@@ -20,18 +20,17 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.locator('input[name="protection"][value="openshell"]').check();
   await page.locator('#studio-create').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Pixel');
   const original=await page.evaluate(()=>BacStudio.inspect().profile);
-  await choose('plan');await page.locator('#studio-crew-prompt').fill('/goal Pixel이 Coding작업들을 대신하게 해줘. Build a counter.');await page.locator('#studio-crew-send').click();
-  await page.locator('#studio-crew-chat-error').filter({hasText:'Choose Mixed team or Hired agents only to assign Pixel'}).waitFor({state:'visible'});
+  await choose('plan');await page.locator('#studio-crew-prompt').fill('/goal Pixel이 Coding작업들을 대신하게 해줘. Build a counter.');
   assert.equal((await state()).crewChats.filter(j=>j.payload.collaboration).length,1);
   assert.match(await page.locator('#studio-crew-prompt').inputValue(),/Pixel/);
   await toggle.selectOption('mixed');await choose('event-brief');assert.equal(await toggle.isVisible(),false);
-  await choose('plan');assert.equal((await toggle.inputValue()!=='builtin'),true);
+  await choose('plan');assert.equal(await toggle.inputValue(),'mixed');
   await page.screenshot({path:'/tmp/bac-hired-team-toggle.png'});
   await page.locator('#studio-crew-send').click();
   await page.waitForFunction(()=>document.querySelectorAll('[data-collaboration-job]').length>=2&&BacCampus.inspect().visitorTravel?.some(v=>v.name==='Pixel'));
-  assert.equal((await toggle.inputValue()!=='builtin'),true);assert.equal(await toggle.isDisabled(),true);
+  assert.equal(await toggle.inputValue(),'mixed');assert.equal(await toggle.isDisabled(),true);
   await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.name==='Pixel');
-  await choose('plan');assert.equal((await toggle.inputValue()!=='builtin'),true);assert.equal(await toggle.isDisabled(),true);
+  await choose('plan');assert.equal(await toggle.inputValue(),'mixed');assert.equal(await toggle.isDisabled(),true);
   await page.waitForFunction(()=>BacCampus.inspect().visitorTravel?.some(v=>v.name==='Pixel'&&v.phase==='working'));
   await page.locator('[data-visitor-agent]').filter({hasText:'Pixel'}).click();
   await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Pixel');
@@ -40,14 +39,14 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.screenshot({path:'/tmp/bac-visitor-working-ui.png'});
   let job;for(let i=0;i<150;i++){const value=await state();job=value.crewChats.find(j=>j.payload.collaboration?.visitorBindings?.[5]?.name==='Pixel');if(job?.status==='done')break;await page.waitForTimeout(100);}
   assert.equal(job.status,'done');assert.equal(job.payload.includeHiredAgents,true);assert.equal(job.payload.collaboration.outputs[5].agentId,original.id);
-  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===0&&BacCampus.inspect().residents.find(r=>r.key===BacStudio.inspect().agentId).visible);
+  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.some(v=>v.name==='Pixel'&&v.phase==='seated'));
   const value=await state();assert.deepEqual(value.profile.skills,original.skills);assert.equal(value.agents.length,1);
   const html=job.payload.collaboration.webpages[5][0];
   await page.locator('[data-preview-file="'+html+'"]').filter({visible:true}).first().click();
   await page.locator('#studio-app-frame[data-ready="true"]').waitFor({state:'visible'});const frame=page.frameLocator('#studio-app-frame');await frame.getByRole('button',{name:'0',exact:true}).click();assert.equal(await frame.getByRole('button').innerText(),'1');await page.locator('#studio-dialog-close').click();
   await page.locator('[data-campus-agent="5"]').click();
   await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Pixel');
-  assert(!await page.locator('[data-standby-role="5"]').textContent().then(text=>text.includes('With team')));
+  assert.equal(await page.locator('[data-standby-role="5"]').count(),0,'After reloading, future work returns to hired-only when the active mixed task finishes');
   await page.locator('#studio-crew-policy').click();
   await page.waitForFunction(()=>document.querySelector('#studio-policy-content').textContent.includes('Access applies only to Pixel'));
   assert.equal(await page.locator('#studio-policy-agent option:checked').innerText(),'Pixel');
@@ -64,28 +63,29 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await choose('plan');await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.name==='Pixel');
   assert.equal((await state()).crewChats.find(j=>j.id===job.id).payload.collaboration.visitorBindings[5].name,'Pixel');
   await choose('plan');
-  assert.equal((await toggle.inputValue()!=='builtin'),false);
+  assert.equal(await toggle.inputValue(),'hired');
+  await page.locator('[data-campus-agent="0"]').click();await toggle.selectOption('mixed');
   await page.waitForFunction(()=>document.querySelector('[data-campus-agent="5"] b')?.textContent==='Pixel');
   await page.locator('[data-campus-agent="5"]').click();
   await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Pixel');
-  // OFF returns work to the built-ins while preserving the original closing reactions.
+  // Standby specialists can do work while unassigned hires keep their closing reactions.
   await page.locator('[data-campus-agent="0"]').click();
   await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Casey');
   await page.locator('#studio-crew-prompt').fill('/goal Build a counter.');await page.locator('#studio-crew-send').click();
   await page.waitForFunction(()=>BacCampus.inspect().crewLabels?.some(c=>c.name==='Cody')||document.querySelector('[data-campus-agent="5"] b')?.textContent==='Cody');
-  let backup;for(let i=0;i<100;i++){backup=(await state()).crewChats.find(j=>j.id!==job.id&&j.payload.includeHiredAgents===false&&j.created>job.created);if(backup?.status==='done')break;await page.waitForTimeout(100);}
-  assert.equal(backup.status,'done');assert.equal(backup.payload.roster,undefined);
+  let backup;for(let i=0;i<100;i++){backup=(await state()).crewChats.find(j=>j.id!==job.id&&j.payload.teamMode==='mixed'&&j.created>job.created);if(backup?.status==='done')break;await page.waitForTimeout(100);}
+  assert.equal(backup.status,'done');assert.equal(backup.payload.roster[0].name,'Pixel');
   const guestKey=backup.payload.roundtable.members.find(m=>m.name==='Pixel').key;
   assert.equal(backup.payload.roundtable.replies[guestKey].status,'done');
   await page.locator('#studio-crew-conversation [data-roundtable-reply="'+guestKey+'"]').filter({hasText:'Fixture personal reply.'}).waitFor({state:'visible'});
-  assert.equal(backup.payload.collaboration.visitorBindings,undefined);
-  assert.equal(await page.evaluate(()=>BacCampus.inspect().visitorTravel.length),0);
+  assert.deepEqual(backup.payload.collaboration.visitorBindings,{});
+  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.some(v=>v.name==='Pixel'&&v.phase==='seated'));
   await toggle.selectOption('mixed');await page.locator('#studio-bac-reset').click();await page.locator('#studio-team-reset-confirm').click();
-  await page.waitForFunction(()=>document.querySelector('#studio-crew-team-mode [aria-pressed=true]').dataset.teamMode==='builtin'&&!document.querySelector('#studio-crew-team-mode button').disabled);
+  await page.waitForFunction(()=>document.querySelector('#studio-crew-team-mode [aria-pressed=true]').dataset.teamMode==='hired'&&!document.querySelector('#studio-crew-team-mode button').disabled);
   assert.equal((await state()).profile.id,original.id);
-  // Stop an actual in-flight fixture call, then switch OFF both with and without Reset.
+  // Stop hired-only work, then return to Hired + Standby with and without Reset.
   for(const resetDuringCall of [false,true]){
-   await toggle.selectOption('mixed');
+   await toggle.selectOption('hired');
    await page.locator('#studio-crew-prompt').fill('/goal Have Pixel do the coding. Build a counter.');
    await page.locator('#studio-crew-send').click();
    await page.waitForFunction(()=>BacCampus.inspect().visitorTravel?.some(v=>v.name==='Pixel'&&v.phase==='working'));
@@ -98,25 +98,25 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
    }
    assert.equal(await toggle.isDisabled(),true);
    await page.waitForFunction(()=>!document.querySelector('#studio-crew-team-mode button').disabled);
-   if(resetDuringCall)assert.equal((await toggle.inputValue()!=='builtin'),false);
-   else await toggle.selectOption('builtin');
-   await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===0);
+   if(resetDuringCall)assert.equal(await toggle.inputValue(),'hired');
+   await toggle.selectOption('mixed');
+   await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.some(v=>v.name==='Pixel'&&v.phase==='seated'));
    const settled=(await state()).crewChats.find(j=>j.id===pending.id);
    if(resetDuringCall)assert.equal(settled,undefined);
    else assert.equal(settled.status,'cancelled');
    await page.locator('#studio-crew-prompt').fill('/goal Build a counter.');await page.locator('#studio-crew-send').click();
    let retry;
    for(let i=0;i<150;i++){
-    retry=(await state()).crewChats.find(j=>j.created>pending.created&&j.payload.includeHiredAgents===false);
+    retry=(await state()).crewChats.find(j=>j.created>pending.created&&j.payload.teamMode==='mixed');
     if(retry?.status==='done')break;
     await page.waitForTimeout(100);
    }
-   assert.equal(retry?.status,'done');assert.equal(retry.payload.collaboration.visitorBindings,undefined);
+   assert.equal(retry?.status,'done');assert.deepEqual(retry.payload.collaboration.visitorBindings,{});
    assert.equal(retry.payload.roundtable.replies[guestKey].status,'done');
    await choose('event-brief');assert.equal(await page.locator('#studio-crew-name').innerText(),'Riley');
    await choose('plan');
   }
   assert.deepEqual(errors,[]);await page.screenshot({path:'/tmp/bac-visitor-teams-browser.png'});
-  console.log('PASS: default OFF, named-agent opt-in, locked running choice, ON hired Pixel coding, identity/policy/files, generated preview, Event Brief isolation, reload OFF, ON-to-OFF built-in work with personal reactions, cancellation and Reset during in-flight work followed by OFF retry. Model inference simulated.');
+  console.log('PASS: default Hired only, explicit Hired + Standby without hires, named Pixel coding, locked running choice, identity/policy/files, generated preview, Event Brief isolation, reload default, standby work with personal reactions, hired-only cancellation and Reset followed by standby retry. Model inference simulated.');
  }finally{if(browser)await browser.close();if(server.exitCode===null){server.kill('SIGTERM');await new Promise(resolve=>server.once('exit',resolve));}}
 })().catch(error=>{console.error(error);process.exitCode=1;});

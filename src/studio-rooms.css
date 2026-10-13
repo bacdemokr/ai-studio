@@ -707,5 +707,7 @@
 #studio-agent-model-summary[data-ready=false]{color:#c7b185}
 .studio-agent-model-panel small{display:block;line-height:1.5}
 
-.campus-agent-label.visitor-waiting{min-width:0;max-width:105px;padding:5px 8px;font-size:12px}
-.campus-agent-label.visitor-waiting small{font-size:10px}
+#agent-campus .campus-agent-label[data-visitor-agent]{box-sizing:border-box;max-width:160px;white-space:normal;overflow-wrap:anywhere}
+#agent-campus .campus-agent-label[data-visitor-agent] b{display:block}
+#agent-campus .campus-agent-label.visitor-waiting{min-width:0;max-width:136px;padding:5px 9px;font-size:14px}
+#agent-campus .campus-agent-label.visitor-waiting small{font-size:12px}

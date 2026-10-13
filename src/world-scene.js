@@ -269,7 +269,7 @@ function createScene() {
   function renderCrewLabels(){
     const job=state.crewMission;
     if(job?.id!==announcedTeamJob){announcedTeamJob=job?.id;teamAnnouncement='';teamAnnouncementUntil=0;teamAnnouncementSeen=false;}
-    if(job?.kind==='plan'&&Array.isArray(job.assignedRoles)&&!teamAnnouncementSeen){
+    if(job?.kind==='plan'&&Array.isArray(job.assignedRoles)&&job.assignedRoles.every(role=>state.agents[role]?.displayed!==false)&&!teamAnnouncementSeen){
       teamAnnouncementSeen=true;
       const names=job.assignedRoles.filter(role=>role>0).map(role=>state.agents[role]?.name).filter(Boolean);
       if(names.length&&['queued','running','waiting'].includes(job.status)){

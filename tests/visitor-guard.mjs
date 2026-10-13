@@ -18,7 +18,19 @@ const result=persistResult({toolName:'read',message:{role:'toolResult',content:[
 assert(result.message.content[0].text.length<7000);
 assert.equal(beforeTool({toolName:'write',params:{path:'artifacts/app.html',content:'complete app'}},coding),undefined);
 const protectedResearch=context(8,80);
-for(let i=0;i<5;i++)assert.equal(beforeTool({toolName:'exec',params:{command:'curl approved-host',timeout:100}},protectedResearch).params.timeout,20);
+for(let i=0;i<5;i++){
+ const params=beforeTool({toolName:'exec',params:{command:'curl approved-host',timeoutSeconds:100,host:'sandbox'}},protectedResearch).params;
+ assert.equal(params.timeoutSeconds,40);
+ assert.equal(Object.hasOwn(params,'timeout'),false);
+ assert.equal(params.host,'sandbox');
+}
 assert.equal(beforeTool({toolName:'exec',params:{command:'curl approved-host'}},protectedResearch).block,true);
+// Reproduce valid/missing timeout arguments and legacy callers; never reinsert
+// the unsupported key, disable the cap with zero, or override a shorter request.
+const timeouts=[[{},40],[{timeout:100},40],[{timeoutSeconds:25},25],[{timeout:100,timeoutSeconds:12},12],[{timeoutSeconds:0},40],[{timeoutSeconds:NaN},40]];
+for(const [i,[input,expected]] of timeouts.entries()){
+ const params=beforeTool({toolName:'exec',params:{command:'curl approved-host',...input}},context(8,90+i)).params;
+ assert.equal(params.timeoutSeconds,expected);assert.equal(Object.hasOwn(params,'timeout'),false);
+}
 assert.equal(beforeTool({toolName:'exec',params:{command:'fixture'}},{agentId,sessionKey:'ordinary-personal-chat'}),undefined);
 console.log('PASS: hired-agent search/exec budgets, retry sharing, file/review bounds, writes and unrelated session isolation.');

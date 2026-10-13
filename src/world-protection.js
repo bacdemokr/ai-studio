@@ -9,7 +9,10 @@ function protectionReplyDelay(owner,role=null){
 }
 let protectionPrimed=false;
 const protectionLayer=document.createElement('div');protectionLayer.className='world-protection-layer';viewport.append(protectionLayer);
-function protectionTarget(event){return event.role===null?residents.find(r=>r.key===event.owner)?.group:robots[event.role]?.robot;}
+function protectionTarget(event){return event.role===null?(visitorTravel.get(event.owner)?.group||residents.find(r=>r.key===event.owner)?.group):robots[event.role]?.robot;}
+function protectionVisible(event){
+  return !overview&&!journey&&(event.role!==null?room==='mission':visitorTravel.has(event.owner)?room==='mission'&&activeScenario==='plan':room==='lounge');
+}
 function disposeProtection(hit){
   scene.remove(hit.group);hit.label.remove();
   hit.group.traverse(o=>{o.geometry?.dispose();if(o.material)o.material.dispose();});
@@ -144,7 +147,7 @@ function observeProtection(events=[]){
     if(event.action==='allow'&&protectionHits.get(key)?.event.action==='deny')continue;
     if(event.action==='allow')nativeAllowSeen.set(key,performance.now());
     else protectionCooldown.set(cooldownKey,performance.now());
-    if(event.action==='deny'&&!overview&&!journey&&room===(event.role===null?'lounge':'mission')){
+    if(event.action==='deny'&&protectionVisible(event)){
       const hold={time:event.time,until:performance.now()+3000};protectionReplies.set(key,hold);
       setTimeout(()=>{if(protectionReplies.get(key)===hold){protectionReplies.delete(key);root.dispatchEvent(new Event('bac:protection-reveal'));}},3000);
     }
@@ -189,7 +192,7 @@ function animateProtection(now){
   for(const [key,hit] of protectionHits){
     const age=(now-hit.began)/1000,target=protectionTarget(hit.event),duration=motion?(hit.event.action==='allow'?4.8:3.8):3;
     if(!target||age>duration){disposeProtection(hit);protectionHits.delete(key);continue;}
-    const shown=!overview&&!journey&&room===(hit.event.role===null?'lounge':'mission');
+    const shown=protectionVisible(hit.event);
     hit.group.visible=shown;hit.label.hidden=!shown;
     if(!shown)continue;
     target.getWorldPosition(hit.group.position);hit.group.position.y+=.025;hit.group.rotation.y=azimuth;

@@ -395,10 +395,10 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
             instruction = 'For this agent, use exec with host=' + ('sandbox' if protected else 'gateway') + '.\n\n' + instruction
         if protected and skill == 'documents':
             instruction = instruction.replace('Use web_fetch to read a public HTTP(S) link supplied by the user before summarizing it.',
-                'Use exec with host=sandbox and /usr/bin/curl -fsS --max-time 15 to read a public HTTP(S) link supplied by the user. Quote the URL. If blocked, stop and request approval for the exact host in OpenShell Policy; never use host-side web tools or bypass the denial.')
+                'Use exec with host=sandbox, timeoutSeconds:40 and /usr/bin/curl -fsS --max-time 40 to read a public HTTP(S) link supplied by the user. Quote the URL. If blocked, stop and request approval for the exact host in OpenShell Policy; never use host-side web tools or bypass the denial.')
         if skill == 'web':
-            transport = ('No search tool is available. Read public URLs only with exec host=sandbox and '
-                '/usr/bin/curl -fsS --max-time 15. Quote URLs. Native web_search and web_fetch are disabled. '
+            transport = ('No search tool is available. Read public URLs only with exec host=sandbox, timeoutSeconds:40 and '
+                '/usr/bin/curl -fsS --max-time 40. Quote URLs. Native web_search and web_fetch are disabled. '
                 'On a policy denial, stop and request approval for that exact destination in OpenShell Policy. '
                 'For paper discovery, arxiv.org and export.arxiv.org require the separate papers permission. '
                 'Do not request new permission if the destination is already approved.' if protected else
@@ -406,7 +406,7 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
                 'and configured. Never read full-output files to expand fetched excerpts.')
             instruction = transport + '\n\n' + instruction
         if protected and skill == 'weather':
-            instruction = instruction.replace('web_fetch', 'exec with host=sandbox and /usr/bin/curl -fsS --max-time 15')
+            instruction = instruction.replace('web_fetch', 'exec with host=sandbox, timeoutSeconds:40 and /usr/bin/curl -fsS --max-time 40')
             instruction += ('\nAll network reads must use /usr/bin/curl inside the sandbox. Quote URLs. '
                 'Native web_search and web_fetch are unavailable. A policy denial means stop and request '
                 'approval for the exact destination in OpenShell Policy; do not bypass it.')

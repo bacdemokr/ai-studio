@@ -107,6 +107,8 @@ failures are not. This is a functional capacity test, not a real-model load benc
 
 ## Further reference
 
+For the hired-agent exec contract, run `node tests/visitor-exec-native.mjs /path/to/openclaw/package/node_modules/openclaw`. This uses the installed pinned tool with an isolated empty configuration and one harmless local command; it does not call a model or validate OpenShell enforcement. `node tests/visitor-protection-browser.cjs` checks Open Task policy feedback with injected native-log events and isolated demo data.
+
 - [Architecture and responsibility boundaries](architecture.md)
 - [Live runtime and workflow](live-studio.md)
 - [Model and location settings](runtime-settings.md)

@@ -196,7 +196,12 @@ export function beforeTool(event, ctx) {
     return {params: {...event.params, count: Math.min(3, Math.max(1, Number(event.params.count) || 3))}};
   }
   state.fetches++;
-  if(event.toolName==='exec')return {params:{...event.params,timeout:Math.min(20,Math.max(1,Number(event.params.timeout)||20))}};
+  if(event.toolName==='exec'){
+    // OpenClaw rejects the legacy timeout key, even alongside timeoutSeconds.
+    const {timeout,...params}=event.params||{};
+    const requested=Number(params.timeoutSeconds??timeout);
+    return {params:{...params,timeoutSeconds:Number.isFinite(requested)&&requested>0?Math.min(40,Math.max(1,requested)):40}};
+  }
   return {params: {...event.params, maxChars: Math.min(4000, Math.max(1, Number(event.params.maxChars) || 3000))}};
 }
 function excerpt(value, limit) {
