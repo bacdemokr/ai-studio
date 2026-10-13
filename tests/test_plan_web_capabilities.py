@@ -106,7 +106,10 @@ class PlanWebCapabilities(unittest.TestCase):
         instruction = runtime.SKILLS['web'][1]
         self.assertIn('Read a supplied URL first', instruction)
         self.assertIn('one focused query with at most three results', instruction)
-        self.assertIn('For ordinary conversation, answer directly', instruction)
+        self.assertIn('For a research question in ordinary conversation, answer briefly with citations', instruction)
+        self.assertIn('without browsing or writing files', instruction)
+        self.assertIn('two searches and five page fetch attempts', instruction)
+        self.assertIn('two searches OR five direct fetch attempts', instruction)
         self.assertIn('For a handoff, use the assigned path and available file tools', instruction)
         self.assertIn('Do not reread or rewrite a successful brief', instruction)
         self.assertIn('never claim research succeeded', instruction)

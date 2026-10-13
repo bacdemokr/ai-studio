@@ -85,6 +85,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs/promises'),{chrom
   console.log('PASS: actual HTTP clipboard readback for Instructions/documents, fullscreen and permission-denied fallback.');
 
   await choose('plan');await page.locator('#studio-team-setup').click();await page.locator('#studio-model-connections').waitFor();await close();
+  await page.locator('#studio-crew-team-mode [data-team-mode=mixed]').click();
   await page.locator('#studio-standby summary').click();await page.locator('[data-standby-model="0"]').click();
   await page.locator('.team-model-dialog input').fill('fixture-other');await page.locator('[data-model-choice="fixture-other-model"]').click();
   await page.locator('.team-model-dialog').waitFor({state:'hidden'});
@@ -104,6 +105,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs/promises'),{chrom
   }
   await api('settings/connections',{source:'api',provider:'nvidia',apiKey:'fixture-remote-key',model:'fixture-local-model'});
   await page.evaluate(()=>BacStudio.refresh());await choose('plan');
+  await page.locator('#studio-crew-team-mode [data-team-mode=mixed]').click();
   await page.locator('.studio-team-utilities').getByRole('button',{name:'Files',exact:true}).click();await page.locator('[data-browse-file="inbox/remote-notes.md"]').click();
   assert.equal(await page.locator('#studio-dialog-body pre').innerText(),'Remote file preview and download.');
   const pendingDownload=page.waitForEvent('download');await page.locator('#studio-download').click();const download=await pendingDownload;

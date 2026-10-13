@@ -44,6 +44,12 @@ EVENT_PAGE_SKILL = (Path(__file__).resolve().parents[1] / 'skills/bac-event-page
 def project_skill(name):
     return (Path(__file__).resolve().parents[1] / ('skills/bac-'+name+'/SKILL.md')).read_text(encoding='utf-8').split('---',2)[2].strip()
 
+def project_skill_description(name):
+    text = (Path(__file__).resolve().parents[1] / ('skills/bac-'+name+'/SKILL.md')).read_text(encoding='utf-8')
+    return re.search(r'^description: (.+)$', text.split('---', 2)[1], re.M)[1].strip()
+
+SKILL_DESCRIPTIONS = {name: project_skill_description(name) for name in ('builder', 'web')}
+
 SKILLS = {
     'data-analysis': ('Data interpretation', project_skill('data-analysis')),
     'interface-design': ('Interface design', project_skill('interface-design')),
@@ -412,7 +418,7 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
                 'approval for the exact destination in OpenShell Policy; do not bypass it.')
         directory = workspace / 'skills' / ('bac-' + skill)
         directory.mkdir(exist_ok=True)
-        write(directory / 'SKILL.md', '---\nname: bac-' + skill + '\ndescription: ' + title +
+        write(directory / 'SKILL.md', '---\nname: bac-' + skill + '\ndescription: ' + SKILL_DESCRIPTIONS.get(skill, title) +
                                            '\n---\n\n' + instruction + '\n')
         if skill == 'nvidia-webpage':
             scripts = directory/'scripts';scripts.mkdir(exist_ok=True)
@@ -460,6 +466,9 @@ def tool_allowlist(profile, role=None):
     allow = ['read'] if protected else ['read', 'write', 'edit']
     if protected and any(s in equipped for s in ('memory', 'builder', 'writer', 'event-page', 'nvidia-webpage', 'event-tools', 'radar')):
         allow += ['write', 'edit']
+    # Research handoffs need native file writes too, inside the same protected workspace.
+    if protected and 'web' in equipped and 'write' not in allow:
+        allow.append('write')
     if profile.get('_researchBrief'):
         allow = [tool for tool in allow if tool != 'edit']
     if any(s in equipped for s in ('weather', 'web', 'documents')) and not protected:

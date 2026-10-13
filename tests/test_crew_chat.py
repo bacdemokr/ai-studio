@@ -28,7 +28,7 @@ class CrewChatTests(unittest.TestCase):
         self.assertEqual(len(self.adapter.agents), 2)
         profiles = list(self.adapter.profiles.values())
         self.assertEqual([p['name'] for p in profiles], ['Casey', 'Scout'])
-        self.assertIn('Choose the specialists', profiles[0]['purpose'])
+        self.assertIn('Casey assigns the team', profiles[0]['purpose'])
         calls = self.adapter.calls
         self.assertEqual(calls[0][1], calls[2][1])
         self.assertNotEqual(calls[0][1], calls[1][1])

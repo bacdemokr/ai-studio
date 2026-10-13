@@ -25,20 +25,20 @@
     "number": "03-2",
     "title": "Open Task",
     "eyebrow": "Your task, the right team",
-    "description": "Bring a task. Casey assembles the team.",
-    "team": "Casey + specialists for your /goal request",
+    "description": "Give Casey a task for your selected team.",
+    "team": "Casey + your hires, with optional standby specialists",
     "action": "Open Task",
     "accent": "#a1d65e",
     "floor": "#2a333e",
     "residents": [0],
     "guide": {
-      "intro": "Bring Casey a task. Casey assembles the right team to help you complete it.",
+      "intro": "Give Casey a task for your selected team.",
       "points": [
-        "Message Casey with /goal and describe the result you want. Attach documents if your task uses files.",
-        "Casey assigns work to the relevant specialists and reviews their contributions.",
-        "Follow assignments and progress in Mission Control, then open the team response and any saved files."
+        "Hired only (default) uses your hires. Choose Hired + Standby to include backups.",
+        "Send /goal with the result you want. Name any agents to include and attach relevant files.",
+        "Track work in Mission Control, then open the answer and files in Results."
       ],
-      "note": "For a direct conversation with Casey, remove /goal. Your conversations and results stay saved when you switch spaces."
+      "note": "Any hired role can participate. Remove /goal to chat directly with Casey."
     }
   }
 ]

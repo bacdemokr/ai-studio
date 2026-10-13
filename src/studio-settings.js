@@ -51,6 +51,9 @@ function confirmTeamReset(sourceButton){
 async function resetStudio(scope,sourceButton=null,scenario=selectedScenario){
  if(resetInProgress||removingAgent||pendingWrites||changingAgent)return;
  resetInProgress=true;removingAgent=true;++refreshVersion;
+ // Lock the composer before the first network round trip; otherwise a new
+ // draft can be accepted here and erased when the reset epoch arrives.
+ render();
  const modal=el('dialog'),status=sourceButton?el('team-reset-status'):el('settings-status'),blockClose=e=>e.preventDefault();
  const buttons=(sourceButton?[sourceButton]:[...modal.querySelectorAll('button')]).map(button=>[button,button.disabled]);
  modal.addEventListener('cancel',blockClose);buttons.forEach(([button])=>button.disabled=true);

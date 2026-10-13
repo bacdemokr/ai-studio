@@ -72,7 +72,7 @@ function renderEventCrewPassport(){
  const i=selectedCrewRole,name=defaultNames[i],role=roles[i][1],crew=crewMission();
  const avatar=window.BacCampus?.inspect().crewAvatars?.[i]||{};
  el('crew-number').textContent=String(i+1).padStart(2,'0')+' / 4';
- el('crew-name').textContent=name;el('crew-role').textContent=role;syncTeamTotalTime();const model=teamModel(i);el('crew-model').textContent=model?.label||'';el('crew-model').title=model?.id||'';el('crew-model').hidden=!model;
+ el('crew-name').textContent=name;el('crew-role').textContent=role;syncTeamTotalTime();const model=teamModel(i);renderCrewModel(model);
  const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';portrait.style.setProperty('--avatar-accent',appearanceColors[avatar.color]||appearanceColors.green);
  const skills=window.BacCrewCatalog[i].skills;
  const skillLabels={...titles,'event-tools':'Event tools','event-scheduling':'Presenter scheduling'};

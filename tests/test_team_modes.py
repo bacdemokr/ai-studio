@@ -11,11 +11,14 @@ class TeamModeTests(unittest.TestCase):
     execute = fixtures.VisitorTeamTests.execute
     specialists = fixtures.VisitorTeamTests.specialists
     def test_hired_only_keeps_casey_and_runs_named_hire(self):
+        # Weather is sufficient to join: role/skill labels are not admission requirements.
+        self.assertEqual(self.app.profile(self.owner)['skills'], ['weather'])
         job = self.execute(self.start(teamMode='hired'))
         self.assertEqual(job['status'], 'done')
         self.assertEqual(job['payload']['teamMode'], 'hired')
         self.assertEqual([c[0] for c in self.specialists()], ['bac-' + self.owner])
         self.assertIn('HIRED AGENTS ONLY', self.adapter.calls[0][2])
+        self.assertEqual(self.app.profile(self.owner)['skills'], ['weather'])
         self.assertEqual(job['payload']['collaboration']['visitorBindings']['5']['key'], self.owner)
 
     def test_hired_only_rejects_builtin_selection_before_work_and_repairs_once(self):
@@ -67,10 +70,16 @@ class TeamModeTests(unittest.TestCase):
         self.assertEqual({c[0] for c in self.adapter.calls}, {'bac-' + self.manager + '-r0', 'bac-' + self.owner})
 
     def test_hired_only_requires_an_available_hire_before_enqueue(self):
-        with patch('visitor_teams.capture', return_value=([], [], [])), self.assertRaisesRegex(Problem, 'No hired agents are ready'):
+        with patch('visitor_teams.capture', return_value=([], [], [])), self.assertRaisesRegex(Problem, r'No hired agents are ready. Hire an agent or choose Hired \+ Standby\.'):
             self.start(teamMode='hired')
         with self.app.db() as db:
             self.assertEqual(db.execute("SELECT count(*) FROM jobs WHERE kind='crew-chat'").fetchone()[0], 0)
+
+    def test_unavailable_hires_are_not_told_to_hire_a_specific_role(self):
+        unavailable = [{'name': 'Pixel', 'reason': 'Busy or unavailable.'}]
+        with patch('visitor_teams.capture', return_value=([], [], unavailable)), self.assertRaisesRegex(
+                Problem, r'Check their status in the Lounge or choose Hired \+ Standby\.'):
+            self.start(teamMode='hired')
 
     def test_modes_and_old_client_flag_are_validated(self):
         self.assertEqual(team_mode({}), 'builtin')

@@ -2,7 +2,7 @@
 
 ## Before the demo
 
-Use the intended branch on the target PC. This guide describes `preview/stage3-scenarios`; the Zurich snapshot has different controls.
+Use the intended branch on the target PC. This guide describes `preview/visitor-agent-teams`; `preview/stage3-scenarios` and the Zurich snapshot have different Open Task controls.
 
 1. For local inference, start the installed model with `./bac vllm`, or use an already-running compatible server.
 2. Run `./bac start` for a clean demo, or `./bac start --keep-data` to retain agents and rehearsals. Studio does not start the model server automatically.
@@ -22,7 +22,7 @@ Let the audience choose a character, tone, role and skills. The editable prompt 
 
 For manual chat, try a short document, weather or research request. Supported document formats are PDF, PPTX, XLSX, TXT, Markdown and CSV, up to 10 MB per file. Documents stay with the selected agent.
 
-For autonomous behavior, equip **Tech Radar**. The first check waits at least 20 seconds; later checks follow the same cadence. Model work or runtime preparation can delay a summary. Chat, attachments and scheduled tasks stay disabled while this skill is equipped, even alongside other skills or while paused. Use **Pause / Resume**, or remove the skill to restore chat. Telegram sends only these summaries.
+For autonomous behavior, equip **Tech Radar**. The first check waits at least 10 seconds; later checks run every 20 seconds. Model work or runtime preparation can delay a summary. Chat, attachments and scheduled tasks stay disabled while this skill is equipped, even alongside other skills or while paused. Use **Pause / Resume**, or remove the skill to restore chat. Telegram sends only these summaries.
 
 ## 3-1. Event Brief
 
@@ -34,7 +34,14 @@ For an offline rehearsal, select Local and omit Dylan's live research, using Ril
 
 ## 3-2. Open Task
 
-Casey answers directly or selects up to three specialists:
+Casey coordinates up to three specialists. Select a team before sending `/goal`:
+
+- **Hired only** (default): at least one available hired agent is needed. Any role can participate; Casey assigns work using actual skills and tools.
+- **Hired + Standby**: Casey can also use the backups below, even if no agents have been hired.
+
+Name an agent in the prompt to require its participation. A Programmer and Web researcher are a useful research-and-build pairing, not mandatory roles. Missing tools remain a limitation; an assignment does not grant new permissions.
+
+Idle hires follow you into the room and wait on benches. Assigned agents move to workbenches; movement alone does not run a model. The built-in backups are:
 
 | Specialist | Contribution |
 | --- | --- |
@@ -44,7 +51,7 @@ Casey answers directly or selects up to three specialists:
 | Cody | Webpages and small code prototypes |
 | Vera | Independent review |
 
-With NVIDIA, expand **Standby specialists** and click a model beside an agent to change it. Local and other providers use the shared connection model. **Models & connection** opens Settings.
+Change an idle hired agent’s model by clicking its model badge. Hires retain their model, identity and policy in either mode. On NVIDIA, **Hired + Standby → Standby specialists** lists Casey and the backups with editable model choices. Return to Hired only before starting if that is your intended team. Local and other providers use the shared Open Task model for Casey and backups. **Models & connection** opens Settings.
 
 Start with `/goal` in Casey's chat (`/plan` remains an alias). For example, attach a table and send:
 
@@ -62,7 +69,9 @@ interest rate and years, validate the inputs, and show the estimated total.
 
 Use **Mission Control** for assignments and handoffs, **Results** for the answer and files, and **Usage & time** for recorded tokens and elapsed time. Agent time includes tools; parallel turns may sum to more than elapsed time. These are recorded responses, not provider billing totals.
 
-Requested independent review must finish before the task can be complete. Reviews are static unless actual execution evidence exists. Open Task allows one shared recovery/repair attempt; incomplete work stays marked partial. Personal reactions from hired agents are opinions, not independent reviews.
+Independent review needs a different agent from the producer. In Hired only, hire a second suitable agent if you request this. Requested independent review must finish before the task can be complete. Reviews are static unless actual execution evidence exists. Open Task allows one shared recovery/repair attempt; incomplete work stays marked partial. Personal reactions from hired agents are opinions, not independent reviews.
+
+The team choice is locked during work. Changing it after completion retains previous results; Reset Open Task first for a clean rehearsal. Reload and reset default new tasks to Hired only. Event Brief keeps its separate fixed team.
 
 ## Recovery and cleanup
 
@@ -72,4 +81,6 @@ Requested independent review must finish before the task can be complete. Review
 - **Reset scenario:** stops and clears only the selected Stage 3 scenario. **Remove agents:** removes hired agents and their data. **Reset all:** clears both scenarios and hired agents. Model settings remain. Empty resets are disabled.
 - `./bac stop` stops the app and preserves data. `./bac stop --all` also stops its managed model and removes the Compose stack and data volumes. Model weights remain.
 
-[Example scenarios](../README_POSSIBLESCENARIOS.md) · [Installation and recovery](docker-setup.md) · [Model settings](runtime-settings.md)
+- **Connection lost after a contribution:** saved files remain available as a partial result. Restore the connection before asking Casey to continue; completed work is not automatically repeated.
+
+[Example scenarios](../README_POSSIBLESCENARIOS.md) · [Installation and recovery](docker-setup.md) · [Model settings](runtime-settings.md) · [Visitor regression checklist](visitor-regression.md)

@@ -54,15 +54,17 @@ const active = job => ['queued', 'running', 'waiting', 'stopping'].includes(job.
     if(scenario==='event-brief'){
       await api(scenario,'settings/connections',{source:'api',provider:'nvidia',model:id,apiKey:'fixture-key'});
     }else{
+      await page.locator('#studio-crew-team-mode [data-team-mode=mixed]').click();
       if(!await page.locator('#studio-standby').evaluate(e=>e.open))await page.locator('#studio-standby summary').click();
       await page.locator('[data-standby-model="0"]').click();
-      await page.getByRole('searchbox',{name:'Search API models'}).fill(id===LIGHTNING?'lightning':'ultra');
+      await page.getByRole('searchbox',{name:'Search models',exact:true}).fill(id===LIGHTNING?'lightning':'ultra');
       await page.locator('[data-model-choice="'+id+'"]').click();
     }
     await waitFor(async()=> (await state(scenario)).teamSelections.some(r=>r.role===0&&r.id===id),'model applied');
     await close();
   }
   async function plan(prompt) {
+    await page.locator('#studio-crew-team-mode [data-team-mode=mixed]').click();
     await page.locator('#studio-crew-prompt').fill('/plan '+prompt);await page.locator('#studio-crew-send').click();
     const job = await waitFor(async()=> (await state('plan')).crewChats.find(j=>j.payload.prompt.includes(prompt)), 'plan created');
     const result = await waitFor(async()=>{const j=(await state('plan')).crewChats.find(j=>j.id===job.id);return j&&!active(j)&&j;}, prompt+' completed',60000);
@@ -83,8 +85,8 @@ const active = job => ['queued', 'running', 'waiting', 'stopping'].includes(job.
     await choose('plan');await upload();
     await page.locator('[data-crew-document="inbox/notes.md"]').uncheck();
     await choose('event-brief');await api('event-brief','upload',{crewRole:0,name:'notes.md',content:'Event notes: attendee count 25.'});
-    await page.locator('[data-crew-document="inbox/notes.md"]').waitFor();
-    assert.equal(await page.locator('[data-crew-document="inbox/notes.md"]').isChecked(),true,'Document selection must be separate per scenario');
+    // Event Brief uses its own brief form rather than the Open Task composer.
+    await waitFor(async()=> (await state('event-brief')).crewDocuments.some(f=>f.path==='inbox/notes.md'),'Event Brief document stored separately');
     await choose('plan');assert.equal(await page.locator('[data-crew-document="inbox/notes.md"]').isChecked(),false);
     await reset('plan');await upload();
     assert.equal(await page.locator('[data-crew-document="inbox/notes.md"]').isChecked(),true,'Reset must discard stale excluded-file choices');

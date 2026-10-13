@@ -292,6 +292,7 @@ class Handler(SimpleHTTPRequestHandler):
                 '/api/agents': lambda: studio.add_agent(row['id'], data),
                 '/api/onboard': lambda: studio.onboard(owner, data),
                 '/api/profile': lambda: studio.configure(owner, data),
+                '/api/agent-model': lambda: studio.select_agent_model(owner, data),
                 '/api/delete-agent': lambda: studio.delete_agent(owner, data, enqueue_only=True),
                 '/api/agent-policy': lambda: studio.policy_change(owner, data),
                 '/api/crew-policy': lambda: studio.crew_policy_change(studio.crew_owner(owner, scenario), data),

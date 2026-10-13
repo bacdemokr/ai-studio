@@ -2,14 +2,15 @@
 
 ## Branches and versions
 
-Current workflow (October 10, 2026):
+Current workflow (October 14, 2026):
 
-- `preview/stage3-scenarios`: active implementation and rehearsal, including the ping-pong example and subsequent fixes.
+- `preview/visitor-agent-teams`: active hired-agent collaboration experiment, built on the established Stage 3 preview.
+- `preview/stage3-scenarios`: established preview, including the ping-pong example and stability fixes. Visitor changes are not promoted here automatically.
 - `dev`: testing snapshot from before the ping-pong example. Keep it unchanged until preview promotion is explicitly agreed.
 - `bac/1001-zurich`: frozen Zurich snapshot for existing event setups.
-- `main` and released tags require explicit release approval. GitHub `bacdemokr/ai-studio` is public; publication there requires a separate request. Spark fixes from its preview branch can be reviewed and merged into GitLab preview without updating `dev` or `main`.
+- `main` and released tags require explicit release approval. GitHub `bacdemokr/ai-studio` is private; publication there requires a separate request. Spark fixes from its preview branch can be reviewed and merged into GitLab preview without updating `dev` or `main`.
 
-For this preview, use `git switch preview/stage3-scenarios`, then `git pull --ff-only`. Use `./bac start --keep-data` to preserve rehearsal data; plain `./bac start` clears it. Do not switch or merge branches while a demo is running.
+For this experiment, use `git switch preview/visitor-agent-teams`, then `git pull --ff-only`. Use `./bac start --keep-data` to preserve rehearsal data; plain `./bac start` clears it. Do not switch or merge branches while a demo is running.
 
 Promote a tested preview only after target-hardware rehearsal and review. A release tag can point to the approved commit on any branch; it does not require first merging to `main`. Tags preserve code, not runtime data. Keep published tags and event snapshots unchanged.
 
@@ -71,6 +72,8 @@ The UI sends a per-tab browser-view ID; the server admits one participant before
 Team creation registers its identities and writes the initial workspace definitions within the same transaction that guards session retirement. A failed setup rolls back its newly allocated directories; a retiring session cannot hire agents or create another team. `tests/test_crew_ownership.py` and `tests/test_session_cleanup.py` cover initialization failures and overlapping cleanup.
 
 ## Exploratory rehearsal
+
+For the visitor branch, also use the [visitor-team regression checklist](visitor-regression.md). It covers both current team modes, per-hire models, explicit participants and all four BB scenarios.
 
 For stability work, test complete journeys as well as individual fixes: first use, mixed skills, repeated questions, simultaneous Heartbeat and foreground work, connection loss/recovery, cancellation/reset, agent switching, and localhost versus LAN HTTP. Inspect the actual outputs and recovery, not just Ready indicators.
 

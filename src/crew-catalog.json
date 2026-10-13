@@ -3,7 +3,7 @@
     "name": "Casey",
     "role": "BaC Captain",
     "persona": "guide",
-    "description": "Coordinates specialists for your /goal. Choose Mixed team or Hired agents only to involve your own team.",
+    "description": "Coordinates available agents for your /goal and brings their results together.",
     "id": "event-lead",
     "skills": [
       "nvidia-webpage"

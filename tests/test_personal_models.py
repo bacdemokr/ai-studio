@@ -82,6 +82,56 @@ class PersonalModelTests(unittest.TestCase):
         restored = Studio(Path(self.temp.name) / 'studio', self.adapter, start_worker=False)
         self.assertEqual(restored.profile(self.owner)['model'], 'api/nvidia/other-model')
 
+    def test_model_only_change_preserves_identity_and_routes_next_call(self):
+        self.connect('api')
+        original = self.hire(model='api/nvidia/api-default', purpose='Build small pages.',
+                             tonePrompt='Friendly and concise.', skills=['builder'], protection='openshell')
+        other = self.hire('Second', model='api/nvidia/api-default')
+        changed = self.app.select_agent_model(self.owner, {'model': 'api/nvidia/other-model', 'name': 'Do not apply'})
+        self.assertEqual(changed, {**original, 'model': 'api/nvidia/other-model'})
+        self.assertEqual(self.app.profile(other['id'][4:]), other)
+        # Preparation is model-free; the next actual call binds the new route.
+        self.app.ensure_agent(self.owner, changed)
+        self.assertEqual(self.adapter.profiles[original['id']]['_connectionConfig']['models'][0]['id'], 'other-model')
+        restored = Studio(Path(self.temp.name) / 'studio', self.adapter, start_worker=False)
+        self.assertEqual(restored.profile(self.owner), changed)
+
+    def test_model_only_change_rejects_offline_and_deleted_agents(self):
+        self.connect('api')
+        original = self.hire(model='api/nvidia/api-default')
+        with self.assertRaisesRegex(Problem, 'not connected'):
+            self.app.select_agent_model(self.owner, {'model': 'local'})
+        self.assertEqual(self.app.profile(self.owner), original)
+        with self.app.db() as db:
+            db.execute('UPDATE agents SET deleting=2 WHERE id=?', (self.owner,))
+        with self.assertRaisesRegex(Problem, 'deletion'):
+            self.app.select_agent_model(self.owner, {'model': 'api/nvidia/other-model'})
+
+    def test_model_change_is_locked_for_pending_personal_and_team_work(self):
+        self.connect('api')
+        original = self.hire(model='api/nvidia/api-default')
+        personal = self.app.enqueue(self.owner, {'prompt': 'Hello'})
+        with self.assertRaisesRegex(Problem, 'pending missions'):
+            self.app.select_agent_model(self.owner, {'model': 'api/nvidia/other-model'})
+        self.app.decision(self.owner, personal['id'], 'cancel')
+        manager = self.app.crew_owner(self.owner)
+        job = self.app.enqueue(manager, {'kind': 'crew-chat', 'crewRole': 0,
+                              'prompt': '/goal Have Pixel build a counter.', 'teamMode': 'hired'})
+        with self.assertRaisesRegex(Problem, 'pending crew mission'):
+            self.app.select_agent_model(self.owner, {'model': 'api/nvidia/other-model'})
+        self.assertEqual(self.app.profile(self.owner), original)
+        self.app.decision(manager, job['id'], 'cancel')
+        changed = self.app.select_agent_model(self.owner, {'model': 'api/nvidia/other-model'})
+        self.assertEqual(changed['model'], 'api/nvidia/other-model')
+
+    def test_new_work_during_model_save_wins_without_overwriting_profile(self):
+        self.connect('api')
+        original = self.hire(model='api/nvidia/api-default')
+        with patch.object(self.app.heartbeat, 'disable', side_effect=lambda _: self.app.enqueue(self.owner, {'prompt': 'Race'})):
+            with self.assertRaisesRegex(Problem, 'pending missions'):
+                self.app.select_agent_model(self.owner, {'model': 'api/nvidia/other-model'})
+        self.assertEqual(self.app.profile(self.owner), original)
+
     def test_expired_external_key_never_falls_back_to_local(self):
         self.connect('local'); self.connect('api', 'openai')
         profile = self.hire(model='api/openai/other-model')

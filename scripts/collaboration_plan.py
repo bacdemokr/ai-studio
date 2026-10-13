@@ -207,7 +207,7 @@ class CollaborationPlans:
                 'older or long replies may be omitted):\n' + json.dumps(turns[::-1], ensure_ascii=False) + '\n')
 
     def collaboration_plan(self, row, payload):
-        from studio import CREW_CATALOG, safe_file
+        from studio import CREW_CATALOG, safe_file, Problem
         from agent_runtime import collaboration_capabilities, GatewayError
         owner, job_id = row['owner'], row['id']
         plan = payload['collaboration']
@@ -1399,6 +1399,18 @@ class CollaborationPlans:
                 return
             if plan.get('outputs'):
                 plan['failure'] = {'role': plan.get('activeRole'), 'reason': error.reason, 'message': str(error)}
+                finish(unfinished(str(error)), reactions=False)
+                return
+            save('Collaboration needs attention', str(error))
+            raise
+        except Problem as error:
+            # A connection can become unavailable between a saved specialist
+            # output and Casey's next call. Preserve the deliverables just as
+            # for a transport failure, without replaying any completed work.
+            if self.stop_checkpoint(job_id):
+                return
+            if error.status == 503 and plan.get('outputs'):
+                plan['failure'] = {'role': plan.get('activeRole'), 'reason': 'model-unavailable', 'message': str(error)}
                 finish(unfinished(str(error)), reactions=False)
                 return
             save('Collaboration needs attention', str(error))

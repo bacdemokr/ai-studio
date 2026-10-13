@@ -1,5 +1,7 @@
 import json
 import unittest
+from unittest.mock import patch
+from studio import Problem
 from collaboration_plan import read_plan, read_checkpoint
 import test_collaboration_plan as fixture
 
@@ -8,6 +10,41 @@ class PartialPlanTests(unittest.TestCase):
     setUp = fixture.CollaborationTests.setUp
     start = fixture.CollaborationTests.start
     job = fixture.CollaborationTests.job
+
+    def test_connection_check_failure_after_delivery_keeps_preview_without_retry(self):
+        self.adapter.plan['tasks'] = [{'role': 5, 'task': 'Build a counter.'}]
+        respond = self.adapter.respond
+        def write_page(agent, session, prompt, **kwargs):
+            answer = respond(agent, session, prompt, **kwargs)
+            if agent.endswith('-r5'):
+                (self.adapter.agents[agent] / 'artifacts' / 'counter.html').write_text(
+                    '<!doctype html><html><body><h1>Saved counter</h1><button>0</button></body></html>')
+            return answer
+        self.adapter.respond = write_page
+        prepare = self.app.prepare_builtin_crew
+        def disconnect_before_synthesis(owner, role, member):
+            if role == 0 and any(call[0].endswith('-r5') for call in self.adapter.calls):
+                raise Problem('Model not connected. Configure a Local model or API in Settings.', 503)
+            return prepare(owner, role, member)
+        result = self.start('/goal Build a counter.')
+        with patch.object(self.app, 'prepare_builtin_crew', side_effect=disconnect_before_synthesis):
+            self.app.execute(self.app.next_job())
+        job = self.job(result)
+        self.assertEqual(job['status'], 'done')
+        self.assertEqual(job['payload']['collaboration']['outcome'], 'partial')
+        self.assertIn('Model not connected', job['result']['answer'])
+        pages = [f for f in job['result']['files'] if f.endswith('.html')]
+        self.assertEqual(len(pages), 1)
+        self.assertIn('Saved counter', self.app.available_file(self.owner, pages[0]).read_text())
+        self.assertEqual(len(self.adapter.calls), 2, 'Do not repeat completed work or retry the model')
+        self.assertEqual(self.adapter.reaction_calls, [])
+
+    def test_connection_failure_before_any_contribution_is_not_a_partial_success(self):
+        result = self.start()
+        with patch.object(self.app, 'prepare_builtin_crew', side_effect=Problem('Not connected', 503)):
+            with self.assertRaisesRegex(Problem, 'Not connected'):
+                self.app.execute(self.app.next_job())
+        self.assertEqual(self.adapter.calls, [])
 
     def test_partial_requires_specific_unfinished_work(self):
         for remaining in (None, [], [''], [True], 'More work', ['x'] * 9):

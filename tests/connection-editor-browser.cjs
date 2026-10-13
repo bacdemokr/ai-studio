@@ -63,6 +63,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await api('settings/connections',{source:'api',provider:'nvidia',apiKey:'fixture-new-key',model:'fixture-local-model'});
   await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.modelConnections?.connections.api.provider==='nvidia');
   await page.locator('.world-room-map [data-world-scenario=plan]').click();
+  await page.locator('#studio-crew-team-mode [data-team-mode=mixed]').click();
   await page.locator('#studio-standby summary').click();await page.locator('[data-standby-model="0"]').click();
   await page.locator('.team-model-dialog input').fill('fixture-other');
   await page.route('**/api/team-model',r=>r.fulfill({status:409,json:{error:'Fixture busy. Try again.'}}));

@@ -63,22 +63,46 @@ const teamModelDialog=document.createElement('section');
 teamModelDialog.hidden=true;
 teamModelDialog.className='team-model-dialog';
 teamModelDialog.setAttribute('aria-labelledby','team-model-heading');
-teamModelDialog.innerHTML='<header><div><h3 id="team-model-heading">Choose a model</h3><p id="team-model-member"></p></div><button type="button" data-model-close>← Back</button></header><input type="search" aria-label="Search API models" placeholder="Search models or providers…" autocomplete="off"><p class="team-model-count" aria-live="polite"></p><div class="team-model-results"></div><p class="team-model-error" role="alert" hidden></p>';
+teamModelDialog.innerHTML='<header><div><h3 id="team-model-heading">Choose a model</h3><p id="team-model-member"></p></div><button type="button" data-model-close>← Back</button></header><input type="search" aria-label="Search models" placeholder="Search models or providers…" autocomplete="off"><p class="team-model-count" aria-live="polite"></p><div class="team-model-results"></div><p class="team-model-error" role="alert" hidden></p>';
 // Open Task model choices save directly from the specialist list.
-let modelPickerRole=0,modelPickerSaving=false,modelPickerDraft=null,modelPickerOwner=null,modelPickerScenario=null;
+let modelPickerRole=0,modelPickerSaving=false,modelPickerDraft=null,modelPickerOwner=null,modelPickerScenario=null,modelPickerVisitor=null,modelPickerMarkup='';
+function hiredModelLock(key){
+ const visitor=(data.agents||[]).find(agent=>agent.key===key);
+ if(!visitor||visitor.deleting)return 'This agent is no longer available.';
+ if(visitor.pending||visitor.activity||visitor.workspacePreparation==='running')return 'Available when this agent finishes its current work.';
+ return '';
+}
+function renderCrewModel(model,visitor=null){
+ const badge=el('crew-model'),editable=!!visitor&&visitorAvailable(visitor),reason=editable?hiredModelLock(visitor.key):'';
+ badge.textContent=model?.label||'';badge.hidden=!model;
+ badge.classList.toggle('studio-model-edit',editable);
+ badge.disabled=!editable||!!reason||modelPickerSaving;
+ badge.title=reason||(editable?'Change '+visitor.name+' model':model?.id||'');
+ badge.setAttribute('aria-label',editable?'Change '+visitor.name+' model: '+(model?.label||'Not connected'):model?.label||'Model');
+}
+function modelPickerChoices(){
+ if(!modelPickerVisitor)return runtime.teamModels||[];
+ const rows=(runtime.personalModels?.models||[]).filter(row=>row.id!=='shared'||modelPickerDraft==='shared');
+ if(modelPickerDraft&&!rows.some(row=>row.id===modelPickerDraft))rows.push(personalModel({model:modelPickerDraft}));
+ return rows;
+}
 function renderModelResults(){
  teamModelDialog.querySelector('[data-model-close]').disabled=modelPickerSaving;
  teamModelDialog.querySelector('input').disabled=modelPickerSaving;
  const query=teamModelDialog.querySelector('input').value.trim().toLowerCase();
  const selected=modelPickerDraft;
- const models=(runtime.teamModels||[]).filter(m=>(m.id+' '+m.label).toLowerCase().includes(query));
+ const locked=modelPickerVisitor?hiredModelLock(modelPickerVisitor):'';
+ const models=modelPickerChoices().filter(m=>(m.id+' '+m.label+' '+(m.source==='api'?'External Endpoint':'')).toLowerCase().includes(query));
  models.sort((a,b)=>Number(b.id===selected)-Number(a.id===selected));
  teamModelDialog.querySelector('.team-model-count').textContent=models.length?(models.length+' models'+(models.length>40?' · Showing the first 40. Refine your search.':'')):'No matching models';
- teamModelDialog.querySelector('.team-model-results').innerHTML=models.slice(0,40).map(m=>'<button type="button" data-model-choice="'+escape(m.id)+'" aria-pressed="'+(m.id===selected)+'" '+(modelPickerSaving?'disabled':'')+'><span><strong>'+escape(m.label.split('/').at(-1))+'</strong><small>'+escape(m.id)+'</small></span><span aria-hidden="true">'+(m.id===selected?'✓':'')+'</span></button>').join('');
-
+ const markup=models.slice(0,40).map(m=>'<button type="button" data-model-choice="'+escape(m.id)+'" aria-pressed="'+(m.id===selected)+'" '+(modelPickerSaving||locked||(modelPickerVisitor&&!m.connected)?'disabled':'')+'><span><strong>'+escape(m.source==='local'?'Local':m.label.split('/').at(-1))+'</strong><small>'+escape(modelPickerVisitor?(m.source==='local'?m.label:m.source==='shared'?'Uses the shared connection':m.id.split('/').slice(2).join('/')):m.id)+'</small></span><span class="team-model-choice-state">'+(modelPickerVisitor&&!m.connected?'Not connected':m.id===selected?'✓':m.source==='api'?'External Endpoint':'')+'</span></button>').join('');
+ const results=teamModelDialog.querySelector('.team-model-results');
+ if(modelPickerMarkup!==markup){modelPickerMarkup=markup;results.innerHTML=markup;}
+ teamModelDialog.querySelector('.team-model-count').textContent=locked||teamModelDialog.querySelector('.team-model-count').textContent;
 }
 root.addEventListener('click',event=>{
  const button=event.target.closest('[data-standby-model]');if(!button||button.disabled||modelPickerSaving||!teamModelDialog.hidden)return;
+ modelPickerVisitor=null;
  modelPickerRole=Number(button.dataset.standbyModel);modelPickerDraft=teamModel(modelPickerRole)?.id;modelPickerOwner=agentId;modelPickerScenario=selectedScenario;
  teamModelDialog.querySelector('#team-model-member').textContent=defaultNames[modelPickerRole]+' · NVIDIA Inference';
  teamModelDialog.querySelector('input').value='';teamModelDialog.querySelector('.team-model-error').hidden=true;
@@ -88,6 +112,16 @@ root.addEventListener('click',event=>{
  el('dialog').scrollTop=0;teamModelDialog.querySelector('.team-model-results').scrollTop=0;
  teamModelDialog.querySelector('input').focus({preventScroll:true});
 });
+el('crew-model').onclick=()=>{
+ const visitor=assignedVisitor(selectedCrewRole);
+ if(!visitor||el('crew-model').disabled||modelPickerSaving||!teamModelDialog.hidden)return;
+ modelPickerVisitor=visitor.key;modelPickerOwner=agentId;modelPickerScenario=selectedScenario;modelPickerDraft=personalModel(visitor).id;
+ teamModelDialog.querySelector('#team-model-member').textContent=visitor.name;
+ teamModelDialog.querySelector('input').value='';teamModelDialog.querySelector('.team-model-error').hidden=true;
+ renderModelResults();dialog(visitor.name+' · Model','');el('dialog-body').append(teamModelDialog);teamModelDialog.hidden=false;
+ el('dialog').scrollTop=0;teamModelDialog.querySelector('.team-model-results').scrollTop=0;
+ teamModelDialog.querySelector('input').focus({preventScroll:true});
+};
 teamModelDialog.querySelector('input').addEventListener('input',renderModelResults);
 function closeTeamModelPicker(){
  if(modelPickerSaving)return;
@@ -95,6 +129,14 @@ function closeTeamModelPicker(){
 }
 teamModelDialog.addEventListener('keydown',event=>{
  if(event.key==='Escape'&&!teamModelDialog.hidden){event.preventDefault();event.stopPropagation();closeTeamModelPicker();}
+ const buttons=[...teamModelDialog.querySelectorAll('[data-model-choice]:not(:disabled)')];
+ if(event.target===teamModelDialog.querySelector('input')){
+  if(event.key==='ArrowDown'){event.preventDefault();buttons[0]?.focus();}
+  if(event.key==='Enter'){event.preventDefault();if(buttons.length===1)buttons[0].click();}
+ }else if(buttons.includes(event.target)&&['ArrowDown','ArrowUp','Home','End'].includes(event.key)){
+  event.preventDefault();const index=buttons.indexOf(event.target);
+  buttons[event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+(event.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length].focus();
+ }
 });
 el('dialog').addEventListener('cancel',event=>{
  if(!teamModelDialog.hidden&&teamModelDialog.isConnected){event.preventDefault();closeTeamModelPicker();}
@@ -104,7 +146,8 @@ teamModelDialog.addEventListener('click',async event=>{
  if(event.target.closest('[data-model-close]')){closeTeamModelPicker();return;}
  if(modelPickerSaving)return;
  const choice=event.target.closest('[data-model-choice]');
- if(choice){
+ if(choice&&!choice.disabled){
+  if(modelPickerVisitor&&(hiredModelLock(modelPickerVisitor)||!modelPickerChoices().some(m=>m.id===choice.dataset.modelChoice&&m.connected))){renderModelResults();return;}
   modelPickerDraft=choice.dataset.modelChoice;
   if(agentId!==modelPickerOwner||selectedScenario!==modelPickerScenario){closeTeamModelPicker();return;}
   teamModelDialog.querySelector('.team-model-error').hidden=true;
@@ -117,19 +160,21 @@ teamModelDialog.addEventListener('click',async event=>{
 
 });
 async function applyTeamModel(){
- const target=modelPickerOwner,scenario=modelPickerScenario,role=modelPickerRole,model=modelPickerDraft;
+ const target=modelPickerOwner,scenario=modelPickerScenario,role=modelPickerRole,model=modelPickerDraft,visitor=modelPickerVisitor;
  const current=()=>agentId===target&&selectedScenario===scenario;
  modelPickerSaving=true;
  if(!teamModelDialog.hidden)renderModelResults();
  try{
-  const result=await api('team-model',{role,model},target);
+  const result=await api(visitor?'agent-model':'team-model',visitor?{model}:{role,model},visitor||target,scenario);
+  if(visitor)stateCache.clear();
   if(current()){
    // A poll started before this write must not restore the previous model.
    ++refreshVersion;stateCache.delete(target);busy=false;
-   data={...data,teamSelections:result.teamSelections};render();
+   data=visitor?{...data,agents:data.agents.map(agent=>agent.key===visitor?{...agent,...result}:agent),profile:agentId===visitor?result:data.profile}:{...data,teamSelections:result.teamSelections};render();
   }
   return true;
  }catch(error){
+  if(visitor)modelPickerDraft=personalModel((data.agents||[]).find(agent=>agent.key===visitor)).id;
   if(current()&&!teamModelDialog.hidden){const notice=teamModelDialog.querySelector('.team-model-error');notice.textContent=error.message;notice.hidden=false;}
   else alert('Model changes could not be applied. '+error.message);
   return false;
@@ -365,18 +410,18 @@ function syncCrewComposer(){
  const memberWorking=!!visitor&&(data.agents||[]).some(a=>a.key===visitor.key&&a.pending>0)||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status)&&(j.payload?.collaboration?(['running','stopping'].includes(j.status)&&j.payload.collaboration.activeRole===selectedCrewRole):j.payload?.crewRole===selectedCrewRole));
  const eventWorking=eventTeamWorking(['crew']);
  const eventPreparing=selectedScenario==='event-brief'&&['queued','running','stopping'].includes(data.preparation?.status);
- const blocked=scenarioChoosing||scenarioSwitching||visitorMissing||(visitor?!personalReady(visitor):!teamReady())||!!visitor?.skills?.includes('radar')||!!data.bacResetting||captainPlanning||memberWorking||eventWorking||eventPreparing||crewDocumentUpload;
+ const blocked=resetInProgress||scenarioChoosing||scenarioSwitching||visitorMissing||(visitor?!personalReady(visitor):!teamReady())||!!visitor?.skills?.includes('radar')||!!data.bacResetting||captainPlanning||memberWorking||eventWorking||eventPreparing||crewDocumentUpload;
  el('crew-document-add').hidden=selectedCrewRole!==0||selectedScenario==='event-brief';el('crew-document-add').disabled=blocked;
  renderCrewDocuments();
  const commandOnly=selectedScenario==='plan'&&selectedCrewRole===0&&/^\s*\/(?:goals?|plans?)\s*$/i.test(el('crew-prompt').value);
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending||commandOnly;
  el('crew-hired-option').hidden=selectedScenario!=='plan'||selectedCrewRole!==0;
- const teamMode=effectiveTeamMode(),teamLocked=!!activePlan||crewChatSending||!!data.bacResetting||scenarioSwitching||scenarioChoosing;
+ const teamMode=effectiveTeamMode(),teamLocked=resetInProgress||!!activePlan||crewChatSending||!!data.bacResetting||scenarioSwitching||scenarioChoosing;
  el('crew-team-mode').querySelectorAll('[data-team-mode]').forEach(button=>{button.setAttribute('aria-pressed',String(button.dataset.teamMode===teamMode));button.disabled=teamLocked;});
  const noHires=teamMode==='hired'&&!(data.agents||[]).some(a=>!a.deleting);
- el('crew-team-hint').hidden=!noHires;el('crew-team-hint').textContent=noHires?'Hire a Programmer or Web researcher to get started.':'';
+ el('crew-team-hint').hidden=!noHires;el('crew-team-hint').textContent=noHires?'Hire an agent to get started. Any role can participate.':'';
  el('crew-chat-connection').hidden=!blocked;
- el('crew-chat-connection').textContent=visitorMissing?'This agent was removed. Start a new task with Casey.':visitor?.skills?.includes('radar')?'Tech Radar uses Heartbeat. Manual chat is disabled.':crewDocumentUpload?'Adding document…':data.bacResetting?'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':eventPreparing?'Preparing the Event Brief team…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(visitor?personalModel(visitor).connected:(teamRuntime().teamModel??runtime.model))?(visitor?personalModelNotice(visitor):'Model not connected. Enable Local or External Endpoint in Settings.'):'Run ./bac start on this computer to connect the team runtime.';
+ el('crew-chat-connection').textContent=visitorMissing?'This agent was removed. Start a new task with Casey.':visitor?.skills?.includes('radar')?'Tech Radar uses Heartbeat. Manual chat is disabled.':crewDocumentUpload?'Adding document…':resetInProgress?'Resetting…':data.bacResetting?'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…':eventWorking?'Event plan in progress. Messaging resumes when the team finishes.':eventPreparing?'Preparing the Event Brief team…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(visitor?personalModel(visitor).connected:(teamRuntime().teamModel??runtime.model))?(visitor?personalModelNotice(visitor):'Model not connected. Enable Local or External Endpoint in Settings.'):'Run ./bac start on this computer to connect the team runtime.';
 }
 function renderCrewPassport(){
  syncFileButtons();
@@ -391,7 +436,8 @@ function renderCrewPassport(){
  const avatar=visitor?.avatar||window.BacCampus?.inspect().crewAvatars?.[i]||{};
  el('crew-number').textContent=String(i+1).padStart(2,'0')+' / '+roles.length;
  el('crew-name').textContent=name;syncTeamTotalTime();el('crew-role').textContent=role;
- const model=visitor?personalModel(visitor):teamModel(i);el('crew-model').textContent=model?.label||'';el('crew-model').title=model?.id||'';el('crew-model').hidden=!model;
+ const model=visitor?personalModel(visitor):teamModel(i);renderCrewModel(model,visitor);
+ if(modelPickerVisitor&&!teamModelDialog.hidden)renderModelResults();
  const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';portrait.style.setProperty('--avatar-accent',appearanceColors[avatar.color]||appearanceColors.green);
  const skills=[];
  const skillLabels={...titles,'event-tools':'Event tools','event-scheduling':'Presenter scheduling'};

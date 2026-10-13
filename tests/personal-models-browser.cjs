@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),{spawn}=require('node:child_process'),{chromium}=require('playwright');
 (async()=>{
  const port=Number(process.env.BAC_TEST_PORT||18243),host=process.env.BAC_TEST_HOST||'127.0.0.1';
- const server=spawn('python3',['-B','tests/fixture_personal_models.py'],{env:{...process.env,BAC_TEST_PORT:String(port)},stdio:['ignore','pipe','pipe']});let browser;
+ const server=spawn('python3',['-B','tests/fixture_personal_models.py'],{env:{...process.env,BAC_TEST_PORT:String(port),BAC_TEST_VISITOR_DELAY:'5'},stdio:['ignore','pipe','pipe']});let browser;
  server.stderr.on('data',()=>{});
  try{
   await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Fixture startup timed out')),15000);server.stdout.on('data',b=>{if(b.toString().includes('PERSONAL MODEL FIXTURE READY')){clearTimeout(timer);resolve();}});server.once('exit',code=>{clearTimeout(timer);reject(Error('Fixture exited '+code));});});
@@ -64,6 +64,47 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.locator('#studio-crew-team-mode [data-team-mode=mixed]').click();await page.locator('#studio-crew-prompt').fill('/goal Have Pixel build a counter.');await page.locator('#studio-crew-send').click();
   await page.waitForFunction(()=>document.querySelector('#studio-crew-conversation').textContent.includes('The team delivered the counter.'));
   await page.locator('[data-campus-agent="5"]').click();await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Pixel');assert.equal(await page.locator('#studio-crew-model').innerText(),'fixture-b');
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,host,checks:['search with a 94-model catalogue','bounded list and no-match state','keyboard selection and Escape','query survives polling','connected Local first, otherwise configured API default','hire and chat without opening Model','neither connection ready blocks hiring','explicit choices and existing profiles preserved','connected Local can be selected','saved offline choice preserved during editing','own model retained in chat/reload/Open Task','no browser errors']}));
+  // Idle hired agents can change their own model from the Open Task passport.
+  const badge=page.locator('#studio-crew-model'),picker=page.locator('.team-model-dialog'),modelSearch=picker.locator('input'),pick=id=>picker.locator('[data-model-choice="'+id+'"]');
+  const before=await page.evaluate(()=>BacStudio.inspect().profile);
+  assert(await badge.isEnabled());await badge.click();await modelSearch.fill('local');assert(await pick('local').isDisabled());
+  await modelSearch.fill('fixture-a');const row=await pick('api/nvidia/fixture-a').elementHandle();await page.evaluate(()=>BacStudio.refresh());assert(await row.evaluate(n=>n.isConnected));
+  await modelSearch.press('Enter');await picker.waitFor({state:'hidden'});
+  await page.waitForFunction(()=>document.querySelector('#studio-crew-model').textContent==='fixture-a');
+  assert.equal(await page.evaluate(()=>BacStudio.inspect().room),'mission');
+  assert.deepEqual(await page.evaluate(()=>BacStudio.inspect().profile),{...before,model:'api/nvidia/fixture-a'});
+  assert.equal(await page.evaluate(async()=>{const state=await (await fetch('/api/state',{headers:{'X-BaC-Agent':BacStudio.inspect().agentId,'X-BaC-Scenario':'plan'}})).json();return state.crewChats.find(j=>j.payload.collaboration).payload.collaboration.visitorBindings[5].model;}),'api/nvidia/fixture-b','Completed plan snapshot stays historical');
+  await page.screenshot({path:'/tmp/bac-visitor-model-badge.png'});
+  await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.model==='api/nvidia/fixture-a');
+  await page.locator('.world-room-map [data-world-scenario="plan"]').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
+  await page.locator('[data-campus-agent="5"]').click();await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Pixel');assert.equal(await badge.innerText(),'fixture-a');
+  // Race: a task captures Pixel after the picker opens but before the save reaches the server.
+  await badge.click();await modelSearch.fill('fixture');await page.screenshot({path:'/tmp/bac-visitor-model-picker.png'});
+  await page.route('**/api/agent-model',async route=>{
+   const headers={...route.request().headers()};delete headers['content-length'];
+   const job=await page.request.post('http://'+host+':'+port+'/api/jobs',{headers,data:{kind:'crew-chat',crewRole:0,teamMode:'hired',prompt:'/goal Have Pixel build a counter.'}});
+   assert.equal(job.status(),200);
+   await route.continue();
+  },{times:1});
+  await pick('api/nvidia/fixture-b').click();await picker.locator('.team-model-error').waitFor();
+  assert.match(await picker.locator('.team-model-error').innerText(),/pending (?:crew )?missions?/);
+  assert.equal(await page.evaluate(()=>BacStudio.inspect().profile.model),'api/nvidia/fixture-a');
+  await page.evaluate(()=>BacStudio.refresh());assert(await pick('api/nvidia/fixture-b').isDisabled(),'Reserved agent cannot be changed from an already open picker');
+  await picker.locator('[data-model-close]').click();
+  await page.waitForFunction(()=>BacStudio.inspect().agents.every(a=>!a.pending));
+  await page.locator('[data-campus-agent="5"]').click();await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Pixel');assert(await badge.isEnabled());
+  await badge.click();await modelSearch.fill('fixture-b');await modelSearch.press('Enter');await picker.waitFor({state:'hidden'});
+  await page.waitForFunction(()=>BacStudio.inspect().profile.model==='api/nvidia/fixture-b');
+  // The selected team member need not be the currently open personal workspace.
+  await page.evaluate(()=>BacStudio.setRoom('workshop'));await page.locator('#studio-name').fill('Orbit');await page.getByRole('button',{name:'Web researcher',exact:true}).click();
+  await page.locator('#studio-create').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Orbit'&&BacStudio.inspect().room==='lounge');
+  const otherProfile=await page.evaluate(()=>BacStudio.inspect().profile);
+  await page.locator('.world-room-map [data-world-scenario="plan"]').click();await page.waitForFunction(()=>BacCampus.inspect().navigation.activeScenario==='plan'&&!BacCampus.inspect().navigation.travelling);
+  await page.locator('[data-campus-agent="5"]').click();await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Pixel');
+  await badge.click();await modelSearch.fill('model-089');await modelSearch.press('Enter');await picker.waitFor({state:'hidden'});
+  assert.equal(await badge.innerText(),'example/model-089');assert.deepEqual(await page.evaluate(()=>BacStudio.inspect().profile),otherProfile,'Changing Pixel must not modify the open Orbit workspace');
+  assert.equal(await page.evaluate(()=>BacStudio.inspect().agents.find(a=>a.name==='Pixel').model),'api/nvidia/example/model-089');
+  await page.locator('.world-room-map [data-world-scenario="event-brief"]').click();await page.waitForFunction(()=>BacCampus.inspect().navigation.activeScenario==='event-brief'&&!BacCampus.inspect().navigation.travelling&&document.querySelector('#studio-crew-name').textContent==='Riley');assert(await badge.isDisabled(),'Event Brief retains its own model settings');
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,host,checks:['search with a 94-model catalogue','bounded list and no-match state','keyboard selection and Escape','query survives polling','connected Local first, otherwise configured API default','hire and chat without opening Model','neither connection ready blocks hiring','explicit choices and existing profiles preserved','connected Local can be selected','saved offline choice preserved during editing','own model retained in chat/reload/Open Task','idle Open Task badge changes model without changing rooms or persona','reload uses current model, not the completed plan snapshot','backend rejects task/save race; open picker locks reserved agents','retry succeeds after task completion','Event Brief unchanged','no browser errors']}));
  }finally{if(browser)await browser.close();server.kill('SIGTERM');}
 })().catch(error=>{console.error(error);process.exitCode=1;});

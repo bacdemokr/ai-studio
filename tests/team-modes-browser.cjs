@@ -12,6 +12,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await choose('plan');assert.equal(await mode.inputValue(),'hired');assert.deepEqual(await teamControl.locator('button').allTextContents(),['Hired only','Hired + Standby']);
   await page.locator('#studio-crew-prompt').fill('/goal Build a counter.');await page.locator('#studio-crew-send').click();
   await page.locator('#studio-crew-chat-error').filter({hasText:'No hired agents are ready'}).waitFor({state:'visible'});
+  assert.equal(await page.locator('#studio-crew-chat-error').innerText(),'No hired agents are ready. Hire an agent or choose Hired + Standby.');
   for(const [name,role] of [['Pixel','Programmer'],['Orbit','Web researcher']]){
    await page.locator('.world-room-map [data-world-room=workshop]').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
    await page.locator('#studio-name').fill(name);await page.getByRole('button',{name:role,exact:true}).click();await page.locator('input[name=protection][value=standard]').check();

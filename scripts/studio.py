@@ -504,6 +504,20 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
         db.execute('INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?,?)',
                    (secrets.token_hex(12), owner, 'prepare-agent', 'queued', '{}', '{}', '[]', now, now, now))
 
+    def select_agent_model(self, owner, data):
+        """Change an idle hire's model without copying a stale browser profile."""
+        import personal_models
+        with self.heartbeat.lock:
+            with self.db() as db:
+                row = self.require_available(db, owner)
+                self.require_idle(db, owner)
+                profile = json.loads(row['profile'])
+            model = personal_models.validate(data.get('model'), previous=profile.get('model', 'shared'))
+            if not any(choice['id'] == model and choice['connected'] for choice in personal_models.public()['models']):
+                raise Problem('This model is not connected. Refresh the choices or check Settings.', 409)
+            # configure rechecks reservations after native I/O, before committing.
+            return self.configure(owner, {**profile, 'model': model})
+
     def configure(self, owner, data):
         profile = self.profile(owner)
         if not profile:
@@ -984,7 +998,8 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
                 if include_hired:
                     visitors, required, unavailable = capture(self, db, owner, task)
                     if mode == 'hired' and not visitors:
-                        raise Problem('No hired agents are ready. Hire an agent with Coding or Web research, or choose Mixed team.', 409)
+                        next_step = ('Check their status in the Lounge' if unavailable else 'Hire an agent')
+                        raise Problem('No hired agents are ready. ' + next_step + ' or choose Hired + Standby.', 409)
                     payload['roster'] = visitors
                     payload['requiredVisitors'] = required
                     payload['unavailableVisitors'] = unavailable

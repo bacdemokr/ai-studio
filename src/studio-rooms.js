@@ -185,8 +185,8 @@ const roleTemplates=[
   {label:'Tech Radar',summary:'Checks for technical articles every 20 seconds.',purpose:'Every 20 seconds, share one unread technical article or announcement from NVIDIA or Hugging Face blogs in my chosen tone. Include older articles; never repeat. Skip politics, stocks and earnings.',skills:['radar']},
   {label:'Arxivbot',summary:'Three relevant papers on a topic you choose.',purpose:'When I give you a research topic, find three relevant arXiv papers. Summarize each paper’s main idea, include its title, authors, date and link, and briefly compare them in my chosen tone. Ask for a topic if none is given.',skills:['web']},
   {label:'Slack Announcer',summary:'Emoji-led updates in your chosen voice.',purpose:'Answer in the style of a concise Slack announcement: an emoji-led headline and short, useful lines. Keep my chosen tone and the supplied facts. Draft only; never send or publish.',skills:['writer']},
-  {label:'Programmer',summary:'Small desktop webpages and games.',purpose:'Build small, self-contained desktop webpages and games. Focus on the requested interaction, save a working prototype, and keep review brief. Use supplied research when collaborating.',skills:['builder']},
-  {label:'Web researcher',summary:'Brief research with useful source links.',purpose:'Research public information for the current question. Find a few supported facts, cite the sources, and save a short brief when a teammate needs it. Stop when there is enough evidence.',skills:['web']},
+  {label:'Programmer',summary:'Small desktop webpages and games.',purpose:'Build and improve small, self-contained desktop webpages and games. Save a working prototype, preserve existing behavior when making changes, and keep checks brief. Use supplied research when collaborating.',skills:['builder']},
+  {label:'Web researcher',summary:'Brief research with useful source links.',purpose:'Answer focused questions using public sources. Read supplied links first, cite verified facts, and explain any missing evidence. Keep research brief; save a handoff when requested or assigned by Casey.',skills:['web']},
 ];
 el('role-templates').innerHTML=roleTemplates.map((t,i)=>`<button type="button" data-role-template="${i}" aria-pressed="false">${t.label}</button>`).join('');
 function selectRoleSkills(skills){
@@ -199,7 +199,10 @@ el('purpose').addEventListener('input',()=>{el('role-templates').querySelectorAl
 el('apply-prompt').onclick=()=>{
   syncCreatorTone();
   const role=creatorPrompt().purpose.toLowerCase();
-  const rules={radar:/heartbeat|tech radar|technical feeds|하트비트|기술.*소식/,weather:/weather|forecast|travel|trip|날씨|여행/,web:/research|paper|arxiv|논문|search|online|web|travel|trip|cafe|restaurant|리서치|조사|검색|웹|여행|맛집|카페/,documents:/takeaway|three points|meeting|notes|회의|메모|document|report|pdf|ppt|slides|deck|summar|요약|슬라이드|csv|spreadsheet|문서|보고서|자료|엑셀/,builder:/app|game|prototype|code|website|앱|게임|코딩|개발|웹사이트/,writer:/slack|announcement|공지|message|email|메시지|메일|writ|draft|content|invitation|social|campaign|marketing|copy|작성|글쓰기|초대|마케팅|콘텐츠/,memory:/remember|memor|preference|기억|선호/};
+  // Preset wording mentions teammates and outputs too; it is not a request to equip their skills.
+  const template=roleTemplates.find(t=>t.purpose.toLowerCase()===role.trim());
+  if(template){selectRoleSkills(template.skills);return;}
+  const rules={radar:/heartbeat|tech radar|technical feeds|하트비트|기술.*소식/,weather:/weather|forecast|travel|trip|날씨|여행/,web:/research|paper|arxiv|논문|search|online|web|travel|trip|cafe|restaurant|리서치|조사|검색|웹|여행|맛집|카페/,documents:/takeaway|three points|meeting|notes|회의|메모|document|report|pdf|ppt|slides|deck|summar|요약|슬라이드|csv|spreadsheet|문서|보고서|자료|엑셀/,builder:/app|game|prototype|code|coding|programmer|programming|website|webpage|앱|게임|코딩|개발|웹사이트/,writer:/slack|announcement|공지|message|email|메시지|메일|writ|draft|content|invitation|social|campaign|marketing|copy|작성|글쓰기|초대|마케팅|콘텐츠/,memory:/remember|memor|preference|기억|선호/};
   selectRoleSkills(Object.entries(rules).filter(([skill,rule])=>rule.test(role)).map(([skill])=>skill));
 };
 el('onboarding').querySelectorAll('[name=protection]').forEach(input=>input.onchange=updateDraft);

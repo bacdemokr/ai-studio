@@ -20,7 +20,7 @@ cd bacdemo-tier2
 
 Startup optionally loads the NVIDIA inference API key from `api.cfg`. If the file is empty, invalid or the API cannot be reached, Studio still starts so you can configure Local or External Endpoint in Settings. A failed validation prints a warning and does not overwrite a saved key. Use `--keep-data` when retaining runtime data and settings. Valid keys are checked with a small inference request before being saved.
 
-Open **http://localhost:8080** on the host, or **http://SPARK_IP:8080** from another computer on the same trusted network. Both provide the same Settings and demo controls. The validated key is available automatically under **Settings → Model → External Endpoint**. Enable **Local** and/or **External Endpoint** once. Hired agents default to connected Local, otherwise the configured External Endpoint model. Change the model in Hiring or Edit agent. Under **Models**, choose the connections for **Event Brief** and **Open Task** independently. Each selector shows the connection currently used.
+Open **http://localhost:8080** on the host, or **http://SPARK_IP:8080** from another computer on the same trusted network. Both provide the same Settings and demo controls. The validated key is available automatically under **Settings → Model → External Endpoint**. Enable **Local** and/or **External Endpoint** once. Hired agents default to connected Local, otherwise the configured External Endpoint model. Change the model in Hiring, Edit agent, or by clicking a hired agent’s model badge in Open Task while idle. Model changes are locked while the agent is working or reserved for a task. Under **Models**, choose the connections for **Event Brief** and **Open Task** independently. Each selector shows the connection currently used.
 
 The first start builds the runtime image for your PC and downloads the pinned OpenShell images. OpenClaw and OpenShell are included; no host Python or Node installation is needed. BaC does not install model weights. A local model server can serve any stage and runs separately.
 
@@ -118,7 +118,7 @@ If you want to edit `api.cfg` and use Git **before your first start**, install t
 bash scripts/setup-key-filter.sh
 ```
 
-In Stage 3, **Models & connection** opens the shared Model settings. Preferences apply to new work; active requests are never automatically replayed. For Open Task on NVIDIA, expand **Standby specialists** and click the model beside each agent to search and save its choice. Event Brief uses the selected connection model for its entire team. Choices are locked while the team is working. Other external providers use the model selected for the shared endpoint. Hiring/Lounge, Event Brief and Open Task have separate rows in the same settings panel. Save both scenario choices together without switching floors.
+In Stage 3, **Models & connection** opens the shared Model settings. Preferences apply to new work; active requests are never automatically replayed. On NVIDIA, choose **Hired + Standby** and expand **Standby specialists** to change Casey’s or a backup’s model. You can return to Hired only before starting the task. Event Brief uses the selected connection model for its entire team. Choices are locked while the team is working. Casey and backups use the selected connection model with Local or other external providers; hires retain their individual choices. Event Brief and Open Task have separate connection rows; hires choose models individually. Save both scenario choices together without switching floors.
 
 ### Stages 1 and 2: Hiring and Agent lounge
 
@@ -138,25 +138,27 @@ Keyless local servers need no API key. Provider keys entered in these settings a
 2. **Agent lounge:** chat with a hired agent, inspect files, or approve OpenShell access.
 3. **Multi-Agent demo:** enter the **Event Brief** or **Open Task** floor directly from the studio overview or Studio Map. Both spaces branch directly off the Lounge concourse as equal choices, with their own signs and accent colors. Entering Stage 3 or choosing **Scenarios** shows the spaces together. Switching spaces never clears either workspace.
 
+**Programmer** equips the **Coding** skill for small, self-contained desktop pages and games. It saves a working file and applies focused follow-up edits. **Web researcher** equips **Web research** for brief, cited answers, reading supplied URLs first. Both work directly in the Lounge and can join Casey's team; role and tone remain separate from tool permissions. Research creates a file only when requested or needed for a handoff. OpenShell researchers can save that brief inside their protected workspace; network access still needs the relevant policy approval.
+
 **Event Brief** restores the fixed Riley, Dylan, Alex and Morgan crew. The app prepares this crew in the background once a model connection is available, without running inference. Open **Plan an event**, enter event details, and launch when preparation is ready. Reopening the form reuses the prepared team. While the app is open, it checks readiness in the background and prepares again after model changes, scenario resets or server restarts, without requiring a visit to Stage 3. A failed preparation waits for a manual retry. The team produces researched demo ideas, an operations timetable and an event webpage. Dylan retains his OpenShell protection.
 
-**Open Task**: message Casey with `/goal` and a concrete task, optionally attaching documents. Choose **Hired only** (default, Casey coordinates your hires) or **Hired + Standby** (your hires with built-in backups). In both modes, idle agents follow you into the room and wait on benches; assigned agents move to workbenches. Following alone does not start model work. Hire a **Programmer** and a **Web researcher** for a simple research-and-build demo. Each keeps its identity, model and permissions. Event Brief keeps its fixed team. Each scenario retains its own history, documents and results; changing rooms does not cancel active work.
+**Open Task**: message Casey with `/goal` and a concrete task, optionally attaching documents. Choose **Hired only** (default, Casey coordinates your hires) or **Hired + Standby** (your hires with built-in backups). In both modes, idle agents follow you into the room and wait on benches; assigned agents move to workbenches. Following alone does not start model work. Any hired role can participate; Coding and Web research are not requirements. A **Programmer** and a **Web researcher** are one useful pairing for a research-and-build demo. Hired only needs at least one available hire. Hired + Standby can use backups even without hires. Each keeps its identity, model and permissions. Event Brief keeps its fixed team. Each scenario retains its own history, documents and results; changing rooms does not cancel active work.
 
 This experimental `preview/visitor-agent-teams` branch adapts Paul Roeseler's hired-agent collaboration from `proeseler/stage3-demo` to the current dispatcher, preserving its verified handoffs, bounded recovery and cancellation.
 
-To choose who does the work, choose **Hired + Standby** or **Hired only**, then name them and their assignment:
+To require a hired agent’s participation, name it and its assignment in either mode:
 
 ```text
-/goal Let Pixel handle the coding instead of Cody. Build a small desktop counter page.
+/goal Have Pixel build a small desktop counter page.
 ```
 
-Natural phrasing is supported, including mixed teams such as “Let Scout find three places in Barcelona, then have Pixel turn the findings into a page.” Casey selects each agent and its work explicitly. If that selection is incomplete, Casey gets one chance to clarify it before any specialist starts; the app does not guess roles from nearby keywords.
+In **Hired + Standby**, you can explicitly combine a hire and a backup, such as “Let Scout find three places in Barcelona, then have Pixel turn the findings into a page.” Casey selects each agent and its work explicitly. If that selection is incomplete, Casey gets one chance to clarify it before any specialist starts; the app does not guess roles from nearby keywords.
 
 Pixel actually performs the coding, even if its saved role is weather advice. Its identity, voice, skills, workspace and OpenShell policy stay the same; the assignment does not grant extra tools. Named agents are not replaced because they lack expertise. When upstream output is incomplete, named agents still attempt their assignments with the available evidence and the result stays partial. Busy or unavailable agents are reported; cancellation, connection failures and the overall time budget can still stop the task. The existing maximum of three specialists applies, with a different agent required for independent review.
 
-The choice is captured when you submit a task and cannot change while it runs. Room changes keep your choice; reloading the page or resetting Open Task starts with it off for new tasks. Naming a hired agent while it is off asks you to enable it before any work starts.
+The team choice is captured when you submit and locked while the task runs. Room changes preserve it; reloading or resetting Open Task defaults new tasks to **Hired only**. Changing the team after a completed task keeps earlier results. Reset Open Task first when you want a clean demonstration.
 
-Hired agents use their selected **Hiring** model for both specialist assignments and closing reactions. Casey and built-in backups use **Open Task** settings, including its existing per-agent NVIDIA model choices. Connect both when combining the two. Agents invited for assignments or reactions are reserved so chat, Heartbeat and edits do not overlap the team task. Busy or unavailable guests are skipped under the existing reaction rules. With participation on, hired specialists do not receive a duplicate closing-reaction call. Follow-up messages to a hired specialist open its existing Lounge conversation. Scenario reset clears the shared team history and exported results, while preserving the hired agent's own files and identity.
+Hired agents use their selected **Hiring** model for both specialist assignments and closing reactions. Casey and built-in backups use **Open Task** settings, including its existing per-agent NVIDIA model choices. Ensure the Open Task connection and each participating hire’s model connection are ready. Agents invited for assignments or reactions are reserved so chat, Heartbeat and edits do not overlap the team task. Busy or unavailable guests are skipped under the existing reaction rules. In either team mode, hired specialists do not receive a duplicate closing-reaction call. Follow-up messages to a hired specialist open its existing Lounge conversation. Scenario reset clears the shared team history and exported results, while preserving the hired agent's own files and identity.
 
 `/plan` and `/plans` remain supported aliases for `/goal`. Only Open Task's Casey chat supports these team commands. Lounge agents without Tech Radar accept direct messages; Event Brief uses **Plan an event**. Casey's Open Task chat starts with `/goal ` and restores it after a successful send. Delete the prefix to send a direct message. Specialists accept direct messages only, without `/goal` hints or suggestions; send team tasks to Casey. Their inputs start empty and clear after sending; existing drafts stay intact when switching characters.
 
@@ -283,21 +285,13 @@ Use local/private endpoints reachable from the OpenClaw host. Local mode does no
 
 Event Brief uses Riley (event coordinator), Dylan, Alex and Morgan, with event-specific identity and role instructions. Open Task keeps Casey as its team captain. Each scenario has separate native agents, workspaces, conversations and memory, including before any model request. Existing generated Event Brief definitions are upgraded; custom definitions and saved work are preserved.
 
-All Event Brief agents use the model selected on their active connection in **Settings > Model**, whether Local or External Endpoint. Old per-agent choices do not override that connection. Open Task retains per-agent NVIDIA model choices in its specialist roster; Local and other external providers use the selected connection model.
+All Event Brief agents use the model selected on their active connection in **Settings > Model**, whether Local or External Endpoint. Old per-agent choices do not override that connection. Casey and Open Task backups retain per-agent NVIDIA model choices; Local and other external providers use the selected connection model for those built-in agents. Hires keep their own models in either team mode.
 
 
 ## FAQ
 
-### several instances, not the same version on one computer
-if you end up installing (throught *git clone* or else) different version of the demo, you could encounter some issues of starting one version or the other. Issue may come from one earlier version was using and creating some environment without cleaning them after being stop.
+### Switching between installed versions
 
-1. **Docker Volume(s) seen issue**
+Stop the currently running demo before starting another checkout. `./bac start` starts with clean runtime data; use `./bac start --keep-data` only when you want to retain the existing session.
 
-   As part of the deployment, some volumes are created. When stopping the solution, those volumes (and backup) may not been cleaned nicely after stopping.
-
-   In case, and to be sure.
-
-   ```bash
-   ./bac stop --all
-   ./bac start
-   ```
+If an older Docker installation left an incompatible stack or volumes, run `./bac stop --all` from that installation before starting the intended version. This also stops its managed local model and removes demo data volumes; model weights remain. Restart local inference with `./bac vllm` if needed. See [Docker setup and recovery](docs/docker-setup.md).

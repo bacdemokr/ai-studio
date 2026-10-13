@@ -32,13 +32,15 @@ Local endpoints must be reachable from the app/OpenClaw host, not from the prese
 ## Scenario models
 
 - **3-1 Event Brief:** Riley, Dylan, Alex and Morgan all use the selected connection model. New briefs support 2 or 3 themes; the server rejects larger theme counts before creating work.
-- **3-2 Open Task:** an external NVIDIA connection supports per-agent model choices. Expand **Standby specialists**, click an agent's model, search and select. Changes save immediately. Local and other providers use the shared connection model for the whole team.
+- **3-2 Open Task:** Casey and the backups follow the scenario connection. On NVIDIA, choose **Hired + Standby** and expand **Standby specialists** to change Casey’s or a backup’s model. Return to Hired only before starting if needed. Local and other providers use the shared connection model for Casey and backups. Hires retain their individual choices in both modes.
 
 **Models & connection** opens these shared settings. Connection changes are blocked while queued or active work is present; per-agent choices are locked while the team is busy or resetting. See [Open Task models](plan-team-models.md).
 
-## Per-agent models in Hiring
+## Per-agent models for hired agents
 
 Expand **Model** below **OpenShell protection**, then search by model or provider name. Results stay in a compact scrollable list; unavailable connections are disabled. New agents default to connected Local. If Local is unavailable, they use the configured External Endpoint default model, not the first catalogue entry. The collapsed summary shows the selected model, so presenters can hire without opening this section. If neither connection is ready, it shows **Not connected** and hiring waits for a connection. Explicit model choices and existing agents are preserved. The section starts closed and is available in **Edit agent** too.
+
+In Open Task, select an idle hired agent and click its model badge to open the same searchable choices. Changes affect only that agent’s future requests; saved plan records remain historical. Active or reserved agents cannot change models.
 
 An existing offline model remains selected. You can still edit that agent’s name or persona without changing its model; choosing a different model requires a ready connection.
 

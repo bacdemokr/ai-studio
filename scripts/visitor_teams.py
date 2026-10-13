@@ -13,7 +13,7 @@ def team_mode(data):
     if 'teamMode' in data:
         mode = data['teamMode']
         if not isinstance(mode, str) or mode not in ('builtin', 'mixed', 'hired'):
-            raise Problem('Choose Built-in team, Mixed team or Hired agents only.')
+            raise Problem('Choose Hired only or Hired + Standby.')
         return mode
     include = data.get('includeHiredAgents', bool(data.get('roster')))
     if type(include) is not bool:
@@ -67,7 +67,7 @@ def require_opt_in(db, owner, task):
     from studio import Problem
     required = requirements(task, hired_members(db, owner))
     if required:
-        raise Problem('Choose Mixed team or Hired agents only to assign ' + ', '.join(m['name'] for m in required) + '.', 409)
+        raise Problem('Choose Hired only or Hired + Standby to assign ' + ', '.join(m['name'] for m in required) + '.', 409)
 
 
 def capture(studio, db, owner, task):

@@ -550,7 +550,7 @@
 
 .plan-live-activity{margin:14px 0;padding:14px 16px;background:#14232c;border-left:3px solid #76b900;font-size:13px}.plan-live-activity strong{color:#c7dbb5}.plan-live-activity ol{list-style:none;padding:0;margin:10px 0;max-height:220px;overflow:auto}.plan-live-activity li{display:flex;justify-content:space-between;gap:12px;padding:5px 0}.plan-live-activity li span{overflow-wrap:anywhere}.plan-live-activity small,.plan-live-activity p{color:#a9bcc5}.plan-live-activity p{margin:8px 0 0}
 
-.studio-model-label{font-size:11px;color:#b7cc99;font-weight:400;letter-spacing:0;display:inline-block;padding:3px 6px;border:1px solid #394b35;border-radius:4px}
+.studio-model-label{background:transparent;font-family:inherit;line-height:1.4;text-align:left;max-width:100%;overflow-wrap:anywhere;font-size:11px;color:#b7cc99;font-weight:400;letter-spacing:0;display:inline-block;padding:3px 6px;border:1px solid #394b35;border-radius:4px}
 
 #studio-standby-list li>div{display:flex;flex-direction:column;gap:4px}
 #studio-standby-list select{width:210px;font-size:12px;padding:7px 10px;background:#101c25;color:#e7eff4;border:1px solid #455c6a;border-radius:4px;cursor:pointer}
@@ -711,3 +711,11 @@
 #agent-campus .campus-agent-label[data-visitor-agent] b{display:block}
 #agent-campus .campus-agent-label.visitor-waiting{min-width:0;max-width:136px;padding:5px 9px;font-size:14px}
 #agent-campus .campus-agent-label.visitor-waiting small{font-size:12px}
+
+#studio-crew-model:disabled{opacity:1;cursor:default}
+#studio-crew-model.studio-model-edit{cursor:pointer}
+#studio-crew-model.studio-model-edit::after{content:'⌄';margin-left:8px}
+#studio-crew-model.studio-model-edit:disabled{cursor:not-allowed;color:#a3afb7}
+#studio-crew-model.studio-model-edit:not(:disabled):hover,#studio-crew-model.studio-model-edit:focus-visible{border-color:#76b900;background:#243224}
+.team-model-results button:disabled{opacity:.5;cursor:not-allowed}
+.team-model-choice-state{font-size:11px;white-space:nowrap;color:#a7bac5}
