@@ -127,7 +127,7 @@ function syncSurface(){
   syncResetButtons();
   const plan=currentCollaboration();
   syncTeamTotalTime();
-  standbyPanel.hidden=selectedScenario==='event-brief';
+  standbyPanel.hidden=selectedScenario==='event-brief'||effectiveTeamMode()==='hired';
   const event=crewMission();resultsButton.hidden=selectedScenario==='event-brief'?!event:!plan;
   const scenarioJob=selectedScenario==='event-brief'?event:plan;
   usageTimeButton.hidden=!scenarioJob||['queued','running','waiting','stopping'].includes(scenarioJob.status);

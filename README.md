@@ -140,11 +140,11 @@ Keyless local servers need no API key. Provider keys entered in these settings a
 
 **Event Brief** restores the fixed Riley, Dylan, Alex and Morgan crew. The app prepares this crew in the background once a model connection is available, without running inference. Open **Plan an event**, enter event details, and launch when preparation is ready. Reopening the form reuses the prepared team. While the app is open, it checks readiness in the background and prepares again after model changes, scenario resets or server restarts, without requiring a visit to Stage 3. A failed preparation waits for a manual retry. The team produces researched demo ideas, an operations timetable and an event webpage. Dylan retains his OpenShell protection.
 
-**Open Task**: message Casey with `/goal` and a concrete task, optionally attaching documents. **Include hired agents** starts off. With it off, the built-in specialists do the work and your hired agents give their usual short reactions afterward. Turn it on to prefer suitable agents you hired for specialist assignments, with built-in specialists available as backup. The toggle controls who does the work, not whether personal reactions happen. Event Brief keeps its fixed team. Each scenario retains its own history, documents and results. Choosing another scenario does not cancel active work.
+**Open Task**: message Casey with `/goal` and a concrete task, optionally attaching documents. Choose **Built-in** (default), **Mixed** (your hires with built-in backups), or **Hired only** (Casey coordinates your hires). In the two hired modes, idle agents follow you into the room and wait on benches; assigned agents move to workbenches. Following alone does not start model work. Hire a **Coder** and a **Web researcher** for a simple research-and-build demo. Each keeps its identity, model and permissions. Event Brief keeps its fixed team. Each scenario retains its own history, documents and results; changing rooms does not cancel active work.
 
 This experimental `preview/visitor-agent-teams` branch adapts Paul Roeseler's hired-agent collaboration from `proeseler/stage3-demo` to the current dispatcher, preserving its verified handoffs, bounded recovery and cancellation.
 
-To choose who does the work, turn on **Include hired agents**, then name them and their assignment:
+To choose who does the work, choose **Mixed** or **Hired only**, then name them and their assignment:
 
 ```text
 /goal Let Pixel handle the coding instead of Cody. Build a small desktop counter page.

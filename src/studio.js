@@ -23,15 +23,15 @@
       if(selection){selection.removeAllRanges();for(const range of ranges)if(range.commonAncestorContainer.isConnected)selection.addRange(range);}
     }
   }
-  const titles = {'nvidia-webpage':'NVIDIA event page','nvidia-social':'NVIDIA social copy','nvidia-research':'NVIDIA theme research','event-page':'Event page studio',radar:'Tech Radar',weather:'Live weather',web:'Research & papers',documents:'Three Takeaways',builder:'App builder',writer:'Slack announcements',memory:'Personal memory'};
+  const titles = {'nvidia-webpage':'NVIDIA event page','nvidia-social':'NVIDIA social copy','nvidia-research':'NVIDIA theme research','event-page':'Event page studio',radar:'Tech Radar',weather:'Live weather',web:'Web research',documents:'Three Takeaways',builder:'Coding',writer:'Slack announcements',memory:'Personal memory'};
   const personas = {guide:'Explains ideas and turns them into practical plans.',maker:'Turns ideas into drafts, prototypes and small apps.',analyst:'Researches questions and compares the evidence.'};
   const tones={kind:['Kind','Warm & encouraging'],direct:['Direct','Clear & candid'],playful:['Playful','Light & witty'],cynical:['Cynical','Dry humor & skepticism']};
   const verbosityLabels={brief:'Brief',balanced:'Balanced',verbose:'Detailed'};
   const capabilities={
     radar:['Tech Radar','Technical articles and announcements → a short summary','Every 20 seconds · never repeats a shared article'],
-    builder:['Build an interactive app','An idea → a playable HTML app','Try: a reaction-time game'],
+    builder:['Coding','Build a small desktop webpage or game','Save a working prototype · one focused review'],
     documents:['Three Takeaways','Any question or document → three clear points','Always: 1. · 2. · 3. — including event reactions'],
-    web:['Research & papers','Recent papers → dated sources and a comparison','Try: find 3 recent arXiv papers on RAG'],
+    web:['Web research','Find useful facts and cite their sources','Short research · a saved brief for teammates'],
     writer:['Slack announcements','Emoji-led updates in your chosen voice','Emoji-led replies · extra lines when useful · draft only'],
     memory:['Remember what matters','A preference → a saved note used next time','Try: remember my diet, then suggest a meal'],
     weather:['Live weather','A city → timestamped weather and a forecast','Try: choose a time for an outdoor break']
@@ -83,7 +83,7 @@
   const policyPanel=document.createElement('details');policyPanel.id='studio-policy-panel';policyPanel.className='studio-inline-panel';policyPanel.innerHTML='<summary>OpenShell Policy</summary>';el('policies').before(policyPanel);policyPanel.append(el('policies'));policyPanel.ontoggle=()=>{if(policyPanel.open)loadPolicy();};
   el('workspace').append(el('reset'));el('reset').className='studio-secondary';
 
-  const demoSkills=['weather','radar','web','writer'],extraSkills=['documents','builder','memory'];
+  const demoSkills=['weather','radar','web','builder','writer'],extraSkills=['documents','memory'];
   const skillCards=keys=>keys.map(key=>{const [title,detail,example]=capabilities[key];return `<label><input type="checkbox" value="${key}"><span><strong>${title}</strong><small>${detail}</small><em>${example}</em></span></label>`;}).join('');
   el('skill-picker').innerHTML=skillCards(demoSkills)+'<div hidden>'+skillCards(extraSkills)+'</div>';
   el('tone-picker').innerHTML=Object.entries(tones).map(([key,[title,detail]])=>`<button type="button" data-tone="${key}" aria-pressed="${key==='kind'}"><strong>${title}</strong><small>${detail}</small></button>`).join('');
@@ -331,9 +331,9 @@
     renderStandbySpecialists(a);
     a.forEach((agent,i)=>{agent.protection=collaboration?.payload.collaboration.visitorBindings?.[i]?.protection||window.BacCrewCatalog[i].protection||'standard';});
     if(planning){const role=planning.payload.collaboration.activeRole??0;phase=role;a[role].lane=1;a[role].status=planning.status==='stopping'?'Stopping':'Collaborating';a[role].task=planning.events?.at(-1)?.title||'Working with the BaC team';flow=[a[role].name+' · '+a[role].status,a[role].task,'Open mission'];}
-    const planRoundtable=collaboration?.payload.collaboration.tasks&&collaboration.payload.collaboration.outcome!=='unavailable'?collaboration.payload.roundtable:null;
+    const planRoundtable=collaboration?.payload.collaboration.tasks&&collaboration.payload.collaboration.outcome!=='unavailable'&&(taskTeamMode(collaboration)==='builtin'||collaboration.payload.collaboration.responseReady)?collaboration.payload.roundtable:null;
     if(planRoundtable?.status==='reviewing'&&['running','stopping'].includes(collaboration.status))flow=['Your agents’ take','The result is ready. Your agents are sharing their personal reactions.','Open mission'];
-    window.BacCampus?.setLive({...s,live:true,crewMission:collaboration?{id:collaboration.id,kind:'plan',status:collaboration.status,visitorsActive:!collaboration.payload.collaboration.responseReady&&['queued','running','waiting','stopping'].includes(collaboration.status),assignedRoles:collaboration.payload.collaboration.tasks?.map(task=>task.role),roundtable:planRoundtable,activeStages:planning?[planning.payload.collaboration.activeRole??0]:[],count:roles.length,enabledRoles:collaborationTeam(collaboration.payload.collaboration),revisionRole:collaboration.payload.collaboration.revision?.role,completed:Object.keys(collaboration.payload.collaboration.outputs||{}).map(Number).filter(role=>!(collaboration.payload.collaboration.revision?.role===role&&['requested','working'].includes(collaboration.payload.collaboration.revision.status)))}:null,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected:room==='mission'?selectedCrewRole:selected,flow,gap:active?.status==='waiting',brief:null,calc:null,policy:null});
+    window.BacCampus?.setLive({...s,live:true,visitorTeamMode:effectiveTeamMode(),crewMission:collaboration?{id:collaboration.id,kind:'plan',status:collaboration.status,visitorsActive:!collaboration.payload.collaboration.responseReady&&['queued','running','waiting','stopping'].includes(collaboration.status),assignedRoles:collaboration.payload.collaboration.tasks?.map(task=>task.role),roundtable:planRoundtable,activeStages:planning?[planning.payload.collaboration.activeRole??0]:[],count:roles.length,enabledRoles:collaborationTeam(collaboration.payload.collaboration),revisionRole:collaboration.payload.collaboration.revision?.role,completed:Object.keys(collaboration.payload.collaboration.outputs||{}).map(Number).filter(role=>!(collaboration.payload.collaboration.revision?.role===role&&['requested','working'].includes(collaboration.payload.collaboration.revision.status)))}:null,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected:room==='mission'?selectedCrewRole:selected,flow,gap:active?.status==='waiting',brief:null,calc:null,policy:null});
     document.getElementById('campus-motion-status').textContent=planning||active?flow[0]:'Meet your specialists · use /goal to assemble a team';
     renderCrewPassport();
   }

@@ -54,10 +54,10 @@ SKILLS = {
     'nvidia-social': ('NVIDIA social copy', project_skill('nvidia-social')),
     'nvidia-research': ('NVIDIA theme research', project_skill('nvidia-research')),
     'event-page': ('Event page studio', EVENT_PAGE_SKILL.split('---', 2)[2].strip()),
-    'web': ('Research & papers', project_skill('web')),
+    'web': ('Web research', project_skill('web')),
     'weather': ('Live weather', 'Use web_fetch to resolve the requested city at https://geocoding-api.open-meteo.com/v1/search?name=CITY&count=3&language=en&format=json . Confirm country or region when results are ambiguous. Use the returned latitude and longitude at https://api.open-meteo.com/v1/forecast?latitude=LAT&longitude=LON&current=temperature_2m,precipitation,weather_code&hourly=temperature_2m,precipitation_probability&forecast_days=1&timezone=auto . Report resolved location, local observation time, units, temperature, precipitation and source URLs. Distinguish current observations from hourly forecasts. Recommend an outdoor time only when supported by the retrieved hourly data. Do not invent weather when fetching fails.'),
     'documents': ('Three Takeaways', project_skill('documents')),
-    'builder': ('App builder', 'Create a delightful, small, self-contained HTML app in artifacts/. Use inline CSS and JavaScript only, no libraries, network requests or external images. Target desktop browsers with keyboard and mouse controls. Do not add mobile layouts, touch controls or mobile testing unless explicitly requested. Return one complete HTML code block if the write tool is unavailable. Describe what you built. Do not claim that it has been tested in a browser.'),
+    'builder': ('Coding', project_skill('builder')),
     'writer': ('Slack announcements', project_skill('writer')),
     'memory': ('Personal memory', 'Read MEMORY.md when the user asks about preferences or before personalizing a plan. Save a preference only when the user explicitly asks you to remember it. Edit MEMORY.md without deleting unrelated notes. Never store credentials. Explain exactly what was saved.'),
 }

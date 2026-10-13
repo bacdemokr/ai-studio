@@ -120,7 +120,7 @@ class VisitorTeamTests(unittest.TestCase):
         self.assertFalse(any('VISITOR TEAM SELECTION' in c[2] for c in self.adapter.calls))
 
     def test_off_named_agent_explains_opt_in_before_queuing_any_work(self):
-        with self.assertRaisesRegex(Problem, 'Turn on Include hired agents to assign Pixel'):
+        with self.assertRaisesRegex(Problem, 'Choose Mixed team or Hired agents only to assign Pixel'):
             self.start(includeHiredAgents=False)
         with self.app.db() as db:
             self.assertEqual(db.execute("SELECT count(*) FROM jobs WHERE kind='crew-chat'").fetchone()[0], 0)

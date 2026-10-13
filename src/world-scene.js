@@ -285,7 +285,7 @@ function createScene() {
       b.setAttribute('aria-pressed',String(activeSelection===i));b.setAttribute('aria-label','Select '+state.agents[i].name+(working?', working':''));b.classList.toggle('working',working);b.classList.toggle('selected',activeSelection===i);b.classList.toggle('excluded',state.agents[i].included===false);b.classList.toggle('waiting',state.agents[i].lane===2);
     });}
 
-  function update(next,index){state=next;placeTeam();if(scenarioMoved)settleCrewExchange();syncVisitorTeam();syncCaptain();syncRoundtable();activeSelection=index;phase=state.phase;dressCrew();const key=[state.jobId,state.phase,state.missionSkill,state.crewMission?.id,state.crewMission?.enabledRoles?.join(),state.agents.map(a=>a.lane).join('')].join(':');if(key!==lastKey){lastKey=key;movement();}renderCrewLabels();}
+  function update(next,index){state=next;placeTeam();if(scenarioMoved)settleCrewExchange();syncRoundtable();syncVisitorTeam();syncCaptain();activeSelection=index;phase=state.phase;dressCrew();const key=[state.jobId,state.phase,state.missionSkill,state.crewMission?.id,state.crewMission?.enabledRoles?.join(),state.agents.map(a=>a.lane).join('')].join(':');if(key!==lastKey){lastKey=key;movement();}renderCrewLabels();}
 
   /* WORLD_PROTECTION */
 

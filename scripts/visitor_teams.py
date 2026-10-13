@@ -7,6 +7,20 @@ import json
 import re
 
 
+def team_mode(data):
+    """Old clients retain their boolean opt-in; new clients name the team explicitly."""
+    from studio import Problem
+    if 'teamMode' in data:
+        mode = data['teamMode']
+        if not isinstance(mode, str) or mode not in ('builtin', 'mixed', 'hired'):
+            raise Problem('Choose Built-in team, Mixed team or Hired agents only.')
+        return mode
+    include = data.get('includeHiredAgents', bool(data.get('roster')))
+    if type(include) is not bool:
+        raise Problem('Include hired agents must be on or off.')
+    return 'mixed' if include else 'builtin'
+
+
 def mentions(text, name):
     return re.search(r'(?<![\w])' + re.escape(name) + r'(?![A-Za-z0-9_])', text, re.I)
 
@@ -53,7 +67,7 @@ def require_opt_in(db, owner, task):
     from studio import Problem
     required = requirements(task, hired_members(db, owner))
     if required:
-        raise Problem('Turn on Include hired agents to assign ' + ', '.join(m['name'] for m in required) + '.', 409)
+        raise Problem('Choose Mixed team or Hired agents only to assign ' + ', '.join(m['name'] for m in required) + '.', 409)
 
 
 def capture(studio, db, owner, task):
@@ -88,19 +102,25 @@ def capture(studio, db, owner, task):
     return members, required, unavailable
 
 
-def instructions(members, required):
-    if not members:
+def instructions(members, required, mode='mixed'):
+    if not members and mode != 'hired':
         return ''
     from agent_runtime import collaboration_capabilities
     choices = [{**{key: m.get(key) for key in ('key', 'name', 'purpose', 'skills')},
                 **collaboration_capabilities(m)} for m in members]
-    return ('\nVISITOR TEAM SELECTION - overrides generic recommendations to pick Scout/Cody/Vera by name. '
+    policy = ('HIRED AGENTS ONLY: Casey coordinates but cannot do specialist work. Assign every specialist task '
+              'to an exact hired key below. Never use agent:"builtin" or invoke Scout, Cody, Vera, Ada or Iris. '
+              'Their role numbers are assignment types only, not available people. If the team lacks a necessary '
+              'tool, return outcome:"unavailable" and explain which skill or teammate to add. Do not silently '
+              'switch teams. One hire may deliver a combined small implementation, but may not independently review itself. '
+              if mode == 'hired' else
+              'Prefer suitable hired agents below; use agent:"builtin" for a built-in expert only when no suitable hired agent is available. '
+              'Explicitly named built-in specialists must be kept when requested. ')
+    return ('\nVISITOR TEAM SELECTION - overrides generic recommendations to pick Scout/Cody/Vera by name. ' + policy +
             'Role numbers describe the assignment (4 review, 5 coding, 6 analysis, 7 design, 8 research), '
-            'not who must do it. Prefer suitable hired agents below; use the built-in expert only when no suitable '
-            'hired agent is available. Every task MUST include agent:"exact key" for a hired assignment; agent:"builtin" selects '
-            'the backup for that role. Each agent and role can appear only once. '
+            'not who must do it. Every task MUST include agent:"exact key" for a hired assignment. '
+            'Each agent and role can appear only once. '
             'Interpret the visitor\'s natural-language assignments, including informal requests and references to earlier sentences. '
-            'Explicitly named built-in specialists must be kept when requested. '
             'If the visitor names an agent, it MUST actually contribute, even outside its usual skills or expertise. '
             'If they say Pixel should code instead, give Pixel role 5; do not leave coding to Cody and give Pixel '
             'a token reaction. User role assignments override saved interests, but never expand tool permissions. '
@@ -117,11 +137,14 @@ class TeamSelectionError(RuntimeError):
     """A planner response needs explicit identities before any work may start."""
 
 
-def validate_selection(plan, members, required):
+def validate_selection(plan, members, required, mode='mixed'):
     available = {m['key']: m for m in members}
     seen = set()
     for assignment in plan['tasks']:
         key = assignment.get('agent')
+        if mode == 'hired' and key in (None, 'builtin'):
+            raise TeamSelectionError('Hired agents only is selected. Assign every specialist task to an available hired key; '
+                                     'built-in specialists cannot participate. If the team cannot do the work, explain the missing capability.')
         if key is None:
             if members:
                 raise TeamSelectionError('Identify who performs every task using agent: an exact hired key or "builtin". '
@@ -141,9 +164,9 @@ def validate_selection(plan, members, required):
                                  '. Assign their actual requested work, not a reaction or a replacement.')
 
 
-def bind(plan, roster, members, required, task):
+def bind(plan, roster, members, required, task, mode='mixed'):
     """Apply Casey's explicit choices. Never infer or rewrite roles from prose."""
-    validate_selection(plan, members, required)
+    validate_selection(plan, members, required, mode)
     available = {m['key']: m for m in members}
     bindings = {}
     for assignment in plan['tasks']:

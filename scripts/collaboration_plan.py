@@ -222,14 +222,15 @@ class CollaborationPlans:
         inputs = requested_inputs(self, origin, plan['task'])
         import visitor_teams
         # Older queued tasks already captured a roster before the opt-in existed.
-        include_hired = payload.get('includeHiredAgents', bool(payload.get('roster')))
+        mode = visitor_teams.team_mode(payload)
+        include_hired = mode != 'builtin'
         visitors = payload.get('roster', []) if include_hired else []
         required_visitors = payload.get('requiredVisitors', []) if include_hired else []
         # Old queued jobs may contain a role inferred from neighboring keywords.
         # Keep their required participants, but let Casey interpret their work.
         required_visitors = [{**member, 'role': None} for member in required_visitors]
-        visitor_rules = (visitor_teams.instructions(visitors, required_visitors) if include_hired else
-                         '\nTEAM SELECTION: Include hired agents is off for this task. Use only the built-in '
+        visitor_rules = (visitor_teams.instructions(visitors, required_visitors, mode) if include_hired else
+                         '\nTEAM SELECTION: Built-in team is selected for this task. Use only the built-in '
                          'specialists listed above. Do not assign Lounge agents mentioned in earlier conversations.\n')
         def member_workspace(role):
             member = roster[role]
@@ -252,6 +253,11 @@ class CollaborationPlans:
                         for member in team]
         shared_limits = [limit for limit in team[0]['limits'] if all(limit in member['limits'] for member in team)]
         shared_limits += ['web_fetch can attempt public URLs only for members whose tools include it. Reachability is not guaranteed; cite only successful reads.']
+        selection_pool = team
+        if mode == 'hired':
+            selection_pool = [{'key':m['key'], 'name':m['name'], 'purpose':m.get('purpose'),
+                               'skills':m.get('skills', []), **collaboration_capabilities(m)} for m in visitors]
+            team_summary = selection_pool
         history = self.conversation_context(origin['owner'], origin['role'], row['created'], job_id)
         context = (BROWSER_LIMIT + '\nCurrent UTC date: ' + time.strftime('%Y-%m-%d', time.gmtime()) + '\n' +
             'This is an explicit /plan collaboration, separate from the event-template pipeline. '
@@ -512,6 +518,8 @@ class CollaborationPlans:
             if role == 8 and monotonic() >= research_deadline:
                 raise GatewayError('Scout reached the 150-second research limit. No further research will run.', 'timeout')
             member = dict(roster[role])
+            if mode == 'hired' and role != 0 and not member.get('key'):
+                raise RuntimeError('Hired agents only: a built-in specialist cannot be started.')
             if role == 8:
                 member['_researchBrief'] = True
             if role == 0:
@@ -898,7 +906,7 @@ class CollaborationPlans:
         try:
             answer = invoke(0,
                 'You are Casey, the BaC Captain. Do not use tools in this initial decision. '
-                'Choose zero to three specialists, only as needed, from this available pool to match the current request: ' + json.dumps(team) + '. '
+                'Choose zero to three specialists, only as needed, from this available pool to match the current request: ' + json.dumps(selection_pool) + '. '
                 'For a simple question you can answer accurately from the supplied context, return tasks:[] and the complete user-facing answer. Explain in summary why no additional agents are needed. '
                 'Match the requested deliverable: a summary, comparison table, invitation or explanation is a chat answer or Markdown, '
                 'not a request for an HTML page. Do not add implementation, design or independent review unless the user asks for that deliverable or it is necessary. '
@@ -1032,7 +1040,7 @@ class CollaborationPlans:
                     return
             if include_hired:
                 try:
-                    visitor_teams.validate_selection(plan, visitors, required_visitors)
+                    visitor_teams.validate_selection(plan, visitors, required_visitors, mode)
                 except visitor_teams.TeamSelectionError as error:
                     plan['teamSelectionRecovery'] = {'status': 'working'}
                     corrected = invoke(0, 'Complete the team selection before any specialist starts. '
@@ -1050,7 +1058,7 @@ class CollaborationPlans:
                         selection['reviewRequired'] = plan.get('reviewRequired', False) or selection.get('reviewRequired', False)
                         include_required_review(selection)
                         validate_assignments(selection['tasks'], inputs, bool(payload.get('images')))
-                        visitor_teams.validate_selection(selection, visitors, required_visitors)
+                        visitor_teams.validate_selection(selection, visitors, required_visitors, mode)
                     except (RuntimeError, ValueError):
                         plan['teamSelectionRecovery']['status'] = 'failed'
                         plan.update(tasks=[], outcome='partial', calledRoles=[])
@@ -1058,7 +1066,7 @@ class CollaborationPlans:
                         return
                     plan.update(selection)
                     plan['teamSelectionRecovery']['status'] = 'corrected'
-                visitor_teams.bind(plan, roster, visitors, required_visitors, plan['task'])
+                visitor_teams.bind(plan, roster, visitors, required_visitors, plan['task'], mode)
             if plan.get('visitorBindings'):
                 visitor_rules += ('\nActual selected assignments (use these identities in progress and final answers):\n' +
                                   json.dumps([{'role': t['role'], 'name': roster[t['role']]['name']} for t in plan['tasks']]) + '\n')

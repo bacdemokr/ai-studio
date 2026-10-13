@@ -287,7 +287,7 @@ function setRoom(next,options={}){
   if(next===room&&!overview&&!journey&&!scenarioMoved){resize();return;}
   scenarioMoved=false;scenarioGallery=false;
   // Retarget from the current camera pose, without queuing intermediate rooms.
-  const previous=room;rememberCamera();room=next;overview=false;
+  const previous=room;rememberCamera();room=next;overview=false;syncVisitorTeam();
   const [a,e,z]=roomCameras[next];
   journeyNote.textContent='Opening '+studioRooms[next].title;
   travelTo({focus:roomFocus(next),azimuth:a,elevation:e,zoom:z,height:roomHeight(next),overview:false,from:previous,to:next,scenario:activeScenario},options.instant);
@@ -295,7 +295,7 @@ function setRoom(next,options={}){
 function showOverview(options={}){
   closeRoomInfo(false);closeTermInfo(false);
   if(arrival)finishArrival();
-  rememberCamera();overview=true;scenarioGallery=false;journeyNote.textContent='Opening your connected studio';
+  rememberCamera();overview=true;scenarioGallery=false;syncVisitorTeam();journeyNote.textContent='Opening your connected studio';
   travelTo({...campusFrame(),azimuth:.43,elevation:.64,zoom:1,overview:true},!!options.instant);
 }
 function showScenarios(options={}){

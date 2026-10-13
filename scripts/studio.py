@@ -895,9 +895,9 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
         if collaborative and event_scenario:
             raise Problem('Use Plan an event for Event Brief, or send /goal to Casey in Open Task.')
         if collaborative:
-            include_hired = data.get('includeHiredAgents', False)
-            if type(include_hired) is not bool:
-                raise Problem('Include hired agents must be on or off.')
+            from visitor_teams import team_mode
+            mode = team_mode({k:v for k,v in data.items() if k != 'roster'})
+            include_hired = mode != 'builtin'
             origin_role = data.get('crewRole')
             if type(origin_role) is not int or not 0 <= origin_role < len(ROLES):
                 raise Problem('Choose a crew member.')
@@ -939,6 +939,7 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
             payload['crewRole'] = role
             if collaborative:
                 payload['includeHiredAgents'] = include_hired
+                payload['teamMode'] = mode
                 payload['collaboration'] = {'task':task, 'origin':origin, 'activeRole':0, 'outputs':{}, 'handoffs':{}}
         if kind == 'reminder':
             delay = data.get('delay', 60)
@@ -982,6 +983,8 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
                 from visitor_teams import capture, require_opt_in
                 if include_hired:
                     visitors, required, unavailable = capture(self, db, owner, task)
+                    if mode == 'hired' and not visitors:
+                        raise Problem('No hired agents are ready. Hire an agent with Coding or Web research, or choose Mixed team.', 409)
                     payload['roster'] = visitors
                     payload['requiredVisitors'] = required
                     payload['unavailableVisitors'] = unavailable
