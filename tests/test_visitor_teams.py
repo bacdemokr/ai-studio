@@ -225,6 +225,22 @@ class VisitorTeamTests(unittest.TestCase):
         self.assertEqual(job['payload']['collaboration']['visitorBindings']['5']['protection'], 'openshell')
         self.assertEqual(self.adapter.profiles['bac-' + self.owner]['protection'], 'openshell')
 
+    def test_final_result_retains_verified_hired_policy_denial_when_captain_omits_it(self):
+        from telemetry import Reply
+        original = self.app.protected_response
+
+        def respond(agent, *args, **kwargs):
+            answer = original(agent, *args, **kwargs)
+            if agent == 'bac-' + self.owner:
+                answer = Reply(answer, {})
+                answer.policy_denials = ['example.com']
+            return answer
+
+        with patch.object(self.app, 'protected_response', side_effect=respond):
+            job = self.execute(self.start())
+        self.assertIn('OpenShell blocked - Pixel: example.com.', job['result']['answer'])
+        self.assertIn('Approve the required sites', job['result']['answer'])
+
     def test_explicit_builtin_name_keeps_that_agent(self):
         self.app.add_agent(self.owner, {'name': 'Maker', 'skills': ['builder']})
         job = self.execute(self.start('/goal Ask Cody to build a counter.'))
@@ -316,6 +332,14 @@ class VisitorTeamTests(unittest.TestCase):
         self.app.enqueue(self.owner, {'kind': 'chat', 'prompt': 'Weather now?'})
         with self.assertRaisesRegex(Problem, 'Pixel is busy'):
             self.start()
+
+    def test_named_agent_warming_up_is_preparing_not_busy_with_user_work(self):
+        self.app.enqueue(self.owner, {'kind': 'chat', 'prompt': 'Synthetic preparation'})
+        with self.app.db() as db:
+            db.execute("UPDATE jobs SET kind='prepare-agent',status='running' WHERE owner=?", (self.owner,))
+        with self.assertRaisesRegex(Problem, 'Pixel is still preparing'):
+            self.start(teamMode='hired')
+        self.assertEqual(self.specialists(), [])
 
     def test_disconnected_lounge_uses_backups_unless_personal_agent_is_named(self):
         status = {'ready': False, 'gateway': True, 'model': False, 'teamReady': True, 'teamModel': True}

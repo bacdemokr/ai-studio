@@ -14,7 +14,7 @@ class Element{
  const nodes=new Map(),el=id=>{if(!nodes.has(id))nodes.set(id,new Element());return nodes.get(id)};
  const root=new Element();let panel,save;
  const models=Array.from({length:249},(_,i)=>({id:'model/'+i,label:'Model '+i}));
- const context={document:{createElement:()=>panel=new Element()},root,el,runtime:{teamModels:models},teamModel:()=>models[0],agentId:'owner',selectedScenario:'plan',defaultNames:['Casey','Vera','Cody'],escape:String,dialogRevision:0,refreshVersion:0,stateCache:new Map(),data:{teamSelections:['unchanged']},render(){},alert(){},api:async(path,body,owner)=>{assert.equal(path,'team-model');assert.equal(owner,'owner');if(save)await save;return {teamSelections:[body.model]};}};
+ const context={document:{createElement:()=>panel=new Element()},root,el,runtime:{teamModels:models,teamModel:true,teamReady:true},window:{BacCrewCatalog:[{},{},{}]},resetInProgress:false,teamRuntime:()=>({teamReady:true}),teamModel:()=>models[0],agentId:'owner',selectedScenario:'plan',defaultNames:['Casey','Vera','Cody'],escape:String,dialogRevision:0,refreshVersion:0,stateCache:new Map(),data:{teamSelections:['unchanged']},render(){},alert(){},api:async(path,body,owner)=>{assert.equal(path,'team-model');assert.equal(owner,'owner');if(save)await save;return {teamSelections:[body.model]};}};
  context.dialog=()=>{context.dialogRevision++;el('dialog').open=true;};vm.createContext(context);
  const source=fs.readFileSync('src/studio-crew.js','utf8');
  vm.runInContext(source.slice(source.indexOf('const teamModelDialog='),source.indexOf("root.addEventListener('click',async event=>{")),context);

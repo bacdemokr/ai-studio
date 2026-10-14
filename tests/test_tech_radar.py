@@ -100,6 +100,49 @@ class HeartbeatRelayTests(unittest.TestCase):
         self.studio.executing_owners.clear()
         self.tick()
         self.assertTrue(self.adapter.cadence[self.profile['id']])
+
+    def test_open_task_suspends_idle_timer_and_defers_saved_result_until_leaving(self):
+        heartbeat = self.studio.heartbeat
+        heartbeat.presence(self.owner, 'fixture-tab', open_task=True, revision=1)
+        with patch.object(telegram, 'send', return_value='sent') as send:
+            self.tick(); self.tick()
+            self.assertFalse(self.adapter.cadence[self.profile['id']])
+            self.assertEqual(heartbeat.status(self.owner,self.profile)['state'],'paused in Open Task')
+            self.assertFalse(heartbeat.status(self.owner,self.profile)['paused'])
+            self.assertEqual(self.studio.state(self.owner)['jobs'],[])
+            send.assert_not_called()
+            heartbeat.presence(self.owner, 'fixture-tab', open_task=False, revision=2)
+            self.tick(); self.tick()
+            self.assertTrue(self.adapter.cadence[self.profile['id']])
+            self.assertEqual(heartbeat.status(self.owner,self.profile)['everySeconds'],20)
+            self.assertEqual(len(self.studio.state(self.owner)['jobs']),1)
+            self.assertEqual(send.call_count,1)
+
+    def test_manual_pause_survives_room_roundtrip_and_resume_in_room_stays_suspended(self):
+        heartbeat = self.studio.heartbeat
+        heartbeat.control(self.owner,{'paused':True})
+        heartbeat.presence(self.owner,'fixture-tab',open_task=True,revision=1)
+        self.tick()
+        heartbeat.presence(self.owner,'fixture-tab',open_task=False,revision=2)
+        self.tick()
+        self.assertFalse(self.adapter.cadence[self.profile['id']])
+        self.assertTrue(heartbeat.status(self.owner,self.profile)['paused'])
+        heartbeat.presence(self.owner,'fixture-tab',open_task=True,revision=3)
+        heartbeat.control(self.owner,{'paused':False})
+        self.tick()
+        self.assertFalse(self.adapter.cadence[self.profile['id']])
+        self.assertEqual(heartbeat.status(self.owner,self.profile)['state'],'paused in Open Task')
+
+    def test_open_task_does_not_reprepare_unregistered_radar_agents(self):
+        self.studio.provisioned.discard(self.profile['id'])
+        self.studio.heartbeat.presence(self.owner,'fixture-tab',open_task=True,revision=1)
+        self.tick(); self.tick()
+        with self.studio.db() as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM jobs WHERE kind='prepare-agent' AND status='queued'").fetchone()[0],0)
+        self.studio.heartbeat.presence(self.owner,'fixture-tab',open_task=False,revision=2)
+        self.tick()
+        with self.studio.db() as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM jobs WHERE kind='prepare-agent' AND status='queued'").fetchone()[0],1)
     def test_disconnected_model_disables_timer(self):
         with patch.object(self.studio,'runtime_status',return_value={'gateway':True,'model':False,'ready':False}):self.studio.heartbeat.tick()
         self.assertFalse(self.adapter.cadence[self.profile['id']])

@@ -54,6 +54,13 @@ class ProtectionActivity:
                     and ((e['role'] is None and e['owner'] in owners)
                          or (e['role'] is not None and e['owner'] == crew_owner))]
 
+    def denials_since(self, owner, role, started):
+        """Current-turn policy evidence, independent of the brief visual lifetime."""
+        with self.lock:
+            return sorted({e['host'] for e in self.events
+                           if e['owner'] == owner and e['role'] == role
+                           and e['action'] == 'deny' and e['time'] >= started})[:8]
+
     @contextmanager
     def watch(self, owner, role, agent_id, reader):
         started = time.time()

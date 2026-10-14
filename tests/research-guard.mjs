@@ -20,4 +20,30 @@ assert.equal(result.toolCallId,'tool-1');const body=JSON.parse(result.content[0]
 assert.equal(persistResult({toolName:'web_search',message:{...msg,isError:true}},c),undefined);
 assert.equal(persistResult({toolName:'read',message:msg},c).message.details.coverageLimited,true);
 assert.equal(persistResult({toolName:'web_search',message:msg},{...c,agentId:'unrelated'}),undefined);
+// A failed search provider must not prevent the very first official-source read.
+const failedSearch=(id,text="Parallel MCP error: You've hit the free-tier rate limit")=>({toolName:'web_search',message:{role:'toolResult',toolName:'web_search',toolCallId:id,isError:true,content:[{type:'text',text}]}});
+c=ctx();beforeTool({...search(),toolCallId:'limited'},c);
+assert.equal(beforeTool(fetch,c).block,true); // No result yet.
+assert.equal(persistResult(failedSearch('limited'),c),undefined); // Keep the original error.
+persistResult(failedSearch('limited'),c); // Repeated persistence cannot refund another search.
+persistResult(failedSearch('unknown-call'),c);
+for(let i=0;i<5;i++)assert.equal(beforeTool({...fetch,toolCallId:'fallback-'+i},c).params.maxChars,4000);
+assert.equal(beforeTool(fetch,{...c,sessionKey:c.sessionKey+'-output-retry'}).block,true);
+assert.match(beforeTool(fetch,c).blockReason,/not an OpenShell policy denial/);
+assert.equal(beforeTool({toolName:'write',params:{path:'artifacts/brief.md'}},c),undefined);
+beforeTool({...search(),toolCallId:'second'},c);
+assert.equal(beforeTool(fetch,c).block,true);
+persistResult(failedSearch('second'),c);
+assert.equal(beforeTool(search(),c).block,true); // Failed attempts still count toward the search limit.
+for(const [isError,text] of [[false,'rate limit'],[true,'OpenShell policy denial: rate limit'],[true,'Unspecified error']]) {
+  c=ctx();beforeTool({...search(),toolCallId:'check'},c);
+  const event=failedSearch('check',text);event.message.isError=isError;
+  persistResult(event,c);assert.equal(beforeTool(fetch,c).block,true);
+}
+c=ctx();beforeTool({...search(),toolCallId:'limited'},c);persistResult(failedSearch('limited'),c);
+beforeTool({...search(),toolCallId:'success'},c);
+persistResult({toolName:'web_search',message:{...msg,toolCallId:'success'}},c);
+assert.equal(beforeTool(fetch,c).block,true); // A successful second search restores the stop rule.
+const other=ctx();beforeTool({...search(),toolCallId:'limited'},other);
+assert.equal(beforeTool(fetch,other).block,true); // Another run cannot inherit a fallback allowance.
 console.log('Research bounds: call budgets, retry scope, isolation, excerpt limits and source markers passed.');

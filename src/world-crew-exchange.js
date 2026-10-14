@@ -11,7 +11,7 @@ function enterCrew(r){
 }
 function placeTeam(){
   const initial=state.live&&!crewPresenceInitialized;if(state.live)crewPresenceInitialized=true;
-  const selected=state.agents.map((a,i)=>a.displayed===false||a.visitorKey&&!state.crewMission?.visitorsActive?null:i).filter(i=>i!==null),key=(state.crewMission?.kind==='plan'?'plan:':'event:')+selected.map(i=>i+':'+(state.agents[i].visitorKey||'builtin')).join();
+  const selected=state.agents.map((a,i)=>a.displayed===false||a.visitorKey&&!state.crewMission?.visitorsPresent?null:i).filter(i=>i!==null),key=(state.crewMission?.kind==='plan'?'plan:':'event:')+selected.map(i=>i+':'+(state.agents[i].visitorKey||'builtin')).join();
   if(key!==exchangeTeamKey){
     exchangeTeamKey=key;
     // Keep returning specialists at their existing desks, fill only free seats.

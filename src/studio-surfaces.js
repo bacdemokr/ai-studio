@@ -15,7 +15,7 @@ function renderPlanResults(job){
  if(planResults.dataset.key===key)return;
  planResults.dataset.key=key;
  const status=['queued','running','waiting','stopping'].includes(job.status)?'Work is in progress. Saved results appear here as the team finishes.':job.status==='error'?'This request did not finish. Any saved files are available below.':'No final response was saved for this request.';
- planResults.innerHTML='<h3>Team results</h3>'+collaborationTimeMarkup(job)+'<p>'+escape(plan.task||job.payload.prompt||'')+'</p><div class="chat-prose">'+messageMarkup(answer||status)+'</div>'+collaborationCompletionMarkup(plan,answer)+webpageButtons(files,job.id)+collaborationFileButtons(files,job.id,'Open saved file');
+ planResults.innerHTML='<header class="studio-result-heading"><small>Task</small><p>'+escape(plan.task||job.payload.prompt||'')+'</p>'+collaborationTimeMarkup(job)+'</header><div class="chat-prose">'+messageMarkup(answer||status)+'</div>'+collaborationCompletionMarkup(plan,answer)+(files.length?'<section class="studio-result-files" aria-label="Saved files"><h3>Saved files</h3>'+webpageButtons(files,job.id)+collaborationFileButtons(files,job.id,'Open saved file')+'</section>':'');
 }
 
 const usageTime=document.createElement('section');usageTime.id='studio-usage-time';usageTime.className='studio-usage-time';usageTime.hidden=true;surfaceStore.append(usageTime);
@@ -58,11 +58,16 @@ function renderUsageTime(job){
  const summary=scenarioUsageSummary(job),key=JSON.stringify([job.id,job.status,job.updated,job.payload?.metrics,job.payload?.prompt,job.payload?.brief,job.payload?.collaboration?.task]);
  if(usageTime.dataset.key===key)return;usageTime.dataset.key=key;
  const amount=(value,reported)=>reported?Math.round(value).toLocaleString():'—';
- const rows=summary.agents.map(agent=>'<tr><th scope="row">'+escape(agent.name)+'</th><td class="studio-usage-endpoint">'+(agent.models.size?'<strong class="studio-usage-model">'+escape([...agent.models].join(', '))+'</strong>':'')+escape([...agent.endpoints].join(', ')||(agent.models.size?'':'Not reported'))+'</td><td>'+amount(agent.input,agent.inputReported)+'</td><td>'+amount(agent.output,agent.outputReported)+'</td><td>'+amount(agent.total,agent.totalReported)+'</td><td>'+usageDuration(agent.timeReported?agent.seconds:null)+'</td><td>'+agent.calls+'</td></tr>').join('');
+ const rows=summary.agents.map(agent=>{
+  const models=[...agent.models],endpoints=[...agent.endpoints];
+  const label=models.map(id=>(runtime.teamModels||[]).find(model=>model.id===id)?.label||id.split('/').pop()).join(', ')||'Model not reported';
+  const connection='<details class="studio-usage-connection"><summary aria-label="'+escape(agent.name)+' model and connection"><span>'+escape(agent.name)+'</span><small>'+escape(label)+'</small></summary><dl><dt>Model</dt><dd>'+escape(models.join(', ')||'Not reported')+'</dd><dt>Connection</dt><dd>'+escape(endpoints.join(', ')||'Not reported')+'</dd></dl></details>';
+  return '<tr><th scope="row">'+connection+'</th><td data-label="Input">'+amount(agent.input,agent.inputReported)+'</td><td data-label="Output">'+amount(agent.output,agent.outputReported)+'</td><td data-label="Total" class="studio-usage-combined">'+amount(agent.total,agent.totalReported)+'</td><td data-label="Time">'+usageDuration(agent.timeReported?agent.seconds:null)+'<small class="studio-usage-turns">'+agent.calls+' turn'+(agent.calls===1?'':'s')+'</small></td></tr>';
+ }).join('');
  const warning=summary.unreportedCalls?'<p class="studio-usage-note">'+summary.unreportedCalls+' recorded agent turn'+(summary.unreportedCalls===1?' did':'s did')+' not report token counts, so token totals are partial.</p>':'';
  usageTime.innerHTML='<section class="studio-usage-task"><small>Task</small><p>'+escape(scenarioTaskSummary(job))+'</p></section>'+
-  '<div class="studio-usage-totals"><article><small>Input tokens</small><strong>'+amount(summary.input,summary.inputReported)+'</strong></article><article><small>Output tokens</small><strong>'+amount(summary.output,summary.outputReported)+'</strong></article><article><small>Combined tokens</small><strong>'+amount(summary.total,summary.totalReported)+'</strong></article><article><small>Total elapsed</small><strong>'+usageDuration(summary.elapsed)+'</strong></article><article><small>Combined agent time</small><strong>'+usageDuration(summary.timeReported?summary.apiSeconds:null)+'</strong></article></div>'+
-  (rows?'<h3>Usage and time by agent</h3><div class="studio-usage-table-wrap"><table><thead><tr><th>Agent</th><th>Model / endpoint</th><th>Input</th><th>Output</th><th>Combined</th><th>Agent time</th><th>Turns</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p class="studio-usage-note">No usage reported for this run.</p>')+
+  '<div class="studio-usage-totals"><article><small>Total tokens</small><strong>'+amount(summary.total,summary.totalReported)+'</strong><p><span>Input '+amount(summary.input,summary.inputReported)+'</span><span>Output '+amount(summary.output,summary.outputReported)+'</span></p></article><article><small>Total elapsed</small><strong>'+usageDuration(summary.elapsed)+'</strong><p>From start to finish</p></article><article><small>Combined agent time</small><strong>'+usageDuration(summary.timeReported?summary.apiSeconds:null)+'</strong><p>'+summary.records.length+' recorded turn'+(summary.records.length===1?'':'s')+'</p></article></div>'+
+  (rows?'<div class="studio-usage-section-heading"><h3>By agent</h3><span>Expand an agent for connection details</span></div><div class="studio-usage-table-wrap"><table aria-label="Usage and time by agent"><thead><tr><th scope="col">Agent / model</th><th scope="col">Input</th><th scope="col">Output</th><th scope="col">Total</th><th scope="col">Time</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p class="studio-usage-note">No usage reported for this run.</p>')+
   warning+'<p class="studio-usage-note">Agent time includes tools; parallel work can exceed total elapsed time. Recorded responses only.</p>';
 }
 
@@ -115,7 +120,7 @@ standbyPanel.addEventListener('keydown',event=>{
 // Show the active scenario's total time beside its coordinator.
 function syncTeamTotalTime(){
   const timer=el('team-total-time'),plan=selectedScenario==='event-brief'?crewMission():currentCollaboration();
-  const label=plan&&selectedCrewRole===0?collaborationTime(plan):'';
+  const label=plan&&selectedCrewRole===0&&!selectedOpenTaskVisitor?collaborationTime(plan):'';
   if(timer.textContent!==label)timer.textContent=label;
   timer.hidden=!label;
 }

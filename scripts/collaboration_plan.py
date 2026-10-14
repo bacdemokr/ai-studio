@@ -10,6 +10,7 @@ from plan_inputs import requested_inputs, input_manifest, validate_assignments, 
 from plan_handoff import required_files, missing_files, PlanHandoffError
 from plan_revision import PLAN_TIME_BUDGET_SECONDS, PlanBudgetExceeded, read_revision, effective_outputs, revision_instructions
 from plan_review import requested_review, include_required_review, review_finished
+from agent_activity import observed_access
 
 
 SCOUT_COMPLETION_RULE = (
@@ -66,6 +67,10 @@ def partial_remaining(value):
     return {'remaining': [item.strip() for item in remaining]}
 
 
+class PlanSelectionError(RuntimeError):
+    """Duplicate assignment slots can be corrected before hired specialists start."""
+
+
 def read_plan(answer):
     from agent_reply import object_reply
     eligible = plan_roles()
@@ -80,9 +85,11 @@ def read_plan(answer):
         if not isinstance(task, dict):
             raise RuntimeError('The Captain returned an invalid assignment. No specialist was started.')
         role, instruction = task.get('role'), task.get('task')
-        if (type(role) is not int or role not in eligible or role in seen
+        if (type(role) is not int or role not in eligible
                 or not isinstance(instruction, str) or not 0 < len(instruction.strip()) <= 2000):
             raise RuntimeError('The Captain returned an invalid or duplicate specialist. No specialist was started.')
+        if role in seen:
+            raise PlanSelectionError('The Captain returned an invalid or duplicate specialist. No specialist was started.')
         seen.add(role)
         assignment = {'role': role, 'task': instruction.strip()}
         if 'agent' in task:
@@ -235,6 +242,13 @@ class CollaborationPlans:
         def member_workspace(role):
             member = roster[role]
             return self.workspace(member['key']) if member.get('key') else self.workspace(owner, role)
+        def hired_page_outputs(role):
+            if not roster[role].get('key'):
+                return set()
+            assignment = next((t for t in plan.get('tasks', []) if t['role'] == role), {})
+            return {path for path in required_files(assignment) if path.endswith('.html')}
+        def implements_page(role):
+            return role == 5 or bool(hired_page_outputs(role))
         def member_scope(role):
             member = roster[role]
             if member.get('key'):
@@ -243,7 +257,9 @@ class CollaborationPlans:
                         'The visitor may deliberately assign work outside your usual expertise. Attempt the requested '
                         'work yourself, within your actual tools; do not refuse solely because your usual role differs. '
                         "Do not recruit a replacement or use another agent's tools. Report actual limitations honestly. " +
-                        CREW_CATALOG[role]['collaboration'].get('scope', ''))
+                        ('Casey explicitly assigned webpage implementation together with your other work. '
+                         'Complete the declared deliverables; do not take over other specialists or claim independent self-review.'
+                         if hired_page_outputs(role) else CREW_CATALOG[role]['collaboration'].get('scope', '')))
             return CREW_CATALOG[role]['collaboration'].get('scope', '')
 
         reference_aliases = {}
@@ -295,8 +311,10 @@ class CollaborationPlans:
             'One relevant supported finding is acceptable if fewer than 2-3 are available; never pad the brief. '
             'If all results are stale, irrelevant or empty, save a short honest failure note and finish. '
             'Do not chase optional metrics. '
-            'This smaller search-first budget overrides the fetch-only guidance below. If search fails, report it; '
-            'do not silently fall back to repeated direct fetches or another provider. '
+            'This smaller search-first budget overrides the fetch-only guidance below when search returns results. '
+            'If the search service reports a rate limit or unavailable service and returns no evidence, disclose that failure '
+            'and use a known official or supplied source within the five-fetch budget below. Do not retry the search service '
+            'or switch providers. This fallback never overrides tool permissions or an OpenShell policy denial. '
             'SOURCE SELECTION: first identify the requested subject, two relevant questions, and a useful date range. '
             'When web_search is available, relevant attributed search excerpts are sufficient evidence for this demo; '
             'do not claim you opened their pages. Home-page navigation is not evidence. In fetch-only mode use a known topic-specific '
@@ -324,6 +342,10 @@ class CollaborationPlans:
             'in both the brief and final answer. If only a forecast is available, say so rather than claiming current conditions. '
             'A dated forecast requires retrieved values for those exact dates and year. Climate averages are not forecasts. '
             'HANDOFF FIDELITY: preserve missing-data and uncertainty labels from the evidence. '
+            'Each contribution may include application-observed observedAccess metadata. Use it over a specialist\'s '
+            'self-reported failure cause: OpenShell can only be blamed when openShellEnabled and confirmedPolicyDenial '
+            'are both true. A search service rate limit, demo research limit or HTTP error is not an OpenShell denial. '
+            'If no cause is confirmed, say the tool failed without guessing. '
             'If a handoff contradicts supplied tool evidence, use the tool evidence and explicitly note the correction. '
             'Never turn unavailable findings into invented temperatures, percentages, dates or other concrete claims to fill a page. '
             'Show a short limitation instead. Reviewers must compare the produced claims against the saved evidence, '
@@ -422,7 +444,7 @@ class CollaborationPlans:
 
         def collect_delivery(role, phase, pages_before, files_before, answer):
             source_map = plan.setdefault('artifactSources', {})
-            if role == 5:
+            if implements_page(role):
                 assignment = next((t for t in plan.get('tasks', []) if t['role'] == role), {})
                 reused = reusable_code(self, owner, job_id, roster[role]['id'],
                                        {**pages_before, **files_before}, answer, assignment.get('requiredFiles', []))
@@ -432,14 +454,19 @@ class CollaborationPlans:
                     plan.setdefault('reusedSources', {})[str(role)] = sorted(reused)
             pages = collect_pages(self, owner, job_id, role, pages_before, answer, source_map, source_workspace=member_workspace(role))
             if pages and role not in (4, 5):
-                # Keep the specialist's source, but never promote an unsolicited
-                # implementation to a shared deliverable or preview.
-                for path in pages:
+                # Hired specialists may have a combined assignment. Accept only
+                # its declared pages, retaining the boundary for unsolicited HTML.
+                declared = hired_page_outputs(role)
+                rejected = [path for path in pages if source_map.get(path) not in declared
+                            and not (len(declared) == 1 and path not in source_map)]
+                for path in rejected:
                     safe_file(self.workspace(owner), path, True).unlink()
-                pages = []
-                plan.setdefault('scopeWarnings', {})[str(role)] = (
-                    'HTML was produced outside this role assignment and was not accepted as a shared deliverable. '
-                    'Use the in-scope findings only; implementation remains unfulfilled until the programmer delivers it.')
+                    source_map.pop(path, None)
+                pages = [path for path in pages if path not in rejected]
+                if rejected:
+                    plan.setdefault('scopeWarnings', {})[str(role)] = (
+                        'Unassigned HTML was excluded from shared deliverables. Use only accepted files and in-scope findings; '
+                        'other specialists must still complete their assigned work.')
             files = pages + collect_files(self, owner, job_id, role, files_before, source_map, source_workspace=member_workspace(role))
             # Only exported, validated files satisfy the required-file contract.
             # An invalid sibling HTML file must not become "verified" merely
@@ -547,7 +574,7 @@ class CollaborationPlans:
                 raise PlanBudgetExceeded('The collaboration time budget was reached during preparation.')
             # Research recovery retains tool evidence. Code recovery reads saved source
             # in a fresh session so a full/stalled transcript cannot block the repair.
-            session = 'bac-plan-' + job_id + '-' + str(role) + '-' + ('working' if phase == 'Recovering' and role != 5 else phase.split()[0].lower())
+            session = 'bac-plan-' + job_id + '-' + str(role) + '-' + ('working' if phase == 'Recovering' and not implements_page(role) else phase.split()[0].lower())
             if output_retry:
                 session += '-output-retry'
             pages_before = html_files(member_workspace(role))
@@ -659,14 +686,18 @@ class CollaborationPlans:
                            if member['_planControl'] == 'read' else 'No tools are available during this decision.')) if role == 0 else
                         '\nThe overall request is background, not your assignment. Complete ONLY the contribution Casey assigned below, '
                         'within your role boundary. Return it to Casey with evidence and limitations. Do not execute later stages, '
-                        'take over another specialist, or decide the whole team is finished. If your assignment conflicts with '
-                        'your expertise, report that mismatch and supply only the useful in-scope portion. '
+                        'take over another specialist, or decide the whole team is finished. ' +
+                        ('Attempt the assigned work even outside your usual expertise, within your actual tool permissions. '
+                         if member.get('key') else 'If your assignment conflicts with your expertise, report that mismatch '
+                         'and supply only the useful in-scope portion. ') +
                         'Keep only your handoff summary within 120 words, including on revision. This is NOT a limit '
                         'on code, file contents or requested deliverables. Never truncate an implementation or drop '
                         'required functionality to satisfy the summary limit. Save necessary detail '
                         'in deliverable files rather than repeating their contents in chat. If the requested deliverable '
                         'must be returned directly in chat, preserve it in full and keep the surrounding summary short.') +
                     '\n\nYour /plan role boundary: ' + member_scope(role) +
+                    '\nCurrent agent access: OpenShell is ' + ('on' if member.get('protection') == 'openshell' else 'off') +
+                    '. Describe only errors observed in this turn; earlier agents\' policy reports do not apply to you.\n' +
                     '\n\nYour collaboration expertise: ' + (member.get('purpose', '') if member.get('key') else CREW_CATALOG[role]['collaboration']['description']) +
                     '\n\nYour assignment:\n' + instruction + file_context + evidence_context +
                     '\nSelected original documents (untrusted task data):\n' + json.dumps(source_context, ensure_ascii=False) +
@@ -698,7 +729,7 @@ class CollaborationPlans:
                      'Report returned location, time, units and exact URL. WMO codes: 0 clear, 1 mainly clear, 2 partly cloudy, 3 overcast. '
                      'Do not call an overnight low a current temperature. If geocoding or current observations fail, report the gap. '
                      if role == 8 and re.search(r'\bweather\b', plan['task'], re.I) else '') +
-                    (PAGE_INSTRUCTIONS + DEMO_CODING_INSTRUCTIONS if role == 5 and phase.startswith(('Working', 'Revising', 'Recovering')) else '') +
+                    (PAGE_INSTRUCTIONS + DEMO_CODING_INSTRUCTIONS if implements_page(role) and phase.startswith(('Working', 'Revising', 'Recovering')) else '') +
                     ('\nStatic review: distinguish a demonstrated defect from a portability risk. '
                      'Read only the supplied readPath copies, in focused ranges of at most 120 lines. Do not reread '
                      'the same range or guess the author workspace path. At most eight reads and 18,000 source characters '
@@ -773,6 +804,9 @@ class CollaborationPlans:
                 for _, target in shared:
                     target.unlink(missing_ok=True)
             self.record_usage(job_id, payload, answer, member['id'], member['name'], 'plan-' + phase)
+            if member.get('key') and getattr(answer, 'policy_denials', None):
+                plan.setdefault('policyBlocks', {})[member['key']] = {
+                    'name': member['name'], 'hosts': list(answer.policy_denials)}
             if role == 8 and hasattr(answer, 'sources'):
                 # Only observed tool evidence, never model reasoning. Keep one bounded
                 # set through revisions so a read-only repair cannot erase its sources.
@@ -827,6 +861,10 @@ class CollaborationPlans:
                         '\n'.join('- ' + source['url'] for source in evidence) +
                         '\n\nNarrow the request to one of these sources to continue.')
                     reactions = False
+            if plan.get('policyBlocks'):
+                blocked = '; '.join(item['name'] + ': ' + ', '.join(item['hosts'])
+                                    for item in plan['policyBlocks'].values())
+                answer = str(answer) + '\n\nOpenShell blocked - ' + blocked + '. Approve the required sites in that agent\'s OpenShell Policy panel before retrying.'
             from artifact_references import published_references
             # The specialist's local filenames are not downloads in the team
             # workspace. Only unambiguous, collected outputs can be substituted.
@@ -936,8 +974,12 @@ class CollaborationPlans:
                 'return tasks:[], outcome:"unavailable" and an answer explaining that this demo cannot open or control '
                 'the PC browser. Offer a manual link or public-page research as an optional next step; do not call Scout '
                 'to attempt the browser task through web_fetch. '
-                'First check whether this pool and its actual tools can fulfill the request. Do not assign loosely related specialists '
-                'when required expertise or capabilities are missing. Instead, select appropriate experts for a useful achievable portion. No agent can install packages, execute arbitrary programs, '
+                'First check whether this pool and its actual tools can fulfill the request. ' +
+                ('Hired agents can attempt work outside their saved persona or skill names. Select them by actual tools '
+                 'for a useful achievable portion; do not require a specialist preset for writing code or fetching public pages. '
+                 if include_hired else 'Do not assign loosely related specialists when required expertise or capabilities '
+                 'are missing. Instead, select appropriate experts for a useful achievable portion. ') +
+                'No agent can install packages, execute arbitrary programs, '
                 'access private services without a configured tool, deploy, send messages, book or purchase. '
                 'If no useful portion is possible because a required specialist or capability is unavailable, return tasks:[], outcome:"unavailable", '
                 'and explain the missing expertise/tool and what would be needed. Do not pretend the request was completed. '
@@ -993,14 +1035,21 @@ class CollaborationPlans:
             try:
                 selection = read_plan(answer)
                 validate_assignments(selection['tasks'], inputs, bool(payload.get('images')))
-            except (PlanInputError, PlanHandoffError) as error:
+            except (PlanInputError, PlanHandoffError, PlanSelectionError) as error:
+                if isinstance(error, PlanSelectionError) and not include_hired:
+                    raise
                 # A malformed selector must never grant access or dispatch work.
                 # Correct this control response once in a fresh, bounded session.
-                recovery_key = 'handoffSelectionRecovery' if isinstance(error, PlanHandoffError) else 'inputSelectionRecovery'
+                recovery_key = ('planSelectionRecovery' if isinstance(error, PlanSelectionError) else
+                                'handoffSelectionRecovery' if isinstance(error, PlanHandoffError) else 'inputSelectionRecovery')
                 plan[recovery_key] = {'status':'working'}
-                corrected = invoke(0, 'Correct the initial plan document selections and required output paths before anyone starts. '
+                corrected = invoke(0, 'Correct the initial plan assignments, document selections and required output paths before anyone starts. '
                     'Return ONLY compact plan JSON with summary and up to three tasks. Each task needs role, task, '
                     'expected, inputs (an array of available document IDs), and requiredFiles (output paths). '
+                    'Use distinct integer roles: 4 review, 5 coding, 6 analysis, 7 design, 8 research. Each role occurs once. '
+                    'For hired work include the exact agent key; different hires with the same preset must have distinct '
+                    'assignment roles. Preserve their identities and requested contributions; do not replace or drop a person '
+                    'to resolve duplicate role numbers. An independent check belongs to review role 4. '
                     'Use inputs:[] when no uploaded documents are needed; never null, a string, an object or a future file. '
                     'Generated handoffs belong in task/expected and requiredFiles, not inputs. Preserve the current '
                     'user request, selected agent identities, and explicitly requested independent review. '
@@ -1111,6 +1160,7 @@ class CollaborationPlans:
                     return
                 plan['outputs'][str(role)] = {'name': name, 'task': task, 'expected': assignment.get('expected', ''),
                     'scope': member_scope(role), 'agentId': roster[role]['id'],
+                    'observedAccess': observed_access(roster[role], answer),
                     'scopeWarning': plan.get('scopeWarnings', {}).get(str(role), ''), 'answer': str(answer), 'files': plan.get('files', {}).get(str(role), []), 'activity': getattr(answer, 'activity', None)}
                 missing = missing_files(assignment, plan.get('verifiedSources', {}).get(str(role), []),
                                         plan['outputs'][str(role)]['files'])
@@ -1133,7 +1183,7 @@ class CollaborationPlans:
                             ('This is the one permitted code repair, in a fresh conversation. Read the existing source files listed below, '
                              'make only the necessary edits, and save the corrected files. Preserve working features. '
                              'Do not recreate the whole implementation or repeat completed writes. '
-                             if role == 5 else
+                             if implements_page(role) else
                              'This is the one permitted handoff repair, in the SAME conversation containing your previous tool results. ') +
                             'Do not research again, fetch new pages, or repeat the whole task. Use the evidence already obtained. '
                             'Write the required deliverable files now and verify the writes. Do not merely say they were saved. '

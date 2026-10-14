@@ -489,17 +489,30 @@ def collaboration_capabilities(profile, role=None):
         'No interactive browser, package installation, deployment, private-service access, sending, booking or purchasing is provided.',
         'Read only the current task inputs and handoffs. Event skills and old contracts are not generic task instructions.',
     ]
+    if 'write' in tools:
+        limits.append('write can save Markdown, HTML and JavaScript, including a self-contained webpage. '
+                      'A Coding skill or Programmer persona is not required; tool access does not guarantee output quality.')
     if 'exec' in tools:
         limits.append('exec is restricted by workspace instructions to shipped event commands for an explicit event assignment'
                       ' or sandbox operations under OpenShell policy; it is not a general code execution capability.')
+        if profile.get('protection') == 'openshell':
+            limits.append('OpenShell public reads use exec host=sandbox with /usr/bin/curl, not web_fetch/web_search. '
+                          'Sites require this agent\'s explicit policy approval. Missing native web tools does not mean no web capability. '
+                          'Workspace file operations may use sandbox exec when a native file tool is absent. '
+                          'After a verified policy denial, report the blocked host and ask for approval; do not switch transport '
+                          'or delegate that blocked retrieval to another agent to evade the policy. '
+                          'HTTP errors or runtime failures alone do not prove a policy denial.')
     else:
         limits.append('No command execution: code, calculations and reviews use file tools and reasoning, not a Python/statistics/test runner.')
     if 'web_fetch' in tools:
-        limits.append('web_fetch can attempt public URLs, including known official homepages. Reachability is not guaranteed; cite only successful reads.')
+        limits.append('web_fetch can attempt public URLs on any requested topic, including known official homepages; '
+                      'it is not restricted to the persona topic. A Web research skill is not required. '
+                      'Start with supplied URLs or known home/section pages and follow observed links; do not invent deep article URLs. '
+                      'Reachability is not guaranteed; cite only successful reads.')
     else:
         limits.append('No native web_fetch. Use provided evidence; do not infer that teammates also lack web access.')
     if 'web_search' not in tools:
-        limits.append('No configured search-engine tool. This does not disable a teammate\'s public URL fetching.')
+        limits.append('No configured search-engine tool. Any listed web_fetch remains usable for known public URLs.')
     return {'tools': tools, 'limits': limits}
 
 

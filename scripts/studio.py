@@ -378,8 +378,8 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
             raise Problem('Choose OpenShell on or off.')
         if any(x in name for x in '\r\n<>') or not isinstance(persona, str) or persona not in runtime.PERSONAS:
             raise Problem('Choose a valid name and persona.')
-        if not isinstance(skills, list) or not skills or len(skills) > len(runtime.SKILLS) or any(not isinstance(x, str) or x not in runtime.SKILLS for x in skills):
-            raise Problem('Choose a persona and at least one available skill.')
+        if not isinstance(skills, list) or len(skills) > len(runtime.SKILLS) or any(not isinstance(x, str) or x not in runtime.SKILLS for x in skills):
+            raise Problem('Skills must be a list of available skills, or an empty list for none.')
         return {'name': name, 'persona': persona, 'purpose': purpose, 'tonePrompt': tone_prompt.strip(), 'tone': tone, 'verbosity': verbosity, 'skills': sorted(set(skills)),
                 'avatar': avatar_for(owner, data.get('avatar')), 'id': 'bac-' + owner, 'protection': protection,
                 'model': personal_models.validate(data.get('model', personal_models.DEFAULT), previous=previous_model)}

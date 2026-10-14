@@ -59,5 +59,40 @@ class PresenceHttpTests(unittest.TestCase):
         self.request('/api/credential-session', self.owner, 'fresh-tab', {})
         self.assertTrue(self.studio.heartbeat.connected(self.owner['id']))
 
+    def test_room_updates_are_authenticated_ordered_and_survive_reads(self):
+        update = {'openTask':True, 'viewRevision':2}
+        with self.assertRaises(urllib.error.HTTPError):
+            self.request('/api/credential-session', self.owner, data=update, csrf=False)
+        self.assertFalse(self.studio.heartbeat.in_open_task(self.owner['id']))
+        self.request('/api/credential-session', self.owner, data=update)
+        self.request('/api/state', self.owner)
+        self.request('/api/credential-session', self.owner, data={})
+        self.request('/api/credential-session', self.owner, data={'openTask':False, 'viewRevision':1})
+        self.assertTrue(self.studio.heartbeat.in_open_task(self.owner['id']))
+        self.assertFalse(self.studio.heartbeat.in_open_task(self.other['id']))
+        for invalid in ({'openTask':'false','viewRevision':3}, {'openTask':False,'viewRevision':True}):
+            self.request('/api/credential-session', self.owner, data=invalid)
+            self.assertTrue(self.studio.heartbeat.in_open_task(self.owner['id']))
+        self.request('/api/credential-session', self.owner, data={'openTask':False, 'viewRevision':3})
+        self.assertFalse(self.studio.heartbeat.in_open_task(self.owner['id']))
+
+    def test_room_pause_uses_live_tabs_and_cannot_be_reopened_by_late_close_requests(self):
+        import time
+        from unittest.mock import patch
+        self.request('/api/credential-session', self.owner, data={'openTask':True, 'viewRevision':1})
+        self.request('/api/credential-session', self.owner, 'helper', {'openTask':False, 'viewRevision':99})
+        self.assertTrue(self.studio.heartbeat.in_open_task(self.owner['id']))
+        self.request('/api/credential-session', self.owner, data={'end':True})
+        self.request('/api/credential-session', self.owner, data={'openTask':True, 'viewRevision':2})
+        self.assertFalse(self.studio.heartbeat.in_open_task(self.owner['id']))
+        self.assertTrue(self.studio.heartbeat.connected(self.owner['id']))
+        self.request('/api/credential-session', self.owner, 'new-tab', {'openTask':True, 'viewRevision':1})
+        with patch('studio_heartbeat.time.monotonic', return_value=time.monotonic()+91):
+            self.assertFalse(self.studio.heartbeat.in_open_task(self.owner['id']))
+            self.studio.heartbeat.presence(self.owner['id'], 'helper')
+            self.assertTrue(self.studio.heartbeat.connected(self.owner['id']))
+            self.assertFalse(self.studio.heartbeat.views)
+
+
 
 if __name__ == '__main__':unittest.main()

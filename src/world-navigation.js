@@ -359,10 +359,11 @@ function animateNavigation(now){
 }
 function navigationTargets(){
   if(overview)return [...(scenarioGallery?[]:[workshopRoom,loungeRoom]),missionRoom,...scenarioFloors.filter(s=>s.group.visible).map(s=>s.group)];
-  return room==='mission'?hitTargets.filter(o=>robots[o.userData.agent]?.robot.visible):roomHitTargets();
+  return room==='mission'?[...hitTargets.filter(o=>robots[o.userData.agent]?.robot.visible),...(activeScenario==='plan'?[...visitorTravel.values()].filter(v=>v.phase!=='returning').map(v=>v.group):[])]:roomHitTargets();
 }
 function selectNavigationObject(object){
   for(let node=object;node;node=node.parent){
+    if(!overview&&room==='mission'&&activeScenario==='plan'&&node.userData.visitorAgent){root.dispatchEvent(new CustomEvent('bac:collection-select',{detail:node.userData.visitorAgent}));return true;}
     if(overview&&node.userData.scenario){goToScenario(node.userData.scenario);return true;}
     if(overview&&node.userData.studioRoom){goToRoom(node.userData.studioRoom);return true;}
   }

@@ -92,9 +92,13 @@ def capture(studio, db, owner, task):
             studio.require_available(db, member['key'])
             studio.require_idle(db, member['key'])
         except Problem:
+            preparing = db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind='prepare-agent' "
+                                   "AND status='running'", (member['key'],)).fetchone()
+            reason = ('is still preparing. Try again when preparation finishes.' if preparing else
+                      'is busy or unavailable. Finish its current work before including it.')
             if any(item['key'] == member['key'] for item in required):
-                raise Problem(member['name'] + ' is busy or unavailable. Finish its current work before including it.', 409)
-            unavailable.append({'name': member['name'], 'reason': 'Busy or unavailable.'})
+                raise Problem(member['name'] + ' ' + reason, 409)
+            unavailable.append({'name': member['name'], 'reason': 'Preparing.' if preparing else 'Busy or unavailable.'})
         else:
             members.append(member)
     if len(required) > 3:
@@ -110,8 +114,8 @@ def instructions(members, required, mode='mixed'):
                 **collaboration_capabilities(m)} for m in members]
     policy = ('HIRED AGENTS ONLY: Casey coordinates but cannot do specialist work. Assign every specialist task '
               'to an exact hired key below. Never use agent:"builtin" or invoke Scout, Cody, Vera, Ada or Iris. '
-              'Their role numbers are assignment types only, not available people. If the team lacks a necessary '
-              'tool, return outcome:"unavailable" and explain which skill or teammate to add. Do not silently '
+              'Their role numbers are assignment types only, not available people. If no useful requested portion '
+              'is possible with the listed tools, return outcome:"unavailable" and explain the missing capability. Do not silently '
               'switch teams. One hire may deliver a combined small implementation, but may not independently review itself. '
               if mode == 'hired' else
               'Prefer suitable hired agents below; use agent:"builtin" for a built-in expert only when no suitable hired agent is available. '
@@ -120,6 +124,12 @@ def instructions(members, required, mode='mixed'):
             'Role numbers describe the assignment (4 review, 5 coding, 6 analysis, 7 design, 8 research), '
             'not who must do it. Every task MUST include agent:"exact key" for a hired assignment. '
             'Each agent and role can appear only once. '
+            'Hiring presets, persona interests and skill names are not eligibility gates. Even when the user names nobody, '
+            'assign achievable work using the actual tools listed below. Two hires with the same preset can take different '
+            'assignments, such as author and independent reviewer; give them distinct role numbers and preserve both identities. '
+            'A hire with write can build a self-contained HTML page without a Coding skill. A hire with web_fetch can '
+            'research known public URLs without a Web research skill or search tool. Do not reject those capabilities '
+            'because the agents are Weather buddies. Never expand actual tool permissions or bypass policy. '
             'Interpret the visitor\'s natural-language assignments, including informal requests and references to earlier sentences. '
             'If the visitor names an agent, it MUST actually contribute, even outside its usual skills or expertise. '
             'If they say Pixel should code instead, give Pixel role 5; do not leave coding to Cody and give Pixel '

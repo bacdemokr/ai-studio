@@ -1,5 +1,12 @@
 function planNames(plan){return defaultNames.map((name,role)=>plan?.visitorBindings?.[role]?.name||name);}
-function assignedVisitor(role){return selectedScenario==='plan'?currentCollaboration()?.payload.collaboration.visitorBindings?.[role]:null;}
+function assignedVisitor(role){return selectedScenario==='plan'?seatedCollaboration()?.payload.collaboration.visitorBindings?.[role]:null;}
+function selectedCrewVisitor(){return selectedScenario==='plan'&&selectedOpenTaskVisitor?(data.agents||[]).find(agent=>agent.key===selectedOpenTaskVisitor&&!agent.deleting):assignedVisitor(selectedCrewRole);}
+function selectOpenTaskVisitor(key){
+ if(!(data.agents||[]).some(agent=>agent.key===key&&!agent.deleting))return;
+ if(crewChatKey)crewDrafts.set(crewChatKey,el('crew-prompt').value);
+ crewChatKey='';crewChatSignature='';selectedOpenTaskVisitor=key;selectedCrewRole=0;
+ root.dataset.crewDetails='true';renderCrew();
+}
 function visitorAvailable(visitor){return !!visitor&&(data.agents||[]).some(agent=>agent.key===visitor.key&&!agent.deleting);}
 // Each specialist has a durable direct conversation, separate from crew execution.
 const defaultCrewPrompt=role=>selectedScenario==='plan'&&role===0?'/goal ':'';
@@ -43,6 +50,13 @@ function currentCollaboration(){
  const latest=(data.crewChats||[]).filter(j=>j.payload.collaboration&&j.created>=(data.crewChatReset?.at||0)).sort((a,b)=>b.created-a.created)[0];
  return latest||null;
 }
+// Keep the last confirmed identities at their desks while Casey plans the next task.
+// An explicitly empty team releases them; a reset removes the earlier plans entirely.
+function seatedCollaboration(){
+ if(selectedScenario!=='plan')return null;
+ const plans=(data.crewChats||[]).filter(j=>j.payload.collaboration&&j.created>=(data.crewChatReset?.at||0)).sort((a,b)=>b.created-a.created);
+ return plans.find(j=>Array.isArray(j.payload.collaboration.tasks)&&(taskTeamMode(j)==='builtin'||j.payload.collaboration.visitorBindings))||plans[0]||null;
+}
 // Mission Control can inspect saved plans without replaying their stage animation.
 function missionControlPlan(){
  const latest=(data.crewChats||[]).filter(j=>j.payload.collaboration&&j.created>=(data.crewChatReset?.at||0)).sort((a,b)=>b.created-a.created)[0];
@@ -53,9 +67,8 @@ function renderStandbySpecialists(agents){
  const available=window.BacCrewCatalog.map((member,role)=>({...member,roleIndex:role}))
   .filter(member=>member.planEligible!==false&&(effectiveTeamMode()!=='hired'||member.roleIndex===0));
  el('standby-count').textContent=String(available.length);
- const perAgent=data.teamConnection?.shared?data.teamConnection.effectiveSource==='api'&&runtime.modelConnections?.connections?.api?.provider==='nvidia':data.teamConnection?.provider!=='local'&&runtime.teamModel;
- const locked=modelPickerSaving||!teamRuntime().teamReady||data.bacResetting||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status));
- const markup=available.map(member=>'<li data-standby-role="'+member.roleIndex+'"><div><strong>'+escape(member.name)+'</strong><span>'+escape(member.collaboration.title)+(occupied.has(member.roleIndex)?' · With team':'')+'</span></div>'+(perAgent?'<button type="button" class="studio-specialist-model specialist-model-edit" data-standby-model="'+member.roleIndex+'" aria-label="Change '+escape(member.name)+' model" '+(locked?'disabled':'')+'>':'<span class="studio-specialist-model">')+escape(teamModel(member.roleIndex)?.label||'Choose model')+(perAgent?' <span aria-hidden="true">⌕</span></button>':'</span>')+'<p class="studio-specialist-summary">'+escape(member.collaboration.summary||member.collaboration.description)+'</p></li>').join('');
+ const perAgent=builtinModelEditable(0),reason=builtinModelLock(),locked=modelPickerSaving||!!reason;
+ const markup=available.map(member=>'<li data-standby-role="'+member.roleIndex+'"><div><strong>'+escape(member.name)+'</strong><span>'+escape(member.collaboration.title)+(occupied.has(member.roleIndex)?' · With team':'')+'</span></div>'+(perAgent?'<button type="button" class="studio-specialist-model specialist-model-edit" data-standby-model="'+member.roleIndex+'" aria-label="Change '+escape(member.name)+' model" title="'+escape(reason||'Change '+member.name+' model')+'" '+(locked?'disabled':'')+'>':'<span class="studio-specialist-model">')+escape(teamModel(member.roleIndex)?.label||'Not connected')+(perAgent?' <span aria-hidden="true">⌕</span></button>':'</span>')+'<p class="studio-specialist-summary">'+escape(member.collaboration.summary||member.collaboration.description)+'</p></li>').join('');
  if(!el('standby-list').contains(document.activeElement)&&el('standby-list').innerHTML!==markup)el('standby-list').innerHTML=markup;
  if(el('standby').open)requestAnimationFrame(fitStandbyPanel);
 }
@@ -64,8 +77,17 @@ teamModelDialog.hidden=true;
 teamModelDialog.className='team-model-dialog';
 teamModelDialog.setAttribute('aria-labelledby','team-model-heading');
 teamModelDialog.innerHTML='<header><div><h3 id="team-model-heading">Choose a model</h3><p id="team-model-member"></p></div><button type="button" data-model-close>← Back</button></header><input type="search" aria-label="Search models" placeholder="Search models or providers…" autocomplete="off"><p class="team-model-count" aria-live="polite"></p><div class="team-model-results"></div><p class="team-model-error" role="alert" hidden></p>';
-// Open Task model choices save directly from the specialist list.
+// Both Open Task passports and the specialist list use the same model picker.
 let modelPickerRole=0,modelPickerSaving=false,modelPickerDraft=null,modelPickerOwner=null,modelPickerScenario=null,modelPickerVisitor=null,modelPickerMarkup='';
+function builtinModelEditable(role){
+ return selectedScenario==='plan'&&window.BacCrewCatalog[role]?.planEligible!==false&&!!(data.teamConnection?.shared?data.teamConnection.effectiveSource==='api'&&runtime.modelConnections?.connections?.api?.provider==='nvidia':data.teamConnection?.provider!=='local'&&runtime.teamModel);
+}
+function builtinModelLock(role=0){
+ if(resetInProgress||data.bacResetting)return 'Available when the reset finishes.';
+ if((data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status))||['queued','running','waiting','stopping'].includes(data.preparation?.status))return 'Available when the team finishes its current work.';
+ if(!builtinModelEditable(role)||!teamRuntime().teamReady)return 'Connect the team model in Settings.';
+ return '';
+}
 function hiredModelLock(key){
  const visitor=(data.agents||[]).find(agent=>agent.key===key);
  if(!visitor||visitor.deleting)return 'This agent is no longer available.';
@@ -73,12 +95,12 @@ function hiredModelLock(key){
  return '';
 }
 function renderCrewModel(model,visitor=null){
- const badge=el('crew-model'),editable=!!visitor&&visitorAvailable(visitor),reason=editable?hiredModelLock(visitor.key):'';
+ const badge=el('crew-model'),editable=visitor?visitorAvailable(visitor):builtinModelEditable(selectedCrewRole),reason=editable?(visitor?hiredModelLock(visitor.key):builtinModelLock(selectedCrewRole)):'',name=visitor?.name||defaultNames[selectedCrewRole];
  badge.textContent=model?.label||'';badge.hidden=!model;
  badge.classList.toggle('studio-model-edit',editable);
  badge.disabled=!editable||!!reason||modelPickerSaving;
- badge.title=reason||(editable?'Change '+visitor.name+' model':model?.id||'');
- badge.setAttribute('aria-label',editable?'Change '+visitor.name+' model: '+(model?.label||'Not connected'):model?.label||'Model');
+ badge.title=reason||(editable?'Change '+name+' model':model?.id||'');
+ badge.setAttribute('aria-label',editable?'Change '+name+' model: '+(model?.label||'Not connected'):model?.label||'Model');
 }
 function modelPickerChoices(){
  if(!modelPickerVisitor)return runtime.teamModels||[];
@@ -91,7 +113,7 @@ function renderModelResults(){
  teamModelDialog.querySelector('input').disabled=modelPickerSaving;
  const query=teamModelDialog.querySelector('input').value.trim().toLowerCase();
  const selected=modelPickerDraft;
- const locked=modelPickerVisitor?hiredModelLock(modelPickerVisitor):'';
+ const locked=modelPickerVisitor?hiredModelLock(modelPickerVisitor):builtinModelLock(modelPickerRole);
  const models=modelPickerChoices().filter(m=>(m.id+' '+m.label+' '+(m.source==='api'?'External Endpoint':'')).toLowerCase().includes(query));
  models.sort((a,b)=>Number(b.id===selected)-Number(a.id===selected));
  teamModelDialog.querySelector('.team-model-count').textContent=models.length?(models.length+' models'+(models.length>40?' · Showing the first 40. Refine your search.':'')):'No matching models';
@@ -102,26 +124,25 @@ function renderModelResults(){
 }
 root.addEventListener('click',event=>{
  const button=event.target.closest('[data-standby-model]');if(!button||button.disabled||modelPickerSaving||!teamModelDialog.hidden)return;
- modelPickerVisitor=null;
- modelPickerRole=Number(button.dataset.standbyModel);modelPickerDraft=teamModel(modelPickerRole)?.id;modelPickerOwner=agentId;modelPickerScenario=selectedScenario;
- teamModelDialog.querySelector('#team-model-member').textContent=defaultNames[modelPickerRole]+' · NVIDIA Inference';
- teamModelDialog.querySelector('input').value='';teamModelDialog.querySelector('.team-model-error').hidden=true;
- renderModelResults();
- dialog(defaultNames[modelPickerRole]+' · Model','');
- el('dialog-body').append(teamModelDialog);teamModelDialog.hidden=false;
- el('dialog').scrollTop=0;teamModelDialog.querySelector('.team-model-results').scrollTop=0;
- teamModelDialog.querySelector('input').focus({preventScroll:true});
+ openCrewModelPicker(Number(button.dataset.standbyModel));
 });
 el('crew-model').onclick=()=>{
- const visitor=assignedVisitor(selectedCrewRole);
- if(!visitor||el('crew-model').disabled||modelPickerSaving||!teamModelDialog.hidden)return;
- modelPickerVisitor=visitor.key;modelPickerOwner=agentId;modelPickerScenario=selectedScenario;modelPickerDraft=personalModel(visitor).id;
- teamModelDialog.querySelector('#team-model-member').textContent=visitor.name;
+ if(el('crew-model').disabled)return;
+ const visitor=selectedCrewVisitor();
+ openCrewModelPicker(selectedCrewRole,visitor);
+};
+function openCrewModelPicker(role,visitor=null){
+ if(modelPickerSaving||!teamModelDialog.hidden)return;
+ modelPickerRole=role;
+ if(visitor?hiredModelLock(visitor.key):(!builtinModelEditable(role)||builtinModelLock(role)))return;
+ modelPickerVisitor=visitor?.key||null;modelPickerOwner=agentId;modelPickerScenario=selectedScenario;modelPickerDraft=visitor?personalModel(visitor).id:teamModel(role)?.id;
+ const name=visitor?.name||defaultNames[role];
+ teamModelDialog.querySelector('#team-model-member').textContent=name;
  teamModelDialog.querySelector('input').value='';teamModelDialog.querySelector('.team-model-error').hidden=true;
- renderModelResults();dialog(visitor.name+' · Model','');el('dialog-body').append(teamModelDialog);teamModelDialog.hidden=false;
+ renderModelResults();dialog(name+' · Model','');el('dialog-body').append(teamModelDialog);teamModelDialog.hidden=false;
  el('dialog').scrollTop=0;teamModelDialog.querySelector('.team-model-results').scrollTop=0;
  teamModelDialog.querySelector('input').focus({preventScroll:true});
-};
+}
 teamModelDialog.querySelector('input').addEventListener('input',renderModelResults);
 function closeTeamModelPicker(){
  if(modelPickerSaving)return;
@@ -147,6 +168,7 @@ teamModelDialog.addEventListener('click',async event=>{
  if(modelPickerSaving)return;
  const choice=event.target.closest('[data-model-choice]');
  if(choice&&!choice.disabled){
+  if(!modelPickerVisitor&&builtinModelLock(modelPickerRole)){renderModelResults();return;}
   if(modelPickerVisitor&&(hiredModelLock(modelPickerVisitor)||!modelPickerChoices().some(m=>m.id===choice.dataset.modelChoice&&m.connected))){renderModelResults();return;}
   modelPickerDraft=choice.dataset.modelChoice;
   if(agentId!==modelPickerOwner||selectedScenario!==modelPickerScenario){closeTeamModelPicker();return;}
@@ -174,7 +196,7 @@ async function applyTeamModel(){
   }
   return true;
  }catch(error){
-  if(visitor)modelPickerDraft=personalModel((data.agents||[]).find(agent=>agent.key===visitor)).id;
+  if(current())modelPickerDraft=visitor?personalModel((data.agents||[]).find(agent=>agent.key===visitor)).id:teamModel(role)?.id;
   if(current()&&!teamModelDialog.hidden){const notice=teamModelDialog.querySelector('.team-model-error');notice.textContent=error.message;notice.hidden=false;}
   else alert('Model changes could not be applied. '+error.message);
   return false;
@@ -361,7 +383,7 @@ function collaborationHistoryMarkup(job){
  const answer=collaborationAnswer(job)||job.result?.error||(pending?'The BaC team is collaborating…':job.status==='cancelled'?'Stopped.':'No final reply was returned.');
  return '<article class="chat-turn" data-collaboration-history="'+escape(job.id)+'"><div class="chat-message chat-user"><small>You</small><div>'+messageMarkup(job.payload.prompt)+'</div></div><div class="chat-message chat-agent"><small>Casey · BaC collaboration</small>'+collaborationTimeMarkup(job)+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(answer)+'</div>'+collaborationCompletionMarkup(job.payload.collaboration,collaborationAnswer(job)))+(held?'':collaborationDecisionMarkup(job.payload.collaboration)+webpageButtons(job.result?.files||Object.values(job.payload.collaboration.webpages||{}).flat(),job.id))+'<button type="button" class="studio-secondary" data-open-collaboration>View team conversation</button></div></article>';
 }
-function showCollaboration(){selectedCrewRole=0;setRoom('mission');root.dataset.crewDetails='true';renderCrewPassport();}
+function showCollaboration(){selectedCrewRole=0;selectedOpenTaskVisitor='';setRoom('mission');root.dataset.crewDetails='true';renderCrewPassport();}
 function teamRuntime(){if(data.teamConnection?.shared)return {...runtime,teamModel:data.teamConnection.ready,teamReady:data.teamConnection.ready&&!!runtime.gateway};return data.teamConnection?.provider==='local'?{...runtime,teamModel:!!data.teamConnection.local?.model,teamReady:!!data.teamConnection.local?.model&&!!runtime.gateway}:runtime;}
 function teamReady(){return teamRuntime().teamReady??runtime.ready;}
 function teamModel(role){if(data.teamConnection?.shared){const source=data.teamConnection.effectiveSource,connections=runtime.modelConnections?.connections;if(selectedScenario==='event-brief'||source==='local'||connections?.api?.provider!=='nvidia'){const id=data.teamConnection.model;return id?{id,label:id}:null;}}if(data.teamConnection?.provider==='local'){const id=data.teamConnection.local?.model;return id?{id,label:id}:null;}const id=data.teamSelections?.find(row=>row.role===role)?.id;return runtime.teamModels?.find(model=>model.id===id)||(id?{id,label:id}:runtime.teamModels?.[[0,5,7].includes(role)?0:1]);}
@@ -403,6 +425,8 @@ for(const type of ['dragover','drop'])el('crew-chat').addEventListener(type,even
  event.preventDefault();if(type==='drop')uploadCrewDocuments([...event.dataTransfer.files]);
 });
 function syncCrewComposer(){
+ el('crew-chat').hidden=!!selectedOpenTaskVisitor;
+ if(selectedOpenTaskVisitor){el('crew-send').disabled=true;el('crew-documents').hidden=true;return;}
  const activePlan=(data.crewChats||[]).find(j=>j.payload?.collaboration&&['queued','running','waiting','stopping'].includes(j.status));
  const captainPlanning=selectedCrewRole===0&&!!activePlan;
  const visitor=assignedVisitor(selectedCrewRole);
@@ -432,18 +456,25 @@ function renderCrewPassport(){
  }
  if(room!=='mission')return;
  if(selectedScenario==='event-brief')return renderEventCrewPassport();
- const i=selectedCrewRole,visitor=assignedVisitor(i),name=visitor?.name||defaultNames[i],role=window.BacCrewCatalog[i].collaboration.title;
+ const i=selectedCrewRole,visitor=selectedCrewVisitor(),name=visitor?.name||defaultNames[i],template=selectedOpenTaskVisitor?roleTemplates.find(template=>template.purpose===visitor?.purpose):null,role=selectedOpenTaskVisitor?(template?.label||'Personal agent'):window.BacCrewCatalog[i].collaboration.title;
  const avatar=visitor?.avatar||window.BacCampus?.inspect().crewAvatars?.[i]||{};
- el('crew-number').textContent=String(i+1).padStart(2,'0')+' / '+roles.length;
+ el('crew-number').textContent=selectedOpenTaskVisitor?'Standby':String(i+1).padStart(2,'0')+' / '+roles.length;
  el('crew-name').textContent=name;syncTeamTotalTime();el('crew-role').textContent=role;
  const model=visitor?personalModel(visitor):teamModel(i);renderCrewModel(model,visitor);
- if(modelPickerVisitor&&!teamModelDialog.hidden)renderModelResults();
+ if(!teamModelDialog.hidden)renderModelResults();
  const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';portrait.style.setProperty('--avatar-accent',appearanceColors[avatar.color]||appearanceColors.green);
  const skills=[];
  const skillLabels={...titles,'event-tools':'Event tools','event-scheduling':'Presenter scheduling'};
  el('crew-policy').hidden=(visitor&&!visitorAvailable(visitor))||(visitor?.protection||window.BacCrewCatalog[i].protection)!=='openshell';
  syncPolicyBadges();
  const markup=skills.map(s=>'<span>'+escape(skillLabels[s]||s)+'</span>').join('');if(el('crew-skills').innerHTML!==markup)el('crew-skills').innerHTML=markup;
+ if(selectedOpenTaskVisitor){
+  syncCrewComposer();
+  const summary=visitor.skills?.includes('radar')?'Heartbeat paused in Open Task.':template?.summary||visitor.purpose||'Ready for Casey to assign a task.';
+  const content='<p class="chat-empty">'+escape(summary)+'</p>';
+  if(el('crew-conversation').innerHTML!==content)el('crew-conversation').innerHTML=content;
+  crewChatSignature='';return;
+ }
  const key=crewDraftKey(i),switched=key!==crewChatKey;
  if(switched){if(crewChatKey)crewDrafts.set(crewChatKey,el('crew-prompt').value);crewChatKey=key;el('crew-prompt').value=crewDrafts.get(key)??defaultCrewPrompt(i);el('crew-chat-error').hidden=true;}
  renderImageDrafts(true);
@@ -466,7 +497,7 @@ function renderCrewPassport(){
  loadChatImages(log,agentId);
  if(follow)log.scrollTop=log.scrollHeight;else log.scrollTop=top;
 }
-el('crew-policy').onclick=async()=>{const visitor=assignedVisitor(selectedCrewRole);if(visitor){await switchAgent(visitor.key);if(agentId===visitor.key)openPolicy();}else openPolicy(selectedCrewRole);};
+el('crew-policy').onclick=async()=>{const visitor=selectedCrewVisitor();if(visitor){await switchAgent(visitor.key);if(agentId===visitor.key)openPolicy();}else openPolicy(selectedCrewRole);};
 el('crew-chat').onsubmit=async e=>{
  e.preventDefault();syncCrewComposer();if(el('crew-send').disabled)return;
  const owner=agentId,index=selectedCrewRole,key=crewDraftKey(index),draft=captureChatDraft(true),teamChoice=openTaskTeamMode;

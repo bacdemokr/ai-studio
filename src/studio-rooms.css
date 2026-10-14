@@ -62,7 +62,9 @@
 @media(max-width:560px){.studio-policies{margin:0 12px 24px}.studio-policy-toolbar{flex-direction:column;align-items:stretch;gap:12px}.studio-rooms button small{min-height:0}}
 
 /* A shared floor plan, with doors and a compact map inside the 3D viewport. */
-.world-navigation{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:4}
+/* Share the viewport's stacking context: info markers < speech < navigation < guides. */
+.world-navigation{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.world-navigation>:not(.world-room-info):not(.world-room-paper){z-index:4}
 #agent-campus .world-navigation button{pointer-events:auto;font-family:inherit;cursor:pointer}
 #agent-campus .world-overview-button{position:absolute;top:64px;left:20px;padding:9px 12px;background:#12202ded;color:#d8e8f4;border:1px solid #557185;border-radius:4px;font-size:16px;box-shadow:0 3px 15px #0003}
 #agent-campus .world-overview-button:hover{border-color:#96d52b;color:#edffd8}
@@ -77,7 +79,7 @@
 #agent-campus .world-room-map button{position:absolute;display:flex;align-items:center;gap:8px;border:0;background:#0d1824;color:#a7bdce;padding:0 6px 0 0;font-size:15px;white-space:nowrap}
 .world-room-map i{display:grid;place-items:center;width:26px;height:26px;border:1px solid #5f7d93;border-radius:50%;font-size:14px;font-style:normal;color:#a7c0d3}
 #agent-campus .world-room-map button.selected{color:#edffda}.world-room-map .selected i{background:#76b900;border-color:#96d52b;color:#101b0a;box-shadow:0 0 12px #76b90040}
-#agent-campus .world-navigation .world-room-info{position:absolute;z-index:7;display:grid;place-items:center;box-sizing:border-box;width:40px;height:40px;padding:0;transform:translate(-50%,-50%);border:1px solid #b7d3e6;border-radius:50%;background:#122536f5;color:#f1f8fd;box-shadow:0 4px 16px #0006;font-family:Arial,sans-serif;font-size:24px;font-weight:700;font-style:normal;line-height:1}
+#agent-campus .world-navigation .world-room-info{position:absolute;z-index:2;display:grid;place-items:center;box-sizing:border-box;width:40px;height:40px;padding:0;transform:translate(-50%,-50%);border:1px solid #b7d3e6;border-radius:50%;background:#122536f5;color:#f1f8fd;box-shadow:0 4px 16px #0006;font-family:Arial,sans-serif;font-size:24px;font-weight:700;font-style:normal;line-height:1}
 #agent-campus .world-navigation .world-room-info:hover,#agent-campus .world-navigation .world-room-info:focus-visible{border-color:#96d52b;background:#223d2a;color:#e4ffb7;box-shadow:0 4px 16px #0008,0 0 0 4px #76b90055;outline:0}
 .world-room-paper{pointer-events:auto;position:absolute;z-index:12;box-sizing:border-box;top:18px;right:18px;max-height:calc(100% - 36px);width:clamp(340px,34%,480px);overflow:hidden;color:#26343d;background:#f6f7f2;border:1px solid #d8dfd4;border-radius:16px;box-shadow:0 16px 48px #0006;font-family:inherit;transition:right .16s ease}
 .world-room-paper[hidden]{display:none}
@@ -111,6 +113,7 @@
 @media(max-width:700px){.world-navigation[data-overview=true][data-travelling=false] .world-journey{display:none}#agent-campus .world-overview-button{left:auto;right:12px;font-size:0}#agent-campus .world-overview-button:after{content:'⌑ Studio map';font-size:15px}#agent-campus .world-overview-button[aria-pressed=true]:after{content:'↙ Return to room'}}
 
 /* A speaking agent carries a readable bubble; everyone else keeps a quiet label. */
+#agent-campus .campus-agent-label:has(.crew-team-bubble,.crew-work-bubble){z-index:3}
 #agent-campus .world-resident[data-speaking=true]{z-index:3;box-sizing:border-box;width:236px;max-width:calc(100% - 24px);padding:12px 15px 14px;border:1px solid var(--resident-color);border-top:3px solid var(--resident-color);border-radius:10px;background:#e0ebf3;color:#162531;text-align:left;box-shadow:0 8px 28px #0005}
 #agent-campus .world-resident[data-speaking=true]:after{content:'';position:absolute;bottom:-7px;left:var(--speech-tail,50%);width:12px;height:12px;transform:translateX(-50%) rotate(45deg);background:#e0ebf3;border-right:1px solid var(--resident-color);border-bottom:1px solid var(--resident-color)}
 .world-resident[data-speaking=true] b{font-size:17px}.world-resident[data-speaking=true] small{color:#4b6273;font-size:14px;margin-top:3px}
@@ -230,13 +233,16 @@
 #agent-campus.studio-world-open:not([data-world-overview=true]) .campus-layout.world-expanded{grid-template-columns:minmax(0,1fr) clamp(350px,30vw,445px)!important;align-items:stretch}
 #agent-campus.studio-world-open:not([data-world-overview=true]) .world-expanded>:is(#studio-workshop,#studio-passport,#studio-crew-passport):not([hidden]){display:block!important;height:100%;max-height:100%;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;box-sizing:border-box}
 #agent-campus .world-expanded #studio-config{position:static;margin:0;width:38px;height:36px;font-size:22px;padding:2px}
-#agent-campus #studio-surface{box-sizing:border-box;width:min(1440px,calc(100vw - 48px));height:min(920px,calc(100dvh - 48px));max-width:none;max-height:none;padding:0;color:#f3f6fa;background:#101820;border:1px solid #4c6173;border-radius:10px;box-shadow:0 24px 100px #000b;overflow:hidden}
+#agent-campus #studio-surface{box-sizing:border-box;width:min(1040px,calc(100vw - 48px));height:fit-content;max-width:none;max-height:calc(100dvh - 64px);padding:0;color:#f3f6fa;background:#141b23;border:1px solid #34434e;border-radius:14px;box-shadow:0 24px 100px #000b;overflow:hidden}
+#agent-campus #studio-surface:has(#studio-plan-results){width:min(820px,calc(100vw - 48px))}
 #agent-campus #studio-surface[open]{display:flex!important;flex-direction:column}
 #studio-surface::backdrop{background:#050a10a8;backdrop-filter:blur(5px)}
-#studio-surface>header{display:flex;align-items:center;justify-content:space-between;padding:18px 26px;border-bottom:1px solid #344553;background:#192530;flex-shrink:0}
-#studio-surface-title{font-size:25px;margin:0!important}#studio-surface-close{font-size:28px;padding:0 12px}
-#studio-surface-body{overflow:auto;min-height:0;padding:24px;overscroll-behavior:contain}
-#studio-surface-body>:is(section,div,details){margin:0 0 24px!important}
+#studio-surface>header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 26px 18px;border-bottom:1px solid #2d3d48;flex-shrink:0}
+#agent-campus #studio-surface-title{font-size:24px;line-height:1.3;letter-spacing:-.4px;margin:0!important}
+#agent-campus #studio-surface-close{display:grid;place-items:center;flex:none;width:32px;height:32px;font-size:20px;line-height:1;padding:0;border:0;border-radius:7px;background:transparent;color:#b9c9d4}
+#agent-campus #studio-surface-close:hover{background:#253540;color:#fff}
+#studio-surface-body{overflow:auto;min-height:0;padding:24px 26px;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#425764 transparent}
+#studio-surface-body>:is(section,div,details){margin:0!important}
 #studio-surface #studio-policy-panel{padding:0;border:0}#studio-surface #studio-policy-panel>summary{display:none}
 #studio-surface #studio-board{padding:0;border:0;background:none}#studio-surface .studio-board-intro{display:none}
 #studio-surface .studio-missions{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -244,7 +250,8 @@
  #agent-campus.studio-world-open:not([data-world-overview=true]) .campus-layout.world-expanded{grid-template-columns:minmax(0,1fr) min(44vw,350px)!important}
  #agent-campus.studio-world-open .world-expanded>:is(#studio-workshop,#studio-passport){padding:16px}
  #agent-campus .studio-team-actions{padding:12px;flex-wrap:wrap}
- #agent-campus #studio-surface{width:calc(100vw - 16px);height:calc(100dvh - 16px)}
+ #agent-campus #studio-surface,#agent-campus #studio-surface:has(#studio-plan-results){width:calc(100vw - 24px);max-height:calc(100dvh - 32px)}
+ #studio-surface>header{padding:18px 16px 14px}
  #studio-surface-body{padding:16px}#studio-surface .studio-missions{grid-template-columns:repeat(2,minmax(0,1fr))}
  #studio-surface #studio-lanes{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
@@ -393,7 +400,8 @@
 #studio-crew-passport h3{font-size:24px;margin:0 0 5px!important}
 .studio-crew-identity{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
 #studio-crew-role{font-size:13px}
-#studio-crew-skills{display:flex;flex-wrap:wrap;gap:4px;margin:0}
+#studio-crew-skills{display:flex;flex-basis:100%;flex-wrap:wrap;gap:4px;margin:0;min-width:0}
+#studio-crew-skills:empty{display:none}
 #studio-crew-skills span{font-size:11px;padding:3px 6px;border:1px solid #48616f;border-radius:5px;background:#233744;color:#d5e8f1}
 #studio-crew-conversation{flex:1;min-height:100px;overflow:auto;border-top:1px solid #344553;padding:12px 2px;overscroll-behavior:contain}
 #studio-crew-chat{flex:none;background:#1b2933;border:1px solid #3b4c59;border-radius:14px;padding:10px}

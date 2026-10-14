@@ -32,7 +32,7 @@ async function chooseScenario(id){
  scenarioSwitching=true;selectedScenario=id;scenarioRoles();renderScenarioSelector();
  try{
   const state=await api('state');
-  data=state;selectedJob=null;resultKey='';selectedCrewRole=0;crewChatKey='';crewChatSignature='';
+  data=state;selectedJob=null;resultKey='';selectedCrewRole=0;selectedOpenTaskVisitor='';crewChatKey='';crewChatSignature='';
   crewResetEpoch=scenarioDraftEpochs.get(id)||id+':'+(state.crewChatReset?.epoch||'');
   teamModelDialog.hidden=true;
   eventPackageKey='';audienceReport=null;audienceJob='';previewCleanup();

@@ -17,6 +17,8 @@ Shared URLs and skipped items are remembered in the agent workspace across resta
 
 With **OpenShell on**, approve `developer.nvidia.com` and `huggingface.co` in the agent's **OpenShell Policy** panel. The fixed feed requests run inside the sandbox; blocked requests are not retried through a host connection.
 
+On `preview/visitor-agent-teams`, entering **Open Task** temporarily pauses your hired agents' Heartbeats, even before Casey assigns work. Leaving the room resumes the 20-second cadence; agents you manually paused stay paused. An in-flight check may finish, and its saved result is imported after you leave. Event Brief does not trigger this room pause. If another tab in the same session is still in Open Task, the pause remains until that tab leaves, closes or its browser lease expires.
+
 ## Waiting states
 
 - **Waiting for model:** neither enabled connection is ready. Check Settings → Model.
@@ -24,6 +26,7 @@ With **OpenShell on**, approve `developer.nvidia.com` and `huggingface.co` in th
 - **Waiting for other agents:** the native request queue is busy with foreground work.
 - **Retrying preparation:** runtime setup failed; retries back off for 15, 30, then up to 60 seconds.
 - **Waiting for browser:** reopen the owning browser session.
+- **Paused in Open Task:** leave Open Task to resume periodic checks.
 
 Heartbeat follows the effective Hiring/Lounge connection, including a ready fallback or host-saved NVIDIA key. A changed route is prepared again before checks resume. Preparation is separate from article generation; a failed setup does not mark the agent ready or replay a submitted model request.
 
@@ -55,4 +58,4 @@ App chat is saved first. If Telegram fails or delivery times out, the summary re
 - **The feed tool** fetches the two fixed HTTPS feeds, supplies excerpts, validates the selected source and records the model-authored text once. It never authors the summary.
 - **The app** imports the result into chat and optionally sends it to Telegram. Telegram delivery is an app integration, separate from OpenShell; the model never receives the bot token.
 
-This guide describes the current `preview/stage3-scenarios` behavior. See [development branches](development.md#branches-and-versions).
+See [development branches](development.md#branches-and-versions) for the available versions.

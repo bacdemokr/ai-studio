@@ -65,6 +65,10 @@ class PlanWebCapabilities(unittest.TestCase):
         self.assertIn('One relevant supported finding is acceptable',scout)
         self.assertNotIn('search snippets and home-page navigation are not evidence',scout)
         self.assertNotIn('then read the relevant result pages',scout)
+        self.assertIn('Current agent access: OpenShell is off',scout)
+        self.assertIn('search service reports a rate limit or unavailable service',scout)
+        self.assertIn('within the five-fetch budget',scout)
+        self.assertIn('openShellEnabled and confirmedPolicyDenial',captain)
 
     def test_scout_stops_after_required_evidence_and_single_save(self):
         self.start('/plan Research the key NVIDIA developments and save an evidence brief.')
@@ -78,6 +82,23 @@ class PlanWebCapabilities(unittest.TestCase):
         self.assertIn('dates and timestamps while gathering the evidence, BEFORE saving',scout)
         self.assertIn('user’s requested scope is supported',scout)
         self.assertIn('never search again only',scout.lower())
+
+    def test_captain_receives_actual_access_when_scout_misreports_policy(self):
+        from telemetry import Reply
+        respond=self.adapter.respond
+        def observed(agent,session,prompt,**kwargs):
+            answer=respond(agent,session,prompt,**kwargs)
+            if agent.endswith('-r8'):
+                answer=Reply('OpenShell blocked the source.',{})
+                answer.activity={'calls':[{'tool':'web_search','status':'failed','failureReason':'search-rate-limit'}]}
+            return answer
+        self.adapter.respond=observed
+        self.start('/plan Research NVIDIA and analyze the findings.')
+        self.app.execute(self.app.next_job())
+        checks=[prompt for agent,session,prompt in self.adapter.calls if agent.endswith('-r0') and 'observedAccess' in prompt and 'Search service rate limit' in prompt]
+        self.assertTrue(checks)
+        self.assertIn('"openShellEnabled": false',checks[0])
+        self.assertIn('"confirmedPolicyDenial": false',checks[0])
 
     def test_research_handoff_disables_edit_but_keeps_input_reads(self):
         researcher={**CREW_CATALOG[8],'_researchBrief':True}

@@ -242,7 +242,9 @@ class Handler(SimpleHTTPRequestHandler):
             data['_credentialSession']=row['id']+':'+lease
             if self.path == '/api/credential-session':
                 import session_secrets
-                studio.heartbeat.presence(row['id'], self.headers.get('X-BaC-Key-Session', ''), end=bool(data.get('end')))
+                studio.heartbeat.presence(row['id'], self.headers.get('X-BaC-Key-Session', ''),
+                                          end=bool(data.get('end')), open_task=data.get('openTask'),
+                                          revision=data.get('viewRevision'))
                 if data.get('end'):session_secrets.release(data['_credentialSession'])
                 else:session_secrets.renew(data['_credentialSession'])
                 if data.get('end'):

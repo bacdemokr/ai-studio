@@ -12,6 +12,42 @@ HTTP_FAILURES = {400:'Bad request',401:'Authentication required',403:'Access den
                  408:'Request timed out',429:'Too many requests',500:'Server error',502:'Bad gateway',
                  503:'Service unavailable',504:'Gateway timed out'}
 
+WEB_FAILURES = {'search-rate-limit': 'Search service rate limit',
+                'research-budget': 'Demo research limit',
+                'tool-error': 'Web tool failed; cause unconfirmed'}
+
+
+def web_failure_reason(message, tool):
+    """Classify failed tool results, never a model's explanation or page content."""
+    details = message.get('details') or {}
+    if not (message.get('isError') or details.get('status') in ('error', 'failed')):
+        return None
+    content = message.get('content', [])
+    text = ' '.join(str(b.get('text', '')) for b in content if isinstance(b, dict) and b.get('type') == 'text')[:16000] if isinstance(content, list) else ''
+    if re.match(r'^(?:Demo )?Research budget reached\.', text, re.I):
+        return 'research-budget'
+    if tool == 'web_search' and (web_failure_status(message) == 429 or re.search(r'\brate[ -]limit|too many requests', text, re.I)):
+        return 'search-rate-limit'
+    return 'tool-error'
+
+
+def observed_access(profile, reply):
+    """Small application-owned facts for Captain handoffs, not raw error bodies."""
+    failures = []
+    for call in (getattr(reply, 'activity', None) or {}).get('calls', []):
+        if call.get('status') != 'failed' or call.get('tool') not in ('web_search', 'web_fetch'):
+            continue
+        label = WEB_FAILURES.get(call.get('failureReason'), WEB_FAILURES['tool-error'])
+        code = call.get('httpStatus')
+        if type(code) is int and 400 <= code <= 599:
+            label = str(code) + ' - ' + HTTP_FAILURES.get(code, 'HTTP request failed')
+        failure = {'tool': call['tool'], 'reason': label}
+        if failure not in failures:
+            failures.append(failure)
+    return {'openShellEnabled': profile.get('protection') == 'openshell',
+            'confirmedPolicyDenial': bool(getattr(reply, 'policy_denials', None)),
+            'toolFailures': failures[:8]}
+
 
 def web_failure_status(message):
     # Inspect only a failed web tool result, and expose a status code, never its
@@ -87,6 +123,7 @@ def collect(state, agent, session, started=0, skill_paths=None):
                 if failed and call['tool'] in ('web_fetch','web_search'):
                     code=web_failure_status(message)
                     if code:call['httpStatus']=code
+                    call['failureReason']=web_failure_reason(message,call['tool']) or 'tool-error'
                 call['status']='failed' if failed else 'running' if details.get('status')=='running' else 'completed'
         for call in calls.values():
             # Reading a skill is observable; mentioning or equipping one is not use.

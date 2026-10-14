@@ -138,7 +138,7 @@ function setRoom(next,options={}){
   if(next!==room){closeSurface();if(next==='mission'&&!options.resume)scenarioChoosing=true;}
   if(next==='mission'&&options.fromWorld&&!options.resume){closeSurface();scenarioChoosing=true;}
   if(next!=='mission')scenarioChoosing=true;
-  editingInPlace=false;room=next;if(next!=='mission')board=false;
+  editingInPlace=false;room=next;if(next!=='mission'){board=false;selectedOpenTaskVisitor='';}
   root.dataset.room=next;worldViewport.setAttribute('aria-label',roomCopy[next]+'. Drag to orbit, scroll to zoom. Press Enter to toggle full screen.');if(roomsReady)try{sessionStorage.setItem('bac-studio-room',next);}catch{}
   if(next==='mission')renderCrew();renderRoomVisibility();
   runtimeBadge();
@@ -148,6 +148,7 @@ function setRoom(next,options={}){
   if(before!==null)window.scrollBy(0,worldViewport.getBoundingClientRect().top-before);
 }
 function renderRoomVisibility(){
+  syncHeartbeatContext();
   if(el('compare'))el('compare').hidden=room!=='lounge'||!comparison;
   syncComposer();
   const workshop=room==='workshop',lounge=room==='lounge',mission=room==='mission';
@@ -186,12 +187,12 @@ const roleTemplates=[
   {label:'Arxivbot',summary:'Three relevant papers on a topic you choose.',purpose:'When I give you a research topic, find three relevant arXiv papers. Summarize each paper’s main idea, include its title, authors, date and link, and briefly compare them in my chosen tone. Ask for a topic if none is given.',skills:['web']},
   {label:'Slack Announcer',summary:'Emoji-led updates in your chosen voice.',purpose:'Answer in the style of a concise Slack announcement: an emoji-led headline and short, useful lines. Keep my chosen tone and the supplied facts. Draft only; never send or publish.',skills:['writer']},
   {label:'Programmer',summary:'Small desktop webpages and games.',purpose:'Build and improve small, self-contained desktop webpages and games. Save a working prototype, preserve existing behavior when making changes, and keep checks brief. Use supplied research when collaborating.',skills:['builder']},
-  {label:'Web researcher',summary:'Brief research with useful source links.',purpose:'Answer focused questions using public sources. Read supplied links first, cite verified facts, and explain any missing evidence. Keep research brief; save a handoff when requested or assigned by Casey.',skills:['web']},
+  {label:'Web researcher',summary:'Brief research with useful source links.',purpose:'Answer focused questions using public sources. Read supplied links first, cite verified facts, and explain any missing evidence. Keep research brief, and save findings when requested or needed for collaboration.',skills:['web']},
 ];
 el('role-templates').innerHTML=roleTemplates.map((t,i)=>`<button type="button" data-role-template="${i}" aria-pressed="false">${t.label}</button>`).join('');
 function selectRoleSkills(skills){
   el('skill-picker').querySelectorAll('input').forEach(input=>input.checked=skills.includes(input.value));
-  el('role-hint').textContent=skills.length?'Suggested skills selected.':'No matching skills found. Choose below.';
+  el('role-hint').textContent=skills.length?'Suggested skills selected.':'No matching skills suggested. You can continue without them.';
   updateDraft();
 }
 el('role-templates').onclick=e=>{const button=e.target.closest('[data-role-template]');if(!button)return;const template=roleTemplates[Number(button.dataset.roleTemplate)];writeCreatorPrompt(creatorPrompt().tonePrompt,template.purpose);el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));selectRoleSkills(template.skills);};
@@ -276,6 +277,6 @@ el('onboarding').onsubmit=async e=>{
   }catch(error){alert(error.message,'error');}finally{hiringArrival=false;el('onboarding').inert=false;updateCreatorSubmit();}
 };
 // Selecting a resident updates its workspace without moving the visitor's view.
-root.addEventListener('bac:collection-select',e=>{editingInPlace=false;renderRoomVisibility();switchAgent(e.detail);});
+root.addEventListener('bac:collection-select',e=>{editingInPlace=false;if(room==='mission'&&selectedScenario==='plan'){selectOpenTaskVisitor(e.detail);return;}renderRoomVisibility();switchAgent(e.detail);});
 // Useful in file-only UI review too; live status is supplied by boot().
 fillCreator(true);setRoom('workshop');window.BacCampus?.overview({instant:true});

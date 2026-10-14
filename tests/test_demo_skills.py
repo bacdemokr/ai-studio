@@ -7,6 +7,18 @@ import agent_runtime as runtime
 import agent_policy as policy
 
 class DemoSkillsTests(unittest.TestCase):
+    @offline_config
+    def test_empty_custom_skills_registers_an_explicit_empty_allowlist(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {'BAC_DATA_DIR': tmp}):
+            runtime.save_config(runtime.initial_config())
+            workspace = Path(tmp) / 'agent'
+            runtime.register('test-no-skills', workspace, {'name': 'Helper', 'persona': 'guide', 'skills': []})
+            entry = json.loads(runtime.config_path().read_text())['agents']['entries']['test-no-skills']
+            self.assertEqual(entry['skills'], [])
+            self.assertEqual(entry['tools']['allow'], ['read', 'write', 'edit'])
+            self.assertEqual(list((workspace / 'skills').glob('*/SKILL.md')), [])
+            self.assertIn('Equipped skills: None', (workspace / 'SOUL.md').read_text())
+
     def test_generated_research_instructions_match_both_transports(self):
         with tempfile.TemporaryDirectory() as tmp:
             for protection in ('standard','openshell'):
@@ -90,7 +102,8 @@ class DemoSkillsTests(unittest.TestCase):
                     self.assertIn('Do not reread merely to confirm', content)
                 else:
                     self.assertIn('In the Lounge', content)
-                    self.assertIn('Casey-assigned research handoff', content)
+                    self.assertIn('collaboration research handoff', content)
+                    self.assertIn('same five-fetch limit', content)
                     self.assertIn('without browsing or writing files', content)
                     self.assertIn('Read a supplied URL first', content)
 

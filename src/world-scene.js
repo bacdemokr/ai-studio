@@ -265,23 +265,23 @@ function createScene() {
     if(state.agents[i].included===false||state.agents[i].lane!==1)return false;
     return !state.crewMission||(state.crewMission.activeStages||[]).includes(i)&&(i===0||assignedDocuments.has(i));
   }
-  let announcedTeamJob=null,teamAnnouncement='',teamAnnouncementUntil=0,teamAnnouncementSeen=false;
+  let announcedTeamJob=null,teamAnnouncementHtml='',teamAnnouncementUntil=0,teamAnnouncementSeen=false;
   function renderCrewLabels(){
     const job=state.crewMission;
-    if(job?.id!==announcedTeamJob){announcedTeamJob=job?.id;teamAnnouncement='';teamAnnouncementUntil=0;teamAnnouncementSeen=false;}
+    if(job?.id!==announcedTeamJob){announcedTeamJob=job?.id;teamAnnouncementHtml='';teamAnnouncementUntil=0;teamAnnouncementSeen=false;}
     if(job?.kind==='plan'&&Array.isArray(job.assignedRoles)&&job.assignedRoles.every(role=>state.agents[role]?.displayed!==false)&&!teamAnnouncementSeen){
       teamAnnouncementSeen=true;
-      const names=job.assignedRoles.filter(role=>role>0).map(role=>state.agents[role]?.name).filter(Boolean);
+      const names=job.assignedRoles.filter(role=>role>0).map(role=>state.agents[role]?.name).filter(Boolean).map(name=>'<strong>'+escape(name)+'</strong>');
       if(names.length&&['queued','running','waiting'].includes(job.status)){
         const list=names.length<2?names[0]:names.slice(0,-1).join(', ')+' and '+names.at(-1);
-        teamAnnouncement='We need '+list+'.';teamAnnouncementUntil=performance.now()+10000;
+        teamAnnouncementHtml='We need '+list+'.';teamAnnouncementUntil=performance.now()+10000;
       }
     }
-    const announcement=performance.now()<teamAnnouncementUntil?teamAnnouncement:'';
+    const announcement=performance.now()<teamAnnouncementUntil?teamAnnouncementHtml:'';
     labels.forEach((b,i)=>{
       const working=crewWorking(i)&&!robots[i].exchange&&state.agents[i].included!==false;
       const status=robots[i].exchange==='leaving'?'Leaving team':robots[i].exchange==='entering'?'Joining team':state.agents[i].included===false?'Available':state.agents[i].lane===2?'Waiting for you':state.crewMission?.kind==='plan'&&i>0&&state.agents[i].lane===0?state.agents[i].status+' · '+state.agents[i].role:state.agents[i].role;
-      b.innerHTML=escape(state.agents[i].name)+'<small>'+(working?'<span class="crew-working-badge"><span aria-hidden="true" class="crew-working-dot"></span>Working</span><span class="crew-working-role">'+escape(state.agents[i].role)+'</span>':escape(status))+'</small>'+(i===0&&announcement?'<span class="crew-team-bubble">'+escape(announcement)+'</span>':'');
+      b.innerHTML=escape(state.agents[i].name)+'<small>'+(working?'<span class="crew-working-badge"><span aria-hidden="true" class="crew-working-dot"></span>Working</span><span class="crew-working-role">'+escape(state.agents[i].role)+'</span>':escape(status))+'</small>'+(i===0&&announcement?'<span class="crew-team-bubble">'+announcement+'</span>':'');
       b.setAttribute('aria-pressed',String(activeSelection===i));b.setAttribute('aria-label','Select '+state.agents[i].name+(working?', working':''));b.classList.toggle('working',working);b.classList.toggle('selected',activeSelection===i);b.classList.toggle('excluded',state.agents[i].included===false);b.classList.toggle('waiting',state.agents[i].lane===2);
     });}
 
@@ -317,5 +317,5 @@ function createScene() {
     renderer.render(scene,camera);
   }
   setScenario('plan');motionButton();resize();update(snapshot,0);sceneReady=true;requestAnimationFrame(animate);root.dataset.renderer='webgl';
-  return {resize,update,setRoom,setScenario,setScenarioStatus,scenarios:showScenarios,setCollection,observeProtection,observeExternalActivity,protectionReplyDelay,setDraft,welcomeAgent,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',protectionHits:[...protectionHits.values()].map(h=>({id:h.event.id,owner:h.event.owner,role:h.event.role,action:h.event.action,source:h.event.source,globeRotation:h.earth?.rotation.y,visible:h.group.visible,animated:motion&&h.phase!=='blocked',phase:h.phase})),visitorTravel:visitorTravelInfo(),roundtable:roundtableInfo(),arrival:arrival?{key:arrival.key,avatar:{...arrival.rig.appearance},phase:arrival.time<1.8?'loading':'walking',position:arrival.rig.group.position.toArray()}:null,room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,draftPreview:draftRig?{avatar:{...draftRig.appearance},visible:draftRig.group.visible&&draftRig.group.parent===workshopRoom}:null,draftShield:!!draftRig?.body.getObjectByName('openshell-shield'),crewExchange:robots.map((r,role)=>({role,visible:r.robot.visible,phase:r.exchange,wanted:r.wanted})),deskAssignments:[...deskAssignments],crewHomes:robots.map(r=>r.home.toArray()),selectedTeam:state.crewMission?.enabledRoles||[0],crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,captain:{position:robots[0].robot.position.toArray(),job:captainJob,received:[...receivedDocuments],assigned:[...assignedDocuments],pending:documentQueue.map(d=>({...d})),inFlight:documentFlight?{...documentFlight}:null},robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
+  return {resize,update,setRoom,setScenario,setScenarioStatus,scenarios:showScenarios,setCollection,observeProtection,observeExternalActivity,protectionReplyDelay,setDraft,welcomeAgent,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',protectionHits:[...protectionHits.values()].map(h=>({id:h.event.id,owner:h.event.owner,role:h.event.role,action:h.event.action,source:h.event.source,globeRotation:h.earth?.rotation.y,visible:h.group.visible,animated:motion&&h.phase!=='blocked',phase:h.phase})),visitorTravel:visitorTravelInfo(),visitorSeating:{chairs:visitorBenches.children.length,positions:visitorBenches.children.map(chair=>chair.position.toArray())},roundtable:roundtableInfo(),arrival:arrival?{key:arrival.key,avatar:{...arrival.rig.appearance},phase:arrival.time<1.8?'loading':'walking',position:arrival.rig.group.position.toArray()}:null,room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,draftPreview:draftRig?{avatar:{...draftRig.appearance},visible:draftRig.group.visible&&draftRig.group.parent===workshopRoom}:null,draftShield:!!draftRig?.body.getObjectByName('openshell-shield'),crewExchange:robots.map((r,role)=>({role,visible:r.robot.visible,phase:r.exchange,wanted:r.wanted})),deskAssignments:[...deskAssignments],crewHomes:robots.map(r=>r.home.toArray()),selectedTeam:state.crewMission?.enabledRoles||[0],crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,captain:{position:robots[0].robot.position.toArray(),job:captainJob,received:[...receivedDocuments],assigned:[...assignedDocuments],pending:documentQueue.map(d=>({...d})),inFlight:documentFlight?{...documentFlight}:null},robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
 }

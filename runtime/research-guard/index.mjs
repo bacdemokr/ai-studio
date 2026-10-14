@@ -183,16 +183,17 @@ export function beforeTool(event, ctx) {
   for (const [k, v] of sessions) if (now - v.updated > TTL) sessions.delete(k);
   if (!sessions.has(key)) {
     if (sessions.size >= 1000) sessions.delete(sessions.keys().next().value);
-    sessions.set(key, {searches: 0, fetches: 0, calls: new Set(), updated: now});
+    sessions.set(key, {searches: 0, fetches: 0, calls: new Set(), searchCalls: new Set(), unavailableSearches: new Set(), updated: now});
   }
   const state = sessions.get(key), id = event.toolCallId || ctx.toolCallId;
   state.updated = now;
   if (id && state.calls.has(id)) return;
-  const blocked = event.toolName === 'web_search' ? state.searches >= 2 : state.searches > 0 || state.fetches >= 5;
-  if (blocked) return {block: true, blockReason: 'Research budget reached. Save the evidence already retrieved to the assigned brief and finish. Search excerpts are not full-page reads; report missing details honestly. Do not retry browsing or switch tools.'};
+  const blocked = event.toolName === 'web_search' ? state.searches >= 2 : state.searches > state.unavailableSearches.size || state.fetches >= 5;
+  if (blocked) return {block: true, blockReason: 'Demo research budget reached. This is an application pacing limit, not an OpenShell policy denial. Save the evidence already retrieved to the assigned brief and finish. Search excerpts are not full-page reads; report missing details honestly. Do not retry browsing or switch tools.'};
   if (id) state.calls.add(id);
   if (event.toolName === 'web_search') {
     state.searches++;
+    if (id) state.searchCalls.add(id);
     return {params: {...event.params, count: Math.min(3, Math.max(1, Number(event.params.count) || 3))}};
   }
   state.fetches++;
@@ -262,6 +263,19 @@ export function persistResult(event, ctx) {
     return result;
   }
   const personal = loungeKey(ctx), tool = event.toolName || ctx.toolName;
+  // Only an observed provider failure releases the search-first stop rule.
+  // Pending/successful searches still stop follow-up reads; attempts are never
+  // refunded, including across handoff repairs. Native access policy still applies.
+  if (tool === 'web_search' && event.message?.isError) {
+    const state = sessions.get(keyFor(ctx));
+    const id = event.message.toolCallId || event.toolCallId || ctx.toolCallId;
+    const text = (event.message.content || []).filter(b => b.type === 'text').map(b => b.text || '').join(' ').slice(0,16000);
+    if (state?.searchCalls.has(id) && !/openshell|policy denial|policy denied/i.test(text) &&
+        /(?:rate[ -]limit|too many requests|\b429\b|search.{0,50}(?:unavailable|timed out)|missing.{0,30}api.?key)/i.test(text)) {
+      state.unavailableSearches.add(id);
+      state.updated = Date.now();
+    }
+  }
   if ((!keyFor(ctx) && !personal) || !['web_search', 'web_fetch'].includes(tool) || event.message?.isError) return;
   if (tool === 'web_fetch') {
     if (!Array.isArray(event.message?.content)) return;

@@ -324,13 +324,36 @@ class StudioTests(unittest.TestCase):
 
     def test_agent_limit_and_invalid_creation_leave_existing_collection_unchanged(self):
         with self.assertRaises(Problem):
-            self.studio.add_agent(self.owner, {'name': 'No skills', 'skills': []})
+            self.studio.add_agent(self.owner, {'name': 'Invalid skills', 'skills': ['unavailable-skill']})
         self.assertEqual(len(self.studio.state(self.owner)['agents']), 1)
         for i in range(MAX_AGENTS - 1):
             self.add_agent('Agent ' + str(i))
         with self.assertRaises(Problem):
             self.add_agent('One too many')
         self.assertEqual(len(self.studio.state(self.owner)['agents']), MAX_AGENTS)
+
+    def test_agents_without_custom_skills_can_be_created_edited_and_chat(self):
+        person, _ = self.studio.session()
+        first = self.studio.onboard(person['id'], {'name': 'Helper', 'purpose': 'Help me think clearly.', 'skills': []})
+        self.assertEqual(first['skills'], [])
+        added = self.studio.add_agent(self.owner, {'name': 'Companion', 'skills': []})['agentId']
+        self.assertEqual(self.studio.profile(added)['skills'], [])
+        original = self.studio.profile(self.owner)
+        updated = self.studio.configure(self.owner, {**original, 'skills': []})
+        self.assertEqual(updated['skills'], [])
+        self.assertEqual(updated['purpose'], original['purpose'])
+        self.studio.enqueue(self.owner, {'prompt': 'Help me weigh two options.'})
+        self.studio.execute(self.studio.next_job())
+        self.assertEqual(self.adapter.profiles[updated['id']]['skills'], [])
+        self.assertEqual(len(self.adapter.calls), 1)
+        self.assertEqual(agent_runtime.tool_allowlist(updated), ['read', 'write', 'edit'])
+        soul = (self.studio.workspace(self.owner) / 'SOUL.md').read_text()
+        self.assertIn('Equipped skills: None', soul)
+
+    def test_optional_skills_still_reject_invalid_values(self):
+        for skills in (None, 'web', {}, [None], ['unknown']):
+            with self.subTest(skills=skills), self.assertRaises(Problem):
+                self.studio.agent_profile(self.owner, {'name': 'Invalid', 'skills': skills})
 
     def test_native_memory_and_deliverables_survive_restart(self):
         self.studio.enqueue(self.owner, {'prompt': 'remember my preferences and make an app fixture'})

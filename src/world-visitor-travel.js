@@ -34,7 +34,7 @@ function syncVisitorCollection(){
 }
 function syncVisitorTeam(){
   if(activeScenario!=='plan')return;
-  const job=state.crewMission,active=job?.kind==='plan'&&job.visitorsActive;
+  const job=state.crewMission,active=job?.kind==='plan'&&job.visitorsPresent;
   const selected=new Map(active?state.agents.flatMap((a,role)=>a.visitorKey&&a.displayed!==false?[[a.visitorKey,{...a,taskTitle:a.role,role}]]:[]):[]);
   const following=['mixed','hired'].includes(state.visitorTeamMode)&&room==='mission'&&!overview;
   // Reaction guests use their own actors and seats. Never clone them on a bench.
@@ -67,7 +67,7 @@ function syncVisitorTeam(){
     const avatar={...member.avatar,protection:member.protection||'standard'};
     if(!v){
       if(arrival?.key===key)finishArrival();
-      const rig=createCharacter(avatar);rig.group.scale.setScalar(1.15);
+      const rig=createCharacter(avatar);rig.group.scale.setScalar(1.15);rig.group.userData.visitorAgent=key;
       rig.group.position.copy(loungeRoom.localToWorld(resident.group.position.clone()));scene.add(rig.group);
       const node=document.createElement('button');node.type='button';node.className='campus-agent-label';node.dataset.visitorAgent=key;node.innerHTML='<b></b><small></small>';visitorLayer.append(node);
       v={...rig,key,node,home:rig.group.position.clone(),fromLounge:true};visitorTravel.set(key,v);
@@ -98,12 +98,12 @@ function animateVisitors(dt){
       if(fraction===1){if(v.phase==='returning'){disposeVisitor(v);continue;}v.phase=v.destination;v.segment=v.route.length-1;v.group.position.copy(v.target);v.fromLounge=false;}
     }
     const stepping=['entering','returning'].includes(v.phase)&&motion&&!reduced.matches,working=v.phase==='working'&&v.working,seated=v.phase==='seated';
-    if(!stepping)v.group.rotation.y=working||seated?Math.PI:0;
+    if(!stepping)v.group.rotation.y=v.phase==='working'||seated?Math.PI:0;
     v.body.position.y=seated?.18:stepping?Math.abs(Math.sin(clock*9))*.04:0;
     v.legs.forEach((leg,j)=>leg.rotation.x=seated?-Math.PI/2:stepping?Math.sin(clock*9+j*Math.PI)*.4:0);
     v.arms.forEach((arm,j)=>arm.rotation.x=seated?-.35:stepping?Math.sin(clock*9+j*Math.PI)*.3:working?-.7:0);
     v.node.querySelector('small').textContent=v.phase==='returning'?'Returning to Lounge':v.phase==='entering'?(v.destination==='seated'?'Joining Open Task':'Taking a workbench'):seated?'Standby':working?'Working':v.title;
-    v.node.classList.toggle('visitor-waiting',seated);v.node.classList.toggle('working',working);v.node.classList.toggle('selected',v.role!==null&&activeScenario==='plan'&&activeSelection===v.role);
+    v.node.classList.toggle('visitor-waiting',seated);v.node.classList.toggle('working',working);v.node.classList.toggle('selected',activeScenario==='plan'&&(state.selectedVisitorKey===v.key||v.role!==null&&activeSelection===v.role));
     v.node.hidden=!(overview||journey||room==='mission'&&activeScenario==='plan'||room==='lounge'&&stepping);
     positionLabel(v.node,v.group.position.clone().add(new THREE.Vector3(0,2.2,0)));
   }
@@ -114,4 +114,4 @@ function crewPresentation(role){
   const position=missionRoom.worldToLocal(v.group.position.clone());
   return {robot:{visible:true,position},home:robots[role].home,path:[],exchange:v.phase==='working'?null:v.phase};
 }
-function visitorTravelInfo(){return [...visitorTravel.values()].map(v=>({key:v.key,name:v.name,job:v.job,role:v.role,phase:v.phase,avatar:v.appearance,position:v.group.position.toArray(),destination:v.route.at(-1).toArray()}));}
+function visitorTravelInfo(){return [...visitorTravel.values()].map(v=>{const point=v.group.localToWorld(new THREE.Vector3(0,.85,0)).project(camera);return {key:v.key,name:v.name,job:v.job,role:v.role,phase:v.phase,avatar:v.appearance,position:v.group.position.toArray(),destination:v.route.at(-1).toArray(),screenCenter:[(point.x*.5+.5)*viewport.clientWidth,(-point.y*.5+.5)*viewport.clientHeight]};});}

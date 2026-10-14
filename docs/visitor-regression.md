@@ -12,6 +12,9 @@ Use this checklist alongside the general demo regression workflow. Run destructi
 | Hired + Standby with and without hires | Suitable hires are preferred; backups can fill missing capabilities. |
 | Explicit participant requests | Name a hire and Scout together; verify both actual outputs, not only names in the plan. |
 | Out-of-role hire | Ask a Weather buddy to build a counter. Role labels are not eligibility requirements. Existing tools and policy still apply. |
+| Unnamed Weather-only team | Ask for research and a webpage without naming hires. Casey uses available file/public-page tools instead of requiring Coding or Web research presets. |
+| Two hires with the same preset | Assign author/checker or research/page duties. Verify both named contributions and actual handoff use. Duplicate planner role numbers receive one bounded correction before dispatch; identities stay intact. |
+| Missing actual tools | A Programmer-only team cannot claim live web research when no web tools exist. Explain the specific missing capability, with no hidden standby dispatch or fabricated evidence. |
 | Reservations and concurrent work | Busy, deleting and reserved hires are unavailable. Heartbeat does not overlap an assigned foreground task. |
 | Team-mode changes | During work the control is locked. Afterward, switching preserves prior results and identities; the next task uses the selected mode. |
 | Navigation | Hires wait on benches, move only when assigned, and remain selectable across Hiring, Lounge and Open Task. |
@@ -19,10 +22,15 @@ Use this checklist alongside the general demo regression workflow. Run destructi
 ## Models, roles and permissions
 
 - Change an idle hire's model from its Open Task badge using search and keyboard navigation. Confirm the same model in Lounge, after reload, and during execution. Preserve its name, persona, skills, protection and saved work.
+- Before any plan exists, select two waiting hires in turn using their nameplates, keyboard and 3D bodies. Each opens its own panel and model picker without creating a task. Check polling, a saved Casey draft, deletion while the picker is open, assignment into a real role, completed contributions and navigation to Lounge/Event Brief. `node tests/standby-selection-browser.cjs` covers these journeys with disposable data and simulated inference.
+- Change Casey's and a built-in specialist's NVIDIA model from their Open Task badge or the standby list. Confirm the next reply uses the selected model and reload preserves it. Lock an already open picker when work starts or the connection drops, recover after completion/reconnect, and reject a save raced against a new task. Other members and Event Brief must remain unchanged. Run `node tests/captain-model-browser.cjs` for the isolated browser/dispatcher journey with simulated inference.
 - Disable disconnected choices. Test Local-only, API-only, both connected, neither connected, and a previously selected model that disappears. Report fixture coverage separately from real Local/Spark execution.
 - Race a model selection against a new reservation or deletion. The server must reject a stale change without affecting another agent.
 - Exercise Programmer and Web researcher in Lounge and a collaboration. Inspect actual saved files, brief source links, persona, and working page controls.
 - For protected researchers, verify both policy-denied web access and permitted workspace handoff writes. A simulated denial does not validate real OpenShell enforcement.
+- Exercise default deny, per-agent approval, revocation and a remote HTTP error after approval. Only fresh native policy denials should add an OpenShell explanation to a hired handoff; old events, another agent's events and ordinary HTTP/tool failures must not do so.
+- Pair a protected researcher with a standard programmer. Preserve the blocked research limitation in the final result while completing work possible from supplied data; do not silently reroute denied retrieval through the other agent. Test protected Weather-only offline work as well.
+- Submit immediately after hiring a protected agent. A running preparation must be described as preparing, preserve the draft and never substitute another participant. Retry after readiness.
 - Confirm Event Brief retains its fixed team, independent connection and results.
 
 ## Results and recovery

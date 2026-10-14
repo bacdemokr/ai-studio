@@ -29,6 +29,12 @@ function fitMeetingTable(){
  sign(meetingTable,'YOUR AGENTS’ TABLE',center,1.0,4.85,3.1,.28,'#dff3ce','#192a35');
 }
 const meetingChairs=new THREE.Group();meetingFurniture.add(meetingChairs);
+function syncMeetingFurniture(){
+ // Open Task reuses these hires as standby visitors after their reactions.
+ // Their old reaction chairs must not remain beside the standby seats.
+ for(const guest of meetingGuests)guest.chair.visible=activeScenario!=='plan'||guest.phase!=='returned';
+ meetingFurniture.visible=!!meetingId&&(activeScenario!=='plan'||meetingGuests.some(guest=>guest.chair.visible));
+}
 const meetingLayer=document.createElement('div');meetingLayer.className='world-roundtable';viewport.append(meetingLayer);
 let meetingId='',meetingGuests=[],meetingSpeaker='',meetingSpeechUntil=0,meetingElapsed=0;
 const meetingSpoken=new Set();
@@ -58,6 +64,9 @@ function clearMeeting(){
 }
 function syncRoundtable(){
  const job=state.crewMission,meeting=job?.roundtable;
+ // Open Task reactions happen at the existing desks/standby seats. Event Brief
+ // retains its separate guests' table and return-to-Lounge animation.
+ if(activeScenario==='plan'){if(meetingId)clearMeeting();meetingId='';meetingFurniture.visible=false;return;}
  if(!meeting?.members?.length){if(meetingId)clearMeeting();meetingId='';meetingFurniture.visible=false;return;}
  if(!meetingId&&['queued','cancelled','error'].includes(job.status))return;
  if(job.id===meetingId)return;
@@ -104,6 +113,7 @@ function syncRoundtable(){
   if(restored)releaseMeetingGuest(guest);else inviteMeetingGuest(guest);
  });
  fitMeetingTable();
+ syncMeetingFurniture();
 }
 function animateRoundtable(dt){
  const job=state.crewMission,meeting=job?.roundtable;
@@ -153,6 +163,7 @@ function animateRoundtable(dt){
    const unfinished=meetingGuests.find(g=>g.phase==='seated');if(unfinished)returnMeetingGuest(unfinished);
   }
  }
+ syncMeetingFurniture();
  for(const guest of meetingGuests){
   guest.node.hidden=guest.phase==='returned';if(guest.node.hidden)continue;
   const reply=meeting?.replies?.[guest.key],speaking=onScreen&&guest.key===meetingSpeaker;
@@ -164,4 +175,4 @@ function animateRoundtable(dt){
   if(speaking){const half=guest.node.offsetWidth/2;guest.node.style.left=THREE.MathUtils.clamp(parseFloat(guest.node.style.left),half+12,viewport.clientWidth-half-12)+'px';guest.node.style.top=Math.max(guest.node.offsetHeight+75,parseFloat(guest.node.style.top))+'px';}
  }
 }
-function roundtableInfo(){return {job:meetingId,tableWidth:meetingWidth,speaker:meetingSpeaker,guests:meetingGuests.map(g=>({key:g.key,name:g.name,appearance:g.appearance,seat:g.seat,seated:g.seated,phase:g.phase,facing:g.group.rotation.y,position:g.group.position.toArray()})),spoken:[...meetingSpoken]};}
+function roundtableInfo(){return {job:meetingId,tableWidth:meetingWidth,visible:meetingFurniture.visible,visibleChairs:meetingFurniture.visible?meetingChairs.children.filter(chair=>chair.visible).length:0,speaker:meetingSpeaker,guests:meetingGuests.map(g=>({key:g.key,name:g.name,appearance:g.appearance,seat:g.seat,seated:g.seated,phase:g.phase,facing:g.group.rotation.y,position:g.group.position.toArray()})),spoken:[...meetingSpoken]};}

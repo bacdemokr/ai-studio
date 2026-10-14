@@ -53,8 +53,20 @@ class PolicyControls:
             logs = reader(agent)
             self.remember_policy_denials(owner, logs, role)
             return logs
+        started = time.time()
         with self.protection_activity.watch(owner, role, agent_id, observe):
-            return self.adapter.respond(agent_id, session, prompt, **kwargs)
+            answer = self.adapter.respond(agent_id, session, prompt, **kwargs)
+        # Personal replies (including hired handoffs) are prose. Preserve crew
+        # JSON contracts and never infer a policy denial from HTTP/tool errors.
+        hosts = self.protection_activity.denials_since(owner, role, started)
+        if role is None and hosts and not kwargs.get('json_response'):
+            text = str(answer) + '\n\nOpenShell blocked: ' + ', '.join(hosts) + '. Approve the required sites in this agent\'s OpenShell Policy panel before retrying.'
+            from telemetry import Reply
+            result = Reply(text, getattr(answer, 'metrics', {}))
+            result.__dict__.update(getattr(answer, '__dict__', {}))
+            result.policy_denials = hosts
+            return result
+        return answer
 
     def policy_profile(self, owner, role=None):
         """Resolve identity only; both kinds use the same policy engine and controls."""

@@ -141,25 +141,61 @@
 #studio-telemetry .usage-total{margin-top:20px;margin-bottom:9px}
 #studio-telemetry hr{border:0;border-top:1px solid #344755;margin:16px 0}
 
-/* Completed Stage 3 run usage stays scoped to that scenario, not lifetime telemetry. */
+/* Completed run metrics use the same compact surfaces as Settings. */
 .studio-usage-time{color:#d6e0e7}
-.studio-usage-task{padding:18px 20px;border:1px solid #344957;border-radius:8px;background:#111c25}
-.studio-usage-task small,.studio-usage-totals small{display:block;margin-bottom:7px;color:#9fb2bf;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
-.studio-usage-task p{margin:0;font-size:16px;line-height:1.6;white-space:pre-wrap}
-.studio-usage-totals{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:10px;margin:18px 0 26px}
-.studio-usage-totals article{padding:15px 16px;border:1px solid #344957;border-radius:7px;background:#15212b}
-.studio-usage-totals strong{display:block;color:#f2f7fa;font-size:22px;font-variant-numeric:tabular-nums}
-.studio-usage-time h3{margin:0 0 12px;font-size:18px}
-.studio-usage-table-wrap{overflow-x:auto;border:1px solid #344957;border-radius:8px}
-.studio-usage-time table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
-.studio-usage-time :is(th,td){padding:12px 14px;border-bottom:1px solid #2e414e;text-align:right;white-space:nowrap}
-.studio-usage-time thead th{background:#111c25;color:#9fb2bf;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
-.studio-usage-time :is(th:first-child,td:first-child){text-align:left}
-.studio-usage-time .studio-usage-endpoint{max-width:310px;text-align:left;white-space:normal;overflow-wrap:anywhere;color:#b9cbd6}
-.studio-usage-model{display:block;margin-bottom:4px;color:#e4edf3;font-weight:600}
+.studio-usage-task{padding:0 0 20px}
+.studio-usage-task small,.studio-usage-totals small,.studio-result-heading>small{display:block;margin-bottom:7px;color:#a6b8c4;font-size:13px;font-weight:500}
+#agent-campus .studio-usage-task p{margin:0;font-size:16px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.studio-usage-totals{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:12px;margin:0 0 28px}
+.studio-usage-totals article{min-width:0;padding:18px 20px;border:1px solid #30434f;border-radius:12px;background:#15232c}
+.studio-usage-totals strong{display:block;color:#f2f7fa;font-size:28px;font-weight:600;letter-spacing:-.6px;font-variant-numeric:tabular-nums}
+#agent-campus .studio-usage-totals p{display:flex;flex-wrap:wrap;gap:4px 14px;margin:10px 0 0;color:#9fb2bf;font-size:12px;line-height:1.5;font-variant-numeric:tabular-nums}
+.studio-usage-section-heading{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:12px}
+#agent-campus .studio-usage-time h3{margin:0;font-size:16px;letter-spacing:0}
+.studio-usage-section-heading>span{color:#9fb2bf;font-size:12px}
+.studio-usage-table-wrap{border:1px solid #30434f;border-radius:12px;overflow:hidden}
+.studio-usage-time table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+.studio-usage-time :is(th,td){padding:14px 16px;border-bottom:1px solid #293c48;text-align:right;vertical-align:top}
+.studio-usage-time thead th{background:#15232c;color:#a6b8c4;font-size:12px;font-weight:500}
+.studio-usage-time th:first-child{width:42%;text-align:left;white-space:normal}
+.studio-usage-time tbody th{font-weight:400}
+.studio-usage-time td{white-space:nowrap}
 .studio-usage-time tbody tr:last-child :is(th,td){border-bottom:0}
-.studio-usage-note{margin:14px 0 0;color:#9fb2bf;font-size:13px;line-height:1.55}
-@media(max-width:900px){.studio-usage-totals{grid-template-columns:repeat(2,minmax(120px,1fr))}}
+#agent-campus .studio-usage-connection{margin:0}
+#agent-campus .studio-usage-connection summary{font-size:14px;margin:0;position:relative;cursor:pointer;list-style:none;padding-left:18px;line-height:1.45}
+.studio-usage-connection summary::-webkit-details-marker{display:none}
+.studio-usage-connection summary::before{content:'›';position:absolute;left:0;top:0;color:#a6b8c4;font-size:18px;line-height:20px;transition:transform .15s}
+.studio-usage-connection[open] summary::before{transform:rotate(90deg)}
+.studio-usage-connection summary>span{display:block;color:#edf3f7;font-weight:600;overflow-wrap:anywhere}
+.studio-usage-connection summary>small{display:block;margin-top:4px;color:#9fb2bf;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.studio-usage-connection dl{margin:12px 0 0 18px;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.studio-usage-connection dt{color:#9fb2bf;margin-top:8px}
+.studio-usage-connection dd{margin:2px 0 0;color:#d6e0e7}
+.studio-usage-combined{font-weight:600;color:#edf3f7}
+.studio-usage-turns{display:block;margin-top:5px;font-size:11px;color:#9fb2bf}
+#agent-campus .studio-usage-note{margin:16px 0 0;color:#9fb2bf;font-size:12px;line-height:1.6}
+#agent-campus .studio-result-heading{padding:0 0 20px;margin-bottom:22px;border-bottom:1px solid #30434f}
+#agent-campus .studio-result-heading>p{margin:0;font-size:16px;line-height:1.6;overflow-wrap:anywhere}
+#agent-campus .studio-result-heading [data-plan-total]{margin-top:10px;color:#a6b8c4;font-size:12px}
+#studio-plan-results .chat-prose{font-size:15px;line-height:1.65;overflow-wrap:anywhere}
+.studio-result-files{margin-top:24px;padding-top:20px;border-top:1px solid #30434f;display:flex;flex-wrap:wrap;gap:10px}
+#agent-campus .studio-result-files h3{flex-basis:100%;font-size:15px;margin:0 0 2px}
+#studio-plan-results .chat-webpages{display:contents}
+#agent-campus .studio-result-files button{margin:0;font-size:13px;min-height:40px;border-radius:8px;padding:10px 14px}
+@media(max-width:600px){
+ .studio-usage-totals{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:22px}
+ .studio-usage-totals article{padding:16px}.studio-usage-totals article:first-child{grid-column:1/-1}
+ .studio-usage-totals strong{font-size:24px}
+ .studio-usage-section-heading{display:block}.studio-usage-section-heading>span{display:block;margin-top:5px}
+ .studio-usage-time table,.studio-usage-time tbody{display:block}
+ .studio-usage-time thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+ .studio-usage-time tbody tr{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:16px;gap:14px 8px;border-bottom:1px solid #293c48}
+ .studio-usage-time tbody tr:last-child{border-bottom:0}
+ .studio-usage-time tbody :is(th,td){width:auto;padding:0;border:0;text-align:left}
+ .studio-usage-time tbody th:first-child{grid-column:1/-1;width:auto;min-width:0}
+ .studio-usage-time td{font-size:12px}
+ .studio-usage-time td::before{content:attr(data-label);display:block;margin-bottom:5px;color:#9fb2bf;font-size:11px;font-weight:400}
+}
 
 /* The board follows execution dependencies; the paired roles share one stage. */
 #studio-lanes,#studio-surface #studio-lanes{display:flex;flex-direction:column;gap:26px}
@@ -168,20 +204,22 @@
 #studio-surface #studio-board.has-plan .studio-board-intro{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 #studio-surface #studio-board.has-plan .studio-board-intro h3{font-size:20px;margin:0!important}
 #studio-surface #studio-board.has-plan .studio-board-intro p,#studio-surface #studio-board.has-plan .studio-board-intro .studio-kicker{display:none}
-.mission-plan-step{position:relative;display:grid;grid-template-columns:180px minmax(0,1fr);border:1px solid #344957;border-radius:8px;background:#15212b}
+.mission-plan-step{position:relative;display:grid;grid-template-columns:170px minmax(0,1fr);border:1px solid #30434f;border-radius:10px;background:#15232c}
 .mission-plan-step::before{content:'';position:absolute;left:-26px;top:27px;width:9px;height:9px;border:1px solid #6a8292;border-radius:50%;background:#14212a}
 .mission-plan-step[data-step-state=done]::before,.mission-plan-step[data-step-state=working]::before{background:#76b900;border-color:#76b900}
 .mission-plan-step[data-trace-kind=skipped],.mission-plan-step[data-trace-kind=planned]{background:#101b24;border-style:dashed}
 .mission-plan-step[data-trace-kind=skipped]::before,.mission-plan-step[data-trace-kind=planned]::before{width:5px;height:5px;left:-24px;background:#344957}
 .mission-plan-step[data-trace-kind=review]{background:#17272b}
-.mission-plan-step>header{border-radius:8px 0 0 8px}
-.mission-plan-step>header{padding:22px;background:#111c25;border-right:1px solid #344957;font-size:14px;color:#b1c3cf}
-.mission-plan-step h4{margin:8px 0;font-size:24px;color:#eff5f8}
+.mission-plan-step>header{border-radius:10px 0 0 10px}
+.mission-plan-step>header{padding:18px;background:#121f28;border-right:1px solid #30434f;font-size:13px;color:#b1c3cf}
+#agent-campus .mission-plan-step h4{margin:8px 0;font-size:19px;color:#eff5f8;overflow-wrap:anywhere}
 .mission-plan-step>header>small{font-size:11px;letter-spacing:.12em;color:#9eafb9}
-.mission-plan-step>header>span{display:inline-block;margin-top:16px;padding:4px 9px;border:1px solid #45616f;border-radius:20px;font-size:12px}
+.mission-plan-step>header>span{display:inline-block;margin-top:10px;padding:4px 9px;border:1px solid #3b5360;border-radius:20px;font-size:11px}
 .mission-plan-step[data-step-state=working]{border-color:#76b900}
-.mission-plan-step[data-step-state=done]>header>span{color:#b6e27c;border-color:#597733}
-.mission-plan-content{padding:22px;min-width:0;overflow-wrap:anywhere;line-height:1.6;color:#c5d3dc}
+.mission-plan-step[data-step-state=done]>header>span{color:#b6d987;border-color:transparent;background:#233321}
+.mission-plan-content{padding:18px 20px;min-width:0;overflow-wrap:anywhere;font-size:14px;line-height:1.6;color:#c5d3dc}
+#agent-campus #studio-lanes .mission-plan-content p{font-size:14px;line-height:1.65;margin:6px 0 0}
+#agent-campus .mission-trace-detail>summary{font-size:14px;font-weight:500}
 .mission-plan-content>strong{font-size:14px;color:#f0f5f8}
 .mission-expectation{margin:16px 0 0;padding:12px 14px;border-left:2px solid #76b900;background:#0b161d55;overflow-wrap:anywhere;font-size:15px;line-height:1.6}
 .mission-expectation>small{display:block;margin-bottom:6px;font-size:12px;font-weight:600;color:#b6d58e}
@@ -196,13 +234,13 @@
 @media(max-width:650px){.mission-plan-step{grid-template-columns:minmax(0,1fr)}.mission-plan-step>header{border-right:0;border-bottom:1px solid #344957;border-radius:8px 8px 0 0;padding:16px}.mission-plan-content{padding:16px}}
 .studio-work-group:not(:last-child)::after{content:'↓';position:absolute;bottom:-25px;left:50%;color:#8ba0b3;font-size:22px}
 .studio-work-group-cards{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
-.studio-work-group.is-parallel{padding:16px;border:1px solid #526779;border-radius:6px;background:#101c26}
+.studio-work-group.is-parallel{padding:14px;border:1px solid #30434f;border-radius:12px;background:#121f28}
 .is-parallel .studio-work-group-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
-.studio-parallel-caption{font-size:18px;color:#d9ecff;margin-bottom:14px;font-weight:600}
+.studio-parallel-caption{font-size:14px;color:#d9ecff;margin-bottom:14px;font-weight:600}
 .studio-parallel-caption span{font-size:15px;font-weight:400;color:#aabac8;margin-left:14px}
 #studio-lanes .studio-lane{min-height:0;padding:18px 22px}
 #studio-lanes .studio-lane::after{display:none}
-#studio-lanes .studio-lane h4{font-size:25px;margin:9px 0 4px}
+#agent-campus #studio-lanes .studio-lane h4{font-size:20px;margin:8px 0 4px}
 #studio-lanes .studio-lane p{margin:9px 0 0!important}
 .crew-work-bubble{display:flex;align-items:center;gap:8px;max-width:245px;white-space:normal;font-size:15px;line-height:1.4;text-align:left;margin:10px -4px -3px;padding:10px 12px;background:#e0edf5;color:#142530;border-radius:10px 10px 10px 2px;box-shadow:0 4px 16px #0005}
 .crew-work-bubble i{flex:none;width:7px;height:7px;background:#609900;border-radius:50%;animation:crew-pulse 1.3s ease-in-out infinite}

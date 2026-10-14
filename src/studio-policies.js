@@ -22,7 +22,7 @@ function visiblePolicyBadges(){
  const targets=[];
  if(room==='lounge'&&data.profile?.protection==='openshell'&&!data.deleting)targets.push({button:el('agent-policy'),owner:agentId,key:agentId+':personal',name:data.profile.name,route:'agent-policy',role:null});
  const member=window.BacCrewCatalog[selectedCrewRole];
- const visitor=assignedVisitor(selectedCrewRole);
+ const visitor=selectedCrewVisitor();
  if(room==='mission'&&(visitor||member)?.protection==='openshell')targets.push(visitor?{button:el('crew-policy'),owner:visitor.key,key:visitor.key+':personal',name:visitor.name,route:'agent-policy',role:null}:{button:el('crew-policy'),owner:agentId,key:agentId+':crew:'+selectedCrewRole,name:member.name,route:'crew-policy?role='+selectedCrewRole,role:selectedCrewRole});
  return targets;
 }

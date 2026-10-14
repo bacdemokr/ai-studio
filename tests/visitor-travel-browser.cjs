@@ -15,8 +15,8 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
     const s=BacDemo.snapshot();
     s.live=true;s.phase=role;s.selected=0;s.agents=s.agents.map((a,i)=>({...a,lane:0,displayed:i===0||i===role,included:i===0||i===role}));
     if(key){const a=fixtureAgents.find(a=>a.key===key);Object.assign(s.agents[role],{visitorKey:key,name:a.name,avatar:a.avatar,role:'Programmer',lane:1});}
-    s.crewMission={id,kind:'plan',status,visitorsActive:status==='running'||status==='stopping',assignedRoles:[role],activeStages:[role],enabledRoles:[0,role],completed:[]};
-    fixtureAgents.forEach(a=>a.activity=s.crewMission.visitorsActive?{kind:'mission',job:id,status}:null);
+    s.crewMission={id,kind:'plan',status,visitorsPresent:!['cancelled','error'].includes(status),assignedRoles:[role],activeStages:status==='running'?[role]:[],enabledRoles:[0,role],completed:status==='done'?[role]:[]};
+    fixtureAgents.forEach(a=>a.activity=['running','stopping'].includes(status)?{kind:'mission',job:id,status}:null);
     BacCampus.setCollection(fixtureAgents,'pixel');BacCampus.setLive(s);window.fixtureState=s;
    };
    BacCampus.setScenario('plan');BacCampus.setRoom('mission',{instant:true});BacCampus.setCollection(fixtureAgents,'pixel');
@@ -37,9 +37,12 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
   assert.deepEqual((await inspect()).visitorTravel[0].position,point);
   await page.evaluate(()=>{BacCampus.setScenario('plan');BacCampus.setLive(fixtureState);BacCampus.setRoom('lounge',{instant:true});BacCampus.setRoom('workshop',{instant:true});BacCampus.setRoom('mission',{instant:true});});
   assert.equal((await inspect()).visitorTravel[0].phase,'working');assert.deepEqual((await inspect()).visitorTravel[0].position,point);
-  await page.evaluate(()=>fixturePlan('done'));await wait(()=>BacCampus.inspect().visitorTravel.length===0);
-  assert((await inspect()).residents.find(r=>r.key==='pixel').visible);
-  await page.evaluate(()=>BacCampus.setLive(fixtureState));assert.equal((await inspect()).visitorTravel.length,0,'Completed history does not replay arrival');
+  await page.evaluate(()=>fixturePlan('done'));
+  assert.equal((await inspect()).visitorTravel[0].phase,'working');assert.deepEqual((await inspect()).visitorTravel[0].position,point);
+  assert(!(await inspect()).residents.find(r=>r.key==='pixel').visible);
+  await page.evaluate(()=>BacCampus.setLive(fixtureState));assert.deepEqual((await inspect()).visitorTravel[0].position,point,'Completed history keeps the same desk');
+  await page.evaluate(()=>{fixtureState.crewMission=null;fixtureState.agents.forEach((a,i)=>a.displayed=i===0);BacCampus.setLive(fixtureState);});
+  await wait(()=>BacCampus.inspect().visitorTravel.length===0);
   // Cancellation in the corridor must reverse from the current position.
   await page.evaluate(()=>fixturePlan('running','pixel',5,'job2'));await page.waitForTimeout(700);
   const before=(await inspect()).visitorTravel[0].position;
