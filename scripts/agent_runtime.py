@@ -40,7 +40,6 @@ VERBOSITIES = {
     'balanced': 'Default to a clear answer with enough context to act, without unnecessary detail.',
     'verbose': 'Default to a detailed answer with useful explanations, examples and relevant caveats. Avoid repetition and filler.',
 }
-EVENT_PAGE_SKILL = (Path(__file__).resolve().parents[1] / 'skills/bac-event-page/SKILL.md').read_text(encoding='utf-8')
 def project_skill(name):
     return (Path(__file__).resolve().parents[1] / ('skills/bac-'+name+'/SKILL.md')).read_text(encoding='utf-8').split('---',2)[2].strip()
 
@@ -54,12 +53,6 @@ SKILLS = {
     'data-analysis': ('Data interpretation', project_skill('data-analysis')),
     'interface-design': ('Interface design', project_skill('interface-design')),
     'radar': ('Tech Radar', project_skill('radar')),
-    'event-tools': ('Event execution tools', project_skill('event-tools')),
-    'event-scheduling': ('Presenter scheduling', project_skill('event-scheduling')),
-    'nvidia-webpage': ('NVIDIA event page', project_skill('nvidia-webpage')),
-    'nvidia-social': ('NVIDIA social copy', project_skill('nvidia-social')),
-    'nvidia-research': ('NVIDIA theme research', project_skill('nvidia-research')),
-    'event-page': ('Event page studio', EVENT_PAGE_SKILL.split('---', 2)[2].strip()),
     'web': ('Web research', project_skill('web')),
     'weather': ('Live weather', 'Use web_fetch to resolve the requested city at https://geocoding-api.open-meteo.com/v1/search?name=CITY&count=3&language=en&format=json . Confirm country or region when results are ambiguous. Use the returned latitude and longitude at https://api.open-meteo.com/v1/forecast?latitude=LAT&longitude=LON&current=temperature_2m,precipitation,weather_code&hourly=temperature_2m,precipitation_probability&forecast_days=1&timezone=auto . Report resolved location, local observation time, units, temperature, precipitation and source URLs. Distinguish current observations from hourly forecasts. Recommend an outdoor time only when supported by the retrieved hourly data. Do not invent weather when fetching fails.'),
     'documents': ('Three Takeaways', project_skill('documents')),
@@ -193,13 +186,6 @@ def ensure_openshell():
             raise RuntimeError('OpenShell setup did not pass verification. The protected request was not started.')
 
 
-def crew_event_instructions(member):
-    """Event contracts are injected only by the event pipeline, never general chats."""
-    directory = Path(__file__).resolve().parents[1] / 'crew' / member['id']
-    return '\n\n'.join((directory / name).read_text(encoding='utf-8')
-                       for name in ('SOUL.md', 'AGENTS.md') if (directory / name).is_file())
-
-
 def write_workspace(workspace, profile, role=None, overwrite=True):
     """Materialize definitions and skills without starting a runtime or model request."""
     protected = profile.get('protection', 'standard') == 'openshell'
@@ -221,11 +207,14 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
         # These formerly generic skills now impose personal-agent reply formats.
         # Remove their managed copies when upgrading an existing crew workspace.
         import shutil
-        for key in ('documents', 'writer'):
+        for key in ('documents', 'writer', 'event-page', 'event-tools', 'event-scheduling', 'nvidia-webpage', 'nvidia-social', 'nvidia-research'):
             retired = workspace / 'skills' / ('bac-' + key)
             if key not in equipped:
                 if retired.is_symlink():retired.unlink()
                 elif retired.is_dir():shutil.rmtree(retired)
+    if role:
+        # Retire the generated event contract; keep saved deliverables and memories.
+        (workspace/'EVENT_WORKFLOW.md').unlink(missing_ok=True)
     if not role and 'radar' not in equipped:
         import shutil
         retired = workspace/'skills/bac-radar'
@@ -234,8 +223,6 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
         heartbeat_file = workspace/'HEARTBEAT.md'
         if heartbeat_file.is_file() and not heartbeat_file.is_symlink() and heartbeat_file.read_text().startswith(('# Tech Radar\n','# Notes Watcher\n')):
             heartbeat_file.unlink()
-    event_exec = bool(role and 'event-tools' in equipped)
-    page_exec = bool(role == 'Marketing producer' and 'nvidia-webpage' in equipped)
     # User-authored fields are literal. Legacy profiles use the same visible UI defaults.
     persona = profile.get('purpose') or role or {
         'guide': 'Explains ideas and turns them into practical plans.',
@@ -302,12 +289,6 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
     if not protected:
         files['AGENTS.md'] = files['AGENTS.md'].replace('Work only in this workspace.',
             'Use this workspace for default working files and deliverables. You may read or write external files explicitly requested by the user, using the read, write and edit tools. Do not modify unrelated files. Host operating-system permissions still apply. Basic file access does not require an extra skill.')
-    if event_exec:
-        files['AGENTS.md'] = files['AGENTS.md'].replace('Never send messages, install software, change policy, or run shell commands.',
-            'Use exec to run the shipped skills/bac-event-tools/scripts/event_agent_tools.py commands for this event. Do not install software, change policies, send messages or publish. Read and edit your workspace files using native file tools. Tool results are evidence; execute the tool rather than inventing its output.')
-    if page_exec:
-        files['AGENTS.md'] = files['AGENTS.md'].replace('Never send messages, install software, change policy, or run shell commands.',
-            'For sectionEditor 2, use native write tools only: the app collects page files automatically. Only legacy sectionEditor 1 tasks use exec for the shipped skills/bac-nvidia-webpage/scripts/event_page_sections.py apply/status commands. Do not install software, change policies, send messages or publish.')
     if protected:
         files['AGENTS.md'] = files['AGENTS.md'].replace('Never send messages, install software, change policy, or run shell commands.',
             'Never send messages, install software or change policy. Use sandbox exec for public read-only requests with /usr/bin/curl and workspace file operations. Work with uploaded files in inbox/ and save results in artifacts/. External host paths are not available; ask the user to upload a file instead. Website approvals do not grant file access.')
@@ -317,15 +298,6 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
             'Do not change policies, install software or attempt another transport after a denial. '
             'Ask the participant to approve the exact destination in the Policies tab, then retry. '
             'Inference uses the configured provider, separately from tool network access.\n')
-        if event_exec:
-            files['AGENTS.md'] += ('\n# Protected event research\n'
-                'Run the shipped Python event-tool commands with exec host=sandbox, never host=gateway. '
-                'Their network transport is /usr/bin/curl inside this sandbox. '
-                'NVIDIA Blog HTTPS reads (blogs.nvidia.com:443) have default approval, but the user may revoke it. '
-                'The current policy always wins. Research tool access failures allow only one retry of the same command. '
-                'When retryAllowed is false, end this turn immediately with a short failure report. Do not diagnose, validate missing artifacts or execute other commands. '
-                'Use native write/edit tools to save artifacts in your workspace. '
-                'On a failure report the actual error; do not try a host tool or another destination.\n')
     if not role and 'radar' in equipped:
         files['AGENTS.md'] = files['AGENTS.md'].replace('Never send messages, install software, change policy, or run shell commands.', 'Never send messages, install software or change policy. Use exec only for the shipped Tech Radar tool.')
         radar_host = 'sandbox' if protected else 'gateway'
@@ -347,33 +319,15 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
                                 '# Communication style\n' + expertise.get('voice', 'Be clear, practical and honest.') + '\n'
                                 '# Expertise\n' + expertise['description'] + '\n'
                                 '# Open Task role boundary\n' + expertise.get('scope', '') + '\n'
-                                'This boundary applies to Captain-delegated /goal work (/plan is an alias); ordinary direct requests and the explicit event pipeline use their own assignment.\n'
+                                'This boundary applies to Captain-delegated /goal work (/plan is an alias); ordinary direct requests use their own assignment.\n'
                                 '# Task scope\nComplete the current assignment using actual available tools. '
-                                'Do not substitute an event or marketing deliverable for a different request. '
+                                'Deliver the requested result. '
                                 'Never invent tool results, citations, testing or other agents\' work.\n')
             files['AGENTS.md'] += ('\n# Crew context\nRead IDENTITY.md and SOUL.md for your expertise and USER.md for preferences. '
-                                  'Ordinary chats and /plan use the current request, not an event workflow. '
-                                  'Event-specific skills, templates, contracts and EVENT_WORKFLOW.md apply only when explicitly required '
-                                  'by the current event assignment. Do not load them for unrelated work. '
-                                  'Previous event briefs and artifacts are not evidence for a new task. '
-                                  'Produce the requested deliverable, not a default LinkedIn post, survey or event page.\n')
-            files['EVENT_WORKFLOW.md'] = crew_event_instructions(member)
+                                  'Complete the current request using only verified evidence and available tools. '
+                                  'Previous artifacts are not evidence for a new task unless explicitly supplied.\n')
             files['AGENTS.md'] += '\n# Actual capabilities and limits\n' + json.dumps(collaboration_capabilities(profile, role), ensure_ascii=False) + '\n'
     legacy_files = {}
-    if role and member and profile.get('_scenario') == 'event-brief' and member.get('event'):
-        legacy_files = dict(files)
-        legacy_files['IDENTITY.md'] = '# Identity\nName: ' + member['name'] + '\nRole: ' + member['collaboration']['title'] + '\nTeam: BaC\n'
-        event = member['event']
-        expertise = event['collaboration']
-        files['IDENTITY.md'] = '# Identity\nName: ' + event['name'] + '\nRole: ' + event['role'] + '\nTeam: Event Brief\n'
-        files['SOUL.md'] = ('# Character\n' + event['name'] + ', ' + event['role'] + ' in the Event Brief team.\n'
-                            '# Communication style\n' + expertise['voice'] + '\n# Expertise\n' + expertise['description'] +
-                            '\n# Role boundary\n' + expertise['scope'] + '\nNever invent tool results or other agents\' work.\n')
-        files['AGENTS.md'] = files['AGENTS.md'].replace(
-            'Ordinary chats and /plan use the current request, not an event workflow.',
-            'You belong to the Event Brief scenario. Use your event role for direct conversations. /goal orchestration belongs to the separate Open Task team.')
-        files['AGENTS.md'] += '\n# Event Brief assignment\n' + expertise['scope'] + '\n'
-        files['EVENT_WORKFLOW.md'] = files['EVENT_WORKFLOW.md'].replace('Casey', 'Riley')
     def write(target, content):
         previous = target.read_text(encoding='utf-8', errors='replace') if target.exists() else None
         if previous != content and (overwrite or previous is None or (target.name in legacy_files and previous == legacy_files[target.name])):
@@ -391,12 +345,6 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
         (workspace / 'MEMORY.md').write_text('# Saved preferences\n', encoding='utf-8')
     for skill in equipped:
         title, instruction = SKILLS[skill]
-        if role and skill in ('event-page', 'nvidia-webpage', 'nvidia-social', 'nvidia-research', 'event-scheduling', 'event-tools'):
-            instruction = ('SCOPE: Use this skill only for an explicit matching event or NVIDIA-content assignment. '
-                           'For an ordinary chat or /plan request in another domain, use the current assignment and '
-                           'your collaboration expertise instead. Do not substitute LinkedIn copy, NVIDIA branding, '
-                           'an event page or a timetable. Shipped event commands require the current task\'s valid contract; '
-                           'their presence does not authorize arbitrary code execution.\n\n' + instruction)
         if skill == 'radar':
             instruction = 'For this agent, use exec with host=' + ('sandbox' if protected else 'gateway') + '.\n\n' + instruction
         if protected and skill == 'documents':
@@ -420,21 +368,9 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
         directory.mkdir(exist_ok=True)
         write(directory / 'SKILL.md', '---\nname: bac-' + skill + '\ndescription: ' + SKILL_DESCRIPTIONS.get(skill, title) +
                                            '\n---\n\n' + instruction + '\n')
-        if skill == 'nvidia-webpage':
-            scripts = directory/'scripts';scripts.mkdir(exist_ok=True)
-            target = scripts/'event_page_sections.py'
-            copy(Path(__file__).with_name('event_page_sections.py'), target)
-            assets=directory/'assets'
-            assets.mkdir(exist_ok=True)
-            write(assets/'event.css', (Path(__file__).resolve().parents[1]/'skills/bac-nvidia-webpage/assets/event.css').read_text())
         if skill == 'radar':
             scripts=directory/'scripts';scripts.mkdir(exist_ok=True)
             copy(Path(__file__).with_name('tech_radar.py'), scripts/'tech_radar.py', replace=True)
-        if skill == 'event-tools':
-            scripts=directory/'scripts';scripts.mkdir(exist_ok=True)
-            for module in ('event_agent_tools','event_planner','event_rotation','event_staffing','event_dates','event_timetable','nvidia_research','event_theme_content','research_http'):
-                target=scripts/(module+'.py')
-                copy(Path(__file__).with_name(module+'.py'), target)
 
 
 def bootstrap_host():
@@ -461,10 +397,9 @@ def tool_allowlist(profile, role=None):
         return ['read'] if profile['_planControl'] == 'read' else []
     protected = profile.get('protection', 'standard') == 'openshell'
     equipped = list(profile.get('skills', []))
-    event_exec = bool(role and not protected and ('event-tools' in equipped or (role == 'Marketing producer' and 'nvidia-webpage' in equipped)))
     radar_exec = not role and 'radar' in equipped
     allow = ['read'] if protected else ['read', 'write', 'edit']
-    if protected and any(s in equipped for s in ('memory', 'builder', 'writer', 'event-page', 'nvidia-webpage', 'event-tools', 'radar')):
+    if protected and any(s in equipped for s in ('memory', 'builder', 'writer', 'radar')):
         allow += ['write', 'edit']
     # Research handoffs need native file writes too, inside the same protected workspace.
     if protected and 'web' in equipped and 'write' not in allow:
@@ -476,7 +411,7 @@ def tool_allowlist(profile, role=None):
     # Runtime setup enables keyless Parallel search for standard research agents only.
     if 'web' in equipped and search_enabled() and not protected:
         allow += ['web_search']
-    if protected or event_exec or radar_exec:
+    if protected or radar_exec:
         allow += ['exec']
     return allow
 
@@ -528,7 +463,6 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
     workspace = Path(workspace)
     write_workspace(workspace, profile, role)
     equipped = list(profile['skills'])
-    event_exec = bool(role and not protected and ('event-tools' in equipped or (role == 'Marketing producer' and 'nvidia-webpage' in equipped)))
     radar_exec = not role and 'radar' in equipped
     allow = tool_allowlist(profile, role)
     with config_lock():
@@ -552,7 +486,7 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
             'name': profile['name'], 'workspace': str(workspace), 'model': model,
             'modelPolicy': {'allow': [model]}, 'skills': ['bac-' + x for x in equipped],
             'sandbox': {'mode': 'all', 'backend': 'openshell', 'scope': 'agent', 'workspaceAccess': 'rw'} if protected else {'mode': 'off'},
-            'tools': {'allow': allow, 'deny': ['web_fetch', 'web_search'] if protected else [] if event_exec or radar_exec else ['exec'],
+            'tools': {'allow': allow, 'deny': ['web_fetch', 'web_search'] if protected else [] if radar_exec else ['exec'],
                       'fs': {'workspaceOnly': protected}},
         }
         if team_models.role_for(agent_id) is not None and not protected:
@@ -572,7 +506,7 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
         if protected:
             entry['tools']['exec'] = {'host': 'sandbox', 'security': 'full', 'ask': 'off'}
             config['tools']['deny'] = [x for x in config['tools'].get('deny', []) if x != 'exec']
-        elif event_exec or radar_exec:
+        elif radar_exec:
             entry['tools']['exec'] = {'host':'gateway','security':'full','ask':'off'}
             config['tools']['deny'] = [x for x in config['tools'].get('deny', []) if x != 'exec']
         if radar_exec:
@@ -581,7 +515,7 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
         # Publish real instruction edits even when the equipped skill names and
         # model stay the same. File watching is disabled for app-managed skills.
         revision = hashlib.sha256(json.dumps(entry, sort_keys=True).encode())
-        definitions = [workspace/name for name in ('IDENTITY.md', 'SOUL.md', 'AGENTS.md', 'HEARTBEAT.md', 'EVENT_WORKFLOW.md')]
+        definitions = [workspace/name for name in ('IDENTITY.md', 'SOUL.md', 'AGENTS.md', 'HEARTBEAT.md')]
         definitions += [workspace/'skills'/('bac-'+skill)/'SKILL.md' for skill in equipped]
         for definition in definitions:
             if definition.is_file():
@@ -604,7 +538,7 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
                          f'agents.entries.{agent_id}.modelPolicy.allow',
                          f'agents.entries.{agent_id}.tools.allow',
                          f'agents.entries.{agent_id}.tools.deny']
-        if protected or event_exec or radar_exec:
+        if protected or radar_exec:
             patch['tools']['deny'] = config['tools']['deny']
             replace_paths.append('tools.deny')
         if bootstrap:

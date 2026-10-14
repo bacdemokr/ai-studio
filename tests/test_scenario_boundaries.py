@@ -1,25 +1,17 @@
-"""Two-scenario lifecycle and HTTP isolation checks with no live runtimes."""
-import http.client
-import json
-import tempfile
-import threading
-import unittest
+"""Open Task ownership, reset and retired-route checks with isolated HTTP."""
+import http.client,json,tempfile,threading,unittest
 from unittest.mock import patch
-
-from test_studio import Studio, Adapter, Problem
+from test_studio import Studio,Adapter,Problem
 from serve import create_server
 import team_models
 
-
 class ScenarioBoundaryTests(unittest.TestCase):
     def setUp(self):
-        folder = tempfile.TemporaryDirectory()
-        self.addCleanup(folder.cleanup)
-        self.adapter = Adapter()
-        self.app = Studio(folder.name, self.adapter, start_worker=False)
-        self.person = self.app.session()[0]
-        self.owner = self.person['id']
-        self.teams = {s: self.app.crew_owner(self.owner, s) for s in ('plan', 'event-brief')}
+        folder=tempfile.TemporaryDirectory();self.addCleanup(folder.cleanup)
+        self.adapter=Adapter();self.app=Studio(folder.name,self.adapter,start_worker=False)
+        self.person=self.app.session()[0];self.owner=self.person['id']
+        self.teams={'plan':self.app.crew_owner(self.owner)}
+        self.other=self.app.session()[0];self.other_team=self.app.crew_owner(self.other['id'])
 
     def finish(self):
         while (row := self.app.next_job()) is not None:
@@ -29,71 +21,6 @@ class ScenarioBoundaryTests(unittest.TestCase):
         path = self.app.workspace(self.teams[scenario]) / 'artifacts' / name
         path.write_text(scenario)
         return path
-
-    def test_scoped_reset_drains_only_its_running_job_and_fences_new_work(self):
-        rows = {}
-        for scenario, owner in self.teams.items():
-            self.saved(scenario)
-            self.app.enqueue(owner, {'kind': 'crew-chat', 'crewRole': 0, 'prompt': 'hello'})
-            rows[scenario] = self.app.next_job()
-            self.assertEqual(rows[scenario]['owner'], owner)
-        self.assertTrue(self.app.reset_crew_chats(self.teams['plan'], reset_event=True)['resetting'])
-        self.assertTrue(self.app.state(self.owner)['bacResetting'])
-        self.assertFalse(self.app.state(self.owner, 'event-brief')['bacResetting'])
-        with self.assertRaises(Problem):
-            self.app.upload(self.teams['plan'], {'crewRole': 0, 'name': 'blocked.md', 'content': 'blocked'})
-        with self.assertRaises(Problem):
-            self.app.enqueue(self.teams['plan'], {'kind': 'crew-chat', 'crewRole': 5, 'prompt': 'blocked'})
-        self.app.execute(rows['plan'])
-        self.app.finish_pending_bac_resets()
-        self.assertEqual(self.app.state(self.owner)['crewChats'], [])
-        self.assertFalse((self.app.workspace(self.teams['plan']) / 'artifacts/report.md').exists())
-        self.assertEqual(self.app.state(self.owner, 'event-brief')['crewChats'][0]['status'], 'running')
-        self.app.execute(rows['event-brief'])
-        self.assertEqual(self.app.state(self.owner, 'event-brief')['crewChats'][0]['status'], 'done')
-        self.assertEqual((self.app.workspace(self.teams['event-brief']) / 'artifacts/report.md').read_text(), 'event-brief')
-
-    def test_reset_all_waits_for_both_teams_and_preserves_models(self):
-        with patch.object(team_models, 'public', return_value={'models': [{'id': m} for m in team_models.MODELS]}):
-            team_models.select(self.app, self.teams['plan'], {'role': 0, 'model': team_models.MODELS[1]})
-        before = {scenario: team_models.selections(self.app, owner) for scenario, owner in self.teams.items()}
-        rows = []
-        for scenario, owner in self.teams.items():
-            self.saved(scenario)
-            self.app.upload(owner, {'crewRole': 0, 'name': 'notes.md', 'content': scenario})
-            self.app.enqueue(owner, {'kind': 'crew-chat', 'crewRole': 0, 'prompt': 'hello'})
-            rows.append(self.app.next_job())
-        self.assertTrue(self.app.reset_crew_chats(self.owner, reset_event=True)['resetting'])
-        for scenario in self.teams:
-            self.assertTrue(self.app.state(self.owner, scenario)['bacResetting'])
-        self.app.execute(rows[0]); self.app.finish_pending_bac_resets()
-        self.assertTrue(self.app.state(self.owner)['bacResetting'])
-        self.app.execute(rows[1]); self.app.finish_pending_bac_resets()
-        for index, (scenario, owner) in enumerate(self.teams.items()):
-            state = self.app.state(self.owner, scenario)
-            self.assertFalse(state['bacResetting'])
-            self.assertEqual(state['crewChats'], [])
-            self.assertEqual(state['crewDocuments'], [])
-            self.assertEqual(state['teamSelections'], before[scenario])
-            self.assertFalse((self.app.workspace(owner) / 'artifacts/report.md').exists())
-
-    def test_uploaded_document_counts_as_saved_work_without_a_chat(self):
-        self.app.upload(self.teams['plan'], {'crewRole': 0, 'name': 'notes.md', 'content': 'Read this later'})
-        status = {s['id']: s for s in self.app.scenario_status(self.owner)}
-        self.assertTrue(status['plan']['hasWork'])
-        self.assertFalse(status['event-brief']['hasWork'])
-        self.app.reset_crew_chats(self.teams['plan'], reset_event=True)
-        self.assertFalse(next(s for s in self.app.scenario_status(self.owner) if s['id'] == 'plan')['hasWork'])
-
-    def test_lounge_deletion_preserves_both_teams(self):
-        self.app.onboard(self.owner, {'name': 'Guest', 'skills': ['weather']})
-        for scenario in self.teams:
-            self.saved(scenario)
-        self.finish()
-        fresh = self.app.delete_agent(self.owner, {'name': 'Guest'})['agentId']
-        for scenario, owner in self.teams.items():
-            self.assertEqual(self.app.crew_owner(fresh, scenario), owner)
-            self.assertTrue((self.app.workspace(owner) / 'artifacts/report.md').exists())
 
     def server(self):
         server = create_server('127.0.0.1', 0, self.app)
@@ -109,59 +36,39 @@ class ScenarioBoundaryTests(unittest.TestCase):
         response = connection.getresponse(); status = response.status; result = json.loads(response.read()); connection.close()
         return status, result
 
-    def test_http_reset_scope_and_scenario_validation(self):
+    def test_retired_routes_cannot_allocate_or_run_work(self):
         self.server()
-        for scenario, owner in self.teams.items():
-            self.app.enqueue(owner, {'kind': 'crew-chat', 'crewRole': 0, 'prompt': scenario})
-        self.finish()
-        self.assertEqual(self.request('bac-reset', payload={'scope': 'typo'})[0], 400)
-        self.assertEqual(self.request('bac-reset', scenario='missing', payload={'scope': 'all'})[0], 400)
-        self.assertTrue(self.app.state(self.owner)['crewChats'])
-        self.assertEqual(self.request('bac-reset', scenario='event-brief', payload={'scope': 'scenario'})[0], 200)
-        self.assertTrue(self.app.state(self.owner)['crewChats'])
-        self.assertEqual(self.app.state(self.owner, 'event-brief')['crewChats'], [])
-
-    def test_http_plan_requires_open_task_captain_even_with_scenario_header(self):
-        self.app.onboard(self.owner, {'name':'Guest','skills':['web']})
-        self.server()
-        for scenario in self.teams:
-            for kind in ('chat','reminder'):
-                with self.subTest(scenario=scenario, kind=kind):
-                    status, result=self.request('jobs', scenario, {'kind':kind,'prompt':'  /plans\nBuild a page'})
-                    self.assertEqual(status, 400)
-                    self.assertIn('Casey in Open Task', str(result))
-        for scenario, role in (('event-brief',0),('event-brief',1),('plan',5),('plan',8)):
-            self.assertEqual(self.request('jobs', scenario, {'kind':'crew-chat','crewRole':role,'prompt':'/plan Build a page'})[0], 400)
+        with self.app.db() as db:before=db.execute('SELECT COUNT(*) FROM agents').fetchone()[0]
+        for path,data in [('prepare-demo',{}),('event-plan',{}),('survey-replan',{}),('jobs',{'kind':'crew'}),('jobs',{'kind':'prepare'})]:
+            self.assertEqual(self.request(path,payload=data)[0],410,path)
+        for path in ('event-catalog','survey-report'):
+            self.assertEqual(self.request(path)[0],410,path)
+        self.assertEqual(self.request('state','event-brief')[0],400)
         with self.app.db() as db:
-            self.assertEqual(db.execute('SELECT COUNT(*) FROM jobs').fetchone()[0], 0)
-        status, result=self.request('jobs', 'plan', {'kind':'crew-chat','crewRole':0,'prompt':'  /plans\nBuild a page'})
-        self.assertEqual(status, 200)
-        self.assertTrue(result['collaboration'])
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM agents').fetchone()[0],before)
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM jobs').fetchone()[0],0)
+        self.assertEqual(self.adapter.calls,[])
 
-    def test_http_same_named_artifacts_require_the_requested_scenario(self):
-        self.server()
-        for scenario in self.teams: self.saved(scenario)
-        for scenario in self.teams:
-            status, result = self.request('file?path=artifacts/report.md', scenario)
-            self.assertEqual(status, 200)
-            self.assertEqual(result['content'], scenario)
-        self.app.reset_crew_chats(self.teams['plan'], reset_event=True)
-        self.assertEqual(self.request('file?path=artifacts/report.md', 'plan')[0], 404)
-        self.assertEqual(self.request('file?path=artifacts/report.md', 'event-brief')[1]['content'], 'event-brief')
+    def test_reset_is_scoped_to_open_task_and_preserves_hired_files(self):
+        self.app.onboard(self.owner,{'name':'Guest','skills':[]})
+        personal=self.app.workspace(self.owner)/'artifacts/personal.md';personal.write_text('Keep')
+        other=self.app.workspace(self.other_team)/'artifacts/other.md';other.write_text('Other account')
+        self.saved('plan');self.server()
+        self.assertEqual(self.request('bac-reset',payload={'scope':'typo'})[0],400)
+        self.assertEqual(self.request('bac-reset',payload={'scope':'scenario'})[0],200)
+        self.assertFalse((self.app.workspace(self.teams['plan'])/'artifacts/report.md').exists())
+        self.assertEqual(personal.read_text(),'Keep');self.assertEqual(other.read_text(),'Other account')
 
-    def test_http_file_and_reset_scopes_do_not_cross_participants(self):
-        self.server()
-        other = self.app.session()[0]
-        for scenario in self.teams:
-            self.saved(scenario)
-            self.assertEqual(self.request('file?path=artifacts/report.md', scenario, token=other['token'])[0], 404)
-            team = self.app.crew_owner(other['id'], scenario)
-            (self.app.workspace(team) / 'artifacts/private.md').write_text('Other participant')
-        self.assertEqual(self.request('bac-reset', payload={'scope': 'all'})[0], 200)
-        for scenario in self.teams:
-            self.assertEqual(self.request('file?path=artifacts/private.md', scenario)[0], 404)
-            self.assertEqual(self.request('file?path=artifacts/private.md', scenario, token=other['token'])[1]['content'], 'Other participant')
+    def test_files_do_not_cross_account_or_retired_room(self):
+        self.saved('plan');self.server()
+        self.assertEqual(self.request('file?path=artifacts/report.md')[1]['content'],'plan')
+        self.assertEqual(self.request('file?path=artifacts/report.md',token=self.other['token'])[0],404)
+        self.assertEqual(self.request('file?path=artifacts/report.md','event-brief')[0],400)
 
-
-if __name__ == '__main__':
-    unittest.main()
+    def test_only_current_slots_receive_new_workspaces(self):
+        team=self.teams['plan']
+        with self.app.db() as db:roles={r[0] for r in db.execute('SELECT role FROM crew_resources WHERE owner=?',(team,))}
+        self.assertEqual(roles,{0,4,5,6,7,8})
+        for role in (1,2,3):
+            self.assertFalse(self.app.workspace(team,role).exists())
+            with self.assertRaises(Problem):self.app.enqueue(team,{'kind':'crew-chat','crewRole':role,'prompt':'Hi'})

@@ -21,14 +21,8 @@ The collector accepts only the exact requested session, a fresh version-1 snapsh
 
 Focused checks: `tests/test_telemetry.py` exercises aggregate/context separation, stale/missing values, six-role persistence, participant isolation and repeat reads. `tests/telemetry-mission.cjs` checks mission-scoped displays with fixture data; remote browser checks also cover opening Usage & time. Live inference validation requires a configured model.
 
-## Event Brief timing
+## Open Task Usage & time
 
-The current Event Brief crew is Riley, Dylan, Alex and Morgan. Riley is required; the other three are selected by default and can be omitted. Dylan's research and Alex's operations calls can overlap after Riley's brief. Morgan follows their selected contributions. Preparation, saved-state updates and exports are serialized; a provider may still queue concurrent calls.
-
-A failure preserves completed contributions and blocks dependent stages. Stop waits for in-flight work before proceeding with cleanup. Older saved job schemas may include extra review, survey and event-page roles; their metrics remain readable, but those are not the current crew picker.
-
-## Per-scenario Usage & time
-
-After an Event Brief or Open Task run, open **Usage & time** in the scenario controls to see recorded input/output tokens and a breakdown by agent and endpoint. **Total elapsed** runs from submission to completion, including queueing and waits. **Agent time** includes the complete OpenClaw turn, including model responses and tools; it is not inference-only latency. **Turns** counts recorded agent responses, not underlying provider HTTP calls. Concurrent turns can have a combined time greater than wall time.
+After an Open Task run, open **Usage & time** in the scenario controls to see recorded input/output tokens and a breakdown by agent and endpoint. **Total elapsed** runs from submission to completion, including queueing and waits. **Agent time** includes the complete OpenClaw turn, including model responses and tools; it is not inference-only latency. **Turns** counts recorded agent responses, not underlying provider HTTP calls. Concurrent turns can have a combined time greater than wall time.
 
 Repairs retain each recorded response rather than replacing the previous attempt. A saved response is counted only once. Older records remain readable, but previously overwritten attempts and failed/lost responses without usage cannot be reconstructed. Missing token values are unknown, not zero. These numbers support demo comparisons, not billing reconciliation.

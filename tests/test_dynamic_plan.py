@@ -49,14 +49,12 @@ class DynamicPlanTests(unittest.TestCase):
 
     def test_default_definitions_do_not_force_event_deliverables(self):
         team = self.app.crew_owner(self.owner)
-        workspace = self.app.workspace(team, 3)
+        workspace = self.app.workspace(team, 5)
         automatic = '\n'.join((workspace / name).read_text() for name in ('AGENTS.md', 'SOUL.md'))
         self.assertNotIn('LINKEDIN-FIRST', automatic)
         self.assertNotIn('Finish with at most 20 words', automatic)
-        self.assertIn('requested format', automatic)
-        event = (workspace / 'EVENT_WORKFLOW.md').read_text()
-        self.assertIn('LINKEDIN-FIRST', event)
-        self.assertIn('Finish with at most 20 words', event)
+        self.assertIn('current assignment', automatic)
+        self.assertFalse((workspace/'EVENT_WORKFLOW.md').exists())
 
     def test_new_reserves_run_on_existing_team_without_changing_event_roster(self):
         from studio import Studio
@@ -70,7 +68,7 @@ class DynamicPlanTests(unittest.TestCase):
             self.assertEqual(self.app.crew_owner(self.owner), team)
             self.assertEqual(self.app.crew_native_id(team, 1), original)
             with self.app.db() as db:
-                self.assertEqual(db.execute('SELECT COUNT(*) FROM crew_resources WHERE owner=?', (team,)).fetchone()[0], 9)
+                self.assertEqual(db.execute('SELECT COUNT(*) FROM crew_resources WHERE owner=?', (team,)).fetchone()[0], 6)
         self.assertEqual(self.adapter.agents, {})
         self.adapter.plan['tasks'] = [{'role': 6, 'task': 'Interpret the table'}, {'role': 7, 'task': 'Design the display'}, {'role': 5, 'task': 'Implement the display'}]
         result = self.start('/plan Interpret this table and design a dashboard.')

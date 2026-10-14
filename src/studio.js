@@ -39,9 +39,9 @@
   let roles = window.BacCrewCatalog.map(({name,collaboration})=>[name,collaboration.title,collaboration.description]);
   let defaultNames=roles.map(r=>r[0]);
   const stageScenarios=/* STAGE_SCENARIOS */;
-  let selectedScenario='plan',scenarioChoosing=true,scenarioSwitching=false;
+  let selectedScenario='plan',scenarioChoosing=false,scenarioSwitching=false;
   try{const saved=sessionStorage.getItem('bac-stage3-scenario');if(stageScenarios.some(s=>s.id===saved))selectedScenario=saved;}catch{}
-  function scenarioRoles(){roles=window.BacCrewCatalog.map(base=>{const member=selectedScenario==='event-brief'?{...base,...base.event}:base;return [member.name,member.collaboration.title,member.collaboration.description];});defaultNames=roles.map(r=>r[0]);}
+  function scenarioRoles(){roles=window.BacCrewCatalog.map(base=>{const member=base;return [member.name,member.collaboration.title,member.collaboration.description];});defaultNames=roles.map(r=>r[0]);}
   function crewDraftKey(role){return selectedScenario+':'+agentId+':'+role;}
   scenarioRoles();
   const personaLabels={guide:'Helper',maker:'Creator',analyst:'Researcher'};
@@ -241,7 +241,6 @@
   modelBadge.onclick=e=>{e.stopPropagation();if(modelBadge.dataset.actionable==='true')connectionAction();};
   modelBadge.onkeydown=e=>{if(modelBadge.dataset.actionable==='true'&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();connectionAction();}};
   function runtimeBadge(){
-    warmCrewOnOpen();
     syncCrewComposer();
     const state=gatewayState(),slow=state==='slow',modelConnected=room==='mission'?(teamRuntime().teamModel??runtime.model):room==='lounge'&&data.profile?personalModel(data.profile).connected:runtime.model,viewReady=room==='mission'?teamReady():room==='lounge'&&data.profile?personalReady(data.profile):runtime.ready,ready=!!viewReady&&!runtime.testFixture;
     const actionable=!runtime.testFixture&&!runtimeRetrying&&(!runtime.gateway||(!modelConnected&&!settingsButton.hidden));
@@ -321,7 +320,6 @@
   }
   el('assigned-crew').onclick=async()=>{const a=data.assignments?.[0];if(!a)return;await switchAgent(a.lead);if(agentId===a.lead){selectedJob=a.job;render();showBoard(true);}};
   function renderCrew(){
-    if(selectedScenario==='event-brief')return renderEventCrew();
     window.BacSound?.observeJobs(agentId,data.jobs);
     renderMissionControl();
     const active=room==='mission'?null:data.jobs.find(j=>['running','stopping'].includes(j.status))||data.jobs.find(j=>j.status==='waiting');
@@ -376,8 +374,8 @@
   /* STUDIO_WORLD */
   /* STUDIO_TELEMETRY */
   /* STUDIO_POLICIES */
-  /* STUDIO_EVENTS */
-  /* STUDIO_EVENT-TEAM */
+
+
   /* STUDIO_SURFACES */
   /* STUDIO_SCENARIOS */
   /* STUDIO_CHAT */
@@ -427,7 +425,7 @@
   };
   let booting=false;
   function showBrowserInUse(message){
-    connected=false;crewStartupReady=false;++refreshVersion;++agentSwitchVersion;
+    connected=false;++refreshVersion;++agentSwitchVersion;
     busy=false;changingAgent=false;settingsButton.hidden=true;
     el('dialog').close();dismissAlert();
     if('speechSynthesis' in window)window.speechSynthesis.cancel();
@@ -453,7 +451,7 @@
       runtimeBadge();render();
       let saved;try{saved=sessionStorage.getItem('bac-selected-agent');}catch{}
       if(saved&&saved!==agentId&&session.agents.some(a=>a.key===saved))await switchAgent(saved);else rememberSelection();
-      crewStartupReady=true;warmCrewOnOpen();
+
       delete root.dataset.boot;root.setAttribute('aria-busy','false');
     }catch(error){
       if(error.status===423){showBrowserInUse(error.message);return;}

@@ -35,7 +35,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===2&&BacCampus.inspect().visitorTravel.every(v=>v.phase==='seated'));
   const job=(await state()).crewChats.find(j=>j.payload.teamMode==='hired');assert.equal(job.status,'done');assert.equal(job.payload.collaboration.visitorBindings[5].name,'Pixel');
   await mode.selectOption('mixed');await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===2&&BacCampus.inspect().visitorTravel.every(v=>v.phase==='seated'));
-  await choose('event-brief');assert.equal(await mode.isVisible(),false);assert.equal(await page.locator('#studio-crew-name').innerText(),'Riley');
+  await page.locator('.world-room-map [data-world-room=lounge]').click();assert.equal(await mode.isVisible(),false);
   await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===0);
   await choose('plan');await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===2);
   await page.locator('#studio-bac-reset').click();await page.locator('#studio-team-reset-confirm').click();
@@ -44,6 +44,6 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   assert.equal((await state()).agents.length,2);
   await mode.selectOption('mixed');await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.name==='Orbit');await choose('plan');assert.equal(await mode.inputValue(),'hired');
   assert.deepEqual(errors,[]);
-  console.log('PASS: empty hired-only, visible Coding/Web research templates, all hires follow and sit, no idle model work, hired-only dispatch, desk movement, return to bench, mode switching, Event Brief isolation, Reset and data preservation. Real browser, simulated inference.');
+  console.log('PASS: empty hired-only, visible Coding/Web research templates, all hires follow and sit, no idle model work, hired-only dispatch, desk movement, return to bench, mode switching, Lounge isolation, Reset and data preservation. Real browser, simulated inference.');
  }finally{if(browser)await browser.close();if(server.exitCode===null){server.kill('SIGTERM');await new Promise(r=>server.once('exit',r));}}
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -23,7 +23,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await choose('plan');await page.locator('#studio-crew-prompt').fill('/goal Pixel이 Coding작업들을 대신하게 해줘. Build a counter.');
   assert.equal((await state()).crewChats.filter(j=>j.payload.collaboration).length,1);
   assert.match(await page.locator('#studio-crew-prompt').inputValue(),/Pixel/);
-  await toggle.selectOption('mixed');await choose('event-brief');assert.equal(await toggle.isVisible(),false);
+  await toggle.selectOption('mixed');await page.locator('.world-room-map [data-world-room=lounge]').click();
   await choose('plan');assert.equal(await toggle.inputValue(),'mixed');
   await page.screenshot({path:'/tmp/bac-hired-team-toggle.png'});
   await page.locator('#studio-crew-send').click();
@@ -59,7 +59,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   // Direct follow-up must reach Pixel, not the fallback Cody occupying this task slot.
   await page.locator('#studio-crew-prompt').fill('Hello Pixel.');await page.locator('#studio-crew-send').click();
   await page.waitForFunction(()=>BacStudio.inspect().room==='lounge'&&document.querySelector('#studio-conversation').textContent.includes('Fixture personal reply.'));
-  await choose('event-brief');assert.equal(await page.locator('#studio-crew-name').innerText(),'Riley');
+  await page.locator('.world-room-map [data-world-room=lounge]').click();
   await choose('plan');await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.name==='Pixel');
   assert.equal((await state()).crewChats.find(j=>j.id===job.id).payload.collaboration.visitorBindings[5].name,'Pixel');
   await choose('plan');
@@ -113,10 +113,10 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
    }
    assert.equal(retry?.status,'done');assert.deepEqual(retry.payload.collaboration.visitorBindings,{});
    assert.equal(retry.payload.roundtable.replies[guestKey].status,'done');
-   await choose('event-brief');assert.equal(await page.locator('#studio-crew-name').innerText(),'Riley');
+  await page.locator('.world-room-map [data-world-room=lounge]').click();
    await choose('plan');
   }
   assert.deepEqual(errors,[]);await page.screenshot({path:'/tmp/bac-visitor-teams-browser.png'});
-  console.log('PASS: default Hired only, explicit Hired + Standby without hires, named Pixel coding, locked running choice, identity/policy/files, generated preview, Event Brief isolation, reload default, standby work with personal reactions, hired-only cancellation and Reset followed by standby retry. Model inference simulated.');
+  console.log('PASS: default Hired only, explicit Hired + Standby without hires, named Pixel coding, locked running choice, identity/policy/files, generated preview, reload default, standby work with personal reactions, hired-only cancellation and Reset followed by standby retry. Model inference simulated.');
  }finally{if(browser)await browser.close();if(server.exitCode===null){server.kill('SIGTERM');await new Promise(resolve=>server.once('exit',resolve));}}
 })().catch(error=>{console.error(error);process.exitCode=1;});

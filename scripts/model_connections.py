@@ -193,7 +193,7 @@ def preferences(studio,data,owner=None,participant=None):
     team=data.get('team')
     if team is not None and team not in ('auto','local','api'):raise Problem('Choose Auto, Local model or API.')
     scenarios=data.get('scenarios',{})
-    if not isinstance(scenarios,dict) or any(k not in ('event-brief','plan') or v not in ('auto','local','api') for k,v in scenarios.items()):raise Problem('Choose a valid connection for each scenario.')
+    if not isinstance(scenarios,dict) or any(k != 'plan' or v not in ('auto','local','api') for k,v in scenarios.items()):raise Problem('Choose a valid connection for each scenario.')
     if scenarios and not participant:raise Problem('Open your Settings before changing scenarios.')
     owners={key:studio.crew_owner(participant,key) for key in scenarios}
     with _lock,studio.db() as db:
@@ -234,7 +234,7 @@ def prepare(studio,member,preference='auto',stage='team'):
     source,value=resolve(preference,stage)
     if not value:raise Problem('Model not connected. Configure a Local model or API in Settings.',503)
     # Copy only the sanitized runtime provider, never a credential, into agent instructions.
-    if source=='api' and value['_provider']=='nvidia' and stage=='team' and member.get('_scenario')!='event-brief':
+    if source=='api' and value['_provider']=='nvidia' and stage=='team':
         import team_models
         selected=member.get('_teamModel')
         if selected:
@@ -282,7 +282,7 @@ def models(data):
 
 def scenario_preferences(studio,participant):
     result={}
-    for key in ('event-brief','plan'):
+    for key in ('plan',):
         owner=studio.existing_crew_owner(participant,key)
         with studio.db() as db:
             row=db.execute('SELECT value FROM metadata WHERE key=?',('scenario-model:'+owner,)).fetchone() if owner else None

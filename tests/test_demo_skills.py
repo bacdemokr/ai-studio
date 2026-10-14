@@ -75,7 +75,7 @@ class DemoSkillsTests(unittest.TestCase):
             self.assertEqual(entry['sandbox']['backend'],'openshell')
             self.assertEqual(entry['sandbox']['mode'],'all')
             self.assertEqual(set(entry['tools']['deny']),{'web_fetch','web_search'})
-            runtime.register('test-page',Path(tmp)/'page',{'name':'Page','persona':'guide','skills':['nvidia-webpage'],'protection':'openshell'})
+            runtime.register('test-page',Path(tmp)/'page',{'name':'Page','persona':'guide','skills':['builder'],'protection':'openshell'})
             page_entry=json.loads(runtime.config_path().read_text())['agents']['entries']['test-page']
             self.assertIn('write',page_entry['tools']['allow']);self.assertIn('edit',page_entry['tools']['allow'])
             self.assertEqual(policy.policy_document()['network_policies'],{})

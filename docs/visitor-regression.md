@@ -22,8 +22,8 @@ Use this checklist alongside the general demo regression workflow. Run destructi
 ## Models, roles and permissions
 
 - Change an idle hire's model from its Open Task badge using search and keyboard navigation. Confirm the same model in Lounge, after reload, and during execution. Preserve its name, persona, skills, protection and saved work.
-- Before any plan exists, select two waiting hires in turn using their nameplates, keyboard and 3D bodies. Each opens its own panel and model picker without creating a task. Check polling, a saved Casey draft, deletion while the picker is open, assignment into a real role, completed contributions and navigation to Lounge/Event Brief. `node tests/standby-selection-browser.cjs` covers these journeys with disposable data and simulated inference.
-- Change Casey's and a built-in specialist's NVIDIA model from their Open Task badge or the standby list. Confirm the next reply uses the selected model and reload preserves it. Lock an already open picker when work starts or the connection drops, recover after completion/reconnect, and reject a save raced against a new task. Other members and Event Brief must remain unchanged. Run `node tests/captain-model-browser.cjs` for the isolated browser/dispatcher journey with simulated inference.
+- Before any plan exists, select two waiting hires in turn using their nameplates, keyboard and 3D bodies. Each opens its own panel and model picker without creating a task. Check polling, a saved Casey draft, deletion while the picker is open, assignment into a real role, completed contributions and navigation to Lounge/Hiring. `node tests/standby-selection-browser.cjs` covers these journeys with disposable data and simulated inference.
+- Change Casey's and a built-in specialist's NVIDIA model from their Open Task badge or the standby list. Confirm the next reply uses the selected model and reload preserves it. Lock an already open picker when work starts or the connection drops, recover after completion/reconnect, and reject a save raced against a new task. Other members must remain unchanged. Run `node tests/captain-model-browser.cjs` for the isolated browser/dispatcher journey with simulated inference.
 - Disable disconnected choices. Test Local-only, API-only, both connected, neither connected, and a previously selected model that disappears. Report fixture coverage separately from real Local/Spark execution.
 - Race a model selection against a new reservation or deletion. The server must reject a stale change without affecting another agent.
 - Exercise Programmer and Web researcher in Lounge and a collaboration. Inspect actual saved files, brief source links, persona, and working page controls.
@@ -31,7 +31,7 @@ Use this checklist alongside the general demo regression workflow. Run destructi
 - Exercise default deny, per-agent approval, revocation and a remote HTTP error after approval. Only fresh native policy denials should add an OpenShell explanation to a hired handoff; old events, another agent's events and ordinary HTTP/tool failures must not do so.
 - Pair a protected researcher with a standard programmer. Preserve the blocked research limitation in the final result while completing work possible from supplied data; do not silently reroute denied retrieval through the other agent. Test protected Weather-only offline work as well.
 - Submit immediately after hiring a protected agent. A running preparation must be described as preparing, preserve the draft and never substitute another participant. Retry after readiness.
-- Confirm Event Brief retains its fixed team, independent connection and results.
+- Confirm Stage 3 opens Open Task directly. No Event Brief room, setting, reset or background preparation request may appear, including after loading a saved session from the archived version.
 
 ## Results and recovery
 
@@ -50,7 +50,7 @@ Use this checklist alongside the general demo regression workflow. Run destructi
 Run the Python suite with `python3 -B -m unittest discover -s tests`. Browser suites need Playwright, Chrome and permission to start local fixture servers. Relevant entry points include:
 
 - `tests/team-modes-browser.cjs`, `tests/visitor-teams-browser.cjs`, `tests/visitor-travel-browser.cjs`, `tests/visitor-protection-browser.cjs`
-- `tests/personal-models-browser.cjs`, `tests/scenario-models-browser.cjs`, `tests/hiring-role-skills-browser.cjs`
-- `tests/reset-draft-browser.cjs`, `tests/scenario-isolation-browser.cjs`, `tests/remote-access-browser.cjs`
+- `tests/personal-models-browser.cjs`, `tests/open-task-only-browser.cjs`, `tests/hiring-role-skills-browser.cjs`
+- `tests/reset-draft-browser.cjs`, `tests/open-task-only-browser.cjs`, `tests/remote-access-browser.cjs`
 
 Inspect each runner's fixture setup before executing it. Record PASS, FAIL or BLOCKED for each journey, separate real API runs from fixtures, and keep hardware or policy limitations explicit. Include the failure reproduction and successful recheck when a regression is fixed.

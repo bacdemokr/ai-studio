@@ -215,7 +215,7 @@ class PlanInputs(unittest.TestCase):
                 instructions = (workspace / 'AGENTS.md').read_text()
                 self.assertIn('Actual capabilities and limits', instructions)
                 self.assertIn('Writing source files is not executing or testing them', instructions)
-                self.assertIn('Do not load them for unrelated work', instructions)
+                self.assertIn('Complete the current request', instructions)
                 self.assertIn(member['collaboration']['title'], (workspace / 'IDENTITY.md').read_text())
                 if member['collaboration'].get('scope'):
                     soul = (workspace / 'SOUL.md').read_text()

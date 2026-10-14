@@ -26,7 +26,7 @@ class CaseyDocumentTests(unittest.TestCase):
         with self.assertRaises(Problem):self.app.upload(self.owner,{'crewRole':0,'name':'../a.txt','content':'hello'})
 
     def test_internal_event_handoffs_never_become_user_attachments(self):
-        for scenario in ('plan', 'event-brief'):
+        for scenario in ('plan',):
             team = self.app.crew_owner(self.owner, scenario)
             work = self.app.workspace(team, 0)
             for name in ('handoffs.md', 'shared-brief.json'):

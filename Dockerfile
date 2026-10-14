@@ -35,7 +35,6 @@ LABEL org.opencontainers.image.title="BaC Agent Studio" \
 WORKDIR /opt/bac/app
 COPY scripts/ scripts/
 COPY src/ src/
-COPY crew/ crew/
 COPY skills/ skills/
 COPY runtime/research-guard/ runtime/research-guard/
 COPY docker/ docker/

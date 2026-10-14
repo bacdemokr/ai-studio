@@ -6,8 +6,6 @@
 !scripts/**
 !src/
 !src/**
-!crew/
-!crew/**
 !skills/
 !skills/**
 !tests/

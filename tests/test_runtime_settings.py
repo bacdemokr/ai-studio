@@ -51,10 +51,6 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(result['event']['region'],'')
         self.assertEqual(result['profiles'],{})
         self.assertFalse(r.config_path().exists())
-        import event_planner
-        brief,capacity=event_planner.plan({'region':'','city':'Boston'})
-        self.assertEqual(brief['region'],'')
-        self.assertGreater(capacity['boothCount'],0)
 
     def test_switch_updates_every_agent_without_changing_tools_and_masks_keys(self):
         config=r.initial_config();config['agents']['entries']['bac-test']={'model':r.MODEL,'tools':{'deny':['exec']},'sandbox':{'mode':'off'}};r.save_config(config)

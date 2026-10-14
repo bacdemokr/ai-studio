@@ -65,7 +65,7 @@ class AppPreflightTests(unittest.TestCase):
     def test_incomplete_or_broken_patch_rejected_without_changing_built_page(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
-            for name in ('scripts', 'src', 'crew', 'skills', 'runtime'):
+            for name in ('scripts', 'src', 'skills', 'runtime'):
                 shutil.copytree(ROOT / name, root / name,
                                 ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
             (root / 'app').mkdir()

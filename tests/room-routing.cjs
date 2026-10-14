@@ -14,7 +14,7 @@ const {chromium}=require('playwright');
   const nav=()=>page.evaluate(()=>BacCampus.inspect().navigation);
   const targetFocus=n=>[n.rooms.mission[0],.25,n.rooms.mission[2]+.6];
   await settled();await click('workshop');await settled();
-  for(const id of ['event-brief','plan']){
+  for(const id of ['plan']){
    const start=(await nav()).focus;
    await scenario(id);await page.waitForFunction(()=>BacCampus.inspect().navigation.travelling);
    assert.equal((await nav()).route.length,1,'One destination, no intermediate Lounge stop');
@@ -38,13 +38,13 @@ const {chromium}=require('playwright');
   await scenario('plan');await page.waitForFunction(()=>BacCampus.inspect().navigation.travelling);
   await click('lounge');await click('workshop');await settled();
   assert.deepEqual((await nav()).focus,[0,1,18.6]);
-  await scenario('event-brief');await page.setViewportSize({width:1280,height:800});await settled();
+  await scenario('plan');await page.setViewportSize({width:1280,height:800});await settled();
   assert.deepEqual((await nav()).focus,targetFocus(await nav()));
   await page.locator('.world-overview-button').click();await settled();assert((await nav()).overview);
   await scenario('plan');await settled();assert(!(await nav()).overview);
   await page.emulateMedia({reducedMotion:'reduce'});
   await click('workshop');assert(!(await nav()).travelling);
-  await scenario('event-brief');await page.waitForFunction(()=>BacCampus.inspect().navigation.activeScenario==='event-brief');
+  await scenario('plan');await page.waitForFunction(()=>BacCampus.inspect().navigation.activeScenario==='plan');
   assert(!(await nav()).travelling);assert.deepEqual((await nav()).focus,targetFocus(await nav()));
   assert.deepEqual(errors,[]);
   console.log('PASS: direct paths in both scenarios, return, rapid retargeting, resize, overview and reduced motion.');

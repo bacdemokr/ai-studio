@@ -2,9 +2,10 @@
 
 ## Branches and versions
 
-Current workflow (October 14, 2026):
+Current workflow (October 15, 2026):
 
-- `preview/visitor-agent-teams`: active hired-agent collaboration experiment, built on the established Stage 3 preview.
+- `preview/visitor-agent-teams`: Hiring, Agent Lounge and Open Task.
+- `archive/event-brief-final-2026-10-15`: exact final visitor version containing Event Brief, preserved before removal.
 - `preview/stage3-scenarios`: established preview, including the ping-pong example and stability fixes. Visitor changes are not promoted here automatically.
 - `dev`: testing snapshot from before the ping-pong example. Keep it unchanged until preview promotion is explicitly agreed.
 - `bac/1001-zurich`: frozen Zurich snapshot for existing event setups.
@@ -56,7 +57,7 @@ node tests/runtime-readiness.cjs
 BAC_TEST_URL=http://127.0.0.1:8083 node tests/settings-resilience.cjs
 ```
 
-Test URL variables differ in older browser scripts; inspect each before running it. Infrastructure checks and deterministic fixtures do not establish real model quality or Spark performance. Rehearse a personal task and a complete event on the target PC/model. [OpenShell verification](openshell-verification.md) covers real sandbox scenarios.
+Test URL variables differ in older browser scripts; inspect each before running it. Infrastructure checks and deterministic fixtures do not establish real model quality or Spark performance. Rehearse a personal task and a complete Open Task on the target PC/model. [OpenShell verification](openshell-verification.md) covers real sandbox scenarios.
 
 Browser admission and expired-session recovery use a separate disposable fixture:
 

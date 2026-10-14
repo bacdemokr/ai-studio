@@ -8,7 +8,7 @@ Use the intended branch on the target PC. This guide describes `preview/visitor-
 2. Run `./bac start` for a clean demo, or `./bac start --keep-data` to retain agents and rehearsals. Studio does not start the model server automatically.
 3. Open `http://localhost:8080` on the host or `http://SPARK_IP:8080` over the trusted LAN. Both provide Settings and the same demo controls.
 4. In **Settings → Model**, configure Local and/or External Endpoint. A validated `api.cfg` supplies NVIDIA automatically; the file is optional.
-5. Hired agents default to connected Local, otherwise the configured External Endpoint model; choose another model in Hiring or Edit agent. Under **Models**, select **Event Brief** and **Open Task** connections separately. Each selector shows the connection currently used; saved choices remain in effect.
+5. Hired agents default to connected Local, otherwise the configured External Endpoint model; choose another model in Hiring or Edit agent. Under **Models**, select the **Open Task** connection. The selector shows the connection currently used; saved choices remain in effect.
 
 Rehearse the selected tasks on the actual model and hardware. Use **Full screen** for presenting. Identify saved results as previous runs.
 
@@ -24,15 +24,7 @@ For manual chat, try a short document, weather or research request. Supported do
 
 For autonomous behavior, equip **Tech Radar**. The first check waits at least 10 seconds; later checks run every 20 seconds. Model work or runtime preparation can delay a summary. Chat, attachments and scheduled tasks stay disabled while this skill is equipped, even alongside other skills or while paused. Use **Pause / Resume**, or remove the skill to restore chat. Telegram sends only these summaries.
 
-## 3-1. Event Brief
-
-Riley coordinates Dylan (demo research), Alex (operations) and Morgan (event page and social draft). All use the connection model chosen for Event Brief.
-
-Open **Plan an event**, enter the brief and choose the crew. Riley is required. **Prepare demo** checks the selected agents; once ready, **Give the brief to my crew** launches the event. Watch **Mission Control**, then inspect **Results** and the saved deliverables.
-
-For an offline rehearsal, select Local and omit Dylan's live research, using Riley, Alex and Morgan. Rehearse this exact selection on the Spark beforehand. Fresh web research, live weather and Telegram still need internet access.
-
-## 3-2. Open Task
+## 3. Open Task
 
 Casey coordinates up to three specialists. Select a team before sending `/goal`:
 
@@ -71,14 +63,14 @@ Use **Mission Control** for assignments and handoffs, **Results** for the answer
 
 Independent review needs a different agent from the producer. In Hired only, hire a second suitable agent if you request this. Requested independent review must finish before the task can be complete. Reviews are static unless actual execution evidence exists. Open Task allows one shared recovery/repair attempt; incomplete work stays marked partial. Personal reactions from hired agents are opinions, not independent reviews.
 
-The team choice is locked during work. Changing it after completion retains previous results; Reset Open Task first for a clean rehearsal. Reload and reset default new tasks to Hired only. Event Brief keeps its separate fixed team.
+The team choice is locked during work. Changing it after completion retains previous results; Reset Open Task first for a clean rehearsal. Reload and reset default new tasks to Hired only.
 
 ## Recovery and cleanup
 
 - **Waiting for model:** check that the selected connection is enabled and ready. **Waiting for runtime:** check OpenClaw. **Waiting for other agents:** foreground work is delaying Heartbeat.
 - **Partial result:** inspect saved work and the error before retrying. A new request can repeat writes. Neither a saved file nor its preview proves correctness.
 - **Context/output errors:** context defaults to 32K; output is capped at 16K per response and reduced for smaller contexts. These are demo settings, not a universal model limit. Narrow broad requests and keep inputs compact; see [model settings](runtime-settings.md#context-and-output-budgets).
-- **Reset scenario:** stops and clears only the selected Stage 3 scenario. **Remove agents:** removes hired agents and their data. **Reset all:** clears both scenarios and hired agents. Model settings remain. Empty resets are disabled.
+- **Reset Open Task:** stops and clears team work. **Remove agents:** removes hired agents and their data. **Reset all:** clears Open Task and hired agents. Model settings remain. Empty resets are disabled.
 - `./bac stop` stops the app and preserves data. `./bac stop --all` also stops its managed model and removes the Compose stack and data volumes. Model weights remain.
 
 - **Connection lost after a contribution:** saved files remain available as a partial result. Restore the connection before asking Casey to continue; completed work is not automatically repeated.

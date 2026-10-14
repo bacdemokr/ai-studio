@@ -20,7 +20,7 @@ class CrewOwnership:
             if not isinstance(selection, str) or not selection.isascii() or not selection.isdecimal():
                 raise Problem('Choose a valid workspace.')
             role = int(selection)
-            if role not in range(len(CREW_CATALOG)) or (scenario == 'event-brief' and role >= 4) or (scenario == 'plan' and CREW_CATALOG[role].get('planEligible') is False):
+            if role not in range(len(CREW_CATALOG)) or CREW_CATALOG[role].get('planEligible') is False:
                 raise Problem('Choose a member of this scenario.')
         team = self.existing_crew_owner(owner, scenario)
         return team, role
@@ -42,7 +42,7 @@ class CrewOwnership:
 
     def scenario_status(self, owner):
         from scenarios import SCENARIOS
-        from studio import ROLES
+        from studio import ROLES, ACTIVE_ROLES
         with self.db() as db:
             result=[]
             for scenario in SCENARIOS:
@@ -53,13 +53,13 @@ class CrewOwnership:
                 busy=bool(team and db.execute("SELECT 1 FROM jobs WHERE owner=? AND status IN ('queued','running','waiting','stopping') LIMIT 1",(team['owner'],)).fetchone())
                 reset=self.crew_chat_reset_state(db,team['owner'])['at'] if team else 0
                 if latest and latest['updated']<reset:latest=None
-                saved_files = [f for role in (None, *range(len(ROLES)))
+                saved_files = [f for role in (None, *ACTIVE_ROLES)
                                for f in self.files(team['owner'], role, recursive=True)] if team and not latest else []
                 result.append(dict(id=scenario,hasWork=bool(latest or saved_files),busy=busy,status=latest['status'] if latest else None,updated=latest['updated'] if latest else max((f['updated'] for f in saved_files), default=None)))
         return result
 
     def initialize_crew_ownership(self):
-        from studio import ROLES
+        from studio import ROLES, ACTIVE_ROLES
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
             if 'kind' not in {r['name'] for r in db.execute('PRAGMA table_info(agents)')}:
@@ -82,16 +82,16 @@ class CrewOwnership:
                 db.execute('ALTER TABLE crew_resources ADD COLUMN model TEXT')
             # Expand each existing team's explicitly owned reserve roster. This
             # creates ownership records only, not native runtimes or sandboxes.
-            for row in db.execute('SELECT owner FROM crew_contexts').fetchall():
+            for row in db.execute("SELECT owner FROM crew_contexts WHERE scenario='plan'").fetchall():
                 team = row['owner']
-                for role in range(len(ROLES)):
+                for role in ACTIVE_ROLES:
                     db.execute('INSERT OR IGNORE INTO crew_resources(owner,role,native_id,workspace_name,chat_session) VALUES (?,?,?,?,?)',
                                (team, role, 'bac-'+team+'-r'+str(role), team+'-'+str(role), 'bac-crew-chat-'+team+'-'+str(role)))
             self.crew_resources = {(r['owner'],r['role']):dict(r) for r in db.execute('SELECT * FROM crew_resources')}
 
     def crew_owner(self, owner, scenario=None):
         """Resolve the authenticated owner's shared team; never another account's."""
-        from studio import Problem, ROLES
+        from studio import Problem, ROLES, ACTIVE_ROLES
         from scenarios import validate
         if scenario is not None:validate(scenario)
         resources = []
@@ -111,11 +111,11 @@ class CrewOwnership:
                 team = secrets.token_hex(12)
                 db.execute("INSERT INTO agents(id,participant,created,kind) VALUES (?,?,?,'crew')", (team,account['participant'],time.time()))
                 db.execute('INSERT INTO crew_contexts(owner,participant,scenario) VALUES (?,?,?)', (team,account['participant'],scenario))
-                for role in range(len(ROLES)):
+                for role in ACTIVE_ROLES:
                     resource=dict(owner=team,role=role,native_id='bac-'+team+'-r'+str(role),workspace_name=team+'-'+str(role),chat_session='bac-crew-chat-'+team+'-'+str(role))
                     db.execute('INSERT INTO crew_resources(owner,role,native_id,workspace_name,chat_session) VALUES (:owner,:role,:native_id,:workspace_name,:chat_session)',resource)
                     resources.append(resource)
-                for role in (None, *range(len(ROLES))):
+                for role in (None, *ACTIVE_ROLES):
                     workspaces.enter_context(self.new_agent_workspace(team, role))
                 self.initialize_workspace(team)
                 self.initialize_crew_workspaces(team, scenario=scenario)

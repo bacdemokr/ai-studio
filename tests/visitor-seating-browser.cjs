@@ -32,9 +32,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
   await page.evaluate(()=>{seatingState.crewMission.status='cancelled';BacCampus.setLive(seatingState);});
   await page.waitForFunction(()=>BacCampus.inspect().roundtable.guests.every(g=>g.phase==='returned'));
   await page.evaluate(()=>BacCampus.setLive(seatingState));await seats(2);assert.equal((await inspect()).roundtable.visible,false);
-  // Event Brief keeps its existing furniture behavior, then returning restores only two seats.
-  await page.evaluate(()=>renderSeating(2,'done','event-done','event-brief'));assert.equal((await inspect()).roundtable.visibleChairs,2);
   await page.evaluate(()=>renderSeating(2,'done'));await seats(2);assert.equal((await inspect()).roundtable.visible,false);
-  assert.deepEqual(errors,[]);console.log('PASS: chairs follow 0/1/2/3/5/12 hires; completed reactions leave no duplicate furniture; active reactions and cancellation share the roster; Event Brief unchanged.');
+  assert.deepEqual(errors,[]);console.log('PASS: chairs follow 0/1/2/3/5/12 hires; completed reactions leave no duplicate furniture; active reactions and cancellation share the roster.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -10,7 +10,7 @@ let respond=()=>Promise.resolve(snapshot);
 const context=vm.createContext({console,Intl,Date,Number,Math,connected:true,agentId:'owner',room:'mission',escape:String,
  document:{hidden:false,createElement:()=>meter,addEventListener(){}},
  root:{querySelector:()=>({prepend(){}}),addEventListener:(name,fn)=>listeners[name]=fn},
- crewMission:()=>mission,api:()=>respond(),setInterval(){}});
+ currentCollaboration:()=>mission,api:()=>respond(),setInterval(){}});
 vm.runInContext(fs.readFileSync('src/studio-telemetry.js','utf8'),context);
 (async()=>{
  await context.updateTelemetry();

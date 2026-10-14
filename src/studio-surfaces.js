@@ -28,10 +28,7 @@ function usageDuration(seconds){
 function scenarioTaskSummary(job){
  const prompt=job?.payload?.collaboration?.task||job?.payload?.prompt;
  if(prompt)return String(prompt).replace(/^\s*\/(?:goals?|plans?)(?=\s|$)/i,'').trim();
- const brief=job?.payload?.brief;if(!brief)return 'No task summary was saved for this run.';
- const place=brief.city?' in '+brief.city:'',dates=[brief.startDate,brief.endDate].filter(Boolean).join(' to ');
- const details=[dates&&'Dates: '+dates,brief.days&&'Days: '+brief.days,brief.attendees&&'Attendees: '+brief.attendees,brief.themeCount&&'Themes: '+brief.themeCount].filter(Boolean);
- return 'Plan an event'+place+(details.length?'. '+details.join(' · '):'.');
+ return 'No task summary was saved for this run.';
 }
 function scenarioUsageSummary(job){
  const records=Object.values(job?.payload?.metrics||{}).filter(record=>record&&typeof record==='object'),agents=new Map();
@@ -80,7 +77,7 @@ const surfaceDefinitions={
   deliverables:{title:'Results',ids:['plan-results']},
   usage:{title:'Usage & time',ids:['usage-time']}
 };
-for(const id of ['event-package','board','workspace','experiences','policy-panel','connections'])surfaceStore.append(el(id));
+for(const id of ['board','workspace','experiences','policy-panel','connections'])surfaceStore.append(el(id));
 el('passport').prepend(el('collection'));
 el('collection-note').hidden=true;
 const loungeActions=document.createElement('div');loungeActions.className='studio-panel-actions';loungeActions.innerHTML='<button type="button" class="studio-secondary" id="studio-compare-open" data-surface="compare" hidden>Compare replies</button>';
@@ -119,7 +116,7 @@ standbyPanel.addEventListener('keydown',event=>{
 });
 // Show the active scenario's total time beside its coordinator.
 function syncTeamTotalTime(){
-  const timer=el('team-total-time'),plan=selectedScenario==='event-brief'?crewMission():currentCollaboration();
+  const timer=el('team-total-time'),plan=currentCollaboration();
   const label=plan&&selectedCrewRole===0&&!selectedOpenTaskVisitor?collaborationTime(plan):'';
   if(timer.textContent!==label)timer.textContent=label;
   timer.hidden=!label;
@@ -132,12 +129,12 @@ function syncSurface(){
   syncResetButtons();
   const plan=currentCollaboration();
   syncTeamTotalTime();
-  standbyPanel.hidden=selectedScenario==='event-brief'||effectiveTeamMode()==='hired';
-  const event=crewMission();resultsButton.hidden=selectedScenario==='event-brief'?!event:!plan;
-  const scenarioJob=selectedScenario==='event-brief'?event:plan;
+  standbyPanel.hidden=effectiveTeamMode()==='hired';
+  resultsButton.hidden=!plan;
+  const scenarioJob=plan;
   usageTimeButton.hidden=!scenarioJob||['queued','running','waiting','stopping'].includes(scenarioJob.status);
-  surfaceDefinitions.deliverables.ids=selectedScenario==='event-brief'?['event-package']:['plan-results'];
-  if(activeSurface==='deliverables'){if(selectedScenario==='event-brief')renderEventPackage();else renderPlanResults(plan);}
+  surfaceDefinitions.deliverables.ids=['plan-results'];
+  if(activeSurface==='deliverables'){renderPlanResults(plan);}
   if(activeSurface==='usage')renderUsageTime(scenarioJob);
   el('compare-open').hidden=!comparison;
   if(!activeSurface)return;
@@ -154,7 +151,6 @@ surfaceDialog.addEventListener('close',()=>{
   el('policy-panel').open=false;clearTimeout(policyRefreshTimer);policyRefreshTimer=null;activeSurface=null;board=false;
 });
 function openSurface(name,contribution='all'){
-  if(name==='deliverables'&&selectedScenario==='event-brief')selectEventContribution(contribution);
   const definition=surfaceDefinitions[name];if(!definition)return;
   if(name!=='policies'){el('policy-panel').open=false;clearTimeout(policyRefreshTimer);policyRefreshTimer=null;}
   el('mission-skill-notice')?.remove();
@@ -164,13 +160,6 @@ function openSurface(name,contribution='all'){
   if(name==='policies'){el('policy-panel').open=true;loadPolicy();}
   syncSurface();el('surface-body').scrollTop=0;
   if(!surfaceDialog.open)surfaceDialog.showModal();
-  if(name==='deliverables'&&selectedScenario==='event-brief')requestAnimationFrame(()=>navigateShowcaseContribution('instant'));
 }
 el('surface-close').onclick=closeSurface;
 root.addEventListener('click',e=>{const button=e.target.closest('[data-surface]');if(button)openSurface(button.dataset.surface);});
-el('lanes').addEventListener('click',event=>{
-  const button=event.target.closest('[data-role-output]');
-  if(!button||selectedScenario!=='event-brief')return;
-  const role=Number(button.dataset.roleOutput);
-  if(hasCrewDeliverable(crewMission(),role))openSurface('deliverables',role);
-});

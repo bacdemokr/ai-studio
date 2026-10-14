@@ -62,7 +62,7 @@ class PlanEdgeCases(unittest.TestCase):
             result=self.app.enqueue(team,{'kind':'crew-chat','crewRole':0,'prompt':prompt})
             self.app.execute(self.app.next_job())
             self.assertEqual(self.job(result)['status'],'done')
-        self.assertEqual(self.app.policy_profile(team,1)['name'],'Dylan')
+        self.assertEqual(self.app.crew_roster(None,team,[])[8]['name'],'Scout')
         with self.assertRaises(Problem):self.app.enqueue(self.owner,{'kind':'chat','prompt':'Hello'})
 
     def test_specialist_followup_remembers_own_contribution(self):

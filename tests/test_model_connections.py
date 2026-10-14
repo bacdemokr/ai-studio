@@ -150,30 +150,16 @@ class ConnectionTests(unittest.TestCase):
             self.assertEqual(config['agents']['entries'][agent]['model'],provider+'/test-model')
             self.assertEqual(config['agents']['entries'][agent]['modelPolicy']['allow'],[provider+'/test-model'])
 
-    def test_independent_scenarios_keep_preferences_on_reset(self):
-        self.connect();self.connect('api','openai')
-        event=self.app.crew_owner(self.owner,'event-brief');plan=self.app.crew_owner(self.owner,'plan')
-        connections.preferences(self.app,{'team':'local'},event)
-        connections.preferences(self.app,{'team':'api'},plan)
-        import scenario_models
-        self.assertEqual(scenario_models.connection(self.app,event)['effectiveSource'],'local')
-        self.assertEqual(scenario_models.connection(self.app,plan)['effectiveSource'],'api')
-        self.app.reset_crew_chats(event,reset_event=True)
-        self.assertEqual(scenario_models.connection(self.app,event)['provider'],'local')
-        self.assertEqual(scenario_models.connection(self.app,plan)['provider'],'api')
 
-    def test_settings_can_save_both_scenarios_without_switching(self):
+
+    def test_open_task_preferences_survive_reset_and_reject_retired_room(self):
         self.connect();self.connect('api','openai')
-        self.assertEqual(connections.public_for(self.app,self.owner)['scenarioPreferences'],{'event-brief':'auto','plan':'auto'})
-        self.assertIsNone(self.app.existing_crew_owner(self.owner,'event-brief'))
-        connections.preferences(self.app,{'lounge':'local','scenarios':{'event-brief':'local','plan':'api'}},participant=self.owner)
-        self.assertEqual(connections.public_for(self.app,self.owner)['scenarioPreferences'],{'event-brief':'local','plan':'api'})
-        other=self.app.session()[0]['id']
-        self.assertEqual(connections.public_for(self.app,other)['scenarioPreferences'],{'event-brief':'auto','plan':'auto'})
-        with self.assertRaises(Problem):connections.preferences(self.app,{'scenarios':{'unknown':'local'}},participant=self.owner)
-        with patch.object(connections,'idle',side_effect=Problem('Busy')):
-            with self.assertRaises(Problem):connections.preferences(self.app,{'scenarios':{'event-brief':'api','plan':'local'}},participant=self.owner)
-        self.assertEqual(connections.public_for(self.app,self.owner)['scenarioPreferences'],{'event-brief':'local','plan':'api'})
+        self.assertEqual(connections.public_for(self.app,self.owner)['scenarioPreferences'],{'plan':'auto'})
+        connections.preferences(self.app,{'scenarios':{'plan':'local'}},participant=self.owner)
+        team=self.app.crew_owner(self.owner)
+        self.app.reset_crew_chats(team,reset_event=True)
+        self.assertEqual(connections.public_for(self.app,self.owner)['scenarioPreferences'],{'plan':'local'})
+        with self.assertRaises(Problem):connections.preferences(self.app,{'scenarios':{'event-brief':'api'}},participant=self.owner)
 
     def test_model_change_and_search_keep_session_key_over_host_key(self):
         team_models.save_connection('fixture-old-host',[],source='api.cfg')

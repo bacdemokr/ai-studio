@@ -228,12 +228,14 @@ class CollaborationTests(unittest.TestCase):
         self.assertEqual(self.job(result)['payload']['collaboration']['outputs'],{})
 
     def test_revoke_stays_revoked_and_policy_edits_are_fenced(self):
+        from studio import CREW_CATALOG
+        protected=patch.dict(CREW_CATALOG[8], {"protection":"openshell"});protected.start();self.addCleanup(protected.stop)
         team=self.app.crew_owner(self.owner)
-        self.app.policy_change(team,{'permission':'host:blogs.nvidia.com','allow':False},1)
+        self.app.policy_change(team,{'permission':'host:blogs.nvidia.com','allow':False},8)
         self.start()
-        with self.assertRaises(Problem):self.app.policy_change(team,{'permission':'host:blogs.nvidia.com','allow':True},1)
+        with self.assertRaises(Problem):self.app.policy_change(team,{'permission':'host:blogs.nvidia.com','allow':True},8)
         self.app.execute(self.app.next_job())
-        self.assertEqual(self.adapter.permissions[self.app.crew_native_id(team,1)],[])
+        self.assertEqual(self.adapter.permissions[self.app.crew_native_id(team,8)],[])
 
     def test_ownership_persistence_reset_and_team_busy(self):
         result=self.start();team=self.app.crew_owner(self.owner)

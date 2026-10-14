@@ -132,7 +132,7 @@ class TwelveAgentTests(unittest.TestCase):
             for role in (None,):
                 self.assertIn('Seoul', (self.studio.workspace(owner, role) / 'USER.md').read_text())
             self.assertEqual((self.studio.workspace(owner) / 'MEMORY.md').read_text(), 'private ' + owner)
-        for role in range(4):
+        for role in (0,4,5,6,7,8):
             self.assertIn('Seoul', (self.studio.workspace(team, role)/'USER.md').read_text())
         self.assertEqual(self.studio.state(self.owner)['jobs'][0]['status'], 'queued')
 

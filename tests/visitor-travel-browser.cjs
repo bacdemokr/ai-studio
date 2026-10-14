@@ -33,7 +33,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
   await page.screenshot({path:'/tmp/bac-visitor-team-seated.png'});
   const point=(await inspect()).visitorTravel[0].position;
   // Switch scenarios during actual work: the actor stays on the Open Task floor.
-  await page.evaluate(()=>{BacCampus.setScenario('event-brief');const s=BacDemo.snapshot();s.live=true;s.crewMission=null;BacCampus.setLive(s);BacCampus.setCollection(fixtureAgents,'pixel');});
+  await page.evaluate(()=>{BacCampus.setRoom('lounge');const s=BacDemo.snapshot();s.live=true;s.crewMission=null;BacCampus.setLive(s);BacCampus.setCollection(fixtureAgents,'pixel');});
   assert.deepEqual((await inspect()).visitorTravel[0].position,point);
   await page.evaluate(()=>{BacCampus.setScenario('plan');BacCampus.setLive(fixtureState);BacCampus.setRoom('lounge',{instant:true});BacCampus.setRoom('workshop',{instant:true});BacCampus.setRoom('mission',{instant:true});});
   assert.equal((await inspect()).visitorTravel[0].phase,'working');assert.deepEqual((await inspect()).visitorTravel[0].position,point);
@@ -51,8 +51,8 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
   // Assign another role before the walk home completes, preserving one actor.
   await page.evaluate(()=>fixturePlan('running','pixel',8,'job3'));assert.equal((await inspect()).visitorTravel.length,1);
   await wait(()=>BacCampus.inspect().visitorTravel[0]?.phase==='working');assert.equal((await inspect()).visitorTravel[0].role,8);
-  // Complete while looking at Event Brief, using the shared activity snapshot.
-  await page.evaluate(()=>{BacCampus.setScenario('event-brief');const s=BacDemo.snapshot();s.live=true;s.crewMission=null;BacCampus.setLive(s);fixtureAgents.forEach(a=>a.activity=null);BacCampus.setCollection(fixtureAgents,'pixel');});
+  // Complete while looking at the Lounge, using the shared activity snapshot.
+  await page.evaluate(()=>{BacCampus.setRoom('lounge');const s=BacDemo.snapshot();s.live=true;s.crewMission=null;BacCampus.setLive(s);fixtureAgents.forEach(a=>a.activity=null);BacCampus.setCollection(fixtureAgents,'pixel');});
   s=await inspect();assert.deepEqual(s.visitorTravel[0].destination,s.residents.find(r=>r.key==='pixel').position,'Reassignment retains the full route home, not just the last turning point');
   await wait(()=>BacCampus.inspect().visitorTravel.length===0);assert((await inspect()).residents.find(r=>r.key==='pixel').visible);
   // Reduced motion and pause settle immediately; deletion never leaves a ghost.

@@ -5,7 +5,7 @@
   const speed=n=>typeof n==='number'&&Number.isFinite(n)?n.toFixed(1)+' tok/s':'—';
   let telemetryBusy=false, telemetrySnapshot=null;
   function missionTelemetryRecords(snapshot){
-    const job=typeof selectedScenario!=='undefined'&&selectedScenario==='plan'?currentCollaboration():crewMission();
+    const job=currentCollaboration();
     if(!job)return [];
     const latest=new Map();
     for(const record of Object.values(job.payload?.metrics||{})){

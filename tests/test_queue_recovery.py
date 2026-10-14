@@ -11,7 +11,9 @@ class QueueRecoveryTests(unittest.TestCase):
     adapter=ProtectedAdapter();studio=Studio(folder,adapter,start_worker=False)
     personal=studio.session()[0]['id']
     if lane=='background':
-     owner=studio.crew_owner(personal,'event-brief');job=studio.prepare_demo(owner,{'background':True})
+     studio.onboard(personal,{'name':'Protected','skills':['web'],'protection':'openshell'})
+     job={'id':studio.next_job()['id']}
+     with studio.db() as db:db.execute("UPDATE jobs SET status='queued' WHERE id=?",(job['id'],))
     else:
      studio.onboard(personal,{'name':'Test','skills':['memory'],'persona':'guide','protection':'standard'})
      job=studio.enqueue(personal,{'prompt':'Hello'})
@@ -45,13 +47,13 @@ class QueueRecoveryTests(unittest.TestCase):
  def test_observer_instance_does_not_cancel_live_event_jobs(self):
   with tempfile.TemporaryDirectory() as folder:
    adapter=ProtectedAdapter();studio=Studio(folder,adapter,start_worker=False)
-   participant=studio.session()[0]['id'];owner=studio.crew_owner(participant,'event-brief')
-   job=studio.prepare_demo(owner,{'background':True})
+   participant=studio.session()[0]['id'];owner=studio.crew_owner(participant)
+   job=studio.enqueue(owner,{'kind':'crew-chat','crewRole':0,'prompt':'Hello'})
    for state in ('queued','running','waiting','stopping'):
     with studio.db() as db:db.execute('UPDATE jobs SET status=? WHERE id=?',(state,job['id']))
     observer=Studio(folder,adapter,start_worker=False)
     with observer.db() as db:self.assertEqual(db.execute('SELECT status FROM jobs WHERE id=?',(job['id'],)).fetchone()[0],state)
    restarted=Studio(folder,adapter,start_worker=False,recover=True)
-   with restarted.db() as db:self.assertEqual(db.execute('SELECT status FROM jobs WHERE id=?',(job['id'],)).fetchone()[0],'cancelled')
+   with restarted.db() as db:self.assertEqual(db.execute('SELECT status FROM jobs WHERE id=?',(job['id'],)).fetchone()[0],'error')
 
 if __name__=='__main__':unittest.main()

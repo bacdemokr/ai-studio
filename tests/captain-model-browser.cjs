@@ -28,8 +28,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.waitForFunction(()=>!document.querySelector('#studio-crew-model').disabled);await choose('fixture-a');
   await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.personalModels);await navigate('plan');
   await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Casey'&&document.querySelector('#studio-crew-model').textContent==='fixture-a');assert(await badge.isEnabled());
-  await navigate('event-brief');assert(await badge.isDisabled(),'Event Brief retains its scenario-wide model');assert.equal(await badge.innerText(),'fixture-a');
-  await navigate('plan');await choose('fixture-b');await navigate('event-brief');assert.equal(await badge.innerText(),'fixture-a','Casey selection must not change Event Brief');await navigate('plan');
+  await choose('fixture-b');
   // Existing specialist-list edits and the new passport badge share one picker.
   await page.locator('#studio-crew-team-mode [data-team-mode=mixed]').click();await page.locator('#studio-standby').evaluate(n=>n.open=true);
   await page.locator('[data-standby-model="5"]').click();await search.fill('fixture-a');await pick('fixture-a').click();await picker.waitFor({state:'hidden'});
@@ -62,6 +61,6 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await badge.click();await search.fill('fixture');await page.route('**/api/state',async route=>{const r=await route.fetch(),data=await r.json();data.teamConnection={...data.teamConnection,ready:false};await route.fulfill({json:data});});await page.evaluate(()=>BacStudio.refresh());assert(await pick('fixture-b').isDisabled());
   await page.unroute('**/api/state');await page.evaluate(()=>BacStudio.refresh());assert(await pick('fixture-b').isEnabled());await picker.locator('[data-model-close]').click();
   await badge.click();await search.fill('fixture');if(process.env.BAC_TEST_SCREENSHOT)await page.screenshot({path:process.env.BAC_TEST_SCREENSHOT});
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,host,checks:['Casey badge and keyboard picker','per-role persistence and next-response model','post-completion unlock','Event Brief isolation','existing specialist list','open-picker and save races','hired personal models preserved','disconnect/reconnect']}));
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,host,checks:['Casey badge and keyboard picker','per-role persistence and next-response model','post-completion unlock','existing specialist list','open-picker and save races','hired personal models preserved','disconnect/reconnect']}));
  }finally{if(browser)await browser.close();server.kill('SIGTERM');}
 })().catch(e=>{console.error(e);process.exitCode=1;});

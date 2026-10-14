@@ -43,5 +43,19 @@ class RetiredEventFlowTests(unittest.TestCase):
             statuses = [row['status'] for row in db.execute("SELECT status FROM jobs WHERE id LIKE 'legacy-%'")]
         self.assertEqual(statuses, ['cancelled', 'cancelled'])
         self.assertEqual(saved.read_text(), '<h1>Saved result</h1>')
-        self.assertTrue(hasattr(upgraded, 'crew'))
-        self.assertTrue(hasattr(upgraded, 'prepare_demo_run'))
+        self.assertFalse(hasattr(upgraded, 'crew'))
+        self.assertFalse(hasattr(upgraded, 'prepare_demo_run'))
+
+    def test_archived_context_does_not_block_upgrade_or_recreate_roles(self):
+        from legacy_event_fixture import archived_team
+        event=archived_team(self.app,self.owner)
+        saved=self.app.workspace(event)/'artifacts/event.html';saved.write_text('Archived event')
+        plan=self.app.crew_owner(self.owner)
+        result=self.app.workspace(plan,5)/'artifacts/index.html';result.write_text('Current plan')
+        with self.app.db() as db:db.execute('UPDATE crew_resources SET model=? WHERE owner=? AND role=5',('saved/model',plan))
+        upgraded=Studio(self.temp.name,self.adapter,start_worker=False,recover=True)
+        self.assertEqual(upgraded.crew_owner(self.owner),plan)
+        self.assertEqual(saved.read_text(),'Archived event');self.assertEqual(result.read_text(),'Current plan')
+        self.assertEqual([s['id'] for s in upgraded.state(self.owner)['scenarios']],['plan'])
+        self.assertFalse((self.app.workspace(event,0)/'IDENTITY.md').exists())
+        self.assertEqual(self.adapter.calls,[])

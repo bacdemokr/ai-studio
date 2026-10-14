@@ -44,8 +44,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.every(v=>v.phase==='seated'));await page.waitForFunction(()=>!document.querySelector('#studio-crew-model').disabled);
   await label(pixel).click();await selected('Pixel');assert(await badge.isEnabled());assert(await page.locator('#studio-crew-chat').isVisible(),'Completed participant keeps its existing contribution view');
   await label(orbit).click();await selected('Orbit');await page.locator('.world-room-map [data-world-room="lounge"]').click();await page.waitForFunction(()=>BacStudio.inspect().room==='lounge'&&!BacCampus.inspect().navigation.travelling);
-  await navigate('event-brief');assert.notEqual(await page.locator('#studio-crew-name').innerText(),'Orbit');assert(await badge.isDisabled());assert(await page.locator('#studio-crew-chat').isVisible());
   await navigate('plan');await selected('Casey');assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({passed:true,host,checks:['pre-plan name and mesh selection','keyboard selection','idle model edit targets only selected hire','selection survives polling','reload preserves model','Casey draft preserved','assigned/idle lock isolation','completed contribution view','Lounge and Event Brief navigation','no browser errors']}));
+  console.log(JSON.stringify({passed:true,host,checks:['pre-plan name and mesh selection','keyboard selection','idle model edit targets only selected hire','selection survives polling','reload preserves model','Casey draft preserved','assigned/idle lock isolation','completed contribution view','Lounge navigation','no browser errors']}));
  }finally{if(browser)await browser.close();server.kill('SIGTERM');}
 })().catch(e=>{console.error(e);process.exitCode=1;});

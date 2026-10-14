@@ -47,7 +47,7 @@ Do not infer a missing permission from HTTP 403 or `CONNECT tunnel failed` alone
 
 `openshell gateway info` checks the gateway, but a healthy gateway does not verify outbound DNS. After repairing the host network, rerun the real network test before demonstrating weather or research.
 
-## Protected Demo Producer - 2026-09-22
+## Historical archived Event Brief verification - 2026-09-22
 
 On the development Mac with OpenClaw 2026.9.4 and OpenShell 0.0.116:
 
@@ -91,11 +91,9 @@ Using a disposable OpenClaw 2026.9.4 gateway on this macOS host, deleting three 
 
 `node tests/native-deletion.cjs` checks gateway routing, offline/journal fallback, retained storage, malformed results, and that timeouts or ambiguous disconnects do not trigger another deletion attempt. `python3 -B -m unittest discover -s tests -p 'test_agent_deletion.py'` also checks active-job fences, retries, and a single authoritative absence check after a committed OpenShell delete timeout.
 
-### Inspect Dylan in the app
+### Inspect a protected hired agent
 
-Select Dylan in **3-1 Event Brief**, then **OpenShell Policy**. Lounge agents and Dylan use the same policy panel and approval/revocation implementation. Dylan starts with NVIDIA Blog read access as a default; edits are saved for his identity separately from personal-agent approvals. Revoking access stays revoked across preparation, subsequent tasks, and server restarts. **Approve** restores access explicitly. Before a sandbox exists, saved access is shown as unverified. Opening the panel never provisions or changes permissions. OpenShell is an execution protection setting, not a custom skill.
-
-A disposable native Dylan sandbox verified the shared controls: the default NVIDIA Blog request returned HTTP 200; revocation removed access, and another preparation kept it blocked (curl exit 56 with an OpenShell deny record); explicit approval restored HTTP 200. The test sandbox was removed afterward. Browser fixtures also cover revocation before the first task, re-approval, and separation from personal-agent policies.
+Hire an agent with OpenShell protection, select it in the Lounge or Open Task, then open **OpenShell Policy**. Approvals and revocations persist for that identity. Before a sandbox exists, saved access is unverified. Opening the panel does not provision a sandbox or change permissions. OpenShell is an execution protection setting, not a custom skill.
 
 ### Live shield and external connection feedback
 

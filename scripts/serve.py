@@ -88,20 +88,7 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if self.path.startswith('/survey/'):
-            try:
-                if not self.host_ok():
-                    raise Problem('Use the event host address.', 403)
-                from studio_events import survey_page
-                token=urlparse(self.path).path.removeprefix('/survey/')
-                body=survey_page(token, self.server.studio.survey_definition(token)).encode()
-                self.send_response(200)
-                self.send_header('Content-Type','text/html; charset=utf-8')
-                self.send_header('Content-Length',str(len(body)))
-                self.send_header('Content-Security-Policy', "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'")
-                self.end_headers();self.wfile.write(body)
-            except Problem as error:
-                self.json_response({'error':str(error)},error.status)
-            return
+            return self.json_response({'error':'This workflow is retired.'},410)
         if self.path == '/health':
             path = Path(self.directory) / 'version.json'
             version = json.loads(path.read_text()) if path.exists() else {'version': 'local-preview'}
@@ -124,11 +111,9 @@ class Handler(SimpleHTTPRequestHandler):
             if parsed.path == '/api/state':
                 return self.json_response(studio.state(owner, scenario), conditional=True)
             if parsed.path == '/api/event-catalog':
-                import event_planner
-                return self.json_response({'templates':event_planner.TEMPLATES,'topics':event_planner.TOPICS,'harnesses':event_planner.HARNESS})
+                raise Problem('This workflow is retired.',410)
             if parsed.path == '/api/survey-report':
-                job_id=parse_qs(parsed.query).get('id',[''])[0]
-                return self.json_response(studio.survey_report(studio.job_owner(owner,job_id),job_id))
+                raise Problem('This workflow is retired.',410)
             if parsed.path == '/api/telegram':
                 import telegram_notifications
                 return self.json_response(telegram_notifications.public(row['id'], row['id']+':'+self.headers.get('X-BaC-Key-Session','missing')))
@@ -214,13 +199,7 @@ class Handler(SimpleHTTPRequestHandler):
             if origin and urlparse(origin).netloc != self.headers.get('Host'):
                 raise Problem('Cross-origin requests are not accepted.', 403)
             if self.path.startswith('/survey/'):
-                size=int(self.headers.get('Content-Length','0'))
-                if not 0 < size <= 4096:
-                    raise Problem('Invalid survey response.',413)
-                data=json.loads(self.rfile.read(size))
-                if not isinstance(data,dict):
-                    raise Problem('Expected survey answers.')
-                return self.json_response(self.server.studio.survey_answer(self.path.removeprefix('/survey/'),data))
+                raise Problem('This workflow is retired.',410)
             row, _ = self.participant()
             if not secrets.compare_digest(self.headers.get('X-BaC-CSRF', ''), row['csrf']):
                 raise Problem('Refresh the page to renew your session.', 403)
@@ -279,17 +258,14 @@ class Handler(SimpleHTTPRequestHandler):
                 if self.path == '/api/settings/models':return self.json_response(runtime_settings.models(data))
                 if self.path == '/api/settings/start':return self.json_response(runtime_settings.start_gateway())
                 return self.json_response(runtime_settings.save(studio,data))
-            if (self.path in ('/api/prepare-demo','/api/event-plan','/api/survey-replan') or (self.path=='/api/jobs' and data.get('kind')=='crew')) and scenario != 'event-brief':
-                raise Problem('Choose Event Brief to use the event workflow.',409)
+            if self.path in ('/api/prepare-demo','/api/event-plan','/api/survey-replan') or (self.path=='/api/jobs' and data.get('kind') in ('crew','prepare')):
+                raise Problem('This workflow is retired. Use Open Task.',410)
             if self.path == '/api/team-model':
                 import team_models
                 return self.json_response(team_models.select(studio,studio.crew_owner(owner, scenario),data))
             if self.path == '/api/bac-reset' and data.get('scope', 'scenario') not in ('scenario', 'all'):
                 raise Problem('Choose whether to reset this scenario or all scenarios.')
             routes = {
-                '/api/prepare-demo': lambda: studio.prepare_demo(studio.crew_owner(owner, scenario), data),
-                '/api/event-plan': lambda: studio.event_plan(data),
-                '/api/survey-replan': lambda: studio.survey_replan(studio.crew_owner(owner, scenario), data),
                 '/api/heartbeat': lambda: studio.heartbeat.control(owner, data),
                 '/api/agents': lambda: studio.add_agent(row['id'], data),
                 '/api/onboard': lambda: studio.onboard(owner, data),

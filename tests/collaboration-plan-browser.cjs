@@ -50,11 +50,6 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await crew.fill('/plan Reassign');const beforeSpecialist=submitted.length;await page.locator('#studio-crew-send').click();
   assert.match(await page.locator('#studio-crew-chat-error').innerText(),/Casey in Open Task/);assert.equal(submitted.length,beforeSpecialist);
   await crew.fill('Explain your design');assert.equal(await page.locator('#studio-crew-chat-error').isVisible(),false);await page.locator('#studio-crew-send').click();await page.waitForFunction(()=>document.querySelector('#studio-crew-prompt').value==='');assert.equal(submitted.at(-1).crewRole,7);
-  await choose('event-brief');assert.equal(await crew.inputValue(),'');assert(!/\/plan/.test(await crew.getAttribute('placeholder')));
-  await crew.fill('/');assert.equal(await menu.isVisible(),false);
-  await crew.fill('/plan');const beforeEvent=submitted.length;await page.locator('#studio-crew-send').click();
-  assert.match(await page.locator('#studio-crew-chat-error').innerText(),/Plan an event/);assert.equal(submitted.length,beforeEvent);
-  assert.equal(await page.locator('#studio-room-action').innerText(),'Plan an event');
   // Model readiness belongs to its own area, including after navigating back.
   let loungeReady=false,teamReady=true;
   await page.route('**/api/runtime*',async route=>{const response=await route.fetch(),body=await response.json();await route.fulfill({response,json:{...body,ready:loungeReady,model:loungeReady,teamReady,teamModel:teamReady}});});
@@ -68,6 +63,6 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert(!/\/plan/.test(await personal.getAttribute('placeholder')));
   await page.screenshot({path:'/tmp/lounge-command-scope.png'});
   assert.deepEqual(errors,[]);
-  console.log('PASS: Lounge hints, no autocomplete or redirect, aliases, preserved drafts, direct chat, Run all, Casey suggestions/plan, specialist and Event Brief guards, independent model readiness, immediate connection badge refresh, cleared command guidance, zero browser errors.');
+  console.log('PASS: Lounge hints, no autocomplete or redirect, aliases, preserved drafts, direct chat, Run all, Casey suggestions/plan, specialist command guards, independent model readiness, immediate connection badge refresh, cleared command guidance, zero browser errors.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

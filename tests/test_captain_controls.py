@@ -91,7 +91,7 @@ class CaptainControlsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder, patch.object(runtime, 'root', return_value=Path(folder)):
             runtime.save_config(runtime.initial_config())
             agent = 'bac-' + 'f'*24 + '-r0'
-            profile = {'name':'Casey','persona':'guide','skills':['event-tools']}
+            profile = {'name':'Casey','persona':'guide','skills':[]}
             try:
                 with patch.object(runtime, 'gateway_config_patch') as publish:
                     for mode in ('none', 'read', None):
@@ -106,7 +106,7 @@ class CaptainControlsTests(unittest.TestCase):
                             self.assertEqual(entry['skills'], [])
                         else:
                             self.assertIn('write', entry['tools']['allow'])
-                            self.assertIn('bac-event-tools', entry['skills'])
+                            self.assertEqual(entry['skills'], [])
                             self.assertFalse(entry['tools']['fs']['workspaceOnly'])
             finally:runtime._expected_identity.pop(agent,None)
 

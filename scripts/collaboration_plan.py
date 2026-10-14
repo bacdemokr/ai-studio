@@ -281,7 +281,6 @@ class CollaborationPlans:
             'contracts, schedules, other conversations or personal agents\' workspaces. '
             'Use your own skills and workspace when needed, within existing permissions. '
             'Do not assume that event tools have a prepared contract for this task. '
-            'Do not load EVENT_WORKFLOW.md or event-specific skills unless the current task actually needs them. '
             'DEMO DEFAULT: deliver a small working prototype, not a production product. '
             'Do not build mobile layouts, mobile breakpoints, touch controls or mobile tests for this desktop demo. '
             'Unless explicitly requested, omit elaborate animations, sound, extra settings, '

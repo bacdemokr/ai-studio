@@ -40,9 +40,9 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.waitForFunction(()=>BacCampus.inspect().protectionHits.some(h=>h.id==='visitor-allowed'&&h.visible));
   assert.match(await page.locator('.world-protection-allow:visible').innerText(),/Request allowed.*example.com/s);
   await page.waitForFunction(()=>!BacCampus.inspect().protectionHits.length);
-  await page.locator('.world-room-map [data-world-scenario=event-brief]').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
+  await page.locator('.world-room-map [data-world-room=workshop]').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
   events.push(event('wrong-room'));await page.evaluate(()=>BacStudio.refresh());
-  await page.waitForTimeout(200);assert.equal(await page.locator('.world-protection-hit:visible').count(),0,'Personal policy event must not attach to Event Brief crew');
-  assert.deepEqual(errors,[]);console.log('PASS: hired Open Task denial/allow on visitor, verified-evidence-only notices, expiry/deduplication and Event Brief isolation. Policy evidence simulated.');
+  await page.waitForTimeout(200);assert.equal(await page.locator('.world-protection-hit:visible').count(),0,'Personal policy event must not attach to Hiring');
+  assert.deepEqual(errors,[]);console.log('PASS: hired Open Task denial/allow on visitor, verified-evidence-only notices, expiry/deduplication and Hiring isolation. Policy evidence simulated.');
  }finally{if(browser)await browser.close();if(server.exitCode===null){server.kill('SIGTERM');await new Promise(r=>server.once('exit',r));}}
 })().catch(e=>{console.error(e);process.exitCode=1;});

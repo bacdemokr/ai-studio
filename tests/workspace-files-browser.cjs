@@ -28,9 +28,9 @@ const { chromium } = require('playwright');
     assert.equal(await page.locator('.studio-team-utilities').getByRole('button',{name:'Files',exact:true}).isVisible(),false);
     await api('plan','onboard',{name:'File QA',skills:['documents']});
     await api('plan','upload',{name:'personal.md',content:'Personal notes stay personal.'});
-    for(const scenario of ['plan','event-brief'])await api(scenario,'upload',{crewRole:0,name:'notes.md',content:scenario+' content'});
+    for(const scenario of ['plan'])await api(scenario,'upload',{crewRole:0,name:'notes.md',content:scenario+' content'});
     await page.reload();await page.waitForFunction(()=>window.BacCampus?.inspect().navigation.overview);
-    for(const scenario of ['plan','event-brief']){
+    for(const scenario of ['plan']){
       await choose(scenario);await files();
       assert.equal(await page.locator('#studio-file-workspace').count(),0,'No agent selector in file dialog');
       await page.locator('[data-browse-file="inbox/notes.md"]').click();

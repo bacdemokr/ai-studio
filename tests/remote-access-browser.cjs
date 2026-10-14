@@ -95,14 +95,6 @@ const assert=require('node:assert/strict'),fs=require('node:fs/promises'),{chrom
   // A real network reload revokes the previous document's session-only key.
   // Reconnect this tab before submitting work; host-saved api.cfg keys differ.
   assert.equal((await api('settings')).profiles.nvidia.hasKey,false);
-  // Reload can start background crew preparation. Wait for it before changing host connections.
-  const deadline=Date.now()+15000;
-  while(true){
-   const state=await api('state',undefined,'event-brief');
-   if(!['queued','running','waiting','stopping'].includes(state.preparation?.status))break;
-   if(Date.now()>deadline)throw Error('Background preparation did not finish');
-   await page.waitForTimeout(100);
-  }
   await api('settings/connections',{source:'api',provider:'nvidia',apiKey:'fixture-remote-key',model:'fixture-local-model'});
   await page.evaluate(()=>BacStudio.refresh());await choose('plan');
   await page.locator('#studio-crew-team-mode [data-team-mode=mixed]').click();
@@ -127,20 +119,10 @@ const assert=require('node:assert/strict'),fs=require('node:fs/promises'),{chrom
    }
   }
   console.log('PASS: remote per-agent model, file preview/download and Usage/Settings at 1280/2560 widths, windowed/fullscreen.');
-  await choose('event-brief');await page.locator('#studio-room-action').click();
-  await page.waitForFunction(()=>document.querySelector('#studio-launch-event')&&!document.querySelector('#studio-launch-event').disabled);
-  await page.locator('#studio-launch-event').click();
-  await page.waitForFunction(()=>BacStudio.inspect().jobs.some(j=>j.kind==='crew'&&j.status==='done'),{},{timeout:30000});
-  await page.locator('button[data-surface=deliverables]').click();await page.locator('.event-showcase-preview[data-ready=true]').waitFor();
-  await page.locator('[data-result-json$="-themes.json"]').click();await page.locator('#studio-json-browse').waitFor();
-  const json=await page.locator('#studio-json-raw').textContent();await copyAndPaste('#studio-json-copy',json);await close();
-  await page.locator('#studio-surface-close').click();
-  await page.locator('button[data-surface=usage]').click();assert.match(await page.locator('#studio-usage-time').innerText(),/Riley/);
-  await page.screenshot({path:'/tmp/bac-remote-usage-qa.png'});await page.locator('#studio-surface-close').click();
   await page.locator('#studio-bac-reset').click();await page.locator('#studio-team-reset-confirm').click();
   await page.waitForFunction(()=>document.querySelector('#studio-bac-reset').disabled);
   assert.deepEqual(errors,[]);assert.deepEqual(failures,[]);
-  console.log('PASS: remote Event Brief run, HTML results, nested JSON preview/copy, usage and scenario reset; no API/page errors.');
+  console.log('PASS: remote Open Task usage and reset; no API/page errors.');
  }catch(error){await page.screenshot({path:'/tmp/bac-remote-failure.png'});throw error;}
  finally{await page.unrouteAll({behavior:'ignoreErrors'});await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

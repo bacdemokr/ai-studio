@@ -24,12 +24,12 @@ from crew_roundtable import RoundtableControls, participants as job_participants
 from crew_ownership import CrewOwnership
 from studio_sessions import SessionLifecycle
 from collaboration_plan import CollaborationPlans, is_plan, plan_task
-from event_scenario import EventScenario
 from webpage_artifacts import DEMO_CODING_INSTRUCTIONS, PAGE_INSTRUCTIONS, html_files, collect_pages
 
 CREW_CATALOG = json.loads((Path(__file__).resolve().parents[1] / 'src/crew-catalog.json').read_text())
 ROLES = [(member['name'], member['role'], member['persona']) for member in CREW_CATALOG]
-EVENT_ROLE_COUNT = sum(not member.get('planOnly', False) for member in CREW_CATALOG)
+# Stable slot IDs keep existing Open Task histories and native identities intact.
+ACTIVE_ROLES = tuple(i for i,m in enumerate(CREW_CATALOG) if not m.get('retired'))
 ACTIVE = ('queued', 'running', 'waiting', 'stopping')
 ROLE_SKILLS = [list(member['skills']) for member in CREW_CATALOG]
 MAX_AGENTS = 12
@@ -125,7 +125,7 @@ def safe_file(directory, relative, exists=False):
     return result
 
 
-class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle, PolicyControls, RoundtableControls):
+class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls, RoundtableControls):
     def __init__(self, directory=None, adapter=runtime, start_worker=True, recover=False):
         self.directory = Path(directory) if directory else c.initialize() / 'studio'
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -243,7 +243,7 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
                 runtime.write_workspace(self.workspace(owner), profile)
             user_location.sync(self.workspace(owner))
         with self.db() as db:
-            teams = [r['owner'] for r in db.execute('SELECT c.owner FROM crew_contexts c JOIN participants p ON p.id=c.participant WHERE p.retiring=0')]
+            teams = [r['owner'] for r in db.execute('SELECT c.owner FROM crew_contexts c JOIN participants p ON p.id=c.participant WHERE p.retiring=0 AND c.scenario="plan"')]
         for team in teams:
             self.initialize_workspace(team)
             self.initialize_crew_workspaces(team)
@@ -405,6 +405,7 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
         from scenarios import crew_member
         scenario = scenario or self.crew_scenario(owner)
         for role, member in enumerate(CREW_CATALOG):
+            if member.get('retired'):continue
             profile = {**crew_member(member, scenario), '_scenario':scenario, 'skills':list(ROLE_SKILLS[role]), 'protection':member.get('protection','standard')}
             runtime.write_workspace(self.workspace(owner, role), profile, member['role'], overwrite=False)
 
@@ -741,9 +742,6 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
         with self.db() as db:
             jobs = [self.public_job(r) for r in db.execute("SELECT * FROM jobs WHERE owner=? AND kind NOT IN ('crew','crew-chat','prepare','prepare-agent') AND created >= (SELECT reset_at FROM agents WHERE id=?) ORDER BY created DESC LIMIT 30", (owner, owner))]
             crew_chats = [self.public_job(r) for role in range(len(ROLES)) for r in db.execute("SELECT * FROM jobs WHERE (owner=? OR owner=?) AND kind='crew-chat' AND json_extract(payload,'$.crewRole')=? ORDER BY created DESC LIMIT 30", (team, owner if scenario=='plan' else team, role))]
-            if scenario == 'event-brief' and team:
-                reset = self.crew_chat_reset_state(db, team)
-                jobs += [self.public_job(r) for r in db.execute("SELECT * FROM jobs WHERE owner=? AND kind='crew' AND created>=? ORDER BY created DESC LIMIT 30",(team,reset['at']))]
             collection = db.execute('SELECT id,profile,deleting FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?) AND profile IS NOT NULL ORDER BY created,id', (owner,)).fetchall()
             active = [dict(j, payload=json.loads(j['payload'])) for j in db.execute("SELECT id,owner,status,payload,kind,due FROM jobs WHERE status IN ('queued','running','waiting','stopping') AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) ORDER BY created", (owner,))]
             agents = [{'key': r['id'], **json.loads(r['profile']), 'deleting': bool(r['deleting']), 'deletionWaiting': r['deleting'] == 2,
@@ -783,7 +781,7 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
         file_workspaces = []
         if team:
             candidates = [('team', None)] + [(str(role), role) for role, member in enumerate(CREW_CATALOG)
-                if (role < 4 if scenario == 'event-brief' else member.get('planEligible') is not False)]
+                if member.get('planEligible') is not False]
             file_workspaces = [name for name, role in candidates if self.files(team, role, recursive=True)]
         memory = self.workspace(owner) / 'MEMORY.md'
         memory_text = ''
@@ -793,7 +791,7 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
             pass
         from team_models import selections
         from scenario_models import connection
-        return {'scenario':scenario, 'scenarios':self.scenario_status(owner), 'preparation':self.demo_preparation(team) if team and scenario=='event-brief' else None,
+        return {'scenario':scenario, 'scenarios':self.scenario_status(owner), 'preparation':None,
                 'teamConnection': connection(self, team), 'fileWorkspaces': file_workspaces,
                 'hasFiles': bool(self.files(owner, recursive=True)),
                 'crewDocuments': [f for f in self.files(team,0) if f['kind']=='inbox' and not internal_team_input(f['path'])] if team else [], 'teamSelections': selections(self,team,scenario), 'profile': self.profile(owner), 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': self.files(owner),
@@ -804,33 +802,12 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
                 'protectionEvents': self.protection_activity.snapshot({a['key'] for a in agents}, team)}
 
     def crew_roster(self, db, owner, members, preset=False, lead=None):
-        """Freeze names/skills and assignments; no extra permissions for a crew role."""
-        if not isinstance(members, dict) or any(k not in {str(i) for i in range(1, EVENT_ROLE_COUNT)} for k in members):
-            raise Problem('Assign personal agents to the specialist roles.')
-        account = db.execute('SELECT participant FROM agents WHERE id=?', (owner,)).fetchone()['participant']
-        from scenarios import crew_member
-        scenario = self.crew_scenario(owner)
-        roster, used = [], {owner}
-        for i, (name, role, persona) in enumerate(ROLES):
-            definition = crew_member(CREW_CATALOG[i], scenario)
-            name, role = definition['name'], definition['role']
-            key = None if preset else (lead or owner) if i == 0 else members.get(str(i))
-            if key:
-                if not isinstance(key, str) or (i and key in used):
-                    raise Problem('Choose a different agent for each crew role.')
-                row = db.execute('SELECT profile FROM agents WHERE id=? AND participant=?', (key, account)).fetchone()
-                if not row or not row['profile']:
-                    raise Problem('Assigned agent not found in your collection.', 404)
-                self.require_available(db, key)
-                profile = json.loads(row['profile'])
-                used.add(key)
-            else:
-                profile = {'name': name, 'persona': persona, 'skills': list(ROLE_SKILLS[i]), 'id': self.crew_native_id(owner, i), 'avatar': ROLE_AVATARS[i], 'protection': CREW_CATALOG[i].get('protection','standard')}
-            profile['avatar'] = avatar_for(key or profile['id'], profile.get('avatar'))
-            profile.setdefault('tone', 'kind')
-            profile.setdefault('verbosity', 'balanced')
-            roster.append({**profile, 'key': key or None, 'role': role})
-        return roster
+        """Stable Open Task slots; retired slots are never eligible for dispatch."""
+        return [{**member, 'name':member['name'], 'role':member['role'],
+                 'skills':list(ROLE_SKILLS[role]), 'id':self.crew_native_id(owner,role),
+                 'avatar':ROLE_AVATARS[role], 'key':None,
+                 'protection':member.get('protection','standard'), 'tone':'kind', 'verbosity':'balanced'}
+                for role,member in enumerate(CREW_CATALOG)]
 
     @staticmethod
     def public_job(row):
@@ -895,19 +872,14 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
             raise Problem('The team is busy. Finish or stop its current work first.', 409)
 
     def enqueue(self, owner, data, source='web', due=0, lead=None):
-        if data.get('kind') == 'crew':
-            return self.enqueue_event(owner, data, source, due, lead)
-        if data.get('kind') == 'prepare':
-            raise Problem('Use Event Brief preparation to prepare this team.')
+        if data.get('kind') in ('crew','prepare'):
+            raise Problem('This workflow is retired. Send /goal to Casey in Open Task.',410)
         # Automatic Tech Radar heartbeats use their own delivery path.
         if data.get('kind', 'chat') in ('chat', 'reminder'):
             self.require_manual_chat(self.profile(owner))
         if data.get('kind', 'chat') in ('chat', 'reminder') and is_plan(data.get('prompt')):
             raise Problem('Send /goal to Casey in Open Task. Lounge agents accept direct messages only.')
         collaborative = data.get('kind') == 'crew-chat' and is_plan(data.get('prompt'))
-        event_scenario = self.crew_scenario(owner) == 'event-brief'
-        if collaborative and event_scenario:
-            raise Problem('Use Plan an event for Event Brief, or send /goal to Casey in Open Task.')
         if collaborative:
             from visitor_teams import team_mode
             mode = team_mode({k:v for k,v in data.items() if k != 'roster'})
@@ -942,7 +914,7 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
             role = data.get('crewRole')
             if type(role) is not int or not 0 <= role < len(ROLES):
                 raise Problem('Choose a crew member.')
-            if (event_scenario and role not in range(4)) or (not event_scenario and CREW_CATALOG[role].get('planEligible') is False):
+            if CREW_CATALOG[role].get('planEligible') is False:
                 raise Problem('This specialist is no longer available. Ask Casey to assign the current team.')
             if skill:
                 raise Problem('Crew skills are managed by the role.')
@@ -981,8 +953,6 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
                 raise Problem('This agent’s policy is being updated. Please wait.', 409)
             if kind in ('crew','crew-chat'):
                 self.require_bac_not_resetting(db, owner)
-            if kind == 'crew-chat' and event_scenario and db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind IN ('crew','prepare') AND status IN ('queued','running','waiting','stopping')",(owner,)).fetchone():
-                raise Problem('The event team is working. Wait for it to finish before messaging.',409)
             if kind == 'crew-chat' and role == 0 and db.execute(
                     "SELECT 1 FROM jobs WHERE owner=? AND kind='crew-chat' AND status IN ('queued','running','waiting','stopping') AND json_type(payload,'$.collaboration')='object' LIMIT 1", (owner,)).fetchone():
                 raise Problem('Casey is coordinating the current plan. Wait for it to finish or stop it before sending a new message.', 409)
@@ -1327,10 +1297,9 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
             return self.collaboration_plan(row, payload)
         if row['kind'] == 'crew-chat':
             return self.crew_chat(row, payload)
-        if row['kind'] == 'crew':
-            return self.crew(row, payload)
-        if row['kind'] == 'prepare':
-            return self.prepare_demo_run(row, payload)
+        if row['kind'] in ('crew','prepare'):
+            self.event(job_id, 'Workflow retired', 'Use Open Task for new work.', status='cancelled')
+            return
         if profile.get('protection') == 'openshell':
             self.event(job_id, 'Preparing OpenShell', 'Checking the protected runtime and agent sandbox configuration.')
         agent_id = self.ensure_agent(owner, profile)
@@ -1386,7 +1355,9 @@ class Studio(CollaborationPlans, EventScenario, CrewOwnership, SessionLifecycle,
     def crew_chat(self, row, payload):
         owner, job_id, role = row['owner'], row['id'], payload['crewRole']
         with self.db() as db:
-            member = self.crew_roster(db, owner, {}, preset=True)[role]
+            member = {**CREW_CATALOG[role], 'id':self.crew_native_id(owner,role),
+                      'skills':list(ROLE_SKILLS[role]), 'avatar':ROLE_AVATARS[role], 'key':None,
+                      'protection':CREW_CATALOG[role].get('protection','standard')}
             reset = self.crew_chat_reset_state(db, owner)
             current_event = db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind='crew' AND created>=?", (owner, reset['at'])).fetchone()
         from scenarios import crew_member

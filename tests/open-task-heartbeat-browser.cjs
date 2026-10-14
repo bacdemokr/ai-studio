@@ -21,7 +21,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   const jobs=(await state(orbit)).jobs.length;await page.waitForTimeout(6500);assert.equal((await state(orbit)).jobs.length,jobs,'No new results while standing by without an assignment');
   assert.equal((await state(orbit)).techRadar.paused,false,'Room suspension must not write the manual Pause preference');
   await lounge();await waitState(orbit,'watching');assert.equal((await state(jinny)).techRadar.paused,true);
-  await navigate('event-brief');await waitState(orbit,'watching');assert.equal(views.at(-1).openTask,false,'Event Brief does not suspend Heartbeat');
+  await page.locator('.world-room-map [data-world-room=lounge]').click();await waitState(orbit,'watching');assert.equal(views.at(-1).openTask,false,'Lounge resumes Heartbeat');
   await navigate('plan');await waitState(orbit,'paused in Open Task');
   await page.evaluate(()=>BacCampus.overview());await waitState(orbit,'watching');
   // The overview retains mission as its room; only the actual Open Task view suspends.
@@ -31,6 +31,6 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await navigate('plan');await waitState(orbit,'paused in Open Task');
   if(process.env.BAC_TEST_SCREENSHOT){await page.locator('[data-visitor-agent="'+orbit+'"]').click();await page.screenshot({path:process.env.BAC_TEST_SCREENSHOT});}
   assert.deepEqual(errors,[]);assert(views.some(v=>v.openTask===true));assert(views.some(v=>v.openTask===false));
-  console.log(JSON.stringify({passed:true,host,checks:['two Tech Radar hires','idle Open Task suspension','saved results unchanged','manual Pause preserved','Lounge resume','Event Brief unaffected','overview resume','repeated navigation','reload','no browser errors']}));
+  console.log(JSON.stringify({passed:true,host,checks:['two Tech Radar hires','idle Open Task suspension','saved results unchanged','manual Pause preserved','Lounge resume','overview resume','repeated navigation','reload','no browser errors']}));
  }finally{if(browser)await browser.close();server.kill('SIGTERM');}
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 sys.path[:0] = [str(Path(__file__).resolve().parents[1] / 'scripts'), str(Path(__file__).parent)]
 from studio import Studio, Problem
+from legacy_event_fixture import archived_team
 from studio_sessions import SESSION_IDLE_SECONDS
 from test_studio import Adapter
 
@@ -22,9 +23,9 @@ class SessionCleanupTests(unittest.TestCase):
         self.account, _ = self.studio.session()
         self.owner = self.account['id']
         self.studio.onboard(self.owner, {'name':'Fixture', 'persona':'maker', 'skills':['memory']})
-        self.teams = [self.studio.crew_owner(self.owner, scenario) for scenario in ('plan', 'event-brief')]
+        self.teams = [self.studio.crew_owner(self.owner), archived_team(self.studio,self.owner)]
         self.other, _ = self.studio.session()
-        self.other_team = self.studio.crew_owner(self.other['id'], 'event-brief')
+        self.other_team = self.studio.crew_owner(self.other['id'])
         self.adapter.register('bac-'+self.owner, self.studio.workspace(self.owner), self.studio.profile(self.owner))
         for team in self.teams + [self.other_team]:
             self.adapter.register(self.studio.crew_native_id(team, 0), self.studio.workspace(team, 0), {})
@@ -174,7 +175,7 @@ class SessionCleanupTests(unittest.TestCase):
         self.assertEqual(caught.exception.status, 401)
         for owner in [self.owner, *self.teams]:
             with self.assertRaises(Problem) as caught:
-                self.studio.crew_owner(owner, 'event-brief')
+                self.studio.crew_owner(owner, 'plan')
             self.assertEqual(caught.exception.status, 401)
         # Also exercise a session that has not created a crew yet.
         empty, _ = self.studio.session()
@@ -182,7 +183,7 @@ class SessionCleanupTests(unittest.TestCase):
             db.execute('UPDATE participants SET last_seen=0 WHERE id=?', (empty['id'],))
         self.studio.retire_idle_sessions()
         with self.assertRaises(Problem):
-            self.studio.crew_owner(empty['id'], 'event-brief')
+            self.studio.crew_owner(empty['id'], 'plan')
         self.studio.cleanup_session(empty['id'])
         self.studio.cleanup_session(self.owner)
         with self.studio.db() as db:

@@ -17,7 +17,7 @@ Shared URLs and skipped items are remembered in the agent workspace across resta
 
 With **OpenShell on**, approve `developer.nvidia.com` and `huggingface.co` in the agent's **OpenShell Policy** panel. The fixed feed requests run inside the sandbox; blocked requests are not retried through a host connection.
 
-On `preview/visitor-agent-teams`, entering **Open Task** temporarily pauses your hired agents' Heartbeats, even before Casey assigns work. Leaving the room resumes the 20-second cadence; agents you manually paused stay paused. An in-flight check may finish, and its saved result is imported after you leave. Event Brief does not trigger this room pause. If another tab in the same session is still in Open Task, the pause remains until that tab leaves, closes or its browser lease expires.
+On `preview/visitor-agent-teams`, entering **Open Task** temporarily pauses your hired agents' Heartbeats, even before Casey assigns work. Leaving the room resumes the 20-second cadence; agents you manually paused stay paused. An in-flight check may finish, and its saved result is imported after you leave. If another tab in the same session is still in Open Task, the pause remains until that tab leaves, closes or its browser lease expires.
 
 ## Waiting states
 

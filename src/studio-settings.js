@@ -17,7 +17,7 @@ function scenarioHasWork(id=selectedScenario){
 function syncResetButtons(){
  const hasAgents=!!(data.agents||[]).length,hasAnyScenario=(data.scenarios||[]).some(s=>s.hasWork||s.busy);
  el('settings-reset-panel')?.setAttribute('aria-busy',String(resetInProgress||!!data.bacResetting));
- for(const id of ['agent-reset','settings-event-reset','settings-plan-reset','reset-all','bac-reset']){
+ for(const id of ['agent-reset','settings-plan-reset','reset-all','bac-reset']){
   const button=el(id);if(!button)continue;
   const empty=id==='agent-reset'?!hasAgents:id==='reset-all'?!hasAgents&&!hasAnyScenario:!scenarioHasWork(button.dataset.resetScenario||selectedScenario);
   button.disabled=resetInProgress||!!data.bacResetting||removingAgent||empty;
@@ -35,14 +35,14 @@ function settingsUtilityPanels(){return `  <section id="studio-settings-location
   <p id="studio-telegram-status" role="status" hidden></p><div id="studio-telegram-controls" hidden><div class="studio-dialog-actions"><button type="button" id="studio-telegram-test" class="studio-secondary">Send test</button><button type="button" id="studio-telegram-disconnect" class="studio-secondary">Disconnect</button></div></div></section>
   <section id="studio-settings-reset-panel" role="tabpanel" aria-labelledby="studio-settings-reset-tab" class="studio-agent-reset" hidden>
    <div class="studio-reset-row"><div><small class="studio-reset-stage">STAGES 01 / 02</small><h3>Hiring &amp; Agent lounge</h3><p>Remove hired agents and their chats, files, and workspaces.</p></div><button type="button" id="studio-agent-reset" class="studio-secondary" aria-label="Remove Stage 1 and 2 agents" ${(data.agents||[]).length?'':'disabled'}>Remove agents</button></div>
-   ${[['event-brief','03-1','Event Brief','event'],['plan','03-2','Open Task','plan']].map(([scenario,stage,title,id])=>`<div class="studio-reset-row"><div><small class="studio-reset-stage">STAGE ${stage}</small><h3>${title}</h3><p>Clear this scenario’s chats, documents and results.</p></div><button type="button" id="studio-settings-${id}-reset" data-reset-scenario="${scenario}" class="studio-secondary" aria-label="Reset ${title}">Reset scenario</button></div>`).join('')}
+   ${[['plan','03','Open Task','plan']].map(([scenario,stage,title,id])=>`<div class="studio-reset-row"><div><small class="studio-reset-stage">STAGE ${stage}</small><h3>${title}</h3><p>Clear Open Task chats, documents and results.</p></div><button type="button" id="studio-settings-${id}-reset" data-reset-scenario="${scenario}" class="studio-secondary" aria-label="Reset ${title}">Reset Open Task</button></div>`).join('')}
    <div class="studio-reset-footer"><p>Reset all stages. Model and connection settings are kept.</p><button type="button" id="studio-reset-all" class="studio-danger">Reset all</button></div>
   </section>
 `;}
 
 function confirmTeamReset(sourceButton){
  if(resetInProgress||removingAgent||pendingWrites||changingAgent||data.bacResetting)return;
- dialog('RESET SCENARIO', '<h3>Reset '+(escape(stageScenarios.find(s=>s.id===selectedScenario)?.title||'Multi-Agent demo'))+'?</h3><p>This stops this scenario’s work and clears its chats, documents and results. Other scenarios and your hired agents are preserved.</p><div class="studio-dialog-actions"><button type="button" class="studio-secondary" id="studio-team-reset-cancel" autofocus>Cancel</button><button type="button" class="studio-danger" id="studio-team-reset-confirm">Reset scenario</button></div>');
+ dialog('RESET SCENARIO', '<h3>Reset '+(escape(stageScenarios.find(s=>s.id===selectedScenario)?.title||'Multi-Agent demo'))+'?</h3><p>This stops this scenario’s work and clears its chats, documents and results. Your hired agents and model settings are preserved.</p><div class="studio-dialog-actions"><button type="button" class="studio-secondary" id="studio-team-reset-cancel" autofocus>Cancel</button><button type="button" class="studio-danger" id="studio-team-reset-confirm">Reset Open Task</button></div>');
  el('team-reset-cancel').onclick=()=>el('dialog').close();
  el('team-reset-confirm').onclick=()=>{el('dialog').close();resetStudio('bac',sourceButton);};
  el('team-reset-cancel').focus();
@@ -137,7 +137,7 @@ async function openModelConnections(){
    <strong>Hired agents</strong><p>Choose in Hiring or Edit agent.</p>
    ${inherited.length?`<details class="connection-inherited"><summary>Shared default <span>${inherited.length} earlier ${inherited.length===1?'agent':'agents'}</span></summary><p>${escape(inherited.map(agent=>agent.name).join(', '))}</p><label for="studio-route-lounge">Connection</label><select id="studio-route-lounge" data-route="lounge" aria-describedby="studio-connection-lounge-effective">${routeOptions()}</select><span id="studio-connection-lounge-effective" class="connection-effective" role="status"></span></details>`:''}
   </div>
-  <div class="connection-scenarios">${scenarioRoute('event-brief','Event Brief')}${scenarioRoute('plan','Open Task')}</div>
+  <div class="connection-scenarios">${scenarioRoute('plan','Open Task')}</div>
   <div class="connection-footer"><p id="studio-connections-status" role="status"></p><button type="button" id="studio-connections-save" class="studio-primary">Save changes</button></div></div></section>
   ${settingsUtilityPanels()}
   <p id="studio-settings-status" role="status"></p><div class="studio-dialog-actions"><button type="button" id="studio-start-agents" class="studio-secondary" ${runtime.gateway?'hidden':''}>Start agents</button><button type="submit" class="studio-primary" id="studio-save-settings" hidden>Save location</button></div></form>`);
@@ -145,7 +145,7 @@ async function openModelConnections(){
  const panel=el('model-connections'),notice=el('connections-status'),owner=agentId,scenario=selectedScenario;
  let working=false,editing=false,inventoryRevision=0,tab='model',telegram=null,telegramRevision=0;
  const current=()=>el('model-connections')===panel&&el('dialog').open&&agentId===owner&&selectedScenario===scenario;
- const prefs={lounge:state.loungePreference||'auto','event-brief':state.scenarioPreferences?.['event-brief']||'auto',plan:state.scenarioPreferences?.plan||'auto'};
+ const prefs={lounge:state.loungePreference||'auto',plan:state.scenarioPreferences?.plan||'auto'};
  let savedPrefs={...prefs};
  const dirty=()=>Object.keys(prefs).some(key=>prefs[key]!==savedPrefs[key]);
  function routeState(kind){
@@ -240,7 +240,7 @@ async function openModelConnections(){
   }
  };
  el('connections-save').onclick=async()=>{if(working||!dirty())return;working=true;++inventoryRevision;paint();notice.textContent='Applying…';try{
-  const result=await api('settings/connections/preferences',{lounge:prefs.lounge,scenarios:{'event-brief':prefs['event-brief'],plan:prefs.plan}},owner);if(!current())return;state=result;savedPrefs={...prefs};
+  const result=await api('settings/connections/preferences',{lounge:prefs.lounge,scenarios:{plan:prefs.plan}},owner);if(!current())return;state=result;savedPrefs={...prefs};
   ++refreshVersion;stateCache.clear();data.teamConnection=result.teamConnection;runtime=await api('runtime');if(!current())return;render();notice.textContent='Saved. Applies to new requests.';
  }catch(error){if(current())notice.textContent=error.message;}finally{working=false;if(current())paint();}};
  for(const toggle of panel.querySelectorAll('[data-connection-enable]'))toggle.onchange=async()=>{

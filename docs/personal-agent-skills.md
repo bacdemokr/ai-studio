@@ -34,7 +34,7 @@ The Programmer/Coding skill favors a compact desktop page or game, a working sav
 
 ## Registration
 
-Profiles and selected skill IDs persist at Hiring; workspace definitions are written at Hiring. Protected agents and Tech Radar warm their native runtime in the background; other agents register on the next Run. Scenario crew members receive separate role definitions at studio creation: Riley’s Event Brief team and Casey’s Open Task pool do not share native identities. Source of truth: `scripts/agent_runtime.py::SKILLS` and `register()`. `src/studio.js` provides the matching capability cards and example requests. Existing IDs are preserved so saved agents do not lose their loadouts. Restarting the app refreshes the in-process registration cache; the next run rewrites the equipped skill instructions. Restart also invalidates session-only credentials.
+Profiles and selected skill IDs persist at Hiring; workspace definitions are written at Hiring. Protected agents and Tech Radar warm their native runtime in the background; other agents register on the next Run. Open Task specialists receive separate role definitions and native identities. Source of truth: `scripts/agent_runtime.py::SKILLS` and `register()`. `src/studio.js` provides the matching capability cards and example requests. Existing IDs are preserved so saved agents do not lose their loadouts. Restarting the app refreshes the in-process registration cache; the next run rewrites the equipped skill instructions. Restart also invalidates session-only credentials.
 
 ## Persona transparency
 

@@ -57,7 +57,8 @@ class VisitorLifecycleTests(unittest.TestCase):
         self.assertFalse(self.app.executing_owners)
 
     def test_reset_during_late_call_finishes_before_off_retry_and_preserves_other_room(self):
-        event = self.app.crew_owner(self.owner, 'event-brief')
+        from legacy_event_fixture import archived_team
+        event = archived_team(self.app,self.owner)
         sentinel = safe_file(self.app.workspace(event, 0), 'artifacts/event-sentinel.txt')
         sentinel.write_text('Keep Event Brief')
         personal = safe_file(self.app.workspace(self.owner), 'inbox/personal.txt')

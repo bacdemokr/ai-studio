@@ -117,10 +117,9 @@ for(const crew of [false,true]){
 let chatSending=false;
 const isPlanCommand=value=>/^\s*\/(?:goals?|plans?)(?:\s|$)/i.test(value);
 const planLocationHint='Use /goal with Casey in Open Task. Lounge agents and other teammates accept direct messages only.';
-const eventPlanLocationHint='Use Plan an event for Event Brief, or send /goal to Casey in Open Task.';
 function clearPlanLocationHint(crew=false){
  const prefix=crew?'crew-':'',notice=el(prefix+'chat-error');
- if(!isPlanCommand(el(prefix+'prompt').value)&&[planLocationHint,eventPlanLocationHint].includes(notice.textContent))notice.hidden=true;
+ if(!isPlanCommand(el(prefix+'prompt').value)&&notice.textContent===planLocationHint)notice.hidden=true;
 }
 function rejectLoungePlan(){
  if(!isPlanCommand(el('prompt').value))return false;

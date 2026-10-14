@@ -25,10 +25,6 @@ ctx.data.crewChatReset.at=3;ctx.syncSurface();assert.equal(ctx.resultsButton.hid
 // Legacy events cannot resurrect results or displace a current plan.
 ctx.crewMission=()=>old;ctx.openSurface('deliverables');assert.equal(ctx.selectedJob,null);assert.equal(el('plan-results').hidden,true);assert.equal(ctx.resultsButton.hidden,true);
 ctx.data.crewChatReset.at=0;old.created=99;ctx.syncSurface();assert.equal(ctx.currentCollaboration().id,'website');
-// Event Brief uses the same scenario-scoped panel with a readable structured-brief summary.
-ctx.selectedScenario='event-brief';old.status='done';old.updated=159;old.payload={brief:{schema:2,city:'Zurich',days:2,attendees:50,themeCount:3},metrics:{'1':{agent:'dylan',name:'Dylan',input:40,output:10,total:50,runSeconds:4}}};
-ctx.syncSurface();assert.equal(ctx.usageTimeButton.hidden,false);ctx.openSurface('usage');assert.match(ctx.usageTime.innerHTML,/Plan an event in Zurich/);assert.match(ctx.usageTime.innerHTML,/Dylan/);
-ctx.selectedScenario='plan';
 console.log('PASS: plan routing, saved files, progress/error, reset, and retired event isolation');
 // Reset clears a previous execution trace instead of rebuilding a preset crew.
 for(const id of ['board','lanes'])el(id).classList={toggle(){}};
@@ -68,9 +64,7 @@ const summary=ctx.scenarioUsageSummary({created:10,updated:15,payload:{metrics:{
 assert.equal(summary.total,342);assert.equal(summary.apiSeconds,8);assert.equal(summary.elapsed,5);
 assert.equal(summary.agents[0].calls,2);assert.equal(summary.unreportedCalls,1);
 assert.equal(summary.agents[1].outputReported,true);
-ctx.selectedScenario='event-brief';ctx.selectedCrewRole=0;ctx.crewMission=()=>({created:100,updated:160,status:'done'});
-ctx.syncTeamTotalTime();assert.equal(clockNode.textContent,'Total time: 1m 0s');
-console.log('PASS: repeated turns, missing/zero metrics, parallel duration and Event Brief clock');
+console.log('PASS: repeated turns, missing/zero metrics and parallel duration');
 
 // Completed older jobs must not show an invitation as permanently pending.
 const reactions=vm.createContext({escape:String,messageMarkup:String,customSkillMarkup:()=>''});

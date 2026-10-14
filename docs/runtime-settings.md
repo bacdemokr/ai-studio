@@ -7,12 +7,12 @@ Open the Settings gear on localhost or the host's trusted LAN address. **Model**
 1. Enable **Local** and/or **External Endpoint**, then choose **Configure**.
 2. Select the provider and search the **Model** field. The catalogue loads automatically; there is no separate Load models button.
 3. Choose **Connect & enable**.
-4. Under **Models**, choose a connection for **Event Brief** and **Open Task** in their separate rows, then **Save changes**. Changing one never changes the other; existing preferences are preserved.
+4. Under **Models**, choose the **Open Task** connection, then **Save changes**. Existing preferences are preserved.
 5. Hired agents use their own **Model** choice from Hiring or Edit agent. New hires prefer connected Local, otherwise the configured External Endpoint model; team settings never overwrite their choices.
 
 The selectors show **Local** or **External Endpoint**, whichever connection new work will use. There is no Automatic option. Built-in teams prefer External Endpoint by default; opening Settings or refreshing connection status does not change saved preferences. Earlier agents without an individual model keep their previous shared default, available in the collapsed **Shared default** section. Saved manual choices take precedence. When upgrading a data directory that predates shared connections, the selected host provider is retained. For built-in teams and earlier agents using the shared default, an unavailable preferred connection falls back to the other ready connection for new requests. When a fallback is needed, the selector shows the connection in use and the status explains which preferred connection is unavailable. Unsaved selections stay visible with **Save to use** until saved. If neither is ready, Settings shows **No connection ready**. Active model requests are not replayed on another connection.
 
-Open Task shows a warning when using Local because complex tasks may take longer or produce less reliable results. Event Brief supports Local without that warning. Starting Studio or selecting Local does not start a model server; use `./bac vllm` or an existing server first.
+Open Task shows a warning when using Local because complex tasks may take longer or produce less reliable results. Starting Studio or selecting Local does not start a model server; use `./bac vllm` or an existing server first.
 
 The demo manages its own skill files. Native skill file watching and autonomous skill reviews are disabled: repeated file-change notifications can rebuild metadata for every retained agent and delay the gateway. Unchanged files are left untouched; registration publishes an instruction revision when content changes. After editing skill files directly outside the app, re-prepare the agent or restart the runtime.
 
@@ -31,8 +31,7 @@ Local endpoints must be reachable from the app/OpenClaw host, not from the prese
 
 ## Scenario models
 
-- **3-1 Event Brief:** Riley, Dylan, Alex and Morgan all use the selected connection model. New briefs support 2 or 3 themes; the server rejects larger theme counts before creating work.
-- **3-2 Open Task:** Casey and the backups follow the scenario connection. On NVIDIA, choose **Hired + Standby** and expand **Standby specialists** to change Casey’s or a backup’s model. Return to Hired only before starting if needed. Local and other providers use the shared connection model for Casey and backups. Hires retain their individual choices in both modes.
+- **03 Open Task:** Casey and the backups follow the scenario connection. On NVIDIA, choose **Hired + Standby** and expand **Standby specialists** to change Casey’s or a backup’s model. Return to Hired only before starting if needed. Local and other providers use the shared connection model for Casey and backups. Hires retain their individual choices in both modes.
 
 **Models & connection** opens these shared settings. Connection changes are blocked while queued or active work is present; per-agent choices are locked while the team is busy or resetting. See [Open Task models](plan-team-models.md).
 
@@ -44,7 +43,7 @@ In Open Task, select an idle hired agent and click its model badge to open the s
 
 An existing offline model remains selected. You can still edit that agent’s name or persona without changing its model; choosing a different model requires a ready connection.
 
-Each agent uses its choice for Lounge chat, Heartbeat and Open Task assignments. Explicit choices never fall back to another source. If Local is unavailable, connect it in Settings or select an external model. Agents created before this feature keep **Shared default** until explicitly changed. Model selection does not change tools, OpenShell protection or Event Brief.
+Each agent uses its choice for Lounge chat, Heartbeat and Open Task assignments. Explicit choices never fall back to another source. If Local is unavailable, connect it in Settings or select an external model. Agents created before this feature keep **Shared default** until explicitly changed. Model selection does not change tools, OpenShell protection.
 
 ## Context and output budgets
 
@@ -54,11 +53,10 @@ Each agent uses its choice for Lounge chat, Heartbeat and Open Task assignments.
 
 Open **Configure → Advanced → Context limit** to inspect or change the budget. Advanced options start collapsed. The editor retains an existing provider context value or uses 32K for a new provider; it does not infer the model's capacity from its name. Set up local servers with sufficient context before presenting. This setting does not resize Ollama's `num_ctx` or vLLM's server context.
 
-The runtime bounds web excerpts and enables context compaction with a pre-call check. Recent-context retention scales to one quarter of the smallest configured context, capped at 8K tokens. Event Brief and Open Task file reads are limited to 120 lines, 6KB per tool result and 24KB per turn; Dylan and Vera have stricter dedicated limits. UTF-8 byte budgets cover multilingual text as well as English. Saved files stay intact, writes and edits remain available, and shortened excerpts disclose missing coverage. These measures reduce context growth but cannot guarantee that every request fits. Generating a large file also adds its code to the conversation, so a context error can occur after the file was saved.
+The runtime bounds web excerpts and enables context compaction with a pre-call check. Recent-context retention scales to one quarter of the smallest configured context, capped at 8K tokens. Open Task file reads are limited to 120 lines, 6KB per tool result and 24KB per turn; Vera has a stricter review limit. UTF-8 byte budgets cover multilingual text as well as English. Saved files stay intact, writes and edits remain available, and shortened excerpts disclose missing coverage. These measures reduce context growth but cannot guarantee that every request fits. Generating a large file also adds its code to the conversation, so a context error can occur after the file was saved.
 
-For Dylan's Event Brief missions, the research guard blocks bulk research-file reads, tool-source inspection and arbitrary shell commands. It bounds repeated reads, research calls and retained tool output. Smaller search results, shorter skills and the `evidence` command let Dylan reuse saved excerpts without more network calls.
 
-Dylan's Event Brief missions and Open Task each support one fresh-conversation recovery after a context overflow. Dylan validates saved themes first and repairs only missing work. Open Task reuses saved files and observed evidence, with focused reads instead of regenerating the whole output. Recovery shares each workflow's existing single repair allowance and respects cancellation and the remaining time budget. It does not increase the model context, switch models or reset user data. A second failure stops with partial results. Inspect saved work, narrow the task or reset the appropriate conversation/scenario before trying again. See `scripts/runtime_settings.py` for the current limits.
+Open Task supports one fresh-conversation recovery after a context overflow. Open Task reuses saved files and observed evidence, with focused reads instead of regenerating the whole output. Recovery shares each workflow's existing single repair allowance and respects cancellation and the remaining time budget. It does not increase the model context, switch models or reset user data. A second failure stops with partial results. Inspect saved work, narrow the task or reset the appropriate conversation/scenario before trying again. See `scripts/runtime_settings.py` for the current limits.
 
 ## Optional api.cfg
 
@@ -68,11 +66,11 @@ Startup installs a Git clean filter that stages an empty `api.cfg` while preserv
 
 ## Location, Telegram and Reset
 
-**Location** sets the default city, initially Zurich. Explicit locations in a task or event brief take precedence. Saving updates the managed location for hired agents and every prepared specialist in both scenarios without changing memory, permissions or credentials.
+**Location** sets the default city, initially Zurich. Explicit locations in a task take precedence. Saving updates the managed location for hired agents and every prepared specialist in Open Task without changing memory, permissions or credentials.
 
 **Telegram** sends new summaries from agents with the Tech Radar skill only. Ordinary chat and Multi-Agent results are not sent. See [Heartbeat and Telegram](heartbeat.md).
 
-**Reset** offers Remove agents for Stages 1/2, separate Reset scenario buttons for Event Brief and Open Task from any room, and Reset all for both scenarios and hired agents. Model and connection settings remain. The Reset button beside Mission Control also clears only the selected scenario.
+**Reset** offers Remove agents for Stages 1/2, Reset Open Task, and Reset all for both team work and hired agents. Model and connection settings remain. The team utility Reset clears only Open Task.
 
 ## Access and verification
 
@@ -95,7 +93,7 @@ Browser checks require Playwright and Chrome/Chromium. See [development and veri
 
 Only one browser session can use the demo at a time. Other browsers, private windows and devices show **The demo is already open** before creating a session or preparing agents. Tabs in the same browser at the same address share the existing session and agents; refreshes preserve them. Close all demo tabs in that browser, then select **Try again** in the new browser. A lost connection or browser crash releases access after 90 seconds without requests, once running work finishes. This access timeout does not delete data.
 
-Each browser session owns its personal agents and its separate Stage 3 teams. Open tabs renew activity automatically. After 60 minutes without authenticated requests, the app cancels pending requests and scheduled follow-ups, then removes that session's agents, native runtime registrations, sandboxes, conversations and workspaces. Running tasks, artifact writes and policy updates finish before cleanup starts. Active browsers and their standby teams are unaffected.
+Each browser session owns its personal agents and its Open Task team. Open tabs renew activity automatically. After 60 minutes without authenticated requests, the app cancels pending requests and scheduled follow-ups, then removes that session's agents, native runtime registrations, sandboxes, conversations and workspaces. Running tasks, artifact writes and policy updates finish before cleanup starts. Active browsers and their standby teams are unaffected.
 
 Cleanup runs in the background, records completed targets, and resumes after partial failures or a server restart. A returning expired browser starts a new empty session; model requests are never replayed. Model connections and host settings are not part of session cleanup.
 
