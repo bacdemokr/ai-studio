@@ -26,7 +26,9 @@ el('crew-goal-choices').onclick=async event=>{
  syncCrewComposer();if(button.disabled)return;
  const choice=goalExamples.find(g=>g.id===button.dataset.goalExample),prompt=el('crew-prompt');
  el('crew-chat-error').hidden=true;
- crewDocumentSelection().example=choice.document?'inbox/'+choice.document:'';
+ const selection=crewDocumentSelection();
+ selection.example=choice.document?'inbox/'+choice.document:'';
+ selection.lockedExample=choice.requiredDocument?selection.example:'';
  prompt.value=choice.prompt;prompt.dispatchEvent(new Event('input',{bubbles:true}));
  prompt.focus({preventScroll:true});prompt.setSelectionRange(prompt.value.length,prompt.value.length);prompt.scrollTop=0;
  if(choice.document){

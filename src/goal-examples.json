@@ -19,6 +19,7 @@
     "detail": "Includes BB’s fictional sample email",
     "team": "Data interpretation + Coding",
     "document": "FAKE_OUTLOOK_FRANCE_STORE_STATUS_THREAD_shortversion.txt",
+    "requiredDocument": true,
     "prompt": "/goal Use two different specialists to turn the attached fictional France store email thread into a dashboard. First, a specialist with Data interpretation compares the five stores with last year, separates margin rates from profit amounts, and saves a concise analysis brief with supported figures, missing data and three practical next actions. Next, a specialist with Coding uses that saved analysis to build one self-contained HTML dashboard with comparison charts, a store table and recommendations. Preserve the fictional-data label and do not invent missing figures. No web research is needed."
   },
   {

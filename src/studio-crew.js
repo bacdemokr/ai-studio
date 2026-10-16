@@ -401,20 +401,20 @@ const crewExampleDocuments=new Set(goalExamples.filter(choice=>choice.document).
 function crewDocumentSelection(){
  const epoch=data.crewChatReset?.epoch||'';
  let selection=crewDocumentSelections.get(selectedScenario);
- if(!selection||selection.epoch!==epoch){selection={epoch,excluded:new Set(),uploaded:new Set(),example:''};crewDocumentSelections.set(selectedScenario,selection);}
+ if(!selection||selection.epoch!==epoch){selection={epoch,excluded:new Set(),uploaded:new Set(),example:'',lockedExample:''};crewDocumentSelections.set(selectedScenario,selection);}
  return selection;
 }
 function excludedCrewDocuments(){return crewDocumentSelection().excluded;}
 function renderCrewDocuments(){
  const files=data.crewDocuments||[],paths=new Set(files.map(f=>f.path)),selection=crewDocumentSelection(),excluded=selection.excluded;
- if(selectedCrewRole===0&&!selectedOpenTaskVisitor&&/^\s*(?:\/(?:goals?|plans?)\s*)?$/i.test(el('crew-prompt').value))selection.example='';
+ if(selectedCrewRole===0&&!selectedOpenTaskVisitor&&/^\s*(?:\/(?:goals?|plans?)\s*)?$/i.test(el('crew-prompt').value)){selection.example='';selection.lockedExample='';}
  // Sample files stay saved for reuse, but belong only to their selected draft.
  const docs=files.filter(f=>(!crewExampleDocuments.has(f.path)||selection.example===f.path||selection.uploaded.has(f.path))&&/\.(pdf|pptx|xlsx|txt|md|csv)$/i.test(f.path)&&!/^(?:plan-input|plan|chat)-[0-9a-f]{24}(?:-|\.)/.test(f.path.split('/').at(-1))&&!(/\.(pdf|pptx|xlsx)\.txt$/i.test(f.path)&&paths.has(f.path.slice(0,-4))));
  const box=el('crew-documents');box.hidden=selectedCrewRole!==0||(!docs.length&&!crewDocumentUpload);
- box.innerHTML=docs.map(f=>'<div class="studio-attachment"><input type="checkbox" aria-label="Attach '+escape(f.path.slice(6))+'" data-crew-document="'+escape(f.path)+'" '+(excluded.has(f.path)?'':'checked')+' '+(crewDocumentUpload?'disabled':'')+'><button type="button" data-attachment-preview="'+escape(f.path)+'" title="Open file in a new tab">'+escape(f.path.slice(6))+'</button></div>').join('')+(crewDocumentUpload?'<small role="status">Adding document…</small>':'');
+ box.innerHTML=docs.map(f=>{const locked=selection.lockedExample===f.path;return '<div class="studio-attachment"><input type="checkbox" aria-label="Attach '+escape(f.path.slice(6))+'" data-crew-document="'+escape(f.path)+'" '+(excluded.has(f.path)?'':'checked')+' '+(crewDocumentUpload||locked?'disabled':'')+(locked?' title="Required for this example" data-required-example="true"':'')+'><button type="button" data-attachment-preview="'+escape(f.path)+'" title="Open file in a new tab">'+escape(f.path.slice(6))+'</button></div>';}).join('')+(crewDocumentUpload?'<small role="status">Adding document…</small>':'');
  return docs.filter(f=>!excluded.has(f.path));
 }
-el('crew-documents').addEventListener('change',event=>{const path=event.target.dataset.crewDocument;if(path){const excluded=excludedCrewDocuments();if(event.target.checked)excluded.delete(path);else excluded.add(path);}});
+el('crew-documents').addEventListener('change',event=>{const path=event.target.dataset.crewDocument;if(path){const selection=crewDocumentSelection(),excluded=selection.excluded;if(selection.lockedExample===path){event.target.checked=true;excluded.delete(path);}else if(event.target.checked)excluded.delete(path);else excluded.add(path);}});
 el('crew-documents').addEventListener('click',event=>{
  const button=event.target.closest('[data-attachment-preview]');
  if(button)openAttachmentTab(button.dataset.attachmentPreview,'0');

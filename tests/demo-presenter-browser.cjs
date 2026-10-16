@@ -70,8 +70,11 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.unroute('**/api/upload');
   const document=page.locator('#studio-crew-documents input[type=checkbox]');
   assert.equal(await document.count(),1);assert(await document.isChecked());
+  assert(await document.isDisabled());assert.equal(await document.getAttribute('data-required-example'),'true');
   assert.match(await page.locator('#studio-crew-documents').innerText(),/FAKE_OUTLOOK_FRANCE_STORE_STATUS_THREAD/);
-  await document.uncheck();await page.locator('[data-goal-example=stores]').click();assert(await document.isChecked());
+  await document.evaluate(node=>{node.checked=false;node.dispatchEvent(new Event('change',{bubbles:true}));});
+  assert(await document.isChecked(),'The required store email cannot be unchecked');
+  await page.locator('[data-goal-example=stores]').click();assert(await document.isChecked());
   assert.equal(posts.filter(u=>u.endsWith('/api/upload')).length,1,'Selecting the same sample reuses the attachment');
   assert.equal(posts.filter(u=>u.endsWith('/api/jobs')).length,0,'Examples must never submit model jobs');
   const gpu=examples.find(g=>g.id==='gpu');
