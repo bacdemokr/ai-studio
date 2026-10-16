@@ -81234,7 +81234,7 @@ render();
       if(selection){selection.removeAllRanges();for(const range of ranges)if(range.commonAncestorContainer.isConnected)selection.addRange(range);}
     }
   }
-  const buildInfo={"version": "0.2.001", "commit": "1c6d3f53b592b5843206cfe8b31fa8b3a995d3a9", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
+  const buildInfo={"version": "0.2.001", "commit": "dffa06073e3d8fbcf6fd2af5b21cc18001deb585", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
   // Only codes and source locations are retained. Never retain Error.message, bodies or URLs.
 const browserDiagnostics=[];
 const diagnosticRoutes=new Set('session state runtime diagnostics telemetry settings settings/models settings/start settings/team-model settings/connections settings/connections/preferences settings/connections/check settings/connections/models settings/scenario-model settings/scenario-models credential-session agents onboard profile agent-model delete-agent agent-policy crew-policy jobs upload decision retry-reaction reset crew-chat-reset bac-reset heartbeat team-model telegram telegram/test file workspace-files agent-documents evidence security'.split(' '));
@@ -81738,9 +81738,11 @@ function renderModelResults(){
  const selected=modelPickerDraft;
  const locked=modelPickerVisitor?hiredModelLock(modelPickerVisitor):builtinModelLock(modelPickerRole);
  const models=modelPickerChoices().filter(m=>(m.id+' '+m.label+' '+(m.source==='api'?'External Endpoint':'')).toLowerCase().includes(query));
- models.sort((a,b)=>Number(b.id===selected)-Number(a.id===selected));
+ const displayName=model=>model.source==='local'?'Local':model.label.split('/').at(-1);
+ const nemotron=model=>(model.label+' '+model.id).toLowerCase().includes('nemotron');
+ models.sort((a,b)=>Number(nemotron(b))-Number(nemotron(a))||displayName(a).localeCompare(displayName(b))||a.id.localeCompare(b.id));
  teamModelDialog.querySelector('.team-model-count').textContent=models.length?(models.length+' models'+(models.length>40?' · Showing the first 40. Refine your search.':'')):'No matching models';
- const markup=models.slice(0,40).map(m=>'<button type="button" data-model-choice="'+escape(m.id)+'" aria-pressed="'+(m.id===selected)+'" '+(modelPickerSaving||locked||(modelPickerVisitor&&!m.connected)?'disabled':'')+'><span><strong>'+escape(m.source==='local'?'Local':m.label.split('/').at(-1))+'</strong><small>'+escape(modelPickerVisitor?(m.source==='local'?m.label:m.source==='shared'?'Uses the shared connection':m.id.split('/').slice(2).join('/')):m.id)+'</small></span><span class="team-model-choice-state">'+(modelPickerVisitor&&!m.connected?'Not connected':m.id===selected?'✓':m.source==='api'?'External Endpoint':'')+'</span></button>').join('');
+ const markup=models.slice(0,40).map(m=>'<button type="button" data-model-choice="'+escape(m.id)+'" aria-pressed="'+(m.id===selected)+'" '+(modelPickerSaving||locked||(modelPickerVisitor&&!m.connected)?'disabled':'')+'><span><strong>'+escape(displayName(m))+'</strong><small>'+escape(modelPickerVisitor?(m.source==='local'?m.label:m.source==='shared'?'Uses the shared connection':m.id.split('/').slice(2).join('/')):m.id)+'</small></span><span class="team-model-choice-state">'+(modelPickerVisitor&&!m.connected?'Not connected':m.id===selected?'✓':m.source==='api'?'External Endpoint':'')+'</span></button>').join('');
  const results=teamModelDialog.querySelector('.team-model-results');
  if(modelPickerMarkup!==markup){modelPickerMarkup=markup;results.innerHTML=markup;}
  teamModelDialog.querySelector('.team-model-count').textContent=locked||teamModelDialog.querySelector('.team-model-count').textContent;
@@ -83036,10 +83038,11 @@ function renderCreatorModels(){
  const query=input.value.trim().toLowerCase();
  const sourceName=row=>row.source==='api'?'External Endpoint':row.source==='local'?'Local':'Shared default';
  const matches=choices.filter(row=>(row.label+' '+row.id+' '+sourceName(row)).toLowerCase().includes(query));
- const priority=row=>row.source==='local'?0:row.id===draftModel?1:row.id.split('/').slice(2).join('/')===defaultApi?2:3;
- matches.sort((a,b)=>priority(a)-priority(b)||a.label.localeCompare(b.label));
+ const displayName=row=>row.source==='local'?'Local':row.label.split('/').at(-1);
+ const nemotron=row=>(row.label+' '+row.id).toLowerCase().includes('nemotron');
+ matches.sort((a,b)=>Number(nemotron(b))-Number(nemotron(a))||displayName(a).localeCompare(displayName(b))||a.id.localeCompare(b.id));
  const html=matches.slice(0,40).map(row=>{
-  const title=row.source==='local'?'Local':row.label.split('/').at(-1),description=row.source==='local'?(row.label.replace(/^Local(?: - )?/,'')||'On this host'):row.source==='api'?row.id.split('/').slice(2).join('/'):'Uses the shared connection';
+  const title=displayName(row),description=row.source==='local'?(row.label.replace(/^Local(?: - )?/,'')||'On this host'):row.source==='api'?row.id.split('/').slice(2).join('/'):'Uses the shared connection';
   return `<button type="button" data-agent-model-choice="${escape(row.id)}" aria-pressed="${row.id===draftModel}" ${row.connected?'':'disabled'} title="${escape(row.label)}"><span><strong>${escape(title)}</strong><small>${escape(description)}</small></span><span class="studio-model-choice-state">${row.connected?(row.id===draftModel?'Selected':sourceName(row)):'Not connected'}</span></button>`;
  }).join('')||'<p class="studio-model-empty">No matching models</p>';
  const focused=document.activeElement?.closest('[data-agent-model-choice]')?.dataset.agentModelChoice;
@@ -83702,7 +83705,7 @@ function settingsUtilityPanels(){return `  <section id="studio-settings-location
   <p id="studio-telegram-status" role="status" hidden></p><div id="studio-telegram-controls" hidden><div class="studio-dialog-actions"><button type="button" id="studio-telegram-test" class="studio-secondary">Send test</button><button type="button" id="studio-telegram-disconnect" class="studio-secondary">Disconnect</button></div></div></section>
   <section id="studio-settings-reset-panel" role="tabpanel" aria-labelledby="studio-settings-reset-tab" class="studio-agent-reset" hidden>
    <div class="studio-reset-row"><div><small class="studio-reset-stage">STAGES 01 / 02</small><h3>Hiring &amp; Agent lounge</h3><p>Remove hired agents and their chats, files, and workspaces.</p></div><button type="button" id="studio-agent-reset" class="studio-secondary" aria-label="Remove Stage 1 and 2 agents" ${(data.agents||[]).length?'':'disabled'}>Remove agents</button></div>
-   ${[['plan','03','Open Task','plan']].map(([scenario,stage,title,id])=>`<div class="studio-reset-row"><div><small class="studio-reset-stage">STAGE ${stage}</small><h3>${title}</h3><p>Clear Open Task chats, documents and results.</p></div><button type="button" id="studio-settings-${id}-reset" data-reset-scenario="${scenario}" class="studio-secondary" aria-label="Reset ${title}">Reset Open Task</button></div>`).join('')}
+   ${[['plan','03','Open Task','plan']].map(([scenario,stage,title,id])=>`<div class="studio-reset-row"><div><small class="studio-reset-stage">STAGE ${stage}</small><h3>${title}</h3><p>Clear Open Task chats, documents, results and built-in agent model choices.</p></div><button type="button" id="studio-settings-${id}-reset" data-reset-scenario="${scenario}" class="studio-secondary" aria-label="Reset ${title}">Reset Open Task</button></div>`).join('')}
    <div class="studio-reset-footer"><p>Reset all stages. Model and connection settings are kept.</p><button type="button" id="studio-reset-all" class="studio-danger">Reset all</button></div>
    ${issueReportPanel()}
   </section>
@@ -83929,8 +83932,10 @@ async function openModelConnections(){
   const lockFields=()=>{const active=state.connections[source],verified=source==='api'&&active.provider===provider()&&active.ready&&reusableKey();el('connect-url').disabled=source==='api';if(el('connect-key')){el('connect-key').disabled=verified;el('connect-key').placeholder=verified?(active.keySource==='api.cfg'?'API key verified · api.cfg':active.keySource==='host'?'API key verified · saved on host':'API key verified · this session'):'Enter API key';el('connect-key-status').textContent=verified?'':'Key expires when this tab reloads or closes.';}};
   function renderCatalog(){
    const query=catalogFilter.trim().toLowerCase(),selected=el('connect-model').value;
-   const matches=catalogModels.filter(model=>(model.name+' '+model.id).toLowerCase().includes(query));
-   el('connect-model-results').innerHTML=matches.slice(0,40).map(model=>`<button type="button" data-connect-model-choice="${escape(model.id)}" aria-pressed="${model.id===selected}" title="${escape(model.name)}"><span><strong>${escape((model.name||model.id).split('/').at(-1))}</strong><small>${escape(model.id)}</small></span><span class="studio-model-choice-state">${model.id===selected?'Selected':'External Endpoint'}</span></button>`).join('')||(catalogModels.length?'<p class="studio-model-empty">No matching models</p>':'');
+   const displayName=model=>(model.name||model.id).split('/').at(-1);
+   const nemotron=model=>(model.name+' '+model.id).toLowerCase().includes('nemotron');
+   const matches=catalogModels.filter(model=>(model.name+' '+model.id).toLowerCase().includes(query)).sort((a,b)=>Number(nemotron(b))-Number(nemotron(a))||displayName(a).localeCompare(displayName(b))||a.id.localeCompare(b.id));
+   el('connect-model-results').innerHTML=matches.slice(0,40).map(model=>`<button type="button" data-connect-model-choice="${escape(model.id)}" aria-pressed="${model.id===selected}" title="${escape(model.name)}"><span><strong>${escape(displayName(model))}</strong><small>${escape(model.id)}</small></span><span class="studio-model-choice-state">${model.id===selected?'Selected':'External Endpoint'}</span></button>`).join('')||(catalogModels.length?'<p class="studio-model-empty">No matching models</p>':'');
   }
   const fill=()=>{const id=provider(),profile=settings.profiles[id]||{},active=state.connections[source];el('connect-url').value=profile.baseUrl||settings.providers[id].baseUrl;el('connect-url').readOnly=source==='api';el('connect-model').value=profile.model||(active.provider===id?active.model:'');el('connect-context').value=profile.contextWindow||(active.provider===id?active.contextWindow:0)||32768;if(el('connect-key'))el('connect-key').value='';el('connect-models').innerHTML='';catalogModels=[];catalogFilter='';renderCatalog();lockFields();};
   if(source==='api'){el('connect-provider').value=state.connections.api.provider;el('connect-provider').onchange=fill;}fill();

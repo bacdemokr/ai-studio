@@ -19,6 +19,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await open();await page.waitForFunction(()=>document.querySelector('#studio-connect-models').options.length>0);
   assert(await page.locator('[data-connect-model-choice="fixture-local-model"]').isVisible());
   assert.match(await page.locator('[data-connect-model-choice="fixture-local-model"]').innerText(),/External Endpoint/);
+  const orderedModels=await page.locator('#studio-connect-model-results strong').allTextContents(),modelOrder=(a,b)=>Number(b.toLowerCase().includes('nemotron'))-Number(a.toLowerCase().includes('nemotron'))||a.localeCompare(b);assert.deepEqual(orderedModels,[...orderedModels].sort(modelOrder));
   assert(await page.locator('#studio-connect-key').isDisabled());assert(await page.locator('#studio-connect-url').isDisabled());
   assert.equal(await page.locator('#studio-connect-load').count(),0);
   assert.equal(await page.locator('#studio-connect-context').inputValue(),'131072');

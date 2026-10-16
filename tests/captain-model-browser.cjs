@@ -17,6 +17,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await navigate('plan');await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Casey');
   assert(await badge.isEnabled(),'Idle Casey model badge should open the picker');
   const initial=(await state()).teamSelections;
+  await badge.click();const orderedModels=await picker.locator('strong').allTextContents(),modelOrder=(a,b)=>Number(b.toLowerCase().includes('nemotron'))-Number(a.toLowerCase().includes('nemotron'))||a.localeCompare(b);assert.deepEqual(orderedModels,[...orderedModels].sort(modelOrder));await page.keyboard.press('Escape');
   await choose('fixture-b');assert.deepEqual(writes.at(-1),{role:0,model:'fixture-b'});
   const changed=(await state()).teamSelections;
   assert.equal(changed.find(m=>m.role===0).id,'fixture-b');assert.deepEqual(changed.filter(m=>m.role!==0),initial.filter(m=>m.role!==0));

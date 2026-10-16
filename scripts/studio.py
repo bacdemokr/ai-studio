@@ -1148,6 +1148,14 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
                             folder.unlink()
                         if workspace.is_dir():
                             folder.mkdir(exist_ok=True)
+                if teams:
+                    team_slots = ','.join('?' for _ in teams)
+                    resources = db.execute(
+                        'SELECT native_id FROM crew_resources WHERE owner IN (' + team_slots + ')', teams).fetchall()
+                    db.execute(
+                        'UPDATE crew_resources SET model=NULL WHERE owner IN (' + team_slots + ')', teams)
+                    for resource in resources:
+                        self.provisioned.discard(resource['native_id'])
             # Rotate an account-scoped session epoch after artifact cleanup succeeds.
             # Native agent cleanup is independent; active crew calls are fenced above.
             reset = {'at': time.time(), 'epoch': secrets.token_hex(12)}

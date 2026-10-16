@@ -30,10 +30,11 @@ function renderCreatorModels(){
  const query=input.value.trim().toLowerCase();
  const sourceName=row=>row.source==='api'?'External Endpoint':row.source==='local'?'Local':'Shared default';
  const matches=choices.filter(row=>(row.label+' '+row.id+' '+sourceName(row)).toLowerCase().includes(query));
- const priority=row=>row.source==='local'?0:row.id===draftModel?1:row.id.split('/').slice(2).join('/')===defaultApi?2:3;
- matches.sort((a,b)=>priority(a)-priority(b)||a.label.localeCompare(b.label));
+ const displayName=row=>row.source==='local'?'Local':row.label.split('/').at(-1);
+ const nemotron=row=>(row.label+' '+row.id).toLowerCase().includes('nemotron');
+ matches.sort((a,b)=>Number(nemotron(b))-Number(nemotron(a))||displayName(a).localeCompare(displayName(b))||a.id.localeCompare(b.id));
  const html=matches.slice(0,40).map(row=>{
-  const title=row.source==='local'?'Local':row.label.split('/').at(-1),description=row.source==='local'?(row.label.replace(/^Local(?: - )?/,'')||'On this host'):row.source==='api'?row.id.split('/').slice(2).join('/'):'Uses the shared connection';
+  const title=displayName(row),description=row.source==='local'?(row.label.replace(/^Local(?: - )?/,'')||'On this host'):row.source==='api'?row.id.split('/').slice(2).join('/'):'Uses the shared connection';
   return `<button type="button" data-agent-model-choice="${escape(row.id)}" aria-pressed="${row.id===draftModel}" ${row.connected?'':'disabled'} title="${escape(row.label)}"><span><strong>${escape(title)}</strong><small>${escape(description)}</small></span><span class="studio-model-choice-state">${row.connected?(row.id===draftModel?'Selected':sourceName(row)):'Not connected'}</span></button>`;
  }).join('')||'<p class="studio-model-empty">No matching models</p>';
  const focused=document.activeElement?.closest('[data-agent-model-choice]')?.dataset.agentModelChoice;

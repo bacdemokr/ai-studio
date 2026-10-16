@@ -81,6 +81,19 @@ class TeamModelTests(unittest.TestCase):
         team.select(self.app,crew,{'role':5,'model':team.MODELS[1]})
         self.assertEqual(team.selections(self.app,crew)[5]['id'],team.MODELS[1])
 
+    def test_stage3_reset_restores_builtin_model_defaults(self):
+        owner=self.app.session()[0]['id'];crew=self.app.crew_owner(owner)
+        casey=self.app.crew_native_id(crew,0);research=self.app.crew_native_id(crew,8)
+        team.select(self.app,crew,{'role':0,'model':team.MODELS[1]})
+        team.select(self.app,crew,{'role':8,'model':team.MODELS[0]})
+        self.app.provisioned.update((casey,research))
+        self.app.reset_crew_chats(crew,reset_event=True)
+        selections=team.selections(self.app,crew)
+        self.assertEqual(selections[0]['id'],team.MODELS[0])
+        self.assertEqual(selections[8]['id'],team.MODELS[1])
+        self.assertNotIn(casey,self.app.provisioned)
+        self.assertNotIn(research,self.app.provisioned)
+
     def test_role_matching_does_not_capture_personal_agents(self):
         self.assertIsNone(team.model_for('bac-'+'a'*24))
         self.assertIsNone(team.model_for('bac-'+'a'*24+'-r99'))

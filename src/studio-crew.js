@@ -124,9 +124,11 @@ function renderModelResults(){
  const selected=modelPickerDraft;
  const locked=modelPickerVisitor?hiredModelLock(modelPickerVisitor):builtinModelLock(modelPickerRole);
  const models=modelPickerChoices().filter(m=>(m.id+' '+m.label+' '+(m.source==='api'?'External Endpoint':'')).toLowerCase().includes(query));
- models.sort((a,b)=>Number(b.id===selected)-Number(a.id===selected));
+ const displayName=model=>model.source==='local'?'Local':model.label.split('/').at(-1);
+ const nemotron=model=>(model.label+' '+model.id).toLowerCase().includes('nemotron');
+ models.sort((a,b)=>Number(nemotron(b))-Number(nemotron(a))||displayName(a).localeCompare(displayName(b))||a.id.localeCompare(b.id));
  teamModelDialog.querySelector('.team-model-count').textContent=models.length?(models.length+' models'+(models.length>40?' · Showing the first 40. Refine your search.':'')):'No matching models';
- const markup=models.slice(0,40).map(m=>'<button type="button" data-model-choice="'+escape(m.id)+'" aria-pressed="'+(m.id===selected)+'" '+(modelPickerSaving||locked||(modelPickerVisitor&&!m.connected)?'disabled':'')+'><span><strong>'+escape(m.source==='local'?'Local':m.label.split('/').at(-1))+'</strong><small>'+escape(modelPickerVisitor?(m.source==='local'?m.label:m.source==='shared'?'Uses the shared connection':m.id.split('/').slice(2).join('/')):m.id)+'</small></span><span class="team-model-choice-state">'+(modelPickerVisitor&&!m.connected?'Not connected':m.id===selected?'✓':m.source==='api'?'External Endpoint':'')+'</span></button>').join('');
+ const markup=models.slice(0,40).map(m=>'<button type="button" data-model-choice="'+escape(m.id)+'" aria-pressed="'+(m.id===selected)+'" '+(modelPickerSaving||locked||(modelPickerVisitor&&!m.connected)?'disabled':'')+'><span><strong>'+escape(displayName(m))+'</strong><small>'+escape(modelPickerVisitor?(m.source==='local'?m.label:m.source==='shared'?'Uses the shared connection':m.id.split('/').slice(2).join('/')):m.id)+'</small></span><span class="team-model-choice-state">'+(modelPickerVisitor&&!m.connected?'Not connected':m.id===selected?'✓':m.source==='api'?'External Endpoint':'')+'</span></button>').join('');
  const results=teamModelDialog.querySelector('.team-model-results');
  if(modelPickerMarkup!==markup){modelPickerMarkup=markup;results.innerHTML=markup;}
  teamModelDialog.querySelector('.team-model-count').textContent=locked||teamModelDialog.querySelector('.team-model-count').textContent;

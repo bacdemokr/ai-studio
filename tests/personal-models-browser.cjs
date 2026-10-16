@@ -28,6 +28,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.locator('#studio-prompt').fill('Hello default model');await page.locator('#studio-send').click();await page.waitForFunction(()=>document.querySelector('#studio-conversation').textContent.includes('Simulated model: fixture-a'));
   await page.locator('#studio-edit-agent').click();assert.equal(await summary.innerText(),'fixture-a');
   await expand();assert(await choice('local').isDisabled());assert.equal(await results.locator('button').count(),40);
+  const orderedModels=await results.locator('strong').allTextContents(),modelOrder=(a,b)=>Number(b.toLowerCase().includes('nemotron'))-Number(a.toLowerCase().includes('nemotron'))||a.localeCompare(b);assert.deepEqual(orderedModels,[...orderedModels].sort(modelOrder));
   assert((await results.boundingBox()).height<=222,'Large catalogue stays compact');
   await search.fill('nonexistent model');assert.match(await results.innerText(),/No matching models/);await search.press('Enter');assert.equal(await page.evaluate(()=>BacStudio.inspect().profile.model),'api/nvidia/fixture-a');
   await search.fill('MODEL-089');assert.equal(await results.locator('button').count(),1);
