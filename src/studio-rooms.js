@@ -138,7 +138,7 @@ function setRoom(next,options={}){
   const before=options.fromWorld&&!worldOpen?worldViewport.getBoundingClientRect().top:null;
   if(next!==room||(next==='mission'&&options.fromWorld&&!options.resume))closeSurface();
   editingInPlace=false;room=next;if(next!=='mission'){board=false;selectedOpenTaskVisitor='';}
-  root.dataset.room=next;worldViewport.setAttribute('aria-label',roomCopy[next]+'. Drag to orbit, scroll to zoom. Press Enter to toggle full screen.');if(roomsReady)try{sessionStorage.setItem('bac-studio-room',next);}catch{}
+  root.dataset.room=next;worldViewport.setAttribute('aria-label',roomCopy[next]+'. Drag to orbit, scroll to zoom. Press Enter to toggle fullscreen.');if(roomsReady)try{sessionStorage.setItem('bac-studio-room',next);}catch{}
   if(next==='mission')renderCrew();renderRoomVisibility();
   runtimeBadge();
   window.BacCampus?.setRoom(next,{instant:!roomsReady});

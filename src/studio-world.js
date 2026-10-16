@@ -2,12 +2,12 @@
   const worldViewport=document.getElementById('campus-viewport');
   const worldButton=document.createElement('button');
   worldButton.id='studio-focus';worldButton.type='button';
-  worldButton.textContent='Full screen';worldButton.title='Full screen · Enter after selecting the 3D view';
+  worldButton.textContent='Fullscreen';worldButton.title='Fullscreen · Enter after selecting the 3D view';
   worldButton.setAttribute('aria-controls','campus-viewport');worldButton.setAttribute('aria-expanded','false');
   document.querySelector('.campus-scene-bottom .row').prepend(worldButton);
   worldViewport.tabIndex=0;worldViewport.setAttribute('role','region');
   worldViewport.setAttribute('aria-keyshortcuts','Enter');
-  worldViewport.setAttribute('aria-label','Interactive 3D workshop. Click then press Enter for full screen, or double-click an empty area. Drag to orbit and scroll to zoom. Escape returns to the studio.');
+  worldViewport.setAttribute('aria-label','Interactive 3D workshop. Click then press Enter for fullscreen, or double-click an empty area. Drag to orbit and scroll to zoom. Escape returns to the studio.');
   let worldOpen=false,worldEpoch=0,worldPreviousFocus=null,worldScroll=[0,0],worldOverflow='',worldInert=[];
   const resources=document.getElementById('studio-resources');
   document.addEventListener('pointerdown',e=>{if(!resources.contains(e.target))resources.open=false;});
@@ -23,7 +23,7 @@
     resources.open=false;
     document.querySelector('.studio-header-actions').append(document.getElementById('studio-config'));
     root.classList.remove('studio-world-open');layout.classList.remove('world-expanded');
-    worldButton.textContent='Full screen';worldButton.setAttribute('aria-expanded','false');
+    worldButton.textContent='Fullscreen';worldButton.setAttribute('aria-expanded','false');
     document.body.style.overflow=worldOverflow;
     worldInert.forEach(([node,value])=>node.inert=value);worldInert=[];
     if(worldPreviousFocus?.isConnected)worldPreviousFocus.focus({preventScroll:true});
@@ -44,7 +44,7 @@
       for(const sibling of node.parentElement.children){if(sibling!==node){worldInert.push([sibling,sibling.inert]);sibling.inert=true;}}
     }
     root.classList.add('studio-world-open');layout.classList.add('world-expanded');document.body.style.overflow='hidden';
-    worldButton.textContent='Exit full screen · Esc';worldButton.setAttribute('aria-expanded','true');
+    worldButton.textContent='Exit fullscreen · Esc';worldButton.setAttribute('aria-expanded','true');
     worldViewport.focus({preventScroll:true});
     if(root.requestFullscreen&&!document.fullscreenElement){
       try{

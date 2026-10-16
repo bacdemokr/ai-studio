@@ -10,7 +10,7 @@ Use the intended branch on the target PC. This guide describes `preview/visitor-
 4. In **Settings → Model**, configure Local and/or External Endpoint. A validated `api.cfg` supplies NVIDIA automatically; the file is optional.
 5. Hired agents default to connected Local, otherwise the configured External Endpoint model; choose another model in Hiring or Edit agent. Under **Models**, select the **Open Task** connection. The selector shows the connection currently used; saved choices remain in effect.
 
-Rehearse the selected tasks on the actual model and hardware. Use **Full screen** for presenting. Identify saved results as previous runs.
+Rehearse the selected tasks on the actual model and hardware. Use **Fullscreen** for presenting. Identify saved results as previous runs.
 
 ## 1 / 2. Hiring and Agent lounge
 
