@@ -71,7 +71,9 @@ default_image = "{images['openclaw']}"
 supervisor_image = "{images['supervisor']}"
 sandbox_runtime_image = "{images['sandbox']}"
 image_pull_policy = "if_not_present"
-grpc_endpoint = "https://host.openshell.internal:{gateway}"
+# The OpenShell Docker supervisor uses host networking, so its gateway is the
+# host loopback endpoint. A Docker-only hostname is not available there.
+grpc_endpoint = "https://127.0.0.1:{gateway}"
 '''
     target = GATEWAY_STATE / 'gateway.toml'
     target.write_text(config)

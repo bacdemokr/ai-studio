@@ -66,7 +66,8 @@ class PolicyControls:
                 continue  # Synthetic proxy/IP denials are not approvable websites.
             hosts.append(host)
         if role is None and hosts and not kwargs.get('json_response'):
-            text = str(answer) + '\n\nOpenShell blocked: ' + ', '.join(hosts) + '. Check this agent\'s OpenShell Policy. Approve missing sites before retrying; existing website approvals cover reads only.'
+            text = (str(answer) + '\n\nI tried to access an external endpoint, but my OpenShell policy blocked the request: '
+                    + ', '.join(hosts) + '. Check this agent\'s OpenShell Policy. Approve missing sites before retrying; existing website approvals cover reads only.')
             from telemetry import Reply
             result = Reply(text, getattr(answer, 'metrics', {}))
             result.__dict__.update(getattr(answer, '__dict__', {}))

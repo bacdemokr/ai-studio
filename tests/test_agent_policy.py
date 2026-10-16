@@ -231,11 +231,15 @@ class PolicyTests(unittest.TestCase):
             self.assertEqual(result['status'], 'needs-review')
             self.assertFalse(result['filesystem']['observed'][0]['matchesConfigured'])
 
-    def test_read_policy_requires_loaded_revision_and_matching_sandbox(self):
-        effective={'sandbox':'oc-example','version':4,'policy_source':'sandbox','policy':policy.policy_document()}
-        for state, expected in [('loaded',True),('pending',False),('failed',False)]:
-            with patch('agent_policy.shell', side_effect=[json.dumps(effective),json.dumps({'version':4,'active_version':4,'status':state})]):
-                self.assertEqual(policy.read_policy('oc-example')['loaded'], expected)
+    def test_read_policy_requires_active_effective_policy_and_matching_sandbox(self):
+        effective={'sandbox':'oc-example','version':4,'active_version':4,'status':'effective',
+                   'policy_source':'sandbox','policy':policy.policy_document()}
+        with patch('agent_policy.shell', return_value=json.dumps(effective)) as shell:
+            self.assertTrue(policy.read_policy('oc-example')['loaded'])
+            shell.assert_called_once()
+        for change in ({'active_version':3},{'status':'pending'},{'policy_source':'global'}):
+            with patch('agent_policy.shell', return_value=json.dumps({**effective,**change})):
+                self.assertFalse(policy.read_policy('oc-example')['loaded'])
         with patch('agent_policy.shell', return_value=json.dumps({**effective,'sandbox':'someone-else'})), self.assertRaises(RuntimeError):
             policy.read_policy('oc-example')
 

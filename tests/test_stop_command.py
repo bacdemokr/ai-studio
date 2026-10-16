@@ -39,11 +39,11 @@ elif name=='docker':
             calls=[json.loads(line) for line in log.read_text().splitlines()]
             return result,calls
 
-    def test_all_stops_stack_sandboxes_and_managed_model_then_deletes_volumes(self):
+    def test_all_resets_stack_sandboxes_policies_model_and_volumes(self):
         result,calls=self.run_stop('--all')
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertIn(['python3','scripts/local_model.py','stop'],calls)
-        self.assertTrue(any(c[0]=='docker' and c[-1]=='--stop' for c in calls))
+        self.assertTrue(any(c[0]=='docker' and c[-1]=='--fresh' for c in calls))
         self.assertIn(['docker','compose','-f','compose.yaml','down','--volumes'],calls)
 
     def test_normal_stop_leaves_model_and_failure_still_attempts_model_stop(self):
@@ -51,6 +51,7 @@ elif name=='docker':
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertNotIn(['python3','scripts/local_model.py','stop'],calls)
         self.assertNotIn(['docker','compose','-f','compose.yaml','down','--volumes'],calls)
+        self.assertTrue(any(c[0]=='docker' and c[-1]=='--stop' for c in calls))
         result,calls=self.run_stop('--all',fail_sandboxes=True)
         self.assertNotEqual(result.returncode,0)
         self.assertIn(['python3','scripts/local_model.py','stop'],calls)

@@ -24,16 +24,14 @@ class NativePolicyResilienceTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     policy.runtimes(self.aid)
 
-    def test_malformed_effective_policy_or_revision_is_not_verified(self):
-        good = self.snapshot()
-        for malformed in ([], None, {**good, 'policy': []}, {**good, 'version': True}, {**good, 'version': 0}):
+    def test_malformed_or_inactive_effective_policy_is_not_verified(self):
+        good = {**self.snapshot(), 'active_version': 2, 'status': 'effective'}
+        for malformed in ([], None, {**good, 'policy': []}, {**good, 'version': True},
+                          {**good, 'version': 0}, {**good, 'active_version': None}):
             with self.subTest(malformed=malformed), patch.object(policy, 'shell', return_value=json.dumps(malformed)):
                 with self.assertRaises(RuntimeError):
                     policy.read_policy('oc-owned')
-        with patch.object(policy, 'shell', side_effect=[json.dumps(good), '[]']):
-            with self.assertRaises(RuntimeError):
-                policy.read_policy('oc-owned')
-        with patch.object(policy, 'shell', side_effect=[json.dumps(good), json.dumps({'status': 'loaded', 'version': 2, 'active_version': 1})]):
+        with patch.object(policy, 'shell', return_value=json.dumps({**good, 'active_version': 1})):
             self.assertFalse(policy.read_policy('oc-owned')['loaded'])
 
     def test_invalid_network_rule_reports_unavailable_instead_of_crashing(self):

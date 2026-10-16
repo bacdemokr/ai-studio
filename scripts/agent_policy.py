@@ -237,13 +237,14 @@ def read_policy(name):
     if report.get('policy_source') != 'sandbox':
         report['loaded'] = False
     else:
-        if type(report.get('version')) is not int or report['version'] < 1:
+        if (type(report.get('version')) is not int or report['version'] < 1
+                or type(report.get('active_version')) is not int):
             raise RuntimeError('Invalid effective policy revision.')
-        revision = json.loads(shell('policy', 'get', name, '--rev', str(report['version']), '--output', 'json'))
-        if not isinstance(revision, dict):
-            raise RuntimeError('Invalid policy activation response.')
-        report['loaded'] = (revision.get('status') == 'loaded' and revision.get('version') == report['version']
-                            and revision.get('active_version') == report['version'])
+        # This response comes from OpenShell's effective sandbox configuration
+        # and therefore reflects the policy actually active in the runtime.
+        # Revision history can remain stale after activation in OpenShell 0.1.4.
+        report['loaded'] = (report.get('status') == 'effective'
+                            and report['active_version'] == report['version'])
     return report
 
 

@@ -97,7 +97,7 @@ For a fresh demonstration, reset Open Task before choosing the next team. Reset 
 - For an offline rehearsal, select Local for Open Task and each participating hire, then try the store-email or ping-pong examples using supplied data and suitable roles/skills. Web research, live weather and Telegram still need internet. The email example does not demonstrate enforced filesystem blocking; that remains separate work.
 - **Files** shows uploads/results for the selected agent only and is hidden when empty. Definition files use **Instructions → Copy**; result files support preview/download.
 - **Usage & time** shows recorded tokens, elapsed time and agent turns after a Stage 3 run. Agent time includes tools; summed time can exceed elapsed time when turns overlap. It is not a provider billing report.
-- `./bac start` clears runtime data and starts fresh. Use `./bac start --keep-data` to retain a rehearsal. `./bac stop --all` stops the demo and its managed local model, then removes the Compose stack and its data volumes.
+- `./bac start` clears runtime data and starts fresh. Use `./bac start --keep-data` to retain a rehearsal. `./bac stop --all` stops the demo and its managed local model, then resets the Compose stack, application data, and OpenShell policies.
 - Keep the demo tab open to retain its session. After 60 minutes disconnected, its agents and results are automatically cleared once active work finishes. A preserving restart gives the browser 60 minutes to reconnect.
 - One browser session can present at a time. To switch browser or device, close the existing demo tabs and select **Try again** on the new screen. If the previous browser crashed, allow 90 seconds for access to release; any running task must also finish.
 

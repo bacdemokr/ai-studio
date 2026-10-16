@@ -15,7 +15,7 @@ BaC Agent Studio
   ./bac status    Check service status
   ./bac logs      Show recent errors and activity
   ./bac stop      Stop services; keep saved data
-  ./bac stop --all   Stop the model, remove the Compose stack and delete its data volumes
+  ./bac stop --all   Stop the model and reset Compose data and OpenShell policies
   ./bac remove    Uninstall BaC, old images and all project data (asks once)
 
 First time? Run ./bac start, then connect your model in Settings.
@@ -245,7 +245,13 @@ case "$command_name" in
     # Stop dispatch first, then the sandboxes created outside Compose.
     failed=0
     compose stop || failed=1
-    sandbox_lifecycle --stop || failed=1
+    if $stop_all; then
+      # Reset the dedicated gateway database and policy history as well as
+      # sandboxes and application volumes. Keep only ownership/image metadata.
+      sandbox_lifecycle --fresh || failed=1
+    else
+      sandbox_lifecycle --stop || failed=1
+    fi
     if $stop_all; then
       # Still attempt model and stack cleanup if sandbox cleanup failed.
       ./bac vllm --stop || failed=1
@@ -255,7 +261,7 @@ case "$command_name" in
     fi
     (( failed == 0 )) || die 'Shutdown was incomplete. Review the errors above.'
     if $stop_all; then
-      echo 'BaC services, sandboxes and managed local model stopped. Compose containers and data volumes removed.'
+      echo 'BaC services, sandboxes and managed local model stopped. Application data, OpenShell policies and Compose resources reset.'
     else
       echo 'BaC services and sandboxes stopped. Saved data is kept. Start again with ./bac start.'
     fi

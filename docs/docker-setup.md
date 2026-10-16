@@ -33,7 +33,7 @@ The model stays on the host; Linux host networking reaches localhost. BaC instal
 | Check status | `./bac status` |
 | View recent logs | `./bac logs` |
 | Stop, keep data | `./bac stop` |
-| Stop managed model and remove the Compose stack/data volumes | `./bac stop --all` |
+| Stop managed model and reset the Compose stack, data, and OpenShell policies | `./bac stop --all` |
 | **Uninstall BaC and its data** | **`./bac remove`** |
 
 `./bac start` may interrupt active work and clears runtime data by default. Keys entered in the browser need reconnecting after refresh or restart; a validated NVIDIA key from `api.cfg` can supply all stages. Keyless local models need no credential re-entry.
@@ -77,7 +77,7 @@ Default ports: app **8080**, OpenClaw **28689**, OpenShell **28680**, health **2
 
 Data lives in `bac-demo_studio-data`, `bac-demo_client-certs`, and `/var/lib/bac-openshell`. `shared/` is exposed as `/host-files`; Linux file permissions must allow container UID 10001. One BaC installation is supported per machine.
 
-`./bac stop` preserves saved data. `./bac stop --all` is a destructive reset: it also stops the managed local model, removes the Compose stack, and deletes the `studio-data` and `client-certs` volumes. Model weights, externally managed model servers, `shared/`, and `/var/lib/bac-openshell` remain.
+`./bac stop` preserves saved data. `./bac stop --all` is a destructive reset: it also stops the managed local model, removes the Compose stack, deletes the `studio-data` and `client-certs` volumes, and clears BaC-managed OpenShell gateway state including policies. Model weights, externally managed model servers, `shared/`, and the managed `/var/lib/bac-openshell` directory itself remain.
 
 `./bac remove` asks you to type `remove` once. It deletes BaC containers, agents, chats, results, shared files, backups, recorded current/previous project images, local settings, and `api.cfg`. The repository code remains. Host model servers and other projects remain. Images still used elsewhere are reported rather than forcibly removed. Docker's shared build cache and manually copied backups outside this folder are not searched or pruned.
 

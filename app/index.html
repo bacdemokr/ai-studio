@@ -81225,7 +81225,7 @@ render();
       if(selection){selection.removeAllRanges();for(const range of ranges)if(range.commonAncestorContainer.isConnected)selection.addRange(range);}
     }
   }
-  const buildInfo={"version": "0.2.001", "commit": "a8cdca97d4f9420a39bbbf0f572999492e7350d3", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
+  const buildInfo={"version": "0.2.001", "commit": "0b4b123e30c404e61155b7480a6febc455233825", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
   // Only codes and source locations are retained. Never retain Error.message, bodies or URLs.
 const browserDiagnostics=[];
 const diagnosticRoutes=new Set('session state runtime diagnostics telemetry settings settings/models settings/start settings/team-model settings/connections settings/connections/preferences settings/connections/check settings/connections/models settings/scenario-model settings/scenario-models credential-session agents onboard profile agent-model delete-agent agent-policy crew-policy jobs upload decision retry-reaction reset crew-chat-reset bac-reset heartbeat team-model telegram telegram/test file workspace-files agent-documents evidence security'.split(' '));
@@ -81508,8 +81508,6 @@ function bindDiagnosticActions(){
     renderCreatorModels();
     const profile=data.profile, job=current();
     renderCollection();
-    window.BacCampus?.observeProtection(data.protectionEvents||[]);
-    window.BacCampus?.observeExternalActivity(data.jobs||[],agentId);
     syncFileButtons();
     el('onboarding').hidden=false;el('companion').hidden=!profile;el('lounge-empty').hidden=!!profile;
     if(profile){el('agent-name').textContent=profile.name;el('personality').textContent=toneSummary(profile);el('personality').title=profile.tonePrompt||toneSummary(profile);el('agent-skills').innerHTML=profile.skills.map(s=>'<span class="studio-skill-badge" title="'+escape(capabilities[s]?.[1]||titles[s]||s)+'"><i aria-hidden="true">'+escape(missions.find(m=>m.id===s)?.icon||'◇')+'</i>'+escape(titles[s]||capabilities[s]?.[0]||s)+'</span>').join('');el('agent-skills').hidden=!profile.skills.length;el('equipped').innerHTML=profile.skills.map(s=>{const c=capabilities[s];return c?'<button type="button" data-try-skill="'+s+'"><strong>'+escape(c[0])+'</strong><small>'+escape(c[1])+'</small></button>':'<span>'+escape(titles[s])+'</span>';}).join('');el('memory').hidden=!profile.skills.includes('memory');}
@@ -81564,7 +81562,12 @@ function bindDiagnosticActions(){
       }
     }
     if(!job){resultKey='';el('result-title').textContent='Results';el('result').textContent='';el('events').innerHTML='<li><b>No missions yet.</b></li>';el('read-aloud').hidden=true;}
-    renderCrew();renderSafety();renderRooms();renderConversation();
+    renderCrew();renderSafety();renderRooms();
+    // Policy evidence is single-use; create room actors before consuming it so
+    // a confirmed denial can always target the protected agent's shield.
+    window.BacCampus?.observeProtection(data.protectionEvents||[]);
+    window.BacCampus?.observeExternalActivity(data.jobs||[],agentId);
+    renderConversation();
     root.dispatchEvent(new Event('bac:state-rendered'));
   }
   el('assigned-crew').onclick=async()=>{const a=data.assignments?.[0];if(!a)return;await switchAgent(a.lead);if(agentId===a.lead){selectedJob=a.job;render();showBoard(true);}};

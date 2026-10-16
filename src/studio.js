@@ -260,8 +260,6 @@
     renderCreatorModels();
     const profile=data.profile, job=current();
     renderCollection();
-    window.BacCampus?.observeProtection(data.protectionEvents||[]);
-    window.BacCampus?.observeExternalActivity(data.jobs||[],agentId);
     syncFileButtons();
     el('onboarding').hidden=false;el('companion').hidden=!profile;el('lounge-empty').hidden=!!profile;
     if(profile){el('agent-name').textContent=profile.name;el('personality').textContent=toneSummary(profile);el('personality').title=profile.tonePrompt||toneSummary(profile);el('agent-skills').innerHTML=profile.skills.map(s=>'<span class="studio-skill-badge" title="'+escape(capabilities[s]?.[1]||titles[s]||s)+'"><i aria-hidden="true">'+escape(missions.find(m=>m.id===s)?.icon||'◇')+'</i>'+escape(titles[s]||capabilities[s]?.[0]||s)+'</span>').join('');el('agent-skills').hidden=!profile.skills.length;el('equipped').innerHTML=profile.skills.map(s=>{const c=capabilities[s];return c?'<button type="button" data-try-skill="'+s+'"><strong>'+escape(c[0])+'</strong><small>'+escape(c[1])+'</small></button>':'<span>'+escape(titles[s])+'</span>';}).join('');el('memory').hidden=!profile.skills.includes('memory');}
@@ -316,7 +314,12 @@
       }
     }
     if(!job){resultKey='';el('result-title').textContent='Results';el('result').textContent='';el('events').innerHTML='<li><b>No missions yet.</b></li>';el('read-aloud').hidden=true;}
-    renderCrew();renderSafety();renderRooms();renderConversation();
+    renderCrew();renderSafety();renderRooms();
+    // Policy evidence is single-use; create room actors before consuming it so
+    // a confirmed denial can always target the protected agent's shield.
+    window.BacCampus?.observeProtection(data.protectionEvents||[]);
+    window.BacCampus?.observeExternalActivity(data.jobs||[],agentId);
+    renderConversation();
     root.dispatchEvent(new Event('bac:state-rendered'));
   }
   el('assigned-crew').onclick=async()=>{const a=data.assignments?.[0];if(!a)return;await switchAgent(a.lead);if(agentId===a.lead){selectedJob=a.job;render();showBoard(true);}};

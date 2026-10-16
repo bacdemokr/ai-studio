@@ -58,6 +58,8 @@ class ContainerTests(unittest.TestCase):
         self.assertIn('version = 2', config)
         self.assertIn('compute_driver = "docker"', config)
         self.assertIn('sandbox_runtime_image = "ghcr.io/nvidia/openshell/sandbox@sha256:', config)
+        self.assertIn('grpc_endpoint = "https://127.0.0.1:28680"', config)
+        self.assertNotIn('grpc_endpoint = "https://host.openshell.internal:', config)
         self.assertNotIn('compute_drivers', config)
         self.assertIn('[openshell.gateway.mtls_auth]\nenabled = true', config)
         self.assertNotIn(':latest', config)

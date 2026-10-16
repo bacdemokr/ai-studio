@@ -36,7 +36,7 @@ class ProtectedTeamFeedbackTests(unittest.TestCase):
 
     def test_verified_current_personal_denial_is_shared_without_losing_telemetry(self):
         answer, original = self.run_reply([('owner', None, 'deny', 'policy-denied', 0)])
-        self.assertIn('OpenShell blocked: example.com.', answer)
+        self.assertIn('my OpenShell policy blocked the request: example.com.', answer)
         self.assertIn('this agent', answer)
         self.assertEqual(answer.policy_denials, ['example.com'])
         for attribute in ('metrics', 'sources', 'activity'):

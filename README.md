@@ -65,7 +65,7 @@ Detailed structured records live at `$BAC_DATA_DIR/studio/logs/diagnostics.jsonl
 ID and a small inference request to succeed. This command runs independently of
 Docker, Studio, and the Stage 3 API key. Ordinary `./bac start` never starts or
 waits for a local model, even if model configuration exists or model files are
-missing. `./bac stop` stops the BaC services and their OpenShell sandboxes, but leaves the host model server running and preserves saved data. Use `./bac stop --all` to also stop the local model launched by this installation, remove the Compose stack, and delete its application data volumes. Externally managed model servers and model weights are preserved.
+missing. `./bac stop` stops the BaC services and their OpenShell sandboxes, but leaves the host model server running and preserves saved data. Use `./bac stop --all` to also stop the local model launched by this installation, remove the Compose stack, and reset its application data and OpenShell policies. Externally managed model servers and model weights are preserved.
 
 ```bash
 ./bac vllm                # Prepare Qwen, default wait: 600 seconds
@@ -254,7 +254,7 @@ Research assignments have a 150-second budget across retries, whether Scout or a
 | Start or apply app changes while preserving runtime data | `./bac start --keep-data` |
 | Check status / recent logs | `./bac status` / `./bac logs` |
 | Stop, keeping data | `./bac stop` |
-| Stop services and local model, then delete Compose containers and data volumes | `./bac stop --all` |
+| Stop services and local model, then reset Compose data and OpenShell policies | `./bac stop --all` |
 | **Delete BaC and its data** | **`./bac remove`** |
 
 To update, finish active work, then run in the repository folder:
@@ -336,4 +336,4 @@ Before Casey assigns any work, click a waiting hire's nameplate or character to 
 
 Stop the currently running demo before starting another checkout. `./bac start` starts with clean runtime data; use `./bac start --keep-data` only when you want to retain the existing session.
 
-If an older Docker installation left an incompatible stack or volumes, run `./bac stop --all` from that installation before starting the intended version. This also stops its managed local model and removes demo data volumes; model weights remain. Restart local inference with `./bac vllm` if needed. See [Docker setup and recovery](docs/docker-setup.md).
+If an older Docker installation left an incompatible stack or volumes, run `./bac stop --all` from that installation before starting the intended version. This also stops its managed local model and resets demo data volumes and OpenShell policies; model weights remain. Restart local inference with `./bac vllm` if needed. See [Docker setup and recovery](docs/docker-setup.md).
