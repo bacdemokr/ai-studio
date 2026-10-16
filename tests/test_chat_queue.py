@@ -4,6 +4,7 @@ import sqlite3
 import tempfile
 import threading
 import unittest
+from unittest.mock import Mock
 from pathlib import Path
 from studio import Studio
 
@@ -12,6 +13,7 @@ class ChatQueueTests(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.path=Path(self.temp.name)/'queue.sqlite'
         self.app=Studio.__new__(Studio)
+        self.app.diagnostics=Mock()
         self.app.execution_lock=threading.RLock();self.app.executing_jobs={};self.app.agent_locks={}
         self.app.executing_owners=set();self.app.executing_bac_owners=set();self.app.signal=threading.Event()
         @contextlib.contextmanager

@@ -31,9 +31,12 @@ def bundle(image, version, output, archive=None):
     (output/'compose.yaml').write_text(compose)
     (output/'.env').write_text('BAC_IMAGE='+image+'\nBAC_VERSION='+version+'\n')
     # App code travels separately from the stable dependency image.
-    for name in ('scripts', 'src', 'skills', 'docker', 'runtime'):
+    for name in ('scripts', 'src', 'skills', 'docker', 'runtime', 'scenario'):
         shutil.copytree(ROOT/name, output/name, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
     shutil.copyfile(ROOT/'Dockerfile', output/'Dockerfile')
+    from build_info import read as read_build_info
+    (output/'VERSION').write_text(version + '\n')
+    (output/'source-version.json').write_text(json.dumps(read_build_info(ROOT)) + '\n')
     (output/'api.cfg').write_text('')
     (output/'api.cfg').chmod(0o600)
     shutil.copy2(ROOT/'bac', output/'bac')

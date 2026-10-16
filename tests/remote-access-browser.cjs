@@ -47,7 +47,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs/promises'),{chrom
   const session=await (await presenter.request.get(local+'/api/session')).json();
   const configured=await presenter.request.post(local+'/api/settings/connections',{headers:{'X-BaC-CSRF':session.csrf,'X-BaC-Key-Session':'fixture-presenter'},data:{source:'api',provider:'nvidia',apiKey:'fixture-presenter-key',model:'fixture-local-model'}});
   assert.ok(configured.ok(),await configured.text());
-  await page.goto(origin);await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.version==='SCENARIO TEST FIXTURE');
+  await page.goto(origin);await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.testFixture);
   assert.deepEqual(await page.evaluate(()=>({secure:isSecureContext,clipboard:typeof navigator.clipboard})),{secure:false,clipboard:'undefined'});
   assert(await page.locator('#studio-config').isVisible());
   await page.locator('#studio-config').click();await page.locator('[data-connection-tab=location]').click();

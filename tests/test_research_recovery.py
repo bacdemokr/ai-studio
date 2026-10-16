@@ -11,6 +11,23 @@ from agent_runtime import GatewayError
 
 
 class SourceRecoveryTests(unittest.TestCase):
+    def test_success_preserves_sources_for_hired_research_in_any_specialist_slot(self):
+        sources = [{'url': 'https://example.com/', 'text': 'Observed excerpt', 'truncated': False}]
+        def gateway(route, *args, **kwargs):
+            return ({'data': [{'id': 'openclaw/a'}]} if route == '/v1/models' else
+                    {'choices': [{'message': {'content': 'Saved the findings.'}, 'finish_reason': 'stop'}]})
+        with patch.object(runtime, 'gateway', side_effect=gateway), \
+             patch.object(runtime, 'observed_activity', return_value={'calls': []}), \
+             patch.object(runtime, 'model_endpoint', return_value='fixture'), \
+             patch('agent_activity.unexecuted_write', return_value=False), \
+             patch('telemetry.measure', return_value={}), \
+             patch('research_recovery.recovered_sources', return_value=sources), \
+             patch('user_location.context', return_value=''):
+            for role in (4, 5, 6, 7, 8):
+                with self.subTest(role=role):
+                    answer = runtime.respond('a', 'bac-plan-' + 'a' * 24 + '-' + str(role) + '-working', 'Use supplied sources.')
+                    self.assertEqual(answer.sources, sources)
+
     def test_generic_http_failure_preserves_evidence_without_replay(self):
         sources=[{'url':'https://example.com/','text':'excerpt','truncated':False}]
         def gateway(route,*args,**kwargs):

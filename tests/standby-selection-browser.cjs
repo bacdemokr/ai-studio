@@ -41,7 +41,9 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.some(v=>v.name==='Pixel'&&v.phase==='working'));
   await label(pixel).click();await selected('Pixel');assert(await badge.isDisabled(),'Assigned visitor stays locked during work');
   await label(orbit).click();await selected('Orbit');assert(await badge.isVisible(),'Unassigned hires remain selectable while the roster is reserved');if(await badge.isDisabled())assert.match(await badge.getAttribute('title'),/finishes its current work/);
-  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.every(v=>v.phase==='seated'));await page.waitForFunction(()=>!document.querySelector('#studio-crew-model').disabled);
+  await page.waitForFunction(()=>BacStudio.inspect().agents.every(a=>!a.pending));
+  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.some(v=>v.name==='Pixel'&&v.phase==='working')&&BacCampus.inspect().visitorTravel.some(v=>v.name==='Orbit'&&v.phase==='seated'));
+  await page.waitForFunction(()=>!document.querySelector('#studio-crew-model').disabled);
   await label(pixel).click();await selected('Pixel');assert(await badge.isEnabled());assert(await page.locator('#studio-crew-chat').isVisible(),'Completed participant keeps its existing contribution view');
   await label(orbit).click();await selected('Orbit');await page.locator('.world-room-map [data-world-room="lounge"]').click();await page.waitForFunction(()=>BacStudio.inspect().room==='lounge'&&!BacCampus.inspect().navigation.travelling);
   await navigate('plan');await selected('Casey');assert.deepEqual(errors,[]);

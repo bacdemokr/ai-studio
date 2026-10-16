@@ -46,6 +46,10 @@ class VisitorAdapter(Adapter):
         self.calls.append((agent, session, prompt))
         if self.after:
             self.after(agent, session)
+        if session.endswith('-planning-scope-check'):
+            candidates, _ = json.JSONDecoder().raw_decode(prompt.rsplit('Scope candidates:\n', 1)[1])
+            return json.dumps({'decisions': [{'agent': item['agent'], 'allowed': True,
+                                             'reason': 'Simulated suitable custom implementation purpose.'} for item in candidates]})
         if session.endswith('-planning') or '-planning-' in session:
             selection = json.loads(json.dumps(self.repaired_selection if '-planning-team-repair' in session
                                               and self.repaired_selection is not None else self.selection))
@@ -55,6 +59,9 @@ class VisitorAdapter(Adapter):
                 preferred_role = 5 if any(t['role'] == 5 for t in selection['tasks']) else next((t['role'] for t in selection['tasks']), None)
                 for task in selection['tasks']:
                     task.setdefault('agent', required[0]['key'] if required and task['role'] == preferred_role else 'builtin')
+            for task in selection['tasks']:
+                if task.get('agent') not in (None, 'builtin'):
+                    task.setdefault('roleFit', 'The saved programming purpose covers this prototype.')
             return json.dumps(selection)
         if '-checking-' in session:
             return json.dumps({'done': self.check_done, 'reason': 'Fixture checkpoint.', 'answer': 'Saved work.',
@@ -81,7 +88,7 @@ class VisitorTeamTests(unittest.TestCase):
         self.adapter = VisitorAdapter()
         self.app = Studio(Path(self.temp.name) / 'studio', self.adapter, start_worker=False)
         self.owner = self.app.session()[0]['id']
-        self.app.onboard(self.owner, {'name': 'Pixel', 'skills': ['weather'], 'purpose': 'Weather advice.', 'tonePrompt': 'Dry and funny.'})
+        self.app.onboard(self.owner, {'name': 'Pixel', 'skills': ['builder'], 'purpose': 'Build small webpages and games.', 'tonePrompt': 'Dry and funny.'})
         self.manager = self.app.crew_owner(self.owner)
 
     def start(self, prompt='/goal Pixel이 Coding작업들을 대신하게 해줘. Build a counter.', **options):
@@ -179,7 +186,7 @@ class VisitorTeamTests(unittest.TestCase):
         job = self.execute(result)
         self.assertEqual(job['payload']['collaboration']['visitorBindings']['5']['key'], self.owner)
 
-    def test_named_weather_agent_replaces_coder_with_same_identity_and_workspace(self):
+    def test_named_programmer_replaces_coder_with_same_identity_and_workspace(self):
         before = self.app.profile(self.owner)
         job = self.execute(self.start())
         self.assertEqual(job['status'], 'done')
@@ -188,7 +195,7 @@ class VisitorTeamTests(unittest.TestCase):
         self.assertEqual([c[0] for c in self.specialists()], ['bac-' + self.owner])
         self.assertEqual(self.app.profile(self.owner), before)
         self.assertEqual(self.adapter.agents['bac-' + self.owner], self.app.workspace(self.owner))
-        self.assertIn('outside your usual expertise', self.specialists()[0][2])
+        self.assertIn('not covered by an equipped skill', self.specialists()[0][2])
         self.assertIn('DEMO CODING PACE', self.specialists()[0][2])
         self.assertTrue(plan['webpages']['5'])
         self.assertFalse(job['payload']['roundtable']['members'])
@@ -216,7 +223,7 @@ class VisitorTeamTests(unittest.TestCase):
 
     def test_personal_openshell_identity_and_policy_are_preserved(self):
         self.app.configure(self.owner, {**self.app.profile(self.owner), 'name': 'Weather buddy'})
-        self.owner = self.app.add_agent(self.owner, {'name': 'Pixel', 'skills': ['weather'], 'protection': 'openshell'})['agentId']
+        self.owner = self.app.add_agent(self.owner, {'name': 'Pixel', 'skills': ['weather', 'builder'], 'protection': 'openshell'})['agentId']
         with patch.object(self.app, 'protected_response', wraps=self.app.protected_response) as response:
             job = self.execute(self.start())
         calls = [c for c in response.call_args_list if c.args[0] == 'bac-' + self.owner]
@@ -291,7 +298,9 @@ class VisitorTeamTests(unittest.TestCase):
         job = self.execute(self.start(BARCELONA_REQUEST))
         plan = job['payload']['collaboration']
         self.assertEqual(plan['teamSelectionRecovery']['status'], 'failed')
-        self.assertEqual(plan['outcome'], 'partial')
+        self.assertEqual(plan['outcome'], 'unavailable')
+        self.assertIn(plan['teamSelectionRecovery']['reason'], job['result']['answer'])
+        self.assertIn('No specialist work was started', job['result']['answer'])
         self.assertEqual(self.specialists(), [])
         self.assertEqual(sum('-planning-team-repair' in c[1] for c in self.adapter.calls), 1)
 
@@ -302,7 +311,7 @@ class VisitorTeamTests(unittest.TestCase):
             roster = self.app.crew_roster(db, self.manager, {}, preset=True)
         plan = {'summary': 'Scout researches and Pixel codes.', 'tasks': [
             {'role': 8, 'agent': 'builtin', 'task': 'Find places.'},
-            {'role': 5, 'agent': self.owner, 'task': 'Build the guide.'}]}
+            {'role': 5, 'agent': self.owner, 'task': 'Build the guide.', 'roleFit': 'Pixel’s saved programming role covers the webpage.'}]}
         required = [{'key': self.owner, 'name': 'Pixel', 'role': 8}]
         bind(plan, roster, [pixel], required, BARCELONA_REQUEST)
         self.assertEqual([t['name'] for t in plan['tasks']], ['Scout', 'Pixel'])

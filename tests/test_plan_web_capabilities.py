@@ -52,15 +52,17 @@ class PlanWebCapabilities(unittest.TestCase):
             runtime.save_config(config)
             self.assertFalse(runtime.search_enabled())
 
-    def test_captain_and_scout_share_single_search_handoff_contract(self):
+    def test_captain_and_scout_share_bounded_relevance_recovery_contract(self):
         self.start('/plan Research the latest NVIDIA developments and build a webpage.')
         self.app.execute(self.app.next_job())
         captain=self.adapter.calls[0][2]
         scout=next(prompt for agent,session,prompt in self.adapter.calls if agent.endswith('-r8'))
-        self.assertIn('finish without follow-up searches or page reads',captain)
+        self.assertIn('one reformulated search only if the first misses the subject or date range',captain)
         self.assertIn('Current UTC date:',scout)
         self.assertIn('Immediately write the assigned brief with native write',scout)
-        self.assertIn('Do not run a follow-up search or open result pages',scout)
+        self.assertIn('Two searches is the total ceiling',scout)
+        self.assertIn('merely to polish sufficient evidence',scout)
+        self.assertIn('Adjacent technology is not a substitute for the requested subject',scout)
         self.assertIn('attributed search excerpts are sufficient evidence',scout)
         self.assertIn('One relevant supported finding is acceptable',scout)
         self.assertNotIn('search snippets and home-page navigation are not evidence',scout)

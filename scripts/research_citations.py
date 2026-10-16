@@ -3,6 +3,24 @@ import re
 from urllib.parse import urlsplit, urlunsplit
 
 
+def bounded_sources(sources):
+    """Bound excerpt context without dropping later observed citation identities."""
+    unique = {}
+    for source in sources:
+        unique.setdefault(source['url'], source)
+    selected = list(unique.values())[:24]
+    result, budget = [], 6000
+    for index, source in enumerate(selected):
+        # Share the existing text budget; a long first search must not erase the
+        # final paper or a source added during a bounded revision.
+        allowance = min(1600, budget // (len(selected) - index))
+        excerpt = source['text'][:allowance]
+        result.append({'url': source['url'], 'text': excerpt,
+                       'truncated': source.get('truncated', False) or len(excerpt) < len(source['text'])})
+        budget -= len(excerpt)
+    return result
+
+
 def urls(text):
     found = set()
     for value in re.findall(r'https?://[^\s<>"\x27`]+', str(text)):

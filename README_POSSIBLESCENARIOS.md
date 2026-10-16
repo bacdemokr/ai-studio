@@ -1,7 +1,7 @@
 # POSSIBLE SCENARIOS
-Examples recorded October 8, 2026; team setup updated October 14, 2026
+Examples recorded October 8, 2026; current controls and team setup updated October 15, 2026
 
-These are example requests for **3-2 Open Task**, not additional rooms or new execution modes. Screenshots and timings below are Benjamin's observed NVIDIA Inference API runs. They have not been benchmarked on local Qwen here; endpoint load and task size change the timing.
+These are example requests for **03 Open Task**, not additional rooms or new execution modes. Screenshots and timings below are Benjamin's observed NVIDIA Inference API runs. They have not been benchmarked on local Qwen here; endpoint load and task size change the timing.
 
 | Example | Audience | Internet needed for task tools? |
 | --- | --- | --- |
@@ -10,11 +10,40 @@ These are example requests for **3-2 Open Task**, not additional rooms or new ex
 | Store email review | Managers and business teams | No, when using only the supplied email |
 | Ping-pong | Coding / general audience | No, for a self-contained game |
 
-**Before running these examples:** Open Task defaults to **Hired only**, so hire at least one available agent. Any role can participate; match skills and tools to the task. Programmer + Web researcher is an optional research-and-build pairing, not a requirement. Choose **Hired + Standby** to let Casey use backups, including when no agents have been hired. The teams pictured below are historical runs, not a fixed roster.
+**Before running these examples:** Open Task defaults to **Hired only**, so hire at least one available agent. Any role can participate in work covered by its explicitly equipped skills, subject to tool permissions. Naming an agent does not override that boundary. Programmer + Web researcher is an optional research-and-build pairing, not a requirement. Choose **Hired + Standby** to let Casey use backups, including when no agents have been hired. The teams pictured below are historical runs, not a fixed roster.
 
-For offline use, the model must also run locally and be prepared before the demo. Select **Local** under **Settings → Model → Models → Open Task**. Set participating hired agents to Local as well; they keep their own model choices. Event Brief has a separate connection selector. Rehearse the exact prompt and inspect the generated result; the recorded API timings below are not local-model benchmarks.
+For offline use, the model must also run locally and be prepared before the demo. Select **Local** under **Settings → Model → Models → Open Task**. Set participating hired agents to Local as well; they keep their own model choices. Rehearse the exact prompt and inspect the generated result; the recorded API timings below are not local-model benchmarks.
 
-Send these prompts to **Casey in 3-2 Open Task** with `/goal`. Attach the sample email to that conversation before the business example. Open **Usage & time** after a run to compare tokens and elapsed time. The traces below record earlier runs; current team selection and recovery decisions may differ.
+Send these prompts to **Casey in Open Task** with `/goal`. Attach the sample email to that conversation before the business example. Open **Usage & time** after a run to compare tokens and elapsed time. The traces below record earlier runs; current team selection and recovery decisions may differ.
+
+## In-app starting points
+
+Use the **Example goals** chips below Casey’s introduction for editable versions of these four examples, **Event page**, and **GPU portfolio**. Travel uses a relative start date to avoid stale demo dates. The store example attaches the same fictional email linked below. GPU portfolio attaches a demo CSV for analysis followed by a comparison webpage. Tooltips start with **Suggested team** and list skills, not mandatory role presets. Nothing starts until you send the goal. These shorter templates are adapted from the historical prompts below; their results and timings are not those historical measurements.
+
+The Event page template asks the current team to create a fictional meetup page and social draft from supplied details. It runs entirely in Open Task. The former fixed-team Event Brief is archived at `archive/event-brief-final-2026-10-15`.
+
+## Collaboration in each example
+
+Each current template requests two different specialists and a saved handoff. These are example-specific goals, not a rule forcing extra agents into every free-form task. In Hired only, prepare both skills on two suitable hires. If a specialist is missing, switch to Hired + Standby or hire the missing skill; do not silently expand another agent's scope.
+
+| Example | First contribution | Second contribution | Suggested skills |
+| --- | --- | --- | --- |
+| Travel guide | Cited three-stop tourism brief | Day-by-day travel webpage | Web research + Coding |
+| Drone research | Dated research-paper brief | Research dashboard | Web research + Coding |
+| Store email review | Store comparison and recommendations | Charts and store dashboard | Data interpretation + Coding |
+| GPU portfolio | Numeric analysis and top-five CSV | GPU comparison dashboard | Data interpretation + Coding |
+| Ping-pong game | Layout, controls and interaction design | Playable browser game | Interface design + Coding |
+| Event page | Announcement and page copy | Event webpage using that copy | Slack announcements + Coding |
+
+Keep the first contribution brief for a live demo. The second specialist must use it, not restart the task independently. Ping-pong uses Iris + Cody in standby; Event page needs a Slack announcements hire because that skill is not in the standby pool.
+
+## GPU portfolio
+
+Select **GPU portfolio** to attach [`datacenter_gpu_portfolio.csv`](scenario/datacenter_gpu_portfolio.csv). A specialist with **Data interpretation** reads the 11 supplied rows, ranks the top five by single-GPU TDP, compares memory capacity and bandwidth, and saves an analysis brief plus the top-five CSV. A specialist with **Coding** then builds a self-contained HTML dashboard from that handoff, with a TDP chart, a portfolio comparison table and three findings. **Ada + Cody** is the suggested standby pairing; equipped hires can fill the same two roles. No web research is needed.
+
+The expected order is Vera Rubin NVL72 (2300 W), HGX Rubin NVL8 (2300 W), GB300 NVL72 (1400 W), GB200 NVL72 (1200 W), and GB200 NVL4 (1200 W). Ties keep input order. These are supplied demo maximums per GPU, not verified current specifications or total rack consumption. Retain "up to" qualifiers, normalize bandwidth units, and do not infer performance or energy efficiency from TDP. See the [fixture notes](scenario/datacenter_gpu_portfolio.md).
+
+Standby does not contain every selectable skill. Travel uses **Web research + Coding**: Scout selects three places from official tourism sources, then Cody builds the page. The compact example excludes forecast, ticket-price and booking research. The Event page team uses a **Slack announcements** hire alongside Cody. Do not claim those skills exist in the standby catalog or silently substitute unrelated skills.
 
 ## Table of contents
 

@@ -19,20 +19,21 @@ The app owns accounts/agent selection, durable jobs, team orchestration, validat
 | HTTP and ownership checks | `serve.py` |
 | Jobs, profiles, persistence | `studio.py` |
 | Native runtime, activity and files | `agent_runtime.py`, `agent_activity.py`, `agent_documents.py` |
-| Event workflow | `agent_workflow.py`, `event_agent_tools.py`, `morgan_page.py`, `crew_roundtable.py` |
+| Open Task planning, handoffs and reactions | `collaboration_plan.py`, `visitor_teams.py`, `plan_handoff.py`, `plan_revision.py`, `crew_roundtable.py` |
+| Build identity and support diagnostics | `build_info.py`, `diagnostics.py`, `src/studio-diagnostics.js` |
 | Shared connections and credentials | `model_connections.py`, `scenario_models.py`, `runtime_settings.py`, `session_secrets.py`, `team_models.py` |
 | OpenShell website approvals | `agent_policy.py`, `studio_policy.py` |
 | UI / 3D scene | `src/studio*`, `src/world-*`, `src/campus*`, `src/agent-character.js` |
 
 ## Open Task execution and attribution
 
-Casey plans work for up to three specialists. Hired only uses available hired agents; Hired + Standby also permits Scout, Cody, Ada, Iris and Vera. The dispatcher validates captured team mode, identities, tools, dependencies and required handoffs before each call. Explicitly named available participants are honored. Model claims alone do not prove that a file was saved.
+Casey plans work for up to three specialists. Hired only uses available hired agents; Hired + Standby also permits Scout, Cody, Ada, Iris and Vera. The dispatcher validates captured team mode, identities, tools, dependencies and required handoffs before each call. A substantive assignment must fit the explicitly equipped skill, as well as permitted tools. Naming an agent does not override this boundary. Role suitability is model-guided; tool and policy enforcement are separate. Model claims alone do not prove that a file was saved.
 
 Each worker receives its assignment, selected input files and verified earlier handoffs. Casey checks observed results and has one shared repair/recovery allowance. Partial work remains available when a required contribution fails. Independent review uses a different agent; closing personal reactions are separate opinions.
 
 ## Results presentation
 
-Mission Control shows actual plan bindings, assignments, handoffs and Casey's review. Results shows the team response and verified saved files, with partial work labeled clearly. HTML previews run in a restricted iframe; file access remains scoped to the authenticated account and selected workspace. Usage & time reports recorded calls and token totals without claiming provider billing accuracy.
+Casey’s chat and Mission Control show saved assignment reasons and declined named participants. Mission Control also shows actual plan bindings, assignments, handoffs and Casey's review. Old plans without recorded reasons do not gain invented explanations. Results shows the team response and verified saved files, with partial work labeled clearly. HTML previews run in a restricted iframe; file access remains scoped to the authenticated account and selected workspace. Usage & time reports recorded calls and token totals without claiming provider billing accuracy.
 
 ## Persistence and compatibility
 
@@ -48,7 +49,7 @@ Deletion fences an identity before stopping active work. Cleanup operates only o
 
 State is checked every 1.5 seconds while the page is visible. `/api/state` authenticates and builds the current snapshot, then returns an ETag. An unchanged conditional request returns 304 with no history body. The tab caches snapshots per agent; unchanged responses do not rebuild the UI. Agent switching and stale-response guards still apply. The server still performs its state query and hash; this is a network/render optimization, not an assertion that polling costs nothing.
 
-SQLite indexes serve per-owner history and per-role crew chats. Runtime readiness and host metrics have short caches. The scene limits rendering to roughly 30 FPS and pauses expensive work while hidden. Large model inference remains the dominant task latency; these changes do not claim higher model tokens/second.
+A state response lists each exact workspace/query only once and reuses the result for file indicators and reset state. The next poll reads files again, including native writes that bypass HTTP. Listings retain the existing 100-file cap and ordering, but stop path validation/stat calls after that cap. Retired role slots are excluded from current chat queries while their stored rows remain intact. SQLite indexes serve per-owner history and per-role crew chats. Runtime readiness and host metrics have short caches. The scene limits rendering to roughly 30 FPS and pauses expensive work while hidden. Large model inference remains the dominant task latency; these changes do not claim higher model tokens/second.
 
 ## Build and development
 

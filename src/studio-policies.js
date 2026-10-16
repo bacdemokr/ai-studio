@@ -93,9 +93,29 @@ function schedulePolicyRefresh(){
     if(policySaving||policyLoading)schedulePolicyRefresh();else loadPolicy();
   },2500);
 }
+function policyRecentActivity(report){
+ const logs=report.logs||[];
+ const rows=logs.filter(event=>{
+  // Keep proxy routing noise in the raw evidence. When HTTP has its own
+  // decision, show that action instead of its accompanying TCP allowance.
+  if(/^198\.(18|19)\./.test(event.host||''))return false;
+  if(event.action==='allow'&&(!event.method||event.method==='CONNECT')&&event.time&&logs.some(other=>other.host===event.host&&other.method&&other.method!=='CONNECT'&&other.time&&Math.abs(other.time-event.time)<=1))return false;
+  return true;
+ }).slice(0,12).map(event=>{
+  const method=event.method,read=['GET','HEAD','OPTIONS'].includes(method),connection=!method||method==='CONNECT';
+  const outcome=event.action==='deny'&&event.reason!=='policy-denied'?'error':event.action;
+  const label=connection?'Connect to ':read?'Read ':'Send to ';
+  return {time:event.time,title:label+event.host,detail:'OpenShell decision'+(method?' · '+method:''),outcome,
+   status:outcome==='deny'?'Blocked':outcome==='allow'?(connection?'Connection allowed':'Allowed'):'Network error'};
+ });
+ for(const file of report.recentFiles||[])rows.push({time:file.time,title:file.path,detail:'Saved in the agent’s workspace',outcome:'saved',status:'Saved'});
+ rows.sort((a,b)=>(b.time||0)-(a.time||0));
+ return '<section class="policy-access-section"><div class="policy-section-heading"><h3>Recent activity</h3></div>'+(rows.length?'<ul class="policy-recent-list">'+rows.slice(0,6).map(row=>'<li><span><strong>'+escape(row.title)+'</strong><small>'+escape(row.detail)+(row.time?' · '+escape(new Date(row.time*1000).toLocaleTimeString()):'')+'</small></span><b data-outcome="'+escape(row.outcome)+'">'+escape(row.status)+'</b></li>').join('')+'</ul>':'<p class="studio-muted">Send a request in chat to see observed access here.</p>')+'</section>';
+}
 function renderPolicy(){
   const target=policyTarget(),p={name:target.name,protection:target.mode},r=policySnapshot?._targetKey===target.key?policySnapshot:null,crew=policyCrewRole!==null;
   const working=policySaving||!!r?.updating;
+  el('policy-view').disabled=p.protection!=='openshell'||!r||policyLoading||policySaving||!!r.updating;
   el('policy-content').setAttribute('aria-busy',String(p.protection==='openshell'&&(working||!r)));
   el('policy-agent').disabled=working;
   if(p.protection==='openshell'&&(working||!r)){
@@ -125,17 +145,38 @@ function renderPolicy(){
   const recovery=!preparing&&['awaiting-first-mission','needs-review'].includes(r.status)?'<button type="button" class="studio-secondary" data-policy-retry '+(recoveryDisabled?'disabled':'')+'>'+(r.status==='awaiting-first-mission'?'Retry':'Apply saved approvals')+'</button>':'';
   const recheck=unavailable||setupRequired||r.logsUnavailable?'<button type="button" class="studio-secondary" data-policy-check '+(policyLoading?'disabled':'')+'>'+(policyLoading?'Checking':'Check again')+'</button>':'';
   const hostHelp=unavailable||setupRequired?'<details class="policy-host-help"><summary>Host troubleshooting</summary><p>Run in the project folder on the app server:</p><pre><code>./bac dev runtime check --wait 30</code></pre>'+(setupRequired?'<p>To set up OpenShell:</p><pre><code>./bac dev openshell enable</code></pre>':'<p>If unavailable, restore the OpenShell service, then check again.</p>')+'</details>':'';
-  const recoveryMarkup=(notice?'<p class="'+(preparing?'studio-muted':'studio-policy-error')+'" role="status">'+escape(notice)+'</p>':'')+'<div class="policy-recovery-actions">'+recovery+recheck+'</div>'+hostHelp;
+  const recoveryMarkup=(notice?'<p class="'+(preparing?'studio-policy-preparing':'studio-policy-error')+'" role="status">'+escape(notice)+'</p>':'')+'<div class="policy-recovery-actions">'+recovery+recheck+'</div>'+hostHelp;
   if(r.fetchFailed&&!r.catalog){el('policy-content').innerHTML=recoveryMarkup;return;}
   el('policy-content').innerHTML=`${recoveryMarkup}
     ${[...new Map((r.connectionIssues||[]).map(e=>[e.host,e])).values()].slice(0,3).map(e=>'<p class="studio-policy-error">'+escape(e.host)+': '+(e.reason==='dns-failed'?'DNS lookup failed inside OpenShell. Check the host network or VPN, then retry the request.':'OpenShell blocked the destination address. Review the destination on the host.')+'</p>').join('')}
     ${section('Websites awaiting approval',blocked,'blocked',r.logsUnavailable?'Recent access requests could not be checked. Use Check again above.':'No websites waiting for approval.')}
     ${approvedSection}
+    ${policyRecentActivity(r)}
     ${section('Pre-approve common tasks',presets,'preset','All available tasks are already covered.')}
-    <p class="policy-access-note">${'Access applies only to '+escape(p.name)+'. After approval, resend your request.'}</p>${crew?'<details><summary>Policy details &amp; network activity</summary><pre>'+escape(JSON.stringify({status:r.status,checkedAt:r.checkedAt,sandboxes:r.sandboxes,rules:r.rules,filesystem:r.filesystem,logs:r.logs},null,2))+'</pre></details>':''}`;
+    <p class="policy-access-note">${'Access applies only to '+escape(p.name)+'. After approval, resend your request.'}</p>`;
 }
 el('policy-agent').onchange=async e=>{if(policySaving)return;const value=e.target.value;++policyVersion;policyLoading=false;policySnapshot=null;if(value.startsWith('crew:')){policyCrewRole=Number(value.slice(5));}else{policyCrewRole=null;await switchAgent(value);}renderPolicySelector();loadPolicy();};
 el('agent-policy').onclick=()=>openPolicy();
+// Display the full policy returned by OpenShell, without reconstructing it from summary rows.
+el('policy-view').onclick=()=>{
+ const target=policyTarget(),report=policySnapshot;
+ if(el('policy-view').disabled||!report||report._targetKey!==target.key)return;
+ const documents=(report.policyDocuments||[]).filter(item=>item.document&&typeof item.document==='object');
+ dialog('OPENSHELL POLICY','<section id="studio-policy-viewer"><div class="studio-identity-heading"><div><h3>'+escape(target.name)+'</h3><p>Full policy · JSON · Read only</p></div></div><div class="studio-policy-documents">'+(documents.length?documents.map((item,index)=>{
+  const active=item.loaded&&item.running&&item.source==='sandbox';
+  const origin='from OpenShell · '+item.sandbox+(item.revision!=null?' · revision '+item.revision:'');
+  const command='openshell policy get '+item.sandbox+' --full --output json';
+  return '<article class="studio-code-panel"><header><div><h4>OpenShell policy</h4><small>'+(active?'Loaded in the running sandbox':'Returned policy · activation not verified')+'</small></div><div class="studio-policy-source"><small title="'+escape(command)+'">'+escape(origin)+'</small><button type="button" class="studio-secondary" data-policy-copy="'+index+'">Copy</button></div></header><pre tabindex="0"><code>'+escape(JSON.stringify(item.document,null,2))+'</code></pre></article>';
+ }).join(''):'<p role="status">The full policy is not available yet. Check the agent’s OpenShell connection and try again.</p>')+'</div></section>');
+ el('dialog').classList.add('studio-agent-documents','studio-agent-code');
+ const host=el('policy-viewer');
+ host.onclick=async event=>{
+  const button=event.target.closest('[data-policy-copy]');if(!button)return;
+  try{await copyText(JSON.stringify(documents[Number(button.dataset.policyCopy)].document,null,2));if(host.isConnected)button.textContent='Copied';}
+  catch{if(host.isConnected)button.textContent='Select text to copy';}
+ };
+};
+
 el('policies').onclick=async e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.hasAttribute('data-policy-check')){if(!policyLoading&&!policySaving)loadPolicy();return;}

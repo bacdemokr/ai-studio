@@ -4,6 +4,7 @@ Adapted from Paul Roeseler's personal_collaboration capture/validation approach.
 Keep the current dispatcher so cancellation, verified handoffs and recovery are shared.
 """
 import json
+from role_boundaries import TEAM_ROLE_BOUNDARY, skill_scope, implementation_scope
 import re
 
 
@@ -111,6 +112,7 @@ def instructions(members, required, mode='mixed'):
         return ''
     from agent_runtime import collaboration_capabilities
     choices = [{**{key: m.get(key) for key in ('key', 'name', 'purpose', 'skills')},
+                'skillScope': skill_scope(m), 'implementationScope': implementation_scope(m),
                 **collaboration_capabilities(m)} for m in members]
     policy = ('HIRED AGENTS ONLY: Casey coordinates but cannot do specialist work. Assign every specialist task '
               'to an exact hired key below. Never use agent:"builtin" or invoke Scout, Cody, Vera, Ada or Iris. '
@@ -119,23 +121,20 @@ def instructions(members, required, mode='mixed'):
               'switch teams. One hire may deliver a combined small implementation, but may not independently review itself. '
               if mode == 'hired' else
               'Prefer suitable hired agents below; use agent:"builtin" for a built-in expert only when no suitable hired agent is available. '
+              'If a hire covers one requested part and standby covers another, split those tasks within the three-slot limit. '
               'Explicitly named built-in specialists must be kept when requested. ')
     return ('\nVISITOR TEAM SELECTION - overrides generic recommendations to pick Scout/Cody/Vera by name. ' + policy +
             'Role numbers describe the assignment (4 review, 5 coding, 6 analysis, 7 design, 8 research), '
             'not who must do it. Every task MUST include agent:"exact key" for a hired assignment. '
             'Each agent and role can appear only once. '
-            'Hiring presets, persona interests and skill names are not eligibility gates. Even when the user names nobody, '
-            'assign achievable work using the actual tools listed below. Two hires with the same preset can take different '
-            'assignments, such as author and independent reviewer; give them distinct role numbers and preserve both identities. '
-            'A hire with write can build a self-contained HTML page without a Coding skill. A hire with web_fetch can '
-            'research known public URLs without a Web research skill or search tool. Do not reject those capabilities '
-            'because the agents are Weather buddies. Never expand actual tool permissions or bypass policy. '
-            'Interpret the visitor\'s natural-language assignments, including informal requests and references to earlier sentences. '
-            'If the visitor names an agent, it MUST actually contribute, even outside its usual skills or expertise. '
-            'If they say Pixel should code instead, give Pixel role 5; do not leave coding to Cody and give Pixel '
-            'a token reaction. User role assignments override saved interests, but never expand tool permissions. '
-            'Keep the agent\'s identity and voice. Missing tools must be reported honestly. '
-            'Do not substitute someone else merely because the nominated agent may produce a worse result. '
+            + TEAM_ROLE_BOUNDARY + ' '
+            'Every hired assignment must include roleFit, one short sentence naming the equipped skill that covers this actual work. '
+            'Do not invent a skill or use purpose text to justify missing skills. '
+            'implementationScope:"missing-coding" means Coding is not equipped. Do not assign coding or an HTML deliverable, '
+            'even to a Programmer or custom developer, and even if write is available. '
+            'For a named agent you cannot suitably assign, include declinedAgents:[{"agent":"exact hired key",'
+            '"reason":"role mismatch and the suitable role needed"}]. Do not list a declined agent in tasks. '
+            'Explain each declined request in summary and the final answer, not only in JSON metadata. '
             'An independent reviewer must be a different agent. Keep assignments small and concrete: enough '
             'evidence for the requested result, a saved handoff, then stop. For research the shared ceiling is '
             '150 seconds, two searches or five direct fetches; stop earlier once the required facts are supported. '
@@ -149,6 +148,18 @@ class TeamSelectionError(RuntimeError):
 
 def validate_selection(plan, members, required, mode='mixed'):
     available = {m['key']: m for m in members}
+    formats = plan.get('requestedFormats', [])
+    declared = [path for task in plan['tasks'] for path in task.get('requiredFiles', [])]
+    # A coding assignment may use the existing verified HTML collector without
+    # an exact planner-selected filename. Final completion still needs a saved page.
+    implicit_html = any(task['role'] == 5 for task in plan['tasks'])
+    missing = [kind for kind in formats if not (kind == 'html' and implicit_html)
+               and not any(path.lower().endswith('.' + kind) for path in declared)]
+    if plan['tasks'] and missing and not plan.get('unassignedRequirements'):
+        raise TeamSelectionError('The original request requires saved ' + ', '.join(missing).upper() +
+                                 ' output, but no assignment produces it. Include the appropriate available specialist '
+                                 'and requiredFiles, or record why the team cannot produce it in unassignedRequirements. '
+                                 'Do not omit the implementation after selecting an analyst or researcher; Casey cannot fill it in.')
     seen = set()
     for assignment in plan['tasks']:
         key = assignment.get('agent')
@@ -167,11 +178,28 @@ def validate_selection(plan, members, required, mode='mixed'):
         if key in seen:
             raise TeamSelectionError('Each hired agent can perform only one specialist assignment. '
                                      'An independent reviewer must be a different agent.')
+        if not skill_scope(available[key]):
+            raise TeamSelectionError(available[key].get('name', 'This agent') + ' has no equipped specialist skill. '
+                                     'Equip the skill required for this task or choose a suitably equipped agent.')
+        if not isinstance(assignment.get('roleFit'), str) or not assignment['roleFit'].strip():
+            raise TeamSelectionError('Explain how each hired assignment fits an equipped skill in roleFit. '
+                                     'If it does not fit, decline it rather than reassigning its identity.')
+        implements = assignment.get('role') == 5 or any(
+            str(file).lower().endswith(('.html', '.htm')) for file in assignment.get('requiredFiles', []))
+        if implements and implementation_scope(available[key]) != 'allowed':
+            raise TeamSelectionError(available[key]['name'] + ' does not have Coding equipped. '
+                                     'File tools do not grant Coding. Remove this coding/HTML assignment; '
+                                     'use a suitable available agent or explain the missing expertise. '
+                                     'Do not relabel implementation as research or analysis.')
         seen.add(key)
-    missing = [m['name'] for m in required if m['key'] not in seen]
+    declined = plan.get('declinedAgents', [])
+    declined_keys = {m['agent'] for m in declined}
+    if len(declined_keys) != len(declined) or declined_keys - available.keys() or declined_keys & seen:
+        raise TeamSelectionError('Declined agents must be available hired agents, listed once and not assigned work.')
+    missing = [m['name'] for m in required if m['key'] not in seen | declined_keys]
     if missing:
         raise TeamSelectionError('The visitor explicitly requested ' + ', '.join(missing) +
-                                 '. Assign their actual requested work, not a reaction or a replacement.')
+                                 '. Assign suitable requested work or explain the role mismatch in declinedAgents. Do not substitute a reaction or replacement.')
 
 
 def bind(plan, roster, members, required, task, mode='mixed'):
@@ -187,7 +215,8 @@ def bind(plan, roster, members, required, task, mode='mixed'):
             roster[assignment['role']] = member
         assignment['name'] = roster[assignment['role']]['name']
     plan['visitorBindings'] = bindings
-    plan['requiredAgents'] = required
+    declined = {m['agent'] for m in plan.get('declinedAgents', [])}
+    plan['requiredAgents'] = [m for m in required if m['key'] not in declined]
 
 
 def validate(studio, owner, member):

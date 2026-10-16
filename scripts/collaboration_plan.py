@@ -4,6 +4,7 @@ import re
 import time
 from time import monotonic
 from browser_capability import BROWSER_LIMIT
+from role_boundaries import ROLE_BOUNDARY, TEAM_ROLE_BOUNDARY, skill_scope
 from plan_artifacts import snapshot_files, collect_files, reusable_code
 from webpage_artifacts import DEMO_CODING_INSTRUCTIONS, PAGE_INSTRUCTIONS, html_files, collect_pages
 from plan_inputs import requested_inputs, input_manifest, validate_assignments, PlanInputError
@@ -20,6 +21,9 @@ SCOUT_COMPLETION_RULE = (
     'supported, not merely that you found two facts. Do not add topics, sources, extra comparisons or optional metrics. '
     'One adequate source is enough unless the user explicitly requires multiple sources or a specific unresolved '
     'reliability/conflict issue needs another source. Never search again only to enrich or polish an adequate answer. '
+    'For a research-paper request, count only identifiable papers or preprints; a press release or news article '
+    'is background, not a paper. Return fewer papers rather than padding the count. Copy publication dates from '
+    'the retrieved source text; search indexing dates are not publication dates. Label a revised preprint date as a revision. '
     'Collect required source URLs, dates and timestamps while gathering the evidence, BEFORE saving. '
     'Write the complete assigned brief once, including supported findings and honest gaps, then immediately '
     'return a handoff under 80 words. A successful write confirms the save. '
@@ -71,6 +75,32 @@ class PlanSelectionError(RuntimeError):
     """Duplicate assignment slots can be corrected before hired specialists start."""
 
 
+def requests_two_specialists(task):
+    # Recognize the explicit instruction in the editable examples, not quoted inputs.
+    return bool(re.match(r'^\s*(?:/(?:goal|plan)\s+)?Use (?:two|2) (?:different|distinct|separate) (?:specialists|agents)\b', task, re.I))
+
+
+def validate_requested_team(selection, task):
+    if not requests_two_specialists(task):
+        return
+    identities = {('builtin', item['role']) if item.get('agent') in (None, 'builtin')
+                  else ('hired', item['agent']) for item in selection['tasks']}
+    if len(identities) < 2 and not selection.get('unassignedRequirements') and selection.get('outcome', 'complete') == 'complete':
+        raise PlanSelectionError('This request explicitly asks for two different specialists. Assign two suitable '
+                                 'available identities with a concrete handoff, or explain the missing specialist in '
+                                 'unassignedRequirements / an unavailable result. Do not merge both contributions into '
+                                 'one agent or add a spectator to claim collaboration.')
+
+
+def validate_input_work(selection, inputs):
+    """Document previews inform planning; they do not grant the Captain a specialist skill."""
+    if inputs and not selection['tasks'] and selection.get('outcome', 'complete') == 'complete':
+        raise PlanInputError('Work using attached documents requires a suitably equipped specialist, even when the '
+                             'entire small file is visible in the preview. Assign the requested analysis and saved '
+                             'deliverables, or return unavailable if the selected team lacks the required skill. '
+                             'Casey cannot perform the work or claim an unsaved file as a direct answer.')
+
+
 def read_plan(answer):
     from agent_reply import object_reply
     eligible = plan_roles()
@@ -85,8 +115,10 @@ def read_plan(answer):
         if not isinstance(task, dict):
             raise RuntimeError('The Captain returned an invalid assignment. No specialist was started.')
         role, instruction = task.get('role'), task.get('task')
-        if (type(role) is not int or role not in eligible
-                or not isinstance(instruction, str) or not 0 < len(instruction.strip()) <= 2000):
+        if type(role) is not int or role not in eligible:
+            raise PlanSelectionError('The Captain returned an invalid or duplicate specialist. No specialist was started. '
+                                     'Choose an available assignment slot: ' + ', '.join(map(str, sorted(eligible))) + '.')
+        if not isinstance(instruction, str) or not 0 < len(instruction.strip()) <= 2000:
             raise RuntimeError('The Captain returned an invalid or duplicate specialist. No specialist was started.')
         if role in seen:
             raise PlanSelectionError('The Captain returned an invalid or duplicate specialist. No specialist was started.')
@@ -111,9 +143,31 @@ def read_plan(answer):
             if not isinstance(expected, str) or not 0 < len(expected.strip()) <= 1500:
                 raise RuntimeError('The Captain returned an invalid expected result. No specialist was started.')
             assignment['expected'] = expected.strip()
+        if 'roleFit' in task:
+            fit = task['roleFit']
+            if not isinstance(fit, str) or not 0 < len(fit.strip()) <= 800:
+                raise PlanSelectionError('Each hired assignment needs a short, honest roleFit explanation.')
+            assignment['roleFit'] = fit.strip()
         assignment['requiredFiles'] = required_files(task)
         clean.append(assignment)
     result = {'summary': summary.strip(), 'tasks': clean}
+    formats = value.get('requestedFormats', [])
+    gaps = value.get('unassignedRequirements', [])
+    if (not isinstance(formats, list) or len(formats) > 9
+            or any(f not in ('html', 'md', 'txt', 'csv', 'json', 'py', 'js', 'css') for f in formats)):
+        raise PlanSelectionError('requestedFormats must list the requested saved file formats, even if no agent can produce them.')
+    if (not isinstance(gaps, list) or len(gaps) > 8
+            or any(not isinstance(gap, str) or not 0 < len(gap.strip()) <= 1500 for gap in gaps)):
+        raise PlanSelectionError('unassignedRequirements must list the requested work this team cannot perform.')
+    result.update(requestedFormats=list(dict.fromkeys(formats)), unassignedRequirements=[g.strip() for g in gaps])
+    declined = value.get('declinedAgents', [])
+    if (not isinstance(declined, list) or len(declined) > 12
+            or any(not isinstance(item, dict) or not isinstance(item.get('agent'), str)
+                   or not re.fullmatch(r'[a-f0-9]{24}', item['agent'])
+                   or not isinstance(item.get('reason'), str) or not 0 < len(item['reason'].strip()) <= 800
+                   for item in declined)):
+        raise PlanSelectionError('Declined agents need exact hired keys and a short role-mismatch reason.')
+    result['declinedAgents'] = [{'agent': item['agent'], 'reason': item['reason'].strip()} for item in declined]
     if 'reviewRequired' in value:
         if type(value['reviewRequired']) is not bool:
             raise RuntimeError('The Captain returned an invalid review requirement.')
@@ -254,29 +308,30 @@ class CollaborationPlans:
             if member.get('key'):
                 return ('You are ' + member['name'] + '. Keep your saved voice and identity. Casey assigns you the '
                         + CREW_CATALOG[role]['collaboration']['title'] + ' work for this task. '
-                        'The visitor may deliberately assign work outside your usual expertise. Attempt the requested '
-                        'work yourself, within your actual tools; do not refuse solely because your usual role differs. '
+                        'Only undertake specialist work covered by an explicitly equipped skill. Your role cannot replace a missing skill. '
                         "Do not recruit a replacement or use another agent's tools. Report actual limitations honestly. " +
-                        ('Casey explicitly assigned webpage implementation together with your other work. '
-                         'Complete the declared deliverables; do not take over other specialists or claim independent self-review.'
+                        ('An HTML deliverable was requested. Implement it only if Coding is equipped. '
+                         'This assignment does not grant a missing skill; otherwise return [role-mismatch] '
+                         'and explain the missing implementation expertise. Do not take over other specialists or claim independent self-review.'
                          if hired_page_outputs(role) else CREW_CATALOG[role]['collaboration'].get('scope', '')))
             return CREW_CATALOG[role]['collaboration'].get('scope', '')
 
         reference_aliases = {}
-        team = [{'role': i, 'name': m['name'], **m['collaboration'], **collaboration_capabilities(m, m['role'])}
+        team = [{'role': i, 'name': m['name'], 'skills': m.get('skills', []), 'skillScope': skill_scope(m),
+                 **m['collaboration'], **collaboration_capabilities(m, m['role'])}
                 for i, m in enumerate(CREW_CATALOG) if i in plan_roles()]
-        team_summary = [{key: member[key] for key in ('role', 'name', 'title', 'summary', 'tools')}
+        team_summary = [{key: member[key] for key in ('role', 'name', 'title', 'summary', 'skills', 'skillScope', 'tools')}
                         for member in team]
         shared_limits = [limit for limit in team[0]['limits'] if all(limit in member['limits'] for member in team)]
         shared_limits += ['web_fetch can attempt public URLs only for members whose tools include it. Reachability is not guaranteed; cite only successful reads.']
         selection_pool = team
         if mode == 'hired':
             selection_pool = [{'key':m['key'], 'name':m['name'], 'purpose':m.get('purpose'),
-                               'skills':m.get('skills', []), **collaboration_capabilities(m)} for m in visitors]
+                               'skills':m.get('skills', []), 'skillScope':skill_scope(m), **collaboration_capabilities(m)} for m in visitors]
             team_summary = selection_pool
         history = self.conversation_context(origin['owner'], origin['role'], row['created'], job_id)
         context = (BROWSER_LIMIT + '\nCurrent UTC date: ' + time.strftime('%Y-%m-%d', time.gmtime()) + '\n' +
-            'This is an explicit /plan collaboration, separate from the event-template pipeline. '
+            'This is an explicit Open Task collaboration. '
             'Use the current task, supplied conversation context and handoffs. Do not read old event briefs, '
             'contracts, schedules, other conversations or personal agents\' workspaces. '
             'Use your own skills and workspace when needed, within existing permissions. '
@@ -301,14 +356,18 @@ class CollaborationPlans:
             'Scout has a total 150-second research budget, including searches, reading, writing and retries. This is a ceiling, not a target. '
             'Save a short brief immediately after useful evidence arrives; stop researching once 2-3 facts are available. '
             'If no relevant evidence is found, say the search failed; never fabricate facts or keep trying for perfection. '
-            'SEARCH-FIRST DEMO: when web_search is available, use one focused search returning at most three results. '
+            'SEARCH-FIRST DEMO: when web_search is available, start with one focused search returning at most three results. '
             'For latest/current requests include the current year or requested period in the query, verify source dates, '
             'and check reporting periods; ranking does not establish freshness. '
             'Save only 2-3 directly relevant findings in a brief under 300 words. Use source excerpts with citations; '
             'identify them as excerpts and never imply full-page verification. Immediately write the assigned brief with native write, '
-            'then return a short handoff and finish. Do not run a follow-up search or open result pages to polish the brief. '
+            'then return a short handoff and finish. If that search does not answer the requested subject and date range, '
+            'one reformulated search is allowed, with at most three results. Two searches is the total ceiling, not a target. '
+            'Do not use the second search or open result pages merely to polish sufficient evidence. '
             'One relevant supported finding is acceptable if fewer than 2-3 are available; never pad the brief. '
-            'If all results are stale, irrelevant or empty, save a short honest failure note and finish. '
+            'Adjacent technology is not a substitute for the requested subject: a simulation overview alone does not establish drone-swarm control findings. '
+            'When a technology is a preference, first satisfy the core topic and label an unverified technology connection. '
+            'If both searches yield only stale, irrelevant or empty results, save a short honest failure note and finish. '
             'Do not chase optional metrics. '
             'This smaller search-first budget overrides the fetch-only guidance below when search returns results. '
             'If the search service reports a rate limit or unavailable service and returns no evidence, disclose that failure '
@@ -384,6 +443,7 @@ class CollaborationPlans:
             'such as ||, coercion, parsing and validation order; HTML min/step alone does not enforce JavaScript validation. '
             'Check empty, zero, negative, fractional and non-finite inputs against the requested behavior. '
             'Programmers must validate raw required inputs before applying defaults; reject invalid counts rather than silently changing them. '
+            'Keep inline JavaScript in an IIFE or module; global declarations such as const top can collide with browser-owned names and stop the entire script. '
             'Do not send messages, publish, book or purchase anything. Report missing capabilities '
             'and access honestly; a blocked request must not be delegated to bypass OpenShell. '
             'Reply in the user\'s language.' + history + '\nCurrent user task:\n' + plan['task'] +
@@ -686,9 +746,7 @@ class CollaborationPlans:
                         '\nThe overall request is background, not your assignment. Complete ONLY the contribution Casey assigned below, '
                         'within your role boundary. Return it to Casey with evidence and limitations. Do not execute later stages, '
                         'take over another specialist, or decide the whole team is finished. ' +
-                        ('Attempt the assigned work even outside your usual expertise, within your actual tool permissions. '
-                         if member.get('key') else 'If your assignment conflicts with your expertise, report that mismatch '
-                         'and supply only the useful in-scope portion. ') +
+                        ROLE_BOUNDARY + '\n' +
                         'Keep only your handoff summary within 120 words, including on revision. This is NOT a limit '
                         'on code, file contents or requested deliverables. Never truncate an implementation or drop '
                         'required functionality to satisfy the summary limit. Save necessary detail '
@@ -747,7 +805,10 @@ class CollaborationPlans:
                      'Check preventDefault and use textContent for untrusted plain-text '
                      'input rather than innerHTML. Do not present action="#" as a fix for an unwanted submission. '
                      if role == 4 else '') +
-                    (('\nDecision output contract: return ONLY a JSON object with summary and tasks (integer role IDs) as specified above.'
+                    (('\nDecision output contract: return ONLY {"decisions":[{"agent":"exact key","allowed":true,"reason":"skill match"}]}, '
+                      'one decision per scope candidate. Do not return a plan, summary, tasks or requestedFormats.'
+                      if phase == 'Planning-scope-check' else
+                      '\nDecision output contract: return ONLY a JSON object with summary and tasks (integer role IDs) as specified above.'
                       if phase.startswith('Planning') else
                       '\nDecision output contract: return ONLY a JSON object with done (boolean), reason (string), and answer when done=true. '
                       'When done=true, include outcome:"complete", "partial", or "unavailable". If any original requirement is unfinished, '
@@ -785,6 +846,22 @@ class CollaborationPlans:
                     collect_delivery(role, phase, pages_before, files_before, '')
                     files = (plan.get('revision', {}).get('files', []) if phase.startswith('Revising')
                              else plan.get('files', {}).get(str(role), []))
+                    if (role == 8 and phase.startswith('Working') and error.reason == 'request_failed' and files
+                            and selected and any(task.get('requiredFiles') for task in selected)
+                            and all(not missing_files(task, plan.get('verifiedSources', {}).get(str(role), []), files)
+                                    for task in selected)):
+                        # A failed closing reply does not invalidate a saved brief. The normal
+                        # Captain checkpoint still decides whether it supports downstream work.
+                        from telemetry import Reply
+                        plan.setdefault('savedResearchRecovery', []).append({
+                            'role': role, 'reason': error.reason, 'message': str(error), 'files': files})
+                        reply = Reply('The research model failed after saving its required brief. These files are '
+                                      'unverified partial work. Review their actual contents, sources and limitations '
+                                      'before continuing; stop if they do not support the next assignment. No research '
+                                      'request was repeated.', {})
+                        reply.activity = getattr(error, 'activity', None)
+                        save('Research reply interrupted', 'Required files were saved; Casey will assess the handoff.')
+                        return reply
                     if role == 8 and error.reason == 'timeout' and files:
                         from telemetry import Reply
                         reply = Reply('Research stopped at the 150-second limit. Use only the saved evidence excerpts or brief, not unverified completion claims. Omit unsupported details; report honestly if these sources do not answer the task.', {})
@@ -806,22 +883,12 @@ class CollaborationPlans:
             if member.get('key') and getattr(answer, 'policy_denials', None):
                 plan.setdefault('policyBlocks', {})[member['key']] = {
                     'name': member['name'], 'hosts': list(answer.policy_denials)}
-            if role == 8 and hasattr(answer, 'sources'):
+            if getattr(answer, 'sources', None):
                 # Only observed tool evidence, never model reasoning. Keep one bounded
                 # set through revisions so a read-only repair cannot erase its sources.
                 sources = plan.get('researchSources', []) + answer.sources
-                bounded, seen, budget = [], set(), 6000
-                for item in sources:
-                    if item['url'] in seen or not budget:
-                        continue
-                    seen.add(item['url'])
-                    text = item['text'][:min(1600, budget)]
-                    bounded.append({'url': item['url'], 'text': text,
-                        'truncated': item.get('truncated', False) or len(text) < len(item['text'])})
-                    budget -= len(text)
-                    if len(bounded) == 6:
-                        break
-                plan['researchSources'] = bounded
+                from research_citations import bounded_sources
+                plan['researchSources'] = bounded_sources(sources)
             if self.stop_checkpoint(job_id):
                 return None
             if not str(answer).strip() or 'Reply truncated' in str(answer):
@@ -832,6 +899,28 @@ class CollaborationPlans:
 
 
         def finish(answer, reactions=True):
+            saved = [file for output in effective_outputs(plan).values() for file in output.get('files', [])]
+            missing = ['Requested ' + kind.upper() + ' file was not saved.' for kind in plan.get('requestedFormats', [])
+                       if not any(file.lower().endswith('.' + kind) for file in saved)]
+            if requests_two_specialists(plan['task']):
+                contributors = {output.get('agentId') for output in effective_outputs(plan).values() if output.get('agentId')}
+                if len(contributors) < 2:
+                    missing.append('The requested work by two different specialists was not completed.')
+            gaps = list(dict.fromkeys(plan.get('unassignedRequirements', []) + missing))
+            if gaps and plan.get('outcome', 'complete') == 'complete':
+                # A fluent final answer cannot fill an unassigned role or create a file.
+                # Preserve useful contributions while discarding unsupported success promises.
+                answer = unfinished(' '.join(gaps))
+                plan['outcome'] = 'partial' if saved or effective_outputs(plan) else 'unavailable'
+                plan['remaining'] = gaps
+                reactions = False
+            if plan.get('declinedAgents'):
+                names = {m['key']: m['name'] for m in visitors}
+                gaps = [names.get(m['agent'], 'Agent') + ': ' + m['reason'] for m in plan['declinedAgents']]
+                plan['outcome'] = 'partial' if plan.get('calledRoles') else 'unavailable'
+                plan['remaining'] = list(dict.fromkeys(plan.get('remaining', []) + gaps))[:8]
+                answer = str(answer) + '\n\nNot assigned - equipped skills do not cover the task:\n' + '\n'.join('- ' + gap for gap in gaps)
+                reactions = False
             if plan.get('participationGaps'):
                 plan['outcome'] = 'partial'
                 plan['remaining'] = list(dict.fromkeys(plan.get('remaining', []) + plan['participationGaps']))[:8]
@@ -842,6 +931,13 @@ class CollaborationPlans:
                     plan['outcome'] = 'partial'
                 plan['remaining'] = list(dict.fromkeys(['Requested independent review'] + plan.get('remaining', [])))[:8]
                 answer = 'Requested independent review was not completed. This result is unreviewed.\n\n' + str(answer)
+                reactions = False
+            if plan.get('outcome') == 'partial' and plan.get('remaining'):
+                # A stopped run must not display an unexecuted promise to read,
+                # verify or implement more work as its final response.
+                remaining = list(dict.fromkeys(plan['remaining']))
+                answer = unfinished(' '.join(remaining))
+                plan['remaining'] = remaining
                 reactions = False
             evidence = plan.get('researchSources', [])
             if evidence:
@@ -941,13 +1037,21 @@ class CollaborationPlans:
                         'remaining': ['Final synthesis'], 'answer': unfinished(reason)}
 
         try:
+            if mode == 'hired' and requests_two_specialists(plan['task']) and len({m['key'] for m in visitors}) < 2:
+                reason = ('This example needs two different specialists, but fewer than two hired agents are available. '
+                          'Hire another agent with the missing suggested skill, or choose Hired + Standby.')
+                plan.update(tasks=[], calledRoles=[], outcome='unavailable', remaining=[reason])
+                finish(reason, reactions=False)
+                return
             answer = invoke(0,
                 'You are Casey, the BaC Captain. Do not use tools in this initial decision. '
                 'Choose zero to three specialists, only as needed, from this available pool to match the current request: ' + json.dumps(selection_pool) + '. '
-                'For a simple question you can answer accurately from the supplied context, return tasks:[] and the complete user-facing answer. Explain in summary why no additional agents are needed. '
+                'For ordinary conversation or a simple question about the team, return tasks:[] and the complete user-facing answer. Explain in summary why no additional agents are needed. '
+                'Work using attached documents, including sorting a small CSV, must go to a specialist with the relevant equipped skill. '
+                'A complete input preview helps you plan; it does not authorize Casey to perform the analysis or pretend to save a file. '
                 'Match the requested deliverable: a summary, comparison table, invitation or explanation is a chat answer or Markdown, '
                 'not a request for an HTML page. Do not add implementation, design or independent review unless the user asks for that deliverable or it is necessary. '
-                'For tool-dependent or specialized work, one specialist is enough if they can satisfy the request. Never fill a team quota. '
+                'For tool-dependent or specialized work, one specialist is enough unless the user explicitly requests different specialists. Honor an explicit distinct-specialist request with real contributions and a handoff; never count spectators. '
                 'If the user asks to add/include review, double-check the analysis, or involve a reviewer, '
                 'set reviewRequired:true and reserve a slot for Vera after the producing specialist(s). '
                 'This is mandatory requested work, not optional polish; saving a file or Casey inspecting it does not fulfill independent review. '
@@ -956,8 +1060,8 @@ class CollaborationPlans:
                 'Your own missing web tools do not mean Scout lacks public-web access. web_fetch reads public HTTP(S) pages; '
                 'web_search is a separate optional search-engine tool. Absence of web_search does not disable web_fetch. '
                 'Keep Scout assignments limited to the user’s required facts. Do not add multiple sources, extra topics or verification steps unless needed to answer the request. Stop as soon as those requirements have adequate evidence. '
-                'If Scout has web_search, assign one focused search and a brief of 2-3 relevant findings; '
-                'require an immediate native write of the brief after that search, then finish without follow-up searches or page reads. '
+                'If Scout has web_search, assign one focused search and a brief of 2-3 relevant findings; allow one reformulated search only if the first misses the subject or date range; '
+                'require an immediate native write once relevant evidence is available, then finish without optional searches or page reads. '
                 'Source excerpts suffice for this demo when labeled honestly. Include the current year or requested period in the query '
                 'and check publication dates and reporting periods. Accept fewer findings and report gaps instead of expanding research. '
                 'Without search and without supplied URLs, assign Scout to start from a confidently known '
@@ -973,11 +1077,8 @@ class CollaborationPlans:
                 'return tasks:[], outcome:"unavailable" and an answer explaining that this demo cannot open or control '
                 'the PC browser. Offer a manual link or public-page research as an optional next step; do not call Scout '
                 'to attempt the browser task through web_fetch. '
-                'First check whether this pool and its actual tools can fulfill the request. ' +
-                ('Hired agents can attempt work outside their saved persona or skill names. Select them by actual tools '
-                 'for a useful achievable portion; do not require a specialist preset for writing code or fetching public pages. '
-                 if include_hired else 'Do not assign loosely related specialists when required expertise or capabilities '
-                 'are missing. Instead, select appropriate experts for a useful achievable portion. ') +
+                'First check whether this pool and its actual tools can fulfill the request. '
+                + (TEAM_ROLE_BOUNDARY if not include_hired else '') + ' '
                 'No agent can install packages, execute arbitrary programs, '
                 'access private services without a configured tool, deploy, send messages, book or purchase. '
                 'If no useful portion is possible because a required specialist or capability is unavailable, return tasks:[], outcome:"unavailable", '
@@ -997,7 +1098,17 @@ class CollaborationPlans:
                 'user flows and accessibility. Do not add either unless the requested outcome benefits from that expertise. '
                 'Ada can read tables and reason about data, not run a statistics engine; Iris designs but does not execute browser tests. '
                 'Give each selected specialist distinct, necessary work and concrete acceptance criteria within its role boundary. '
+                'Do not invent acceptance requirements or paper/source quotas absent from the user request. '
+                'For an unspecified research count, request up to three relevant supported examples, with honest evidence gaps. '
+                'requestedFormats describes original user deliverables only; internal research handoffs are not extra user requirements. '
+                'A table shown in chat is not a requested saved Markdown file. For a table in chat plus a saved CSV, use '
+                'requestedFormats:["csv"] and a .csv requiredFiles entry, not an extra MD format. '
                 'For a required saved deliverable, include requiredFiles:["artifacts/research-brief.md"] with exact relative paths. '
+                'At the plan level, always include requestedFormats (file extensions without dots, e.g. ["html","md"]) '
+                'for the original user’s requested saved deliverables, INCLUDING those this team cannot produce. '
+                'Use [] for a chat-only answer. Also include unassignedRequirements:[]; list every original requirement '
+                'left outside the assignments because a role, skill or tool is missing. Do not hide these gaps only in summary. '
+                'These original requirements persist through final review; completing a smaller assignment is not completing the whole request. '
                 'Every requiredFiles entry must start with artifacts/ and end in .md, .txt, .csv, .json, .py, .js, .css or .html. '
                 'For webpages use artifacts/index.html, never index.html or an absolute workspace path. '
                 'Research used by another specialist must have a saved, cited Markdown brief in requiredFiles. '
@@ -1005,6 +1116,8 @@ class CollaborationPlans:
                 'Explicitly tell Scout to research only and return an evidence brief to Casey; Cody implements that brief. '
                 'Never delegate the entire research-and-build request to the researcher. '
                 'For each assignment, provide task (what to do) and expected (the concrete deliverable and how to judge it). '
+                'Also include roleFit for every assigned agent: one short, user-facing sentence, ideally under 25 words, '
+                'naming the equipped skill that covers this task. A matching role is not sufficient. Use the user’s language; do not invent qualifications. '
                 'When an assignment needs a listed document, include inputs:["document-0"] using only IDs from the task input list. '
                 'inputs selects existing uploaded documents only, never artifacts/ paths or future deliverables. '
                 'Use inputs:[] when no uploaded documents are needed. Declare generated outputs in the producing '
@@ -1012,15 +1125,14 @@ class CollaborationPlans:
                 'and hands earlier specialists\' saved outputs to later specialists automatically. '
                 'Include all necessary originals for an independent review, not just a prior specialist summary. '
                 'For visual work requiring the attached images, set useImages:true; otherwise omit it. '
-                'Do not select unrelated private documents. For a simple document summary or calculation, you may answer directly '
-                'only when the supplied original-document previews contain all required data and are not truncated. '
-                'Otherwise delegate to a specialist to read the selected inputs. A filename is not the document content. '
+                'Do not select unrelated private documents. Delegate document summaries, data comparisons and calculations '
+                'to a suitably equipped specialist using the selected inputs. A filename is not the document content. '
                 'With tasks:[], answer must contain the actual completed result, never a promise to read a file or do work later. '
                 'Keep expected concise and specific to this request; these expectations are shown in Mission Control and sent to the specialist. '
                 'Cody can read/write/edit source and produce self-contained HTML/JS previews, but cannot execute arbitrary programs '
                 'or install dependencies. Vera can inspect files and reason through cases; do not claim executed tests without tool evidence. '
                 'Order assignments so each later specialist can use the earlier results. '
-                'Return ONLY JSON {"summary":"short plan explaining why this team fits","tasks":[{"role":5,"task":"specific implementation","expected":"working deliverable and acceptance criteria","inputs":[]},{"role":4,"task":"specific review","expected":"specific checks and findings","inputs":[]}]}. '
+                'Return ONLY JSON {"summary":"short plan explaining why this team fits","requestedFormats":["html"],"unassignedRequirements":[],"tasks":[{"role":5,"task":"specific implementation","expected":"working deliverable and acceptance criteria","inputs":[],"requiredFiles":["artifacts/index.html"],"roleFit":"Equipped Coding covers implementation."}]}. '
                 'Always include inputs for every task. Put the document IDs the specialist must read in that array, not only in the task prose. '
                 'Alternatively return {"summary":"why no delegation is necessary","tasks":[],"answer":"complete answer"}. '
                 'For unsupported work return {"summary":"which required expertise or tool is missing","tasks":[],"outcome":"unavailable","answer":"honest explanation of the limitation and next step"}. '
@@ -1033,6 +1145,8 @@ class CollaborationPlans:
                 return
             try:
                 selection = read_plan(answer)
+                validate_input_work(selection, inputs)
+                validate_requested_team(selection, plan['task'])
                 validate_assignments(selection['tasks'], inputs, bool(payload.get('images')))
             except (PlanInputError, PlanHandoffError, PlanSelectionError) as error:
                 if isinstance(error, PlanSelectionError) and not include_hired:
@@ -1046,6 +1160,9 @@ class CollaborationPlans:
                     'Return ONLY compact plan JSON with summary and up to three tasks. Each task needs role, task, '
                     'expected, inputs (an array of available document IDs), and requiredFiles (output paths). '
                     'Use distinct integer roles: 4 review, 5 coding, 6 analysis, 7 design, 8 research. Each role occurs once. '
+                    'These are scheduling slots for hired agents: a hired announcement writer may use 7 or 8 for supplied copy. '
+                    'The equipped skill still determines allowed work; do not use retired slots or invent another role number. '
+                    'Preserve requestedFormats and unassignedRequirements, and include roleFit naming the relevant equipped skill. '
                     'For hired work include the exact agent key; different hires with the same preset must have distinct '
                     'assignment roles. Preserve their identities and requested contributions; do not replace or drop a person '
                     'to resolve duplicate role numbers. An independent check belongs to review role 4. '
@@ -1062,6 +1179,8 @@ class CollaborationPlans:
                     return
                 try:
                     selection = read_plan(corrected)
+                    validate_input_work(selection, inputs)
+                    validate_requested_team(selection, plan['task'])
                     validate_assignments(selection['tasks'], inputs, bool(payload.get('images')))
                 except RuntimeError:
                     plan[recovery_key]['status'] = 'failed'
@@ -1087,34 +1206,95 @@ class CollaborationPlans:
                            'No specialist work was started. Narrow the scope or split the request to continue.', reactions=False)
                     return
             if include_hired:
+                scope_decisions = {}
+                def validate_team(selection):
+                    from agent_reply import object_reply
+                    visitor_teams.validate_selection(selection, visitors, required_visitors, mode)
+                    members = {member['key']: member for member in visitors}
+                    candidates = [task for task in selection['tasks'] if task.get('agent') in members]
+                    def scope_key(task):
+                        return (task['agent'], task['task'], tuple(task.get('requiredFiles', [])))
+                    unchecked = [task for task in candidates if scope_key(task) not in scope_decisions]
+                    if unchecked:
+                        checks = [{'agent': task['agent'], 'skills': skill_scope(members[task['agent']]),
+                                   'task': task['task'], 'requiredFiles': task.get('requiredFiles', [])} for task in unchecked]
+                        reply = invoke(0, 'Check ONLY equipped-skill suitability before specialists start. No tools or work. '
+                            'The proposed assignment, role text, names, file-tool access and LLM intelligence cannot grant skills. '
+                            'Does the equipped skill set cover each substantial assignment? '
+                            'Coding covers implementation and static code review using supplied facts; it does not grant independent web research. '
+                            'Copying supplied values into a page is incidental implementation. Comparing business performance, interpreting changes, '
+                            'deriving findings or recommending business actions is substantial analysis and requires Data interpretation, even in an HTML dashboard. '
+                            'A compound task must fit in full; otherwise reject it so planning can split it and declare the unsupported portion. '
+                            'Data interpretation covers comparing supplied figures and recommendations, but not HTML implementation. '
+                            'Live weather covers weather research and forecast advice, not company earnings, general tourism research or business analysis. '
+                            'Web research covers public-source research including papers, not HTML implementation. '
+                            'Slack announcements covers copy from supplied facts, not independent research or programming. '
+                            'Allow necessary reading/writing of briefs within an equipped skill. Do not demand extra skills for incidental formatting. '
+                            'Return ONLY JSON {"decisions":[{"agent":"exact key","allowed":false,"reason":"brief scope evidence"}]}, '
+                            'one decision per candidate.\nScope candidates:\n' + json.dumps(checks, ensure_ascii=False), 'Planning-scope-check')
+                        if reply is None:
+                            return False
+                        try:
+                            decisions = object_reply(str(reply))['decisions']
+                            expected = {task['agent'] for task in unchecked}
+                            if (not isinstance(decisions, list) or len(decisions) != len(expected)
+                                    or {item['agent'] for item in decisions} != expected
+                                    or any(type(item['allowed']) is not bool or not isinstance(item['reason'], str)
+                                           or not 0 < len(item['reason'].strip()) <= 1500 for item in decisions)):
+                                raise ValueError('Invalid scope decisions')
+                        except (KeyError, TypeError, ValueError, RuntimeError):
+                            raise visitor_teams.TeamSelectionError('Equipped skills could not be matched to the assignments. '
+                                'Use a suitably equipped agent or report the missing skill.') from None
+                        by_agent = {item['agent']: item for item in decisions}
+                        scope_decisions.update({scope_key(task): by_agent[task['agent']] for task in unchecked})
+                        plan.setdefault('skillScopeChecks', []).extend(decisions)
+                    denied = [scope_decisions[scope_key(task)] for task in candidates if not scope_decisions[scope_key(task)]['allowed']]
+                    if denied:
+                        raise visitor_teams.TeamSelectionError('Equipped skills do not cover this work: ' +
+                            '; '.join(members[item['agent']]['name'] + ': ' + item['reason'] for item in denied) +
+                            '. Keep only work covered by equipped skills; assign a suitable agent or record the missing skill.')
+                    return True
                 try:
-                    visitor_teams.validate_selection(plan, visitors, required_visitors, mode)
+                    if not validate_team(plan):
+                        return
                 except visitor_teams.TeamSelectionError as error:
                     plan['teamSelectionRecovery'] = {'status': 'working'}
                     corrected = invoke(0, 'Complete the team selection before any specialist starts. '
                         'Interpret the original user request, not keyword matches. Preserve each requested person\'s actual work '
-                        'and the necessary handoffs and task order. Do not replace a named builtin with a hired agent or vice versa. '
+                        'and the necessary handoffs and task order. Decline substantially out-of-role assignments in declinedAgents; '
+                        'never force participation merely because a person was named. '
                         'Return the complete plan JSON with summary and up to three tasks. EVERY task must contain role '
                         '(4 review, 5 coding, 6 analysis, 7 design, 8 research), agent (an exact hired key or "builtin"), '
-                        'task, expected, inputs and requiredFiles. Hired names and their exact keys appear in Hired agents above. '
+                        'task, expected, inputs, requiredFiles and roleFit. Hired names and their exact keys appear in Hired agents above. '
+                        'Recheck requestedFormats against the original request and explicitly list unassignedRequirements. '
+                        'Use extension strings only (html, md, txt, csv, json, py, js, css). A table in chat plus a saved CSV '
+                        'requires only ["csv"], not a Markdown file. Do not preserve a mistakenly inferred extra format. '
                         'No tools.\nValidation issue: ' + str(error) + '\nOriginal request:\n' + plan['task'] +
                         '\nPrevious selection:\n' + json.dumps(plan['tasks'], ensure_ascii=False), 'Planning-team-repair')
                     if corrected is None:
                         return
                     try:
                         selection = read_plan(corrected)
+                        validate_input_work(selection, inputs)
+                        validate_requested_team(selection, plan['task'])
                         selection['reviewRequired'] = plan.get('reviewRequired', False) or selection.get('reviewRequired', False)
                         include_required_review(selection)
                         validate_assignments(selection['tasks'], inputs, bool(payload.get('images')))
-                        visitor_teams.validate_selection(selection, visitors, required_visitors, mode)
-                    except (RuntimeError, ValueError):
-                        plan['teamSelectionRecovery']['status'] = 'failed'
-                        plan.update(tasks=[], outcome='partial', calledRoles=[])
-                        finish('Casey could not confirm the requested team. No specialist work was started. Please try again.', reactions=False)
+                        if not validate_team(selection):
+                            return
+                    except (RuntimeError, ValueError) as selection_error:
+                        reason = str(selection_error) if isinstance(selection_error, visitor_teams.TeamSelectionError) else str(error)
+                        plan['teamSelectionRecovery'].update(status='failed', reason=reason,
+                                                             correctionError=str(selection_error))
+                        plan.update(tasks=[], outcome='unavailable', calledRoles=[], remaining=[reason])
+                        finish('Casey could not form a suitable team. ' + reason + ' No specialist work was started.', reactions=False)
                         return
                     plan.update(selection)
                     plan['teamSelectionRecovery']['status'] = 'corrected'
                 visitor_teams.bind(plan, roster, visitors, required_visitors, plan['task'], mode)
+                required_visitors = plan['requiredAgents']
+            if plan.get('declinedAgents'):
+                visitor_rules += '\nDeclined requested assignments (do not reassign or claim complete):\n' + json.dumps(plan['declinedAgents']) + '\n'
             if plan.get('visitorBindings'):
                 visitor_rules += ('\nActual selected assignments (use these identities in progress and final answers):\n' +
                                   json.dumps([{'role': t['role'], 'name': roster[t['role']]['name']} for t in plan['tasks']]) + '\n')
@@ -1161,6 +1341,15 @@ class CollaborationPlans:
                     'scope': member_scope(role), 'agentId': roster[role]['id'],
                     'observedAccess': observed_access(roster[role], answer),
                     'scopeWarning': plan.get('scopeWarnings', {}).get(str(role), ''), 'answer': str(answer), 'files': plan.get('files', {}).get(str(role), []), 'activity': getattr(answer, 'activity', None)}
+                if str(answer).lstrip().startswith('[role-mismatch]'):
+                    reason = name + ': ' + str(answer).lstrip()[len('[role-mismatch]'):].strip()
+                    plan['outcome'] = 'partial' if index else 'unavailable'
+                    plan['remaining'] = [reason]
+                    plan['outputs'][str(role)]['incomplete'] = True
+                    plan['scopeDecline'] = {'role': role, 'reason': reason}
+                    save('Assignment declined', reason)
+                    finish(reason + '\n\nNo further specialists were started. Adjust the goal or equip the relevant skill.', reactions=False)
+                    return
                 missing = missing_files(assignment, plan.get('verifiedSources', {}).get(str(role), []),
                                         plan['outputs'][str(role)]['files'])
                 if missing:
@@ -1305,8 +1494,16 @@ class CollaborationPlans:
                     'are needed if the result is sufficient. If required expertise or a tool is unavailable, name it '
                     'and distinguish completed work from the unfulfilled request. '
                     'Include the completion rationale in answer itself as well as reason, and retain any unperformed testing or verification limitations. '
+                    'Perform any permitted evidence reading in this turn before returning the decision. '
+                    'Do not return done:false merely to announce that you intend to inspect a file. '
+                    'An unexecuted browser test is a disclosed verification limitation, not by itself a missing deliverable '
+                    'unless the user explicitly required that test. Still identify concrete missing behavior or evidence honestly. '
                     'Use the same concise explanation sentence in reason and answer. '
+                    'Judge completion against the original user request, not extra quotas invented in the plan. '
+                    'Never describe a paper count as requested unless the user actually supplied it. '
                     'Preserve exact quantities, units, dates and calculation operands from the original documents. '
+                    'Absence from a retrieved excerpt is not proof of non-use: say a technology connection was not verified, '
+                    'never claim the paper does not use it merely because it names another library. '
                     'Never reconstruct missing operands from a reported total. If a required detail is absent from the '
                     'supplied preview or handoff summary, read its mapped source or brief before including it. '
                     'Link only accepted paths in outputs.files, never temporary inbox/plan-* handoff copies. '
@@ -1314,6 +1511,11 @@ class CollaborationPlans:
                     'All selected specialists have now run; no fourth specialist will be called. '
                     'One already participating specialist may receive a targeted revision if essential. '
                     'If requirements remain, return the useful completed work as partial, with remaining listing each unmet requirement. '
+                    'Casey must not implement missing specialist work, promise future writes, or claim an unsaved deliverable exists. '
+                    'Missing expertise cannot be repaired by asking an unrelated participant to reread or retry. '
+                    'If unassigned requirements remain for that reason, finish partial with the useful contributions. '
+                    'Original saved formats: ' + json.dumps(plan.get('requestedFormats', [])) + '. '
+                    'Work this plan could not assign: ' + json.dumps(plan.get('unassignedRequirements', [])) + '. '
                     'The specialist limit is not proof of completion. Never discard a usable prototype or analysis because the full task is unfinished. '
                     'Return ONLY JSON {"done":true,"outcome":"complete" or "partial" or "unavailable",'
                     '"remaining":["unfinished requirements, required only for partial"],'

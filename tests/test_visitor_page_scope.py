@@ -35,7 +35,7 @@ class VisitorPageScopeTests(unittest.TestCase):
 
         self.adapter.respond = respond
 
-    def test_hired_analysis_design_and_research_can_deliver_declared_webpage(self):
+    def test_hired_coder_in_other_assignment_slots_can_deliver_declared_webpage(self):
         for role in (6, 7, 8):
             with self.subTest(role=role):
                 self.assign(role)
@@ -51,7 +51,8 @@ class VisitorPageScopeTests(unittest.TestCase):
                 self.assertIn('Verified saved page', page.read_text())
                 prompt = self.specialists()[-1][2]
                 self.assertIn(PAGE_INSTRUCTIONS, prompt)
-                self.assertIn('Casey explicitly assigned webpage implementation', prompt)
+                self.assertIn('Implement it only if Coding is equipped', prompt)
+                self.assertIn('This assignment does not grant a missing skill', prompt)
                 self.assertNotIn('report that mismatch and supply only', prompt)
 
     def test_research_only_assignment_still_rejects_unsolicited_html(self):

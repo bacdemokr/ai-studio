@@ -79,18 +79,18 @@ ssh -N -L 8080:127.0.0.1:8080 USER@UBUNTU_HOST
 
 Open **http://localhost:8080** on the laptop. Keep the model URL pointing to the Ubuntu host's loopback address. Only port 8080 needs forwarding: the app contacts the model internally. The tunnel is optional when the app is already reachable over the trusted LAN.
 
-## OpenShell for Dylan and protected personal agents
+## OpenShell for protected personal agents
 
-The Docker installation includes OpenShell. For this host-development setup, configure it before running Dylan or a protected personal agent. Other crew members use standard runtimes.
+The Docker installation includes OpenShell. For this host-development setup, configure it before running a protected personal agent.
 
 For protected agents, Docker Engine **28+** must work under the same normal account (`docker version` and `docker info`). Docker being installed alone does not guarantee account access. A group change requires logging in again. Follow the [official installation prerequisites](https://docs.nvidia.com/openshell/latest/about/installation).
 
-The integration was exercised with OpenShell **0.0.116** on the development host. To use that same release on a fresh Ubuntu account:
+The app pins OpenShell **0.1.4** for the CLI, gateway, supervisor and sandbox runtime. For a fresh Ubuntu development account:
 
 ```bash
 openshell_installer=$(mktemp)
-curl -fLsS https://raw.githubusercontent.com/NVIDIA/OpenShell/v0.0.116/install.sh -o "$openshell_installer"
-OPENSHELL_VERSION=v0.0.116 sh "$openshell_installer"
+curl -fLsS https://raw.githubusercontent.com/NVIDIA/OpenShell/v0.1.4/install.sh -o "$openshell_installer"
+OPENSHELL_VERSION=v0.1.4 sh "$openshell_installer"
 rm "$openshell_installer"
 openshell status
 
@@ -98,9 +98,9 @@ openshell status
 ./bac dev runtime preflight --protected
 ```
 
-The [pinned official installer](https://github.com/NVIDIA/OpenShell/blob/v0.0.116/install.sh) installs the Debian CLI/gateway packages, requests OS privileges as needed, and starts/registers the user gateway. Run it as the normal account, not through `sudo ./bac`. Do not use the old `openshell gateway create` workflow or assume the Python SDK installs the CLI. This host installation is kept explicit rather than hidden inside another app script.
+The [pinned official installer](https://github.com/NVIDIA/OpenShell/blob/v0.1.4/install.sh) installs the Debian CLI/gateway packages, requests OS privileges as needed, and starts/registers the user gateway. Run it as the normal account, not through `sudo ./bac`. Do not use the old `openshell gateway create` workflow or assume the Python SDK installs the CLI. This host installation is kept explicit rather than hidden inside another app script.
 
-`enable` installs/configures the pinned OpenClaw sandbox integration. Preflight gives a remedy for each failed check; it does not claim that a protected model task ran. OpenShell uses host tools and networking for personal-agent tasks; the model continues to run on your existing endpoint. Approval of a website does not fix that website's own rate limits or outages.
+`enable` installs a checksum-verified app-private CLI when the system CLI differs, requires the selected gateway to match the pinned version, and configures the pinned OpenClaw sandbox integration. It does not replace or restart an unrelated shared gateway. Preflight gives a remedy for each failed check; it does not claim that a protected model task ran. OpenShell uses host tools and networking for personal-agent tasks; the model continues to run on your existing endpoint. Approval of a website does not fix that website's own rate limits or outages.
 
 ## 4. Rehearse and operate
 

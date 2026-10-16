@@ -8,12 +8,31 @@ import re
 import argparse
 import subprocess
 import tempfile
+from build_info import read as read_build_info
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--check", action="store_true", help="Validate an app patch without writing to the source checkout")
 args = parser.parse_args()
 
 ROOT = Path(__file__).resolve().parents[1]
+# Validate inputs before importing the skill registry or assembling the page.
+# Missing files should leave the last working build intact and identify the cause.
+required = ['scripts/serve.py', 'scripts/studio.py', 'scripts/container_runtime.py',
+            'scripts/agent_runtime.py', 'scripts/role_boundaries.py', 'src/goal-examples.json',
+            'runtime/research-guard/index.mjs', 'runtime/research-guard/openclaw.plugin.json']
+for name in required:
+    if not (ROOT / name).is_file():
+        raise ValueError('Incomplete app bundle: missing ' + name)
+runtime_source = (ROOT / 'scripts/agent_runtime.py').read_text()
+required += ['skills/bac-' + name + '/SKILL.md'
+             for name in re.findall(r"project_skill\('([^']+)'\)", runtime_source)]
+required += ['scenario/' + goal['document'] for goal in json.loads((ROOT / 'src/goal-examples.json').read_text())
+             if goal.get('document')]
+for name in required:
+    if not (ROOT / name).is_file():
+        raise ValueError('Incomplete app bundle: missing ' + name)
+
+build_info = read_build_info(ROOT)
 # Reject accidental JavaScript/file overwrites before publishing the generated page.
 for stylesheet in (ROOT / 'src').glob('*.css'):
     css = re.sub(r'/\*.*?\*/', '', stylesheet.read_text(encoding='utf-8'), flags=re.S)
@@ -40,21 +59,30 @@ world_scene = world_scene.replace('/* WORLD_CREW_EXCHANGE */', (ROOT / 'src/worl
 world_scene = world_scene.replace('/* WORLD_SCENARIOS */', (ROOT / 'src/world-scenarios.js').read_text(encoding='utf-8'))
 world_scene = world_scene.replace('/* WORLD_PROTECTION */', (ROOT / 'src/world-protection.js').read_text(encoding='utf-8'))
 world_scene = world_scene.replace('/* WORLD_ROUNDTABLE */', (ROOT / 'src/world-roundtable.js').read_text(encoding='utf-8'))
+world_scene = world_scene.replace('/* BUILD_VERSION */', json.dumps(build_info['version']).replace('</', '<\\/'))
 campus_js = '(function(){const exports={};\n' + vendor + '\nconst THREE=exports;\n' + (ROOT / 'src/campus.js').read_text(encoding='utf-8').replace('/* STUDIO_SOUND */', (ROOT / 'src/studio-sound.js').read_text(encoding='utf-8')).replace('/* WORLD_SCENE */', world_scene) + '\n})();'
 fragment = fragment.replace('<!-- CAMPUS_SCRIPT -->', '<script>' + campus_js.replace('</script', '<\\/script') + '</script>')
 studio_js = (ROOT / 'src/studio.js').read_text(encoding='utf-8')
+goals = json.loads((ROOT / 'src/goal-examples.json').read_text())
+for goal in goals:
+    if goal.get('document'):
+        goal['documentContent'] = (ROOT / 'scenario' / goal['document']).read_text()
+for marker, value in [('BUILD_INFO', build_info), ('GOAL_EXAMPLES', goals)]:
+    studio_js = studio_js.replace('/* ' + marker + ' */', json.dumps(value).replace('</', '<\\/'))
 # Keep assembly explicit and fail on missing/duplicate include markers.
 for module in ('json', 'compare', 'settings', 'crew', 'telemetry',
-               'scenarios', 'world', 'surfaces', 'chat', 'rooms', 'identity', 'safety', 'policies'):
+               'scenarios', 'world', 'surfaces', 'chat', 'rooms', 'identity', 'safety', 'policies', 'demo-guide', 'diagnostics'):
     marker = '/* STUDIO_' + module.upper() + ' */'
     if studio_js.count(marker) != 1:
         raise ValueError('Expected one include marker: ' + marker)
     studio_js = studio_js.replace(marker, (ROOT / ('src/studio-' + module + '.js')).read_text(encoding='utf-8'))
+from role_boundaries import ROLE_TEMPLATES
+studio_js = studio_js.replace('/* ROLE_TEMPLATES */', json.dumps(ROLE_TEMPLATES).replace('</', '<\\/'))
 studio_js = studio_js.replace('/* STAGE_SCENARIOS */', stage_scenarios)
 
 fragment = fragment.replace('<!-- STUDIO_SCRIPT -->', '<script>' + studio_js.replace('</script', '<\\/script') + '</script>')
 fragment = fragment.replace('<!-- NVIDIA_THEME -->', '<style>\n' + (ROOT / 'src/nvidia-theme.css').read_text(encoding='utf-8') + '\n</style>')
-version = os.environ.get('BAC_DEMO_VERSION', 'local-preview')
+version = build_info['version']
 page = '''<!doctype html>
 <html lang="en">
 <head>
@@ -74,14 +102,6 @@ body{margin:0;padding:0;width:100%;max-width:none}
 </body></html>
 '''
 if args.check:
-    required = ['scripts/serve.py', 'scripts/studio.py', 'scripts/container_runtime.py',
-                'runtime/research-guard/index.mjs', 'runtime/research-guard/openclaw.plugin.json']
-    runtime_source = (ROOT / 'scripts/agent_runtime.py').read_text()
-    required += ['skills/bac-' + name + '/SKILL.md'
-                 for name in re.findall(r"project_skill\('([^']+)'\)", runtime_source)]
-    for name in required:
-        if not (ROOT / name).is_file():
-            raise ValueError('Incomplete app bundle: missing ' + name)
     # Validate the same assembled page we will serve; source modules contain
     # include markers and cannot all be checked as independent scripts.
     for source in (ROOT / 'scripts').glob('*.py'):
@@ -97,5 +117,5 @@ if args.check:
 else:
     (ROOT / 'app').mkdir(exist_ok=True)
     (ROOT / 'app/index.html').write_text(page, encoding='utf-8')
-    (ROOT / 'app/version.json').write_text(json.dumps({'version': version}) + '\n', encoding='utf-8')
+    (ROOT / 'app/version.json').write_text(json.dumps(build_info) + '\n', encoding='utf-8')
     print('Built app/index.html (bundled Three.js; no runtime downloads).')

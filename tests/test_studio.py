@@ -220,7 +220,8 @@ class StudioTests(unittest.TestCase):
             self.assertIn('# Tone\nCynical (Dry humor & skepticism)', soul)
             self.assertIn('Researches questions and compares the evidence.', soul)
             self.assertIn('Three Takeaways', soul)
-            self.assertIn('Do not refuse merely because the topic is outside your specialty', soul)
+            from role_boundaries import ROLE_BOUNDARY
+            self.assertIn(ROLE_BOUNDARY, soul)
             self.assertNotIn('Be concise.', (workspace / 'AGENTS.md').read_text())
             before = json.loads(agent_runtime.config_path().read_text())['agents']['entries']['bac-voice']['tools']
             (workspace / 'MEMORY.md').write_text('Keep my vegetarian preference.')

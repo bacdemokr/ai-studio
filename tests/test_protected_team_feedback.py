@@ -13,7 +13,7 @@ from telemetry import Reply
 
 
 class ProtectedTeamFeedbackTests(unittest.TestCase):
-    def run_reply(self, evidence=(), structured=False):
+    def run_reply(self, evidence=(), structured=False, host="example.com"):
         app = PolicyControls()
         app.profile = lambda owner: {'protection': 'openshell'}
         app.remember_policy_denials = lambda *args: None
@@ -26,7 +26,7 @@ class ProtectedTeamFeedbackTests(unittest.TestCase):
             now = time.time()
             for owner, role, action, reason, offset in evidence:
                 app.protection_activity.observe(owner, role, owner, [dict(
-                    host='example.com', action=action, reason=reason, time=now+offset,
+                    host=host, action=action, reason=reason, time=now+offset,
                     fingerprint=str((owner, role, action, reason, offset)))], now-100)
             return original
 
@@ -41,6 +41,12 @@ class ProtectedTeamFeedbackTests(unittest.TestCase):
         self.assertEqual(answer.policy_denials, ['example.com'])
         for attribute in ('metrics', 'sources', 'activity'):
             self.assertEqual(getattr(answer, attribute), getattr(original, attribute))
+
+    def test_proxy_addresses_are_not_suggested_as_website_approvals(self):
+        for host in ('198.18.0.2','127.0.0.1','localhost'):
+            with self.subTest(host=host):
+                answer, original=self.run_reply([('owner',None,'deny','policy-denied',0)],host=host)
+                self.assertIs(answer,original)
 
     def test_errors_other_agents_crew_old_denials_and_allows_are_not_relabelled(self):
         for evidence in ([], [('other', None, 'deny', 'policy-denied', 0)],

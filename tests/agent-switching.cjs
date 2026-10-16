@@ -2,8 +2,8 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const source=fs.readFileSync('src/studio.js','utf8');
 function fixture(){
  const calls=[],timers=new Set(),alerts=[],opened=[];
- const context={Map,AbortController,JSON,agentId:'a',selectedScenario:'plan',credentialSession:'fixture',csrf:'fixture',
-  changingAgent:false,pendingWrites:0,refreshVersion:0,busy:false,removingAgent:false,hiringArrival:false,scenarioSwitching:false,
+ const context={Map,AbortController,JSON,performance,recordBrowserDiagnostic(){},agentId:'a',selectedScenario:'plan',credentialSession:'fixture',csrf:'fixture',
+  changingAgent:false,pendingWrites:0,refreshVersion:0,busy:false,removingAgent:false,hiringArrival:false,
   setTimeout(fn,ms){const timer={fn,ms};timers.add(timer);return timer;},clearTimeout(timer){timers.delete(timer);},
   alert:message=>alerts.push(message),render(){},
   openAgentState(state){context.agentId=state.agentId;opened.push(state.agentId);},
@@ -31,18 +31,6 @@ function fixture(){
   reply(calls[0],{agentId:'b'});await first;
   assert.equal(c.agentId,'a');assert.deepEqual(opened,[]);assert.equal(c.changingAgent,false);
  }
- // Preparation belongs to its captured owner and must never block navigation.
- {
-  const {context:c,calls,alerts,reply}=fixture();
-  const preparation=c.api('prepare-demo',{background:true});
-  assert.equal(c.pendingWrites,1);
-  const selection=c.switchAgent('b');assert.equal(calls.length,2);
-  assert.equal(calls[0].options.headers['X-BaC-Agent'],'a');
-  assert.equal(calls[1].options.headers['X-BaC-Agent'],'b');
-  reply(calls[1],{agentId:'b'});await selection;
-  reply(calls[0],{agentId:'a'});await preparation;
-  assert.equal(c.agentId,'b');assert.equal(c.pendingWrites,0);assert.deepEqual(alerts,[]);
- }
  // The final click is retained while a foreground write finishes or fails.
  for(const writeFails of [false,true]){
   const {context:c,calls,alerts,opened,reply,tick}=fixture();
@@ -57,7 +45,7 @@ function fixture(){
   assert.deepEqual(opened,['c']);assert.equal(c.pendingWrites,0);assert.equal(c.changingAgent,false);
  }
  // Uploads and multi-step owner/scenario operations keep their workspace until done.
- for(const blocker of ['pendingWrites','removingAgent','hiringArrival','scenarioSwitching']){
+ for(const blocker of ['pendingWrites','removingAgent','hiringArrival']){
   const {context:c,calls,reply,tick}=fixture();c[blocker]=1;
   const selection=c.switchAgent('b');await tick();assert.equal(calls.length,0);
   c[blocker]=0;await tick();assert.equal(calls.length,1);
@@ -87,13 +75,10 @@ function fixture(){
   const selection=c.switchAgent('b');
   await assert.rejects(c.api('jobs',{}),/workspace/);
   const presence=c.api('credential-session',{});reply(calls[1]);await presence;
-  const preparation=c.api('prepare-demo',{background:true}).catch(()=>{});
-  assert.equal(c.pendingWrites,1);calls[2].reject(Error('preparation failed'));await preparation;
-  assert.equal(c.pendingWrites,0);
   reply(calls[0],{agentId:'b'});await selection;
-  const save=c.api('jobs',{}),next=c.switchAgent('c');await tick();assert.equal(calls.length,4);
-  reply(calls[3]);await save;await tick();reply(calls[4],{agentId:'c'});await next;
+  const save=c.api('jobs',{}),next=c.switchAgent('c');await tick();assert.equal(calls.length,3);
+  reply(calls[2]);await save;await tick();reply(calls[3],{agentId:'c'});await next;
   assert.equal(c.agentId,'c');
  }
- console.log('PASS: latest selection wins, stale responses ignored, background preparation permits navigation, foreground writes retain owner and queued selection.');
+ console.log('PASS: latest selection wins, stale responses ignored, presence renewals permit navigation, foreground writes retain owner and queued selection.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

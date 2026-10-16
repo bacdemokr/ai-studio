@@ -1,0 +1,45 @@
+[
+  {
+    "id": "travel",
+    "title": "Travel guide",
+    "detail": "A sourced three-stop city guide and travel webpage",
+    "team": "Web research + Coding",
+    "prompt": "/goal Use two different specialists to create a compact three-day Berlin city-guide webpage starting tomorrow. First, a specialist with Web research uses official VisitBerlin tourism pages to choose three places, one per day, and saves a brief with a short reason to visit, source links and indoor/outdoor labels. Begin with public web research; no local-file input is needed. Do not expand into weather, opening hours, ticket prices or bookings. Next, a specialist with Coding uses the saved brief to build one self-contained HTML page with three day cards and practical visit notes. Use exact ISO dates and omit weekday names. Clearly label unavailable facts; keep the research brief."
+  },
+  {
+    "id": "drone",
+    "title": "Drone research",
+    "detail": "Recent papers in a compact research dashboard",
+    "team": "Web research + Coding",
+    "prompt": "/goal Use two different specialists to create a drone-swarm research dashboard. First, a specialist with Web research starts with a web search (no local-file input is needed), finds up to three research papers or preprints on drone swarm control from the past six months and saves a cited brief with two-line summaries, dates, and any verified NVIDIA connection. State the exact six-month date window; use source publication or explicitly labeled revision dates, not search indexing dates. Exclude news and press releases; one or two qualifying papers is enough, and an NVIDIA connection is not required. Next, a specialist with Coding uses the saved brief to build one self-contained HTML dashboard. Preserve source links and evidence gaps; keep research focused."
+  },
+  {
+    "id": "stores",
+    "title": "Store email review",
+    "detail": "Includes BB’s fictional sample email",
+    "team": "Data interpretation + Coding",
+    "document": "FAKE_OUTLOOK_FRANCE_STORE_STATUS_THREAD_shortversion.txt",
+    "prompt": "/goal Use two different specialists to turn the attached fictional France store email thread into a dashboard. First, a specialist with Data interpretation compares the five stores with last year, separates margin rates from profit amounts, and saves a concise analysis brief with supported figures, missing data and three practical next actions. Next, a specialist with Coding uses that saved analysis to build one self-contained HTML dashboard with comparison charts, a store table and recommendations. Preserve the fictional-data label and do not invent missing figures. No web research is needed."
+  },
+  {
+    "id": "gpu",
+    "title": "GPU portfolio",
+    "team": "Data interpretation + Coding",
+    "document": "datacenter_gpu_portfolio.csv",
+    "prompt": "/goal Use two different specialists to analyze the attached demo GPU portfolio CSV, then build a compact, self-contained HTML dashboard from the saved analysis. First, have a specialist with Data interpretation rank the five highest single-GPU TDP values, compare GPU memory capacity and bandwidth across the portfolio, and explain three useful findings, including a comparison of products with the same TDP. Save an analysis brief and the top-five CSV. Then have a specialist with Coding use that handoff to build the webpage with a TDP bar chart, a portfolio comparison table and the findings. Sort TDP numerically descending and preserve source order for ties; normalize bandwidth units before comparisons. Keep configurable maximums and \"up to\" qualifiers visible. These are supplied demo figures, not verified current specifications, measured power or rack totals. Do not infer performance or energy efficiency from TDP alone. No web research is needed."
+  },
+  {
+    "id": "pong",
+    "title": "Ping-pong game",
+    "detail": "Design a compact play experience, then build the game",
+    "team": "Interface design + Coding",
+    "prompt": "/goal Use two different specialists to build a simple two-player ping-pong game as one self-contained HTML file. First, a specialist with Interface design saves a brief layout and interaction specification covering the play area, scores, visible controls, restart and keyboard focus. Next, a specialist with Coding implements the game from that saved design. Use A and Q for the left paddle, P and M for the right paddle. Include a bouncing ball, correct collisions on both paddles, scores and a restart button. Handle simultaneous keys, key release and lost focus. Keep the design brief and the game small and desktop-focused. No external libraries or web research."
+  },
+  {
+    "id": "event",
+    "title": "Event page",
+    "detail": "A webpage and announcement from supplied event details",
+    "team": "Slack announcements + Coding",
+    "prompt": "/goal Use two different specialists to create an event webpage and a short social announcement for a fictional NVIDIA developer meetup in Zurich next Friday, 14:00-17:00, for 30 attendees. First, a specialist with Slack announcements saves the announcement and concise page copy from this supplied agenda: welcome 14:00-14:15, agent demo 14:15-15:00, hands-on session 15:00-17:00. Next, a specialist with Coding uses that saved copy to build one self-contained HTML event page. Show the exact date, mark the venue TBD and label the event fictional. Use only these details; no event planning or web research. Do not publish or send anything."
+  }
+]

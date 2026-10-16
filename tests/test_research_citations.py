@@ -1,8 +1,23 @@
 import unittest
-from research_citations import unsupported_citations
+from research_citations import unsupported_citations, bounded_sources
 
 
 class CitationTests(unittest.TestCase):
+    def test_later_paper_is_not_rejected_when_earlier_excerpts_fill_context(self):
+        sources = [{'url': f'https://arxiv.org/abs/2606.{10000+i}', 'text': 'x' * 1393} for i in range(6)]
+        bounded = bounded_sources(sources)
+        self.assertLessEqual(sum(len(s['text']) for s in bounded), 6000)
+        self.assertEqual(unsupported_citations(sources[-1]['url'], bounded), [])
+        self.assertEqual(unsupported_citations('https://arxiv.org/abs/2606.99999', bounded), ['https://arxiv.org/abs/2606.99999'])
+
+    def test_revision_adds_observed_sources_without_repeating_context(self):
+        initial = [{'url': f'https://example.com/{i}', 'text': 'a' * 1600} for i in range(6)]
+        revision = [{'url': 'https://example.com/revision', 'text': 'New observed evidence.'}]
+        bounded = bounded_sources(bounded_sources(initial) + initial + revision)
+        self.assertEqual(len(bounded), 7)
+        self.assertLessEqual(sum(len(s['text']) for s in bounded), 6000)
+        self.assertEqual(unsupported_citations(revision[0]['url'], bounded), [])
+
     def test_actual_source_and_returned_links_are_allowed(self):
         sources = [{'url': 'http://example.com/news/', 'text': '[Story](https://example.com/story?q=1).'}]
         self.assertEqual(unsupported_citations('See https://example.com/news#today and https://example.com/story?q=1.', sources), [])

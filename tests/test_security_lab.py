@@ -42,7 +42,7 @@ class SecurityLabTests(unittest.TestCase):
                 elif args[1] == 'logs':
                     out = '\n'.join('action='+a+' dst_host='+h+' binary=/usr/bin/curl' for a,h in [('deny','api.github.com'),('allow','api.github.com'),('deny','example.com')])
                 return subprocess.CompletedProcess(args, code, out, '')
-            with patch('security_lab.c.initialize', return_value=Path(folder)), patch('security_lab.shutil.which', return_value='/test/tool'), patch('security_lab.subprocess.run', side_effect=run), patch('security_lab.time.sleep'):
+            with patch('security_lab.openshell_runtime.command', return_value='/test/openshell'), patch('security_lab.agent_policy.plugin_config', return_value={}), patch('security_lab.c.initialize', return_value=Path(folder)), patch('security_lab.shutil.which', return_value='/test/tool'), patch('security_lab.subprocess.run', side_effect=run), patch('security_lab.time.sleep'):
                 lab.prove()
             report = lab.public_report(Path(folder) / 'studio')
             self.assertEqual(report['status'], 'captured')
@@ -59,7 +59,7 @@ class SecurityLabTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             def run(args, **kwargs):
                 return subprocess.CompletedProcess(args, 1 if args[1:3] == ['sandbox', 'create'] else 0, '', '')
-            with patch('security_lab.c.initialize', return_value=Path(folder)), patch('security_lab.shutil.which', return_value='/test/tool'), patch('security_lab.subprocess.run', side_effect=run):
+            with patch('security_lab.openshell_runtime.command', return_value='/test/openshell'), patch('security_lab.agent_policy.plugin_config', return_value={}), patch('security_lab.c.initialize', return_value=Path(folder)), patch('security_lab.shutil.which', return_value='/test/tool'), patch('security_lab.subprocess.run', side_effect=run):
                 with self.assertRaises(RuntimeError):
                     lab.prove()
             report = lab.public_report(Path(folder) / 'studio')

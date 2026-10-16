@@ -191,8 +191,8 @@ class PolicyTests(unittest.TestCase):
             config['plugins']['entries']['openshell'] = {'enabled': True, 'config': {
                 'gateway': 'workshop-host', 'workspace': 'demo', 'mode': 'remote', 'autoProviders': True}}
             runtime.save_config(config)
-            with patch('ops_runtime.shutil.which', return_value='/test/openshell'), patch.object(c, 'run'), \
-                    patch.object(c, 'service'), patch('ops_runtime.subprocess.run'), patch('ops_runtime.time.sleep'), patch.object(runtime, 'gateway', return_value={}), patch.object(runtime, 'cli', return_value='valid') as cli:
+            with patch('openshell_runtime.install', return_value='/test/openshell'), patch.object(c, 'run'), \
+                    patch.object(c, 'service'), patch('ops_runtime.subprocess.run', return_value=__import__('subprocess').CompletedProcess([],0,'Version: 0.1.4\n','')), patch('ops_runtime.time.sleep'), patch.object(runtime, 'gateway', return_value={}), patch.object(runtime, 'cli', return_value='valid') as cli:
                 ops.openshell('enable')
                 ops.openshell('enable')
             self.assertEqual([call.args for call in cli.call_args_list], [('config', 'validate'), ('gateway', 'restart', '--safe')] * 2)
@@ -220,6 +220,10 @@ class PolicyTests(unittest.TestCase):
             self.assertEqual(result['filesystem']['status'], 'policy-loaded')
             self.assertEqual(result['filesystem']['observed'][0]['policy']['read_write'], ['/sandbox', '/agent', '/tmp', '/dev/null'])
             self.assertNotIn('enforced', result['filesystem'])
+            self.assertEqual(result['policyDocuments'][0]['document'], document)
+            self.assertEqual(result['policyDocuments'][0]['sandbox'], 'oc-first')
+            self.assertEqual(result['policyDocuments'][0]['revision'], 1)
+            self.assertTrue(result['policyDocuments'][0]['loaded'])
             document['filesystem_policy']['read_write'].append('/')
             with patch('agent_policy.read_policy', return_value=report):
                 result = policy.inspect(native_id, 'openshell')
@@ -352,7 +356,8 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(report['pendingAccess'], [{'host': 'arxiv.org', 'reason': 'blocked'}])
         self.assertEqual({e['reason'] for e in report['connectionIssues']}, {'dns-failed', 'destination-blocked'})
         self.assertEqual(len(report['recentDenied']), 1)
-        self.assertNotIn('host:example.com', report['catalog'])
+        self.assertNotIn({'host': 'example.com', 'reason': 'blocked'}, report['pendingAccess'])
+        self.assertIn('host:example.com', report['recommended'])  # Explicit teaching preset, not a denial.
 
     def test_http_ocsf_denial_appears_in_latest_conversation(self):
         self.run_job({'prompt': "What's the weather like today?"})

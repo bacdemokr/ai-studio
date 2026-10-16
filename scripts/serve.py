@@ -16,10 +16,12 @@ import threading
 from urllib.parse import urlparse, parse_qs
 
 from studio import Studio, Problem, safe_file
+from diagnostics import REQUEST, traced_request
 
 
 class Handler(SimpleHTTPRequestHandler):
     def end_headers(self):
+        if getattr(self, '_diag_request', None):self.send_header('X-BaC-Request-ID', self._diag_request)
         self.send_header('Cache-Control', 'no-store')
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('Referrer-Policy', 'no-referrer')
@@ -32,9 +34,11 @@ class Handler(SimpleHTTPRequestHandler):
             super().log_message(format, *args)
 
     def json_response(self, value, status=200, cookie=None, conditional=False):
+        self._diag_status = status
         body = json.dumps(value).encode()
         etag = '"' + hashlib.sha256(body).hexdigest() + '"' if conditional else None
         if etag and self.headers.get('If-None-Match') == etag:
+            self._diag_status = 304
             self.send_response(304)
             self.send_header('ETag', etag)
             self.end_headers()
@@ -86,13 +90,12 @@ class Handler(SimpleHTTPRequestHandler):
             raise Problem('Open the Agent Studio page to start a session.', 401)
         return dict(row), False
 
+    @traced_request
     def do_GET(self):
         if self.path.startswith('/survey/'):
             return self.json_response({'error':'This workflow is retired.'},410)
         if self.path == '/health':
-            path = Path(self.directory) / 'version.json'
-            version = json.loads(path.read_text()) if path.exists() else {'version': 'local-preview'}
-            return self.json_response({'app': 'bac-demo', 'version': version['version'], 'mode': 'agent-studio'})
+            return self.json_response({'app': 'bac-demo', **self.server.build_info, 'mode': 'agent-studio'})
         if not self.path.startswith('/api/'):
             return super().do_GET()
         try:
@@ -101,6 +104,10 @@ class Handler(SimpleHTTPRequestHandler):
             parsed = urlparse(self.path)
             studio = self.server.studio
             row, new = self.participant(create=parsed.path == '/api/session')
+            REQUEST.set({**REQUEST.get(), 'participant': row['id']})
+            if parsed.path == '/api/diagnostics':
+                self.require_operator()
+                return self.json_response(studio.diagnostics.report(row['id'], full=parse_qs(parsed.query).get('full') == ['1'], studio=studio))
             owner = studio.resolve_agent(row['id'], self.headers.get('X-BaC-Agent'))
             from scenarios import validate as validate_scenario
             scenario = validate_scenario(self.headers.get('X-BaC-Scenario', 'plan'))
@@ -187,10 +194,13 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.json_response({'path': name, 'content': path.read_text(encoding='utf-8')})
             raise Problem('Not found.', 404)
         except Problem as error:
+            self._diag_error = error
             self.json_response({'error': str(error)}, error.status)
-        except (UnicodeError, ValueError):
+        except (UnicodeError, ValueError) as error:
+            self._diag_error = error
             self.json_response({'error': 'Invalid data.'}, 400)
 
+    @traced_request
     def do_POST(self):
         try:
             if not self.host_ok():
@@ -201,6 +211,7 @@ class Handler(SimpleHTTPRequestHandler):
             if self.path.startswith('/survey/'):
                 raise Problem('This workflow is retired.',410)
             row, _ = self.participant()
+            REQUEST.set({**REQUEST.get(), 'participant': row['id']})
             if not secrets.compare_digest(self.headers.get('X-BaC-CSRF', ''), row['csrf']):
                 raise Problem('Refresh the page to renew your session.', 403)
             size = int(self.headers.get('Content-Length', '0'))
@@ -286,11 +297,11 @@ class Handler(SimpleHTTPRequestHandler):
                 raise Problem('Not found.', 404)
             self.json_response(routes[self.path]())
         except Problem as error:
+            self._diag_error = error
             self.json_response({'error': str(error)}, error.status)
-        except (UnicodeError, ValueError, TypeError):
+        except (UnicodeError, ValueError, TypeError) as error:
+            self._diag_error = error
             self.json_response({'error': 'Invalid request data.'}, 400)
-        except Exception:
-            self.json_response({'error': 'The host could not complete the request. Check application logs.'}, 500)
 
 
 def create_server(host='127.0.0.1', port=8080, studio=None):
@@ -302,6 +313,7 @@ def create_server(host='127.0.0.1', port=8080, studio=None):
     root = Path(__file__).resolve().parents[1] / 'app'
     server = ThreadingHTTPServer((host, port), functools.partial(Handler, directory=str(root)))
     server.studio = studio or Studio()
+    server.build_info = server.studio.diagnostics.build
     return server
 
 
@@ -315,6 +327,7 @@ def main():
     except OSError as error:
         parser.exit(1, f'Cannot start server: {error}. Try --port 8081.\n')
     print(f'BaC Agent Studio: http://{args.host}:{server.server_port}', flush=True)
+    print('Build: ' + json.dumps(server.build_info, sort_keys=True), flush=True)
     print('Connect a model in Settings to run OpenClaw tasks.', flush=True)
     try:
         server.serve_forever()

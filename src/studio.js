@@ -23,27 +23,29 @@
       if(selection){selection.removeAllRanges();for(const range of ranges)if(range.commonAncestorContainer.isConnected)selection.addRange(range);}
     }
   }
-  const titles = {'nvidia-webpage':'NVIDIA event page','nvidia-social':'NVIDIA social copy','nvidia-research':'NVIDIA theme research','event-page':'Event page studio',radar:'Tech Radar',weather:'Live weather',web:'Web research',documents:'Three Takeaways',builder:'Coding',writer:'Slack announcements',memory:'Personal memory'};
+  const buildInfo=/* BUILD_INFO */;
+  /* STUDIO_DIAGNOSTICS */
+  const goalExamples=/* GOAL_EXAMPLES */;
+  const titles = {'nvidia-webpage':'NVIDIA event page','nvidia-social':'NVIDIA social copy','nvidia-research':'NVIDIA theme research','event-page':'Event page studio',radar:'Tech Radar',weather:'Live weather',web:'Web research',documents:'Three Takeaways',builder:'Coding',writer:'Slack announcements','data-analysis':'Data interpretation','interface-design':'Interface design',memory:'Personal memory'};
   const personas = {guide:'Explains ideas and turns them into practical plans.',maker:'Turns ideas into drafts, prototypes and small apps.',analyst:'Researches questions and compares the evidence.'};
   const tones={kind:['Kind','Warm & encouraging'],direct:['Direct','Clear & candid'],playful:['Playful','Light & witty'],cynical:['Cynical','Dry humor & skepticism']};
   const verbosityLabels={brief:'Brief',balanced:'Balanced',verbose:'Detailed'};
   const capabilities={
     radar:['Tech Radar','Technical articles and announcements → a short summary','Every 20 seconds · never repeats a shared article'],
     builder:['Coding','Build a small desktop webpage or game','Save a working prototype · one focused review'],
+    'data-analysis':['Data interpretation','Compare supplied figures and explain findings','Evidence and limitations · a saved analysis brief'],
+    'interface-design':['Interface design','Plan a page layout and its interactions','Design guidance · implementation needs Coding'],
     documents:['Three Takeaways','Any question or document → three clear points','Always: 1. · 2. · 3. — including event reactions'],
     web:['Web research','Find useful facts and cite their sources','Short research · a saved brief for teammates'],
     writer:['Slack announcements','Emoji-led updates in your chosen voice','Emoji-led replies · extra lines when useful · draft only'],
     memory:['Remember what matters','A preference → a saved note used next time','Try: remember my diet, then suggest a meal'],
     weather:['Live weather','A city → timestamped weather and a forecast','Try: choose a time for an outdoor break']
   };
-  let roles = window.BacCrewCatalog.map(({name,collaboration})=>[name,collaboration.title,collaboration.description]);
-  let defaultNames=roles.map(r=>r[0]);
+  const roles = window.BacCrewCatalog.map(({name,collaboration})=>[name,collaboration.title,collaboration.description]);
+  const defaultNames=roles.map(r=>r[0]);
   const stageScenarios=/* STAGE_SCENARIOS */;
-  let selectedScenario='plan',scenarioChoosing=false,scenarioSwitching=false;
-  try{const saved=sessionStorage.getItem('bac-stage3-scenario');if(stageScenarios.some(s=>s.id===saved))selectedScenario=saved;}catch{}
-  function scenarioRoles(){roles=window.BacCrewCatalog.map(base=>{const member=base;return [member.name,member.collaboration.title,member.collaboration.description];});defaultNames=roles.map(r=>r[0]);}
+  const selectedScenario='plan';
   function crewDraftKey(role){return selectedScenario+':'+agentId+':'+role;}
-  scenarioRoles();
   const personaLabels={guide:'Helper',maker:'Creator',analyst:'Researcher'};
   function toneSummary(profile){
     const custom=(profile.tonePrompt||'').trim().replace(/\s+/g,' ');
@@ -54,6 +56,8 @@
   }
   function voiceSummary(p){return (p.tonePrompt||tones[p.tone]?.[0]||'Kind')+' · '+(verbosityLabels[p.verbosity]||'Balanced')+' answers';}
   const missions = [
+    {id:'data-analysis',icon:'▤',title:'Compare the figures',sub:'Supplied data → findings and next steps',tag:'ANALYZE',color:'#99c8e3',prompt:'Compare these supplied year-over-year sales changes: Paris +45%, Lyon +20%, Nantes +17%, Lille -4%, Marseille -12%. Give three practical next actions and explain what cannot be concluded without absolute sales and margin data. Save a short Markdown brief.'},
+    {id:'interface-design',icon:'◇',title:'Plan an interface',sub:'A user goal → a layout and interaction plan',tag:'DESIGN',color:'#b4dc83',prompt:'Draft a compact desktop layout and interaction plan for a dashboard comparing five stores. Include keyboard accessibility and empty-data behavior. Save a short Markdown specification for a programmer; do not implement HTML.'},
     {id:'radar',icon:'◷',title:'Discover something new',sub:'One unread technical article at a time',tag:'HEARTBEAT',color:'#99c8e3',prompt:''},
     {id:'builder',icon:'⌘',title:'Make something playable',sub:'An idea → a tiny working app',tag:'CREATE',color:'#b4dc83',prompt:'Build a polished reaction-time game as a single self-contained HTML file. Use a dark NVIDIA-inspired style, green action buttons, keyboard and mouse controls, and a personal best score. Target desktop browsers; mobile support is not required. Explain how to play. Save it in artifacts/.'},
     {id:'weather',icon:'☀',title:'Do I need an umbrella?',sub:'Live weather → one practical decision',tag:'EXPLORE',color:'#e8cd80',prompt:'Check the current weather in Zurich. For a short walk now, do I need an umbrella or a jacket? Give the observation time, temperature and precipitation, then one practical recommendation. Keep it to 4 short bullets and cite your sources. Do not generate a file.'},
@@ -83,11 +87,11 @@
   const policyPanel=document.createElement('details');policyPanel.id='studio-policy-panel';policyPanel.className='studio-inline-panel';policyPanel.innerHTML='<summary>OpenShell Policy</summary>';el('policies').before(policyPanel);policyPanel.append(el('policies'));policyPanel.ontoggle=()=>{if(policyPanel.open)loadPolicy();};
   el('workspace').append(el('reset'));el('reset').className='studio-secondary';
 
-  const demoSkills=['weather','radar','web','builder','writer'],extraSkills=['documents','memory'];
-  const skillCards=keys=>keys.map(key=>{const [title,detail,example]=capabilities[key];return `<label><input type="checkbox" value="${key}"><span><strong>${title}</strong><small>${detail}</small><em>${example}</em></span></label>`;}).join('');
+  const demoSkills=['weather','radar','web','builder','writer','data-analysis','interface-design'],extraSkills=['documents','memory'];
+  const skillCards=keys=>keys.map(key=>{const [title,detail,example]=capabilities[key];return `<div class="studio-skill-card"><label><input type="checkbox" value="${key}"><span><strong>${title}<span class="studio-skill-fixed" hidden>Fixed</span></strong><small>${detail}</small><em>${example}</em></span></label></div>`;}).join('');
   el('skill-picker').innerHTML=skillCards(demoSkills)+'<div hidden>'+skillCards(extraSkills)+'</div>';
   el('tone-picker').innerHTML=Object.entries(tones).map(([key,[title,detail]])=>`<button type="button" data-tone="${key}" aria-pressed="${key==='kind'}"><strong>${title}</strong><small>${detail}</small></button>`).join('');
-  const missionCards=keys=>keys.map(key=>{const m=missions.find(m=>m.id===key);return `<button class="studio-mission" data-studio-mission="${m.id}" aria-pressed="false" style="--mission-color:${m.color}"><span>${m.icon}</span><em>${m.tag}</em><strong>${m.title}</strong><small>${m.sub}</small></button>`;}).join('');
+  const missionCards=keys=>keys.map(key=>missions.find(m=>m.id===key)).filter(Boolean).map(m=>`<button class="studio-mission" data-studio-mission="${m.id}" aria-pressed="false" style="--mission-color:${m.color}"><span>${m.icon}</span><em>${m.tag}</em><strong>${m.title}</strong><small>${m.sub}</small></button>`).join('');
   el('missions').innerHTML=missionCards(demoSkills)+'<details class="studio-extra-skills"><summary>More scenarios</summary><div class="studio-missions">'+missionCards(extraSkills)+'</div></details>';
   let alertTimer=null;
   const notice=el('alert');
@@ -125,7 +129,7 @@
   let heartbeatView=null,heartbeatViewRevision=0,heartbeatSentRevision=-1;
   function syncHeartbeatContext(renew=false){
     if(!connected)return;
-    const openTask=room==='mission'&&selectedScenario==='plan'&&!scenarioChoosing&&!scenarioSwitching&&root.dataset.worldOverview!=='true';
+    const openTask=room==='mission'&&selectedScenario==='plan'&&root.dataset.worldOverview!=='true';
     if(openTask!==heartbeatView){heartbeatView=openTask;heartbeatViewRevision++;}
     const revision=heartbeatViewRevision;
     if(!renew&&heartbeatSentRevision===revision)return;
@@ -139,36 +143,33 @@
   // State polling is frequent; reuse unchanged snapshots without rebuilding the UI.
   // This cache is tab-local and scoped by agent, never stored on disk.
   const stateCache=new Map();
-  let backgroundWrites=0,agentSwitchVersion=0;
+  let agentSwitchVersion=0;
   async function api(path, payload, target=agentId, scenario=selectedScenario) {
     // Presence renewals belong to the tab, not an editable agent workspace.
     const workspaceWrite=payload!==undefined&&path!=='credential-session';
-    // Preparation has a captured owner and never applies its response to the UI.
-    const backgroundWrite=path==='prepare-demo'&&payload?.background===true;
-    if(workspaceWrite&&changingAgent&&!backgroundWrite)throw new Error('Wait for your agent’s workspace to open.');
+    if(workspaceWrite&&changingAgent)throw new Error('Wait for your agent’s workspace to open.');
     const headers={'X-BaC-Scenario':scenario,'X-BaC-Key-Session':credentialSession,'X-BaC-Browser-View':credentialSession,...(target?{'X-BaC-Agent':target}:{})};
     const cacheKey=scenario+':'+target,conditional=path==='state'&&payload===undefined,cached=conditional?stateCache.get(cacheKey):null;
     if(cached)headers['If-None-Match']=cached.etag;
     const options = payload===undefined ? {headers} : {method:'POST',headers:{...headers,'Content-Type':'application/json','X-BaC-CSRF':csrf},body:JSON.stringify(payload)};
-    const readTimeout=payload===undefined?(['session','state'].includes(path)?30000:/^(?:agent-policy|crew-policy)(?:\?|$)/.test(path)?45000:0):0;
+    const readTimeout=payload===undefined?(['session','state'].includes(path)?30000:path.split('?')[0]==='diagnostics'?5000:/^(?:agent-policy|crew-policy)(?:\?|$)/.test(path)?45000:0):0;
     const controller=readTimeout?new AbortController():null;
     const timeout=controller?setTimeout(()=>controller.abort(),readTimeout):null;
     if(controller)options.signal=controller.signal;
     if(workspaceWrite)pendingWrites++;
-    if(backgroundWrite)backgroundWrites++;
     try {
-    let response;
-    try {response=await fetch('/api/'+path,options);} catch {if(controller?.signal.aborted)throw new Error('The studio took too long to respond. Please try again.');throw new Error('Cannot reach the studio. Check ./bac status; use ./bac start to restart its services.');}
+    let response;const requestStarted=performance.now();
+    try {response=await fetch('/api/'+path,options);} catch {recordBrowserDiagnostic(controller?.signal.aborted?'api-timeout':'api-network',{route:path,elapsedMs:performance.now()-requestStarted});if(controller?.signal.aborted)throw new Error('The studio took too long to respond. Please try again.');throw new Error('Cannot reach the studio. Check ./bac status; use ./bac start to restart its services.');}
     if(response.status===304&&cached)return cached.value;
     let result;
-    try {result=await response.json();} catch {if(controller?.signal.aborted)throw new Error('The studio took too long to respond. Please try again.');throw new Error('The app server did not return a valid response. Refresh after updating the app.');}
-    if(!response.ok){const error=new Error(result.error||'The request could not be completed.');error.status=response.status;if(error.status===423)showBrowserInUse(error.message);throw error;}
+    try {result=await response.json();} catch {recordBrowserDiagnostic('api-invalid-response',{route:path,status:response.status,requestId:response.headers.get('X-BaC-Request-ID')});if(controller?.signal.aborted)throw new Error('The studio took too long to respond. Please try again.');throw new Error('The app server did not return a valid response. Refresh after updating the app.');}
+    if(!response.ok){recordBrowserDiagnostic('api-error',{route:path,status:response.status,requestId:response.headers.get('X-BaC-Request-ID'),elapsedMs:performance.now()-requestStarted});const error=new Error(result.error||'The request could not be completed.');error.status=response.status;if(error.status===423)showBrowserInUse(error.message);throw error;}
     if(conditional&&response.headers.get('ETag')){
       stateCache.set(cacheKey,{etag:response.headers.get('ETag'),value:result});
       if(stateCache.size>16)stateCache.delete(stateCache.keys().next().value);
     }
     return result;
-    }finally{clearTimeout(timeout);if(workspaceWrite)pendingWrites--;if(backgroundWrite)backgroundWrites--;}
+    }finally{clearTimeout(timeout);if(workspaceWrite)pendingWrites--;}
   }
   function rememberSelection(){try{sessionStorage.setItem('bac-selected-agent',agentId);}catch{}}
   function openAgentState(state){
@@ -186,8 +187,8 @@
     // currently displayed agent must wait and override that automatic choice.
     if(next===agentId&&!hiringArrival){++refreshVersion;changingAgent=false;busy=false;render();return;}
     // Keep the last click instead of rejecting it. Foreground writes still
-    // finish in their original workspace; background preparation can continue.
-    while(pendingWrites>backgroundWrites||removingAgent||hiringArrival||scenarioSwitching){
+    // finish in their original workspace before switching.
+    while(pendingWrites||removingAgent||hiringArrival){
       await new Promise(resolve=>setTimeout(resolve,50));
       if(version!==agentSwitchVersion)return;
     }
@@ -347,12 +348,12 @@
     if(planning){const role=planning.payload.collaboration.activeRole??0;phase=role;a[role].lane=1;a[role].status=planning.status==='stopping'?'Stopping':'Collaborating';a[role].task=planning.events?.at(-1)?.title||'Working with the BaC team';flow=[a[role].name+' · '+a[role].status,a[role].task,'Open mission'];}
     const planRoundtable=collaboration?.payload.collaboration.tasks&&collaboration.payload.collaboration.outcome!=='unavailable'&&(taskTeamMode(collaboration)==='builtin'||collaboration.payload.collaboration.responseReady)?collaboration.payload.roundtable:null;
     if(planRoundtable?.status==='reviewing'&&['running','stopping'].includes(collaboration.status))flow=['Your agents’ take','The result is ready. Your agents are sharing their personal reactions.','Open mission'];
-    window.BacCampus?.setLive({...s,live:true,visitorTeamMode:effectiveTeamMode(),selectedVisitorKey:selectedOpenTaskVisitor,crewMission:collaboration?{id:collaboration.id,kind:'plan',status:collaboration.status,visitorsPresent:!!seated&&!['cancelled','error'].includes(seated.status),assignedRoles:collaboration.payload.collaboration.tasks?.map(task=>task.role),roundtable:planRoundtable,activeStages:planning?[planning.payload.collaboration.activeRole??0]:[],count:roles.length,enabledRoles:collaborationTeam(collaboration.payload.collaboration,taskTeamMode(collaboration)),revisionRole:collaboration.payload.collaboration.revision?.role,completed:Object.keys(collaboration.payload.collaboration.outputs||{}).map(Number).filter(role=>!(collaboration.payload.collaboration.revision?.role===role&&['requested','working'].includes(collaboration.payload.collaboration.revision.status)))}:null,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected:room==='mission'?(selectedOpenTaskVisitor?-1:selectedCrewRole):selected,flow,gap:active?.status==='waiting',brief:null,calc:null,policy:null});
+    window.BacCampus?.setLive({...s,live:true,visitorTeamMode:effectiveTeamMode(),selectedVisitorKey:selectedOpenTaskVisitor,crewMission:collaboration?{id:collaboration.id,kind:'plan',status:collaboration.status,visitorsPresent:!!seated&&!['cancelled','error'].includes(seated.status),assignedRoles:(taskTeamMode(collaboration)==='builtin'||collaboration.payload.collaboration.visitorBindings)?collaboration.payload.collaboration.tasks?.map(task=>task.role):undefined,roundtable:planRoundtable,activeStages:planning?[planning.payload.collaboration.activeRole??0]:[],count:roles.length,enabledRoles:collaborationTeam(collaboration.payload.collaboration,taskTeamMode(collaboration)),revisionRole:collaboration.payload.collaboration.revision?.role,completed:Object.keys(collaboration.payload.collaboration.outputs||{}).map(Number).filter(role=>!(collaboration.payload.collaboration.revision?.role===role&&['requested','working'].includes(collaboration.payload.collaboration.revision.status)))}:null,phase,jobId:active?.id,missionSkill:active?.payload.skill,revision:data.jobs.length,agents:a,selected:room==='mission'?(selectedOpenTaskVisitor?-1:selectedCrewRole):selected,flow,gap:active?.status==='waiting',brief:null,calc:null,policy:null});
     document.getElementById('campus-motion-status').textContent=planning||active?flow[0]:'Meet your specialists · use /goal to assemble a team';
     renderCrewPassport();
   }
   /* STUDIO_CREW */
-  async function refresh(){if(changingAgent||removingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion&&target===agentId&&!changingAgent&&state!==data){data=state;render();}}catch(error){if(version===refreshVersion){if(error.status===401){connected=false;agentId='';stateCache.clear();crewWarmups.clear();personalDrafts.clear();crewDrafts.clear();chatImageDrafts.clear();el('dialog').close();await boot();if(connected){openAgentState(data);alert('Previous demo session cleared. Ready for a new demo.');}}else if(error.status===404){try{const state=await api('state',undefined,'');if(version===refreshVersion&&!changingAgent){el('dialog').close();openAgentState(state);alert('This agent was deleted in another tab. Your collection is up to date.');}}catch(recovery){alert(recovery.message,'error');}}else if(!document.hidden)alert(error.message,'error');}}finally{if(version===refreshVersion)busy=false;}}
+  async function refresh(){if(changingAgent||removingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion&&target===agentId&&!changingAgent&&state!==data){data=state;render();}}catch(error){if(version===refreshVersion){if(error.status===401){connected=false;agentId='';stateCache.clear();personalDrafts.clear();crewDrafts.clear();chatImageDrafts.clear();el('dialog').close();await boot();if(connected){openAgentState(data);alert('Previous demo session cleared. Ready for a new demo.');}}else if(error.status===404){try{const state=await api('state',undefined,'');if(version===refreshVersion&&!changingAgent){el('dialog').close();openAgentState(state);alert('This agent was deleted in another tab. Your collection is up to date.');}}catch(recovery){alert(recovery.message,'error');}}else if(!document.hidden)alert(error.message,'error');}}finally{if(version===refreshVersion)busy=false;}}
   el('equipped').onclick=e=>{const button=e.target.closest('[data-try-skill]');if(button)el('missions').querySelector('[data-studio-mission="'+button.dataset.trySkill+'"]')?.click();};
   el('missions').onclick=e=>{const button=e.target.closest('[data-studio-mission]');if(!button)return;const mission=missions.find(m=>m.id===button.dataset.studioMission);if(!data.profile){alert('Hire an agent first.');agentForm(true);el('name').focus();return;}if(!data.profile.skills.includes(mission.id)){
       let notice=el('mission-skill-notice');if(!notice){notice=document.createElement('div');notice.id='studio-mission-skill-notice';notice.className='studio-mission-skill-notice';el('missions').before(notice);}
@@ -370,16 +371,18 @@
   el('schedule').onclick=()=>{dialog('PERSISTENT FOLLOW-UP',`<p>Keep the server running until the task finishes.</p><form id="studio-schedule-form"><label for="studio-followup">Task</label><textarea id="studio-followup" rows="3" required>Read my saved preferences and suggest one useful next task for me to try.</textarea><label for="studio-delay">Run in</label><select id="studio-delay"><option value="60">1 minute · demo</option><option value="300">5 minutes</option><option value="3600">1 hour</option></select><div class="studio-dialog-actions"><button class="studio-primary">Schedule follow-up</button></div></form>`);el('schedule-form').onsubmit=async e=>{e.preventDefault();try{const job=await api('jobs',{kind:'reminder',prompt:el('followup').value,delay:Number(el('delay').value)});selectedJob=job.id;el('dialog').close();await refresh();}catch(error){alert(error.message,'error');}};};
   /* STUDIO_JSON */
   function downloadBytes(content,mime,name){const url=URL.createObjectURL(new Blob([content],{type:mime})),link=document.createElement('a');link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-  root.addEventListener('bac:world-skill',async e=>{const id=e.detail;if(id==='crew'){setRoom('mission');if(!scenarioChoosing)el('crew-prompt').focus();}else if(id==='security')securityLab();else if(id==='runtime')setup();else{el('missions').querySelector('[data-studio-mission="'+id+'"]')?.click();}});
+  root.addEventListener('bac:world-skill',async e=>{const id=e.detail;if(id==='crew'){setRoom('mission');el('crew-prompt').focus();}else if(id==='security')securityLab();else if(id==='runtime')setup();else{el('missions').querySelector('[data-studio-mission="'+id+'"]')?.click();}});
   /* STUDIO_WORLD */
   /* STUDIO_TELEMETRY */
   /* STUDIO_POLICIES */
+  /* STUDIO_POLICY-EXAMPLES */
 
 
   /* STUDIO_SURFACES */
   /* STUDIO_SCENARIOS */
   /* STUDIO_CHAT */
   /* STUDIO_ROOMS */
+/* STUDIO_DEMO-GUIDE */
   /* STUDIO_IDENTITY */
   function showBoard(value){setRoom('mission');if(value)openSurface('control');else closeSurface();}
   root.addEventListener('bac:live-select',e=>{

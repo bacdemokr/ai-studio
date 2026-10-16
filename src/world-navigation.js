@@ -9,15 +9,17 @@ let overview=false,journey=null,viewHalfHeight=0;
 const corridors=[],doorways=[],overviewLabels=[];
 const navigationLayer=document.createElement('div');navigationLayer.className='world-navigation';viewport.append(navigationLayer);
 navigationLayer.dataset.scenarioDensity=scenarioFloors.length>2?'compact':'normal';
-const overviewButton=document.createElement('button');overviewButton.type='button';overviewButton.className='world-overview-button';overviewButton.dataset.worldOverview='';overviewButton.textContent='⌑ See the whole studio';overviewButton.setAttribute('aria-pressed','false');navigationLayer.append(overviewButton);
+const overviewControl=document.createElement('div');overviewControl.className='world-overview-control';navigationLayer.append(overviewControl);
+const overviewButton=document.createElement('button');overviewButton.type='button';overviewButton.className='world-overview-button';overviewButton.dataset.worldOverview='';overviewButton.textContent='⌑ See the whole studio';overviewButton.setAttribute('aria-pressed','false');overviewControl.append(overviewButton);
+const studioVersion=document.createElement('span');studioVersion.className='world-build-version';studioVersion.textContent='v'+(/* BUILD_VERSION */);overviewControl.append(studioVersion);
 const journeyNote=document.createElement('div');journeyNote.className='world-journey';journeyNote.setAttribute('role','status');journeyNote.setAttribute('aria-live','polite');journeyNote.hidden=true;navigationLayer.append(journeyNote);
 const roomMap=document.createElement('nav');roomMap.className='world-room-map';roomMap.setAttribute('aria-label','Connected studio rooms');
 roomMap.classList.add('world-scenario-map');
 roomMap.innerHTML='<span class="world-map-caption">STUDIO MAP</span><div class="world-map-stages">'+['workshop','lounge'].map(id=>'<button type="button" data-world-room="'+id+'"><i>'+studioRooms[id].number+'</i><span>'+studioRooms[id].title+'</span></button>').join('')+'<button type="button" data-world-scenario="plan"><i>03</i><span>Open Task</span></button></div>';
 navigationLayer.append(roomMap);
 const roomGuides={
-  workshop:{label:'ROOM 01 / QUICK GUIDE',title:'Hiring',anchor:new THREE.Vector3(-.85,2.12,-3.92),intro:'Create a personal <button type="button" class="world-paper-term" data-paper-term="agent">agent</button> with a recognizable identity and a clear job to do.',points:['Choose its appearance, name, working style and voice.','Choose each <button type="button" class="world-paper-term" data-paper-term="skill">skill</button> that fits the role you want it to perform.','Choose whether OpenShell protection should isolate its tools and file access.'],note:'Each hire keeps its own profile and workspace and can join Open Task. Agents with Tech Radar use Heartbeat instead of manual chat.'},
-  lounge:{label:'ROOM 02 / QUICK GUIDE',title:'Agent Lounge',anchor:new THREE.Vector3(3.75,2.12,-5.78),intro:'Meet your hired agents and give each one work in its own context.',points:['Select an agent to open its conversation, memory and files.','Run a suggested mission or write a request of your own.','Review visible activity, results and OpenShell policy decisions before trusting the outcome.'],note:'Each agent keeps its own persona, skills and workspace. Ready and Busy describe observed work, not model capability.'},
+  workshop:{label:'ROOM 01 / QUICK GUIDE',title:'Hiring',anchor:new THREE.Vector3(-.85,2.12,-3.92),intro:'Create a personal <button type="button" class="world-paper-term" data-paper-term="agent">agent</button> with a recognizable identity and a clear job to do.',points:['Choose its appearance, name, working style and voice.','Choose each <button type="button" class="world-paper-term" data-paper-term="skill">skill</button> that fits the role you want it to perform.','Choose whether <button type="button" class="world-paper-term" data-paper-term="openshell">OpenShell</button> protection should isolate its tools and file access.'],note:'Each hire keeps its own profile and workspace and can join Open Task. Agents with Tech Radar use Heartbeat instead of manual chat.'},
+  lounge:{label:'ROOM 02 / QUICK GUIDE',title:'Agent Lounge',anchor:new THREE.Vector3(3.75,2.12,-5.78),intro:'Meet your hired agents and give each one work in its own context.',points:['Select an agent to open its conversation, memory and files.','Run a suggested mission, write a request, or watch Tech Radar check for new articles with Heartbeat.','Review visible activity, results and OpenShell policy decisions before trusting the outcome.'],note:'Each agent keeps its own persona, skills and workspace. Ready and Busy describe observed work, not model capability.'},
   mission:{label:'STAGE 03 / QUICK GUIDE',anchor:new THREE.Vector3(2.45,4.02,-6.98)},
 };
 function roomGuide(id){
@@ -27,7 +29,13 @@ function roomGuide(id){
   return {...guide,label:'STAGE '+scenario.number+' / QUICK GUIDE',title:scenario.title,intro:escape(scenario.guide?.intro||scenario.description),points:(scenario.guide?.points||[]).map(point=>escape(point)),note:scenario.guide?.note||''};
 }
 const termGuides={
-  agent:{title:'Agent : a definition',body:['An agent is a software worker powered by a language model and configured for a particular purpose.','In Build-a-Claw, each agent combines an identity, instructions, selected skills, memory and a separate workspace. It can reason about a request and use the tools allowed by its runtime policy.','An agent is not a person or an independent authority. It can respond to requests or run configured scheduled work. Review its actions and results.']},
+  agent:{title:'How an agent works',body:['An agent is a software worker powered by a language model and configured for a particular purpose.','In Build-a-Claw, each agent combines an identity, instructions, selected skills, memory and a separate workspace. It can reason about a request and use the tools allowed by its runtime policy.','Skills guide how work is done; they do not grant tool or network permissions. Heartbeat schedules checks using the same agent and its instructions. Review the agent’s actions and results.']},
+  openshell:{title:'How OpenShell protection works',body:['OpenClaw connects the agent to an isolated OpenShell sandbox. Tool file access stays inside it, and network destinations need policy approval. The model connection is configured separately.','Approve a blocked destination in OpenShell Policy, then retry. A failed website or search service is not automatically a policy block.'],details:`<section class="world-term-command"><h3>Runtime command</h3><p>Illustrative command; the sandbox name and policy path are generated on this host.</p><pre>openshell sandbox create &#92;
+  --name &lt;agent-runtime-id&gt; &#92;
+  --from openclaw &#92;
+  --policy &lt;data-dir&gt;/openclaw/policies/default-deny.json &#92;
+  --no-auto-providers &#92;
+  --detach -- sleep infinity</pre><p>The adapter checks supported flags first. If <code>--detach</code> is unavailable, it uses <code>-- true</code> instead.</p></section>`},
   skill:{title:'Skill : What is it',body:['A skill is a reusable set of instructions that teaches an agent how to approach a particular kind of work.','Equipping a skill makes that guidance available to the agent. It does not bypass permissions or guarantee that the skill was used in every answer.','Runtime activity and result evidence show what the agent actually read or used while completing a task.']}
 };
 const roomPaper=document.createElement('aside');roomPaper.className='world-room-paper';roomPaper.hidden=true;roomPaper.setAttribute('role','dialog');roomPaper.setAttribute('aria-modal','false');roomPaper.setAttribute('aria-labelledby','world-room-paper-title');
@@ -142,7 +150,7 @@ function openRoomInfo(id,trigger){
 function openTermInfo(id,trigger){
   const guide=termGuides[id];if(!guide)return;
   termInfoReturn=trigger;termPaper.querySelector('h2').textContent=guide.title;
-  termPaper.querySelector('.world-term-paper-body').innerHTML=guide.body.map(paragraph=>'<p>'+paragraph+'</p>').join('');
+  termPaper.querySelector('.world-term-paper-body').innerHTML=(id==='agent'?(window.BacAgentBlueprint||''):'')+guide.body.map(paragraph=>'<p>'+paragraph+'</p>').join('')+(guide.details||'');
   termPaper.hidden=false;navigationLayer.dataset.termOpen='true';
   termPaper.querySelector('.world-room-paper-close').focus({preventScroll:true});
 }
@@ -327,7 +335,7 @@ function animateNavigation(now){
   overviewLabels.forEach(r=>{
     if(r.node.hidden)return;
     positionLabel(r.node,r.group.localToWorld(new THREE.Vector3(0,r.id==='workshop'?1:r.scenario?4.8:4.5,r.id==='workshop'?3:r.scenario?-5.8:-1.7)));
-    const controlsBottom=Math.max(overviewButton.offsetTop+overviewButton.offsetHeight,journeyNote.offsetHeight?journeyNote.offsetTop+journeyNote.offsetHeight:0);
+    const controlsBottom=Math.max(overviewControl.offsetTop+overviewControl.offsetHeight,journeyNote.offsetHeight?journeyNote.offsetTop+journeyNote.offsetHeight:0);
     r.node.style.top=Math.max(controlsBottom+12+r.node.offsetHeight,parseFloat(r.node.style.top))+'px';
   });
   // Keep every entrance clickable when rows are added or the desktop narrows.

@@ -16,7 +16,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.waitForFunction(()=>document.querySelector('#studio-crew-conversation').textContent.includes('The team delivered the counter.'));
   assert.match(await page.locator('#studio-crew-conversation').innerText(),/Cody/);
   await page.evaluate(()=>BacStudio.setRoom('workshop'));await page.locator('#studio-name').fill('Pixel');
-  await page.getByRole('button',{name:'Weather buddy',exact:true}).click();
+  await page.getByRole('button',{name:'Programmer',exact:true}).click();
   await page.locator('input[name="protection"][value="openshell"]').check();
   await page.locator('#studio-create').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Pixel');
   const original=await page.evaluate(()=>BacStudio.inspect().profile);
@@ -39,7 +39,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.screenshot({path:'/tmp/bac-visitor-working-ui.png'});
   let job;for(let i=0;i<150;i++){const value=await state();job=value.crewChats.find(j=>j.payload.collaboration?.visitorBindings?.[5]?.name==='Pixel');if(job?.status==='done')break;await page.waitForTimeout(100);}
   assert.equal(job.status,'done');assert.equal(job.payload.includeHiredAgents,true);assert.equal(job.payload.collaboration.outputs[5].agentId,original.id);
-  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.some(v=>v.name==='Pixel'&&v.phase==='seated'));
+  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.some(v=>v.name==='Pixel'&&v.phase==='working'));
   const value=await state();assert.deepEqual(value.profile.skills,original.skills);assert.equal(value.agents.length,1);
   const html=job.payload.collaboration.webpages[5][0];
   await page.locator('[data-preview-file="'+html+'"]').filter({visible:true}).first().click();

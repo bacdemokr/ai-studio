@@ -1,8 +1,8 @@
 # NVIDIA Build-a-Claw
 
-Hire personal agents, try their skills, and collaborate with Riley or Casey and their specialist agents in the **Multi-Agent demo**.
+Hire personal agents, try their skills, and bring a goal to Casey and the selected team in **Open Task**.
 
-This guide describes **`preview/stage3-scenarios`** on GitLab. The frozen Zurich branch and older releases have different controls.
+This guide describes **`preview/visitor-agent-teams`** on GitLab. The frozen Zurich branch and older releases have different controls.
 
 [Presenter runbook](docs/demo-runbook.md) · [Demo workflow](DEMO_WORKFLOW.md) · [Example scenarios](README_POSSIBLESCENARIOS.md)
 
@@ -13,7 +13,7 @@ This guide describes **`preview/stage3-scenarios`** on GitLab. The frozen Zurich
 Clone the preview with an account that has access to the GitLab repository:
 
 ```bash
-git clone --branch preview/stage3-scenarios https://gitlab-master.nvidia.com/jinhol/bacdemo-tier2.git
+git clone --branch preview/visitor-agent-teams https://gitlab-master.nvidia.com/jinhol/bacdemo-tier2.git
 cd bacdemo-tier2
 ./bac start
 ```
@@ -23,6 +23,41 @@ Startup optionally loads the NVIDIA inference API key from `api.cfg`. If the fil
 Open **http://localhost:8080** on the host, or **http://SPARK_IP:8080** from another computer on the same trusted network. Both provide the same Settings and demo controls. The validated key is available automatically under **Settings → Model → External Endpoint**. Enable **Local** and/or **External Endpoint** once. Hired agents default to connected Local, otherwise the configured External Endpoint model. Change the model in Hiring, Edit agent, or by clicking a hired agent’s model badge in Open Task while idle. Model changes are locked while the agent is working or reserved for a task. Under **Models**, choose the **Open Task** connection. The selector shows the connection currently used.
 
 The first start builds the runtime image for your PC and downloads the pinned OpenShell images. OpenClaw and OpenShell are included; no host Python or Node installation is needed. BaC does not install model weights. A local model server can serve any stage and runs separately.
+
+## Demo stages and presenter aids
+
+1. **Hiring:** define a role and voice, equip the skills needed for its work, and review the current model. Hiring also works without a custom skill for ordinary conversation. Click the **i** beside a skill to read its shipped instructions before hiring. **How does an agent work?** shows the model, instructions, skills, memory, tools and runtime together.
+2. **Agent Lounge:** try one agent, inspect its files, and demonstrate OpenShell access decisions. Tech Radar also shows **Heartbeat**: scheduled checks, observed activity and honest waiting states.
+3. **Open Task:** Casey coordinates the selected team. **Hired only** is the default; **Hired + Standby** adds suitable backup specialists. The **Team** control sits above the message box. **Example goals** chips below Casey’s introduction offer Travel, Drone research, Store email review, Ping-pong and Event page. Examples fill an editable draft, never auto-send or change team mode. The store example attaches BB’s fictional email. The event example uses this same room and team; it does not restore Event Brief.
+
+In the Lounge, use normal chat with an OpenShell-protected agent. For example, ask it to read `https://example.com`. **OpenShell Policy** shows observed network decisions and saved workspace results. Approve a website there and resend the request to see what changes. See [the presenter walkthrough](docs/demo-runbook.md#openshell-in-the-lounge).
+
+Casey assigns substantial work only when the agent’s **explicitly equipped skill** covers it and its actual tools permit it. Naming an agent does not expand its scope. A Weather buddy with Live weather only should decline game development; adding Coding makes a small game an appropriate assignment. Ordinary conversation and small adjacent requests remain possible. Skill suitability is model-guided, not a security boundary; OpenShell and tool permissions enforce access separately. Casey’s chat and Mission Control show saved **Why this agent** and **Not assigned** explanations; scene speech bubbles stay concise.
+
+### Dependencies, hardware and model evidence
+
+| Area | What is needed / what has been checked |
+| --- | --- |
+| Packaged demo | Docker and Compose as listed above. The image supplies Python 3, Node.js, OpenClaw, OpenShell and document utilities. The precise pinned versions are in `docker/runtime-lock.json` and Settings → Reset → Issue report. No host Python/Node is needed for `./bac start`. |
+| Browser | A current desktop browser with WebGL. Three.js r180 is bundled; no renderer download is needed at runtime. Playwright is for development tests only. |
+| API inference | An Ubuntu x86-64 or ARM64 host for the container runtime. Inference runs at the endpoint; a host inference GPU is not needed. No measured minimum host RAM/CPU benchmark is claimed. |
+| Local inference | A separately prepared, tool-calling model server and sufficient GPU/unified memory for that exact model, quantization and context. DGX Spark ARM64 is a deployment target. `./bac vllm` reuses configured weights; it does not download them. There is no universal GPU/VRAM minimum for all models. |
+| Recorded real API tests | The October 14 visitor tests used `azure/openai/gpt-5.6-terra` for hires through NVIDIA Inference. Store email review and selected research/build journeys produced inspected artifacts. Travel and drone examples also returned honest partial results. Generated ping-pong physics still had defects in that run. These are scenario observations, not blanket model certification. |
+| Local / other models | Qwen is the configured local launcher default; other listed models are selectable endpoints, not proof of a tested scenario. The same multi-agent examples have not been benchmarked on local Qwen in the cited run. Rehearse on the target host before presenting. |
+
+For multi-agent quality and responsiveness, a rehearsed External Endpoint is recommended. Local operation remains available. Source records and exact per-scenario limitations are described in [example scenarios](README_POSSIBLESCENARIOS.md), [visitor testing](docs/visitor-regression.md), and the [setup guide](docs/docker-setup.md).
+
+### Version and support information
+
+**Settings → Reset → Issue report** shows the app version, source branch/commit, local modifications and pinned runtime versions. **Copy diagnostics** includes build identity, current connection/workload state and recent safe diagnostic events. **Download** exports a larger report. Neither includes credentials, prompts, responses or file contents. `/health` and the startup log identify the running server build as well.
+
+`VERSION` starts at **0.2.001**. Each subsequent newly authorized GitLab publication advances the final number: **0.2.002**, **0.2.003**, and so on. Keep at least three digits in that number. Prepare the next version with `python3 -B scripts/build_info.py bump patch`, commit it with the changes, then rebuild so the UI and logs identify the delivered commit. The initial 0.2.001 is already prepared; do not bump it again before its first publication. Local builds, restarts, tests, and retries of the same push do not change the version. Change the major/minor series deliberately when agreed. This is an app version label, not strict SemVer (the final number has leading zeros). Publication remains an explicit maintainer action.
+
+### Diagnose an issue
+
+Use `./bac status` for service state and `./bac logs` for a short recent console log. After reproducing a problem, use **Settings → Reset → Issue report → Copy diagnostics**, then paste it with the steps you took and the approximate time. Use **Download** if more history is needed. Copy includes up to 80 matching server events; Download includes up to 400, with additional size limits. Both include browser errors from the current tab and the current session's recent job states. Other participants' job records are excluded.
+
+Detailed structured records live at `$BAC_DATA_DIR/studio/logs/diagnostics.jsonl` (inside the packaged container: `/var/lib/bac/studio/logs/diagnostics.jsonl`). Each record has a UTC timestamp, version, source commit, build fingerprint and server run ID. Request IDs connect API errors to queued jobs; job IDs connect progress, model usage, failure categories and exception source locations. Confirmed OpenShell denials are distinct from error text merely reporting an OpenShell failure. See [diagnostics details](docs/diagnostics.md) for retention and limits.
 
 ## Prepare a local model (optional)
 
@@ -62,7 +97,7 @@ If paths are missing, `vllm` explains the problem; `start` is unaffected.
 
 After starting Studio, connect Stages 1 and 2 in **Settings → Model → Local**
 using the model ID and endpoint printed by `vllm`. Stage 3 retains its separate
-NVIDIA inference API default, with optional local routing per scenario. Model preparation does not change Studio's
+NVIDIA inference API default, with optional Local routing for Open Task. Model preparation does not change Studio's
 saved provider settings.
 
 The helper requires host Python 3.9+ and a systemd user session to launch a new
@@ -153,13 +188,15 @@ To require a hired agent’s participation, name it and its assignment in either
 
 In **Hired + Standby**, you can explicitly combine a hire and a backup, such as “Let Scout find three places in Barcelona, then have Pixel turn the findings into a page.” Casey selects each agent and its work explicitly. If that selection is incomplete, Casey gets one chance to clarify it before any specialist starts; the app does not guess roles from nearby keywords.
 
-Pixel actually performs the coding, even if its saved role is weather advice. Its identity, voice, skills, workspace and OpenShell policy stay the same; the assignment does not grant extra tools. Named agents are not replaced because they lack expertise. When upstream output is incomplete, named agents still attempt their assignments with the available evidence and the result stays partial. Busy or unavailable agents are reported; cancellation, connection failures and the overall time budget can still stop the task. The existing maximum of three specialists applies, with a different agent required for independent review.
+Pixel performs the coding when its equipped Coding skill covers the request. If Coding is missing, Casey explains the missing skill instead of forcing participation or silently assigning the job to Cody. Its identity, voice, workspace and OpenShell policy remain unchanged. When a suitable named agent lacks upstream evidence, it may still contribute its own in-scope portion with clear gaps. Busy or unavailable agents are reported; cancellation, connection failures and the overall time budget can still stop the task. The maximum of three specialists applies, with a different agent required for independent review.
 
 The team choice is captured when you submit and locked while the task runs. Room changes preserve it; reloading or resetting Open Task defaults new tasks to **Hired only**. Changing the team after a completed task keeps earlier results. Reset Open Task first when you want a clean demonstration.
 
 Hired agents use their selected **Hiring** model for both specialist assignments and closing reactions. Casey and built-in backups use **Open Task** settings, including its existing per-agent NVIDIA model choices. Ensure the Open Task connection and each participating hire’s model connection are ready. Agents invited for assignments or reactions are reserved so chat, Heartbeat and edits do not overlap the team task. Busy or unavailable guests are skipped under the existing reaction rules. In either team mode, hired specialists do not receive a duplicate closing-reaction call. Follow-up messages to a hired specialist open its existing Lounge conversation. Scenario reset clears the shared team history and exported results, while preserving the hired agent's own files and identity.
 
 `/plan` and `/plans` remain supported aliases for `/goal`. Only Open Task's Casey chat supports these team commands. Lounge agents without Tech Radar accept direct messages. Casey's Open Task chat starts with `/goal ` and restores it after a successful send. Delete the prefix to send a direct message. Specialists accept direct messages only, without `/goal` hints or suggestions; send team tasks to Casey. Their inputs start empty and clear after sending; existing drafts stay intact when switching characters.
+
+**Data analyst** equips **Data interpretation** as its fixed core skill. Use it in the Lounge to compare supplied CSV or table values, rank figures and save findings with clear units and limitations. Pair it with a Programmer for the store or GPU dashboard examples in Open Task; additional skills remain editable.
 
 Idle hired agents follow you into Open Task and wait beside Casey. Assigned agents move to workbenches with their existing appearance and stay there after delivering their work, including while Casey plans the next task. Once the next team is confirmed, replaced hires move directly to the waiting seats. Closing personal reactions happen in place, without a trip through the Lounge. Leaving the room sends idle agents back to the Lounge. Their contributions remain available in the results. Travel is visual only and never delays model execution. Switching rooms does not restart the walk; reduced motion places agents directly. Built-in backups keep their normal entrance. Specialists execute in assignment order. The backup pool is Scout (Web Researcher), Ada (Data analyst), Iris (UX designer), Cody (Programmer), and Vera (Reviewer). Coding assignments, including those given to hired agents, prioritize a compact, usable desktop demo: no mobile layouts or touch controls, no optional polish loops, and no extra design pass unless needed. Save the core implementation in one pass and return once required work is delivered. Explicitly requested independent review is still required. Casey reserves a repair for an observed defect, not a repeated save/read confirmation.
 
@@ -262,7 +299,7 @@ Microsoft Edge availability depends on the operating system and CPU architecture
 
 This preview builds on the Zurich snapshot and the Stage 3 contributions from Benjamin Bayart and Paul Roeseler. The final version containing Event Brief is preserved at [archive/event-brief-final-2026-10-15](https://gitlab-master.nvidia.com/jinhol/bacdemo-tier2/-/tree/archive/event-brief-final-2026-10-15). This branch now contains Hiring, Agent Lounge and Open Task. Default startup clears runtime data; `./bac start --keep-data` preserves existing work. Open Task keeps its previous native identities, models and history when upgrading.
 
-Scenario presentation lives in `src/stage-scenarios.json`, shared by the scene, navigation and accessible fallback. Floors branch in pairs from a common concourse and use automatic overview framing, so three or four scenarios fit without hard-coded camera coordinates. Selecting a space moves the camera directly to it with a gentle zoom out and back in; it does not stop at intermediate rooms. New selections replace an in-progress move, and reduced-motion settings skip the animation. New scenarios also require an explicit backend workflow and ownership identifier; adding a visual entry alone does not enable a new workflow.
+Open Task presentation lives in `src/stage-scenarios.json`, shared by the scene, navigation and accessible fallback. Stage 3 opens this room directly; old Event Brief navigation preferences are ignored. New room selections replace an in-progress camera move, and reduced-motion settings skip the animation. Retired workflow routes reject new work. Stable role slots, saved ownership records and cleanup compatibility remain so upgrades do not duplicate or orphan native agents.
 
 ### Files and recovery
 
@@ -282,7 +319,7 @@ Stage-level defaults prefer Local for legacy Hiring/Lounge agents and External E
 
 Use local/private endpoints reachable from the OpenClaw host. Local mode does not launch vLLM automatically. Scenario resets preserve connection settings. The launcher treats `api.cfg` as optional. When Open Task uses Local, a warning explains that it may be slower or produce less reliable results for complex requests. With neither connection ready, tasks remain blocked.
 
-### Scenario teams and models
+### Open Task team and models
 
 Open Task uses Casey as its captain, your hired agents and optional standby specialists. Event Brief is retired on this branch; its old saved data is not resumed or shown as current work.
 

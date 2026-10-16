@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM ghcr.io/nvidia/openshell/gateway@sha256:05cf77bbb022a739aed6f22daa0e7e164415f4ab273b5f84319e46d91eb8f645 AS gateway
+FROM ghcr.io/nvidia/openshell/gateway@sha256:bdb4fe248070032c88be78f029dad9325cb698480e90486e1413a674a5d8edc8 AS gateway
 FROM debian:trixie-slim@sha256:a99cfc517144bc59b1978475ec53b46ecabec7e43635402ee5b77cc54cd1b20a AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates python3 curl openssh-client rsync poppler-utils tini \
@@ -39,7 +39,8 @@ COPY skills/ skills/
 COPY runtime/research-guard/ runtime/research-guard/
 COPY docker/ docker/
 COPY Dockerfile Dockerfile
-COPY README.md ./
+COPY README.md VERSION ./
+COPY scenario/ scenario/
 
 RUN mkdir -p app && python3 scripts/build.py
 USER 10001:10001

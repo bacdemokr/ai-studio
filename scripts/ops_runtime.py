@@ -106,7 +106,7 @@ def start():
         raise RuntimeError(f'Port {r.gateway_port()} is already used by another or still-starting runtime. Inspect ./bac dev runtime check before retrying.')
     print(r.cli('config', 'validate'))
     c.install_unit('bac-openclaw', [r.root() / 'package/node_modules/.bin/openclaw', 'gateway', 'run'],
-                   {**c.service_environment(), **{k: r.environment()[k] for k in ('PATH', 'NODE_OPTIONS', 'OPENCLAW_STATE_DIR', 'OPENCLAW_CONFIG_PATH')}})
+                   {**c.service_environment(), **{k:v for k,v in r.environment().items() if k in ('PATH', 'NODE_OPTIONS', 'OPENCLAW_STATE_DIR', 'OPENCLAW_CONFIG_PATH', 'XDG_CONFIG_HOME')}})
     c.service('bac-openclaw', 'enable')
     c.service('bac-openclaw', 'start')
     print(f'OpenClaw starting on loopback port {r.gateway_port()}. ./bac dev runtime check shows readiness.')
@@ -128,11 +128,17 @@ def openshell(action, automatic=False):
             raise RuntimeError('The bundled OpenShell configuration is unavailable. Check docker compose logs studio.')
         shell('sandbox', 'list')
         return
-    if not shutil.which('openshell'):
-        raise RuntimeError('Install the official OpenShell CLI and gateway first. See docs/ubuntu-setup.md#optional-openshell. No sandbox was enabled.')
-    command = shutil.which('openshell')
+    from openshell_runtime import install, command as pinned_command, lock, environment
+    command = pinned_command() if action == 'check' else install()
+    current = c.read_json(r.config_path())
+    selected = current.get('plugins', {}).get('entries', {}).get('openshell', {}).get('config', {})
+    gateway_args = [value for field, flag in [('gateway', '--gateway'), ('gatewayEndpoint', '--gateway-endpoint'), ('workspace', '--workspace')]
+                    if selected.get(field) for value in (flag, selected[field])]
+    status = subprocess.run([command, *gateway_args, 'gateway', 'info'], env=environment(), capture_output=True, text=True, timeout=35)
+    if status.returncode or not re.search(r'\bVersion:\s*' + re.escape(lock()['openshell']) + r'\b', re.sub(r'\x1b\[[0-9;]*m', '', status.stdout)):
+        raise RuntimeError('The OpenShell gateway must also use ' + lock()['openshell'] + '. Update the selected gateway before enabling protection; other gateways were left unchanged.')
     # Listing registrations is not proof that the selected gateway is reachable.
-    subprocess.run([command, 'sandbox', 'list'], check=True, capture_output=True, timeout=35)
+    subprocess.run([command, *gateway_args, 'sandbox', 'list'], env=environment(), check=True, capture_output=True, timeout=35)
     if action == 'check':
         print(r.cli('sandbox', 'explain'))
         print(r.cli('sandbox', 'list'))
@@ -152,7 +158,7 @@ def openshell(action, automatic=False):
         entry = config.setdefault('plugins', {}).setdefault('entries', {}).setdefault('openshell', {})
         entry['enabled'] = True
         entry.setdefault('config', {}).update({
-            'command': str(Path(__file__).with_name('owned_openshell.py')), 'from': 'openclaw', 'mode': 'mirror', 'autoProviders': False, 'providers': [], 'policy': str(default_path())})
+            'command': str(Path(__file__).with_name('owned_openshell.py')), 'from': lock()['images']['openclaw'], 'mode': 'mirror', 'autoProviders': False, 'providers': [], 'policy': str(default_path())})
         config.setdefault('gateway', {}).setdefault('reload', {})['mode'] = 'hybrid'
         r.save_config(config)
         try:
@@ -183,4 +189,4 @@ def openshell(action, automatic=False):
             time.sleep(1)
     else:
         raise RuntimeError('OpenShell is configured, but the agent runtime has not finished reconnecting.')
-    print('OpenShell setup is saved and the agent gateway is reachable. Dylan uses OpenShell with pre-approved NVIDIA Blog reads. Other preset crew members use their standard runtimes. New protected personal agents start with no outbound network permissions. Inspect their actual policies in the Policies tab.')
+    print('OpenShell setup is saved and the agent gateway is reachable. New protected personal agents start with no outbound network permissions. Inspect each agent’s actual policy in the Lounge.')

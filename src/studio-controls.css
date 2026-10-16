@@ -105,6 +105,8 @@
 #studio-config-form>.studio-dialog-actions:has(#studio-save-settings[hidden]):has(#studio-start-agents[hidden]){display:none}
 @media(max-width:520px){
  #studio-dialog:has(#studio-config-form,#studio-model-connections){padding:20px}
+ #studio-dialog .connection-tabs{gap:12px;overflow-x:auto}
+ #studio-dialog .connection-tabs button{flex-shrink:0;font-size:12px}
  #studio-dialog .studio-reset-row{gap:14px;padding:23px 0;align-items:flex-start}
  #studio-dialog .studio-reset-row p{font-size:13px}
  #studio-dialog #studio-settings-reset-panel button{min-width:88px;padding:0 12px}
@@ -185,3 +187,12 @@
 .studio-heartbeat-status[data-heartbeat-state=paused]{color:#aab8c3;background:#aab8c308;border-color:#aab8c324}
 .studio-heartbeat-status[data-heartbeat-state=attention]{color:#e3c28a;background:#e3c28a0d;border-color:#e3c28a30}
 .studio-heartbeat-status[data-heartbeat-state=error]{color:#e9a49a;background:#e9a49a0d;border-color:#e9a49a30}
+.studio-policy-preparing{color:#f5b3a7}
+.policy-recent-list{margin:0;padding:0;list-style:none}
+.policy-recent-list li{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid #2d3f49}
+.policy-recent-list strong{display:block;font-size:13px;color:#dce7ee;overflow-wrap:anywhere}
+.policy-recent-list small{display:block;font-size:11px;color:#96adba;margin-top:4px}
+.policy-recent-list b{flex-shrink:0;border-radius:6px;padding:3px 7px;font-size:11px;background:#293943;color:#b7c6ce}
+.policy-recent-list b[data-outcome=allow],.policy-recent-list b[data-outcome=saved]{background:#283b23;color:#b6df87}
+.policy-recent-list b[data-outcome=deny]{background:#3c3321;color:#e9c989}
+.policy-example-evidence{font-size:11px;color:#91a8b7}.policy-example-evidence summary{cursor:pointer}.policy-example-evidence pre{max-height:200px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:10px}

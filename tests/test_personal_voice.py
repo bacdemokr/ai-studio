@@ -20,7 +20,7 @@ class PersonalVoiceTests(unittest.TestCase):
             self.assertEqual(soul.count(profile['purpose']),1)
             self.assertEqual(soul.count(profile['tonePrompt']),1)
             self.assertIn(signature(profile),soul)
-            self.assertIn('Continue with a useful answer',soul)
+            self.assertIn('Offer only a useful in-scope contribution',soul)
             radar=(Path(temp)/'skills/bac-radar/SKILL.md').read_text()
             self.assertIn('Manual chat is disabled',radar)
             self.assertIn('without polling or publishing a Radar update',radar)
@@ -76,7 +76,7 @@ class PersonalVoiceTests(unittest.TestCase):
             self.assertIn('Why is the sky blue?',adapter.prompt)
             self.assertIn('Chosen tone: cynical',adapter.prompt)
             self.assertIn(signature(profile),adapter.prompt)
-            self.assertIn('not a reason to refuse',adapter.prompt)
+            self.assertIn('outside BOTH must be declined',adapter.prompt)
 
 
 if __name__=='__main__':unittest.main()

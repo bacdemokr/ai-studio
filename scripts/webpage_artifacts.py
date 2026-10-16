@@ -35,6 +35,8 @@ PAGE_INSTRUCTIONS = (
     'For interactive apps, inspect initialization, input-to-state mapping, timing, pause/resume, terminal states '
     'and restart. A requested Restart control must work during play as well as after game over; reset timers without '
     'duplicating loops. Keep displayed scores and totals synchronized after every state change, including keyboard actions. '
+    'For held-key controls, track keys independently for simultaneous input and clear pressed keys on keyup, '
+    'window blur, page hiding and restart. Leaving the preview must not leave a paddle or other control moving. '
     'For numeric controls, trim the raw text and reject empty or whitespace-only values before converting '
     'with Number; require Number.isFinite for both inputs and computed results so arithmetic overflow cannot display Infinity. '
     'Preserve the requested valid range, including zero when allowed; do not silently add stricter requirements. '

@@ -58,9 +58,15 @@ class PolicyControls:
             answer = self.adapter.respond(agent_id, session, prompt, **kwargs)
         # Personal replies (including hired handoffs) are prose. Preserve crew
         # JSON contracts and never infer a policy denial from HTTP/tool errors.
-        hosts = self.protection_activity.denials_since(owner, role, started)
+        hosts = []
+        for host in self.protection_activity.denials_since(owner, role, started):
+            try:
+                destination_permission(host)
+            except ValueError:
+                continue  # Synthetic proxy/IP denials are not approvable websites.
+            hosts.append(host)
         if role is None and hosts and not kwargs.get('json_response'):
-            text = str(answer) + '\n\nOpenShell blocked: ' + ', '.join(hosts) + '. Approve the required sites in this agent\'s OpenShell Policy panel before retrying.'
+            text = str(answer) + '\n\nOpenShell blocked: ' + ', '.join(hosts) + '. Check this agent\'s OpenShell Policy. Approve missing sites before retrying; existing website approvals cover reads only.'
             from telemetry import Reply
             result = Reply(text, getattr(answer, 'metrics', {}))
             result.__dict__.update(getattr(answer, '__dict__', {}))
@@ -142,7 +148,8 @@ class PolicyControls:
                            (owner,policy_role,json.dumps(defaults)))
                 db.execute('UPDATE agent_policies SET denials=? WHERE owner=? AND role=?',
                            (json.dumps(events),owner,policy_role))
-            return events
+        if events and events != previous:self.diagnostics.agent_event(self, owner, 'policy.denial-observed', role=role)
+        return events
 
     def policy_report(self, owner, role=None):
         profile = self.policy_profile(owner, role)
@@ -165,6 +172,10 @@ class PolicyControls:
             report['busy'] = role is not None and bool(db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind IN ('crew','crew-chat','prepare') AND status IN ('queued','running','waiting','stopping')", (owner,)).fetchone())
         # Candidates never grant access; assistant suggestions require explicit approval too.
         catalog = dict(report.get('catalog', CATALOG))
+        # Fixed public teaching destinations remain explicit, per-agent grants.
+        for host in ('example.com', 'api.github.com'):
+            key = destination_permission(host)
+            catalog[key] = permission_rule(key)
         with self.db() as db:
             jobs = db.execute("SELECT payload FROM jobs WHERE owner=? AND created>=? AND (CASE WHEN ? IS NULL THEN kind NOT IN ('crew','crew-chat','prepare','prepare-agent') ELSE kind='crew' OR (kind='crew-chat' AND (json_extract(payload,'$.crewRole')=? OR json_type(payload,'$.collaboration')='object')) END) ORDER BY created DESC LIMIT 30", (owner, reset_at, role, role)).fetchall()
         hosts = [e['host'] for e in denials]
@@ -181,6 +192,8 @@ class PolicyControls:
         from tech_radar import SOURCES
         radar_hosts=[source['host'] for source in SOURCES] if role is None and 'radar' in profile.get('skills',[]) else []
         report['recommended'] = list(RESEARCH_APPROVALS) if role is not None else ['host:'+host for host in radar_hosts]
+        if role is None:
+            report['recommended'] += ['host:example.com']
         for key in approved + report['recommended']:
             catalog[key] = permission_rule(key)
         with self.db() as db:
@@ -228,6 +241,28 @@ class PolicyControls:
         # them as pending access before the agent actually requests them.
         report['pendingAccess'] = [{'host': host, 'reason': reason} for host, reason in pending.items()]
         report['catalog'] = catalog
+        # These are workspace results, not filesystem-policy decisions. Never
+        # infer a successful write from an agent's answer or an old missing file.
+        report['recentFiles'] = []
+        if role is None:
+            with self.db() as db:
+                completed = db.execute("SELECT id,created,result FROM jobs WHERE owner=? AND created>=? AND kind IN ('chat','mission') AND status='done' ORDER BY created DESC LIMIT 8", (owner, reset_at)).fetchall()
+            current_files = {file['path']: file for file in self.files(owner, recursive=True)}
+            seen = set()
+            for job in completed:
+                for path in json.loads(job['result'] or '{}').get('files', []):
+                    if isinstance(path, dict):
+                        path = path.get('path')
+                    if (not isinstance(path, str) or not path.startswith('artifacts/')
+                            or path.startswith('artifacts/reply-') or path in seen):
+                        continue
+                    file = current_files.get(path)
+                    if not file or file.get('updated', 0) < job['created']:
+                        continue
+                    seen.add(path)
+                    report['recentFiles'].append({'path': path, 'time': file['updated'],
+                                                  'source': 'Verified workspace result'})
+            report['recentFiles'] = report['recentFiles'][:8]
         return report
 
     def crew_policy_change(self, owner, data):

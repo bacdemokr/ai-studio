@@ -137,6 +137,8 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
             except BlockingIOError:
                 self.instance_lock.close()
                 raise RuntimeError('Another BaC app is already using this data directory. Stop it before starting a second server.')
+        from diagnostics import Diagnostics
+        self.diagnostics = Diagnostics(self.directory)
         self.db_path = self.directory / 'studio.sqlite'
         self.adapter = adapter
         self.stop = threading.Event()
@@ -237,6 +239,13 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
                         db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
                 if profile.get('purpose') in PRESET_UPDATES:
                     profile['purpose'] = PRESET_UPDATES[profile['purpose']]
+                    with self.db() as db:
+                        db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(profile), owner))
+                        db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
+                from role_boundaries import required_role_skills
+                missing = set(required_role_skills(profile.get('purpose', ''))) - set(profile.get('skills', []))
+                if missing:
+                    profile['skills'] = sorted(set(profile.get('skills', [])) | missing)
                     with self.db() as db:
                         db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(profile), owner))
                         db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
@@ -380,6 +389,8 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
             raise Problem('Choose a valid name and persona.')
         if not isinstance(skills, list) or len(skills) > len(runtime.SKILLS) or any(not isinstance(x, str) or x not in runtime.SKILLS for x in skills):
             raise Problem('Skills must be a list of available skills, or an empty list for none.')
+        from role_boundaries import required_role_skills
+        skills = set(skills) | set(required_role_skills(purpose))
         return {'name': name, 'persona': persona, 'purpose': purpose, 'tonePrompt': tone_prompt.strip(), 'tone': tone, 'verbosity': verbosity, 'skills': sorted(set(skills)),
                 'avatar': avatar_for(owner, data.get('avatar')), 'id': 'bac-' + owner, 'protection': protection,
                 'model': personal_models.validate(data.get('model', personal_models.DEFAULT), previous=previous_model)}
@@ -634,6 +645,7 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
                 self.signal.set()
                 return {'deleting':owner,'agentId':owner}
             except runtime.CleanupPrerequisiteError as error:
+                self.diagnostics.agent_event(self, owner, 'agent.cleanup-blocked', error=error)
                 self.deletion_progress(owner, 'Restart the agent runtime, then retry deletion.')
                 with self.db() as db:
                     db.execute('UPDATE agents SET deleting=1 WHERE id=?', (owner,))
@@ -641,6 +653,7 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
             except Exception as error:
                 import logging
                 logging.exception('Native cleanup failed for %s', native_id)
+                self.diagnostics.agent_event(self, owner, 'agent.cleanup-failed', error=error)
                 self.deletion_progress(owner, 'Cleanup paused. Retry deletion.')
                 with self.db() as db:
                     db.execute('UPDATE agents SET deleting=1 WHERE id=?', (owner,))
@@ -709,6 +722,7 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
             import personal_models
             result['personalModels'] = personal_models.public(shared)
             result.update(modelConnections=shared, model=bool(shared['loungeSource']), ready=bool(shared['loungeSource']) and bool(result.get('gateway')))
+        self.diagnostics.observe_runtime(result)
         return result
 
     def files(self, owner, role=None, *, recursive=False):
@@ -729,6 +743,10 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
                     stat = p.stat()
                     result.append({'path': str(p.relative_to(base)), 'size': stat.st_size,
                                    'updated': stat.st_mtime, 'kind': category})
+                    # The API already caps listings at 100. Do not resolve/stat
+                    # every remaining file only to discard it at the end.
+                    if len(result) == 100:
+                        return result
                 except (Problem, OSError):
                     # Reset and native tool writes can remove a file mid-listing.
                     continue
@@ -739,9 +757,17 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
         from plan_inputs import internal_team_input
         validate(scenario)
         team = self.existing_crew_owner(owner, scenario)
+        # Reuse exact listings within this response only. Native tool writes and
+        # resets must be visible on the next poll without cache invalidation.
+        listings = {}
+        def listed_files(account, role=None, *, recursive=False):
+            key = (account, role, recursive)
+            if key not in listings:
+                listings[key] = self.files(account, role, recursive=recursive)
+            return listings[key]
         with self.db() as db:
             jobs = [self.public_job(r) for r in db.execute("SELECT * FROM jobs WHERE owner=? AND kind NOT IN ('crew','crew-chat','prepare','prepare-agent') AND created >= (SELECT reset_at FROM agents WHERE id=?) ORDER BY created DESC LIMIT 30", (owner, owner))]
-            crew_chats = [self.public_job(r) for role in range(len(ROLES)) for r in db.execute("SELECT * FROM jobs WHERE (owner=? OR owner=?) AND kind='crew-chat' AND json_extract(payload,'$.crewRole')=? ORDER BY created DESC LIMIT 30", (team, owner if scenario=='plan' else team, role))]
+            crew_chats = [self.public_job(r) for role in ACTIVE_ROLES for r in db.execute("SELECT * FROM jobs WHERE (owner=? OR owner=?) AND kind='crew-chat' AND json_extract(payload,'$.crewRole')=? ORDER BY created DESC LIMIT 30", (team, owner, role))]
             collection = db.execute('SELECT id,profile,deleting FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?) AND profile IS NOT NULL ORDER BY created,id', (owner,)).fetchall()
             active = [dict(j, payload=json.loads(j['payload'])) for j in db.execute("SELECT id,owner,status,payload,kind,due FROM jobs WHERE status IN ('queued','running','waiting','stopping') AND owner IN (SELECT id FROM agents WHERE participant=(SELECT participant FROM agents WHERE id=?)) ORDER BY created", (owner,))]
             agents = [{'key': r['id'], **json.loads(r['profile']), 'deleting': bool(r['deleting']), 'deletionWaiting': r['deleting'] == 2,
@@ -782,7 +808,7 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
         if team:
             candidates = [('team', None)] + [(str(role), role) for role, member in enumerate(CREW_CATALOG)
                 if member.get('planEligible') is not False]
-            file_workspaces = [name for name, role in candidates if self.files(team, role, recursive=True)]
+            file_workspaces = [name for name, role in candidates if listed_files(team, role, recursive=True)]
         memory = self.workspace(owner) / 'MEMORY.md'
         memory_text = ''
         try:
@@ -791,11 +817,11 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
             pass
         from team_models import selections
         from scenario_models import connection
-        return {'scenario':scenario, 'scenarios':self.scenario_status(owner), 'preparation':None,
+        return {'scenario':scenario, 'scenarios':self.scenario_status(owner, files=listed_files), 'preparation':None,
                 'teamConnection': connection(self, team), 'fileWorkspaces': file_workspaces,
-                'hasFiles': bool(self.files(owner, recursive=True)),
-                'crewDocuments': [f for f in self.files(team,0) if f['kind']=='inbox' and not internal_team_input(f['path'])] if team else [], 'teamSelections': selections(self,team,scenario), 'profile': self.profile(owner), 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': self.files(owner),
-                'techRadar': self.heartbeat.status(owner, self.profile(owner) or {}),
+                'hasFiles': bool(listed_files(owner, recursive=True)),
+                'crewDocuments': [f for f in listed_files(team,0) if f['kind']=='inbox' and not internal_team_input(f['path'])] if team else [], 'teamSelections': selections(self,team,scenario), 'profile': personal_profile, 'jobs': jobs, 'crewChats': crew_chats, 'crewChatReset': crew_chat_reset, 'files': listed_files(owner),
+                'techRadar': self.heartbeat.status(owner, personal_profile or {}),
                 'memory': memory_text, 'agentId': owner, 'crewOwner': team, 'roundtableTurns': roundtable_turns,
                 'agents': agents, 'agentLimit': MAX_AGENTS, 'assignments': assignments, 'bacResetting': bac_resetting,
                 'deleting': any(a['key'] == owner and a['deleting'] for a in agents),
@@ -1006,6 +1032,7 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
                 job['payload']=json.dumps(payload)
             db.execute('INSERT INTO jobs VALUES (:id,:owner,:kind,:status,:payload,:result,:events,:created,:updated,:due)', job)
         self.signal.set()
+        self.diagnostics.job(self, job['id'], 'job.queued')
         return {'id': job['id'], **({'collaboration':True, 'crewRole':0} if collaborative else {})}
 
     def event(self, job_id, title, detail, role=0, **changes):
@@ -1021,6 +1048,7 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
             events.append({'time': time.time(), 'title': title, 'detail': detail, 'role': role})
             values = {'events': json.dumps(events[-40:]), 'updated': time.time(), **changes}
             db.execute('UPDATE jobs SET ' + ','.join(key + '=?' for key in values) + ' WHERE id=?', [*values.values(), job_id])
+        self.diagnostics.job(self, job_id, 'job.progress', role=role, phase=title, hint=detail)
 
     def decision(self, owner, job_id, action):
         with self.db() as db:
@@ -1241,6 +1269,9 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
         # Save immediately, including when a later artifact validation fails.
         with self.db() as db:
             db.execute('UPDATE jobs SET payload=? WHERE id=?', (json.dumps(payload), job_id))
+        self.diagnostics.job(self, job_id, 'model.turn-finished', model=metrics.get('model'),
+                             inputTokens=metrics.get('input'), outputTokens=metrics.get('output'),
+                             modelMs=metrics['runSeconds']*1000 if type(metrics.get('runSeconds')) in (float,int) else None)
 
     def agent_lock(self, agent_id):
         with self.execution_lock:
@@ -1251,6 +1282,7 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
         self.executing_bac_owners = set().union(*(owners for owners, bac in self.executing_jobs.values() if bac))
 
     def execute(self, row):
+        self.diagnostics.job(self, row['id'], 'job.started')
         payload = json.loads(row['payload'])
         owners = {row['owner']} | {m['key'] for m in job_participants(payload) if m.get('key')}
         with self.execution_lock:
@@ -1265,7 +1297,8 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
                 lock = contextlib.nullcontext()
             with lock:
                 return self._execute(row)
-        except Exception:
+        except Exception as error:
+            self.diagnostics.job(self, row['id'], 'job.failed', error=error)
             if self.stop_checkpoint(row['id']):return
             raise
         finally:
@@ -1359,7 +1392,6 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
                       'skills':list(ROLE_SKILLS[role]), 'avatar':ROLE_AVATARS[role], 'key':None,
                       'protection':CREW_CATALOG[role].get('protection','standard')}
             reset = self.crew_chat_reset_state(db, owner)
-            current_event = db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind='crew' AND created>=?", (owner, reset['at'])).fetchone()
         from scenarios import crew_member
         definition = crew_member(CREW_CATALOG[role], self.crew_scenario(owner))
         member['purpose'] = definition['collaboration']['description']
@@ -1373,7 +1405,7 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
             return
         prompt = ('You are ' + member['name'] + ', the ' + definition['collaboration']['title'] + '. '
                   + member['purpose'] + '\nAnswer this direct message using your equipped skills. '
-                  + ('The inbox may contain the latest event brief and handoffs; use them when relevant. ' if current_event else 'No event has been submitted in this conversation yet. Do not load earlier event briefs, handoffs or conversation transcripts. ') +
+                  + 'Use the current message, selected files and supplied conversation context. Do not load unrelated prior tasks or transcripts. ' +
                   'This is a conversation, not a new crew mission. Do not claim other agents ran, '
                   'or send invitations or publish anything on the user’s behalf.\n\n' + payload['prompt'])
         if role == 0:

@@ -28,7 +28,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
    body.crewChats=phase==='previous'?[previous]:[current,previous];await route.fulfill({response,json:body});
   });
   await page.locator('.world-room-map [data-world-scenario=plan]').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);await page.evaluate(()=>BacStudio.refresh());
-  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===2&&BacCampus.inspect().visitorTravel.every(v=>v.phase==='seated'));
+  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===2&&BacCampus.inspect().visitorTravel.every(v=>v.phase==='working'));
   const samples=async()=>page.evaluate(async()=>{
    const seen=[];for(let i=0;i<16;i++){
     const snapshot=BacCampus.inspect();for(const r of snapshot.crewExchange.filter(r=>[5,8].includes(r.role)&&(r.visible||r.wanted||r.phase)))seen.push({role:r.role,visible:r.visible,phase:r.phase,wanted:r.wanted});

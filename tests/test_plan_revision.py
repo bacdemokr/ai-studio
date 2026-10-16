@@ -42,8 +42,14 @@ class RevisionTests(unittest.TestCase):
         self.assertIn('"role":6,"evidenceRole":4', prompt)
 
     def test_observed_research_sources_reach_captain_with_a_total_budget(self):
+        self.assert_observed_sources(8)
+
+    def test_hired_research_sources_survive_an_analysis_assignment_slot(self):
+        self.assert_observed_sources(6)
+
+    def assert_observed_sources(self, role):
         from telemetry import Reply
-        self.adapter.plan = {'summary': 'Research', 'tasks': [{'role': 8, 'task': 'Research'}]}
+        self.adapter.plan = {'summary': 'Research', 'tasks': [{'role': role, 'task': 'Research'}]}
         original = self.adapter.respond
         def respond(agent, session, prompt, **kwargs):
             answer = original(agent, session, prompt, **kwargs)

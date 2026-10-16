@@ -62,7 +62,9 @@
     "persona": "analyst",
     "description": "Reviews the requested deliverables against the task and evidence.",
     "id": "audience-host",
-    "skills": [],
+    "skills": [
+      "builder"
+    ],
     "collaboration": {
       "title": "Reviewer",
       "description": "Independently inspect supplied outputs, source files and assumptions; identify defects and missing requirements. Distinguish static review from executed tests.",
@@ -72,7 +74,7 @@
   },
   {
     "name": "Cody",
-    "role": "Event web developer",
+    "role": "Programmer",
     "persona": "maker",
     "description": "Builds compact desktop webpages and small apps you can open and download.",
     "id": "event-web-developer",

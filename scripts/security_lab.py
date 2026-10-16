@@ -1,6 +1,6 @@
 """Operator-only OpenShell probe. Never exposes a shell or policy editor to attendees.
 
-Contract checked against NVIDIA/OpenShell fa0bfa490e42c87a74a70be6ebb40faee7fb8faa,
+Contract checked against NVIDIA/OpenShell v0.1.4,
 examples/sandbox-policy-quickstart/{demo.sh,policy.yaml}. No credentials or user data
 are attached to the fixed public GET requests. This probes a separate sandbox,
 not the OpenClaw agent's sandbox or the host-side web tools.
@@ -16,8 +16,10 @@ import subprocess
 import time
 
 import ops_common as c
+import openshell_runtime
+import agent_policy
 
-SOURCE = 'https://github.com/NVIDIA/OpenShell/tree/fa0bfa490e42c87a74a70be6ebb40faee7fb8faa/examples/sandbox-policy-quickstart'
+SOURCE = 'https://github.com/NVIDIA/OpenShell/tree/v0.1.4/examples/sandbox-policy-quickstart'
 STEPS = [('blocked', 'api.github.com'), ('allowed', 'api.github.com'), ('still-blocked', 'example.com')]
 
 
@@ -86,11 +88,16 @@ def public_report(directory):
 
 
 def prove():
-    if not shutil.which('openshell') or not shutil.which('ssh'):
+    if not shutil.which('ssh'):
         raise RuntimeError('Install OpenShell and start its gateway first. No enforcement evidence was captured.')
     directory = c.initialize() / 'studio'
     directory.mkdir(exist_ok=True, mode=0o700)
-    name = 'bac-proof-' + secrets.token_hex(5)
+    name = 'bac-proof-' + secrets.token_hex(4)
+    binary = openshell_runtime.command()
+    config = agent_policy.plugin_config().get('config', {})
+    selected = []
+    for key, flag in [('gateway', '--gateway'), ('gatewayEndpoint', '--gateway-endpoint'), ('workspace', '--workspace')]:
+        if config.get(key): selected += [flag, config[key]]
     capture = directory / 'security-captures' / name
     capture.mkdir(parents=True, mode=0o700)
     report = {'schema': 1, 'source': SOURCE, 'status': 'running', 'sandbox': name,
@@ -102,7 +109,9 @@ def prove():
         os.chmod(directory / 'security-report.json', 0o600)
 
     def run(label, args, timeout=30, required=True):
-        result = subprocess.run([str(a) for a in args], capture_output=True, text=True, timeout=timeout)
+        if args[0] == 'openshell':
+            args = [binary, *([] if args[1:] == ['--version'] else selected), *args[1:]]
+        result = subprocess.run([str(a) for a in args], env=openshell_runtime.environment(), capture_output=True, text=True, timeout=timeout)
         output = result.stdout + result.stderr
         (capture / (label + '.txt')).write_text(output)
         if required and result.returncode:
@@ -122,7 +131,8 @@ def prove():
         report['policySHA256'] = {k: hashlib.sha256(p.read_bytes()).hexdigest() for k, p in [('before', deny_path), ('after', allow_path)]}
         attempted = True
         run('create', ['openshell', 'sandbox', 'create', '--name', name, '--policy', deny_path,
-                       '--no-auto-providers', '--no-tty', '--', 'echo', 'BaC proof sandbox ready'], timeout=180)
+                       '--from', openshell_runtime.lock()['images']['openclaw'],
+                       '--no-auto-providers', '--detach', '--', 'sleep', 'infinity'], timeout=180)
         created = True
         config, _ = run('ssh-config', ['openshell', 'sandbox', 'ssh-config', name])
         ssh_path = capture / 'ssh-config'

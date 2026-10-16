@@ -72,6 +72,32 @@ for(const markup of [render(partialPlan,'done',{answer:'Draft saved.'}),context.
 }
 console.log('PASS: trace order, live review/continuation, early finish, uncalled roles, cancellation/failure, unsupported work, legacy ordering and escaping.');
 
+// Selection explanations use saved plan identities, including declined hires.
+const fit='Orbit’s Web research skill covers this brief, including <verified> sources.';
+context.chatStopButton=()=>'';
+const decline='Live weather does not cover programming <script>bad</script>.';
+const fitPlan={...base,visitorBindings:{8:{key:'orbit',name:'Orbit'}},
+ tasks:[{...base.tasks[0],roleFit:fit},base.tasks[1]],
+ declinedAgents:[{agent:'jinny',reason:decline}]};
+const fitJob={id:'fit',status:'running',payload:{prompt:'/goal Research and build',roster:[{key:'jinny',name:'Jinny <saved>'}],collaboration:fitPlan}};
+for(const markup of [context.missionControlTraceMarkup(fitJob),context.collaborationMarkup(fitJob,0)]){
+ assert.match(markup,/Why this agent/);assert(markup.includes(escape(fit)));
+ assert.match(markup,/Not assigned/);assert(markup.includes('Jinny &lt;saved&gt;'));
+ assert(markup.includes(escape(decline)));assert(!markup.includes('<script>'));
+ assert.equal((markup.match(/Why this agent/g)||[]).length,1);
+}
+// Explanations remain visible once work starts and after completion.
+for(const status of ['running','done']){
+ const job={...fitJob,status,payload:{...fitJob.payload,collaboration:{...fitPlan,...{calledRoles:[8],handoffs:delivered.handoffs,outputs:delivered.outputs}}}};
+ assert(context.missionControlTraceMarkup(job).includes(escape(fit)));
+}
+// Older plans without saved reasons must not invent qualifications or show blanks.
+assert(!render(base).includes('Why this agent'));
+assert(!context.collaborationMarkup(chatJob,0).includes('Why this agent'));
+assert(!context.missionControlTraceMarkup({...fitJob,payload:{...fitJob.payload,roster:[]}}).includes('Jinny &lt;saved&gt;'));
+assert.match(context.missionControlTraceMarkup({...fitJob,payload:{...fitJob.payload,roster:[]}}),/Requested agent/);
+console.log('PASS: assignment reasons and declined hires in chat and Mission Control; historical identities, escaping and legacy plans.');
+
 // The final reply and specialist research are distinct files, not two team responses.
 const responsePath='artifacts/plan-chat.md',briefPath='artifacts/shared-chat-r8-brief.md',htmlPath='artifacts/page-chat-r5.html';
 const withFiles={...chatJob,result:{answer:'Finished.',files:[responsePath,briefPath,htmlPath,responsePath]},payload:{...chatJob.payload,collaboration:{...chatPlan,handoffs:{8:{task:'Research',receivedFrom:[]}},outputs:{8:{name:'Scout',answer:'Research first.',files:[briefPath,briefPath,htmlPath]}}}}};

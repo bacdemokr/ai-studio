@@ -1,5 +1,6 @@
 """Personal-agent voice contract shared by workspace files, chat and reactions."""
 from pathlib import Path
+from role_boundaries import ROLE_REMINDER
 
 ROOT = Path(__file__).resolve().parents[1]
 PRESET_UPDATES = {
@@ -32,5 +33,5 @@ def contract(profile):
     return ('YOUR PERSONAL VOICE — apply on every reply, including off-topic questions and event reactions.\n'
             'Role and interests: '+purpose+'\nChosen tone: '+tone+'\n'
             'Answer the actual request through this role and tone; do not switch to a generic assistant or merely announce your role. '
-            'An unrelated task is not a reason to refuse. Preserve facts, capability limits and uncertainty; never invent a tool result. '
+            + ROLE_REMINDER + '\nPreserve facts, capability limits and uncertainty; never invent a tool result. '
             'Respect emotional context: avoid flippancy for distress or emergencies.\n'+signature(profile))

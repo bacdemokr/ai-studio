@@ -22,7 +22,7 @@ def check(source=SOURCE, manifest=MANIFEST):
     expected = json.loads(manifest.read_text())
     if fingerprint(source) != expected:
         raise RuntimeError('App requires a different runtime image. Use the matching release image, or rebuild from source with ./bac start.')
-    for name in ('scripts/container_runtime.py', 'scripts/build.py', 'src/studio.js', 'crew', 'skills',
+    for name in ('scripts/container_runtime.py', 'scripts/build.py', 'src/studio.js', 'skills', 'scenario', 'VERSION',
                  'runtime/research-guard/index.mjs', 'runtime/research-guard/openclaw.plugin.json'):
         if not (source / name).exists():
             raise RuntimeError('Incomplete app bundle: missing ' + name)
@@ -31,12 +31,19 @@ def check(source=SOURCE, manifest=MANIFEST):
 def stage(source=SOURCE, app=APP, manifest=MANIFEST):
     check(source, manifest)
     # Snapshot once per container start: patches never mix files in a running server.
-    for name in ('scripts', 'src', 'crew', 'skills', 'docker', 'runtime'):
+    for name in ('scripts', 'src', 'skills', 'docker', 'runtime', 'scenario'):
         target = app / name
         if target.exists():
             shutil.rmtree(target)
         shutil.copytree(source / name, target, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
     shutil.copyfile(source / 'README.md', app / 'README.md')
+    shutil.copyfile(source / 'VERSION', app / 'VERSION')
+    identity = source / 'source-version.json'
+    if identity.is_file():
+        shutil.copyfile(identity, app / identity.name)
+    else:
+        # A source checkout must not retain a previous release's commit identity.
+        (app / identity.name).unlink(missing_ok=True)
     release = source / 'release.json'
     if release.exists():
         os.environ['BAC_DEMO_VERSION'] = json.loads(release.read_text())['version']

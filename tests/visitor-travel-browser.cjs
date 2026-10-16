@@ -32,8 +32,8 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
   await page.locator('[data-visitor-agent="pixel"]').click();assert.equal(await page.locator('[data-campus-agent="5"]').getAttribute('aria-pressed'),'true');
   await page.screenshot({path:'/tmp/bac-visitor-team-seated.png'});
   const point=(await inspect()).visitorTravel[0].position;
-  // Switch scenarios during actual work: the actor stays on the Open Task floor.
-  await page.evaluate(()=>{BacCampus.setRoom('lounge');const s=BacDemo.snapshot();s.live=true;s.crewMission=null;BacCampus.setLive(s);BacCampus.setCollection(fixtureAgents,'pixel');});
+  // Open Task stays the selected scenario while navigating to other rooms.
+  await page.evaluate(()=>{BacCampus.setRoom('lounge');BacCampus.setCollection(fixtureAgents,'pixel');});
   assert.deepEqual((await inspect()).visitorTravel[0].position,point);
   await page.evaluate(()=>{BacCampus.setScenario('plan');BacCampus.setLive(fixtureState);BacCampus.setRoom('lounge',{instant:true});BacCampus.setRoom('workshop',{instant:true});BacCampus.setRoom('mission',{instant:true});});
   assert.equal((await inspect()).visitorTravel[0].phase,'working');assert.deepEqual((await inspect()).visitorTravel[0].position,point);
@@ -42,7 +42,25 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
   assert(!(await inspect()).residents.find(r=>r.key==='pixel').visible);
   await page.evaluate(()=>BacCampus.setLive(fixtureState));assert.deepEqual((await inspect()).visitorTravel[0].position,point,'Completed history keeps the same desk');
   await page.evaluate(()=>{fixtureState.crewMission=null;fixtureState.agents.forEach((a,i)=>a.displayed=i===0);BacCampus.setLive(fixtureState);});
+  // Returning labels keep their size at the scene/panel boundary.
+  await page.evaluate(()=>BacCampus.setRoom('lounge',{instant:true}));
+  const samples=await page.evaluate(async()=>{
+   const rows=[],until=performance.now()+2500;
+   while(performance.now()<until){
+    await new Promise(requestAnimationFrame);
+    const node=document.querySelector('[data-visitor-agent="pixel"]');
+    if(!node||node.hidden||node.querySelector('small').textContent!=='Returning to Lounge')continue;
+    const box=node.getBoundingClientRect(),view=document.querySelector('#campus-viewport').getBoundingClientRect();
+    rows.push({width:box.width,height:box.height,left:box.left-view.left,right:box.right-view.left,view:view.width});
+   }
+   return rows;
+  });
+  assert(samples.length>10,'Measured real return animation');
+  assert(Math.max(...samples.map(x=>x.width))-Math.min(...samples.map(x=>x.width))<1,'Return label width stays stable');
+  assert(Math.max(...samples.map(x=>x.height))-Math.min(...samples.map(x=>x.height))<1,'Return label does not rewrap');
+  assert(samples.every(x=>x.left>=11&&x.right<=x.view-11),'Return labels stay inside scene boundary');
   await wait(()=>BacCampus.inspect().visitorTravel.length===0);
+  await page.evaluate(()=>BacCampus.setRoom('mission',{instant:true}));
   // Cancellation in the corridor must reverse from the current position.
   await page.evaluate(()=>fixturePlan('running','pixel',5,'job2'));await page.waitForTimeout(700);
   const before=(await inspect()).visitorTravel[0].position;
@@ -51,8 +69,10 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
   // Assign another role before the walk home completes, preserving one actor.
   await page.evaluate(()=>fixturePlan('running','pixel',8,'job3'));assert.equal((await inspect()).visitorTravel.length,1);
   await wait(()=>BacCampus.inspect().visitorTravel[0]?.phase==='working');assert.equal((await inspect()).visitorTravel[0].role,8);
-  // Complete while looking at the Lounge, using the shared activity snapshot.
-  await page.evaluate(()=>{BacCampus.setRoom('lounge');const s=BacDemo.snapshot();s.live=true;s.crewMission=null;BacCampus.setLive(s);fixtureAgents.forEach(a=>a.activity=null);BacCampus.setCollection(fixtureAgents,'pixel');});
+  // Completing offscreen keeps the participant at its desk until reset or reassignment.
+  await page.evaluate(()=>{BacCampus.setRoom('lounge');fixturePlan('done','pixel',8,'job3');});
+  assert.equal((await inspect()).visitorTravel[0].phase,'working');
+  await page.evaluate(()=>{fixtureState.crewMission=null;fixtureState.agents.forEach((a,i)=>a.displayed=i===0);BacCampus.setLive(fixtureState);});
   s=await inspect();assert.deepEqual(s.visitorTravel[0].destination,s.residents.find(r=>r.key==='pixel').position,'Reassignment retains the full route home, not just the last turning point');
   await wait(()=>BacCampus.inspect().visitorTravel.length===0);assert((await inspect()).residents.find(r=>r.key==='pixel').visible);
   // Reduced motion and pause settle immediately; deletion never leaves a ghost.

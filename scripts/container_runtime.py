@@ -57,20 +57,20 @@ def init():
     # Host networking allows the driver to bind its dedicated Docker bridge callback.
     # TLS/JWT protect that callback; the operator endpoint is loopback only.
     config = f'''[openshell]
-version = 1
+version = 2
 [openshell.gateway]
 bind_address = "127.0.0.1:{gateway}"
 health_bind_address = "127.0.0.1:{health}"
-compute_drivers = ["docker"]
+compute_driver = "docker"
 log_level = "info"
 [openshell.gateway.mtls_auth]
 enabled = true
 [openshell.drivers.docker]
-sandbox_namespace = "bac-demo"
-network_name = "bac-sandboxes"
+sandbox_label = "bac-demo"
 default_image = "{images['openclaw']}"
 supervisor_image = "{images['supervisor']}"
-image_pull_policy = "IfNotPresent"
+sandbox_runtime_image = "{images['sandbox']}"
+image_pull_policy = "if_not_present"
 grpc_endpoint = "https://host.openshell.internal:{gateway}"
 '''
     target = GATEWAY_STATE / 'gateway.toml'

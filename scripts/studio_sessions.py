@@ -154,7 +154,8 @@ class SessionLifecycle:
                     break
                 try:
                     self.cleanup_session(row['participant'])
-                except Exception:
+                except Exception as error:
+                    self.diagnostics.emit('session.cleanup-failed', participant=row['participant'], error=error)
                     # Do not discard ownership after a partial native failure.
                     # Keep the account fenced and resume from completed targets.
                     logging.exception('Inactive demo session cleanup will retry')

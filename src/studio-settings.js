@@ -37,6 +37,7 @@ function settingsUtilityPanels(){return `  <section id="studio-settings-location
    <div class="studio-reset-row"><div><small class="studio-reset-stage">STAGES 01 / 02</small><h3>Hiring &amp; Agent lounge</h3><p>Remove hired agents and their chats, files, and workspaces.</p></div><button type="button" id="studio-agent-reset" class="studio-secondary" aria-label="Remove Stage 1 and 2 agents" ${(data.agents||[]).length?'':'disabled'}>Remove agents</button></div>
    ${[['plan','03','Open Task','plan']].map(([scenario,stage,title,id])=>`<div class="studio-reset-row"><div><small class="studio-reset-stage">STAGE ${stage}</small><h3>${title}</h3><p>Clear Open Task chats, documents and results.</p></div><button type="button" id="studio-settings-${id}-reset" data-reset-scenario="${scenario}" class="studio-secondary" aria-label="Reset ${title}">Reset Open Task</button></div>`).join('')}
    <div class="studio-reset-footer"><p>Reset all stages. Model and connection settings are kept.</p><button type="button" id="studio-reset-all" class="studio-danger">Reset all</button></div>
+   ${issueReportPanel()}
   </section>
 `;}
 
@@ -141,6 +142,7 @@ async function openModelConnections(){
   <div class="connection-footer"><p id="studio-connections-status" role="status"></p><button type="button" id="studio-connections-save" class="studio-primary">Save changes</button></div></div></section>
   ${settingsUtilityPanels()}
   <p id="studio-settings-status" role="status"></p><div class="studio-dialog-actions"><button type="button" id="studio-start-agents" class="studio-secondary" ${runtime.gateway?'hidden':''}>Start agents</button><button type="submit" class="studio-primary" id="studio-save-settings" hidden>Save location</button></div></form>`);
+ bindDiagnosticActions();
  const form=el('config-form');
  const panel=el('model-connections'),notice=el('connections-status'),owner=agentId,scenario=selectedScenario;
  let working=false,editing=false,inventoryRevision=0,tab='model',telegram=null,telegramRevision=0;
@@ -200,7 +202,7 @@ async function openModelConnections(){
    if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
    el('settings-'+button.dataset.settingsTab+'-panel').hidden=!active;
   }
-  el('save-settings').hidden=tab==='model'||tab==='reset';el('save-settings').textContent=tab==='telegram'?'Connect Telegram':'Save location';
+  el('save-settings').hidden=!['location','telegram'].includes(tab);el('save-settings').textContent=tab==='telegram'?'Connect Telegram':'Save location';
   el('start-agents').hidden=tab!=='model'||!!runtime.gateway;el('settings-status').textContent='';
   if(tab==='reset')syncResetButtons();
   if(tab==='telegram'&&!telegram)loadTelegram();

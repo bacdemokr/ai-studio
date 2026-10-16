@@ -69,7 +69,7 @@ def record_images(lock, app_image, gateway=GATEWAY):
     marker = gateway_marker(gateway)
     refs = image_history(gateway)
     refs.add(app_image)
-    refs.update(lock.get('images', {}).get(key) for key in ('gateway', 'supervisor', 'openclaw'))
+    refs.update(lock.get('images', {}).get(key) for key in ('gateway', 'supervisor', 'sandbox', 'openclaw'))
     refs.discard(None)
     if any(not re.fullmatch(r'[a-z0-9][a-z0-9./:_@-]+', ref) for ref in refs):
         raise RuntimeError('Invalid image reference.')
@@ -246,7 +246,7 @@ def remove(docker, gateway=GATEWAY, lock=None, hostname=None, installation=None,
     # The launcher removes images after this helper exits, never with --force.
     images = docker.call('GET', '/images/json?all=1')
     refs = previous_images | {ref for key, ref in (lock or {}).get('images', {}).items()
-                              if key in ('gateway', 'supervisor', 'openclaw')}
+                              if key in ('gateway', 'supervisor', 'sandbox', 'openclaw')}
     refs.update(c['Image'] for c in owned if c.get('Image'))
     for image in images:
         labels = image.get('Labels') or {}

@@ -18,6 +18,7 @@ import urllib.request
 import ops_common as c
 import runtime_settings as settings
 from browser_capability import BROWSER_LIMIT
+from role_boundaries import ROLE_BOUNDARY
 from tech_radar import HEARTBEAT_SECONDS
 
 VERSION = '2026.9.4'
@@ -74,7 +75,10 @@ def environment():
     loader = Path(__file__).with_name('native_cleanup_loader.mjs').resolve().as_uri()
     options = os.environ.get('NODE_OPTIONS', '')
     options += '' if loader in options else ' --import=' + loader
-    return {**os.environ, 'NODE_OPTIONS':options.strip(), 'OPENCLAW_STATE_DIR': str(root() / 'state'),
+    # The native SSH ProxyCommand starts the CLI directly, outside our wrapper.
+    # Carry its app-owned gateway registry/TLS location into that child too.
+    from openshell_runtime import environment as openshell_environment
+    return {**openshell_environment(), 'NODE_OPTIONS':options.strip(), 'OPENCLAW_STATE_DIR': str(root() / 'state'),
             'OPENCLAW_CONFIG_PATH': str(config_path()),
             'PATH': str(root() / 'node/bin') + os.pathsep + os.environ.get('PATH', '')}
 
@@ -244,16 +248,7 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
                    'When someone shares your interests, add a different observation within those interests instead of adopting an unrelated specialty. '
                    'Do not invent personal history, hobbies or expertise.\n'
                    '\n# Requests outside your role\n'
-                   'When a request clearly falls outside your role, you may open with one short, '
-                   'in-character aside in the user’s language, then help with the actual request. '
-                   'Match the literal Tone above: a cynical voice may lightly grumble about the unexpected assignment '
-                   'and confidently take it on; a warm voice can acknowledge the detour kindly; '
-                   'a playful voice can make a small joke. These are examples, not a replacement for a custom tone. '
-                   'Do not refuse merely because the topic is outside your specialty or ask the user to assign it again. '
-                   'Keep the aside occasional, not on every reply, and skip it for urgent, sensitive or distressed requests '
-                   'or when the user asks for a straight answer. Never belittle the user or sound genuinely resentful. '
-                   'Continue with a useful answer within your actual skills and permissions; '
-                   'if a necessary tool or source is unavailable, say so without pretending you completed the work.\n'
+                   + ROLE_BOUNDARY + '\n' +
                    '\n# Capability limits\n'
                    'Equipped skills: ' + (', '.join(SKILLS[s][0] for s in equipped) or 'None') + '.\n'
                    'Being outside your role is not the same as lacking a required capability. '
@@ -399,7 +394,7 @@ def tool_allowlist(profile, role=None):
     equipped = list(profile.get('skills', []))
     radar_exec = not role and 'radar' in equipped
     allow = ['read'] if protected else ['read', 'write', 'edit']
-    if protected and any(s in equipped for s in ('memory', 'builder', 'writer', 'radar')):
+    if protected and any(s in equipped for s in ('memory', 'builder', 'writer', 'radar', 'data-analysis', 'interface-design')):
         allow += ['write', 'edit']
     # Research handoffs need native file writes too, inside the same protected workspace.
     if protected and 'web' in equipped and 'write' not in allow:
@@ -426,7 +421,7 @@ def collaboration_capabilities(profile, role=None):
     ]
     if 'write' in tools:
         limits.append('write can save Markdown, HTML and JavaScript, including a self-contained webpage. '
-                      'A Coding skill or Programmer persona is not required; tool access does not guarantee output quality.')
+                      'Implementation requires an equipped Coding skill, even for a Programmer. File access does not grant a missing skill.')
     if 'exec' in tools:
         limits.append('exec is restricted by workspace instructions to shipped event commands for an explicit event assignment'
                       ' or sandbox operations under OpenShell policy; it is not a general code execution capability.')
@@ -440,8 +435,8 @@ def collaboration_capabilities(profile, role=None):
     else:
         limits.append('No command execution: code, calculations and reviews use file tools and reasoning, not a Python/statistics/test runner.')
     if 'web_fetch' in tools:
-        limits.append('web_fetch can attempt public URLs on any requested topic, including known official homepages; '
-                      'it is not restricted to the persona topic. A Web research skill is not required. '
+        limits.append('web_fetch can attempt public URLs for in-scope work, including known official homepages; '
+                      'A relevant equipped skill is required: Web research for public research, Live weather for forecasts, or another skill for its stated scope. Tool availability and role text do not grant a missing skill. '
                       'Start with supplied URLs or known home/section pages and follow observed links; do not invent deep article URLs. '
                       'Reachability is not guaranteed; cite only successful reads.')
     else:
@@ -929,7 +924,7 @@ def respond(agent_id, session, prompt, images=None, json_response=False, timeout
     metrics['endpoint']=model_endpoint(agent_id)
     answer=Reply(content, metrics)
     answer.activity = observed_activity(agent_id, session, started)
-    if re.fullmatch(r'bac-plan-[a-f0-9]{24}-8-[a-z0-9-]+', session):
+    if re.fullmatch(r'bac-plan-[a-f0-9]{24}-[4-8]-[a-z0-9-]+', session):
         from research_recovery import recovered_sources
         answer.sources = recovered_sources(root() / 'state', agent_id, session, started)
     return answer
@@ -1045,12 +1040,9 @@ def policy_prepare(agent_id):
         raise RuntimeError('Invalid OpenShell sandbox identity.')
     if name not in agent_policy.sandbox_names():
         config = agent_policy.plugin_config()['config']
-        # Match the pinned native plugin's capability probe. OpenShell 0.0.106
-        # keeps sandboxes after `true` exits, but has no --detach flag. Never
-        # retry creation with different flags after a possibly partial create.
-        help_text = agent_policy.shell('sandbox', 'create', '--help')
-        command = ('--detach', '--', 'sleep', 'infinity') if re.search(
-            r'^\s*--detach(?:\s|$)', help_text, re.M) else ('--', 'true')
+        # The pinned 0.1.4 CLI supports detached creation. Never retry creation
+        # with different flags after a possibly partial create.
+        command = ('--detach', '--', 'sleep', 'infinity')
         agent_policy.shell('sandbox', 'create', '--name', name, '--from', config.get('from', 'openclaw'),
             '--policy', str(agent_policy.default_path()), '--no-auto-providers',
             *command, timeout=300)

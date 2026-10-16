@@ -16,10 +16,10 @@
       "intro": "Give Casey a task for your selected team.",
       "points": [
         "Hired only (default) uses your hires. Choose Hired + Standby to include backups.",
-        "Send /goal with the result you want. Name any agents to include and attach relevant files.",
+        "Send /goal with the result you want, or select an example below Casey. Attach any relevant files.",
         "Track work in Mission Control, then open the answer and files in Results."
       ],
-      "note": "Any hired role can participate. Remove /goal to chat directly with Casey."
+      "note": "Casey matches the task to roles and equipped skills. If neither fits, it explains the gap. Remove /goal to chat directly with Casey."
     }
   }
 ]

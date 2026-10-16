@@ -11,14 +11,14 @@ class TeamModeTests(unittest.TestCase):
     execute = fixtures.VisitorTeamTests.execute
     specialists = fixtures.VisitorTeamTests.specialists
     def test_hired_only_keeps_casey_and_runs_named_hire(self):
-        # Weather is sufficient to join: role/skill labels are not admission requirements.
-        self.assertEqual(self.app.profile(self.owner)['skills'], ['weather'])
+        # The selected hire has Coding; role suitability is separate from team admission.
+        self.assertEqual(self.app.profile(self.owner)['skills'], ['builder'])
         job = self.execute(self.start(teamMode='hired'))
         self.assertEqual(job['status'], 'done')
         self.assertEqual(job['payload']['teamMode'], 'hired')
         self.assertEqual([c[0] for c in self.specialists()], ['bac-' + self.owner])
         self.assertIn('HIRED AGENTS ONLY', self.adapter.calls[0][2])
-        self.assertEqual(self.app.profile(self.owner)['skills'], ['weather'])
+        self.assertEqual(self.app.profile(self.owner)['skills'], ['builder'])
         self.assertEqual(job['payload']['collaboration']['visitorBindings']['5']['key'], self.owner)
 
     def test_hired_only_rejects_builtin_selection_before_work_and_repairs_once(self):
@@ -49,7 +49,9 @@ class TeamModeTests(unittest.TestCase):
     def test_hired_only_dispatch_guard_survives_missing_binding(self):
         # Simulate a binding regression after a valid plan: the execution boundary
         # must still reject the built-in occupant of this assignment's role.
-        with patch('visitor_teams.bind', return_value=None), self.assertRaisesRegex(RuntimeError, 'built-in specialist cannot be started'):
+        def lose_bindings(plan, *args):
+            plan['requiredAgents'] = list(args[2])
+        with patch('visitor_teams.bind', side_effect=lose_bindings), self.assertRaisesRegex(RuntimeError, 'built-in specialist cannot be started'):
             self.execute(self.start(teamMode='hired'))
         self.assertFalse(self.specialists())
         self.assertEqual({c[0] for c in self.adapter.calls}, {'bac-' + self.manager + '-r0'})
@@ -90,12 +92,12 @@ class TeamModeTests(unittest.TestCase):
                 self.start(teamMode=value)
 
     def test_hired_only_independent_review_cannot_be_self_review_or_builtin(self):
-        members=[{'key':self.owner,'name':'Pixel'}]
-        plan={'tasks':[{'role':5,'agent':self.owner},{'role':4,'agent':self.owner}]}
+        members=[{'key':self.owner,'name':'Pixel','skills':['builder']}]
+        plan={'tasks':[{'role':5,'agent':self.owner,'roleFit':'Coding skill builds the page.'},{'role':4,'agent':self.owner,'roleFit':'Reviewer role inspects the page.'}]}
         with self.assertRaises(TeamSelectionError):validate_selection(plan,members,[], 'hired')
         plan['tasks'][1]['agent']='builtin'
         with self.assertRaises(TeamSelectionError):validate_selection(plan,members,[], 'hired')
-        plan['tasks'][1]['agent']='reviewer';members.append({'key':'reviewer','name':'Review'})
+        plan['tasks'][1]['agent']='reviewer';members.append({'key':'reviewer','name':'Review','skills':['builder']})
         validate_selection(plan,members,[], 'hired')
 
     def test_modes_remain_isolated_on_followup(self):

@@ -65,8 +65,12 @@ def stage():
                 for member in source.infolist():
                     if not member.is_dir():
                         (destination / member.filename).chmod(0o755 if member.external_attr >> 16 & 0o111 else 0o644)
+        c.write_json(destination / 'source-version.json', {'commit': revision,
+                     'branch': git('branch', '--show-current'), 'modified': False})
+        version_file = destination / 'VERSION'
+        version = version_file.read_text().strip() if version_file.exists() else revision
         c.run([sys.executable, destination / 'scripts/build.py'],
-              env={**os.environ, 'BAC_DEMO_VERSION': revision}, cwd=destination)
+              env={**os.environ, 'BAC_DEMO_VERSION': version}, cwd=destination)
         page = destination / 'app/index.html'
         if not page.exists() or 'id="bac-planner"' not in page.read_text():
             raise RuntimeError('New release did not produce the expected application.')

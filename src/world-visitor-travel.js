@@ -106,6 +106,12 @@ function animateVisitors(dt){
     v.node.classList.toggle('visitor-waiting',seated);v.node.classList.toggle('working',working);v.node.classList.toggle('selected',activeScenario==='plan'&&(state.selectedVisitorKey===v.key||v.role!==null&&activeSelection===v.role));
     v.node.hidden=!(overview||journey||room==='mission'&&activeScenario==='plan'||room==='lounge'&&stepping);
     positionLabel(v.node,v.group.position.clone().add(new THREE.Vector3(0,2.2,0)));
+    // Keep the measured label width while moving beside the detail panel.
+    // Translate it inward instead of letting absolute-position shrink-to-fit wrap it.
+    if(!v.node.hidden&&v.node.style.display!=='none'){
+      const half=v.node.offsetWidth/2;
+      v.node.style.left=THREE.MathUtils.clamp(parseFloat(v.node.style.left),half+12,viewport.clientWidth-half-12)+'px';
+    }
   }
   syncVisitorResidents();
 }

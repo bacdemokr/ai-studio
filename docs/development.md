@@ -31,7 +31,7 @@ Edit `src/` and run `python3 -B scripts/build.py`; refresh for UI changes. Resta
 ## Tests
 
 ```bash
-python3 -B -m unittest discover -s tests -p 'test_*.py'
+PYTHONPATH=scripts:tests python3 -B -m unittest discover -s tests -p 'test_*.py'
 ```
 
 Tests use temporary state and model adapters. Browser tests require Playwright and Chrome/Chromium. Use a separate fixture server, never live demo data:
@@ -74,7 +74,7 @@ Team creation registers its identities and writes the initial workspace definiti
 
 ## Exploratory rehearsal
 
-For the visitor branch, also use the [visitor-team regression checklist](visitor-regression.md). It covers both current team modes, per-hire models, explicit participants and all four BB scenarios.
+For the visitor branch, also use the [visitor-team regression checklist](visitor-regression.md). It covers both current team modes, per-hire models, role-or-skill suitability, explicit participants and the five in-app example goals. Use affected tests for focused maintenance; a full exploratory rehearsal is a separate step, with model and target-host coverage recorded explicitly.
 
 For stability work, test complete journeys as well as individual fixes: first use, mixed skills, repeated questions, simultaneous Heartbeat and foreground work, connection loss/recovery, cancellation/reset, agent switching, and localhost versus LAN HTTP. Inspect the actual outputs and recovery, not just Ready indicators.
 
@@ -90,7 +90,7 @@ Heartbeat delivery and slow Telegram. Native services, model responses and Teleg
 are simulated; application logic, SQLite and workspace files are real.
 
 ```bash
-python3 -B -m unittest discover -s tests -p test_twelve_agents.py
+PYTHONPATH=scripts:tests python3 -B -m unittest discover -s tests -p test_twelve_agents.py
 node tests/comparison-capacity.cjs
 # Separate terminal; disposable HTTP server, no live demo data:
 python3 -B tests/fixture_twelve_agents.py
@@ -121,3 +121,7 @@ For the hired-agent exec contract, run `node tests/visitor-exec-native.mjs /path
 - [Telemetry](telemetry.md)
 
 Historical prototype screenshots and design notes are not shipped as current documentation. Compatibility readers for saved jobs and policies remain intentional; they preserve existing data.
+
+## Deferred discussion
+
+Follow-up requests that revise a previously completed deliverable will be discussed separately. Existing behavior remains in place; repeated edits, handoff reuse and producer changes need a dedicated end-to-end review before stronger reliability claims. This is distinct from Casey’s single bounded repair within an active goal.

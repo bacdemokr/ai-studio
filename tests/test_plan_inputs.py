@@ -17,6 +17,8 @@ class PlanInputs(unittest.TestCase):
         self.start()
         self.app.execute(self.app.next_job())
         self.assertEqual(len(self.adapter.calls), 7)
+        self.assertIn('"skills": ["data-analysis"]', self.adapter.calls[0][2])
+        self.assertIn('"skillScope"', self.adapter.calls[0][2])
         for _, _, prompt in self.adapter.calls:
             self.assertIn('Team capabilities (valid at every stage', prompt)
             self.assertIn('web_fetch can attempt public URLs', prompt)
@@ -29,6 +31,35 @@ class PlanInputs(unittest.TestCase):
         self.adapter.plan['tasks'] = [
             {'role': 6, 'task': 'Analyze sales', 'inputs': ['document-0']},
             {'role': 4, 'task': 'Independently check sales', 'inputs': ['document-0']}]
+
+    def test_small_csv_preview_cannot_bypass_specialist_dispatch(self):
+        self.prepare_inputs()
+        self.adapter.plan = {'summary': 'I can sort the preview myself.', 'tasks': [],
+                             'outcome': 'complete', 'answer': 'Saved artifacts/ranking.csv.'}
+        original = self.adapter.respond
+        def respond(agent, session, prompt, **kwargs):
+            if session.endswith('-planning-input-repair'):
+                self.assertIn('Casey cannot perform the work', prompt)
+                return json.dumps({'summary': 'Ada will analyze the data.', 'tasks': [
+                    {'role': 6, 'task': 'Sort the supplied sales figures.', 'inputs': ['document-0']} ]})
+            return original(agent, session, prompt, **kwargs)
+        self.adapter.respond = respond
+        result = self.start('/goal Sort sales (1).csv.')
+        self.app.execute(self.app.next_job())
+        plan = self.job(result)['payload']['collaboration']
+        self.assertEqual(plan['inputSelectionRecovery']['status'], 'corrected')
+        self.assertEqual(plan['calledRoles'], [6])
+
+    def test_small_csv_without_suitable_skill_can_decline_without_work(self):
+        self.prepare_inputs()
+        self.adapter.plan = {'summary': 'This team cannot analyze the file.', 'tasks': [],
+                             'outcome': 'unavailable', 'answer': 'Equip Data interpretation.'}
+        result = self.start('/goal Sort sales (1).csv.')
+        self.app.execute(self.app.next_job())
+        job = self.job(result)
+        self.assertEqual(job['payload']['collaboration']['outcome'], 'unavailable')
+        self.assertEqual(job['payload']['collaboration']['calledRoles'], [])
+        self.assertEqual(len(self.adapter.calls), 1)
 
     def test_reviewer_gets_readable_paths_while_captain_keeps_download_references(self):
         self.adapter.plan['tasks'] = [{'role': 5, 'task': 'Build a page'}, {'role': 4, 'task': 'Review it'}]

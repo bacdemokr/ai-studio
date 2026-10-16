@@ -1,4 +1,13 @@
 function planNames(plan){return defaultNames.map((name,role)=>plan?.visitorBindings?.[role]?.name||name);}
+function assignmentFitMarkup(task){
+ const reason=typeof task?.roleFit==='string'?task.roleFit.trim():'';
+ return reason?'<p class="crew-assignment-fit"><span>Why this agent</span>'+escape(reason)+'</p>':'';
+}
+function declinedAssignmentsMarkup(job){
+ const declined=job.payload.collaboration.declinedAgents||[],roster=job.payload.roster||[];
+ if(!declined.length)return '';
+ return '<div class="crew-declined-assignments"><small>Not assigned</small><ul>'+declined.map(item=>'<li><strong>'+escape(roster.find(member=>member.key===item.agent)?.name||'Requested agent')+'</strong><span>'+escape(item.reason)+'</span></li>').join('')+'</ul></div>';
+}
 function assignedVisitor(role){return selectedScenario==='plan'?seatedCollaboration()?.payload.collaboration.visitorBindings?.[role]:null;}
 function selectedCrewVisitor(){return selectedScenario==='plan'&&selectedOpenTaskVisitor?(data.agents||[]).find(agent=>agent.key===selectedOpenTaskVisitor&&!agent.deleting):assignedVisitor(selectedCrewRole);}
 function selectOpenTaskVisitor(key){
@@ -42,7 +51,7 @@ root.addEventListener('click',event=>{const page=event.target.closest('[data-pre
 // The latest saved plan owns the visible team, including after a refresh.
 async function stageCollaboration(job){
  if(selectedScenario!=='plan')await chooseScenario('plan');
- scenarioChoosing=false;render();showCollaboration();scenarioChoosing=false;renderRoomVisibility();
+ render();showCollaboration();renderRoomVisibility();
 }
 // Keep this visit’s chosen team visible until a newer plan or reset.
 function currentCollaboration(){
@@ -246,7 +255,7 @@ function missionControlTraceMarkup(job){
  const detail=(key,label,content)=>'<details class="mission-trace-detail" data-trace-details="'+key+'"><summary>'+escape(label)+'</summary><div class="chat-prose">'+content+'</div></details>';
  const question=String(plan.task||job.payload.prompt||'').replace(/^\s*\/(?:goals?|plans?)(?=\s|$)/i,'').trim();
  let markup=row('user','User','Submitted','<strong>Request</strong><div class="chat-prose">'+messageMarkup(question)+'</div>','',true,'done');
- markup+=row('plan','Casey',plan.summary?'Plan ready':active?'Planning':'No plan saved','<strong>Approach</strong><div>'+messageMarkup(plan.summary||(active?'Casey is deciding which expertise this request needs.':'No plan was saved before the work stopped.'))+'</div>','data-plan-role="0"',true,plan.summary?'done':active?'working':'');
+ markup+=row('plan','Casey',plan.summary?'Plan ready':active?'Planning':'No plan saved','<strong>Approach</strong><div>'+messageMarkup(plan.summary||(active?'Casey is deciding which expertise this request needs.':'No plan was saved before the work stopped.'))+'</div>'+declinedAssignmentsMarkup(job),'data-plan-role="0"',true,plan.summary?'done':active?'working':'');
  const called=tasks.filter(task=>plan.handoffs?.[task.role]||plan.outputs?.[task.role]||plan.calledRoles?.includes(task.role));
  const calledOrder=collaborationRoleOrder(plan);
  called.sort((a,b)=>calledOrder.indexOf(Number(a.role))-calledOrder.indexOf(Number(b.role)));
@@ -256,7 +265,7 @@ function missionControlTraceMarkup(job){
   const missing=output?.handoffStatus==='missing';
   const status=missing?(working&&recovery?.status==='working'?'Saving missing handoff':'Handoff incomplete'):output?.incomplete?'Partial work saved':output?'Delivered':working?(job.status==='stopping'?'Stopping':'Working'):active?'Started':'Incomplete';
   const expected=h?.expected||task.expected;
-  const assignment='<strong>Casey’s assignment</strong><div>'+messageMarkup(h?.task||task.task)+'</div>'+(expected?'<div class="mission-expectation"><small>Expected result</small><div>'+messageMarkup(expected)+'</div></div>':'')+(h?'<small class="mission-plan-inputs">Received: '+escape(['Casey’s brief',...(h.receivedFrom||[]).map(i=>defaultNames[Number(i)]+"’s contribution")].join(' · '))+'</small>':'');
+  const assignment='<strong>Casey’s assignment</strong><div>'+messageMarkup(h?.task||task.task)+'</div>'+assignmentFitMarkup(task)+(expected?'<div class="mission-expectation"><small>Expected result</small><div>'+messageMarkup(expected)+'</div></div>':'')+(h?'<small class="mission-plan-inputs">Received: '+escape(['Casey’s brief',...(h.receivedFrom||[]).map(i=>defaultNames[Number(i)]+"’s contribution")].join(' · '))+'</small>':'');
   const recoveryNote=recovery?'<p class="mission-plan-inputs">'+escape(recovery.status==='delivered'?'A missing handoff was saved and verified in one repair before continuing.':recovery.status==='working'?'Required files are missing. One repair is using the existing research; later specialists are waiting.':'The required handoff could not be recovered. Later specialists were not started.')+'</p>':'';
   markup+=row('contribution',defaultNames[role],status,assignment+recoveryNote+(output?detail('output-'+role,defaultNames[role]+'’s result',messageMarkup(output.answer||'No response text was saved.')+webpageButtons(output.files,job.id)):''),'data-plan-role="'+role+'"',true,missing?(working?'working':''):output?'done':working?'working':'');
   const reviews=checks.filter(check=>!check.afterRevision&&Number(check.afterRole)===role);
@@ -269,7 +278,7 @@ function missionControlTraceMarkup(job){
  }
  for(const task of tasks.filter(task=>!called.includes(task))){
   const skipped=plan.skippedRoles?.includes(task.role),uncalled=skipped||!active||plan.responseReady;
-  markup+=row(uncalled?'skipped':'planned',defaultNames[task.role],uncalled?'Not called':'Waiting for Casey',detail('assignment-'+task.role,'Planned assignment',messageMarkup(task.task)+(task.expected?'<div class="mission-expectation"><small>Expected result</small>'+messageMarkup(task.expected)+'</div>':''))+'<small class="mission-plan-inputs">'+(skipped?'Casey ended the plan before calling this agent.':uncalled?'This assignment was not started.':'Casey will decide whether this assignment is still needed.')+'</small>','data-plan-role="'+task.role+'"',false,uncalled?'skipped':'planned');
+  markup+=row(uncalled?'skipped':'planned',defaultNames[task.role],uncalled?'Not called':'Waiting for Casey',assignmentFitMarkup(task)+detail('assignment-'+task.role,'Planned assignment',messageMarkup(task.task)+(task.expected?'<div class="mission-expectation"><small>Expected result</small>'+messageMarkup(task.expected)+'</div>':''))+'<small class="mission-plan-inputs">'+(skipped?'Casey ended the plan before calling this agent.':uncalled?'This assignment was not started.':'Casey will decide whether this assignment is still needed.')+'</small>','data-plan-role="'+task.role+'"',false,uncalled?'skipped':'planned');
  }
  if(plan.revision){
   const r=plan.revision,output=r.output,working=active&&r.status==='working';
@@ -371,7 +380,7 @@ function collaborationMarkup(job,role){
  const finalAnswer=collaborationAnswer(job),answer=captain?(finalAnswer||job.result?.error||''):piece?.answer||'';
  const uncalled=!captain&&!piece&&!plan.handoffs?.[role]&&(!pending||plan.responseReady||plan.skippedRoles?.includes(role));
  const status=uncalled?'Casey did not call '+defaultNames[role]+' for this plan.':job.status==='queued'?'Queued - waiting for current studio work to finish.':job.status==='cancelled'?'Stopped.':job.status==='stopping'?'Stopping after the current call…':job.events?.at(-1)?.title||'Waiting for the Captain…';
- const summary=captain&&plan.summary?'<div class="chat-message chat-handoff"><small>Captain’s plan</small><div class="chat-prose">'+messageMarkup(plan.summary)+'</div><ol>'+plan.tasks.map(t=>'<li><strong>'+escape(defaultNames[t.role])+' · '+escape(window.BacCrewCatalog[t.role].collaboration.title)+'</strong>: '+escape(t.task)+(plan.skippedRoles?.includes(t.role)?' <small>Not called - '+(plan.outcome==='partial'?'plan ended with unfinished work':plan.outcome==='unavailable'?'required expertise unavailable':'no longer needed')+'</small>':'')+'</li>').join('')+'</ol></div>':'';
+ const summary=captain&&plan.summary?'<div class="chat-message chat-handoff"><small>Captain’s plan</small><div class="chat-prose">'+messageMarkup(plan.summary)+'</div><ol class="crew-plan-assignments">'+(plan.tasks||[]).map(t=>'<li><strong>'+escape(defaultNames[t.role])+' · '+escape(window.BacCrewCatalog[t.role].collaboration.title)+'</strong>: '+escape(t.task)+(plan.skippedRoles?.includes(t.role)?' <small>Not called - '+(plan.outcome==='partial'?'plan ended with unfinished work':plan.outcome==='unavailable'?'required expertise unavailable':'no longer needed')+'</small>':'')+assignmentFitMarkup(t)+'</li>').join('')+'</ol>'+declinedAssignmentsMarkup(job)+'</div>':'';
  const outputRoles=collaborationRoleOrder(plan).filter(i=>plan.outputs?.[i]);
  const contributions=captain?outputRoles.map(i=>{const p=plan.outputs[i];return '<details class="crew-tool-activity" data-contribution-role="'+i+'"><summary>'+escape(p.name)+' · Contribution</summary>'+customSkillMarkup(p.activity)+'<div class="chat-prose">'+messageMarkup(p.answer)+'</div>'+collaborationFileButtons(p.files,job.id)+'</details>'+collaborationDecisionMarkup({...plan,checks:(plan.checks||[]).filter(check=>!check.afterRevision&&Number(check.afterRole)===i)});}).join(''):'';
  const handoff=!captain&&plan.handoffs?.[role]?'<div class="chat-message chat-handoff"><small>Casey → '+escape(defaultNames[role])+'</small><div class="chat-prose">'+messageMarkup(plan.handoffs[role].task)+'</div><small>Received: '+escape(['Captain’s task',...plan.handoffs[role].receivedFrom.map(i=>defaultNames[Number(i)]+"’s contribution")].join(' · '))+'</small></div>':'';
@@ -388,35 +397,45 @@ function teamReady(){return teamRuntime().teamReady??runtime.ready;}
 function teamModel(role){if(data.teamConnection?.shared){const source=data.teamConnection.effectiveSource,connections=runtime.modelConnections?.connections;if(source==='local'||connections?.api?.provider!=='nvidia'){const id=data.teamConnection.model;return id?{id,label:id}:null;}}if(data.teamConnection?.provider==='local'){const id=data.teamConnection.local?.model;return id?{id,label:id}:null;}const id=data.teamSelections?.find(row=>row.role===role)?.id;return runtime.teamModels?.find(model=>model.id===id)||(id?{id,label:id}:runtime.teamModels?.[[0,5,7].includes(role)?0:1]);}
 let crewDocumentUpload=false;
 const crewDocumentSelections=new Map();
-function excludedCrewDocuments(){
+const crewExampleDocuments=new Set(goalExamples.filter(choice=>choice.document).map(choice=>'inbox/'+choice.document));
+function crewDocumentSelection(){
  const epoch=data.crewChatReset?.epoch||'';
  let selection=crewDocumentSelections.get(selectedScenario);
- if(!selection||selection.epoch!==epoch){selection={epoch,excluded:new Set()};crewDocumentSelections.set(selectedScenario,selection);}
- return selection.excluded;
+ if(!selection||selection.epoch!==epoch){selection={epoch,excluded:new Set(),uploaded:new Set(),example:''};crewDocumentSelections.set(selectedScenario,selection);}
+ return selection;
 }
+function excludedCrewDocuments(){return crewDocumentSelection().excluded;}
 function renderCrewDocuments(){
- const files=data.crewDocuments||[],paths=new Set(files.map(f=>f.path)),excluded=excludedCrewDocuments();
- const docs=files.filter(f=>/\.(pdf|pptx|xlsx|txt|md|csv)$/i.test(f.path)&&!/^(?:plan-input|plan|chat)-[0-9a-f]{24}(?:-|\.)/.test(f.path.split('/').at(-1))&&!(/\.(pdf|pptx|xlsx)\.txt$/i.test(f.path)&&paths.has(f.path.slice(0,-4))));
+ const files=data.crewDocuments||[],paths=new Set(files.map(f=>f.path)),selection=crewDocumentSelection(),excluded=selection.excluded;
+ if(selectedCrewRole===0&&!selectedOpenTaskVisitor&&/^\s*(?:\/(?:goals?|plans?)\s*)?$/i.test(el('crew-prompt').value))selection.example='';
+ // Sample files stay saved for reuse, but belong only to their selected draft.
+ const docs=files.filter(f=>(!crewExampleDocuments.has(f.path)||selection.example===f.path||selection.uploaded.has(f.path))&&/\.(pdf|pptx|xlsx|txt|md|csv)$/i.test(f.path)&&!/^(?:plan-input|plan|chat)-[0-9a-f]{24}(?:-|\.)/.test(f.path.split('/').at(-1))&&!(/\.(pdf|pptx|xlsx)\.txt$/i.test(f.path)&&paths.has(f.path.slice(0,-4))));
  const box=el('crew-documents');box.hidden=selectedCrewRole!==0||(!docs.length&&!crewDocumentUpload);
- box.innerHTML=docs.map(f=>'<label><input type="checkbox" data-crew-document="'+escape(f.path)+'" '+(excluded.has(f.path)?'':'checked')+' '+(crewDocumentUpload?'disabled':'')+'><span>'+escape(f.path.slice(6))+'</span></label>').join('')+(crewDocumentUpload?'<small role="status">Adding document…</small>':'');
+ box.innerHTML=docs.map(f=>'<div class="studio-attachment"><input type="checkbox" aria-label="Attach '+escape(f.path.slice(6))+'" data-crew-document="'+escape(f.path)+'" '+(excluded.has(f.path)?'':'checked')+' '+(crewDocumentUpload?'disabled':'')+'><button type="button" data-attachment-preview="'+escape(f.path)+'" title="Open file in a new tab">'+escape(f.path.slice(6))+'</button></div>').join('')+(crewDocumentUpload?'<small role="status">Adding document…</small>':'');
  return docs.filter(f=>!excluded.has(f.path));
 }
 el('crew-documents').addEventListener('change',event=>{const path=event.target.dataset.crewDocument;if(path){const excluded=excludedCrewDocuments();if(event.target.checked)excluded.delete(path);else excluded.add(path);}});
+el('crew-documents').addEventListener('click',event=>{
+ const button=event.target.closest('[data-attachment-preview]');
+ if(button)openAttachmentTab(button.dataset.attachmentPreview,'0');
+});
 el('crew-document-add').onclick=()=>el('crew-document-input').click();
 el('crew-document-input').onchange=async event=>{await uploadCrewDocuments([...event.target.files]);event.target.value='';};
-async function uploadCrewDocuments(files){
+async function uploadCrewDocuments(files,{example=false}={}){
  if(selectedCrewRole!==0||crewDocumentUpload||el('crew-document-add').disabled)return;
- const target=agentId;crewDocumentUpload=true;syncCrewComposer();renderCrewDocuments();
+ const target=agentId,selection=crewDocumentSelection();crewDocumentUpload=true;syncCrewComposer();renderCrewDocuments();
  try{
   for(const file of files){
    if(file.size>10*1024*1024)throw new Error(file.name+': Choose a file of 10 MB or smaller.');
    const binary=/\.(pdf|pptx|xlsx)$/i.test(file.name);let content;
    if(binary){const bytes=new Uint8Array(await file.arrayBuffer());let raw='';for(let i=0;i<bytes.length;i+=8192)raw+=String.fromCharCode(...bytes.subarray(i,i+8192));content=btoa(raw);}
    else content=await documentText(file);
-   await api('upload',{crewRole:0,name:file.name,content,...(binary?{encoding:'base64'}:{})},target);
+   const result=await api('upload',{crewRole:0,name:file.name,content,...(binary?{encoding:'base64'}:{})},target);
+   if(!example)selection.uploaded.add(result.path);
+   selection.excluded.delete(result.path);
   }
-  await refresh();
- }catch(error){el('crew-chat-error').textContent=error.message;el('crew-chat-error').hidden=false;}
+  await refresh();return true;
+ }catch(error){el('crew-chat-error').textContent=error.message;el('crew-chat-error').hidden=false;return false;}
  finally{crewDocumentUpload=false;syncCrewComposer();renderCrewDocuments();}
 }
 for(const type of ['dragover','drop'])el('crew-chat').addEventListener(type,event=>{
@@ -425,22 +444,24 @@ for(const type of ['dragover','drop'])el('crew-chat').addEventListener(type,even
 });
 function syncCrewComposer(){
  el('crew-chat').hidden=!!selectedOpenTaskVisitor;
- if(selectedOpenTaskVisitor){el('crew-send').disabled=true;el('crew-documents').hidden=true;return;}
+ if(selectedOpenTaskVisitor){el('crew-send').disabled=true;el('crew-documents').hidden=true;syncGoalExamples(true);return;}
  const activePlan=(data.crewChats||[]).find(j=>j.payload?.collaboration&&['queued','running','waiting','stopping'].includes(j.status));
  const captainPlanning=selectedCrewRole===0&&!!activePlan;
  const visitor=assignedVisitor(selectedCrewRole);
  const visitorMissing=visitor&&!visitorAvailable(visitor);
  const memberWorking=!!visitor&&(data.agents||[]).some(a=>a.key===visitor.key&&a.pending>0)||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status)&&(j.payload?.collaboration?(['running','stopping'].includes(j.status)&&j.payload.collaboration.activeRole===selectedCrewRole):j.payload?.crewRole===selectedCrewRole));
- const blocked=resetInProgress||scenarioChoosing||scenarioSwitching||visitorMissing||(visitor?!personalReady(visitor):!teamReady())||!!visitor?.skills?.includes('radar')||!!data.bacResetting||captainPlanning||memberWorking||crewDocumentUpload;
+ const blocked=resetInProgress||visitorMissing||(visitor?!personalReady(visitor):!teamReady())||!!visitor?.skills?.includes('radar')||!!data.bacResetting||captainPlanning||memberWorking||crewDocumentUpload;
  el('crew-document-add').hidden=selectedCrewRole!==0;el('crew-document-add').disabled=blocked;
  renderCrewDocuments();
  const commandOnly=selectedScenario==='plan'&&selectedCrewRole===0&&/^\s*\/(?:goals?|plans?)\s*$/i.test(el('crew-prompt').value);
  el('crew-prompt').disabled=blocked;el('crew-send').disabled=blocked||crewChatSending||commandOnly;
+ syncGoalExamples(resetInProgress||!!data.bacResetting||captainPlanning||memberWorking||crewDocumentUpload||crewChatSending);
+ el('crew-hired-option').closest('.studio-goal-toolbar').hidden=selectedCrewRole!==0;
  el('crew-hired-option').hidden=selectedScenario!=='plan'||selectedCrewRole!==0;
- const teamMode=effectiveTeamMode(),teamLocked=resetInProgress||!!activePlan||crewChatSending||!!data.bacResetting||scenarioSwitching||scenarioChoosing;
+ const teamMode=effectiveTeamMode(),teamLocked=resetInProgress||!!activePlan||crewChatSending||!!data.bacResetting;
  el('crew-team-mode').querySelectorAll('[data-team-mode]').forEach(button=>{button.setAttribute('aria-pressed',String(button.dataset.teamMode===teamMode));button.disabled=teamLocked;});
  const noHires=teamMode==='hired'&&!(data.agents||[]).some(a=>!a.deleting);
- el('crew-team-hint').hidden=!noHires;el('crew-team-hint').textContent=noHires?'Hire an agent to get started. Any role can participate.':'';
+ el('crew-team-hint').hidden=!noHires;el('crew-team-hint').textContent=noHires?'Hire agents with the skills your goal needs.':'';
  el('crew-chat-connection').hidden=!blocked;
  el('crew-chat-connection').textContent=visitorMissing?'This agent was removed. Start a new task with Casey.':visitor?.skills?.includes('radar')?'Tech Radar uses Heartbeat. Manual chat is disabled.':crewDocumentUpload?'Adding document…':resetInProgress?'Resetting…':data.bacResetting?'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(visitor?personalModel(visitor).connected:(teamRuntime().teamModel??runtime.model))?(visitor?personalModelNotice(visitor):'Model not connected. Enable Local or External Endpoint in Settings.'):'Run ./bac start on this computer to connect the team runtime.';
 }
@@ -459,11 +480,8 @@ function renderCrewPassport(){
  const model=visitor?personalModel(visitor):teamModel(i);renderCrewModel(model,visitor);
  if(!teamModelDialog.hidden)renderModelResults();
  const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';portrait.style.setProperty('--avatar-accent',appearanceColors[avatar.color]||appearanceColors.green);
- const skills=[];
- const skillLabels={...titles,'event-tools':'Event tools','event-scheduling':'Presenter scheduling'};
  el('crew-policy').hidden=(visitor&&!visitorAvailable(visitor))||(visitor?.protection||window.BacCrewCatalog[i].protection)!=='openshell';
  syncPolicyBadges();
- const markup=skills.map(s=>'<span>'+escape(skillLabels[s]||s)+'</span>').join('');if(el('crew-skills').innerHTML!==markup)el('crew-skills').innerHTML=markup;
  if(selectedOpenTaskVisitor){
   syncCrewComposer();
   const summary=visitor.skills?.includes('radar')?'Heartbeat paused in Open Task.':template?.summary||visitor.purpose||'Ready for Casey to assign a task.';
@@ -489,7 +507,7 @@ function renderCrewPassport(){
  const request=j.payload.prompt||'Describe the attached image.';
  const status={queued:'Waiting to start…',running:'Working on your message…',waiting:'Waiting for a decision.',stopping:'Stopping…',cancelled:'Stopped.',error:'This message could not finish.'}[j.status];
  return '<article class="chat-turn"><div class="chat-message chat-user"><small>You</small><div>'+escape(request).replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images,j.id)+'</div></div><div class="chat-message chat-agent"><small>'+escape(name)+'</small>'+(held?shieldReplyWait:customSkillMarkup(j.result?.activity)+'<div class="chat-prose">'+messageMarkup(answer||status||'No text reply was returned.')+'</div>'+crewActivityMarkup(j,i)+webpageButtons(j.result?.files,j.id)+(pending?'<div class="chat-progress">'+chatStopButton(j.id,true,j.status==='stopping')+'</div>':''))+'</div>'+(i===0?roundtableMarkup(j):'')+'</article>';
- }).join(''):'<p class="chat-empty">'+escape(currentCollaboration()?window.BacCrewCatalog[i].collaboration.description:roles[i][2])+'</p>';
+ }).join(''):i===0?'':'<p class="chat-empty">'+escape(currentCollaboration()?window.BacCrewCatalog[i].collaboration.description:roles[i][2])+'</p>';
  loadChatImages(log,agentId);
  if(follow)log.scrollTop=log.scrollHeight;else log.scrollTop=top;
 }

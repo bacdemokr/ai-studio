@@ -16,7 +16,7 @@ class SandboxOwnershipTests(unittest.TestCase):
     agent = 'bac-'+'a'*24
 
     def test_label_inventory_is_owner_scoped_and_failure_is_not_absence(self):
-        with patch.object(policy, 'plugin_config', return_value={'config': {'gateway': 'test'}}), patch.object(policy, 'shell', return_value='oc-owned\n') as shell:
+        with patch.object(policy, 'plugin_config', return_value={'config': {'gateway': 'test'}}), patch.object(policy, 'shell', return_value=json.dumps({'sandboxes':[{'name':'oc-owned'}],'next_page_token':''})) as shell:
             self.assertEqual(policy.owned_sandbox_names(self.agent), {'oc-owned'})
             self.assertIn('bac-agent-id='+self.agent, shell.call_args.args)
             shell.side_effect = RuntimeError('unavailable')
@@ -24,6 +24,18 @@ class SandboxOwnershipTests(unittest.TestCase):
             shell.reset_mock()
             with self.assertRaises(RuntimeError):policy.owned_sandbox_names('bac-host')
             shell.assert_not_called()
+
+    def test_inventory_reads_all_pages_and_rejects_partial_or_looped_results(self):
+        first = json.dumps({'sandboxes': [{'name':'oc-first'}], 'next_page_token':'next'})
+        last = json.dumps({'sandboxes': [{'name':'oc-last'}], 'next_page_token':''})
+        with patch.object(policy, 'shell', side_effect=[first, last]) as shell:
+            self.assertEqual(policy.sandbox_names(), {'oc-first','oc-last'})
+            self.assertEqual(shell.call_args.args[-1], 'next')
+        for response in (first, 'not json', '{}', '[]', '{"sandboxes":[{}],"next_page_token":""}'):
+            with self.subTest(response=response), patch.object(policy, 'shell', side_effect=[first,response]):
+                with self.assertRaises(RuntimeError): policy.sandbox_names()
+        with patch.object(policy, 'shell', side_effect=[first, RuntimeError('offline')]):
+            with self.assertRaises(RuntimeError): policy.sandbox_names()
 
     def test_lost_registry_still_deletes_labeled_sandbox_only(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(runtime, 'root', return_value=Path(directory)/'native'):

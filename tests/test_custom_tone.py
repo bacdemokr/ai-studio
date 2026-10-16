@@ -36,9 +36,8 @@ class CustomToneTests(unittest.TestCase):
                 self.assertEqual(soul.split('\n\n# Shared boundaries')[0], '# Tone\n'+tone+'\n\n# Role\n'+profile['purpose'])
                 self.assertNotIn('spreadsheet',soul)
                 self.assertIn('# Requests outside your role',soul)
-                self.assertIn('then help with the actual request',soul)
-                self.assertIn('not on every reply',soul)
-                self.assertIn('within your actual skills and permissions',soul)
+                from role_boundaries import ROLE_BOUNDARY
+                self.assertIn(ROLE_BOUNDARY,soul)
                 self.assertNotIn('# Answer length',soul)
 
     @offline_config

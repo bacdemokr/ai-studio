@@ -37,7 +37,8 @@ def creation_args(args, agent_id, config, database):
 def main():
     import agent_runtime as runtime
     import ops_common
-    command = shutil.which('openshell')
+    from openshell_runtime import command as pinned_command
+    command = pinned_command()
     if not command or Path(command).resolve() == Path(__file__).resolve():
         raise RuntimeError('The OpenShell executable is unavailable.')
     args = sys.argv[1:]
@@ -51,7 +52,8 @@ def main():
         owner=json.loads(result.stdout)['agentId']
         config = json.loads(runtime.config_path().read_text())
         args = creation_args(args, owner, config, ops_common.home()/'studio/studio.sqlite')
-    os.execv(command, [command, *args])
+    from openshell_runtime import environment
+    os.execve(command, [command, *args], environment())
 
 
 if __name__ == '__main__':

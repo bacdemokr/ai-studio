@@ -56,7 +56,7 @@ class BulkPolicyTests(unittest.TestCase):
         self.request('Read https://example.com')
         for scope in ('presets','anything'):
             with self.subTest(scope=scope),self.assertRaises(Problem):
-                self.studio.policy_change(self.owner,{'permissions':['host:example.com'],'allow':True,'scope':scope})
+                self.studio.policy_change(self.owner,{'permissions':['host:unrelated.org'],'allow':True,'scope':scope})
         self.assertEqual(self.saved(),([],0))
 
     def test_existing_approvals_and_other_agents_are_preserved(self):

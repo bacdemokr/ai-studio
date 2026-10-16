@@ -2,6 +2,14 @@
 
 Use temporary agents for infrastructure testing. Never grant test destinations to a participant’s agent. The opt-in tests below delete only the synthetic agents they create. They use real OpenShell sandboxes, but replace the model-readiness gate; they do not establish LLM quality or end-to-end Spark acceptance.
 
+## Current release: OpenShell 0.1.4
+
+The CLI, gateway, supervisor and sandbox runtime are pinned in `docker/runtime-lock.json`; OpenClaw and its adapter have their own version. Native CLI selection checks the lock and preserves shared host installations. The native OpenClaw process also carries the app-owned OpenShell configuration directory into SSH child processes, so CLI probes and model tools resolve the same gateway certificates. Gateway schema is v2, and sandbox inventory uses all JSON cursor pages. An incomplete inventory is an error, never evidence that owned resources were deleted.
+
+The Lounge uses normal agent chat for protection demonstrations. Example chips populate a draft; the selected model chooses and executes tools only after Send. Policy's Recent activity lists actual native network decisions, including HTTP method when logged, and separately verified saved workspace results. Neither model prose nor a bare HTTP error is treated as proof of a policy denial. Files are included only when a completed job reported them and they still exist in the current workspace manifest; generated reply transcripts are excluded. The retired fixed-tool check endpoint is no longer exposed.
+
+Focused coverage: `test_policy_examples.py`, `test_openshell_runtime.py`, `test_agent_policy.py`, `test_sandbox_ownership.py`, `test_container_runtime.py` and `test_container_remove.py`. Historical host observations below describe their recorded versions, not the current release or Linux/Spark acceptance.
+
 ## Regression checks
 
 ```sh

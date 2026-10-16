@@ -14,7 +14,7 @@ Rehearse the selected tasks on the actual model and hardware. Use **Full screen*
 
 ## 1 / 2. Hiring and Agent lounge
 
-Let the audience choose a character, tone, role and skills. The editable prompt is the saved tone and role; **Apply prompt & suggest skills** selects matching skills for the user to adjust.
+Let the audience choose a character, tone, role and skills. Use **How does an agent work?** for the component diagram and each skill’s **i** for its source instructions. The editable prompt is the saved tone and role; **Apply prompt & suggest skills** selects matching skills for the user to adjust.
 
 - **Instructions:** read or copy AGENTS.md, IDENTITY.md and SOUL.md side by side. Click the agent name or portrait for the full saved-file viewer, including skills and memory.
 - **Files:** appears only when the selected agent has uploads or results. Open a file to preview or download it. Definition files use Copy instead of Download.
@@ -28,10 +28,10 @@ For autonomous behavior, equip **Tech Radar**. The first check waits at least 10
 
 Casey coordinates up to three specialists. Select a team before sending `/goal`:
 
-- **Hired only** (default): at least one available hired agent is needed. Any role can participate; Casey assigns work using actual skills and tools.
+- **Hired only** (default): at least one available hired agent is needed. Any role can participate; Casey matches the equipped skills, then checks permitted tools. Explicit names do not override a mismatch.
 - **Hired + Standby**: Casey can also use the backups below, even if no agents have been hired.
 
-Name an agent in the prompt to require its participation. A Programmer and Web researcher are a useful research-and-build pairing, not mandatory roles. Missing tools remain a limitation; an assignment does not grant new permissions.
+Name an agent to request its participation when its equipped skills fit. If neither fits, Casey explains the missing expertise rather than forcing the assignment. A Programmer and Web researcher are a useful research-and-build pairing, not mandatory roles. Missing tools remain a limitation; an assignment does not grant new permissions.
 
 Idle hires follow you into the room and wait on benches. Assigned agents move to workbenches; movement alone does not run a model. The built-in backups are:
 
@@ -76,3 +76,24 @@ The team choice is locked during work. Changing it after completion retains prev
 - **Connection lost after a contribution:** saved files remain available as a partial result. Restore the connection before asking Casey to continue; completed work is not automatically repeated.
 
 [Example scenarios](../README_POSSIBLESCENARIOS.md) · [Installation and recovery](docker-setup.md) · [Model settings](runtime-settings.md) · [Visitor regression checklist](visitor-regression.md)
+
+## Presenter shortcuts and build identity
+
+- Click an **Example goals** chip below Casey’s introduction for one of five editable examples. The store example attaches BB’s fictional email. Selection does not send a request or change the team mode.
+- In Casey’s chat or **Mission Control**, explain **Why this agent** and any **Not assigned** reasons. Scene bubbles only announce brief progress.
+- Use **Settings → Reset → Issue report → Copy diagnostics** when reporting a problem. Note whether the report says Local changes.
+- For OpenShell, expand **How OpenShell protection works** in Hiring. The nested runtime command is illustrative: the adapter selects `--detach -- sleep infinity` only when advertised, otherwise `-- true`. Show the actual policy decision and approval flow in the Lounge.
+- Include Heartbeat in Stage 2: Tech Radar checks automatically, may wait for runtime capacity, and should not claim a result without retrieved evidence.
+
+For an issue report, reproduce once, then use **Settings → Reset → Issue report → Copy diagnostics**. Include the steps and approximate time. Download provides a larger bounded report. See [diagnostics](diagnostics.md); do not attach raw gateway logs or the workspace database by default.
+
+
+## OpenShell in the Lounge
+
+Use a protected Web researcher and send a normal chat request, such as “Read https://example.com.” Role, skills and tool restrictions still apply.
+
+1. With no website grant, inspect the actual blocked request in **OpenShell Policy**.
+2. Approve `example.com` and resend the request. **Recent activity** identifies the destination, request method when available, outcome and time.
+3. Optionally revoke `example.com` and resend to demonstrate that the same agent now has less access.
+
+A connection being allowed is not proof that a webpage was retrieved. DNS failures, timeouts and an agent's explanation are not policy-denial evidence. Saved files prove useful workspace output, not that every filesystem boundary was exercised. The UI's website approvals grant HTTPS reads through `/usr/bin/curl`; they do not grant host-file access or expand the agent's role. **How this policy works** includes the effective policy and raw, sanitized decisions for deeper explanation.

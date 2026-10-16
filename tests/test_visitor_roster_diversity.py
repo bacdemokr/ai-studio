@@ -16,11 +16,14 @@ class VisitorRosterDiversityTests(unittest.TestCase):
     def duplicate_selection(self, corrected=True):
         peer = self.app.add_agent(self.owner, {'name': 'Rain', 'skills': ['weather']})['agentId']
         tasks = [dict(role=6, agent=key, task=task, inputs=[], requiredFiles=[file])
-                 for key, task, file in [(self.owner, 'Calculate total and average.', 'artifacts/calculation.md'),
-                                         (peer, 'Independently verify the calculation.', 'artifacts/check.md')]]
+                 for key, task, file in [(self.owner, 'Calculate average forecast temperature.', 'artifacts/calculation.md'),
+                                         (peer, 'Independently verify the weather calculation.', 'artifacts/check.md')]]
+        for task in tasks:
+            task['roleFit'] = 'Weather forecast comparison fits the saved weather role.'
+        self.app.configure(self.owner, {**self.app.profile(self.owner), 'skills': ['weather'], 'purpose': 'Weather advice.'})
         self.adapter.auto_agents = False
         self.adapter.writes = False
-        self.adapter.selection = {'summary': 'Two weather hires calculate and check.', 'tasks': tasks}
+        self.adapter.selection = {'summary': 'Two weather hires calculate and check the temperature forecast.', 'tasks': tasks}
         repaired = json.loads(json.dumps(self.adapter.selection))
         if corrected:
             repaired['tasks'][1]['role'] = 4
@@ -68,11 +71,21 @@ class VisitorRosterDiversityTests(unittest.TestCase):
                 self.assertEqual(caps['tools'], tool_allowlist(profile))
                 guidance = ' '.join(caps['limits'])
                 self.assertEqual('write can save Markdown, HTML' in guidance, 'write' in caps['tools'])
-                self.assertEqual('web_fetch can attempt public URLs on any requested topic' in guidance,
+                self.assertEqual('web_fetch can attempt public URLs for in-scope work' in guidance,
                                  'web_fetch' in caps['tools'])
         self.assertIn('web_fetch', collaboration_capabilities(weather)['tools'])
         self.assertNotIn('web_fetch', collaboration_capabilities(coder)['tools'])
         self.assertNotIn('write', collaboration_capabilities(protected)['tools'])
+
+    def test_protected_analysis_and_design_can_save_scoped_handoffs(self):
+        for skill in ('data-analysis', 'interface-design'):
+            with self.subTest(skill=skill):
+                tools = tool_allowlist({'skills': [skill], 'protection': 'openshell'})
+                self.assertIn('read', tools)
+                self.assertIn('write', tools)
+                self.assertIn('exec', tools)
+                self.assertNotIn('web_fetch', tools)
+                self.assertNotIn('web_search', tools)
 
 
 if __name__ == '__main__':

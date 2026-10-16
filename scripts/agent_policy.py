@@ -1,6 +1,6 @@
 """Per-agent OpenShell policy operations. Attendees choose only curated public reads.
 
-CLI contract: NVIDIA/OpenShell fa0bfa490e42c87a74a70be6ebb40faee7fb8faa,
+CLI contract: NVIDIA/OpenShell v0.1.4,
 crates/openshell-cli/src/{main,run}.rs. Native runtime mapping comes from
 OpenClaw 2026.9.4. Registry lookups and health probes are scoped to the target agent.
 """
@@ -91,13 +91,17 @@ def configured():
         return False
 
 
-def shell(*args, timeout=35):
+def shell_command(*args):
     config = plugin_config().get('config', {})
     command = [config.get('command', 'openshell')]
     for field, flag in [('gateway', '--gateway'), ('gatewayEndpoint', '--gateway-endpoint'), ('workspace', '--workspace')]:
         if config.get(field):
             command += [flag, config[field]]
-    result = subprocess.run(command + list(args), capture_output=True, text=True, timeout=timeout)
+    return command + list(args)
+
+
+def shell(*args, timeout=35):
+    result = subprocess.run(shell_command(*args), capture_output=True, text=True, timeout=timeout)
     if result.returncode:
         # Fixed diagnoses only: stderr can contain credentials, policy bodies or
         # user command content. Never forward the raw subprocess output.
@@ -156,15 +160,26 @@ def runtimes(agent_id, *, probe=True):
 
 def sandbox_names(owner=None):
     """Read the complete selected gateway/workspace inventory; errors remain failures."""
-    names = set()
-    for offset in range(0, 10000, 100):
+    names, seen_tokens, token = set(), set(), ''
+    for _ in range(100):
         selector = () if owner is None else ('--selector', 'bac-agent-id='+owner)
-        page = shell('sandbox', 'list', '--names', '--limit', '100', '--offset', str(offset), *selector).splitlines()
-        if any(not re.fullmatch(r'[a-z0-9][a-z0-9-]{1,62}', name) for name in page):
+        try:
+            page = json.loads(shell('sandbox', 'list', '--output', 'json', '--page-size', '100', '--page-token', token, *selector))
+        except (ValueError, TypeError):
+            raise RuntimeError('Unexpected sandbox inventory response.') from None
+        if (not isinstance(page, dict) or not isinstance(page.get('sandboxes'), list)
+                or not isinstance(page.get('next_page_token'), str)):
             raise RuntimeError('Unexpected sandbox inventory response.')
-        names.update(page)
-        if len(page) < 100:
+        for row in page['sandboxes']:
+            if not isinstance(row, dict) or not isinstance(row.get('name'), str) or not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,62}', row['name']):
+                raise RuntimeError('Unexpected sandbox inventory response.')
+            names.add(row['name'])
+        token = page['next_page_token']
+        if not token:
             return names
+        if token in seen_tokens:
+            raise RuntimeError('Sandbox inventory repeated a continuation token.')
+        seen_tokens.add(token)
     raise RuntimeError('Sandbox inventory was not fully verified.')
 
 
@@ -252,7 +267,9 @@ def public_logs(name):
         reason = ('dns-failed' if re.search(r'DNS resolution failed|failed to lookup address', line, re.I)
                   else 'destination-blocked' if 'engine:ssrf' in line.lower()
                   else 'policy-denied' if verdict in ('deny', 'denied') else None)
+        method = re.search(r'\bHTTP:(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS|CONNECT|TRACE)\b', line)
         events.append({'reason': reason, 'action': 'allow' if verdict in ('allow', 'allowed') else 'deny',
+                       'method': method.group(1) if method else (http_target.group(0).split()[0] if http_target else None),
                        'host': hostname, 'binary': '/usr/bin/curl' if '/usr/bin/curl' in line else 'other process',
                        'source': 'OpenShell policy log', 'time': float(re.search(r'^\[([0-9]+(?:\.[0-9]+)?)\]', line).group(1)) if re.search(r'^\[([0-9]+(?:\.[0-9]+)?)\]', line) else None, 'fingerprint': hashlib.sha256(line.encode()).hexdigest()[:16]})
     return events[-30:][::-1]
@@ -260,7 +277,7 @@ def public_logs(name):
 
 def inspect(agent_id, protection, approved=()):
     result = {'mode': protection, 'checkedAt': time.time(), 'catalog': CATALOG,
-              'requested': list(approved), 'rules': [], 'logs': [], 'sandboxes': [],
+              'requested': list(approved), 'rules': [], 'logs': [], 'sandboxes': [], 'policyDocuments': [],
               'filesystem': {'configured': policy_document()['filesystem_policy'], 'observed': [],
                              'status': 'not-verified', 'compatibility': 'best_effort'},
               'hostReady': configured(), 'status': 'standard' if protection == 'standard' else 'setup-required'}
@@ -280,6 +297,9 @@ def inspect(agent_id, protection, approved=()):
             name = row['containerName']
             policy = read_policy(name)
             snapshots.append(policy)
+            result['policyDocuments'].append({'sandbox': name, 'revision': policy.get('version'),
+                'source': policy.get('policy_source'), 'loaded': policy['loaded'],
+                'running': bool(row.get('running')), 'document': policy['policy']})
             filesystem = policy['policy'].get('filesystem_policy', {})
             result['filesystem']['observed'].append({'sandbox': name, 'loaded': policy['loaded'],
                 'running': bool(row.get('running')), 'policy': filesystem,

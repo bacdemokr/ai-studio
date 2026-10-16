@@ -1,5 +1,5 @@
 # Demo workflow: what, why, and how
-Updated October 14, 2026 - `preview/visitor-agent-teams`
+Updated October 15, 2026 - `preview/visitor-agent-teams`
 
 ## Understanding the workflow and its objectives
 
@@ -14,7 +14,7 @@ Updated October 14, 2026 - `preview/visitor-agent-teams`
   - [OpenShell](https://build.nvidia.com/openshell) adds an external runtime boundary that governs what an agent can access and do.
 - **Explore a multi-agent system**
   - Use several scenarios to show how an orchestrator delegates parts of a task to specialized agents.
-  - Event Brief uses a fixed team. In Open Task, Casey delegates to hired agents, with optional standby specialists for research, programming, analysis, design and review.
+  - Open Task is the only Stage 3 room. Casey delegates to suitable hired agents, with optional standby specialists for research, programming, analysis, design and review. Event page is an example goal in this room.
   - The objective is not to provide every possible agent or support every possible scenario. The goal is to demonstrate representative multi-agent workflows.
 
 ### Audience
@@ -75,24 +75,26 @@ This is similar to building a house:
 
 Similarly, each agent has specialized skills that help it produce the best possible contribution in its area of responsibility.
 
-Stage 3 has two separate workflows:
+Stage 3 has one room, **Open Task**, with two team choices:
 
-- **3-1 Event Brief:** Riley coordinates the fixed team of Dylan, Alex and Morgan. The application runs the event workflow; demo research and operations can run in parallel after Riley's brief. All team members use the model selected for this scenario's connection.
-- **3-2 Open Task:** Casey coordinates the selected team. Choose **Hired only** (default, Casey plus your hires, no built-in specialists) or **Hired + Standby** (prefer your hires with built-in backups). Name an agent to require its actual participation, e.g. `/goal Let Pixel do the coding. Build a counter page.`
+- **Hired only** (default): Casey coordinates available hires whose equipped skills fit the requested work.
+- **Hired + Standby**: Casey prefers suitable hires and can use built-in backups for missing expertise, including when no agents have been hired.
 
-Event Brief keeps its own fixed agents, conversations and files. In both team modes, idle hired agents follow you into Open Task and sit on waiting benches. Selected specialists move to workbenches, then return to waiting seats while you remain in the room. Leaving the room sends idle visitors back; ongoing assignments continue. Movement alone never runs a model request. Busy agents remain with their existing work.
+Idle hires follow you into Open Task and sit on waiting benches. Selected specialists move to workbenches and remain there after completion; the next confirmed plan moves replaced agents back to waiting seats. Movement alone never runs a model request. Busy agents remain with their existing work.
+
+Use the **Example goals** chips below Casey for an editable starting point. Each example now demonstrates two distinct specialists sharing a saved handoff: research, analysis, design or copy first, then implementation. Prepare both suggested skills in Hired only, or use Hired + Standby to fill available gaps. Ping-pong pairs Interface design with Coding. Keep first-stage briefs short for the live demo. Casey’s conversation and Mission Control explain each assignment through **Why this agent**, and show **Not assigned** for declined named participants. Speech bubbles stay concise. The final Event Brief implementation is preserved in `archive/event-brief-final-2026-10-15`.
 
 Casey always coordinates using the Open Task connection. Hires retain their identity, persona, skills, policy and selected model. Already-selected specialists do not receive duplicate reaction calls; other available hires may react. The team selector is locked during a task; a reload or Open Task reset defaults new tasks to Hired only. Hired-only requests need at least one available hire; Hired + Standby can also run without hires. Requests with no available hired team are blocked with guidance; invalid built-in assignments are repaired once before dispatch, then stopped if still invalid.
 
-Any hired role can participate; Casey works with the agents’ actual skills and tools. The role label is not an eligibility rule. For a research-and-build example, one useful hired-only pairing is a **Web researcher** and a **Programmer**. Their visible **Web research** and **Coding** skills provide bounded research and small desktop prototypes. These are instructions plus the existing tool permissions, not a general browser or code execution environment. Ask Casey: `/goal Have Orbit research three places in Barcelona using official sources, then have Pixel create a small interactive travel page from the saved findings.`
+Any hired role can participate in relevant work. A substantive assignment must fit an explicitly equipped skill, and actual tools must permit it. Naming an agent alone does not extend its scope. For a research-and-build example, one useful hired-only pairing is a **Web researcher** and a **Programmer**. Their visible **Web research** and **Coding** skills provide bounded research and small desktop prototypes. These are instructions plus the existing tool permissions, not a general browser or code execution environment. Ask Casey: `/goal Have Orbit research three places in Barcelona using official sources, then have Pixel create a small interactive travel page from the saved findings.`
 
 For a fresh demonstration, reset Open Task before choosing the next team. Reset is optional between completed tasks; changing the team selection alone keeps earlier conversations and results. After stopping active work, wait for the current call to finish before starting again.
 
 ## 2. Before presenting
 
-- Connect Local and/or External Endpoint in **Settings > Model**. Under **Models**, choose the **Event Brief** and **Open Task** connections independently. New hired agents default to connected Local, otherwise the configured External Endpoint model. To choose another model, expand **Model** below **OpenShell protection** during Hiring or in **Edit agent**. While an agent is idle in Open Task, its model badge also opens the individual model picker. Earlier agents without an individual choice retain their shared default; built-in teams prefer External Endpoint by default; each selector shows the connection currently used.
+- Connect Local and/or External Endpoint in **Settings > Model**. Under **Models**, choose the **Open Task** connection. New hired agents default to connected Local, otherwise the configured External Endpoint model. To choose another model, expand **Model** below **OpenShell protection** during Hiring or in **Edit agent**. While an agent is idle in Open Task, its model badge also opens the individual model picker. Earlier agents without an individual choice retain their shared default; Casey and standby specialists prefer External Endpoint by default; each selector shows the connection currently used.
 - Rehearse the selected request on the actual model and hardware. Endpoint timings in the examples are observed runs, not local Spark benchmarks or guaranteed completion times.
-- For an offline rehearsal, select Local and try Event Brief with Riley, Alex and Morgan (omit Dylan’s live research), or the store-email / ping-pong Open Task examples without external sources. Web research, live weather and Telegram still need internet. The email example does not demonstrate enforced filesystem blocking; that remains separate work.
+- For an offline rehearsal, select Local for Open Task and each participating hire, then try the store-email or ping-pong examples using supplied data and suitable roles/skills. Web research, live weather and Telegram still need internet. The email example does not demonstrate enforced filesystem blocking; that remains separate work.
 - **Files** shows uploads/results for the selected agent only and is hidden when empty. Definition files use **Instructions → Copy**; result files support preview/download.
 - **Usage & time** shows recorded tokens, elapsed time and agent turns after a Stage 3 run. Agent time includes tools; summed time can exceed elapsed time when turns overlap. It is not a provider billing report.
 - `./bac start` clears runtime data and starts fresh. Use `./bac start --keep-data` to retain a rehearsal. `./bac stop --all` stops the demo and its managed local model, then removes the Compose stack and its data volumes.

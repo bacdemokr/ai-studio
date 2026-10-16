@@ -32,11 +32,11 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   assert.equal(await page.evaluate(()=>BacCampus.inspect().visitorTravel.find(v=>v.name==='Orbit')?.phase),'seated');
   await page.screenshot({path:'/tmp/bac-hired-only-working.png'});
   await page.waitForFunction(()=>!document.querySelector('#studio-crew-team-mode button').disabled);
-  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===2&&BacCampus.inspect().visitorTravel.every(v=>v.phase==='seated'));
+  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.some(v=>v.name==='Pixel'&&v.phase==='working')&&BacCampus.inspect().visitorTravel.some(v=>v.name==='Orbit'&&v.phase==='seated'));
   const job=(await state()).crewChats.find(j=>j.payload.teamMode==='hired');assert.equal(job.status,'done');assert.equal(job.payload.collaboration.visitorBindings[5].name,'Pixel');
-  await mode.selectOption('mixed');await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===2&&BacCampus.inspect().visitorTravel.every(v=>v.phase==='seated'));
+  await mode.selectOption('mixed');assert.equal(await page.evaluate(()=>BacCampus.inspect().visitorTravel.find(v=>v.name==='Pixel').phase),'working','Changing the next team mode keeps the completed participant at its desk');
   await page.locator('.world-room-map [data-world-room=lounge]').click();assert.equal(await mode.isVisible(),false);
-  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===0);
+  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===1&&BacCampus.inspect().visitorTravel[0].name==='Pixel'&&BacCampus.inspect().visitorTravel[0].phase==='working');
   await choose('plan');await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===2);
   await page.locator('#studio-bac-reset').click();await page.locator('#studio-team-reset-confirm').click();
   await page.waitForFunction(()=>document.querySelector('#studio-crew-team-mode [aria-pressed=true]').dataset.teamMode==='hired'&&!document.querySelector('#studio-crew-team-mode button').disabled);

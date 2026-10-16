@@ -98,6 +98,7 @@ function availableAgentName(body){
   return name;
 }
 function updateDraft(){
+  syncRequiredRoleSkills();
   el('body-picker').querySelectorAll('button[data-body]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.body===draftAvatar.body));
   el('color-picker').querySelectorAll('button[data-avatar-color]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.avatarColor===draftAvatar.color));
   draftAvatar.accessory=el('accessory').value;
@@ -135,15 +136,12 @@ function setRoom(next,options={}){
   const openPolicies=next==='policies';if(openPolicies)next='lounge';
   if(!roomCopy[next])return;
   const before=options.fromWorld&&!worldOpen?worldViewport.getBoundingClientRect().top:null;
-  if(next!==room){closeSurface();if(next==='mission'&&!options.resume)scenarioChoosing=false;}
-  if(next==='mission'&&options.fromWorld&&!options.resume){closeSurface();scenarioChoosing=false;}
-  if(next!=='mission')scenarioChoosing=false;
+  if(next!==room||(next==='mission'&&options.fromWorld&&!options.resume))closeSurface();
   editingInPlace=false;room=next;if(next!=='mission'){board=false;selectedOpenTaskVisitor='';}
   root.dataset.room=next;worldViewport.setAttribute('aria-label',roomCopy[next]+'. Drag to orbit, scroll to zoom. Press Enter to toggle full screen.');if(roomsReady)try{sessionStorage.setItem('bac-studio-room',next);}catch{}
   if(next==='mission')renderCrew();renderRoomVisibility();
   runtimeBadge();
-  if(next==='mission'&&scenarioChoosing)window.BacCampus?.scenarios({instant:!roomsReady});
-  else window.BacCampus?.setRoom(next,{instant:!roomsReady});
+  window.BacCampus?.setRoom(next,{instant:!roomsReady});
   if(openPolicies)openSurface('policies');
   if(before!==null)window.scrollBy(0,worldViewport.getBoundingClientRect().top-before);
 }
@@ -152,12 +150,12 @@ function renderRoomVisibility(){
   if(el('compare'))el('compare').hidden=room!=='lounge'||!comparison;
   syncComposer();
   const workshop=room==='workshop',lounge=room==='lounge',mission=room==='mission';
-  el('workshop').hidden=!(workshop||editingInPlace);el('passport').hidden=!lounge||editingInPlace;el('crew-passport').hidden=!mission||scenarioChoosing;el('connections').hidden=!workshop;el('policies').hidden=false;el('policy-panel').hidden=!lounge;
+  el('workshop').hidden=!(workshop||editingInPlace);el('passport').hidden=!lounge||editingInPlace;el('crew-passport').hidden=!mission;el('connections').hidden=!workshop;el('policies').hidden=false;el('policy-panel').hidden=!lounge;
   el('collection').hidden=!lounge||!data.profile;
   layout.hidden=false;el('board').hidden=true;
   el('experiences').hidden=!lounge;el('workspace').hidden=workshop||(mission?!currentCollaboration():(!current()&&!data.files?.length));el('safety-bar').hidden=true;
   el('room-action').hidden=true;
-  document.getElementById('campus-roster').hidden=!mission||scenarioChoosing;
+  document.getElementById('campus-roster').hidden=!mission;
   renderScenarioSelector();
   const activeScenario=stageScenarios.find(s=>s.id===selectedScenario);
   document.getElementById('campus-location').textContent=workshop?'HIRING / MEET YOUR NEXT AGENT':lounge?'LOUNGE / Current Agents: '+(data.agents?.length||0):(activeScenario?.number.replace(/^0/,'')||'03')+' / '+(activeScenario?.title||'Open Task');
@@ -181,15 +179,18 @@ el('color-picker').innerHTML=Object.entries(appearanceColors).map(([name,color])
 el('body-picker').onclick=e=>{const b=e.target.closest('[data-body]');if(b){draftAvatar.body=b.dataset.body;if(draftMode==='new'&&!draftNameEdited)el('name').value=availableAgentName(draftAvatar.body);updateDraft();}};
 el('color-picker').onclick=e=>{const b=e.target.closest('[data-avatar-color]');if(b){draftAvatar.color=b.dataset.avatarColor;updateDraft();}};
 el('accessory').onchange=updateDraft;el('name').addEventListener('input',()=>{draftNameEdited=true;updateDraft();});
-const roleTemplates=[
-  {label:'Weather buddy',summary:'Current weather and practical outdoor advice.',purpose:'Check current weather and help me decide what to wear or whether to go outside. Keep advice short and practical.',skills:['weather']},
-  {label:'Tech Radar',summary:'Checks for technical articles every 20 seconds.',purpose:'Every 20 seconds, share one unread technical article or announcement from NVIDIA or Hugging Face blogs in my chosen tone. Include older articles; never repeat. Skip politics, stocks and earnings.',skills:['radar']},
-  {label:'Arxivbot',summary:'Three relevant papers on a topic you choose.',purpose:'When I give you a research topic, find three relevant arXiv papers. Summarize each paper’s main idea, include its title, authors, date and link, and briefly compare them in my chosen tone. Ask for a topic if none is given.',skills:['web']},
-  {label:'Slack Announcer',summary:'Emoji-led updates in your chosen voice.',purpose:'Answer in the style of a concise Slack announcement: an emoji-led headline and short, useful lines. Keep my chosen tone and the supplied facts. Draft only; never send or publish.',skills:['writer']},
-  {label:'Programmer',summary:'Small desktop webpages and games.',purpose:'Build and improve small, self-contained desktop webpages and games. Save a working prototype, preserve existing behavior when making changes, and keep checks brief. Use supplied research when collaborating.',skills:['builder']},
-  {label:'Web researcher',summary:'Brief research with useful source links.',purpose:'Answer focused questions using public sources. Read supplied links first, cite verified facts, and explain any missing evidence. Keep research brief, and save findings when requested or needed for collaboration.',skills:['web']},
-];
+const roleTemplates=/* ROLE_TEMPLATES */;
 el('role-templates').innerHTML=roleTemplates.map((t,i)=>`<button type="button" data-role-template="${i}" aria-pressed="false">${t.label}</button>`).join('');
+function selectedRoleTemplate(){return roleTemplates.find(t=>t.purpose.toLowerCase()===creatorPrompt().purpose.trim().toLowerCase());}
+function syncRequiredRoleSkills(){
+  const template=selectedRoleTemplate(),required=template?.requiredSkills||[];
+  el('skill-picker').querySelectorAll('input').forEach(input=>{
+    const fixed=required.includes(input.value),card=input.closest('.studio-skill-card');
+    input.disabled=fixed;if(fixed)input.checked=true;
+    card.querySelector('.studio-skill-fixed').hidden=!fixed;
+    card.querySelector('label').title=fixed?'Included with '+template.label:'';
+  });
+}
 function selectRoleSkills(skills){
   el('skill-picker').querySelectorAll('input').forEach(input=>input.checked=skills.includes(input.value));
   el('role-hint').textContent=skills.length?'Suggested skills selected.':'No matching skills suggested. You can continue without them.';
@@ -201,8 +202,8 @@ el('apply-prompt').onclick=()=>{
   syncCreatorTone();
   const role=creatorPrompt().purpose.toLowerCase();
   // Preset wording mentions teammates and outputs too; it is not a request to equip their skills.
-  const template=roleTemplates.find(t=>t.purpose.toLowerCase()===role.trim());
-  if(template){selectRoleSkills(template.skills);return;}
+  const template=selectedRoleTemplate();
+  if(template){selectRoleSkills(template.requiredSkills?.length?[...new Set([...template.skills,...[...el('skill-picker').querySelectorAll('input:checked')].map(i=>i.value)])]:template.skills);return;}
   const rules={radar:/heartbeat|tech radar|technical feeds|하트비트|기술.*소식/,weather:/weather|forecast|travel|trip|날씨|여행/,web:/research|paper|arxiv|논문|search|online|web|travel|trip|cafe|restaurant|리서치|조사|검색|웹|여행|맛집|카페/,documents:/takeaway|three points|meeting|notes|회의|메모|document|report|pdf|ppt|slides|deck|summar|요약|슬라이드|csv|spreadsheet|문서|보고서|자료|엑셀/,builder:/app|game|prototype|code|coding|programmer|programming|website|webpage|앱|게임|코딩|개발|웹사이트/,writer:/slack|announcement|공지|message|email|메시지|메일|writ|draft|content|invitation|social|campaign|marketing|copy|작성|글쓰기|초대|마케팅|콘텐츠/,memory:/remember|memor|preference|기억|선호/};
   selectRoleSkills(Object.entries(rules).filter(([skill,rule])=>rule.test(role)).map(([skill])=>skill));
 };
@@ -264,6 +265,7 @@ el('delete-agent').onclick=()=>{
 el('connection-setup').onclick=setup;el('connection-security').onclick=()=>setRoom('policies');
 el('onboarding').onsubmit=async e=>{
   e.preventDefault();if(hiringArrival)return;if(!creatorModelAllowed()){el('agent-model-panel').open=true;el('agent-model-search').focus();return;}syncCreatorTone();const mode=draftMode,target=mode==='new'?agentId:draftOwner,first=!data.agents?.length;
+  syncRequiredRoleSkills();
   const payload={model:draftModel,name:el('name').value,...creatorPrompt(),persona,tone:draftTone,verbosity:'balanced',skills:[...el('skill-picker').querySelectorAll('input:checked')].map(x=>x.value),avatar:{...draftAvatar},protection:el('onboarding').querySelector('[name=protection]:checked').value};
   hiringArrival=true;el('create').disabled=true;el('onboarding').inert=true;
   try{

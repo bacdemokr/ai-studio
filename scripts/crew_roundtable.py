@@ -200,6 +200,7 @@ class RoundtableControls:
             except Exception as error:
                 import logging
                 logging.exception('Roundtable preparation failed for %s', member['id'])
+                self.diagnostics.job(self, job_id, 'reaction.preparation-failed', error=error)
                 message = ('OpenShell protection could not be verified, so this reaction was not started. Check this agent’s OpenShell Policy.' if isinstance(error, ProtectionNotVerified) else 'This agent’s runtime could not be prepared. The '+subject+' is still available.')
                 reply.update(status='error', error=message, completed=time.time())
                 persist()
@@ -217,9 +218,10 @@ class RoundtableControls:
                 reply.update(status='done', answer=str(answer).strip(), activity=getattr(answer,'activity',None), completed=time.time())
                 prior_reactions.append({'name': member['name'], 'comment': str(answer).strip()})
                 self.record_usage(job_id, payload, answer, member['id'], member['name'], 'review-'+key)
-            except Exception:
+            except Exception as error:
                 import logging
                 logging.exception('Roundtable reaction failed for %s', member['id'])
+                self.diagnostics.job(self, job_id, 'reaction.failed', error=error)
                 if self.stop_checkpoint(job_id):
                     break
                 reply.update(status='error', error='This agent could not give a reaction. The '+subject+' is still available.', completed=time.time())

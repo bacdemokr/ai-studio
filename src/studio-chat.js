@@ -87,7 +87,7 @@ function acknowledgeChatDraft(draft){
  else if(draft.crew&&crewDrafts.get(draft.roleKey)===draft.prompt)crewDrafts.set(draft.roleKey,defaultCrewPrompt(draft.crewRole));
  const remaining=(chatImageDrafts.get(draft.key)||[]).filter(image=>!draft.images.includes(image));
  if(remaining.length)chatImageDrafts.set(draft.key,remaining);else chatImageDrafts.delete(draft.key);
- if(current)renderImageDrafts(draft.crew);
+ if(current){renderImageDrafts(draft.crew);if(draft.crew)syncCrewComposer();}
 }
 function renderImageDrafts(crew=false){
  const id=crew?'crew-':'',node=el(id+'image-drafts');if(!node)return;

@@ -30,7 +30,7 @@ class AdaptivePlanTests(unittest.TestCase):
                 self.assertEqual(job['payload']['collaboration']['outcome'], outcome)
                 self.assertEqual(job['payload']['collaboration']['calledRoles'], [])
                 self.assertEqual(job['result']['answer'], self.adapter.plan['answer'])
-                self.assertIn('Do not assign loosely related specialists', self.adapter.calls[0][2])
+                self.assertIn('A relevant equipped skill AND permitted tools are necessary', self.adapter.calls[0][2])
 
     def test_one_specialist_is_enough(self):
         self.adapter.plan['tasks'] = [{'role': 7, 'task': 'Write a short greeting.'}]
