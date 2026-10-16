@@ -32,7 +32,13 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.name==='Pixel');
   await choose('plan');assert.equal(await toggle.inputValue(),'mixed');assert.equal(await toggle.isDisabled(),true);
   await page.waitForFunction(()=>BacCampus.inspect().visitorTravel?.some(v=>v.name==='Pixel'&&v.phase==='working'));
-  await page.locator('[data-visitor-agent]').filter({hasText:'Pixel'}).click();
+  const pixelLabel=page.locator('[data-visitor-agent]').filter({hasText:'Pixel'});
+  assert.equal(await pixelLabel.locator('.crew-working-badge').innerText(),'Working');
+  assert.equal(await pixelLabel.locator('.crew-working-dot').count(),1);
+  assert.equal(await pixelLabel.locator('.crew-working-badge').evaluate(node=>getComputedStyle(node).color),'rgb(242, 202, 120)');
+  assert.equal(await pixelLabel.locator('.crew-working-role').innerText(),'Programmer');
+  assert.equal(await pixelLabel.locator('.crew-working-role').evaluate(node=>getComputedStyle(node).display),'block');
+  await pixelLabel.click();
   await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Pixel');
   assert.equal(await toggle.isVisible(),false);
   assert.equal(await page.evaluate(()=>BacCampus.inspect().residents.find(r=>r.key===BacStudio.inspect().agentId).visible),false);

@@ -1022,10 +1022,11 @@ body{margin:0;padding:0;width:100%;max-width:none}
 @media(prefers-reduced-motion:reduce){#agent-campus :is([data-chat-stop],[data-crew-chat-stop],#studio-chat,#studio-crew-chat){transition:none}}
 
 /* Active work stays distinct from selection and queued specialists. */
-#agent-campus .campus-agent-label.working{border-color:#76b900;background:#142219f5;box-shadow:0 0 0 1px #76b90022,0 4px 14px #0005}
-#agent-campus .crew-working-badge{display:inline-flex;align-items:center;gap:6px;padding:2px 7px;border-radius:5px;background:#76b90024;color:#b5ef65;font-weight:700;font-size:.92em;line-height:1.4}
-#agent-campus .crew-working-dot{width:6px;height:6px;border-radius:50%;background:#a3e635;box-shadow:0 0 6px #a3e63555}
-#agent-campus .crew-working-role{margin-left:7px;color:#b7c3d1}
+#agent-campus .campus-agent-label.working{border-color:#e4b257;background:#29251af5;box-shadow:0 0 0 1px #e4b25722,0 4px 14px #0005}
+#agent-campus .crew-working-badge{display:inline-flex;align-items:center;gap:6px;padding:2px 7px;border-radius:5px;background:#e4b25724;color:#f2ca78;font-weight:700;font-size:.92em;line-height:1.4}
+#agent-campus .crew-working-dot{width:6px;height:6px;border-radius:50%;background:#f2ca78;box-shadow:0 0 6px #e4b25766}
+#agent-campus .crew-working-role{display:block;margin-top:3px;color:#c7cfd6}
+#agent-campus .crew-working-role::before{content:"– "}
 
 #studio-standby #studio-standby-list .studio-specialist-model{min-width:0;max-width:100%;align-self:start;justify-self:end;text-align:right;color:#9fb3c1;font-size:12px;line-height:20px;overflow-wrap:anywhere}
 .team-model-trigger>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -80886,7 +80887,10 @@ function animateVisitors(dt){
     v.body.position.y=seated?.18:stepping?Math.abs(Math.sin(clock*9))*.04:0;
     v.legs.forEach((leg,j)=>leg.rotation.x=seated?-Math.PI/2:stepping?Math.sin(clock*9+j*Math.PI)*.4:0);
     v.arms.forEach((arm,j)=>arm.rotation.x=seated?-.35:stepping?Math.sin(clock*9+j*Math.PI)*.3:working?-.7:0);
-    v.node.querySelector('small').textContent=v.phase==='returning'?'Returning to Lounge':v.phase==='entering'?(v.destination==='seated'?'Joining Open Task':'Taking a workbench'):seated?'Standby':working?'Working':v.title;
+    const status=v.node.querySelector('small');
+    if(working)status.innerHTML='<span class="crew-working-badge"><span aria-hidden="true" class="crew-working-dot"></span>Working</span><span class="crew-working-role">'+escape(v.title)+'</span>';
+    else status.textContent=v.phase==='returning'?'Returning to Lounge':v.phase==='entering'?(v.destination==='seated'?'Joining Open Task':'Taking a workbench'):seated?'Standby':v.title;
+    v.node.setAttribute('aria-label','Select '+v.name+(working?', working':''));
     v.node.classList.toggle('visitor-waiting',seated);v.node.classList.toggle('working',working);v.node.classList.toggle('selected',activeScenario==='plan'&&(state.selectedVisitorKey===v.key||v.role!==null&&activeSelection===v.role));
     v.node.hidden=!(overview||journey||room==='mission'&&activeScenario==='plan'||room==='lounge'&&stepping);
     positionLabel(v.node,v.group.position.clone().add(new THREE.Vector3(0,2.2,0)));
@@ -81221,7 +81225,7 @@ render();
       if(selection){selection.removeAllRanges();for(const range of ranges)if(range.commonAncestorContainer.isConnected)selection.addRange(range);}
     }
   }
-  const buildInfo={"version": "0.2.001", "commit": "b87a01ba6999ef9280bd8e61ba87131799441ab0", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
+  const buildInfo={"version": "0.2.001", "commit": "389824ae3bb6c95f052ac7d0ae0ee643fc5e26ec", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
   // Only codes and source locations are retained. Never retain Error.message, bodies or URLs.
 const browserDiagnostics=[];
 const diagnosticRoutes=new Set('session state runtime diagnostics telemetry settings settings/models settings/start settings/team-model settings/connections settings/connections/preferences settings/connections/check settings/connections/models settings/scenario-model settings/scenario-models credential-session agents onboard profile agent-model delete-agent agent-policy crew-policy jobs upload decision retry-reaction reset crew-chat-reset bac-reset heartbeat team-model telegram telegram/test file workspace-files agent-documents evidence security'.split(' '));

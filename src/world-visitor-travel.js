@@ -102,7 +102,10 @@ function animateVisitors(dt){
     v.body.position.y=seated?.18:stepping?Math.abs(Math.sin(clock*9))*.04:0;
     v.legs.forEach((leg,j)=>leg.rotation.x=seated?-Math.PI/2:stepping?Math.sin(clock*9+j*Math.PI)*.4:0);
     v.arms.forEach((arm,j)=>arm.rotation.x=seated?-.35:stepping?Math.sin(clock*9+j*Math.PI)*.3:working?-.7:0);
-    v.node.querySelector('small').textContent=v.phase==='returning'?'Returning to Lounge':v.phase==='entering'?(v.destination==='seated'?'Joining Open Task':'Taking a workbench'):seated?'Standby':working?'Working':v.title;
+    const status=v.node.querySelector('small');
+    if(working)status.innerHTML='<span class="crew-working-badge"><span aria-hidden="true" class="crew-working-dot"></span>Working</span><span class="crew-working-role">'+escape(v.title)+'</span>';
+    else status.textContent=v.phase==='returning'?'Returning to Lounge':v.phase==='entering'?(v.destination==='seated'?'Joining Open Task':'Taking a workbench'):seated?'Standby':v.title;
+    v.node.setAttribute('aria-label','Select '+v.name+(working?', working':''));
     v.node.classList.toggle('visitor-waiting',seated);v.node.classList.toggle('working',working);v.node.classList.toggle('selected',activeScenario==='plan'&&(state.selectedVisitorKey===v.key||v.role!==null&&activeSelection===v.role));
     v.node.hidden=!(overview||journey||room==='mission'&&activeScenario==='plan'||room==='lounge'&&stepping);
     positionLabel(v.node,v.group.position.clone().add(new THREE.Vector3(0,2.2,0)));

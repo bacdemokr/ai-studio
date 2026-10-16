@@ -624,10 +624,11 @@
 @media(prefers-reduced-motion:reduce){#agent-campus :is([data-chat-stop],[data-crew-chat-stop],#studio-chat,#studio-crew-chat){transition:none}}
 
 /* Active work stays distinct from selection and queued specialists. */
-#agent-campus .campus-agent-label.working{border-color:#76b900;background:#142219f5;box-shadow:0 0 0 1px #76b90022,0 4px 14px #0005}
-#agent-campus .crew-working-badge{display:inline-flex;align-items:center;gap:6px;padding:2px 7px;border-radius:5px;background:#76b90024;color:#b5ef65;font-weight:700;font-size:.92em;line-height:1.4}
-#agent-campus .crew-working-dot{width:6px;height:6px;border-radius:50%;background:#a3e635;box-shadow:0 0 6px #a3e63555}
-#agent-campus .crew-working-role{margin-left:7px;color:#b7c3d1}
+#agent-campus .campus-agent-label.working{border-color:#e4b257;background:#29251af5;box-shadow:0 0 0 1px #e4b25722,0 4px 14px #0005}
+#agent-campus .crew-working-badge{display:inline-flex;align-items:center;gap:6px;padding:2px 7px;border-radius:5px;background:#e4b25724;color:#f2ca78;font-weight:700;font-size:.92em;line-height:1.4}
+#agent-campus .crew-working-dot{width:6px;height:6px;border-radius:50%;background:#f2ca78;box-shadow:0 0 6px #e4b25766}
+#agent-campus .crew-working-role{display:block;margin-top:3px;color:#c7cfd6}
+#agent-campus .crew-working-role::before{content:"– "}
 
 #studio-standby #studio-standby-list .studio-specialist-model{min-width:0;max-width:100%;align-self:start;justify-self:end;text-align:right;color:#9fb3c1;font-size:12px;line-height:20px;overflow-wrap:anywhere}
 .team-model-trigger>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
