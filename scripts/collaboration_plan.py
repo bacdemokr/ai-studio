@@ -1209,7 +1209,7 @@ class CollaborationPlans:
                 scope_decisions = {}
                 def validate_team(selection):
                     from agent_reply import object_reply
-                    visitor_teams.validate_selection(selection, visitors, required_visitors, mode)
+                    visitor_teams.validate_selection(selection, visitors, required_visitors, mode, plan['task'])
                     members = {member['key']: member for member in visitors}
                     candidates = [task for task in selection['tasks'] if task.get('agent') in members]
                     def scope_key(task):

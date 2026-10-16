@@ -207,6 +207,7 @@ class VisitorTeamTests(unittest.TestCase):
         self.assertEqual(job['payload']['collaboration']['visitorBindings']['5']['key'], builder)
 
     def test_no_suitable_visitor_keeps_builtin_backup(self):
+        self.app.configure(self.owner, {**self.app.profile(self.owner), 'skills': ['weather']})
         job = self.execute(self.start('/goal Build a counter.'))
         self.assertEqual(job['payload']['collaboration']['visitorBindings'], {})
         self.assertTrue(self.specialists()[0][0].endswith('-r5'))

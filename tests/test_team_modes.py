@@ -30,6 +30,35 @@ class TeamModeTests(unittest.TestCase):
         self.assertEqual(job['payload']['collaboration']['teamSelectionRecovery']['status'], 'corrected')
         self.assertEqual([c[0] for c in self.specialists()], ['bac-' + self.owner])
 
+    def test_mixed_team_repairs_builtin_selection_when_matching_hire_is_available(self):
+        self.adapter.auto_agents = False
+        self.adapter.selection['tasks'][0]['agent'] = 'builtin'
+        self.adapter.repaired_selection = {**self.adapter.selection, 'tasks': [
+            {**self.adapter.selection['tasks'][0], 'agent': self.owner}]}
+        job = self.execute(self.start('/goal Build a counter.', teamMode='mixed'))
+        self.assertEqual(job['payload']['collaboration']['teamSelectionRecovery']['status'], 'corrected')
+        self.assertEqual(job['payload']['collaboration']['visitorBindings']['5']['key'], self.owner)
+        self.assertEqual([c[0] for c in self.specialists()], ['bac-' + self.owner])
+
+    def test_mixed_team_uses_standby_only_without_matching_free_hire_or_when_named(self):
+        for role, skill, standby in ((4, 'builder', 'Vera'), (5, 'builder', 'Cody'),
+                                     (6, 'data-analysis', 'Ada'), (7, 'interface-design', 'Iris'),
+                                     (8, 'web', 'Scout')):
+            with self.subTest(role=role):
+                plan = {'tasks': [{'role': role, 'agent': 'builtin'}]}
+                validate_selection(plan, [{'key': 'weather', 'name': 'Weather', 'skills': ['weather']}], [], 'mixed',
+                                   '/goal Complete this task.')
+                validate_selection(plan, [{'key': self.owner, 'name': 'Pixel', 'skills': [skill]}], [], 'mixed',
+                                   '/goal Ask ' + standby + ' to complete this task.')
+                with self.assertRaisesRegex(TeamSelectionError, 'must use a suitable hired agent'):
+                    validate_selection(plan, [{'key': self.owner, 'name': 'Pixel', 'skills': [skill]}], [], 'mixed',
+                                       '/goal Complete this task.')
+        with self.assertRaisesRegex(TeamSelectionError, 'must use a suitable hired agent'):
+            validate_selection({'tasks': [{'role': 5, 'agent': 'builtin'}],
+                                'declinedAgents': [{'agent': self.owner, 'reason': 'Prefer standby.'}]},
+                               [{'key': self.owner, 'name': 'Pixel', 'skills': ['builder']}], [], 'mixed',
+                               '/goal Build a counter.')
+
     def test_hired_only_never_falls_back_after_invalid_repair(self):
         self.adapter.auto_agents = False
         for role in (4, 5, 6, 7, 8):

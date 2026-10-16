@@ -5,7 +5,7 @@
 ## Choose a team
 
 - **Hired only** (default): Casey uses your available hires. At least one is needed, and specialist assignments require relevant equipped skills. No particular role preset is required.
-- **Hired + Standby**: Casey prefers suitable hires and can also call Scout (research), Cody (programming), Ada (analysis), Iris (design) and Vera (review). This mode also works without hires.
+- **Hired + Standby**: Casey first assigns an available hire whose equipped skill matches the work. A matching hire takes priority over the equivalent standby specialist. Casey calls Scout (research), Cody (programming), Ada (analysis), Iris (design) or Vera (review) only when no matching unassigned hire is available, or when you explicitly request that standby specialist. This mode also works without hires.
 
 Assignments use the actual tools and permissions of the selected agent. A substantial assignment must match the hire’s equipped skills. Naming an unsuitable hire does not force participation: Casey explains the missing expertise instead. Tool access alone is not suitability, and a skill does not bypass OpenShell policy. Independent review requires a different agent from the producer. Casey’s chat and Mission Control show **Why this agent** from the saved plan; **Not assigned** explains declined named participants. Speech bubbles remain short. Earlier plans may have no recorded selection reason.
 

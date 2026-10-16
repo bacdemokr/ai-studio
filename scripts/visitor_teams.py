@@ -7,6 +7,15 @@ import json
 from role_boundaries import TEAM_ROLE_BOUNDARY, skill_scope, implementation_scope
 import re
 
+ROLE_SKILLS = {
+    4: ('builder',),
+    5: ('builder',),
+    6: ('data-analysis',),
+    7: ('interface-design',),
+    8: ('web',),
+}
+BUILTIN_NAMES = {4: 'Vera', 5: 'Cody', 6: 'Ada', 7: 'Iris', 8: 'Scout'}
+
 
 def team_mode(data):
     """Old clients retain their boolean opt-in; new clients name the team explicitly."""
@@ -35,6 +44,14 @@ def excluded(text, match):
     return bool(re.search(r"(?:do not|don't|never|without|except|exclude|skip|not)\s+(?:(?:use|ask|let|include|involve)\s+)?$",
                           text[max(0, match.start()-40):match.start()], re.I)
                 or re.match(r"(?:은|는|을|를|도)?\s*(?:빼|제외|말고|참여시키지|쓰지|사용하지)|\s+(?:should|must)\s+not\b", text[match.end():], re.I))
+
+
+def explicit_builtin(task, role):
+    """An explicitly named standby remains eligible even when a hire has its skill."""
+    name = BUILTIN_NAMES.get(role)
+    text = direct_request(task or '')
+    match = mentions(text, name) if name else None
+    return bool(match and not excluded(text, match))
 
 
 def requirements(task, members):
@@ -120,7 +137,9 @@ def instructions(members, required, mode='mixed'):
               'is possible with the listed tools, return outcome:"unavailable" and explain the missing capability. Do not silently '
               'switch teams. One hire may deliver a combined small implementation, but may not independently review itself. '
               if mode == 'hired' else
-              'Prefer suitable hired agents below; use agent:"builtin" for a built-in expert only when no suitable hired agent is available. '
+              'MIXED TEAM PRIORITY: assign a suitable hired agent below before any built-in specialist with the same needed skill. '
+              'This is mandatory, not a suggestion. Use agent:"builtin" only when no unassigned suitable hire is available, '
+              'or when the visitor explicitly names that built-in specialist. '
               'If a hire covers one requested part and standby covers another, split those tasks within the three-slot limit. '
               'Explicitly named built-in specialists must be kept when requested. ')
     return ('\nVISITOR TEAM SELECTION - overrides generic recommendations to pick Scout/Cody/Vera by name. ' + policy +
@@ -146,7 +165,7 @@ class TeamSelectionError(RuntimeError):
     """A planner response needs explicit identities before any work may start."""
 
 
-def validate_selection(plan, members, required, mode='mixed'):
+def validate_selection(plan, members, required, mode='mixed', task=''):
     available = {m['key']: m for m in members}
     formats = plan.get('requestedFormats', [])
     declared = [path for task in plan['tasks'] for path in task.get('requiredFiles', [])]
@@ -160,6 +179,21 @@ def validate_selection(plan, members, required, mode='mixed'):
                                  ' output, but no assignment produces it. Include the appropriate available specialist '
                                  'and requiredFiles, or record why the team cannot produce it in unassignedRequirements. '
                                  'Do not omit the implementation after selecting an analyst or researcher; Casey cannot fill it in.')
+    selected_hires = {assignment.get('agent') for assignment in plan['tasks']
+                      if assignment.get('agent') not in (None, 'builtin')}
+    if mode == 'mixed':
+        for assignment in plan['tasks']:
+            if assignment.get('agent') not in (None, 'builtin') or explicit_builtin(task, assignment.get('role')):
+                continue
+            skills = ROLE_SKILLS.get(assignment.get('role'), ())
+            candidates = [member for member in members if member['key'] not in selected_hires
+                          and any(skill in member.get('skills', []) for skill in skills)]
+            if candidates:
+                names = ', '.join(member.get('name', member['key']) for member in candidates)
+                raise TeamSelectionError('Hired + Standby must use a suitable hired agent before the built-in '
+                                         + BUILTIN_NAMES[assignment['role']] + '. Assign ' + names +
+                                         ' to this ' + '/'.join(skills) + ' work, or use the standby specialist only '
+                                         'after every matching hire is already assigned or unavailable.')
     seen = set()
     for assignment in plan['tasks']:
         key = assignment.get('agent')
@@ -204,7 +238,7 @@ def validate_selection(plan, members, required, mode='mixed'):
 
 def bind(plan, roster, members, required, task, mode='mixed'):
     """Apply Casey's explicit choices. Never infer or rewrite roles from prose."""
-    validate_selection(plan, members, required, mode)
+    validate_selection(plan, members, required, mode, task)
     available = {m['key']: m for m in members}
     bindings = {}
     for assignment in plan['tasks']:
