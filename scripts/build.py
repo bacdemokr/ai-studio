@@ -17,7 +17,7 @@ args = parser.parse_args()
 ROOT = Path(__file__).resolve().parents[1]
 # Validate inputs before importing the skill registry or assembling the page.
 # Missing files should leave the last working build intact and identify the cause.
-required = ['scripts/serve.py', 'scripts/studio.py', 'scripts/container_runtime.py',
+required = ['scripts/serve.py', 'scripts/resource_links.py', 'scripts/studio.py', 'scripts/container_runtime.py',
             'scripts/agent_runtime.py', 'scripts/role_boundaries.py', 'src/goal-examples.json',
             'runtime/research-guard/index.mjs', 'runtime/research-guard/openclaw.plugin.json']
 for name in required:

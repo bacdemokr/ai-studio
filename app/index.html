@@ -37,13 +37,13 @@ body{margin:0;padding:0;width:100%;max-width:none}
     <details id="studio-resources" class="studio-resources">
       <summary>Resources <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></summary>
       <nav class="studio-resources-panel" aria-label="Resources">
-        <a href="https://www.nvidia.com/en-us/ai/build-a-claw/" target="_blank" rel="noopener noreferrer">Build-a-Claw<span aria-hidden="true">↗</span></a>
-        <a href="https://brev.nvidia.com/" target="_blank" rel="noopener noreferrer">NVIDIA Brev<span aria-hidden="true">↗</span></a>
-        <a href="https://brev.nvidia.com/launchables?tab=explore" target="_blank" rel="noopener noreferrer">Brev Launchables<span aria-hidden="true">↗</span></a>
-        <a href="https://openclaw.ai/" target="_blank" rel="noopener noreferrer">OpenClaw<span aria-hidden="true">↗</span></a>
-        <a href="https://hermes-agent.nousresearch.com/" target="_blank" rel="noopener noreferrer">Hermes<span aria-hidden="true">↗</span></a>
-        <a href="https://www.nvidia.com/en-us/ai/openshell/" target="_blank" rel="noopener noreferrer">NVIDIA OpenShell<span aria-hidden="true">↗</span></a>
-        <a href="https://agentskills.io/specification" target="_blank" rel="noopener noreferrer">Agent Skills specification<span aria-hidden="true">↗</span></a>
+        <a data-bac-resource href="https://www.nvidia.com/en-us/ai/build-a-claw/" target="_blank" rel="noopener noreferrer">Build-a-Claw<span aria-hidden="true">↗</span></a>
+        <a data-bac-resource href="https://brev.nvidia.com/" target="_blank" rel="noopener noreferrer">NVIDIA Brev<span aria-hidden="true">↗</span></a>
+        <a data-bac-resource href="https://brev.nvidia.com/launchables?tab=explore" target="_blank" rel="noopener noreferrer">Brev Launchables<span aria-hidden="true">↗</span></a>
+        <a data-bac-resource href="https://openclaw.ai/" target="_blank" rel="noopener noreferrer">OpenClaw<span aria-hidden="true">↗</span></a>
+        <a data-bac-resource href="https://hermes-agent.nousresearch.com/" target="_blank" rel="noopener noreferrer">Hermes<span aria-hidden="true">↗</span></a>
+        <a data-bac-resource href="https://www.nvidia.com/en-us/ai/openshell/" target="_blank" rel="noopener noreferrer">NVIDIA OpenShell<span aria-hidden="true">↗</span></a>
+        <a data-bac-resource href="https://agentskills.io/specification" target="_blank" rel="noopener noreferrer">Agent Skills specification<span aria-hidden="true">↗</span></a>
       </nav>
     </details>
   </div>
@@ -81234,7 +81234,7 @@ render();
       if(selection){selection.removeAllRanges();for(const range of ranges)if(range.commonAncestorContainer.isConnected)selection.addRange(range);}
     }
   }
-  const buildInfo={"version": "0.2.001", "commit": "ef42d69e2dfe966fc9b05646c00e37bd477369b0", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
+  const buildInfo={"version": "0.2.001", "commit": "908bf96d00a54fdd699229b9be831b8495abf49a", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
   // Only codes and source locations are retained. Never retain Error.message, bodies or URLs.
 const browserDiagnostics=[];
 const diagnosticRoutes=new Set('session state runtime diagnostics telemetry settings settings/models settings/start settings/team-model settings/connections settings/connections/preferences settings/connections/check settings/connections/models settings/scenario-model settings/scenario-models credential-session agents onboard profile agent-model delete-agent agent-policy crew-policy jobs upload decision retry-reaction reset crew-chat-reset bac-reset heartbeat team-model telegram telegram/test file workspace-files agent-documents evidence security'.split(' '));

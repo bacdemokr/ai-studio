@@ -322,6 +322,8 @@ def main():
     parser.add_argument('--host', default=os.environ.get('HOST', '127.0.0.1'))
     parser.add_argument('--port', type=int, default=int(os.environ.get('PORT', '8080')))
     args = parser.parse_args()
+    import resource_links
+    resource_links.filter_page(Path(__file__).resolve().parents[1] / 'app/index.html')
     try:
         server = create_server(args.host, args.port)
     except OSError as error:
