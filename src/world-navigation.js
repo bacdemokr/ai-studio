@@ -29,8 +29,8 @@ function roomGuide(id){
   return {...guide,label:'STAGE '+scenario.number+' / QUICK GUIDE',title:scenario.title,intro:escape(scenario.guide?.intro||scenario.description),points:(scenario.guide?.points||[]).map(point=>escape(point)),note:scenario.guide?.note||''};
 }
 const termGuides={
-  agent:{title:'How an agent works',body:['An agent is a software worker powered by a language model and configured for a particular purpose.','In Build-a-Claw, each agent combines an identity, instructions, selected skills, memory and a separate workspace. It can reason about a request and use the tools allowed by its runtime policy.','Skills guide how work is done; they do not grant tool or network permissions. Heartbeat schedules checks using the same agent and its instructions. Review the agent’s actions and results.']},
-  openshell:{title:'How OpenShell protection works',body:['OpenClaw connects the agent to an isolated OpenShell sandbox. Tool file access stays inside it, and network destinations need policy approval. The model connection is configured separately.','It combines:<br>• sandboxed execution<br>• controlled resource access<br>• credential protection<br>• formal policy verification','Approve a blocked destination in OpenShell Policy, then retry. A failed website or search service is not automatically a policy block.'],details:`<section class="world-term-command"><h3>Runtime command</h3><p>Illustrative command; the sandbox name and policy path are generated on this host.</p><pre>openshell sandbox create &#92;
+  agent:{title:'How an agent works',overview:'agent',body:['An agent is a software worker powered by a language model and configured for a particular purpose.','In Build-a-Claw, each agent combines an identity, instructions, selected skills, memory and a separate workspace. It can reason about a request and use the tools allowed by its runtime policy.','Skills guide how work is done; they do not grant tool or network permissions. Heartbeat schedules checks using the same agent and its instructions. Review the agent’s actions and results.']},
+  openshell:{title:'How OpenShell protection works',overview:'openshell',body:['OpenClaw connects the agent to an isolated OpenShell sandbox. Tool file access stays inside it, and network destinations need policy approval. The model connection is configured separately.','It combines:<br>• sandboxed execution<br>• controlled resource access<br>• credential protection<br>• formal policy verification','Approve a blocked destination in OpenShell Policy, then retry. A failed website or search service is not automatically a policy block.'],details:`<section class="world-term-command"><h3>Runtime command</h3><p>Illustrative command; the sandbox name and policy path are generated on this host.</p><pre>openshell sandbox create &#92;
   --name &lt;agent-runtime-id&gt; &#92;
   --from openclaw &#92;
   --policy &lt;data-dir&gt;/openclaw/policies/default-deny.json &#92;
@@ -44,11 +44,14 @@ navigationLayer.append(roomPaper);
 const termPaper=document.createElement('aside');termPaper.className='world-room-paper world-term-paper';termPaper.hidden=true;termPaper.setAttribute('role','dialog');termPaper.setAttribute('aria-modal','false');termPaper.setAttribute('aria-labelledby','world-term-paper-title');
 termPaper.innerHTML='<button type="button" class="world-room-paper-close" aria-label="Close definition">×</button><div class="world-room-paper-content"><div class="world-room-paper-drag" title="Drag to move"><span aria-hidden="true">•••</span><small>FIELD NOTES / GLOSSARY</small><h2 id="world-term-paper-title"></h2></div><div class="world-term-paper-body"></div></div><button type="button" class="world-room-paper-resize" aria-label="Resize definition window" title="Drag to resize"></button>';
 navigationLayer.append(termPaper);
-function movablePaper(paper){
+const termOverview=document.createElement('aside');termOverview.className='world-term-overview';termOverview.hidden=true;termOverview.setAttribute('role','dialog');termOverview.setAttribute('aria-modal','true');termOverview.setAttribute('aria-labelledby','world-term-overview-title');
+termOverview.innerHTML='<button type="button" class="world-room-paper-close" aria-label="Close overview">×</button><div><div class="world-room-paper-drag" title="Drag to move"><span aria-hidden="true">•••</span><h2 id="world-term-overview-title"></h2></div><img></div>';
+navigationLayer.append(termOverview);
+function movablePaper(paper,limits={}){
   const handle=paper.querySelector('.world-room-paper-drag'),resizer=paper.querySelector('.world-room-paper-resize'),margin=10;
   let moving=null,resizing=null,lastSize=null;
   function resetMobile(){
-    for(const name of ['left','top','right','bottom','width','height'])paper.style.removeProperty(name);
+    for(const name of ['left','top','right','bottom','width','height','max-height','transform'])paper.style.removeProperty(name);
     paper.classList.remove('world-room-paper-positioned');
   }
   function position(){
@@ -56,15 +59,15 @@ function movablePaper(paper){
     if(!paper.classList.contains('world-room-paper-positioned')){
       const bounds=navigationLayer.getBoundingClientRect(),rect=paper.getBoundingClientRect();
       paper.style.left=(rect.left-bounds.left)+'px';paper.style.top=(rect.top-bounds.top)+'px';
-      paper.style.right='auto';paper.style.bottom='auto';paper.classList.add('world-room-paper-positioned');
+      paper.style.right='auto';paper.style.bottom='auto';paper.style.transform='none';paper.classList.add('world-room-paper-positioned');
     }
     return true;
   }
   function constrain(){
     if(paper.hidden||!position())return;
     const bounds=navigationLayer.getBoundingClientRect(),rect=paper.getBoundingClientRect();
-    const width=Math.min(rect.width,Math.max(280,bounds.width-margin*2));
-    const height=Math.min(rect.height,Math.max(180,bounds.height-margin*2));
+    const width=Math.min(rect.width,limits.width||Infinity,Math.max(280,bounds.width-margin*2));
+    const height=Math.min(rect.height,limits.height||Infinity,Math.max(180,bounds.height-margin*2));
     if(Math.abs(width-rect.width)>.5)paper.style.width=width+'px';
     if(Math.abs(height-rect.height)>.5)paper.style.height=height+'px';
     const left=Math.max(margin,Math.min(rect.left-bounds.left,bounds.width-width-margin));
@@ -89,23 +92,26 @@ function movablePaper(paper){
     moving=null;handle.classList.remove('is-dragging');
   };
   handle.addEventListener('pointerup',finish);handle.addEventListener('pointercancel',finish);
-  resizer.addEventListener('pointerdown',event=>{
-    if(event.button!==0||!position())return;
-    const bounds=navigationLayer.getBoundingClientRect(),rect=paper.getBoundingClientRect();
-    resizing={pointer:event.pointerId,x:event.clientX,y:event.clientY,width:rect.width,height:rect.height,
-              maxWidth:bounds.right-rect.left-margin,maxHeight:bounds.bottom-rect.top-margin};
-    resizer.setPointerCapture(event.pointerId);paper.classList.add('is-resizing');event.preventDefault();event.stopPropagation();
-  });
-  resizer.addEventListener('pointermove',event=>{
-    if(!resizing||resizing.pointer!==event.pointerId)return;
-    paper.style.width=Math.max(280,Math.min(resizing.maxWidth,resizing.width+event.clientX-resizing.x))+'px';
-    paper.style.height=Math.max(180,Math.min(resizing.maxHeight,resizing.height+event.clientY-resizing.y))+'px';
-  });
-  const finishResize=event=>{
-    if(!resizing||resizing.pointer!==event.pointerId)return;
-    resizing=null;paper.classList.remove('is-resizing');constrain();
-  };
-  resizer.addEventListener('pointerup',finishResize);resizer.addEventListener('pointercancel',finishResize);
+  if(resizer){
+    resizer.addEventListener('pointerdown',event=>{
+      if(event.button!==0||!position())return;
+      const bounds=navigationLayer.getBoundingClientRect(),rect=paper.getBoundingClientRect();
+      resizing={pointer:event.pointerId,x:event.clientX,y:event.clientY,width:rect.width,height:rect.height,
+                maxWidth:Math.min(limits.width||Infinity,bounds.right-rect.left-margin),
+                maxHeight:Math.min(limits.height||Infinity,bounds.bottom-rect.top-margin)};
+      resizer.setPointerCapture(event.pointerId);paper.classList.add('is-resizing','is-user-sized');event.preventDefault();event.stopPropagation();
+    });
+    resizer.addEventListener('pointermove',event=>{
+      if(!resizing||resizing.pointer!==event.pointerId)return;
+      paper.style.width=Math.max(280,Math.min(resizing.maxWidth,resizing.width+event.clientX-resizing.x))+'px';
+      paper.style.height=Math.max(180,Math.min(resizing.maxHeight,resizing.height+event.clientY-resizing.y))+'px';
+    });
+    const finishResize=event=>{
+      if(!resizing||resizing.pointer!==event.pointerId)return;
+      resizing=null;paper.classList.remove('is-resizing');constrain();
+    };
+    resizer.addEventListener('pointerup',finishResize);resizer.addEventListener('pointercancel',finishResize);
+  }
   new ResizeObserver(()=>{
     if(paper.hidden)return;
     const size=[paper.offsetWidth,paper.offsetHeight];
@@ -114,16 +120,40 @@ function movablePaper(paper){
     paper.style.setProperty('--world-paper-title-size',(32*scale)+'px');
     paper.style.setProperty('--world-paper-label-size',(11*scale)+'px');
     paper.style.setProperty('--world-paper-step-size',(12*scale)+'px');
-    if(lastSize&&(size[0]!==lastSize[0]||size[1]!==lastSize[1]))constrain();
+    if(lastSize&&(size[0]!==lastSize[0]||size[1]!==lastSize[1])){
+      if(paper.classList.contains('world-term-overview'))paper.classList.add('is-user-sized');
+      constrain();
+    }
     lastSize=size;
   }).observe(paper);
   return constrain;
 }
 const constrainRoomPaper=movablePaper(roomPaper),constrainTermPaper=movablePaper(termPaper);
-new ResizeObserver(()=>{constrainRoomPaper();constrainTermPaper();}).observe(navigationLayer);
+const constrainTermOverview=movablePaper(termOverview,{width:1920,height:1080});
+new ResizeObserver(()=>{constrainRoomPaper();constrainTermPaper();constrainTermOverview();}).observe(navigationLayer);
 let roomInfoReturn=null,termInfoReturn=null;
+let termOverviewReturn=null;
+function closeTermOverview(restoreFocus=true){
+  if(termOverview.hidden)return;
+  termOverview.hidden=true;termOverview.classList.remove('is-maximized','is-user-sized','is-resizing');termPaper.removeAttribute('aria-hidden');
+  for(const name of ['left','top','right','bottom','width','height','max-height','transform'])termOverview.style.removeProperty(name);
+  termOverview.classList.remove('world-room-paper-positioned');
+  const target=termOverviewReturn;termOverviewReturn=null;
+  if(restoreFocus)target?.focus({preventScroll:true});
+}
+function openTermOverview(trigger,key){
+  const source=window.BacOverviewImages?.[key];if(!source)return;
+  const image=termOverview.querySelector('img');
+  termOverviewReturn=trigger;image.src=source;
+  image.alt=key==='openshell'?'OpenShell architecture showing its gateway, supervisor, sandbox isolation, policy lifecycle and approved egress':'AI agent overview showing an LLM combined with a harness of tools, instructions, memory and guardrails in an observe, plan and act loop';
+  termOverview.querySelector('h2').textContent=key==='openshell'?'OpenShell overview':'Agent overview';
+  termOverview.classList.toggle('is-maximized',key==='openshell');
+  termPaper.setAttribute('aria-hidden','true');termOverview.hidden=false;
+  termOverview.querySelector('.world-room-paper-close').focus({preventScroll:true});
+}
 function closeTermInfo(restoreFocus=true){
   if(termPaper.hidden)return;
+  closeTermOverview(false);
   termPaper.hidden=true;navigationLayer.dataset.termOpen='false';
   const target=termInfoReturn;termInfoReturn=null;
   if(restoreFocus)target?.focus({preventScroll:true});
@@ -150,7 +180,8 @@ function openRoomInfo(id,trigger){
 function openTermInfo(id,trigger){
   const guide=termGuides[id];if(!guide)return;
   termInfoReturn=trigger;termPaper.querySelector('h2').textContent=guide.title;
-  termPaper.querySelector('.world-term-paper-body').innerHTML=(id==='agent'?(window.BacAgentBlueprint||''):'')+guide.body.map(paragraph=>'<p>'+paragraph+'</p>').join('')+(guide.details||'');
+  const overview=guide.overview?'<p class="term-overview-link"><a href="#" data-term-overview="'+guide.overview+'">Overview</a></p>':'';
+  termPaper.querySelector('.world-term-paper-body').innerHTML=overview+(id==='agent'?(window.BacAgentBlueprint||''):'')+guide.body.map(paragraph=>'<p>'+paragraph+'</p>').join('')+(guide.details||'');
   termPaper.hidden=false;navigationLayer.dataset.termOpen='true';
   termPaper.querySelector('.world-room-paper-close').focus({preventScroll:true});
 }
@@ -158,8 +189,17 @@ roomPaper.querySelector('.world-room-paper-close').onclick=()=>closeRoomInfo();
 roomPaper.onclick=e=>{const term=e.target.closest('[data-paper-term]');if(term)openTermInfo(term.dataset.paperTerm,term);};
 roomPaper.onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeRoomInfo();}};
 termPaper.querySelector('.world-room-paper-close').onclick=()=>closeTermInfo();
+termPaper.onclick=event=>{
+  const link=event.target.closest('[data-term-overview]');if(!link)return;
+  event.preventDefault();openTermOverview(link,link.dataset.termOverview);
+};
 termPaper.onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeTermInfo();}};
-root.addEventListener('pointerdown',e=>{if(!roomPaper.hidden&&!e.target.closest('.world-room-paper,[data-room-info]'))closeRoomInfo(false);},true);
+termOverview.querySelector('.world-room-paper-close').onclick=()=>closeTermOverview();
+termOverview.onkeydown=e=>{
+  if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeTermOverview();}
+  else if(e.key==='Tab'){e.preventDefault();termOverview.querySelector('.world-room-paper-close').focus();}
+};
+root.addEventListener('pointerdown',e=>{if(!roomPaper.hidden&&!e.target.closest('.world-room-paper,.world-term-overview,[data-room-info]'))closeRoomInfo(false);},true);
 const roomInfoMarkers=Object.keys(roomGuides).map(id=>{
   const node=document.createElement('button');node.type='button';node.className='world-room-info';node.dataset.roomInfo=id;
   node.textContent='i';node.setAttribute('aria-label','About '+studioRooms[id].title);node.title='About '+studioRooms[id].title;

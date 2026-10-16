@@ -28,6 +28,17 @@ class AppBundleTests(unittest.TestCase):
         self.assertNotIn("'interface-design':'Interface design'", page)
         self.assertIn('data-team-hint="${escape(goalTeamHint(g))}"', page)
         self.assertIn('content:attr(data-team-hint)', page)
+        self.assertIn("data-term-overview=\"'+guide.overview+'\">Overview</a>", page)
+        self.assertIn("window.BacOverviewImages={agent:'data:image/png;base64,", page)
+        self.assertIn(",openshell:'data:image/png;base64,", page)
+        self.assertIn("termOverview.className='world-term-overview'", page)
+        self.assertIn('class="world-room-paper-drag" title="Drag to move"', page)
+        self.assertIn('movablePaper(termOverview,{width:1920,height:1080})', page)
+        self.assertIn('overflow:auto;resize:both;', page)
+        self.assertIn('width:80%;min-width:280px;min-height:180px;max-width:min(calc(100% - 20px),1920px)', page)
+        self.assertIn('width:min(calc(100% - 20px),1920px);height:min(calc(100% - 20px),1080px)', page)
+        self.assertNotIn('__AGENT_BIG_PICTURE_DATA_URL__', page)
+        self.assertNotIn('__OPENSHELL_OVERVIEW_DATA_URL__', page)
 
     def test_patch_isolated_until_restart_and_runtime_change_rejected(self):
         with tempfile.TemporaryDirectory() as temp:

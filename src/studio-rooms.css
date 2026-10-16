@@ -64,7 +64,7 @@
 /* A shared floor plan, with doors and a compact map inside the 3D viewport. */
 /* Share the viewport's stacking context: info markers < speech < navigation < guides. */
 .world-navigation{position:absolute;inset:0;pointer-events:none;overflow:hidden}
-.world-navigation>:not(.world-room-info):not(.world-room-paper){z-index:4}
+.world-navigation>:not(.world-room-info):not(.world-room-paper):not(.world-term-overview){z-index:4}
 #agent-campus .world-navigation button{pointer-events:auto;font-family:inherit;cursor:pointer}
 #agent-campus .world-overview-control{position:absolute;top:64px;left:20px;display:flex;flex-direction:column;align-items:flex-start;gap:6px}
 #agent-campus .world-build-version{padding-left:2px;color:#83949f;font-size:11px;font-weight:400;line-height:1.4;letter-spacing:.04em;pointer-events:none}
@@ -104,6 +104,10 @@
 .world-room-paper li:before{content:counter(guide-step,decimal-leading-zero);position:absolute;left:12px;top:12px;display:grid;place-items:center;width:25px;height:25px;border-radius:7px;background:#eaf0df;color:#47652a;font-size:var(--world-paper-step-size,12px);font-weight:700;line-height:1}
 .world-room-paper-note{margin:0;padding:14px 16px;border-radius:10px;background:#e9eee4;color:#4b6054}
 #agent-campus .world-term-paper-body p{margin:0 0 18px}#agent-campus .world-term-paper-body p:last-child{margin-bottom:0}
+.world-term-overview{pointer-events:auto;position:absolute;z-index:20;left:50%;top:50%;width:80%;min-width:280px;min-height:180px;max-width:min(calc(100% - 20px),1920px);max-height:min(calc(100% - 20px),1080px);box-sizing:border-box;overflow:auto;resize:both;transform:translate(-50%,-50%);color:#26343d;background:#f6f7f2;border:1px solid #d8dfd4;border-radius:16px;box-shadow:0 20px 70px #000a}
+.world-term-overview[hidden]{display:none}.world-term-overview>div{box-sizing:border-box;width:100%;max-height:inherit;padding:24px;overflow:auto}.world-term-overview h2{margin:0 42px 18px 0;color:#172e36;font-size:24px}.world-term-overview img{display:block;width:100%;height:auto;border:1px solid #c6d1be;border-radius:10px;background:#fff}
+.world-term-overview.is-maximized{width:min(calc(100% - 20px),1920px);height:min(calc(100% - 20px),1080px);max-height:1080px}.world-term-overview:is(.is-maximized,.is-user-sized)>div{display:flex;flex-direction:column;height:100%;max-height:none}.world-term-overview:is(.is-maximized,.is-user-sized) img{flex:1;min-height:0;object-fit:contain}.world-term-overview.is-resizing{user-select:none}
+@media(max-width:700px){.world-term-overview{min-width:0;min-height:0;resize:none}}
 .world-term-command{margin-top:20px;border-top:1px solid #d7e0d1;padding-top:14px}
 #agent-campus .world-term-command h3{margin:0 0 12px;color:#3d651c;font:inherit;font-weight:600;font-size:var(--world-paper-body-size,15px)}
 .world-term-paper-body pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.6;padding:14px;border-radius:8px;background:#e9eee4;color:#263e38}
@@ -797,6 +801,7 @@
 .agent-blueprint-parts{display:grid;grid-template-columns:1fr 1fr;gap:8px}.agent-blueprint-parts article{border:1px solid var(--diagram-border);border-radius:8px;padding:10px}
 .agent-blueprint-tools{border-top:1px dashed var(--diagram-border);margin-top:14px;padding-top:12px}
 .world-term-paper-body .agent-blueprint{--diagram-border:#c6d1be;--diagram-muted:#53635c;color:#263e38}
+.world-term-paper-body .term-overview-link{margin:0 0 12px}.term-overview-link a{color:#365f18;font-weight:700;text-underline-offset:3px}
 
 #studio-dialog .studio-diagnostic-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
 #studio-dialog #studio-download-diagnostics{border:0;padding:8px 2px;background:transparent;color:#a8bcc8;font-size:12px;cursor:pointer}

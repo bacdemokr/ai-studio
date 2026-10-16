@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Missing files should leave the last working build intact and identify the cause.
 required = ['scripts/serve.py', 'scripts/resource_links.py', 'scripts/studio.py', 'scripts/container_runtime.py',
             'scripts/agent_runtime.py', 'scripts/role_boundaries.py', 'src/goal-examples.json',
+            'src/assets/agent-harness-big-picture.png', 'src/assets/openshell-overview.png',
             'runtime/research-guard/index.mjs', 'runtime/research-guard/openclaw.plugin.json']
 for name in required:
     if not (ROOT / name).is_file():
@@ -76,6 +77,12 @@ for module in ('json', 'compare', 'settings', 'crew', 'telemetry',
     if studio_js.count(marker) != 1:
         raise ValueError('Expected one include marker: ' + marker)
     studio_js = studio_js.replace(marker, (ROOT / ('src/studio-' + module + '.js')).read_text(encoding='utf-8'))
+agent_big_picture = 'data:image/png;base64,' + base64.b64encode(
+    (ROOT / 'src/assets/agent-harness-big-picture.png').read_bytes()).decode('ascii')
+openshell_overview = 'data:image/png;base64,' + base64.b64encode(
+    (ROOT / 'src/assets/openshell-overview.png').read_bytes()).decode('ascii')
+studio_js = studio_js.replace('__AGENT_BIG_PICTURE_DATA_URL__', agent_big_picture)
+studio_js = studio_js.replace('__OPENSHELL_OVERVIEW_DATA_URL__', openshell_overview)
 from role_boundaries import ROLE_TEMPLATES
 studio_js = studio_js.replace('/* ROLE_TEMPLATES */', json.dumps(ROLE_TEMPLATES).replace('</', '<\\/'))
 studio_js = studio_js.replace('/* STAGE_SCENARIOS */', stage_scenarios)

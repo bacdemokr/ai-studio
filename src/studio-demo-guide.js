@@ -1,4 +1,5 @@
 // Presenter aids are local drafts. Selecting an example never starts a task.
+window.BacOverviewImages={agent:'__AGENT_BIG_PICTURE_DATA_URL__',openshell:'__OPENSHELL_OVERVIEW_DATA_URL__'};
 const agentBlueprint=`<div class="agent-blueprint" aria-label="An agent combines a language model, instructions, skills and memory inside a tool runtime">
  <div class="agent-blueprint-input">Your request <span>or a scheduled Heartbeat</span></div><span class="agent-blueprint-arrow" aria-hidden="true">↓</span>
  <section class="agent-blueprint-runtime"><header>Agent runtime <small>OpenClaw coordinates the loop</small></header>
