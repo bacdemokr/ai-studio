@@ -15,14 +15,15 @@ The app owns accounts/agent selection, durable jobs, team orchestration, validat
 | Area | Files |
 | --- | --- |
 | Single operator entry point | `bac`, `scripts/manage.py` |
-| Service/model lifecycle | `ops_common.py`, `ops_deploy.py`, `ops_runtime.py`, `ops_llm.py` |
-| HTTP and ownership checks | `serve.py` |
-| Jobs, profiles, persistence | `studio.py` |
-| Native runtime, activity and files | `agent_runtime.py`, `agent_activity.py`, `agent_documents.py` |
-| Open Task planning, handoffs and reactions | `collaboration_plan.py`, `visitor_teams.py`, `plan_handoff.py`, `plan_revision.py`, `crew_roundtable.py` |
-| Build identity and support diagnostics | `build_info.py`, `diagnostics.py`, `src/studio-diagnostics.js` |
-| Shared connections and credentials | `model_connections.py`, `scenario_models.py`, `runtime_settings.py`, `session_secrets.py`, `team_models.py` |
-| OpenShell website approvals | `agent_policy.py`, `studio_policy.py` |
+| Service/model lifecycle | `scripts/ops_common.py`, `scripts/ops_deploy.py`, `scripts/ops_runtime.py`, `scripts/ops_llm.py` |
+| HTTP and ownership checks | `scripts/serve.py` |
+| Jobs, profiles, persistence | `scripts/studio.py` |
+| Native runtime, activity and files | `scripts/agent_runtime.py`, `scripts/agent_activity.py`, `scripts/agent_documents.py` |
+| Open Task planning, handoffs and reactions | `scripts/collaboration_plan.py`, `scripts/visitor_teams.py`, `scripts/plan_handoff.py`, `scripts/plan_revision.py`, `scripts/crew_roundtable.py` |
+| Build identity and support diagnostics | `scripts/build_info.py`, `scripts/diagnostics.py`, `src/studio-diagnostics.js` |
+| Shared connections and credentials | `scripts/model_connections.py`, `scripts/scenario_models.py`, `scripts/runtime_settings.py`, `scripts/session_secrets.py`, `scripts/team_models.py` |
+| OpenShell website approvals | `scripts/agent_policy.py`, `scripts/studio_policy.py` |
+| Workflow-specific research/read limits | `runtime/research-guard/index.mjs`, `scripts/collaboration_plan.py`, `scripts/runtime_settings.py` |
 | UI / 3D scene | `src/studio*`, `src/world-*`, `src/campus*`, `src/agent-character.js` |
 
 ## Open Task execution and attribution

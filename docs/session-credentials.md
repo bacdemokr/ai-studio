@@ -9,7 +9,7 @@ Credential lifetime depends on how the key was supplied, not on the stage using 
 | Telegram bot token | Current browser tab's credential lease | That participant's Tech Radar delivery |
 | Keyless local server | No credential needed | Stages using Local |
 
-`./bac start` optionally validates `api.cfg` with model discovery and a small inference request. A valid key is stored at `$BAC_DATA_DIR/credentials/stage3.json` (directory mode 0700, file mode 0600). The filename is historical: this saved NVIDIA key can also supply Hiring and Lounge. Empty, rejected or unreachable credentials do not block opening Settings and are not saved. Use `./bac start --keep-data` when replacing the key while preserving runtime data.
+`./bac start` optionally validates `api.cfg` with model discovery, a small inference request, and access to both configured Nemotron team models. A valid key is stored at `$BAC_DATA_DIR/credentials/stage3.json` (directory mode 0700, file mode 0600). The filename is historical: this saved NVIDIA key supplies Hiring, Lounge and Open Task through the shared NVIDIA connection. Empty, rejected or unreachable credentials do not block opening Settings and are not saved. Use `./bac start --keep-data` when replacing the key while preserving runtime data.
 
 The browser shows **API key verified · api.cfg** or the applicable saved-key status without returning the key itself. Keys entered in Settings are held in process memory, never in host settings, browser storage, jobs or OpenClaw configuration. Model, endpoint, context budget and stage choices are saved separately. Refreshing or closing the tab requires re-entry unless a valid host-saved NVIDIA key supplies the connection.
 

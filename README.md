@@ -8,7 +8,7 @@ This guide describes **`preview/visitor-agent-teams`** on GitLab. The frozen Zur
 
 ## Start on a new PC
 
-**Requires:** Ubuntu 24.04, rootful Docker Engine 28+, Docker Compose 2.24+, internet access, and permission to run `docker info`. Intel/AMD and ARM64 (DGX Spark) are supported.
+**Deployment target:** Linux with local, rootful Docker Engine 28+, Docker Compose 2.24+, and permission to run `docker info`. The documented target is Ubuntu 24.04; Intel/AMD64 and ARM64 (including DGX Spark) images are supported. Native macOS uses the source preview path. On Windows, use Linux under WSL2 with a Docker setup that satisfies the same checks; native Windows does not run `./bac start`.
 
 Clone the preview with an account that has access to the GitLab repository:
 
@@ -18,7 +18,7 @@ cd bacdemo-tier2
 ./bac start
 ```
 
-Startup optionally loads the NVIDIA inference API key from `api.cfg`. If the file is empty, invalid or the API cannot be reached, Studio still starts so you can configure Local or External Endpoint in Settings. A failed validation prints a warning and does not overwrite a saved key. Use `--keep-data` when retaining runtime data and settings. Valid keys are checked with a small inference request before being saved.
+Startup optionally loads the NVIDIA inference API key from `api.cfg`. If the file is empty, invalid or the API cannot be reached, Studio still starts so you can configure Local or External Endpoint in Settings. A failed validation prints a warning and does not overwrite a saved key. Use `--keep-data` when retaining runtime data and settings. Valid keys are checked with model discovery, access to both configured Nemotron team models and a small inference request before being saved.
 
 Open **http://localhost:8080** on the host, or **http://SPARK_IP:8080** from another computer on the same trusted network. Both provide the same Settings and demo controls. The validated key is available automatically under **Settings → Model → External Endpoint**. Enable **Local** and/or **External Endpoint** once. Hired agents default to connected Local, otherwise the configured External Endpoint model. Change the model in Hiring, Edit agent, or by clicking a hired agent’s model badge in Open Task while idle. Model changes are locked while the agent is working or reserved for a task. Under **Models**, choose the **Open Task** connection. The selector shows the connection currently used.
 
@@ -35,6 +35,33 @@ In the Lounge, use normal chat with an OpenShell-protected agent. For example, a
 Casey assigns substantial work only when the agent’s **explicitly equipped skill** covers it and its actual tools permit it. Naming an agent does not expand its scope. A Weather buddy with Live weather only should decline game development; adding Coding makes a small game an appropriate assignment. Ordinary conversation and small adjacent requests remain possible. Skill suitability is model-guided, not a security boundary; OpenShell and tool permissions enforce access separately. Casey’s chat and Mission Control show saved **Why this agent** and **Not assigned** explanations; scene speech bubbles stay concise.
 
 ### Dependencies, hardware and model evidence
+
+#### Run the packaged demo: `./bac start`
+
+Required on the host:
+
+- Linux, `bash`, local rootful Docker Engine **28+**, and the Docker Compose plugin **2.24+**. Remote Docker contexts and rootless Docker are rejected.
+- Access to Docker through its local Unix socket and permission to run `docker info`. Compose also uses `/var/run/docker.sock` and the managed `/var/lib/bac-openshell` directory.
+- An amd64 or arm64 image matching the host architecture.
+- Internet access for the first image build/pull and pinned runtime downloads. Later starts can reuse cached images; validating a non-empty `api.cfg` still needs NVIDIA inference access.
+- A current desktop browser with WebGL to use the UI. Three.js is bundled.
+
+The Docker path does **not** require host Python, Node.js, npm, systemd, GPU drivers, model weights or Playwright. The image supplies Python, Node **24.16.0**, OpenClaw **2026.9.4**, OpenShell **0.1.4** and document utilities; pinned versions live in `docker/runtime-lock.json` and `docker/runtime/package.json`. Git is needed to clone/update a source checkout, but not to start an already complete release folder.
+
+The first start creates `.env` from `.env.example`. Keep `bac`, `compose.yaml`, the `scripts/`, `docker/`, `runtime/`, `src/`, `skills/` and `scenario/` trees together. Release-archive installations additionally use the supplied image archive, `image-archive.txt` and `SHA256SUMS`. Files placed in `shared/` must be readable by container UID **10001**.
+
+#### Optional local inference: `./bac vllm`
+
+This helper runs outside Docker and is never started by `./bac start`. It requires host Python **3.9+**, the configured vLLM/Ollama executable and weights, and a systemd user session when launching a new managed background service. BaC reuses configured files; it does not download model weights. Spark-managed Qwen/Gemma installation uses the separate `./bac dev setup --model ...` workflow and requires Linux ARM64 plus the NVIDIA driver stack.
+
+#### Optional development and testing
+
+- `./bac dev preview` and Python tests require a source checkout and host Python **3.9+**.
+- Managed Linux development (`./bac dev setup` / `start`) additionally uses Git, a systemd user session and `poppler-utils` for PDF extraction. It installs its private Node/OpenClaw runtime under the BaC data directory.
+- Browser automation requires host Node/npm, Playwright and the chosen test browsers. Playwright is optional and is not a production dependency; see [Optional browser testing](#optional-browser-testing).
+- Protected agents in the host-development path require the pinned OpenShell CLI/gateway and Docker 28+ for the same user. The packaged Docker path already includes the pinned OpenShell runtime.
+
+See [Docker setup and recovery](docs/docker-setup.md), [Ubuntu host development](docs/ubuntu-setup.md), [DGX Spark operations](docs/spark-operations.md), and [development and verification](docs/development.md).
 
 | Area | What is needed / what has been checked |
 | --- | --- |
@@ -63,7 +90,7 @@ Detailed structured records live at `$BAC_DATA_DIR/studio/logs/diagnostics.jsonl
 
 `./bac vllm` starts or reuses **Qwen by default**, then waits for the exact model
 ID and a small inference request to succeed. This command runs independently of
-Docker, Studio, and the Stage 3 API key. Ordinary `./bac start` never starts or
+Docker, Studio, and the host-saved NVIDIA API key. Ordinary `./bac start` never starts or
 waits for a local model, even if model configuration exists or model files are
 missing. `./bac stop` stops the BaC services and their OpenShell sandboxes, but leaves the host model server running and preserves saved data. Use `./bac stop --all` to also stop the local model launched by this installation, remove the Compose stack, and reset its application data and OpenShell policies. Externally managed model servers and model weights are preserved.
 
@@ -95,9 +122,9 @@ can point anywhere on the host PC; a `build-a-claw` parent is not required when
 this file is present. No model files or runtime packages are downloaded.
 If paths are missing, `vllm` explains the problem; `start` is unaffected.
 
-After starting Studio, connect Stages 1 and 2 in **Settings → Model → Local**
-using the model ID and endpoint printed by `vllm`. Stage 3 retains its separate
-NVIDIA inference API default, with optional Local routing for Open Task. Model preparation does not change Studio's
+After starting Studio, connect Local in **Settings → Model → Local**
+using the model ID and endpoint printed by `vllm`. Open Task prefers the
+External Endpoint by default and can be routed to Local. Model preparation does not change Studio's
 saved provider settings.
 
 The helper requires host Python 3.9+ and a systemd user session to launch a new
@@ -134,7 +161,7 @@ independently. Failed new launches print the final startup-log lines automatical
 
 ## API key and model settings
 
-### Stage 3: Multi-Agent demo
+### Open Task (Stage 3)
 
 `api.cfg` sits beside `bac` and contains only your NVIDIA inference API key on one line. Edit this file directly; startup never asks you to type a key in the terminal. To change the key, edit `api.cfg`, then run:
 
@@ -153,9 +180,9 @@ If you want to edit `api.cfg` and use Git **before your first start**, install t
 bash scripts/setup-key-filter.sh
 ```
 
-In Stage 3, **Models & connection** opens the shared Model settings. Preferences apply to new work; active requests are never automatically replayed. On NVIDIA, choose **Hired + Standby** and expand **Standby specialists** to change Casey’s or a backup’s model. You can return to Hired only before starting the task. Choices are locked while the team is working. Casey and backups use the selected connection model with Local or other external providers; hires retain their individual choices. Hires choose models individually.
+In Open Task, **Models & connection** opens the shared Model settings. Preferences apply to new work; active requests are never automatically replayed. On NVIDIA, choose **Hired + Standby** and expand **Standby specialists** to change Casey’s or a backup’s model. You can return to Hired only before starting the task. Choices are locked while the team is working. Casey and backups use the selected connection model with Local or other external providers; hires retain their individual choices. Hires choose models individually.
 
-### Stages 1 and 2: Hiring and Agent lounge
+### Hiring and Agent Lounge (Stages 1 and 2)
 
 Open **Settings → Model → Local → Configure**, search the model list, and connect a model with tool calling:
 

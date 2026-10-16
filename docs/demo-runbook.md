@@ -70,7 +70,7 @@ The team choice is locked during work. Changing it after completion retains prev
 - **Waiting for model:** check that the selected connection is enabled and ready. **Waiting for runtime:** check OpenClaw. **Waiting for other agents:** foreground work is delaying Heartbeat.
 - **Partial result:** inspect saved work and the error before retrying. A new request can repeat writes. Neither a saved file nor its preview proves correctness.
 - **Context/output errors:** context defaults to 32K; output is capped at 16K per response and reduced for smaller contexts. These are demo settings, not a universal model limit. Narrow broad requests and keep inputs compact; see [model settings](runtime-settings.md#context-and-output-budgets).
-- **Reset Open Task:** stops and clears team work. **Remove agents:** removes hired agents and their data. **Reset all:** clears Open Task and hired agents. Model settings remain. Empty resets are disabled.
+- **Reset Open Task:** stops and clears team work and restores Casey/standby default models. **Remove agents:** removes hired agents and their data. **Reset all:** clears Open Task and hired agents. Connection settings and hired-agent model choices remain. Empty resets are disabled.
 - `./bac stop` stops the app and preserves data. `./bac stop --all` also stops its managed model and resets the Compose stack, application data, and OpenShell policies. Model weights remain.
 
 - **Connection lost after a contribution:** saved files remain available as a partial result. Restore the connection before asking Casey to continue; completed work is not automatically repeated.

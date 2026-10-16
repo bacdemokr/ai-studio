@@ -1,6 +1,6 @@
 # Runtime usage panel
 
-The scene footer contains a compact CPU / RAM / Context meter (highest last-reported utilization among agents in the current room). Expand it for per-agent context bars; it remains available in native fullscreen. Multi-Agent demo shows the selected mission’s crew snapshots; Hiring and the lounge show personal runs. Tooltips include the observed model and timestamp when available.
+The scene footer contains a compact CPU / RAM / Context meter (highest last-reported utilization among agents in the current room). Expand it for per-agent context bars; it remains available in native fullscreen. Open Task shows the selected mission’s crew snapshots; Hiring and the lounge show personal runs. Tooltips include the observed model and timestamp when available.
 
 - Cumulative usage (expanded panel): sum of Gateway-reported `usage.total_tokens` for captured responses, including input and output. Persisted in each job's payload, scoped to the requesting participant. This is **recorded app activity**, not a provider billing meter: old jobs, failed/lost responses and provider-unreported usage are not reconstructed. Board resets retain recorded measurements; deleting an agent removes its jobs and measurements. The default `./bac start` clears all runtime jobs, context and usage history; `./bac start --keep-data` preserves them.
 - Context: latest fresh OpenClaw session prompt-token snapshot, divided by that session's resolved context budget. A snapshot updates after a response; it is not a live generation counter. Different agents can use one model while maintaining distinct sessions. Splitting context does not guarantee lower aggregate token usage.
@@ -19,7 +19,7 @@ Checked against the installed OpenClaw 2026.9.4 implementation:
 
 The collector accepts only the exact requested session, a fresh version-1 snapshot, and an update after the run started. A future incompatible runtime produces unknown context, not invented percentages. The gateway response remains string-compatible through a string subclass carrying metrics, preserving existing file/artifact generation.
 
-Focused checks: `tests/test_telemetry.py` exercises aggregate/context separation, stale/missing values, six-role persistence, participant isolation and repeat reads. `tests/telemetry-mission.cjs` checks mission-scoped displays with fixture data; remote browser checks also cover opening Usage & time. Live inference validation requires a configured model.
+Focused checks: `tests/test_telemetry.py` exercises aggregate/context separation, stale and missing values, context freshness, speed calculation, repair double-counting and legacy stage keys. `tests/telemetry-mission.cjs` checks mission-scoped displays with fixture data; crew and remote browser fixtures cover multi-agent presentation, access controls and opening Usage & time. Live inference validation requires a configured model.
 
 ## Open Task Usage & time
 

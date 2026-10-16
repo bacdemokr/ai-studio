@@ -60,10 +60,12 @@ After submitting an example, verify that its sample attachment is released from 
 
 ## Repeatable checks
 
-Run the Python suite with `python3 -B -m unittest discover -s tests`. Browser suites need Playwright, Chrome and permission to start local fixture servers. Relevant entry points include:
+Run the Python suite with `python3 -B -m unittest discover -s tests`. Browser suites need Playwright, Chrome and permission to start local fixture servers. The following browser list is intentionally non-exhaustive; relevant entry points include:
 
 - `tests/team-modes-browser.cjs`, `tests/visitor-teams-browser.cjs`, `tests/visitor-travel-browser.cjs`, `tests/visitor-protection-browser.cjs`
-- `tests/personal-models-browser.cjs`, `tests/open-task-only-browser.cjs`, `tests/hiring-role-skills-browser.cjs`
-- `tests/reset-draft-browser.cjs`, `tests/open-task-only-browser.cjs`, `tests/remote-access-browser.cjs`
+- `tests/personal-models-browser.cjs`, `tests/captain-model-browser.cjs`, `tests/standby-selection-browser.cjs`, `tests/hiring-role-skills-browser.cjs`
+- `tests/open-task-only-browser.cjs`, `tests/open-task-settlement-browser.cjs`, `tests/open-task-heartbeat-browser.cjs`
+- `tests/visitor-planning-presence-browser.cjs`, `tests/visitor-seating-browser.cjs`, `tests/team-selection-browser.cjs`
+- `tests/reset-draft-browser.cjs`, `tests/remote-access-browser.cjs`
 
 Inspect each runner's fixture setup before executing it. Record PASS, FAIL or BLOCKED for each journey, separate real API runs from fixtures, and keep hardware or policy limitations explicit. Include the failure reproduction and successful recheck when a regression is fixed.

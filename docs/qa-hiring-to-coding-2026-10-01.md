@@ -1,5 +1,7 @@
 # Hiring-to-coding regression review - 2026-10-01
 
+> **Historical QA record.** Results, suite counts, timings and observed behavior describe the 2026-10-01 code state, not the current release or current test status.
+
 Scope: changes after `c8bf1be`, starting with custom Hiring names and including Tech Radar chat restrictions, Casey-only `/plan` drafts, staged resets, and compact desktop coding prompts.
 
 ## Findings and changes

@@ -65,7 +65,7 @@ Search the **Model** field, select a text model with working tool calling, then 
 
 With Ollama running in Docker, publish its API to the host's loopback interface, for example `-p 127.0.0.1:11434:11434`. The app's `127.0.0.1` refers to Ubuntu, not your laptop or the container. GPU access belongs to the model container; verify it using the [official Ollama Docker instructions](https://docs.ollama.com/docker) and `ollama ps` (inside the container if applicable). The app does not install the NVIDIA Container Toolkit.
 
-**Context must match on both sides.** The app defaults to 32,768 tokens. Its Context limit describes the server's capacity; it does not configure Ollama's `num_ctx`. Configure the model server for the app’s context. The compact editor retains existing context settings but does not expose a context field; see [context and output budgets](runtime-settings.md#context-and-output-budgets). Ollama supports a model-specific `Modelfile` with `PARAMETER num_ctx 32768`; see [Ollama's OpenAI compatibility guide](https://docs.ollama.com/api/openai-compatibility#setting-the-local-context-size). The [upstream request conversion](https://github.com/ollama/ollama/blob/main/openai/openai.go) maps output-token limits separately from context. A model that lists successfully can still lack reliable tool calling or enough GPU memory for concurrent work.
+**Context must match on both sides.** The app defaults to 32,768 tokens. Its Context limit describes the server's capacity; it does not configure Ollama's `num_ctx`. Configure the model server for the app’s context. Open **Settings → Model → Configure → Advanced → Context limit** to inspect or change the application value; see [context and output budgets](runtime-settings.md#context-and-output-budgets). Ollama supports a model-specific `Modelfile` with `PARAMETER num_ctx 32768`; see [Ollama's OpenAI compatibility guide](https://docs.ollama.com/api/openai-compatibility#setting-the-local-context-size). The [upstream request conversion](https://github.com/ollama/ollama/blob/main/openai/openai.go) maps output-token limits separately from context. A model that lists successfully can still lack reliable tool calling or enough GPU memory for concurrent work.
 
 API keys, when used, remain in memory and require reconnecting after tab refresh/closure or app restart. A local endpoint without a key has no credential to re-enter; its saved endpoint/model remain usable while the model server and agent gateway are reachable.
 
@@ -104,7 +104,7 @@ The [pinned official installer](https://github.com/NVIDIA/OpenShell/blob/v0.1.4/
 
 ## 4. Rehearse and operate
 
-Before presenting, verify one chat reply, one skill/tool call, then one complete event with the chosen model. If protection is enabled, ask an OpenShell-on agent to read its `IDENTITY.md`, inspect Policies, and exercise an approve/revoke cycle. These are needed even when every infrastructure check passes.
+Before presenting, verify one chat reply, one skill/tool call, then one complete Open Task journey with the chosen model. If protection is enabled, ask an OpenShell-on agent to read its `IDENTITY.md`, inspect Policies, and exercise an approve/revoke cycle. These are needed even when every infrastructure check passes.
 
 ```bash
 ./bac dev status
@@ -130,6 +130,8 @@ For optional **DGX Spark ARM64 managed NVFP4 models**, use the separate [Spark g
 
 ## Verification status
 
-The September 21, 2026 audit passed 269 Python tests and six browser suites, including connection failure/retry, asynchronous drafts, polling and policy recovery. A copied-source folder without Git also started with empty data and prepared the four crew definitions. Real HTTP fixtures covered local model discovery, streamed requests, tool payload forwarding and provider errors; they did not run LLM inference. Published Node checksums were confirmed for Linux x64 and ARM64.
+The following results are historical snapshots, not the current suite size or current Ubuntu/Spark acceptance status.
+
+The September 21, 2026 audit passed 269 Python tests and six browser suites, including connection failure/retry, asynchronous drafts, polling and policy recovery. A copied-source folder without Git also started with empty data and prepared the then-current crew definitions. Real HTTP fixtures covered local model discovery, streamed requests, tool payload forwarding and provider errors; they did not run LLM inference. Published Node checksums were confirmed for Linux x64 and ARM64.
 
 Docker verification subsequently passed 278 Python tests in Linux, real OpenShell sandbox creation/deletion and network approval/revocation, a localhost model API/native read-tool fixture, and saved-data checks across image replacement. This used Docker Desktop on macOS with a disposable Linux Docker Engine, not a physical Ubuntu GPU machine. Clean Ubuntu host installation and real GPU model inference still need the target-host rehearsal above. See the [Docker guide](docker-setup.md) for the supported deployment path.

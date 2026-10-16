@@ -59,7 +59,7 @@ ssh -N -L 8080:127.0.0.1:8080 USER@SPARK
 
 Open **http://localhost:8080 → Settings → Model**. For the managed model choose **Local → Configure**, endpoint `http://127.0.0.1:8000/v1`, model `bac-local`, then **Connect & enable**. Under **Models**, select Local for **Open Task**. Hired agents default to connected Local, otherwise the configured External Endpoint model; their model can be changed in Hiring or Edit agent.
 
-`./bac dev preview` is the foreground development/preview alternative, not another required setup step. Stop it before starting a managed app on the same port. `./bac dev start --port 8081` uses another app port; adjust the tunnel. `--host 0.0.0.0` enables trusted workshop LAN access, while Settings still requires localhost/tunnel access. Model and agent gateways bind to loopback.
+`./bac dev preview` is the foreground development/preview alternative, not another required setup step. Stop it before starting a managed app on the same port. `./bac dev start --port 8081` uses another app port; adjust the tunnel. `--host 0.0.0.0` exposes both Studio and Settings to a trusted workshop LAN; an SSH tunnel remains an optional private access path. Model and agent gateways still bind to loopback.
 
 ## Daily use
 
@@ -78,7 +78,7 @@ Finish or stop pending missions and policy updates before updates, rollback or s
 
 ## Optional OpenShell protection
 
-For the pinned installer command and first-run steps, see [Ubuntu OpenShell setup](ubuntu-setup.md#optional-openshell). Install the host prerequisites from [OpenShell installation](https://docs.nvidia.com/openshell/latest/about/installation) and the [Spark OpenShell playbook](https://build.nvidia.com/spark/openshell). For this app’s Ubuntu Docker path, Docker Engine 28+ must be reachable by the normal account; OpenShell’s CLI/gateway and SSH must work from that same account. Docker group changes may require a new login.
+For the pinned installer command and first-run steps, see [Ubuntu OpenShell setup](ubuntu-setup.md#openshell-for-protected-personal-agents). Install the host prerequisites from [OpenShell installation](https://docs.nvidia.com/openshell/latest/about/installation) and the [Spark OpenShell playbook](https://build.nvidia.com/spark/openshell). For this app’s Ubuntu Docker path, Docker Engine 28+ must be reachable by the normal account; OpenShell’s CLI/gateway and SSH must work from that same account. Docker group changes may require a new login.
 
 ```bash
 ./bac dev openshell enable
@@ -94,7 +94,7 @@ On the actual Spark, rehearse these once before attendees arrive:
 1. Get a real reply from an OpenShell-off personal agent.
 2. Ask an OpenShell-on agent to read `IDENTITY.md`. Inspect its actual sandbox and loaded policy.
 3. Run `./bac dev openshell prove` for independent deny → allow → deny network evidence.
-4. Run a complete event and inspect Dylan’s sources, Alex’s rota, Morgan’s written HTML and guest reactions.
+4. Run a complete Open Task `/goal` journey with Casey. Inspect the selected hires/backups, saved handoffs, generated artifacts, independent review when requested, and final response.
 5. Restart/reboot, reconnect as needed, and repeat the protected file read.
 
 ## What is pinned, and what remains unverified

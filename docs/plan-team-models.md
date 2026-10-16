@@ -9,7 +9,7 @@
 
 Assignments use the actual tools and permissions of the selected agent. A substantial assignment must match the hire’s equipped skills. Naming an unsuitable hire does not force participation: Casey explains the missing expertise instead. Tool access alone is not suitability, and a skill does not bypass OpenShell policy. Independent review requires a different agent from the producer. Casey’s chat and Mission Control show **Why this agent** from the saved plan; **Not assigned** explains declined named participants. Speech bubbles remain short. Earlier plans may have no recorded selection reason.
 
-Idle hires follow you into Open Task and wait on benches. Assigned agents move to workbenches and stay there after completion; the next confirmed plan moves replaced agents back to waiting seats. The selected mode is locked during a task. Changing modes afterward retains results; reload and Reset Open Task default new tasks to Hired only. Reset clears scenario results but preserves hired agents and their own files.
+Idle hires follow you into Open Task and wait on benches. Assigned agents move to workbenches and stay there after completion; the next confirmed plan moves replaced agents back to waiting seats. The selected mode is locked during a task. Changing modes afterward retains results; reload and Reset Open Task default new tasks to Hired only. Reset clears scenario results and restores Casey/standby default models, while preserving hired agents, their model choices and their own files.
 
 
 ## Choose models

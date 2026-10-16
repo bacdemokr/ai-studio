@@ -53,10 +53,18 @@ Each agent uses its choice for Lounge chat, Heartbeat and Open Task assignments.
 
 Open **Configure → Advanced → Context limit** to inspect or change the budget. Advanced options start collapsed. The editor retains an existing provider context value or uses 32K for a new provider; it does not infer the model's capacity from its name. Set up local servers with sufficient context before presenting. This setting does not resize Ollama's `num_ctx` or vLLM's server context.
 
-The runtime bounds web excerpts and enables context compaction with a pre-call check. Recent-context retention scales to one quarter of the smallest configured context, capped at 8K tokens. Open Task file reads are limited to 120 lines, 6KB per tool result and 24KB per turn; Vera has a stricter review limit. UTF-8 byte budgets cover multilingual text as well as English. Saved files stay intact, writes and edits remain available, and shortened excerpts disclose missing coverage. These measures reduce context growth but cannot guarantee that every request fits. Generating a large file also adds its code to the conversation, so a context error can occur after the file was saved.
+The runtime bounds excerpts and enables context compaction with a pre-call check. Recent-context retention scales to one quarter of the smallest configured context, capped at 8K tokens. Current workflow limits are deliberately different:
+
+- Native web fetch defaults to 3,000 characters, with a 4,000-character cap.
+- Scout research permits at most two searches with three results each, or five bounded page reads.
+- Vera review permits eight reads, 120 lines per read, 5,000 characters per returned excerpt and 18,000 retained source characters. Duplicate ranges are blocked.
+- Other Open Task specialist file work permits up to 16 reads, 120 lines per read and 24,000 retained source characters. Cody's focused recovery reads use 80-line ranges.
+- Open Task final-answer validation caps the answer at 24,000 characters; this is not a uniform per-turn or per-tool budget.
+
+Saved files stay intact, writes and edits remain available, and shortened excerpts disclose missing coverage. These measures reduce context growth but cannot guarantee that every request fits. Generating a large file also adds its code to the conversation, so a context error can occur after the file was saved. The executable sources of truth are `runtime/research-guard/index.mjs`, `scripts/collaboration_plan.py` and `apply_context_limits()` in `scripts/runtime_settings.py`.
 
 
-Open Task supports one fresh-conversation recovery after a context overflow. Open Task reuses saved files and observed evidence, with focused reads instead of regenerating the whole output. Recovery shares each workflow's existing single repair allowance and respects cancellation and the remaining time budget. It does not increase the model context, switch models or reset user data. A second failure stops with partial results. Inspect saved work, narrow the task or reset the appropriate conversation/scenario before trying again. See `scripts/runtime_settings.py` for the current limits.
+Open Task supports one fresh-conversation recovery after a context overflow. Open Task reuses saved files and observed evidence, with focused reads instead of regenerating the whole output. Recovery shares each workflow's existing single repair allowance and respects cancellation and the remaining time budget. It does not increase the model context, switch models or reset user data. A second failure stops with partial results. Inspect saved work, narrow the task or reset the appropriate conversation/scenario before trying again.
 
 ## Optional api.cfg
 
@@ -68,9 +76,9 @@ Startup installs a Git clean filter that stages an empty `api.cfg` while preserv
 
 **Location** sets the default city, initially Zurich. Explicit locations in a task take precedence. Saving updates the managed location for hired agents and every prepared specialist in Open Task without changing memory, permissions or credentials.
 
-**Telegram** sends new summaries from agents with the Tech Radar skill only. Ordinary chat and Multi-Agent results are not sent. See [Heartbeat and Telegram](heartbeat.md).
+**Telegram** sends new summaries from agents with the Tech Radar skill only. Ordinary chat and Open Task results are not sent. See [Heartbeat and Telegram](heartbeat.md).
 
-**Reset** offers Remove agents for Stages 1/2, Reset Open Task, and Reset all for both team work and hired agents. Model and connection settings remain. The team utility Reset clears only Open Task.
+**Reset** offers Remove agents for Stages 1/2, Reset Open Task, and Reset all for both team work and hired agents. Reset Open Task also restores Casey and built-in standby specialists to their default model choices. Hired-agent model choices and Local/External Endpoint connection settings remain. The team utility Reset clears only Open Task.
 
 ## Access and verification
 

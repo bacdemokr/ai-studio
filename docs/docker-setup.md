@@ -14,7 +14,7 @@ cd bacdemo-tier2
 
 The first start creates `.env` from the supplied example, builds the pinned runtime image and downloads the OpenShell images. Later starts reuse the image unless its dependencies changed.
 
-Startup optionally validates the NVIDIA inference key in `api.cfg`. A missing, rejected or unreachable key does not block startup. A validated key becomes available automatically in **Settings → Model**; Local and External Endpoint can also be configured there.
+Startup optionally validates the NVIDIA inference key in `api.cfg`. Validation checks model discovery, a small inference request, and access to both configured Nemotron team models. A missing, rejected or unreachable key does not block startup. A validated key becomes available automatically in **Settings → Model**; Local and External Endpoint can also be configured there.
 
 Open **http://localhost:8080** on the host or **http://SPARK_IP:8080** from another computer on the same trusted network. Settings are available through either address. In **Settings → Model**, configure Local and/or External Endpoint, then choose the Open Task connection. Hired agents keep their individual model choices; new hires prefer connected Local, otherwise the configured External Endpoint default. Model endpoint URLs are resolved by the Spark, not by the browser computer.
 
@@ -22,7 +22,7 @@ Open **http://localhost:8080** on the host or **http://SPARK_IP:8080** from anot
 - Another compatible server: its URL ending in `/v1`, for example `http://127.0.0.1:8000/v1`
 - Choose a model with tool calling. Leave the key empty if the server needs none.
 
-The model stays on the host; Linux host networking reaches localhost. BaC installs no model weights or GPU drivers. Its pinned OpenClaw and OpenShell runtimes are isolated from existing host installations. No host Python or Node is required.
+The model stays on the host; Linux host networking reaches localhost. BaC installs no model weights or GPU drivers, and `./bac start` does not launch local inference. Start or reuse a separately configured server with `./bac vllm`, or run another compatible server before enabling Local. Its pinned OpenClaw and OpenShell runtimes are isolated from existing host installations. No host Python or Node is required for `./bac start`.
 
 ## Commands
 

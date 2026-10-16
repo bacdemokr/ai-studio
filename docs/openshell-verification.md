@@ -64,7 +64,7 @@ On the development Mac with OpenClaw 2026.9.4 and OpenShell 0.0.116:
 - A deterministic local protocol fixture exercised the actual OpenClaw skill read, sandbox exec, search, article read, native write/read and mirror synchronization. Every tool completed and the resulting files were checked. This fixture is not an LLM.
 - 365 Python tests, the policy-activity JavaScript check and the UI build passed.
 
-Real-model generation could not be verified: the existing model proxy endpoint refused connections. Reconnect the model and rehearse a complete event before presenting. These Mac results do not establish Ubuntu/DGX Spark acceptance; run `live_crew_research.py` on the target host too.
+Real-model generation could not be verified: the existing model proxy endpoint refused connections. That archived Event Brief needed a complete rehearsal before presentation. These Mac results do not establish current Ubuntu/DGX Spark acceptance; run the current Open Task and `live_crew_research.py` checks on the target host.
 
 ## Local verification record - 2026-09-21
 
@@ -116,7 +116,9 @@ The Approved websites panel manages HTTPS network destinations only. File-grant 
 
 On upgrade, the app removes old `file:` approvals and only its managed `inbox/approved-<hash>.txt` transfer copies (including quarantined directory copies). Original host files, ordinary uploads and event artifacts are preserved. OpenClaw mirror mode replaces the remote workspace from the cleaned local workspace before the next protected run. Existing chat history remains historical data; runtime instructions explicitly state that file grants are no longer available.
 
-## CLI capability compatibility
+## Historical CLI capability record
+
+This section records compatibility work from OpenShell 0.0.106 and is not the procedure for the current 0.1.4 release.
 
 Sandbox preparation probes `sandbox create --help` before sending a create request. It uses `--detach -- sleep infinity` only when advertised; otherwise it uses `-- true`, matching the pinned OpenClaw plugin. OpenShell 0.0.106 keeps the sandbox after that initial command exits ([upstream implementation](https://github.com/NVIDIA/OpenShell/blob/v0.0.106/crates/openshell-cli/src/main.rs#L2839)). Creation is never retried with different arguments after a failure. Both paths retain the ownership label, default-deny policy and `--no-auto-providers`.
 
