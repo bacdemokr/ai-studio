@@ -51,6 +51,15 @@ function equipCharacter(body,face,appearance,color){
     cylinder(body,.28,1.33,0,.022,.14,0x72859a,8);
   }else if(appearance.accessory==='cap'){
     const cap=new THREE.Mesh(robotSphereGeometry,mat(color));cap.scale.set(.39,.14,.32);cap.position.set(0,1.29,0);body.add(cap);box(body,0,1.24,.13,.79,.045,.55,color);
+  }else if(appearance.accessory==='pirate'){
+    const outline=new THREE.Shape();outline.moveTo(-.46,-.12);outline.quadraticCurveTo(-.40,.17,-.16,.38);outline.quadraticCurveTo(-.08,.19,0,.13);outline.quadraticCurveTo(.08,.19,.16,.38);outline.quadraticCurveTo(.40,.17,.46,-.12);outline.quadraticCurveTo(0,-.22,-.46,-.12);outline.closePath();
+    const hat=new THREE.Mesh(new THREE.ExtrudeGeometry(outline,{depth:.075,bevelEnabled:true,bevelThickness:.012,bevelSize:.015,bevelSegments:1,steps:1}),mat(0x0a0d12));hat.position.set(0,1.25,.20);hat.castShadow=true;body.add(hat);
+    const rim=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(outline.getPoints(30).map(p=>new THREE.Vector3(p.x,p.y,.09))),new THREE.LineBasicMaterial({color:0xdce3ea}));hat.add(rim);
+    const skull=new THREE.Mesh(new THREE.CircleGeometry(.075,18),mat(0xe8edf2));skull.position.set(0,.06,.095);hat.add(skull);
+    for(const side of [-1,1]){
+      const eye=new THREE.Mesh(new THREE.CircleGeometry(.019,10),mat(0x0a0d12));eye.position.set(side*.027,.073,.101);hat.add(eye);
+      const bone=box(hat,0,-.065,.101,.25,.026,.018,0xe8edf2);bone.rotation.z=side*.55;
+    }
   }else if(appearance.accessory==='antenna'){cylinder(body,0,1.36,0,.024,.22,0x72859a,8);cylinder(body,0,1.49,0,.065,.07,color,12);}
 }
 

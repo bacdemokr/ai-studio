@@ -6,6 +6,11 @@
     "description": "Coordinates available agents for your /goal and brings their results together.",
     "id": "event-lead",
     "skills": [],
+    "avatar": {
+      "body": "classic",
+      "color": "green",
+      "accessory": "pirate"
+    },
     "collaboration": {
       "title": "Team captain",
       "description": "Describe a task. Casey assigns the team and brings the results together.",

@@ -34,7 +34,7 @@ ACTIVE = ('queued', 'running', 'waiting', 'stopping')
 ROLE_SKILLS = [list(member['skills']) for member in CREW_CATALOG]
 MAX_AGENTS = 12
 ROLE_AVATARS = [dict(body=b, color=c, accessory=a) for b, c, a in (
-    ('classic', 'green', 'antenna'), ('round', 'cyan', 'headset'), ('rover', 'amber', 'cap'),
+    ('classic', 'green', 'pirate'), ('round', 'cyan', 'headset'), ('rover', 'amber', 'cap'),
     ('round', 'coral', 'antenna'), ('classic', 'violet', 'glasses'), ('claw', 'ice', 'headset'), ('classic', 'cyan', 'glasses'), ('round', 'violet', 'cap'), ('rover', 'cyan', 'glasses'))]
 AVATAR_OPTIONS = {'body': ('classic', 'round', 'rover', 'cat', 'operative', 'claw', 'crab'),
                   'color': ('green', 'cyan', 'amber', 'coral', 'violet', 'ice'),

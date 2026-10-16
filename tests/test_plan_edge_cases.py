@@ -65,6 +65,12 @@ class PlanEdgeCases(unittest.TestCase):
         self.assertEqual(self.app.crew_roster(None,team,[])[8]['name'],'Scout')
         with self.assertRaises(Problem):self.app.enqueue(self.owner,{'kind':'chat','prompt':'Hello'})
 
+    def test_casey_has_the_stage_three_pirate_accessory(self):
+        team=self.app.crew_owner(self.owner)
+        casey=self.app.crew_roster(None,team,[])[0]
+        self.assertEqual(casey['name'],'Casey')
+        self.assertEqual(casey['avatar']['accessory'],'pirate')
+
     def test_specialist_followup_remembers_own_contribution(self):
         self.start();self.app.execute(self.app.next_job());self.adapter.calls.clear()
         team=self.app.crew_owner(self.owner)
