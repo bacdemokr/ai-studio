@@ -80169,7 +80169,7 @@ function roomGuide(id){
 }
 const termGuides={
   agent:{title:'How an agent works',body:['An agent is a software worker powered by a language model and configured for a particular purpose.','In Build-a-Claw, each agent combines an identity, instructions, selected skills, memory and a separate workspace. It can reason about a request and use the tools allowed by its runtime policy.','Skills guide how work is done; they do not grant tool or network permissions. Heartbeat schedules checks using the same agent and its instructions. Review the agent’s actions and results.']},
-  openshell:{title:'How OpenShell protection works',body:['OpenClaw connects the agent to an isolated OpenShell sandbox. Tool file access stays inside it, and network destinations need policy approval. The model connection is configured separately.','Approve a blocked destination in OpenShell Policy, then retry. A failed website or search service is not automatically a policy block.'],details:`<section class="world-term-command"><h3>Runtime command</h3><p>Illustrative command; the sandbox name and policy path are generated on this host.</p><pre>openshell sandbox create &#92;
+  openshell:{title:'How OpenShell protection works',body:['OpenClaw connects the agent to an isolated OpenShell sandbox. Tool file access stays inside it, and network destinations need policy approval. The model connection is configured separately.','It combines:<br>• sandboxed execution<br>• controlled resource access<br>• credential protection<br>• formal policy verification','Approve a blocked destination in OpenShell Policy, then retry. A failed website or search service is not automatically a policy block.'],details:`<section class="world-term-command"><h3>Runtime command</h3><p>Illustrative command; the sandbox name and policy path are generated on this host.</p><pre>openshell sandbox create &#92;
   --name &lt;agent-runtime-id&gt; &#92;
   --from openclaw &#92;
   --policy &lt;data-dir&gt;/openclaw/policies/default-deny.json &#92;
@@ -81221,7 +81221,7 @@ render();
       if(selection){selection.removeAllRanges();for(const range of ranges)if(range.commonAncestorContainer.isConnected)selection.addRange(range);}
     }
   }
-  const buildInfo={"version": "0.2.001", "commit": "1adb47f722e0e153f9f9a8d166da431494fbd269", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
+  const buildInfo={"version": "0.2.001", "commit": "b10ccabb1482f9c48e46a70e4038d7e3d84511b9", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
   // Only codes and source locations are retained. Never retain Error.message, bodies or URLs.
 const browserDiagnostics=[];
 const diagnosticRoutes=new Set('session state runtime diagnostics telemetry settings settings/models settings/start settings/team-model settings/connections settings/connections/preferences settings/connections/check settings/connections/models settings/scenario-model settings/scenario-models credential-session agents onboard profile agent-model delete-agent agent-policy crew-policy jobs upload decision retry-reaction reset crew-chat-reset bac-reset heartbeat team-model telegram telegram/test file workspace-files agent-documents evidence security'.split(' '));
