@@ -80150,7 +80150,7 @@ const corridors=[],doorways=[],overviewLabels=[];
 const navigationLayer=document.createElement('div');navigationLayer.className='world-navigation';viewport.append(navigationLayer);
 navigationLayer.dataset.scenarioDensity=scenarioFloors.length>2?'compact':'normal';
 const overviewControl=document.createElement('div');overviewControl.className='world-overview-control';navigationLayer.append(overviewControl);
-const overviewButton=document.createElement('button');overviewButton.type='button';overviewButton.className='world-overview-button';overviewButton.dataset.worldOverview='';overviewButton.textContent='⌑ See the whole studio';overviewButton.setAttribute('aria-pressed','false');overviewControl.append(overviewButton);
+const overviewButton=document.createElement('button');overviewButton.type='button';overviewButton.className='world-overview-button';overviewButton.dataset.worldOverview='';overviewButton.textContent='• See the whole studio';overviewButton.setAttribute('aria-pressed','false');overviewControl.append(overviewButton);
 const studioVersion=document.createElement('span');studioVersion.className='world-build-version';studioVersion.textContent='v'+("0.2.001");overviewControl.append(studioVersion);
 const journeyNote=document.createElement('div');journeyNote.className='world-journey';journeyNote.setAttribute('role','status');journeyNote.setAttribute('aria-live','polite');journeyNote.hidden=true;navigationLayer.append(journeyNote);
 const roomMap=document.createElement('nav');roomMap.className='world-room-map';roomMap.setAttribute('aria-label','Connected studio rooms');
@@ -80400,7 +80400,7 @@ function refreshNavigation(){
   navigationLayer.dataset.overview=String(overview);navigationLayer.dataset.travelling=String(!!journey);
   root.dataset.worldOverview=String(overview);root.dataset.worldTravelling=String(!!journey);root.dataset.scenarioGallery=String(scenarioGallery);refreshScenarioLabels();
   hotspotLayer.hidden=room!=='mission'||overview||!!journey;el('labels').hidden=room!=='mission'||overview||!!journey;residentLayer.hidden=room!=='lounge'||overview||!!journey;
-  overviewButton.textContent=scenarioGallery?'← Whole studio':overview?'↙ Return to '+studioRooms[room].title:'⌑ See the whole studio';overviewButton.setAttribute('aria-pressed',String(overview));
+  overviewButton.textContent=scenarioGallery?'← Whole studio':overview?'↙ Return to '+studioRooms[room].title:'• See the whole studio';overviewButton.setAttribute('aria-pressed',String(overview));
   overviewButton.setAttribute('aria-label',scenarioGallery?'See the whole studio':overview?'Return to '+studioRooms[room].title:'See the whole studio');
   roomMap.querySelectorAll('[data-world-room]').forEach(b=>{b.setAttribute('aria-current',b.dataset.worldRoom===room?'location':'false');b.classList.toggle('selected',b.dataset.worldRoom===room);});
   overviewLabels.forEach(r=>{r.node.hidden=!overview||!!journey||(scenarioGallery&&!r.scenario);r.node.setAttribute('aria-current',r.scenario?room==='mission'&&r.scenario===activeScenario?'location':'false':r.id===room?'location':'false');});
@@ -81225,7 +81225,7 @@ render();
       if(selection){selection.removeAllRanges();for(const range of ranges)if(range.commonAncestorContainer.isConnected)selection.addRange(range);}
     }
   }
-  const buildInfo={"version": "0.2.001", "commit": "0b4b123e30c404e61155b7480a6febc455233825", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
+  const buildInfo={"version": "0.2.001", "commit": "d4f38908ca112df6dc3a561918d3eef2d638824c", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
   // Only codes and source locations are retained. Never retain Error.message, bodies or URLs.
 const browserDiagnostics=[];
 const diagnosticRoutes=new Set('session state runtime diagnostics telemetry settings settings/models settings/start settings/team-model settings/connections settings/connections/preferences settings/connections/check settings/connections/models settings/scenario-model settings/scenario-models credential-session agents onboard profile agent-model delete-agent agent-policy crew-policy jobs upload decision retry-reaction reset crew-chat-reset bac-reset heartbeat team-model telegram telegram/test file workspace-files agent-documents evidence security'.split(' '));

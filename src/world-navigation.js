@@ -10,7 +10,7 @@ const corridors=[],doorways=[],overviewLabels=[];
 const navigationLayer=document.createElement('div');navigationLayer.className='world-navigation';viewport.append(navigationLayer);
 navigationLayer.dataset.scenarioDensity=scenarioFloors.length>2?'compact':'normal';
 const overviewControl=document.createElement('div');overviewControl.className='world-overview-control';navigationLayer.append(overviewControl);
-const overviewButton=document.createElement('button');overviewButton.type='button';overviewButton.className='world-overview-button';overviewButton.dataset.worldOverview='';overviewButton.textContent='⌑ See the whole studio';overviewButton.setAttribute('aria-pressed','false');overviewControl.append(overviewButton);
+const overviewButton=document.createElement('button');overviewButton.type='button';overviewButton.className='world-overview-button';overviewButton.dataset.worldOverview='';overviewButton.textContent='• See the whole studio';overviewButton.setAttribute('aria-pressed','false');overviewControl.append(overviewButton);
 const studioVersion=document.createElement('span');studioVersion.className='world-build-version';studioVersion.textContent='v'+(/* BUILD_VERSION */);overviewControl.append(studioVersion);
 const journeyNote=document.createElement('div');journeyNote.className='world-journey';journeyNote.setAttribute('role','status');journeyNote.setAttribute('aria-live','polite');journeyNote.hidden=true;navigationLayer.append(journeyNote);
 const roomMap=document.createElement('nav');roomMap.className='world-room-map';roomMap.setAttribute('aria-label','Connected studio rooms');
@@ -260,7 +260,7 @@ function refreshNavigation(){
   navigationLayer.dataset.overview=String(overview);navigationLayer.dataset.travelling=String(!!journey);
   root.dataset.worldOverview=String(overview);root.dataset.worldTravelling=String(!!journey);root.dataset.scenarioGallery=String(scenarioGallery);refreshScenarioLabels();
   hotspotLayer.hidden=room!=='mission'||overview||!!journey;el('labels').hidden=room!=='mission'||overview||!!journey;residentLayer.hidden=room!=='lounge'||overview||!!journey;
-  overviewButton.textContent=scenarioGallery?'← Whole studio':overview?'↙ Return to '+studioRooms[room].title:'⌑ See the whole studio';overviewButton.setAttribute('aria-pressed',String(overview));
+  overviewButton.textContent=scenarioGallery?'← Whole studio':overview?'↙ Return to '+studioRooms[room].title:'• See the whole studio';overviewButton.setAttribute('aria-pressed',String(overview));
   overviewButton.setAttribute('aria-label',scenarioGallery?'See the whole studio':overview?'Return to '+studioRooms[room].title:'See the whole studio');
   roomMap.querySelectorAll('[data-world-room]').forEach(b=>{b.setAttribute('aria-current',b.dataset.worldRoom===room?'location':'false');b.classList.toggle('selected',b.dataset.worldRoom===room);});
   overviewLabels.forEach(r=>{r.node.hidden=!overview||!!journey||(scenarioGallery&&!r.scenario);r.node.setAttribute('aria-current',r.scenario?room==='mission'&&r.scenario===activeScenario?'location':'false':r.id===room?'location':'false');});

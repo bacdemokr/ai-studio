@@ -11,6 +11,7 @@ import re
 from pathlib import Path
 import shutil
 import socket
+import sqlite3
 import sys
 from urllib.parse import quote
 
@@ -107,6 +108,25 @@ class Docker:
             connection.close()
 
 
+def gateway_owns_sandbox(gateway, sandbox_id, sandbox_name):
+    """Verify mountless OpenShell 0.1.4 containers against this gateway store."""
+    database = gateway / 'gateway.db'
+    if (database.is_symlink() or not database.is_file()
+            or not isinstance(sandbox_id, str) or not re.fullmatch(r'[a-zA-Z0-9_-]+', sandbox_id)
+            or not isinstance(sandbox_name, str) or not re.fullmatch(r'oc-[a-z0-9-]+', sandbox_name)):
+        return False
+    try:
+        connection = sqlite3.connect('file:' + str(database) + '?mode=ro', uri=True)
+        try:
+            return connection.execute(
+                "SELECT 1 FROM objects WHERE id=? AND object_type='sandbox' AND name=?",
+                (sandbox_id, sandbox_name)).fetchone() is not None
+        finally:
+            connection.close()
+    except sqlite3.Error:
+        return False
+
+
 def owned_container(container, gateway):
     labels = container.get('Labels') or {}
     if labels.get(PROJECT_LABEL) == PROJECT:
@@ -115,8 +135,10 @@ def owned_container(container, gateway):
         return True
     if labels.get(MANAGER) == 'openshell' and labels.get(NAMESPACE) == PROJECT:
         # A namespace match alone does not establish this gateway's ownership.
-        if not any(m.get('Type') == 'bind' and m.get('Source', '').startswith(str(gateway) + '/')
-                   for m in container.get('Mounts', [])):
+        mounted = any(m.get('Type') == 'bind' and m.get('Source', '').startswith(str(gateway) + '/')
+                      for m in container.get('Mounts', []))
+        if not mounted and not gateway_owns_sandbox(
+                gateway, labels.get('openshell.ai/sandbox-id'), labels.get('openshell.ai/sandbox-name')):
             raise RuntimeError('A matching sandbox belongs to an unrecognized gateway; nothing removed.')
         return True
     return False

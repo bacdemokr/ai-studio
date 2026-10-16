@@ -5,6 +5,7 @@ import copy
 import io
 import json
 from pathlib import Path
+import sqlite3
 import sys
 import tempfile
 import unittest
@@ -146,6 +147,18 @@ class RemovalTests(unittest.TestCase):
             engine=Engine([container])
             with self.assertRaises(RuntimeError): self.run_remove(engine)
             self.assert_untouched(engine)
+
+    def test_mountless_current_gateway_sandbox_is_owned_by_database_identity(self):
+        database=sqlite3.connect(self.gateway/'gateway.db')
+        database.execute('CREATE TABLE objects (id TEXT, object_type TEXT, name TEXT)')
+        database.execute('INSERT INTO objects VALUES (?,?,?)',('sandbox-id','sandbox','oc-current'))
+        database.commit();database.close()
+        sandbox={**self.sandbox,'Mounts':[],'Labels':{
+            remove.MANAGER:'openshell',remove.NAMESPACE:'bac-demo',
+            'openshell.ai/sandbox-id':'sandbox-id','openshell.ai/sandbox-name':'oc-current'}}
+        engine=Engine([sandbox])
+        self.run_fresh(engine)
+        self.assertEqual(engine.containers,[])
 
     def test_partial_failure_keeps_marker_and_can_resume(self):
         engine=Engine([self.studio,self.sandbox],[self.volume])
