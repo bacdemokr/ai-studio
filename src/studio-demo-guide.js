@@ -8,7 +8,7 @@ const agentBlueprint=`<div class="agent-blueprint" aria-label="An agent combines
 window.BacAgentBlueprint=agentBlueprint;
 el('crew-goal-intro').textContent=window.BacCrewCatalog[0].collaboration.description;
 function goalTeamHint(choice){return 'Suggested team: '+choice.team+'.';}
-el('crew-goal-choices').innerHTML=goalExamples.map(g=>`<button type="button" data-goal-example="${escape(g.id)}" aria-pressed="false" title="${escape(goalTeamHint(g))}" aria-controls="studio-crew-prompt">${escape(g.title)}</button>`).join('');
+el('crew-goal-choices').innerHTML=goalExamples.map(g=>`<button type="button" data-goal-example="${escape(g.id)}" data-team-hint="${escape(goalTeamHint(g))}" aria-pressed="false" title="${escape(goalTeamHint(g))}" aria-controls="studio-crew-prompt">${escape(g.title)}</button>`).join('');
 function exampleDocument(choice){return choice.document&&(data.crewDocuments||[]).find(file=>file.path==='inbox/'+choice.document);}
 function syncGoalExamples(locked){
  const box=el('crew-examples');box.hidden=selectedScenario!=='plan'||selectedCrewRole!==0||!!selectedOpenTaskVisitor;
@@ -17,6 +17,7 @@ function syncGoalExamples(locked){
   const needsConnection=choice.document&&!exampleDocument(choice)&&el('crew-document-add').disabled;
   button.disabled=locked||box.hidden||!!needsConnection;
   button.setAttribute('aria-pressed',String(el('crew-prompt').value===choice.prompt));
+  button.dataset.teamHint=goalTeamHint(choice);
   button.title=goalTeamHint(choice)+(needsConnection?' Connect a model to attach the sample file.':'');
  });
 }

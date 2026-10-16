@@ -754,7 +754,9 @@
 #bac-planner #agent-campus #studio-crew-goal-intro{margin:0 0 18px;color:#afc0cb;font-size:16px;line-height:1.6}
 #bac-planner #agent-campus .studio-goal-caption{display:block;margin:0 0 9px;color:#8196a4;font-size:12px;line-height:1.4}
 #bac-planner #agent-campus .studio-goal-chips{display:flex;flex-wrap:wrap;gap:7px}
-#bac-planner #agent-campus .studio-goal-chips button{appearance:none;margin:0;border:1px solid #31434f;border-radius:7px;padding:7px 11px;background:#0d1920;color:#acbfcc;font:inherit;font-size:12px;font-weight:500;line-height:1.4;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+#bac-planner #agent-campus .studio-goal-chips button{position:relative;appearance:none;margin:0;border:1px solid #31434f;border-radius:7px;padding:7px 11px;background:#0d1920;color:#acbfcc;font:inherit;font-size:12px;font-weight:500;line-height:1.4;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+#bac-planner #agent-campus .studio-goal-chips button::after{content:attr(data-team-hint);position:absolute;z-index:20;left:50%;top:calc(100% + 7px);width:max-content;max-width:270px;box-sizing:border-box;padding:7px 9px;border:1px solid #4b606c;border-radius:7px;background:#17262f;color:#e7eef5;box-shadow:0 8px 22px #0008;font-size:12px;font-weight:500;line-height:1.35;text-align:left;white-space:normal;pointer-events:none;opacity:0;visibility:hidden;transform:translate(-50%,-3px);transition:opacity .12s,transform .12s,visibility .12s}
+#bac-planner #agent-campus .studio-goal-chips button:hover::after,#bac-planner #agent-campus .studio-goal-chips button:focus-visible::after{opacity:1;visibility:visible;transform:translate(-50%,0)}
 #bac-planner #agent-campus .studio-goal-chips button:hover:not(:disabled){color:#e7eef5;background:#22333e;border-color:#587243}
 #bac-planner #agent-campus .studio-goal-chips button[aria-pressed=true],#bac-planner #agent-campus .studio-goal-chips button[aria-pressed=true]:hover:not(:disabled){color:#d4efad;border-color:#557832;background:#293d22}
 #bac-planner #agent-campus .studio-goal-chips button:focus-visible{outline:2px solid #a5d76a;outline-offset:2px}

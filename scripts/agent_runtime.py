@@ -52,7 +52,7 @@ SKILL_DESCRIPTIONS = {name: project_skill_description(name) for name in ('builde
 
 SKILLS = {
     'data-analysis': ('Data interpretation', project_skill('data-analysis')),
-    'interface-design': ('Interface design', project_skill('interface-design')),
+    'interface-design': ('UX design', project_skill('interface-design')),
     'radar': ('Tech Radar', project_skill('radar')),
     'web': ('Web research', project_skill('web')),
     'weather': ('Live weather', 'Use web_fetch to resolve the requested city at https://geocoding-api.open-meteo.com/v1/search?name=CITY&count=3&language=en&format=json . Confirm country or region when results are ambiguous. Use the returned latitude and longitude at https://api.open-meteo.com/v1/forecast?latitude=LAT&longitude=LON&current=temperature_2m,precipitation,weather_code&hourly=temperature_2m,precipitation_probability&forecast_days=1&timezone=auto . Report resolved location, local observation time, units, temperature, precipitation and source URLs. Distinguish current observations from hourly forecasts. Recommend an outdoor time only when supported by the retrieved hourly data. Do not invent weather when fetching fails.'),

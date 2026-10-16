@@ -8,6 +8,7 @@ These are example requests for **03 Open Task**, not additional rooms or new exe
 | Travel | Personal planning | Yes: live weather and attractions |
 | Drone research | Technical audience | Yes: source research |
 | Store email review | Managers and business teams | No, when using only the supplied email |
+| Bill splitter | Coding / general audience | No, for a self-contained calculator |
 | Ping-pong | Coding / general audience | No, for a self-contained game |
 
 **Before running these examples:** Open Task defaults to **Hired only**, so hire at least one available agent. Any role can participate in work covered by its explicitly equipped skills, subject to tool permissions. Naming an agent does not override that boundary. Programmer + Web researcher is an optional research-and-build pairing, not a requirement. Choose **Hired + Standby** to let Casey use backups, including when no agents have been hired. The teams pictured below are historical runs, not a fixed roster.
@@ -18,21 +19,22 @@ Send these prompts to **Casey in Open Task** with `/goal`. Attach the sample ema
 
 ## In-app starting points
 
-Use the **Example goals** chips below Casey’s introduction for editable versions of these four examples, **Event page**, and **GPU portfolio**. Travel uses a relative start date to avoid stale demo dates. The store example attaches the same fictional email linked below. GPU portfolio attaches a demo CSV for analysis followed by a comparison webpage. Tooltips start with **Suggested team** and list skills, not mandatory role presets. Nothing starts until you send the goal. These shorter templates are adapted from the historical prompts below; their results and timings are not those historical measurements.
+Use the **Example goals** chips below Casey’s introduction for editable versions of these examples, **Event page**, and **GPU portfolio**. Travel uses a relative start date to avoid stale demo dates. The store example attaches the same fictional email linked below. GPU portfolio attaches a demo CSV for analysis followed by a comparison webpage. Bill splitter is the Coding-only example. Tooltips start with **Suggested team** and list skills, not mandatory role presets. Nothing starts until you send the goal. These shorter templates are adapted from the historical prompts below; their results and timings are not those historical measurements.
 
 The Event page template asks the current team to create a fictional meetup page and social draft from supplied details. It runs entirely in Open Task. The former fixed-team Event Brief is archived at `archive/event-brief-final-2026-10-15`.
 
 ## Collaboration in each example
 
-Each current template requests two different specialists and a saved handoff. These are example-specific goals, not a rule forcing extra agents into every free-form task. In Hired only, prepare both skills on two suitable hires. If a specialist is missing, switch to Hired + Standby or hire the missing skill; do not silently expand another agent's scope.
+Bill splitter requests one Coding specialist. Travel requests three specialists; the other current templates request two. These are example-specific goals, not a rule forcing extra agents into every free-form task. In Hired only, prepare the listed skill or skills on separate suitable hires. If a specialist is missing, switch to Hired + Standby or hire the missing skill; do not silently expand another agent's scope.
 
 | Example | First contribution | Second contribution | Suggested skills |
 | --- | --- | --- | --- |
-| Travel guide | Cited three-stop tourism brief | Day-by-day travel webpage | Web research + Coding |
+| Travel guide | Cited brief, then a UX layout specification | Day-by-day travel webpage | Web research + UX design + Coding |
 | Drone research | Dated research-paper brief | Research dashboard | Web research + Coding |
 | Store email review | Store comparison and recommendations | Charts and store dashboard | Data interpretation + Coding |
 | GPU portfolio | Numeric analysis and top-five CSV | GPU comparison dashboard | Data interpretation + Coding |
-| Ping-pong game | Layout, controls and interaction design | Playable browser game | Interface design + Coding |
+| Bill splitter | Complete self-contained calculator | — | Coding |
+| Ping-pong game | Layout, controls and interaction design | Playable browser game | UX design + Coding |
 | Event page | Announcement and page copy | Event webpage using that copy | Slack announcements + Coding |
 
 Keep the first contribution brief for a live demo. The second specialist must use it, not restart the task independently. Ping-pong uses Iris + Cody in standby; Event page needs a Slack announcements hire because that skill is not in the standby pool.
@@ -43,7 +45,7 @@ Select **GPU portfolio** to attach [`datacenter_gpu_portfolio.csv`](scenario/dat
 
 The expected order is Vera Rubin NVL72 (2300 W), HGX Rubin NVL8 (2300 W), GB300 NVL72 (1400 W), GB200 NVL72 (1200 W), and GB200 NVL4 (1200 W). Ties keep input order. These are supplied demo maximums per GPU, not verified current specifications or total rack consumption. Retain "up to" qualifiers, normalize bandwidth units, and do not infer performance or energy efficiency from TDP. See the [fixture notes](scenario/datacenter_gpu_portfolio.md).
 
-Standby does not contain every selectable skill. Travel uses **Web research + Coding**: Scout selects three places from official tourism sources, then Cody builds the page. The compact example excludes forecast, ticket-price and booking research. The Event page team uses a **Slack announcements** hire alongside Cody. Do not claim those skills exist in the standby catalog or silently substitute unrelated skills.
+Standby does not contain every selectable skill. Travel uses **Web research + UX design + Coding**: Scout selects three places from official tourism sources, Iris prepares the UX specification, then Cody builds the page from both handoffs. The compact example excludes forecast, ticket-price and booking research. The Event page team uses a **Slack announcements** hire alongside Cody. Do not claim those skills exist in the standby catalog or silently substitute unrelated skills.
 
 ## Table of contents
 

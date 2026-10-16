@@ -24,6 +24,16 @@ class RequestedTeamTests(unittest.TestCase):
         validate_requested_team({'tasks': [{'role': 5}]}, 'Build a simple page.')
         validate_requested_team({'tasks': []}, '> Use two different specialists to analyze data.')
 
+    def test_enforces_explicit_one_and_three_specialist_examples(self):
+        one = '/goal Use one specialist with Coding to build a calculator.'
+        validate_requested_team({'tasks': [{'role': 5}]}, one)
+        with self.assertRaises(PlanSelectionError):
+            validate_requested_team({'tasks': [{'role': 7}, {'role': 5}]}, one)
+        three = '/goal Use three different specialists to research, design and build a page.'
+        validate_requested_team({'tasks': [{'role': 8}, {'role': 7}, {'role': 5}]}, three)
+        with self.assertRaises(PlanSelectionError):
+            validate_requested_team({'tasks': [{'role': 8}, {'role': 5}]}, three)
+
 
 class SavedResearchTests(unittest.TestCase):
     setUp = handoff_fixture.PlanHandoffTests.setUp

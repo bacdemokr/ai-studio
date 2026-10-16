@@ -26,7 +26,7 @@
   const buildInfo=/* BUILD_INFO */;
   /* STUDIO_DIAGNOSTICS */
   const goalExamples=/* GOAL_EXAMPLES */;
-  const titles = {'nvidia-webpage':'NVIDIA event page','nvidia-social':'NVIDIA social copy','nvidia-research':'NVIDIA theme research','event-page':'Event page studio',radar:'Tech Radar',weather:'Live weather',web:'Web research',documents:'Three Takeaways',builder:'Coding',writer:'Slack announcements','data-analysis':'Data interpretation','interface-design':'Interface design',memory:'Personal memory'};
+  const titles = {'nvidia-webpage':'NVIDIA event page','nvidia-social':'NVIDIA social copy','nvidia-research':'NVIDIA theme research','event-page':'Event page studio',radar:'Tech Radar',weather:'Live weather',web:'Web research',documents:'Three Takeaways',builder:'Coding',writer:'Slack announcements','data-analysis':'Data interpretation','interface-design':'UX design',memory:'Personal memory'};
   const personas = {guide:'Explains ideas and turns them into practical plans.',maker:'Turns ideas into drafts, prototypes and small apps.',analyst:'Researches questions and compares the evidence.'};
   const tones={kind:['Kind','Warm & encouraging'],direct:['Direct','Clear & candid'],playful:['Playful','Light & witty'],cynical:['Cynical','Dry humor & skepticism']};
   const verbosityLabels={brief:'Brief',balanced:'Balanced',verbose:'Detailed'};
@@ -34,7 +34,7 @@
     radar:['Tech Radar','Technical articles and announcements → a short summary','Every 20 seconds · never repeats a shared article'],
     builder:['Coding','Build a small desktop webpage or game','Save a working prototype · one focused review'],
     'data-analysis':['Data interpretation','Compare supplied figures and explain findings','Evidence and limitations · a saved analysis brief'],
-    'interface-design':['Interface design','Plan a page layout and its interactions','Design guidance · implementation needs Coding'],
+    'interface-design':['UX design','Plan a page layout and its interactions','Design guidance · implementation needs Coding'],
     documents:['Three Takeaways','Any question or document → three clear points','Always: 1. · 2. · 3. — including event reactions'],
     web:['Web research','Find useful facts and cite their sources','Short research · a saved brief for teammates'],
     writer:['Slack announcements','Emoji-led updates in your chosen voice','Emoji-led replies · extra lines when useful · draft only'],

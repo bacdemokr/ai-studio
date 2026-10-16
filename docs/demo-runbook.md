@@ -39,7 +39,7 @@ Idle hires follow you into the room and wait on benches. Assigned agents move to
 | --- | --- |
 | Scout | Public web research |
 | Ada | Supplied-data analysis |
-| Iris | Interface design |
+| Iris | UX design |
 | Cody | Webpages and small code prototypes |
 | Vera | Independent review |
 
@@ -79,7 +79,7 @@ The team choice is locked during work. Changing it after completion retains prev
 
 ## Presenter shortcuts and build identity
 
-- Click an **Example goals** chip below Casey’s introduction for one of five editable examples. The store example attaches BB’s fictional email. Selection does not send a request or change the team mode.
+- Click an **Example goals** chip below Casey’s introduction for one of seven editable examples. The store example attaches BB’s fictional email. Selection does not send a request or change the team mode.
 - In Casey’s chat or **Mission Control**, explain **Why this agent** and any **Not assigned** reasons. Scene bubbles only announce brief progress.
 - Use **Settings → Reset → Issue report → Copy diagnostics** when reporting a problem. Note whether the report says Local changes.
 - For OpenShell, expand **How OpenShell protection works** in Hiring. The nested runtime command is illustrative: the adapter selects `--detach -- sleep infinity` only when advertised, otherwise `-- true`. Show the actual policy decision and approval flow in the Lounge.

@@ -2,9 +2,9 @@
   {
     "id": "travel",
     "title": "Travel guide",
-    "detail": "A sourced three-stop city guide and travel webpage",
-    "team": "Web research + Coding",
-    "prompt": "/goal Use two different specialists to create a compact three-day Berlin city-guide webpage starting tomorrow. First, a specialist with Web research uses official VisitBerlin tourism pages to choose three places, one per day, and saves a brief with a short reason to visit, source links and indoor/outdoor labels. Begin with public web research; no local-file input is needed. Do not expand into weather, opening hours, ticket prices or bookings. Next, a specialist with Coding uses the saved brief to build one self-contained HTML page with three day cards and practical visit notes. Use exact ISO dates and omit weekday names. Clearly label unavailable facts; keep the research brief."
+    "detail": "Research, UX design and implementation for a three-stop city guide",
+    "team": "Web research + UX design + Coding",
+    "prompt": "/goal Use three different specialists to create a compact three-day Berlin city-guide webpage starting tomorrow. First, a specialist with Web research uses official VisitBerlin tourism pages to choose three places, one per day, and saves a brief with a short reason to visit, source links and indoor/outdoor labels. Begin with public web research; no local-file input is needed. Do not expand into weather, opening hours, ticket prices or bookings. Next, a specialist with UX design reads that brief and saves a concise layout and interaction specification for three day cards, source links, practical notes and clear unavailable-fact states. Finally, a specialist with Coding uses both saved handoffs to build one self-contained HTML page. Use exact ISO dates and omit weekday names. Clearly label unavailable facts; keep the research and UX briefs."
   },
   {
     "id": "drone",
@@ -30,11 +30,18 @@
     "prompt": "/goal Use two different specialists to analyze the attached demo GPU portfolio CSV, then build a compact, self-contained HTML dashboard from the saved analysis. First, have a specialist with Data interpretation rank the five highest single-GPU TDP values, compare GPU memory capacity and bandwidth across the portfolio, and explain three useful findings, including a comparison of products with the same TDP. Save an analysis brief and the top-five CSV. Then have a specialist with Coding use that handoff to build the webpage with a TDP bar chart, a portfolio comparison table and the findings. Sort TDP numerically descending and preserve source order for ties; normalize bandwidth units before comparisons. Keep configurable maximums and \"up to\" qualifiers visible. These are supplied demo figures, not verified current specifications, measured power or rack totals. Do not infer performance or energy efficiency from TDP alone. No web research is needed."
   },
   {
+    "id": "bill",
+    "title": "Bill splitter",
+    "detail": "Build a compact calculator with one coding specialist",
+    "team": "Coding",
+    "prompt": "/goal Use one specialist with Coding to build a compact desktop bill-splitter as one self-contained HTML file. Include bill amount, tip percentage and number of people, then show the tip, total and amount per person. Reject blank, non-finite or negative amounts and require at least one whole person. Include clear labels, keyboard-friendly controls and a reset button. Keep it small and truthful; no external libraries, network access or saved remote data."
+  },
+  {
     "id": "pong",
     "title": "Ping-pong game",
     "detail": "Design a compact play experience, then build the game",
-    "team": "Interface design + Coding",
-    "prompt": "/goal Use two different specialists to build a simple two-player ping-pong game as one self-contained HTML file. First, a specialist with Interface design saves a brief layout and interaction specification covering the play area, scores, visible controls, restart and keyboard focus. Next, a specialist with Coding implements the game from that saved design. Use A and Q for the left paddle, P and M for the right paddle. Include a bouncing ball, correct collisions on both paddles, scores and a restart button. Handle simultaneous keys, key release and lost focus. Keep the design brief and the game small and desktop-focused. No external libraries or web research."
+    "team": "UX design + Coding",
+    "prompt": "/goal Use two different specialists to build a simple two-player ping-pong game as one self-contained HTML file. First, a specialist with UX design saves a brief layout and interaction specification covering the play area, scores, visible controls, restart and keyboard focus. Next, a specialist with Coding implements the game from that saved design. Use A and Q for the left paddle, P and M for the right paddle. Include a bouncing ball, correct collisions on both paddles, scores and a restart button. Handle simultaneous keys, key release and lost focus. Keep the design brief and the game small and desktop-focused. No external libraries or web research."
   },
   {
     "id": "event",

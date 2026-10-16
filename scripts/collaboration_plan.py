@@ -75,21 +75,25 @@ class PlanSelectionError(RuntimeError):
     """Duplicate assignment slots can be corrected before hired specialists start."""
 
 
-def requests_two_specialists(task):
-    # Recognize the explicit instruction in the editable examples, not quoted inputs.
-    return bool(re.match(r'^\s*(?:/(?:goal|plan)\s+)?Use (?:two|2) (?:different|distinct|separate) (?:specialists|agents)\b', task, re.I))
+def requested_specialists(task):
+    """Return an explicit one-to-three-person example requirement, if present."""
+    match = re.match(r'^\s*(?:/(?:goal|plan)\s+)?Use (one|1|two|2|three|3) '
+                     r'(?:(?:different|distinct|separate) )?(?:specialists?|agents?)\b', task, re.I)
+    return {'one': 1, '1': 1, 'two': 2, '2': 2, 'three': 3, '3': 3}.get(match.group(1).lower()) if match else None
 
 
 def validate_requested_team(selection, task):
-    if not requests_two_specialists(task):
+    required = requested_specialists(task)
+    if not required:
         return
     identities = {('builtin', item['role']) if item.get('agent') in (None, 'builtin')
                   else ('hired', item['agent']) for item in selection['tasks']}
-    if len(identities) < 2 and not selection.get('unassignedRequirements') and selection.get('outcome', 'complete') == 'complete':
-        raise PlanSelectionError('This request explicitly asks for two different specialists. Assign two suitable '
-                                 'available identities with a concrete handoff, or explain the missing specialist in '
-                                 'unassignedRequirements / an unavailable result. Do not merge both contributions into '
-                                 'one agent or add a spectator to claim collaboration.')
+    if len(identities) != required and not selection.get('unassignedRequirements') and selection.get('outcome', 'complete') == 'complete':
+        noun = 'specialist' if required == 1 else 'different specialists'
+        raise PlanSelectionError(f'This request explicitly asks for {required} {noun}. Assign exactly {required} suitable '
+                                 'available identities with concrete work, or explain the missing specialist in '
+                                 'unassignedRequirements / an unavailable result. Do not merge contributions or add '
+                                 'a spectator to claim collaboration.')
 
 
 def validate_input_work(selection, inputs):
@@ -902,10 +906,11 @@ class CollaborationPlans:
             saved = [file for output in effective_outputs(plan).values() for file in output.get('files', [])]
             missing = ['Requested ' + kind.upper() + ' file was not saved.' for kind in plan.get('requestedFormats', [])
                        if not any(file.lower().endswith('.' + kind) for file in saved)]
-            if requests_two_specialists(plan['task']):
+            required = requested_specialists(plan['task'])
+            if required:
                 contributors = {output.get('agentId') for output in effective_outputs(plan).values() if output.get('agentId')}
-                if len(contributors) < 2:
-                    missing.append('The requested work by two different specialists was not completed.')
+                if len(contributors) < required:
+                    missing.append(f'The requested work by {required} specialist{"s" if required != 1 else ""} was not completed.')
             gaps = list(dict.fromkeys(plan.get('unassignedRequirements', []) + missing))
             if gaps and plan.get('outcome', 'complete') == 'complete':
                 # A fluent final answer cannot fill an unassigned role or create a file.
@@ -1037,8 +1042,9 @@ class CollaborationPlans:
                         'remaining': ['Final synthesis'], 'answer': unfinished(reason)}
 
         try:
-            if mode == 'hired' and requests_two_specialists(plan['task']) and len({m['key'] for m in visitors}) < 2:
-                reason = ('This example needs two different specialists, but fewer than two hired agents are available. '
+            required = requested_specialists(plan['task'])
+            if mode == 'hired' and required and len({m['key'] for m in visitors}) < required:
+                reason = (f'This example needs {required} specialist{"s" if required != 1 else ""}, but fewer than {required} hired agents are available. '
                           'Hire another agent with the missing suggested skill, or choose Hired + Standby.')
                 plan.update(tasks=[], calledRoles=[], outcome='unavailable', remaining=[reason])
                 finish(reason, reactions=False)
@@ -1094,7 +1100,7 @@ class CollaborationPlans:
                 'do not commission a second version just for polish. Preserve explicitly requested independent review. '
                 'For research choose Scout; '
                 'for independent checking choose Vera. Do not assign retired or unlisted agents. '
-                'Choose Ada for interpreting supplied data, comparisons and chart specifications; choose Iris for interface design, '
+                'Choose Ada for interpreting supplied data, comparisons and chart specifications; choose Iris for UX design, '
                 'user flows and accessibility. Do not add either unless the requested outcome benefits from that expertise. '
                 'Ada can read tables and reason about data, not run a statistics engine; Iris designs but does not execute browser tests. '
                 'Give each selected specialist distinct, necessary work and concrete acceptance criteria within its role boundary. '

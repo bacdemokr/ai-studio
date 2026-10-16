@@ -49,7 +49,7 @@ SKILL_SCOPE = {
     'documents': 'Read supplied documents or links and summarize in three takeaways; not independent broad research.',
     'memory': 'Save and recall user-requested preferences; not a general specialist qualification.',
     'data-analysis': 'Interpret supplied data, compare figures and explain findings.',
-    'interface-design': 'Interface flows, layout and accessibility guidance; not code implementation.',
+    'interface-design': 'UX flows, layout and accessibility guidance; not code implementation.',
 }
 
 def skill_scope(profile):

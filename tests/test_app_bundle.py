@@ -24,6 +24,10 @@ class AppBundleTests(unittest.TestCase):
             self.assertIn(f'href="{url}" target="_blank" rel="noopener noreferrer"', header)
         self.assertNotIn('id="campus-openclaw-link"', page)
         self.assertNotIn('id="campus-openshell-link"', page)
+        self.assertIn("'interface-design':'UX design'", page)
+        self.assertNotIn("'interface-design':'Interface design'", page)
+        self.assertIn('data-team-hint="${escape(goalTeamHint(g))}"', page)
+        self.assertIn('content:attr(data-team-hint)', page)
 
     def test_patch_isolated_until_restart_and_runtime_change_rejected(self):
         with tempfile.TemporaryDirectory() as temp:
