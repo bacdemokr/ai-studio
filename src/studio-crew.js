@@ -249,15 +249,17 @@ function collaborationTimeMarkup(job){
  const label=collaborationTime(job);
  return label?'<p class="mission-plan-inputs" data-plan-total="'+escape(job.id)+'" title="From submission to completion, including queueing, planning, specialists and review.">'+escape(label)+'</p>':'';
 }
-function missionControlTraceMarkup(job){
+function missionControlTraceMarkup(job,advanced=false){
  const defaultNames=planNames(job.payload.collaboration);
  const plan=job.payload.collaboration,active=['queued','running','waiting','stopping'].includes(job.status),tasks=plan.tasks||[],checks=plan.checks||[];
  let sequence=-1;
- const row=(kind,name,status,content,attrs='',recorded=true,state='')=>'<article class="mission-plan-step" data-trace-key="'+escape(kind+':'+attrs)+'" data-trace-kind="'+kind+'" data-step-state="'+state+'" '+attrs+'><header><small>'+(recorded?String(++sequence).padStart(2,'0')+' · '+({plan:'PLAN',contribution:'CONTRIBUTION',review:'REVIEW',revision:'REVISION REQUEST','revision-work':'REVISION',response:'RESPONSE',stopped:'STOPPED'}[kind]||kind.toUpperCase()):kind==='skipped'?'NOT CALLED':'PLANNED')+'</small><h4>'+escape(name)+'</h4><span>'+escape(status)+'</span></header><div class="mission-plan-content">'+content+'</div></article>';
+ const row=(kind,name,status,content,attrs='',recorded=true,state='')=>'<article class="mission-plan-step" data-trace-key="'+escape(kind+':'+attrs)+'" data-trace-kind="'+kind+'" data-step-state="'+state+'" '+attrs+'><header><small>'+(recorded?String(++sequence).padStart(2,'0')+' · '+({plan:'PLAN',contribution:'CONTRIBUTION',reasoning:'REASONING',review:'REVIEW',revision:'REVISION REQUEST','revision-work':'REVISION',response:'RESPONSE',stopped:'STOPPED'}[kind]||kind.toUpperCase()):kind==='skipped'?'NOT CALLED':'PLANNED')+'</small><h4>'+escape(name)+'</h4><span>'+escape(status)+'</span></header><div class="mission-plan-content">'+content+'</div></article>';
  const detail=(key,label,content)=>'<details class="mission-trace-detail" data-trace-details="'+key+'"><summary>'+escape(label)+'</summary><div class="chat-prose">'+content+'</div></details>';
+ const reasoning=(name,task,output,attrs)=>row('reasoning',name,'Reasoning','<strong>Why selected</strong><div>'+messageMarkup(task.roleFit||'No separate role-fit rationale was recorded.')+'</div><strong>Planned approach</strong><div>'+messageMarkup(task.task||'No assignment was recorded.')+'</div><strong>Reported contribution</strong><div>'+messageMarkup(output?.answer||(output?'The contribution returned no separate summary.':'This agent has not delivered a contribution yet.'))+'</div><small class="mission-plan-inputs">Recorded rationale and result summary—not private model chain-of-thought.</small>',attrs,true,'reasoning');
  const question=String(plan.task||job.payload.prompt||'').replace(/^\s*\/(?:goals?|plans?)(?=\s|$)/i,'').trim();
  let markup=row('user','User','Submitted','<strong>Request</strong><div class="chat-prose">'+messageMarkup(question)+'</div>','',true,'done');
  markup+=row('plan','Casey',plan.summary?'Plan ready':active?'Planning':'No plan saved','<strong>Approach</strong><div>'+messageMarkup(plan.summary||(active?'Casey is deciding which expertise this request needs.':'No plan was saved before the work stopped.'))+'</div>'+declinedAssignmentsMarkup(job),'data-plan-role="0"',true,plan.summary?'done':active?'working':'');
+ if(advanced)markup+=row('reasoning','Casey','Reasoning','<strong>Recorded planning rationale</strong><div>'+messageMarkup(plan.summary||'No planning rationale has been recorded yet.')+'</div><small class="mission-plan-inputs">Recorded rationale—not private model chain-of-thought.</small>','data-reasoning-role="0"',true,'reasoning');
  const called=tasks.filter(task=>plan.handoffs?.[task.role]||plan.outputs?.[task.role]||plan.calledRoles?.includes(task.role));
  const calledOrder=collaborationRoleOrder(plan);
  called.sort((a,b)=>calledOrder.indexOf(Number(a.role))-calledOrder.indexOf(Number(b.role)));
@@ -270,6 +272,7 @@ function missionControlTraceMarkup(job){
   const assignment='<strong>Casey’s assignment</strong><div>'+messageMarkup(h?.task||task.task)+'</div>'+assignmentFitMarkup(task)+(expected?'<div class="mission-expectation"><small>Expected result</small><div>'+messageMarkup(expected)+'</div></div>':'')+(h?'<small class="mission-plan-inputs">Received: '+escape(['Casey’s brief',...(h.receivedFrom||[]).map(i=>defaultNames[Number(i)]+"’s contribution")].join(' · '))+'</small>':'');
   const recoveryNote=recovery?'<p class="mission-plan-inputs">'+escape(recovery.status==='delivered'?'A missing handoff was saved and verified in one repair before continuing.':recovery.status==='working'?'Required files are missing. One repair is using the existing research; later specialists are waiting.':'The required handoff could not be recovered. Later specialists were not started.')+'</p>':'';
   markup+=row('contribution',defaultNames[role],status,assignment+recoveryNote+(output?detail('output-'+role,defaultNames[role]+'’s result',messageMarkup(output.answer||'No response text was saved.')+webpageButtons(output.files,job.id)):''),'data-plan-role="'+role+'"',true,missing?(working?'working':''):output?'done':working?'working':'');
+  if(advanced)markup+=reasoning(defaultNames[role],task,output,'data-reasoning-role="'+role+'"');
   const reviews=checks.filter(check=>!check.afterRevision&&Number(check.afterRole)===role);
   for(const check of reviews){
    const status=check.done?(check.outcome==='partial'?'Partial result':check.outcome==='unavailable'?'Capability unavailable':'Enough to finish'):'More work needed';
@@ -286,6 +289,7 @@ function missionControlTraceMarkup(job){
   const r=plan.revision,output=r.output,working=active&&r.status==='working';
   markup+=row('revision','Casey','One targeted revision','<strong>Why repair is needed</strong><div>'+messageMarkup(r.reason)+'</div><div>'+messageMarkup(r.issue)+'</div>','data-revision-request',true,'done');
   markup+=row('revision-work',defaultNames[r.role],output?'Revised result delivered':working?'Revising':active&&r.status==='requested'?'Requested':r.status==='failed'?'Revision failed':'Not completed',collaborationRevisionBody(r,job.id),'data-revision-role="'+r.role+'"',true,output?'done':working?'working':'');
+  if(advanced)markup+=reasoning(defaultNames[r.role],r,output,'data-reasoning-revision-role="'+r.role+'"');
   for(const check of checks.filter(check=>check.afterRevision))
    markup+=row('review','Casey',check.outcome==='partial'?'Partial result':'Final verification','<div>'+messageMarkup(check.reason)+'</div><small>No further specialist calls.</small>','data-after-revision',true,'done');
   if(output&&!checks.some(check=>check.afterRevision)&&active&&!plan.responseReady)
@@ -324,6 +328,7 @@ function updateMissionControlTrace(lanes,jobId,markup){
  for(const node of [...lanes.children])if(!retained.has(node))node.remove();
  lanes.dataset.traceJob=jobId;lanes._traceMarkup=markup;
 }
+let missionReasoningOpen=false,missionReasoningJob='';
 function renderMissionControl(){
  const job=missionControlPlan(),intro=el('board').querySelector('.studio-board-intro');
  el('lanes').classList.toggle('studio-plan-control',!!job);
@@ -331,8 +336,16 @@ function renderMissionControl(){
  intro.querySelector('h3').textContent=job?'Execution trace':'No active plan';
  intro.querySelector('[data-mission-total]').textContent=job?collaborationTime(job):'';
  intro.querySelector('p').textContent=job?job.payload.collaboration.task:'Send /goal to Casey to start.';
- if(!job){el('lanes').innerHTML='';delete el('lanes').dataset.traceJob;delete el('lanes')._traceMarkup;return;}
- updateMissionControlTrace(el('lanes'),job.id,missionControlTraceMarkup(job));
+ const reasoningButton=el('mission-reasoning');
+ reasoningButton.onclick=()=>{missionReasoningOpen=!missionReasoningOpen;renderMissionControl();};
+ if(!job){
+  missionReasoningOpen=false;missionReasoningJob='';reasoningButton.hidden=true;
+  el('lanes').innerHTML='';delete el('lanes').dataset.traceJob;delete el('lanes')._traceMarkup;return;
+ }
+ if(missionReasoningJob!==job.id){missionReasoningJob=job.id;missionReasoningOpen=false;}
+ reasoningButton.hidden=false;reasoningButton.setAttribute('aria-expanded',String(missionReasoningOpen));
+ reasoningButton.textContent=missionReasoningOpen?'Hide advanced reasoning':'Show me advanced reasoning';
+ updateMissionControlTrace(el('lanes'),job.id,missionControlTraceMarkup(job,missionReasoningOpen));
 }
 // /goal is a real Captain-led job; contributions come from completed model calls.
 function collaborationRevisionBody(revision,jobId){

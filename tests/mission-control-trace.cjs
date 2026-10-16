@@ -4,7 +4,7 @@ const escape=value=>String(value).replaceAll('&','&amp;').replaceAll('<','&lt;')
 const context=vm.createContext({escape,messageMarkup:escape,webpageButtons:()=>'',data:{crewChats:[]},window:{BacCrewCatalog:JSON.parse(fs.readFileSync('src/crew-catalog.json','utf8'))},defaultNames:['Casey','Dylan','Alex','Morgan','Vera','Cody','Ada','Iris','Scout']});
 vm.runInContext(source.slice(0,source.indexOf('function assignedVisitor(')),context);
 vm.runInContext(source.slice(source.indexOf('function collaborationRoleOrder('),source.indexOf('function renderMissionControl(')),context);
-const render=(plan,status='running',result={})=>context.missionControlTraceMarkup({id:'fixture',status,result,payload:{collaboration:plan}});
+const render=(plan,status='running',result={},advanced=false)=>context.missionControlTraceMarkup({id:'fixture',status,result,payload:{collaboration:plan}},advanced);
 const kinds=html=>[...html.matchAll(/data-trace-kind="([^"]+)"/g)].map(m=>m[1]);
 const base={summary:'Research, then review.',tasks:[{role:8,task:'Find sources.',expected:'Cited evidence.'},{role:4,task:'Review evidence.'}],outputs:{},handoffs:{},checks:[]};
 assert.equal(JSON.stringify(context.collaborationTeam({...base,calledRoles:[8]})),'[0,8,4]');
@@ -80,6 +80,12 @@ const fitPlan={...base,visitorBindings:{8:{key:'orbit',name:'Orbit'}},
  tasks:[{...base.tasks[0],roleFit:fit},base.tasks[1]],
  declinedAgents:[{agent:'jinny',reason:decline}]};
 const fitJob={id:'fit',status:'running',payload:{prompt:'/goal Research and build',roster:[{key:'jinny',name:'Jinny <saved>'}],collaboration:fitPlan}};
+const advancedPlan={...fitPlan,calledRoles:[8],handoffs:{8:{task:'Find sources.',receivedFrom:[]}},outputs:{8:{answer:'Sources support the conclusion <carefully>.'}}};
+const advanced=render(advancedPlan,'running',{},true);
+assert.deepEqual(kinds(advanced),['user','plan','reasoning','contribution','reasoning','planned']);
+assert.equal((advanced.match(/· REASONING</g)||[]).length,2);
+assert(advanced.includes(escape(fit)));assert.match(advanced,/Sources support the conclusion &lt;carefully&gt;/);
+assert.match(advanced,/not private model chain-of-thought/);assert(!advanced.includes('<carefully>'));
 for(const markup of [context.missionControlTraceMarkup(fitJob),context.collaborationMarkup(fitJob,0)]){
  assert.match(markup,/Why this agent/);assert(markup.includes(escape(fit)));
  assert.match(markup,/Not assigned/);assert(markup.includes('Jinny &lt;saved&gt;'));

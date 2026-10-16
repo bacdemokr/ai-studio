@@ -204,12 +204,17 @@
 #studio-surface #studio-board.has-plan .studio-board-intro{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 #studio-surface #studio-board.has-plan .studio-board-intro h3{font-size:20px;margin:0!important}
 #studio-surface #studio-board.has-plan .studio-board-intro p,#studio-surface #studio-board.has-plan .studio-board-intro .studio-kicker{display:none}
+.mission-reasoning-control{flex:0 0 100%}
+#agent-campus .mission-reasoning-control button{border:0;background:transparent;color:#b8d98d;padding:2px 0;font-size:14px;font-weight:600;text-decoration:underline;text-underline-offset:4px}
+#agent-campus .mission-reasoning-control button:hover{color:#ddf4c0}
 .mission-plan-step{position:relative;display:grid;grid-template-columns:170px minmax(0,1fr);border:1px solid #30434f;border-radius:10px;background:#15232c}
 .mission-plan-step::before{content:'';position:absolute;left:-26px;top:27px;width:9px;height:9px;border:1px solid #6a8292;border-radius:50%;background:#14212a}
 .mission-plan-step[data-step-state=done]::before,.mission-plan-step[data-step-state=working]::before{background:#76b900;border-color:#76b900}
 .mission-plan-step[data-trace-kind=skipped],.mission-plan-step[data-trace-kind=planned]{background:#101b24;border-style:dashed}
 .mission-plan-step[data-trace-kind=skipped]::before,.mission-plan-step[data-trace-kind=planned]::before{width:5px;height:5px;left:-24px;background:#344957}
 .mission-plan-step[data-trace-kind=review]{background:#17272b}
+.mission-plan-step[data-trace-kind=reasoning]{border-color:#4a555d;background:#20262b;opacity:.88}
+.mission-plan-step[data-trace-kind=reasoning]::before{background:#7f8a91;border-color:#7f8a91}.mission-plan-step[data-trace-kind=reasoning]>header{background:#1a2025;border-color:#4a555d}.mission-plan-step[data-trace-kind=reasoning]>header>span{color:#c0c8cd;border-color:#59656d;background:#2b3339}
 .mission-plan-step>header{border-radius:10px 0 0 10px}
 .mission-plan-step>header{padding:18px;background:#121f28;border-right:1px solid #30434f;font-size:13px;color:#b1c3cf}
 #agent-campus .mission-plan-step h4{margin:8px 0;font-size:19px;color:#eff5f8;overflow-wrap:anywhere}

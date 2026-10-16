@@ -318,12 +318,17 @@ body{margin:0;padding:0;width:100%;max-width:none}
 #studio-surface #studio-board.has-plan .studio-board-intro{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 #studio-surface #studio-board.has-plan .studio-board-intro h3{font-size:20px;margin:0!important}
 #studio-surface #studio-board.has-plan .studio-board-intro p,#studio-surface #studio-board.has-plan .studio-board-intro .studio-kicker{display:none}
+.mission-reasoning-control{flex:0 0 100%}
+#agent-campus .mission-reasoning-control button{border:0;background:transparent;color:#b8d98d;padding:2px 0;font-size:14px;font-weight:600;text-decoration:underline;text-underline-offset:4px}
+#agent-campus .mission-reasoning-control button:hover{color:#ddf4c0}
 .mission-plan-step{position:relative;display:grid;grid-template-columns:170px minmax(0,1fr);border:1px solid #30434f;border-radius:10px;background:#15232c}
 .mission-plan-step::before{content:'';position:absolute;left:-26px;top:27px;width:9px;height:9px;border:1px solid #6a8292;border-radius:50%;background:#14212a}
 .mission-plan-step[data-step-state=done]::before,.mission-plan-step[data-step-state=working]::before{background:#76b900;border-color:#76b900}
 .mission-plan-step[data-trace-kind=skipped],.mission-plan-step[data-trace-kind=planned]{background:#101b24;border-style:dashed}
 .mission-plan-step[data-trace-kind=skipped]::before,.mission-plan-step[data-trace-kind=planned]::before{width:5px;height:5px;left:-24px;background:#344957}
 .mission-plan-step[data-trace-kind=review]{background:#17272b}
+.mission-plan-step[data-trace-kind=reasoning]{border-color:#4a555d;background:#20262b;opacity:.88}
+.mission-plan-step[data-trace-kind=reasoning]::before{background:#7f8a91;border-color:#7f8a91}.mission-plan-step[data-trace-kind=reasoning]>header{background:#1a2025;border-color:#4a555d}.mission-plan-step[data-trace-kind=reasoning]>header>span{color:#c0c8cd;border-color:#59656d;background:#2b3339}
 .mission-plan-step>header{border-radius:10px 0 0 10px}
 .mission-plan-step>header{padding:18px;background:#121f28;border-right:1px solid #30434f;font-size:13px;color:#b1c3cf}
 #agent-campus .mission-plan-step h4{margin:8px 0;font-size:19px;color:#eff5f8;overflow-wrap:anywhere}
@@ -1556,7 +1561,7 @@ body{margin:0;padding:0;width:100%;max-width:none}
 <button class="studio-secondary" id="studio-room-action" hidden></button>
 <nav hidden class="studio-safety-bar" id="studio-safety-bar" aria-label="Studio controls"><span>YOU STAY IN CONTROL</span><button id="studio-security">◇ Security lab</button><button id="studio-help">Help &amp; fallback</button><button id="studio-reset">Reset mission board</button></nav>
 <section id="studio-collection" class="studio-collection" hidden aria-label="My agents"><div class="studio-collection-heading"><div><span class="studio-kicker">MY AGENTS</span><p></p></div></div><div id="studio-agent-list" class="studio-agent-list"></div><small class="studio-muted" id="studio-collection-note"></small></section>
-<div id="studio-board" hidden><div class="studio-board-intro"><span class="studio-kicker">MISSION CONTROL</span><h3>Different roles. Shared evidence.</h3><p>Each specialist receives the brief and the previous deliverables. The reviewer checks the whole plan.</p><p class="mission-plan-inputs" data-mission-total></p></div><div id="studio-lanes"></div></div>
+<div id="studio-board" hidden><div class="studio-board-intro"><span class="studio-kicker">MISSION CONTROL</span><h3>Different roles. Shared evidence.</h3><div class="mission-reasoning-control"><button type="button" id="studio-mission-reasoning" aria-expanded="false" hidden>Show me advanced reasoning</button></div><p>Each specialist receives the brief and the previous deliverables. The reviewer checks the whole plan.</p><p class="mission-plan-inputs" data-mission-total></p></div><div id="studio-lanes"></div></div>
 <aside id="studio-workshop"><div class="studio-passport-head"><span class="studio-kicker">DESIGN YOUR AGENT</span><span class="studio-spark">✦</span></div>
   <form id="studio-onboarding">
     <h3 id="studio-creator-title">Hire your own Agent.</h3><p class="studio-muted" id="studio-creator-note" hidden></p>
@@ -81281,7 +81286,7 @@ render();
       if(selection){selection.removeAllRanges();for(const range of ranges)if(range.commonAncestorContainer.isConnected)selection.addRange(range);}
     }
   }
-  const buildInfo={"version": "0.2.001", "commit": "52278c7fbefee309aa713e1b9b85f06b86cac049", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
+  const buildInfo={"version": "0.2.001", "commit": "2ef395dd8d3ed025080e58f0ed442c5cc93b1b8e", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
   // Only codes and source locations are retained. Never retain Error.message, bodies or URLs.
 const browserDiagnostics=[];
 const diagnosticRoutes=new Set('session state runtime diagnostics telemetry settings settings/models settings/start settings/team-model settings/connections settings/connections/preferences settings/connections/check settings/connections/models settings/scenario-model settings/scenario-models credential-session agents onboard profile agent-model delete-agent agent-policy crew-policy jobs upload decision retry-reaction reset crew-chat-reset bac-reset heartbeat team-model telegram telegram/test file workspace-files agent-documents evidence security'.split(' '));
@@ -81910,15 +81915,17 @@ function collaborationTimeMarkup(job){
  const label=collaborationTime(job);
  return label?'<p class="mission-plan-inputs" data-plan-total="'+escape(job.id)+'" title="From submission to completion, including queueing, planning, specialists and review.">'+escape(label)+'</p>':'';
 }
-function missionControlTraceMarkup(job){
+function missionControlTraceMarkup(job,advanced=false){
  const defaultNames=planNames(job.payload.collaboration);
  const plan=job.payload.collaboration,active=['queued','running','waiting','stopping'].includes(job.status),tasks=plan.tasks||[],checks=plan.checks||[];
  let sequence=-1;
- const row=(kind,name,status,content,attrs='',recorded=true,state='')=>'<article class="mission-plan-step" data-trace-key="'+escape(kind+':'+attrs)+'" data-trace-kind="'+kind+'" data-step-state="'+state+'" '+attrs+'><header><small>'+(recorded?String(++sequence).padStart(2,'0')+' · '+({plan:'PLAN',contribution:'CONTRIBUTION',review:'REVIEW',revision:'REVISION REQUEST','revision-work':'REVISION',response:'RESPONSE',stopped:'STOPPED'}[kind]||kind.toUpperCase()):kind==='skipped'?'NOT CALLED':'PLANNED')+'</small><h4>'+escape(name)+'</h4><span>'+escape(status)+'</span></header><div class="mission-plan-content">'+content+'</div></article>';
+ const row=(kind,name,status,content,attrs='',recorded=true,state='')=>'<article class="mission-plan-step" data-trace-key="'+escape(kind+':'+attrs)+'" data-trace-kind="'+kind+'" data-step-state="'+state+'" '+attrs+'><header><small>'+(recorded?String(++sequence).padStart(2,'0')+' · '+({plan:'PLAN',contribution:'CONTRIBUTION',reasoning:'REASONING',review:'REVIEW',revision:'REVISION REQUEST','revision-work':'REVISION',response:'RESPONSE',stopped:'STOPPED'}[kind]||kind.toUpperCase()):kind==='skipped'?'NOT CALLED':'PLANNED')+'</small><h4>'+escape(name)+'</h4><span>'+escape(status)+'</span></header><div class="mission-plan-content">'+content+'</div></article>';
  const detail=(key,label,content)=>'<details class="mission-trace-detail" data-trace-details="'+key+'"><summary>'+escape(label)+'</summary><div class="chat-prose">'+content+'</div></details>';
+ const reasoning=(name,task,output,attrs)=>row('reasoning',name,'Reasoning','<strong>Why selected</strong><div>'+messageMarkup(task.roleFit||'No separate role-fit rationale was recorded.')+'</div><strong>Planned approach</strong><div>'+messageMarkup(task.task||'No assignment was recorded.')+'</div><strong>Reported contribution</strong><div>'+messageMarkup(output?.answer||(output?'The contribution returned no separate summary.':'This agent has not delivered a contribution yet.'))+'</div><small class="mission-plan-inputs">Recorded rationale and result summary—not private model chain-of-thought.</small>',attrs,true,'reasoning');
  const question=String(plan.task||job.payload.prompt||'').replace(/^\s*\/(?:goals?|plans?)(?=\s|$)/i,'').trim();
  let markup=row('user','User','Submitted','<strong>Request</strong><div class="chat-prose">'+messageMarkup(question)+'</div>','',true,'done');
  markup+=row('plan','Casey',plan.summary?'Plan ready':active?'Planning':'No plan saved','<strong>Approach</strong><div>'+messageMarkup(plan.summary||(active?'Casey is deciding which expertise this request needs.':'No plan was saved before the work stopped.'))+'</div>'+declinedAssignmentsMarkup(job),'data-plan-role="0"',true,plan.summary?'done':active?'working':'');
+ if(advanced)markup+=row('reasoning','Casey','Reasoning','<strong>Recorded planning rationale</strong><div>'+messageMarkup(plan.summary||'No planning rationale has been recorded yet.')+'</div><small class="mission-plan-inputs">Recorded rationale—not private model chain-of-thought.</small>','data-reasoning-role="0"',true,'reasoning');
  const called=tasks.filter(task=>plan.handoffs?.[task.role]||plan.outputs?.[task.role]||plan.calledRoles?.includes(task.role));
  const calledOrder=collaborationRoleOrder(plan);
  called.sort((a,b)=>calledOrder.indexOf(Number(a.role))-calledOrder.indexOf(Number(b.role)));
@@ -81931,6 +81938,7 @@ function missionControlTraceMarkup(job){
   const assignment='<strong>Casey’s assignment</strong><div>'+messageMarkup(h?.task||task.task)+'</div>'+assignmentFitMarkup(task)+(expected?'<div class="mission-expectation"><small>Expected result</small><div>'+messageMarkup(expected)+'</div></div>':'')+(h?'<small class="mission-plan-inputs">Received: '+escape(['Casey’s brief',...(h.receivedFrom||[]).map(i=>defaultNames[Number(i)]+"’s contribution")].join(' · '))+'</small>':'');
   const recoveryNote=recovery?'<p class="mission-plan-inputs">'+escape(recovery.status==='delivered'?'A missing handoff was saved and verified in one repair before continuing.':recovery.status==='working'?'Required files are missing. One repair is using the existing research; later specialists are waiting.':'The required handoff could not be recovered. Later specialists were not started.')+'</p>':'';
   markup+=row('contribution',defaultNames[role],status,assignment+recoveryNote+(output?detail('output-'+role,defaultNames[role]+'’s result',messageMarkup(output.answer||'No response text was saved.')+webpageButtons(output.files,job.id)):''),'data-plan-role="'+role+'"',true,missing?(working?'working':''):output?'done':working?'working':'');
+  if(advanced)markup+=reasoning(defaultNames[role],task,output,'data-reasoning-role="'+role+'"');
   const reviews=checks.filter(check=>!check.afterRevision&&Number(check.afterRole)===role);
   for(const check of reviews){
    const status=check.done?(check.outcome==='partial'?'Partial result':check.outcome==='unavailable'?'Capability unavailable':'Enough to finish'):'More work needed';
@@ -81947,6 +81955,7 @@ function missionControlTraceMarkup(job){
   const r=plan.revision,output=r.output,working=active&&r.status==='working';
   markup+=row('revision','Casey','One targeted revision','<strong>Why repair is needed</strong><div>'+messageMarkup(r.reason)+'</div><div>'+messageMarkup(r.issue)+'</div>','data-revision-request',true,'done');
   markup+=row('revision-work',defaultNames[r.role],output?'Revised result delivered':working?'Revising':active&&r.status==='requested'?'Requested':r.status==='failed'?'Revision failed':'Not completed',collaborationRevisionBody(r,job.id),'data-revision-role="'+r.role+'"',true,output?'done':working?'working':'');
+  if(advanced)markup+=reasoning(defaultNames[r.role],r,output,'data-reasoning-revision-role="'+r.role+'"');
   for(const check of checks.filter(check=>check.afterRevision))
    markup+=row('review','Casey',check.outcome==='partial'?'Partial result':'Final verification','<div>'+messageMarkup(check.reason)+'</div><small>No further specialist calls.</small>','data-after-revision',true,'done');
   if(output&&!checks.some(check=>check.afterRevision)&&active&&!plan.responseReady)
@@ -81985,6 +81994,7 @@ function updateMissionControlTrace(lanes,jobId,markup){
  for(const node of [...lanes.children])if(!retained.has(node))node.remove();
  lanes.dataset.traceJob=jobId;lanes._traceMarkup=markup;
 }
+let missionReasoningOpen=false,missionReasoningJob='';
 function renderMissionControl(){
  const job=missionControlPlan(),intro=el('board').querySelector('.studio-board-intro');
  el('lanes').classList.toggle('studio-plan-control',!!job);
@@ -81992,8 +82002,16 @@ function renderMissionControl(){
  intro.querySelector('h3').textContent=job?'Execution trace':'No active plan';
  intro.querySelector('[data-mission-total]').textContent=job?collaborationTime(job):'';
  intro.querySelector('p').textContent=job?job.payload.collaboration.task:'Send /goal to Casey to start.';
- if(!job){el('lanes').innerHTML='';delete el('lanes').dataset.traceJob;delete el('lanes')._traceMarkup;return;}
- updateMissionControlTrace(el('lanes'),job.id,missionControlTraceMarkup(job));
+ const reasoningButton=el('mission-reasoning');
+ reasoningButton.onclick=()=>{missionReasoningOpen=!missionReasoningOpen;renderMissionControl();};
+ if(!job){
+  missionReasoningOpen=false;missionReasoningJob='';reasoningButton.hidden=true;
+  el('lanes').innerHTML='';delete el('lanes').dataset.traceJob;delete el('lanes')._traceMarkup;return;
+ }
+ if(missionReasoningJob!==job.id){missionReasoningJob=job.id;missionReasoningOpen=false;}
+ reasoningButton.hidden=false;reasoningButton.setAttribute('aria-expanded',String(missionReasoningOpen));
+ reasoningButton.textContent=missionReasoningOpen?'Hide advanced reasoning':'Show me advanced reasoning';
+ updateMissionControlTrace(el('lanes'),job.id,missionControlTraceMarkup(job,missionReasoningOpen));
 }
 // /goal is a real Captain-led job; contributions come from completed model calls.
 function collaborationRevisionBody(revision,jobId){
