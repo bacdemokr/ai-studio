@@ -25,8 +25,7 @@ function renderCreatorModels(){
  const apiConnection=runtime.modelConnections?.connections?.api,defaultApi=apiConnection?.model;
  if(draftMode==='new'&&!draftModelChosen){
   const apiDefault=apiConnection?.ready&&choices.find(row=>row.id===`api/${apiConnection.provider}/${defaultApi}`&&row.connected);
-  const roleDefault=apiConnection?.ready&&choices.find(row=>row.id===selectedRoleTemplate()?.preferredModel&&row.connected);
-  draftModel=choices.find(row=>row.id==='local')?.connected?'local':roleDefault?.id||apiDefault?.id||'';
+  draftModel=choices.find(row=>row.id==='local')?.connected?'local':apiDefault?.id||'';
  }
  const query=input.value.trim().toLowerCase();
  const sourceName=row=>row.source==='api'?'External Endpoint':row.source==='local'?'Local':'Shared default';

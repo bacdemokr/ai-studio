@@ -59,10 +59,10 @@ def role_for(agent):
 
 
 def default_model(role):
-    # Coordination and data analysis use Ultra; Coding and UX retain Super VL.
-    if role == 0:return CAPTAIN_MODEL
+    # Ultra for coordination, review and analysis; Super VL for research, code and UX.
+    if role in (0, 4):return CAPTAIN_MODEL
     if role == 6:return ANALYST_MODEL
-    return MODELS[0 if role in (5, 7) else 1]
+    return MODELS[0 if role in (5, 7, 8) else 1]
 
 
 def local_provider(agent):

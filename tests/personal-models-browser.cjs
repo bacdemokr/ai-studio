@@ -19,13 +19,13 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   assert.equal(await panel.evaluate(n=>n.open),false);assert.equal(await summary.innerText(),'fixture-a');
   assert(await panel.evaluate(n=>Boolean(document.querySelector('.studio-protection-picker').compareDocumentPosition(n)&Node.DOCUMENT_POSITION_FOLLOWING)),'Model control follows OpenShell protection, including its collapsed explanation');
   assert(await page.locator('#studio-create').isEnabled(),'Use the configured API default when Local is unavailable');
-  await page.getByRole('button',{name:'Data analyst',exact:true}).click();assert.equal(await summary.innerText(),'Nemotron 3 Ultra');
+  await page.getByRole('button',{name:'Data analyst',exact:true}).click();assert.equal(await summary.innerText(),'fixture-a','Data analyst uses the configured default even when Ultra is available');
   await page.getByRole('button',{name:'Weather buddy',exact:true}).click();assert.equal(await summary.innerText(),'fixture-a');
   await settings();await page.locator('[data-connection-enable=api]').uncheck();await page.waitForFunction(()=>document.querySelector('[data-connection-status=api]').textContent==='Disabled');await closeSettings();
   await page.waitForFunction(()=>document.querySelector('#studio-agent-model-summary').textContent==='Not connected');assert(await page.locator('#studio-create').isDisabled());
   await settings();await page.locator('[data-connection-enable=api]').check();await page.waitForFunction(()=>document.querySelector('[data-connection-status=api]').textContent==='Ready');await closeSettings();
   await page.waitForFunction(()=>document.querySelector('#studio-agent-model-summary').textContent==='fixture-a');assert.equal(await panel.evaluate(n=>n.open),false);
-  await page.locator('#studio-name').fill('Pixel');await page.getByRole('button',{name:'Programmer',exact:true}).click();await page.locator('#studio-create').scrollIntoViewIfNeeded();await page.screenshot({path:'/tmp/bac-hiring-default-model.png'});
+  await page.locator('#studio-name').fill('Pixel');await page.getByRole('button',{name:'Data analyst',exact:true}).click();await page.locator('#studio-create').scrollIntoViewIfNeeded();await page.screenshot({path:'/tmp/bac-hiring-default-model.png'});
   await page.locator('#studio-create').click();await page.locator('#studio-onboarding').waitFor({state:'hidden'});assert.equal(await page.evaluate(()=>BacStudio.inspect().profile.model),'api/nvidia/fixture-a');
   await page.locator('#studio-prompt').fill('Hello default model');await page.locator('#studio-send').click();await page.waitForFunction(()=>document.querySelector('#studio-conversation').textContent.includes('Simulated model: fixture-a'));
   await page.locator('#studio-edit-agent').click();assert.equal(await summary.innerText(),'fixture-a');
@@ -53,7 +53,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.locator('#studio-connect-model').fill('fixture-a');await page.locator('#studio-connect-apply').click();await page.waitForFunction(()=>document.querySelector('#studio-connect-status').textContent==='Connected.');await closeSettings();
   await page.evaluate(()=>BacStudio.setRoom('workshop'));assert.equal(await summary.innerText(),'Local');assert.equal(await panel.evaluate(n=>n.open),false);assert(await page.locator('#studio-create').isEnabled());
   assert.equal(await page.evaluate(()=>BacStudio.inspect().profile.model),'api/nvidia/fixture-b','A new-hire default must not change an existing agent');
-  await page.getByRole('button',{name:'Data analyst',exact:true}).click();assert.equal(await summary.innerText(),'Local','Connected Local retains priority over the analyst API preference');
+  await page.getByRole('button',{name:'Data analyst',exact:true}).click();assert.equal(await summary.innerText(),'Local','Data analyst follows the same connected Local default as other hires');
   await page.evaluate(()=>BacStudio.setRoom('lounge'));await page.locator('#studio-edit-agent').click();assert.equal(await summary.innerText(),'fixture-b');await expand();await choice('local').waitFor();assert(await choice('local').isEnabled());
   await choose('local','Local');await page.locator('#studio-create').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.model==='local');
   // Losing that connection preserves the selected model and allows unrelated edits.

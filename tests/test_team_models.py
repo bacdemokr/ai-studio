@@ -33,7 +33,7 @@ class TeamModelTests(unittest.TestCase):
         settings.save(self.app,{'provider':'local','baseUrl':'http://127.0.0.1:8000/v1','model':'local-test','apiKey':'','_credentialSession':'general'})
         config=json.loads(runtime.config_path().read_text())
         self.assertEqual(config['agents']['entries'][self.cap]['model'],'bac-team/'+team.CAPTAIN_MODEL)
-        self.assertEqual(config['agents']['entries'][self.research]['modelPolicy']['allow'],['bac-team/'+team.MODELS[1]])
+        self.assertEqual(config['agents']['entries'][self.research]['modelPolicy']['allow'],['bac-team/'+team.MODELS[0]])
         self.assertEqual(config['agents']['entries']['bac-personal']['model'],'bac-local/local-test')
         self.assertEqual(config['agents']['entries'][self.cap]['tools'],{'deny':['exec']})
         vault.release('general');self.assertTrue(team.public()['connected'])
@@ -70,19 +70,19 @@ class TeamModelTests(unittest.TestCase):
         self.app.runtime_status=lambda: {'ready':True,'teamReady':False}
         with self.assertRaises(Problem):self.app.enqueue(team_owner,{'kind':'crew-chat','crewRole':0,'prompt':'Hello'})
 
-    def test_defaults_for_casey_cody_and_iris_and_explicit_override(self):
+    def test_specialist_defaults_and_explicit_override(self):
         self.configure()
         owner=self.app.session()[0]['id'];crew=self.app.crew_owner(owner)
         selections=team.selections(self.app,crew)
         self.assertEqual(selections[0]['id'],team.CAPTAIN_MODEL)
         self.assertEqual(team.model_for(self.app.crew_native_id(crew,0)),'bac-team/'+team.CAPTAIN_MODEL)
-        for role in (5,7):
+        for role in (5,7,8):
             self.assertEqual(selections[role]['id'],team.MODELS[0])
             self.assertEqual(team.model_for(self.app.crew_native_id(crew,role)),'bac-team/'+team.MODELS[0])
         self.assertEqual(selections[6]['id'],team.ANALYST_MODEL)
         self.assertEqual(team.model_for(self.app.crew_native_id(crew,6)),'bac-team/'+team.ANALYST_MODEL)
-        for role in (4,8):
-            self.assertEqual(selections[role]['id'],team.MODELS[1])
+        self.assertEqual(selections[4]['id'],team.CAPTAIN_MODEL)
+        self.assertEqual(team.model_for(self.app.crew_native_id(crew,4)),'bac-team/'+team.CAPTAIN_MODEL)
         team.select(self.app,crew,{'role':5,'model':team.MODELS[1]})
         self.assertEqual(team.selections(self.app,crew)[5]['id'],team.MODELS[1])
         team.select(self.app,crew,{'role':0,'model':team.MODELS[0]})
@@ -90,18 +90,23 @@ class TeamModelTests(unittest.TestCase):
         self.assertEqual(team.credentials()['model'],team.MODELS[0])
         team.select(self.app,crew,{'role':6,'model':team.MODELS[1]})
         self.assertEqual(team.selections(self.app,crew)[6]['id'],team.MODELS[1])
+        for role in (4,8):
+            team.select(self.app,crew,{'role':role,'model':team.MODELS[1]})
+            self.assertEqual(team.selections(self.app,crew)[role]['id'],team.MODELS[1])
 
     def test_stage3_reset_restores_builtin_model_defaults(self):
         owner=self.app.session()[0]['id'];crew=self.app.crew_owner(owner)
         casey=self.app.crew_native_id(crew,0);research=self.app.crew_native_id(crew,8)
         team.select(self.app,crew,{'role':0,'model':team.MODELS[1]})
-        team.select(self.app,crew,{'role':8,'model':team.MODELS[0]})
+        team.select(self.app,crew,{'role':8,'model':team.MODELS[1]})
+        team.select(self.app,crew,{'role':4,'model':team.MODELS[1]})
         team.select(self.app,crew,{'role':6,'model':team.MODELS[1]})
         self.app.provisioned.update((casey,research))
         self.app.reset_crew_chats(crew,reset_event=True)
         selections=team.selections(self.app,crew)
         self.assertEqual(selections[0]['id'],team.CAPTAIN_MODEL)
-        self.assertEqual(selections[8]['id'],team.MODELS[1])
+        self.assertEqual(selections[8]['id'],team.MODELS[0])
+        self.assertEqual(selections[4]['id'],team.CAPTAIN_MODEL)
         self.assertEqual(selections[6]['id'],team.ANALYST_MODEL)
         self.assertNotIn(casey,self.app.provisioned)
         self.assertNotIn(research,self.app.provisioned)
@@ -109,26 +114,27 @@ class TeamModelTests(unittest.TestCase):
     def test_role_matching_does_not_capture_personal_agents(self):
         self.assertIsNone(team.model_for('bac-'+'a'*24))
         self.assertIsNone(team.model_for('bac-'+'a'*24+'-r99'))
-        self.assertEqual(team.model_for(self.research),'bac-team/'+team.MODELS[1])
+        self.assertEqual(team.model_for(self.research),'bac-team/'+team.MODELS[0])
 
     def test_member_selection_is_scoped_and_preserved_by_settings(self):
         owner=self.app.session()[0]['id'];other=self.app.session()[0]['id']
         crew=self.app.crew_owner(owner);other_crew=self.app.crew_owner(other)
-        team.select(self.app,crew,{'role':8,'model':team.MODELS[0]})
-        self.assertEqual(team.selections(self.app,crew)[8]['id'],team.MODELS[0])
-        self.assertEqual(team.selections(self.app,other_crew)[8]['id'],team.MODELS[1])
-        self.assertEqual(self.app.state(owner)['teamSelections'][8]['id'],team.MODELS[0])
+        selected=team.MODELS[1]
+        team.select(self.app,crew,{'role':8,'model':selected})
+        self.assertEqual(team.selections(self.app,crew)[8]['id'],selected)
+        self.assertEqual(team.selections(self.app,other_crew)[8]['id'],team.MODELS[0])
+        self.assertEqual(self.app.state(owner)['teamSelections'][8]['id'],selected)
         config=runtime.initial_config();agent=self.app.crew_native_id(crew,8)
-        config['agents']['entries'][agent]={'model':'bac-team/'+team.MODELS[0]}
+        config['agents']['entries'][agent]={'model':'bac-team/'+selected}
         profile={'baseUrl':'http://localhost:8000/v1','model':'local','apiKey':'','contextWindow':32768}
         config=settings.apply_to_config(config,'local',profile)
-        self.assertEqual(config['agents']['entries'][agent]['model'],'bac-team/'+team.MODELS[0])
+        self.assertEqual(config['agents']['entries'][agent]['model'],'bac-team/'+selected)
         with self.app.db() as db:member=self.app.crew_roster(db,crew,{},preset=True)[8]
         with patch.object(self.app.adapter,'register') as register:
             self.app.prepare_builtin_crew(crew,8,member)
-            self.assertEqual(register.call_args.args[2]['_teamModel'],team.MODELS[0])
+            self.assertEqual(register.call_args.args[2]['_teamModel'],selected)
         self.assertIn(agent,self.app.provisioned)
-        team.select(self.app,crew,{'role':8,'model':team.MODELS[1]})
+        team.select(self.app,crew,{'role':8,'model':team.MODELS[0]})
         self.assertNotIn(agent,self.app.provisioned)
 
     def test_member_selection_rejects_bad_input_and_active_work(self):
