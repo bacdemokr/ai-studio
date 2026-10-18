@@ -4,6 +4,7 @@ from unittest.mock import patch
 import test_collaboration_plan as fixture
 from collaboration_plan import read_plan
 from plan_handoff import required_files, missing_files
+from telemetry import Reply
 
 
 class PlanHandoffTests(unittest.TestCase):
@@ -154,6 +155,59 @@ class PlanHandoffTests(unittest.TestCase):
         (workspace/'artifacts').mkdir(parents=True, exist_ok=True)
         (workspace/'artifacts/brief.md').write_text('Evidence from an older task')
         plan = self.run_plan()['payload']['collaboration']
+        self.assertEqual(plan['calledRoles'], [8])
+        self.assertEqual(plan['outcome'], 'partial')
+
+    def unchanged_handoff(self, activity, content='Evidence: https://example.com/source - source says X.'):
+        self.configure(repair='missing')
+        workspace = self.app.workspace(self.app.crew_owner(self.owner), 8)
+        (workspace / 'artifacts').mkdir(parents=True, exist_ok=True)
+        path = workspace / 'artifacts/brief.md'
+        path.write_text(content)
+        before = (path.read_bytes(), path.stat().st_mtime_ns)
+        original = self.adapter.respond
+        def respond(agent, session, prompt, **kwargs):
+            answer = original(agent, session, prompt, **kwargs)
+            if agent.endswith('-r8'):
+                answer = Reply(str(answer), {})
+                answer.activity = activity
+            return answer
+        self.adapter.respond = respond
+        plan = self.run_plan()['payload']['collaboration']
+        self.assertEqual(before, (path.read_bytes(), path.stat().st_mtime_ns))
+        return plan
+
+    def test_current_successful_write_exports_identical_file_without_repair(self):
+        # Native idempotent writes can leave the old hash and mtime intact.
+        plan = self.unchanged_handoff({'source':'OpenClaw transcript', 'available':True,
+            'calls':[{'tool':'write', 'target':'artifacts/brief.md', 'status':'completed'}]})
+        self.assertEqual(plan['calledRoles'], [8, 5])
+        self.assertNotIn('handoffRecovery', plan)
+        self.assertIn('artifacts/brief.md', plan['verifiedSources']['8'])
+        exported = plan['outputs']['8']['files'][0]
+        self.assertIn('https://example.com/source',
+                      self.app.available_file(self.owner, exported).read_text())
+
+    def test_read_failed_write_or_unverified_activity_cannot_certify_old_file(self):
+        base = {'source':'OpenClaw transcript', 'available':True,
+                'calls':[{'tool':'write', 'target':'artifacts/brief.md', 'status':'completed'}]}
+        cases = [
+            {**base, 'calls':[{'tool':'read', 'target':'artifacts/brief.md', 'status':'completed'}]},
+            {**base, 'calls':[{'tool':'write', 'target':'artifacts/brief.md', 'status':'failed'}]},
+            {**base, 'calls':[{'tool':'write', 'target':'artifacts/brief.md', 'status':'running'}]},
+            {**base, 'calls':[{'tool':'write', 'target':'artifacts/unrelated.md', 'status':'completed'}]},
+            {**base, 'available':False}, {**base, 'source':'Model claim'}]
+        for activity in cases:
+            with self.subTest(activity=activity):
+                self.adapter.respond = fixture.PlanAdapter.respond.__get__(self.adapter)
+                plan = self.unchanged_handoff(activity)
+                self.assertEqual(plan['calledRoles'], [8])
+                self.assertEqual(plan['outcome'], 'partial')
+                self.assertNotIn('5', plan['outputs'])
+
+    def test_successful_write_does_not_certify_blank_file(self):
+        plan = self.unchanged_handoff({'source':'OpenClaw transcript', 'available':True,
+            'calls':[{'tool':'write', 'target':'artifacts/brief.md', 'status':'completed'}]}, '  \n')
         self.assertEqual(plan['calledRoles'], [8])
         self.assertEqual(plan['outcome'], 'partial')
 

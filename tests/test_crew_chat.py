@@ -17,6 +17,17 @@ class CrewChatTests(unittest.TestCase):
         self.studio.execute(self.studio.next_job())
         return job
 
+    def test_korean_captain_chat_keeps_reminder_without_dispatching_a_team(self):
+        self.send(0, '너는 어떤 일을 할 수 있어?')
+        self.send(0, '웹페이지도 만들 수 있어?')
+        chats = self.studio.state(self.owner)['crewChats']
+        self.assertEqual(len(chats), 2)
+        for job in chats:
+            self.assertNotIn('collaboration', job['payload'])
+            self.assertTrue(job['result']['answer'].endswith(
+                '참고로, 팀 프로젝트를 원한다면 메시지 앞에 `/goal`을 추가해줘.'))
+        self.assertEqual(len(self.adapter.agents), 1)
+
     def test_roles_have_native_identity_and_separate_persistent_conversations(self):
         self.send(0, 'Help plan my event')
         self.send(8, 'Research a topic')
@@ -25,6 +36,12 @@ class CrewChatTests(unittest.TestCase):
         self.assertEqual(state['jobs'], [])
         self.assertEqual(len(state['crewChats']), 3)
         self.assertTrue(all(j['status'] == 'done' for j in state['crewChats']))
+        for job in state['crewChats']:
+            answer = job['result']['answer']
+            if job['payload']['crewRole'] == 0:
+                self.assertTrue(answer.endswith('For a team project, add `/goal` at the start of your message.'))
+            else:
+                self.assertNotIn('For a team project', answer)
         self.assertEqual(len(self.adapter.agents), 2)
         profiles = list(self.adapter.profiles.values())
         self.assertEqual([p['name'] for p in profiles], ['Casey', 'Scout'])

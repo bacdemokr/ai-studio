@@ -293,7 +293,6 @@
 #studio-workshop #studio-purpose{width:100%;box-sizing:border-box;min-height:125px;height:auto;line-height:1.55;resize:vertical;padding:12px 14px;font-family:inherit}
 #studio-workshop .studio-custom-role-label{display:block;margin:14px 0 8px;font-size:16px;color:#b7c7d4}
 
-#studio-skill-picker em{display:block;font-style:normal;font-size:13px;color:#94aabc;line-height:1.5;margin-top:7px}
 #studio-workshop #studio-skill-picker label:has(input:checked){border-color:#76b900;background:#1f2c20}
 #studio-equipped{display:grid;grid-template-columns:1fr;gap:7px}
 #studio-equipped button{display:block;text-align:left;border:1px solid #3a4b58;border-radius:5px;background:#18232d;padding:10px 12px;color:#dce7ef;cursor:pointer}
@@ -407,7 +406,7 @@
 
 #studio-agent-skills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 #studio-agent-skills[hidden]{display:none}
-#studio-agent-skills .studio-skill-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid #48616f;border-radius:6px;background:linear-gradient(135deg,#263b48,#1a2934);box-shadow:inset 0 1px #ffffff08;color:#d5e8f1;font-size:11px;line-height:1.4}
+:is(#studio-agent-skills,#studio-crew-agent-skills) .studio-skill-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid #48616f;border-radius:6px;background:linear-gradient(135deg,#263b48,#1a2934);box-shadow:inset 0 1px #ffffff08;color:#d5e8f1;font-size:11px;line-height:1.4}
 #studio-agent-skills .studio-skill-badge i{color:#b4dc83;font-style:normal;font-size:14px}
 #studio-companion .studio-agent-title{flex-wrap:wrap}
 
@@ -431,7 +430,7 @@
 #studio-crew-team-mode button:disabled{opacity:.6;cursor:default}
 #studio-crew-team-hint{display:block;margin:7px 0 2px;color:#a9bdca;font-size:12px;line-height:1.4}
 #studio-crew-team-hint[hidden]{display:none}
-#studio-crew-chat textarea{width:100%;box-sizing:border-box;min-height:70px;max-height:140px;resize:vertical;background:transparent;border:0;color:#e7eef5;font:inherit;font-size:15px;padding:8px 3px}
+#studio-crew-chat textarea{width:100%;box-sizing:border-box;min-height:70px;max-height:200px;resize:vertical;background:transparent;border:0;color:#e7eef5;font:inherit;font-size:15px;padding:8px 3px}
 #studio-crew-chat .studio-compose-actions{margin:4px 0 0;gap:6px}
 #studio-crew-chat #studio-crew-send{margin-left:auto;font-size:13px;padding:8px 12px}
 #studio-crew-chat-connection,#studio-crew-chat-error{font-size:13px!important;margin:0 0 5px!important}
@@ -759,8 +758,8 @@
 #bac-planner #agent-campus .studio-goal-caption{display:block;margin:0 0 9px;color:#8196a4;font-size:12px;line-height:1.4}
 #bac-planner #agent-campus .studio-goal-chips{display:flex;flex-wrap:wrap;gap:7px}
 #bac-planner #agent-campus .studio-goal-chips button{position:relative;appearance:none;margin:0;border:1px solid #31434f;border-radius:7px;padding:7px 11px;background:#0d1920;color:#acbfcc;font:inherit;font-size:12px;font-weight:500;line-height:1.4;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
-#bac-planner #agent-campus .studio-goal-chips button::after{content:attr(data-team-hint);position:absolute;z-index:20;left:50%;top:calc(100% + 7px);width:max-content;max-width:270px;box-sizing:border-box;padding:7px 9px;border:1px solid #4b606c;border-radius:7px;background:#17262f;color:#e7eef5;box-shadow:0 8px 22px #0008;font-size:12px;font-weight:500;line-height:1.35;text-align:left;white-space:normal;pointer-events:none;opacity:0;visibility:hidden;transform:translate(-50%,-3px);transition:opacity .12s,transform .12s,visibility .12s}
-#bac-planner #agent-campus .studio-goal-chips button:hover::after,#bac-planner #agent-campus .studio-goal-chips button:focus-visible::after{opacity:1;visibility:visible;transform:translate(-50%,0)}
+#bac-planner #agent-campus .studio-goal-chips button::after{display:none;content:attr(data-goal-hint);position:absolute;z-index:20;left:50%;top:calc(100% + 7px);width:max-content;max-width:270px;box-sizing:border-box;padding:7px 9px;border:1px solid #4b606c;border-radius:7px;background:#17262f;color:#e7eef5;box-shadow:0 8px 22px #0008;font-size:12px;font-weight:500;line-height:1.35;text-align:left;white-space:normal;pointer-events:none;opacity:0;visibility:hidden;transform:translate(-50%,-3px);transition:opacity .12s,transform .12s,visibility .12s}
+#bac-planner #agent-campus .studio-goal-chips button:hover::after,#bac-planner #agent-campus .studio-goal-chips button:focus-visible::after{display:block;opacity:1;visibility:visible;transform:translate(-50%,0)}
 #bac-planner #agent-campus .studio-goal-chips button:hover:not(:disabled){color:#e7eef5;background:#22333e;border-color:#587243}
 #bac-planner #agent-campus .studio-goal-chips button[aria-pressed=true],#bac-planner #agent-campus .studio-goal-chips button[aria-pressed=true]:hover:not(:disabled){color:#d4efad;border-color:#557832;background:#293d22}
 #bac-planner #agent-campus .studio-goal-chips button:focus-visible{outline:2px solid #a5d76a;outline-offset:2px}
@@ -847,3 +846,11 @@
 #agent-campus .studio-attachment button:hover{text-decoration:underline;text-underline-offset:3px}
 #agent-campus .studio-attachment button:focus-visible{outline:2px solid #76b900;outline-offset:3px;border-radius:3px}
 .studio-attachment input{flex:none}
+
+#studio-crew-agent-actions{gap:6px;flex-wrap:wrap}
+#studio-crew-agent-actions button{font-size:12px;padding:6px 10px;border-radius:8px}
+#studio-crew-agent-skills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+#studio-crew-agent-skills[hidden]{display:none}
+
+#studio-crew-passport .studio-agent-title{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+#studio-crew-agent-actions:not([hidden]){display:flex}

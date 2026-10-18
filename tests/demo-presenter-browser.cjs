@@ -41,7 +41,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   const mode=await page.locator('#studio-crew-team-mode [aria-pressed=true]').getAttribute('data-team-mode');
   const examples=require('../src/goal-examples.json'),chips=page.locator('[data-goal-example]');
   assert.equal(await chips.count(),examples.length);
-  for(const example of examples)assert.equal(await page.locator('[data-goal-example='+example.id+']').getAttribute('title'),'Suggested team: '+example.team+'.');
+  for(const example of examples)assert.equal(await page.locator('[data-goal-example='+example.id+']').getAttribute('title'),example.detail);
   assert.equal(await page.getByRole('button',{name:'Try a goal'}).count(),0);
   await page.locator('#studio-crew-prompt').fill('/goal My unfinished draft');
   for(const id of ['travel','drone','pong','event']){

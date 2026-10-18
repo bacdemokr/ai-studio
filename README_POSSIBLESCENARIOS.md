@@ -19,33 +19,33 @@ Send these prompts to **Casey in Open Task** with `/goal`. Attach the sample ema
 
 ## In-app starting points
 
-Use the **Example goals** chips below Casey’s introduction for editable versions of these examples, **Event page**, and **GPU portfolio**. Travel uses a relative start date to avoid stale demo dates. The store example attaches the same fictional email linked below. GPU portfolio attaches a demo CSV for analysis followed by a comparison webpage. Bill splitter is the Coding-only example. Tooltips start with **Suggested team** and list skills, not mandatory role presets. Nothing starts until you send the goal. These shorter templates are adapted from the historical prompts below; their results and timings are not those historical measurements.
+Use the **Example goals** chips below Casey’s introduction for editable versions of these examples, **Event page**, and **GPU portfolio**. Travel uses a relative start date to avoid stale demo dates. The store example attaches the same fictional email linked below. GPU portfolio attaches a demo CSV for analysis and a comparison webpage. Bill splitter requests a compact calculator. Tooltips describe the requested outcome; Casey chooses the team from available skills and tools. Nothing starts until you send the goal. These shorter templates are adapted from the historical prompts below; their results and timings are not those historical measurements.
 
 The Event page template asks the current team to create a fictional meetup page and social draft from supplied details. It runs entirely in Open Task. The former fixed-team Event Brief is archived at `archive/event-brief-final-2026-10-15`.
 
-## Collaboration in each example
+## Task-only examples
 
-Bill splitter requests one Coding specialist. Travel requests three specialists; the other current templates request two. These are example-specific goals, not a rule forcing extra agents into every free-form task. In Hired only, prepare the listed skill or skills on separate suitable hires. If a specialist is missing, switch to Hired + Standby or hire the missing skill; do not silently expand another agent's scope.
+Each example describes the user's goal, deliverables and evidence limits. It does not prescribe a headcount, named agents, equipped skills or a workflow. Casey chooses the available participants and division of work. Hired only remains restricted to hired agents; Hired + Standby permits suitable backups. Missing skills or tools must be reported honestly, not filled by an unrelated role.
 
-| Example | First contribution | Second contribution | Suggested skills |
-| --- | --- | --- | --- |
-| Travel guide | Cited brief, then a UX layout specification | Day-by-day travel webpage | Web research + UX design + Coding |
-| Drone research | Dated research-paper brief | Research dashboard | Web research + Coding |
-| Store email review | Store comparison and recommendations | Charts and store dashboard | Data interpretation + Coding |
-| GPU portfolio | Numeric analysis and top-five CSV | GPU comparison dashboard | Data interpretation + Coding |
-| Bill splitter | Complete self-contained calculator | — | Coding |
-| Ping-pong game | Layout, controls and interaction design | Playable browser game | UX design + Coding |
-| Event page | Announcement and page copy | Event webpage using that copy | Slack announcements + Coding |
+| Example | Requested result |
+| --- | --- |
+| Travel guide | Three-day Berlin webpage with available weather, three official tourism sources and forecast limitations |
+| Drone research | Recent research-paper dashboard with dates, sources and evidence gaps |
+| Store email review | Five-store comparison dashboard and practical next actions |
+| GPU portfolio | TDP ranking, memory/bandwidth dashboard, top-five CSV and analysis brief |
+| Bill splitter | Accessible calculator with input validation and reset |
+| Ping-pong game | Playable two-player browser game with keyboard controls |
+| Event page | Fictional meetup webpage and social announcement from supplied details |
 
-Keep the first contribution brief for a live demo. The second specialist must use it, not restart the task independently. Ping-pong uses Iris + Cody in standby; Event page needs a Slack announcements hire because that skill is not in the standby pool.
+One agent may cover a task when its equipped skills and tools suffice. When work needs complementary specialists, their actual contributions and saved handoffs should support the final result. Do not add participants merely to make the demo look collaborative.
 
 ## GPU portfolio
 
-Select **GPU portfolio** to attach [`datacenter_gpu_portfolio.csv`](scenario/datacenter_gpu_portfolio.csv). A specialist with **Data interpretation** reads the 11 supplied rows, ranks the top five by single-GPU TDP, compares memory capacity and bandwidth, and saves an analysis brief plus the top-five CSV. A specialist with **Coding** then builds a self-contained HTML dashboard from that handoff, with a TDP chart, a portfolio comparison table and three findings. **Ada + Cody** is the suggested standby pairing; equipped hires can fill the same two roles. No web research is needed.
+Select **GPU portfolio** to attach [`datacenter_gpu_portfolio.csv`](scenario/datacenter_gpu_portfolio.csv). Request analysis of the 11 supplied rows, a top-five CSV, a brief and an HTML dashboard. Casey decides whether available skills are covered by one hire or several participants; Data interpretation and Coding remain required capabilities for their respective work, not a fixed team composition.
 
 The expected order is Vera Rubin NVL72 (2300 W), HGX Rubin NVL8 (2300 W), GB300 NVL72 (1400 W), GB200 NVL72 (1200 W), and GB200 NVL4 (1200 W). Ties keep input order. These are supplied demo maximums per GPU, not verified current specifications or total rack consumption. Retain "up to" qualifiers, normalize bandwidth units, and do not infer performance or energy efficiency from TDP. See the [fixture notes](scenario/datacenter_gpu_portfolio.md).
 
-Standby does not contain every selectable skill. Travel uses **Web research + UX design + Coding**: Scout selects three places from official tourism sources, Iris prepares the UX specification, then Cody builds the page from both handoffs. The compact example excludes forecast, ticket-price and booking research. The Event page team uses a **Slack announcements** hire alongside Cody. Do not claim those skills exist in the standby catalog or silently substitute unrelated skills.
+Standby does not contain every selectable skill. A goal that cannot be fully covered by the available pool should produce an honest partial or unavailable result. Travel requests available forecasts and official tourism evidence; absent forecasts must be labeled, never invented.
 
 ## Table of contents
 

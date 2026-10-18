@@ -6,8 +6,10 @@ import re
 import tempfile
 
 BASE_URL = 'https://inference-api.nvidia.com/v1'
-MODELS = ('nvidia/nvidia/nemotron-3-ultra-nvfp4', 'nvidia/nvidia/nemotron-3.5-lightning')
-LABELS = ('Nemotron 3 Ultra', 'Nemotron 3.5 Lightning')
+CAPTAIN_MODEL = 'nvidia/nvidia/nemotron-3-ultra-nvfp4'
+ANALYST_MODEL = CAPTAIN_MODEL
+MODELS = ('nvidia/nvidia/nemotron-3.5-super-vl', 'nvidia/nvidia/nemotron-3.5-lightning', CAPTAIN_MODEL)
+LABELS = ('Nemotron 3.5 Super VL', 'Nemotron 3.5 Lightning', 'Nemotron 3 Ultra')
 _catalog = [{'id':m,'label':label} for m,label in zip(MODELS,LABELS)]
 
 
@@ -57,8 +59,10 @@ def role_for(agent):
 
 
 def default_model(role):
-    # Captain, programmer and UX designer use Ultra; other specialists use Lightning.
-    return MODELS[0 if role in (0, 5, 7) else 1]
+    # Coordination and data analysis use Ultra; Coding and UX retain Super VL.
+    if role == 0:return CAPTAIN_MODEL
+    if role == 6:return ANALYST_MODEL
+    return MODELS[0 if role in (5, 7) else 1]
 
 
 def local_provider(agent):
@@ -82,7 +86,7 @@ def model_for(agent, selected=None):
 
 def public():
     models = saved_connection().get('models', _catalog)
-    models = [{'id': m['id'], 'label': m.get('label', m['id'])} for m in models
+    models = [{'id': m['id'], 'label': dict(zip(MODELS, LABELS)).get(m['id'], m.get('label', m['id']))} for m in models
               if isinstance(m, dict) and valid_model(m.get('id'))] if isinstance(models, list) else list(_catalog)
     return {'connected':bool(credentials().get('apiKey')), 'models':models}
 
@@ -134,7 +138,7 @@ def configure(studio,data):
     if not data.get('apiKey'):raise Problem('Enter the dedicated Multi-Agent Demo API key.')
     available=settings.request(provider,profile,'/models',timeout=25)
     ids={row.get('id') for row in available.get('data',[]) if isinstance(row,dict) and valid_model(row.get('id'))}
-    if not set(MODELS).issubset(ids):raise Problem('The dedicated API key must provide both configured Nemotron models.',502)
+    if not set(MODELS).issubset(ids):raise Problem('The dedicated API key must provide the configured Nemotron models.',502)
     with studio.db() as db:
         db.execute('BEGIN IMMEDIATE')
         if db.execute("SELECT 1 FROM jobs WHERE status IN ('queued','running','waiting','stopping') LIMIT 1").fetchone():

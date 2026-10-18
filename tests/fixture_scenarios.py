@@ -12,7 +12,7 @@ class Fixture(BrowserAdapter):
         if '[fixture:error]' in prompt:raise RuntimeError('TEST FIXTURE: model unavailable')
         return super().respond(agent,session,prompt,**kwargs)
 if __name__=='__main__':
-    with tempfile.TemporaryDirectory(prefix='bac-open-task-ui-') as folder,patch.dict(os.environ,{'BAC_DATA_DIR':folder}),patch('runtime_settings.request',return_value={'data':[{'id':m} for m in ('fixture-local-model','fixture-other-model','nvidia/nvidia/nemotron-3-ultra-nvfp4','nvidia/nvidia/nemotron-3.5-lightning')]}):
+    with tempfile.TemporaryDirectory(prefix='bac-open-task-ui-') as folder,patch.dict(os.environ,{'BAC_DATA_DIR':folder}),patch('runtime_settings.request',return_value={'data':[{'id':m} for m in ('fixture-local-model','fixture-other-model','nvidia/nvidia/nemotron-3.5-super-vl','nvidia/nvidia/nemotron-3.5-lightning')]}):
         app=Studio(folder,Fixture());server=create_server(os.environ.get('BAC_TEST_HOST','127.0.0.1'),int(os.environ.get('BAC_TEST_PORT','8083')),app)
         print('Open Task fixture ready',flush=True)
         try:server.serve_forever()

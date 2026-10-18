@@ -33,6 +33,18 @@ def effective_outputs(plan):
     return outputs
 
 
+def stale_revision_pages(plan):
+    """A revised upstream handoff does not update pages already built from it."""
+    revision = plan.get('revision', {})
+    if revision.get('status') != 'delivered':
+        return []
+    roles = [task['role'] for task in plan.get('tasks', [])]
+    if revision.get('role') not in roles:
+        return []
+    later = roles[roles.index(revision['role']) + 1:]
+    return [path for role in later for path in plan.get('webpages', {}).get(str(role), [])]
+
+
 REVISION_INSTRUCTIONS = (
     '\nYou may request ONE targeted revision from a specialist who already participated, '
     'only when a saved contribution or review identifies a concrete defect that prevents an original requirement '
@@ -44,6 +56,9 @@ REVISION_INSTRUCTIONS = (
     'just to confirm its implementation. Preserve any independent review explicitly requested by the user. '
     'Choose the appropriate participating expert for this problem, not a fixed researcher/programmer pair. '
     'Preserve their role scope. Do not add an agent, broaden the user request or repeat the whole workflow. '
+    'If evidence already establishes the correction, revise the final deliverable instead of researching it again. '
+    'For example, excluding an out-of-window paper from a webpage can use the supplied publication date. '
+    'Revising an upstream brief alone will not update a webpage already built from it. '
     'No automatic second review or second revision will follow. If one scoped repair cannot produce a useful '
     'improvement, return the current result as partial with its limitations. '
     'For a justified revision return ONLY JSON {"done":false,"reason":"why this repair is essential",'

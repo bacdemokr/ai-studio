@@ -25,7 +25,8 @@ function renderCreatorModels(){
  const apiConnection=runtime.modelConnections?.connections?.api,defaultApi=apiConnection?.model;
  if(draftMode==='new'&&!draftModelChosen){
   const apiDefault=apiConnection?.ready&&choices.find(row=>row.id===`api/${apiConnection.provider}/${defaultApi}`&&row.connected);
-  draftModel=choices.find(row=>row.id==='local')?.connected?'local':apiDefault?.id||'';
+  const roleDefault=apiConnection?.ready&&choices.find(row=>row.id===selectedRoleTemplate()?.preferredModel&&row.connected);
+  draftModel=choices.find(row=>row.id==='local')?.connected?'local':roleDefault?.id||apiDefault?.id||'';
  }
  const query=input.value.trim().toLowerCase();
  const sourceName=row=>row.source==='api'?'External Endpoint':row.source==='local'?'Local':'Shared default';
@@ -107,6 +108,7 @@ function updateDraft(){
   // Status badges elsewhere in the studio are not editor controls.
   el('tone-picker').querySelectorAll('button[data-tone]').forEach(b=>b.setAttribute('aria-pressed',matchesTonePrompt(b.dataset.tone,creatorPrompt().tonePrompt)));
   window.BacCampus?.setDraft({name:el('name').value.trim()||'Your new agent',...creatorPrompt(),persona,tone:draftTone,verbosity,protection:el('onboarding').querySelector('[name=protection]:checked')?.value||'standard',avatar:{...draftAvatar}});
+  renderCreatorModels();
 }
 function fillCreator(creating){
   draftMode=creating?'new':'edit';draftOwner=agentId;
@@ -118,7 +120,7 @@ function fillCreator(creating){
   const p=creating?{name,persona:'guide',purpose:roleTemplates[0].purpose,skills:[...roleTemplates[0].skills],avatar:defaults}:data.profile;
   if(!p)return fillCreator(true);
   draftNameEdited=!creating;
-  draftModel=creating?'':p.model||'shared';draftModelChosen=!creating;el('agent-model-search').value='';el('agent-model-panel').open=false;renderCreatorModels();
+  draftModel=creating?'':p.model||'shared';draftModelChosen=!creating;el('agent-model-search').value='';el('agent-model-panel').open=false;
   el('name').value=p.name;writeCreatorPrompt(savedTonePrompt(p),p.purpose||(creating?'':personas[p.persona]));persona=p.persona;draftAvatar={...(p.avatar||defaults)};el('accessory').value=draftAvatar.accessory;
   draftTone=p.tone||'kind';
   el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(roleTemplates[Number(b.dataset.roleTemplate)]?.purpose===p.purpose)));
@@ -151,10 +153,10 @@ function renderRoomVisibility(){
   if(el('compare'))el('compare').hidden=room!=='lounge'||!comparison;
   syncComposer();
   const workshop=room==='workshop',lounge=room==='lounge',mission=room==='mission';
-  el('workshop').hidden=!(workshop||editingInPlace);el('passport').hidden=!lounge||editingInPlace;el('crew-passport').hidden=!mission;el('connections').hidden=!workshop;el('policies').hidden=false;el('policy-panel').hidden=!lounge;
+  el('workshop').hidden=!(workshop||editingInPlace);el('passport').hidden=!lounge||editingInPlace;el('crew-passport').hidden=!mission||editingInPlace;el('connections').hidden=!workshop;el('policies').hidden=false;el('policy-panel').hidden=!lounge;
   el('collection').hidden=!lounge||!data.profile;
   layout.hidden=false;el('board').hidden=true;
-  el('experiences').hidden=!lounge;el('workspace').hidden=workshop||(mission?!currentCollaboration():(!current()&&!data.files?.length));el('safety-bar').hidden=true;
+  el('experiences').hidden=!lounge;el('workspace').hidden=workshop||editingInPlace||(mission?!currentCollaboration():(!current()&&!data.files?.length));el('safety-bar').hidden=true;
   el('room-action').hidden=true;
   document.getElementById('campus-roster').hidden=!mission;
   renderScenarioSelector();
@@ -280,6 +282,6 @@ el('onboarding').onsubmit=async e=>{
   }catch(error){alert(error.message,'error');}finally{hiringArrival=false;el('onboarding').inert=false;updateCreatorSubmit();}
 };
 // Selecting a resident updates its workspace without moving the visitor's view.
-root.addEventListener('bac:collection-select',e=>{editingInPlace=false;if(room==='mission'&&selectedScenario==='plan'){selectOpenTaskVisitor(e.detail);return;}renderRoomVisibility();switchAgent(e.detail);});
+root.addEventListener('bac:collection-select',e=>{editingInPlace=false;renderRoomVisibility();if(room==='mission'&&selectedScenario==='plan'){selectOpenTaskVisitor(e.detail);return;}renderRoomVisibility();switchAgent(e.detail);});
 // Useful in file-only UI review too; live status is supplied by boot().
 fillCreator(true);setRoom('workshop');window.BacCampus?.overview({instant:true});

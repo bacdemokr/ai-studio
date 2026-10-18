@@ -1427,8 +1427,17 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
         answer = self.respond_chat(agent_id, session, prompt, owner, payload)
         pages = collect_pages(self, owner, job_id, role, pages_before, answer)
         self.record_usage(job_id, payload, answer, agent_id, member['name'], role)
+        # Direct Captain chat never starts a team project. Keep the reminder
+        # deterministic rather than relying on the model to repeat it each turn.
+        reply_text = str(answer)
+        if role == 0:
+            hint = ('참고로, 팀 프로젝트를 원한다면 메시지 앞에 `/goal`을 추가해줘.'
+                    if re.search(r'[가-힣]', payload['prompt']) else
+                    'For a team project, add `/goal` at the start of your message.')
+            if hint not in reply_text:
+                reply_text += '\n\n' + hint
         self.event(job_id, 'Reply ready', member['name'], role,
-                   result=json.dumps({'answer': answer,'files':pages,'activity':getattr(answer,'activity',None)}), status='done')
+                   result=json.dumps({'answer': reply_text,'files':pages,'activity':getattr(answer,'activity',None)}), status='done')
 
     @staticmethod
     def chat_lane(row):

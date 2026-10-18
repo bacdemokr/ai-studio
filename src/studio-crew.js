@@ -10,6 +10,18 @@ function declinedAssignmentsMarkup(job){
 }
 function assignedVisitor(role){return selectedScenario==='plan'?seatedCollaboration()?.payload.collaboration.visitorBindings?.[role]:null;}
 function selectedCrewVisitor(){return selectedScenario==='plan'&&selectedOpenTaskVisitor?(data.agents||[]).find(agent=>agent.key===selectedOpenTaskVisitor&&!agent.deleting):assignedVisitor(selectedCrewRole);}
+function crewAgentEditLock(key){
+ if(resetInProgress||data.bacResetting)return 'Available when the reset finishes.';
+ if((data.crewChats||[]).some(job=>['queued','running','waiting','stopping'].includes(job.status)))return 'Available when the team finishes its current work.';
+ return hiredModelLock(key);
+}
+async function openCrewAgentEditor(){
+ const key=selectedCrewVisitor()?.key;
+ if(!key||crewAgentEditLock(key))return;
+ await switchAgent(key);
+ if(room==='mission'&&selectedCrewVisitor()?.key===key&&agentId===key&&!crewAgentEditLock(key))agentForm(false);
+}
+el('crew-edit-agent').onclick=openCrewAgentEditor;
 function selectOpenTaskVisitor(key){
  if(!(data.agents||[]).some(agent=>agent.key===key&&!agent.deleting))return;
  if(crewChatKey)crewDrafts.set(crewChatKey,el('crew-prompt').value);
@@ -488,7 +500,13 @@ function renderCrewPassport(){
   for(const key of chatImageDrafts.keys())if(key.includes(':crew:')&&key.includes(':'+selectedScenario+':'))chatImageDrafts.delete(key);
  }
  if(room!=='mission')return;
- const i=selectedCrewRole,visitor=selectedCrewVisitor(),name=visitor?.name||defaultNames[i],template=selectedOpenTaskVisitor?roleTemplates.find(template=>template.purpose===visitor?.purpose):null,role=selectedOpenTaskVisitor?(template?.label||'Personal agent'):window.BacCrewCatalog[i].collaboration.title;
+ const i=selectedCrewRole,binding=selectedCrewVisitor(),visitor=(data.agents||[]).find(agent=>agent.key===binding?.key)||binding,name=visitor?.name||defaultNames[i],template=visitor?roleTemplates.find(template=>template.purpose===visitor.purpose):null,role=visitor?(template?.label||'Personal agent'):window.BacCrewCatalog[i].collaboration.title;
+ const editable=visitorAvailable(visitor);
+ el('crew-agent-actions').hidden=!editable;
+ const reason=editable?crewAgentEditLock(visitor.key):'';
+ el('crew-edit-agent').disabled=!!reason;el('crew-edit-agent').title=reason;
+ el('crew-agent-skills').hidden=!editable;
+ el('crew-agent-skills').innerHTML=editable?(visitor.skills||[]).map(skill=>'<span class="studio-skill-badge">'+escape(titles[skill]||capabilities[skill]?.[0]||skill)+'</span>').join(''):'';
  const avatar=visitor?.avatar||window.BacCampus?.inspect().crewAvatars?.[i]||{};
  el('crew-number').textContent=selectedOpenTaskVisitor?'Standby':String(i+1).padStart(2,'0')+' / '+roles.length;
  el('crew-name').textContent=name;syncTeamTotalTime();el('crew-role').textContent=role;

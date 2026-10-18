@@ -43,7 +43,7 @@ def bump(part, root=ROOT):
     index = {'major': 0, 'minor': 1, 'patch': 2}[part]
     numbers[index] += 1
     numbers[index + 1:] = [0] * (2 - index)
-    value = f'{numbers[0]}.{numbers[1]}.{numbers[2]:03d}'
+    value = f'{numbers[0]}.{numbers[1]}.{numbers[2]}'
     path.write_text(value + '\n')
     return value
 

@@ -97,13 +97,13 @@ class AdaptivePlanTests(unittest.TestCase):
         original = self.adapter.respond
         def respond(agent, session, prompt, **kwargs):
             answer = original(agent, session, prompt, **kwargs)
-            return 'Enough' if '-checking-' in session else answer
+            return 'Enough' if '-checking-' in session or '-correcting-checkpoint' in session else answer
         self.adapter.respond = respond
         result = self.start()
         self.app.execute(self.app.next_job())
         self.assertEqual(self.job(result)['payload']['collaboration']['outcome'], 'partial')
         self.assertIn('Verified contribution from Scout', self.job(result)['result']['answer'])
-        self.assertEqual(self.called(), [0,8,0])
+        self.assertEqual(self.called(), [0,8,0,0])
         self.assertEqual(set(self.job(result)['payload']['collaboration']['outputs']), {'8'})
 
     def test_final_review_reports_unavailable_capability_after_one_specialist(self):

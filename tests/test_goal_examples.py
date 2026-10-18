@@ -26,15 +26,13 @@ class GoalExamplesTests(unittest.TestCase):
         self.assertEqual([(row['product'], int(row['max_single_gpu_tdp_w'])) for row in top], [
             ('Vera Rubin NVL72', 2300), ('HGX Rubin NVL8', 2300),
             ('GB300 NVL72', 1400), ('GB200 NVL72', 1200), ('GB200 NVL4', 1200)])
-        bill = next(item for item in examples if item['id'] == 'bill')
-        self.assertEqual(bill['team'], 'Coding')
-        self.assertIn('Use one specialist with Coding', bill['prompt'])
-        pong = next(item for item in examples if item['id'] == 'pong')
-        self.assertEqual(pong['team'], 'UX design + Coding')
-        self.assertIn('specialist with UX design', pong['prompt'])
+        for item in examples:
+            self.assertNotIn('team', item)
+            self.assertTrue(item['detail'])
+            self.assertNotRegex(item['prompt'], r'(?i)\b(specialists?|hiring|hire|handoff|Coding|UX design|Web research specialist|Data interpretation|Slack announcements)\b')
         travel = next(item for item in examples if item['id'] == 'travel')
-        self.assertEqual(travel['team'], 'Web research + UX design + Coding')
-        self.assertIn('Use three different specialists', travel['prompt'])
+        self.assertIn('weather forecast', travel['prompt'])
+        self.assertIn('official tourism sources', travel['prompt'])
 
 
 if __name__ == '__main__':

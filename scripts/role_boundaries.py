@@ -1,4 +1,5 @@
 """Shared scope policy for personal conversations and team assignments."""
+from team_models import ANALYST_MODEL
 
 ROLE_BOUNDARY = (
     'Your explicitly equipped skills define the specialist work you may perform. Role/purpose describes your focus; tone defines how you communicate. '
@@ -94,6 +95,7 @@ ROLE_TEMPLATES = [{'label': 'Weather buddy',
              'needed for collaboration.',
   'skills': ['web']},
  {'label': 'Data analyst',
+  'preferredModel': 'api/nvidia/' + ANALYST_MODEL,
   'requiredSkills': ['data-analysis'],
   'summary': 'Clear findings from supplied tables and CSV files.',
   'purpose': 'Analyze supplied tables, CSV and JSON. Compare and rank figures with clear units, calculations '

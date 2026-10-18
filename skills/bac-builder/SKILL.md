@@ -15,6 +15,8 @@ Keep inline JavaScript inside an IIFE or a module, not global lexical declaratio
 
 For held-key controls, track independent key states so simultaneous inputs work. Clear those states on keyup, window blur, page hiding and restart, so controls cannot remain pressed when focus leaves the preview. Keep the requested key mapping and show it beside the game.
 
+Trace reset and focus handlers as well as the main loop. Clear a const object's entries instead of assigning a new object to that const binding. Keep exactly one animation loop scheduled: pause, resume and restart must not create additional requestAnimationFrame chains, and held toggle keys must not repeatedly toggle on keyboard autorepeat.
+
 For a game with collisions, trace an approaching object on each side: a hit must send it away from the surface, while a miss can change the score. Check both velocity signs and reset state, not just whether the object animates.
 
 Keep source compact: use shared data and reusable functions instead of repeating large HTML blocks. Read only relevant inputs and existing source. For a new page, write a complete usable first version, not a skeleton requiring many edits. For a follow-up, update the same file with targeted edits and preserve unrelated behavior.

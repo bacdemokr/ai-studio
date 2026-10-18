@@ -9,6 +9,22 @@ MAX_BYTES = 1024 * 1024
 MAX_FILES = 12
 
 
+def written_files(answer, required):
+    """Current native write results can prove an idempotent save.
+
+    Identical writes may preserve both the hash and mtime. Accept only declared
+    outputs with a successful write in this invocation's transcript; collection
+    still validates the actual file before exporting it. Reads and model claims
+    alone never turn an old text file into a new handoff.
+    """
+    activity = getattr(answer, 'activity', None) or {}
+    if activity.get('source') != 'OpenClaw transcript' or not activity.get('available'):
+        return set()
+    written = {call.get('target') for call in activity.get('calls', [])
+               if call.get('tool') == 'write' and call.get('status') == 'completed'}
+    return {path for path in required if path in written and Path(path).suffix.lower() in TEXT_TYPES}
+
+
 def reusable_code(studio, owner, job_id, agent, before, answer, required):
     """Recognize inspected, unchanged code from this agent's completed task.
 
@@ -79,12 +95,12 @@ def snapshot_files(workspace):
     return found
 
 
-def collect_files(studio, owner, job_id, role, before, source_map=None, *, source_workspace=None):
+def collect_files(studio, owner, job_id, role, before, source_map=None, *, source_workspace=None, written=()):
     from studio import safe_file, Problem
     workspace = source_workspace if source_workspace is not None else studio.workspace(owner, role)
     paths, total = [], 0
     for relative, signature in snapshot_files(workspace).items():
-        if before.get(relative) == signature:
+        if before.get(relative) == signature and relative not in written:
             continue
         try:
             raw = safe_file(workspace, relative, True).read_bytes()

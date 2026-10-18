@@ -120,6 +120,44 @@ class RevisionTests(unittest.TestCase):
         self.assertEqual(sum(s.endswith('-working') for _,s,_ in self.adapter.calls),1)
         self.assertEqual(sum(s.endswith('-finalizing') for _,s,_ in self.adapter.calls),1)
 
+    def test_missing_checkpoint_boolean_gets_one_control_repair(self):
+        self.adapter.plan = {'summary': 'Analyze then build', 'tasks': [
+            {'role': 6, 'task': 'Analyze supplied figures'}, {'role': 5, 'task': 'Build from the analysis'}]}
+        original = self.adapter.respond
+        def respond(agent, session, prompt, **kwargs):
+            answer = original(agent, session, prompt, **kwargs)
+            if session.endswith('-checking-6'):
+                return json.dumps({'reason': 'The HTML dashboard remains to be built.', 'answer': ''})
+            if session.endswith('-correcting-checkpoint'):
+                self.assertEqual(self.adapter.profiles[agent]['_planControl'], 'none')
+                return json.dumps({'done': False, 'readyForNext': True, 'reason': 'Use the saved analysis to build the dashboard.'})
+            return answer
+        self.adapter.respond = respond
+        result = self.start('/plan Analyze figures and build a dashboard')
+        self.app.execute(self.app.next_job())
+        plan = self.job(result)['payload']['collaboration']
+        self.assertEqual(plan['calledRoles'], [6, 5])
+        self.assertEqual(plan['checkpointDecisionRepair'], {'afterRole': 6})
+        self.assertEqual(sum(s.endswith('-correcting-checkpoint') for _, s, _ in self.adapter.calls), 1)
+        self.assertEqual(sum(s.endswith('-working') for _, s, _ in self.adapter.calls), 2)
+
+    def test_repeated_malformed_checkpoint_stops_without_dispatching_next_agent(self):
+        self.adapter.plan = {'summary': 'Analyze then build', 'tasks': [
+            {'role': 6, 'task': 'Analyze supplied figures'}, {'role': 5, 'task': 'Build from the analysis'}]}
+        original = self.adapter.respond
+        def respond(agent, session, prompt, **kwargs):
+            answer = original(agent, session, prompt, **kwargs)
+            if session.endswith(('-checking-6', '-correcting-checkpoint')):
+                return json.dumps({'reason': 'Need to read later.', 'answer': ''})
+            return answer
+        self.adapter.respond = respond
+        result = self.start('/plan Analyze figures and build a dashboard')
+        self.app.execute(self.app.next_job())
+        plan = self.job(result)['payload']['collaboration']
+        self.assertEqual(plan['calledRoles'], [6])
+        self.assertEqual(plan['outcome'], 'partial')
+        self.assertEqual(sum(s.endswith('-correcting-checkpoint') for _, s, _ in self.adapter.calls), 1)
+
     def test_unobserved_final_citations_do_not_become_complete_research(self):
         from telemetry import Reply
         self.adapter.plan = {'summary': 'Research', 'tasks': [{'role': 8, 'task': 'Research'}]}
@@ -205,6 +243,25 @@ class RevisionTests(unittest.TestCase):
                 self.assertEqual(plan['revision']['role'], role)
                 self.assertEqual(plan['calledRoles'], [role,4])
                 self.assertEqual(len([1 for _,session,_ in self.adapter.calls if session.endswith('-revising')]),1)
+
+    def test_revised_research_does_not_make_an_unchanged_page_complete(self):
+        self.setup_repair(8)
+        self.adapter.plan['tasks'] = [
+            {'role': 8, 'task': 'Find weather and tourism places'},
+            {'role': 5, 'task': 'Build an HTML page from the research'}]
+        self.request.update(evidenceRole=8, issue='Tourism places are missing from the page.',
+                            task='Save the missing tourism evidence.', expected='Three cited places.')
+        self.on_revision = lambda agent, *_: (self.adapter.agents[agent] / 'artifacts/places.md').write_text('Three cited places')
+        result = self.start('/plan Research a trip and build a webpage')
+        self.app.execute(self.app.next_job())
+        job = self.job(result)
+        plan = job['payload']['collaboration']
+        self.assertEqual(plan['calledRoles'], [8, 5])
+        self.assertEqual(plan['revision']['status'], 'delivered')
+        self.assertEqual(plan['outcome'], 'partial')
+        self.assertEqual(plan['staleRevisionPages'], plan['webpages']['5'])
+        self.assertIn('has not been incorporated', job['result']['answer'])
+        self.assertIn('ORIGINAL', self.app.available_file(self.owner, plan['webpages']['5'][0]).read_text())
 
     def test_uninvoked_planned_role_new_role_and_cosmetic_work_are_rejected(self):
         plan = {'calledRoles':[6,4], 'tasks':[{'role':6},{'role':4},{'role':5}], 'outputs':{'6':{},'4':{}}}

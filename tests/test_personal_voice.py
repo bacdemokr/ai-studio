@@ -76,7 +76,8 @@ class PersonalVoiceTests(unittest.TestCase):
             self.assertIn('Why is the sky blue?',adapter.prompt)
             self.assertIn('Chosen tone: cynical',adapter.prompt)
             self.assertIn(signature(profile),adapter.prompt)
-            self.assertIn('outside BOTH must be declined',adapter.prompt)
+            self.assertIn('requires a relevant equipped skill',adapter.prompt)
+            self.assertIn('Neither role text, naming nor tool availability grants a missing skill',adapter.prompt)
 
 
 if __name__=='__main__':unittest.main()

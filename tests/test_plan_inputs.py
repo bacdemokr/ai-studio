@@ -61,6 +61,46 @@ class PlanInputs(unittest.TestCase):
         self.assertEqual(job['payload']['collaboration']['calledRoles'], [])
         self.assertEqual(len(self.adapter.calls), 1)
 
+    def test_empty_plan_without_answer_is_corrected_before_dispatch(self):
+        self.prepare_inputs()
+        self.adapter.plan = {'summary': 'Need the full file before assigning work.', 'tasks': []}
+        original = self.adapter.respond
+        corrections = []
+        def respond(agent, session, prompt, **kwargs):
+            if session.endswith('-planning-input-repair'):
+                corrections.append(session)
+                self.assertIn('truncated document preview is not a blocker', prompt)
+                return json.dumps({'summary': 'Ada reads the complete file.', 'tasks': [
+                    {'role': 6, 'task': 'Analyze sales.', 'inputs': ['document-0']} ]})
+            return original(agent, session, prompt, **kwargs)
+        self.adapter.respond = respond
+        result = self.start('/goal Analyze sales (1).csv.')
+        self.app.execute(self.app.next_job())
+        plan = self.job(result)['payload']['collaboration']
+        self.assertEqual(len(corrections), 1)
+        self.assertEqual(plan['planFormatRecovery']['status'], 'corrected')
+        self.assertEqual(plan['calledRoles'], [6])
+
+    def test_repeated_malformed_initial_plan_never_dispatches_specialists(self):
+        self.prepare_inputs()
+        self.adapter.plan = {'summary': 'Need to read first.', 'tasks': []}
+        original = self.adapter.respond
+        corrections = []
+        def respond(agent, session, prompt, **kwargs):
+            if session.endswith('-planning-input-repair'):
+                corrections.append(session)
+                return json.dumps(self.adapter.plan)
+            return original(agent, session, prompt, **kwargs)
+        self.adapter.respond = respond
+        result = self.start('/goal Analyze sales (1).csv.')
+        with self.assertRaisesRegex(RuntimeError, 'must provide an answer'):
+            self.app.execute(self.app.next_job())
+        plan = self.job(result)['payload']['collaboration']
+        self.assertEqual(len(corrections), 1)
+        self.assertEqual(plan['planFormatRecovery']['status'], 'failed')
+        self.assertEqual(plan.get('calledRoles', []), [])
+        self.assertTrue(all(agent.endswith('-r0') for agent, _, _ in self.adapter.calls))
+
     def test_reviewer_gets_readable_paths_while_captain_keeps_download_references(self):
         self.adapter.plan['tasks'] = [{'role': 5, 'task': 'Build a page'}, {'role': 4, 'task': 'Review it'}]
         original = self.adapter.respond

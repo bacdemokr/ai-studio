@@ -13,7 +13,7 @@ async function openAgentDocuments(role=null,codeView=false){
   const result=await api('agent-documents'+(role===null?'':'?role='+role),undefined,target);
   if(!current())return;
   const documents=result.documents||[];
-  const editControl=role===null&&data.profile?'<button type="button" class="studio-secondary" data-identity-edit>Edit</button>':'<span>Read only</span>';
+  const editControl=role===null&&data.profile&&!(room==='mission'&&crewAgentEditLock(target))?'<button type="button" class="studio-secondary" data-identity-edit>Edit</button>':'<span>Read only</span>';
   const bindEdit=()=>{
    const button=host.querySelector('[data-identity-edit]');
    if(button)button.onclick=()=>editAgentPersona(host,current,()=>openAgentDocuments(role,codeView),target);
@@ -100,6 +100,7 @@ function editAgentPersona(host,current,reopen,target){
 }
 for(const id of ['portrait','agent-name'])el(id).onclick=()=>openAgentDocuments();
 el('agent-code').onclick=()=>openAgentDocuments(null,true);
+el('crew-instructions').onclick=async()=>{const key=selectedCrewVisitor()?.key;if(!key)return;await switchAgent(key);if(room==='mission'&&selectedCrewVisitor()?.key===key&&agentId===key)openAgentDocuments(null,true);};
 for(const id of ['crew-portrait','crew-name'])el(id).onclick=async()=>{const visitor=selectedCrewVisitor();if(visitor){await switchAgent(visitor.key);if(agentId===visitor.key)openAgentDocuments();}else openAgentDocuments(selectedCrewRole);};
 el('dialog').addEventListener('close',()=>{if(!el('dialog').open)identityRequest++;});
 

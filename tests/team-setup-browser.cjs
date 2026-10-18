@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});
  const page=await browser.newPage({viewport:{width:1440,height:1050}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
- const models=[{id:'nvidia/nvidia/nemotron-3-ultra-nvfp4',label:'Nemotron 3 Ultra'},{id:'nvidia/nvidia/nemotron-3.5-lightning',label:'Nemotron 3.5 Lightning'},{id:'example/new-model',label:'New model'}];
+ const models=[{id:'nvidia/nvidia/nemotron-3.5-super-vl',label:'Nemotron 3.5 Super VL'},{id:'nvidia/nvidia/nemotron-3.5-lightning',label:'Nemotron 3.5 Lightning'},{id:'example/new-model',label:'New model'}];
  const runtime={ready:false,gateway:true,model:false,teamModel:true,teamReady:true,teamModels:models,testFixture:true};
  let connectionCalls=0,personalWrites=0,selectionCalls=0;
  let selections=Array.from({length:9},(_,role)=>({role,id:models[role===0?0:1].id}));
@@ -26,7 +26,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.match(await page.locator('#studio-team-config-form [data-team-model="0"]').innerText(),/New model/);
   await page.waitForTimeout(1700);
   await page.locator('#studio-team-config-form [data-team-model="0"]').click();assert.equal(await page.locator('dialog[open]').count(),1);assert.equal(await page.locator('[data-model-choice="example/new-model"]').getAttribute('aria-pressed'),'true');
-  await page.locator('[data-model-choice="nvidia/nvidia/nemotron-3-ultra-nvfp4"]').click();assert.equal(selectionCalls,1);assert(await page.locator('[data-team-apply-all]').isEnabled());assert.match(await page.locator('#studio-team-model-status').innerText(),/Unsaved/);
+  await page.locator('[data-model-choice="nvidia/nvidia/nemotron-3.5-super-vl"]').click();assert.equal(selectionCalls,1);assert(await page.locator('[data-team-apply-all]').isEnabled());assert.match(await page.locator('#studio-team-model-status').innerText(),/Unsaved/);
   // Repeated navigation stays inside the same native dialog. No scene flash or key write.
   for(const role of [4,5,6,7,8,0]){
    await page.locator('#studio-team-config-form [data-team-model="'+role+'"]').click();

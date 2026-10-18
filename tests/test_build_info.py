@@ -14,16 +14,16 @@ class BuildIdentityTests(unittest.TestCase):
             (root/'source-version.json').write_text(json.dumps({'commit':'a'*40,'branch':'preview/visitor-agent-teams','modified':False}))
             self.assertEqual(build_info.read(root)['version'],'0.3.9')
             self.assertEqual(build_info.read(root)['commit'],'a'*40)
-            self.assertEqual(build_info.bump('patch',root),'0.3.010')
-            self.assertEqual(build_info.bump('minor',root),'0.4.000')
-            self.assertEqual(build_info.bump('major',root),'1.0.000')
+            self.assertEqual(build_info.bump('patch',root),'0.3.10')
+            self.assertEqual(build_info.bump('minor',root),'0.4.0')
+            self.assertEqual(build_info.bump('major',root),'1.0.0')
 
-    def test_publication_sequence_preserves_padding_and_grows_past_999(self):
+    def test_legacy_padding_normalizes_and_patch_grows_past_999(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             (root/'VERSION').write_text('0.2.001\n')
-            self.assertEqual(build_info.bump('patch', root), '0.2.002')
-            self.assertEqual(build_info.bump('patch', root), '0.2.003')
+            self.assertEqual(build_info.bump('patch', root), '0.2.2')
+            self.assertEqual(build_info.bump('patch', root), '0.2.3')
             (root/'VERSION').write_text('0.2.999\n')
             self.assertEqual(build_info.bump('patch', root), '0.2.1000')
 

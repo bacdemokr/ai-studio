@@ -12,7 +12,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   const teamControl=page.locator('#studio-crew-team-mode');
   const toggle={selectOption:async value=>teamControl.locator('[data-team-mode="'+value+'"]').click(),inputValue:async()=>teamControl.locator('[aria-pressed=true]').getAttribute('data-team-mode'),isDisabled:async()=>teamControl.locator('button').first().isDisabled(),isVisible:async()=>teamControl.isVisible()};
   // A first-time visitor can still use the backup team without hiring anyone.
-  await choose('plan');assert.equal(await toggle.inputValue(),'hired');await toggle.selectOption('mixed');await page.locator('#studio-crew-prompt').fill('/goal Build a counter.');await page.locator('#studio-crew-send').click();
+  await choose('plan');assert.equal(await toggle.inputValue(),'hired');await toggle.selectOption('mixed');await page.locator('#studio-crew-prompt').fill('/goal Have Cody build a counter.');await page.locator('#studio-crew-send').click();
   await page.waitForFunction(()=>document.querySelector('#studio-crew-conversation').textContent.includes('The team delivered the counter.'));
   assert.match(await page.locator('#studio-crew-conversation').innerText(),/Cody/);
   await page.evaluate(()=>BacStudio.setRoom('workshop'));await page.locator('#studio-name').fill('Pixel');
@@ -35,9 +35,9 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   const pixelLabel=page.locator('[data-visitor-agent]').filter({hasText:'Pixel'});
   assert.equal(await pixelLabel.locator('.crew-working-badge').innerText(),'Working');
   assert.equal(await pixelLabel.locator('.crew-working-dot').count(),1);
-  assert.equal(await pixelLabel.locator('.crew-working-badge').evaluate(node=>getComputedStyle(node).color),'rgb(242, 202, 120)');
+  await page.waitForFunction(()=>Array.from(document.querySelectorAll('[data-visitor-agent]')).some(label=>label.textContent.includes('Pixel')&&label.querySelector('.crew-working-badge')&&getComputedStyle(label.querySelector('.crew-working-badge')).color==='rgb(242, 202, 120)'));
   assert.equal(await pixelLabel.locator('.crew-working-role').innerText(),'Programmer');
-  assert.equal(await pixelLabel.locator('.crew-working-role').evaluate(node=>getComputedStyle(node).display),'block');
+  await page.waitForFunction(()=>Array.from(document.querySelectorAll('[data-visitor-agent]')).some(label=>label.textContent.includes('Pixel')&&label.querySelector('.crew-working-role')&&getComputedStyle(label.querySelector('.crew-working-role')).display==='block'));
   await pixelLabel.click();
   await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Pixel');
   assert.equal(await toggle.isVisible(),false);
@@ -74,10 +74,10 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.waitForFunction(()=>document.querySelector('[data-campus-agent="5"] b')?.textContent==='Pixel');
   await page.locator('[data-campus-agent="5"]').click();
   await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Pixel');
-  // Standby specialists can do work while unassigned hires keep their closing reactions.
+  // An explicitly requested standby specialist can work while suitable hires keep their closing reactions.
   await page.locator('[data-campus-agent="0"]').click();
   await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Casey');
-  await page.locator('#studio-crew-prompt').fill('/goal Build a counter.');await page.locator('#studio-crew-send').click();
+  await page.locator('#studio-crew-prompt').fill('/goal Have Cody build a counter.');await page.locator('#studio-crew-send').click();
   await page.waitForFunction(()=>BacCampus.inspect().crewLabels?.some(c=>c.name==='Cody')||document.querySelector('[data-campus-agent="5"] b')?.textContent==='Cody');
   let backup;for(let i=0;i<100;i++){backup=(await state()).crewChats.find(j=>j.id!==job.id&&j.payload.teamMode==='mixed'&&j.created>job.created);if(backup?.status==='done')break;await page.waitForTimeout(100);}
   assert.equal(backup.status,'done');assert.equal(backup.payload.roster[0].name,'Pixel');
@@ -110,7 +110,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
    const settled=(await state()).crewChats.find(j=>j.id===pending.id);
    if(resetDuringCall)assert.equal(settled,undefined);
    else assert.equal(settled.status,'cancelled');
-   await page.locator('#studio-crew-prompt').fill('/goal Build a counter.');await page.locator('#studio-crew-send').click();
+   await page.locator('#studio-crew-prompt').fill('/goal Have Cody build a counter.');await page.locator('#studio-crew-send').click();
    let retry;
    for(let i=0;i<150;i++){
     retry=(await state()).crewChats.find(j=>j.created>pending.created&&j.payload.teamMode==='mixed');

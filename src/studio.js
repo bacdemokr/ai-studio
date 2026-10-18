@@ -31,15 +31,15 @@
   const tones={kind:['Kind','Warm & encouraging'],direct:['Direct','Clear & candid'],playful:['Playful','Light & witty'],cynical:['Cynical','Dry humor & skepticism']};
   const verbosityLabels={brief:'Brief',balanced:'Balanced',verbose:'Detailed'};
   const capabilities={
-    radar:['Tech Radar','Technical articles and announcements → a short summary','Every 20 seconds · never repeats a shared article'],
-    builder:['Coding','Build a small desktop webpage or game','Save a working prototype · one focused review'],
-    'data-analysis':['Data interpretation','Compare supplied figures and explain findings','Evidence and limitations · a saved analysis brief'],
-    'interface-design':['UX design','Plan a page layout and its interactions','Design guidance · implementation needs Coding'],
-    documents:['Three Takeaways','Any question or document → three clear points','Always: 1. · 2. · 3. — including event reactions'],
-    web:['Web research','Find useful facts and cite their sources','Short research · a saved brief for teammates'],
-    writer:['Slack announcements','Emoji-led updates in your chosen voice','Emoji-led replies · extra lines when useful · draft only'],
-    memory:['Remember what matters','A preference → a saved note used next time','Try: remember my diet, then suggest a meal'],
-    weather:['Live weather','A city → timestamped weather and a forecast','Try: choose a time for an outdoor break']
+    radar:['Tech Radar','Tech news updates every 20s.'],
+    builder:['Coding','Build webpages and games.'],
+    'data-analysis':['Data interpretation','Compare data and summarize findings.'],
+    'interface-design':['UX design','Plan interfaces; no coding.'],
+    documents:['Three Takeaways','Summarize in three points.'],
+    web:['Web research','Research with cited sources.'],
+    writer:['Slack announcements','Draft Slack updates.'],
+    memory:['Remember what matters','Save preferences for next time.'],
+    weather:['Live weather','Current weather and forecasts.']
   };
   const roles = window.BacCrewCatalog.map(({name,collaboration})=>[name,collaboration.title,collaboration.description]);
   const defaultNames=roles.map(r=>r[0]);
@@ -88,7 +88,7 @@
   el('workspace').append(el('reset'));el('reset').className='studio-secondary';
 
   const demoSkills=['weather','radar','web','builder','writer','data-analysis','interface-design'],extraSkills=['documents','memory'];
-  const skillCards=keys=>keys.map(key=>{const [title,detail,example]=capabilities[key];return `<div class="studio-skill-card"><label><input type="checkbox" value="${key}"><span><strong>${title}<span class="studio-skill-fixed" hidden>Fixed</span></strong><small>${detail}</small><em>${example}</em></span></label></div>`;}).join('');
+  const skillCards=keys=>keys.map(key=>{const [title,detail]=capabilities[key];return `<div class="studio-skill-card"><label><input type="checkbox" value="${key}"><span><strong>${title}<span class="studio-skill-fixed" hidden>Fixed</span></strong><small>${detail}</small></span></label></div>`;}).join('');
   el('skill-picker').innerHTML=skillCards(demoSkills)+'<div hidden>'+skillCards(extraSkills)+'</div>';
   el('tone-picker').innerHTML=Object.entries(tones).map(([key,[title,detail]])=>`<button type="button" data-tone="${key}" aria-pressed="${key==='kind'}"><strong>${title}</strong><small>${detail}</small></button>`).join('');
   const missionCards=keys=>keys.map(key=>missions.find(m=>m.id===key)).filter(Boolean).map(m=>`<button class="studio-mission" data-studio-mission="${m.id}" aria-pressed="false" style="--mission-color:${m.color}"><span>${m.icon}</span><em>${m.tag}</em><strong>${m.title}</strong><small>${m.sub}</small></button>`).join('');

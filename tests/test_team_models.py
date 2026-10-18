@@ -32,7 +32,7 @@ class TeamModelTests(unittest.TestCase):
         original=settings.read()
         settings.save(self.app,{'provider':'local','baseUrl':'http://127.0.0.1:8000/v1','model':'local-test','apiKey':'','_credentialSession':'general'})
         config=json.loads(runtime.config_path().read_text())
-        self.assertEqual(config['agents']['entries'][self.cap]['model'],'bac-team/'+team.MODELS[0])
+        self.assertEqual(config['agents']['entries'][self.cap]['model'],'bac-team/'+team.CAPTAIN_MODEL)
         self.assertEqual(config['agents']['entries'][self.research]['modelPolicy']['allow'],['bac-team/'+team.MODELS[1]])
         self.assertEqual(config['agents']['entries']['bac-personal']['model'],'bac-local/local-test')
         self.assertEqual(config['agents']['entries'][self.cap]['tools'],{'deny':['exec']})
@@ -70,27 +70,39 @@ class TeamModelTests(unittest.TestCase):
         self.app.runtime_status=lambda: {'ready':True,'teamReady':False}
         with self.assertRaises(Problem):self.app.enqueue(team_owner,{'kind':'crew-chat','crewRole':0,'prompt':'Hello'})
 
-    def test_defaults_for_cody_and_iris_and_explicit_override(self):
+    def test_defaults_for_casey_cody_and_iris_and_explicit_override(self):
+        self.configure()
         owner=self.app.session()[0]['id'];crew=self.app.crew_owner(owner)
         selections=team.selections(self.app,crew)
-        for role in (0,5,7):
+        self.assertEqual(selections[0]['id'],team.CAPTAIN_MODEL)
+        self.assertEqual(team.model_for(self.app.crew_native_id(crew,0)),'bac-team/'+team.CAPTAIN_MODEL)
+        for role in (5,7):
             self.assertEqual(selections[role]['id'],team.MODELS[0])
             self.assertEqual(team.model_for(self.app.crew_native_id(crew,role)),'bac-team/'+team.MODELS[0])
-        for role in (4,6,8):
+        self.assertEqual(selections[6]['id'],team.ANALYST_MODEL)
+        self.assertEqual(team.model_for(self.app.crew_native_id(crew,6)),'bac-team/'+team.ANALYST_MODEL)
+        for role in (4,8):
             self.assertEqual(selections[role]['id'],team.MODELS[1])
         team.select(self.app,crew,{'role':5,'model':team.MODELS[1]})
         self.assertEqual(team.selections(self.app,crew)[5]['id'],team.MODELS[1])
+        team.select(self.app,crew,{'role':0,'model':team.MODELS[0]})
+        self.assertEqual(team.selections(self.app,crew)[0]['id'],team.MODELS[0])
+        self.assertEqual(team.credentials()['model'],team.MODELS[0])
+        team.select(self.app,crew,{'role':6,'model':team.MODELS[1]})
+        self.assertEqual(team.selections(self.app,crew)[6]['id'],team.MODELS[1])
 
     def test_stage3_reset_restores_builtin_model_defaults(self):
         owner=self.app.session()[0]['id'];crew=self.app.crew_owner(owner)
         casey=self.app.crew_native_id(crew,0);research=self.app.crew_native_id(crew,8)
         team.select(self.app,crew,{'role':0,'model':team.MODELS[1]})
         team.select(self.app,crew,{'role':8,'model':team.MODELS[0]})
+        team.select(self.app,crew,{'role':6,'model':team.MODELS[1]})
         self.app.provisioned.update((casey,research))
         self.app.reset_crew_chats(crew,reset_event=True)
         selections=team.selections(self.app,crew)
-        self.assertEqual(selections[0]['id'],team.MODELS[0])
+        self.assertEqual(selections[0]['id'],team.CAPTAIN_MODEL)
         self.assertEqual(selections[8]['id'],team.MODELS[1])
+        self.assertEqual(selections[6]['id'],team.ANALYST_MODEL)
         self.assertNotIn(casey,self.app.provisioned)
         self.assertNotIn(research,self.app.provisioned)
 
@@ -126,4 +138,4 @@ class TeamModelTests(unittest.TestCase):
         self.app.enqueue(crew,{'kind':'crew-chat','crewRole':0,'prompt':'Hello'})
         with self.assertRaises(Problem) as error:team.select(self.app,crew,{'role':0,'model':team.MODELS[1]})
         self.assertEqual(error.exception.status,409)
-        self.assertEqual(team.selections(self.app,crew)[0]['id'],team.MODELS[0])
+        self.assertEqual(team.selections(self.app,crew)[0]['id'],team.CAPTAIN_MODEL)

@@ -8,8 +8,8 @@ const agentBlueprint=`<div class="agent-blueprint" aria-label="An agent combines
  <span class="agent-blueprint-arrow" aria-hidden="true">↓</span><div class="agent-blueprint-output">Response or saved result <span>Inspect the evidence; completion is not guaranteed.</span></div></div>`;
 window.BacAgentBlueprint=agentBlueprint;
 el('crew-goal-intro').textContent=window.BacCrewCatalog[0].collaboration.description;
-function goalTeamHint(choice){return 'Suggested team: '+choice.team+'.';}
-el('crew-goal-choices').innerHTML=goalExamples.map(g=>`<button type="button" data-goal-example="${escape(g.id)}" data-team-hint="${escape(goalTeamHint(g))}" aria-pressed="false" title="${escape(goalTeamHint(g))}" aria-controls="studio-crew-prompt">${escape(g.title)}</button>`).join('');
+function goalHint(choice){return choice.detail;}
+el('crew-goal-choices').innerHTML=goalExamples.map(g=>`<button type="button" data-goal-example="${escape(g.id)}" data-goal-hint="${escape(goalHint(g))}" aria-pressed="false" title="${escape(goalHint(g))}" aria-controls="studio-crew-prompt">${escape(g.title)}</button>`).join('');
 function exampleDocument(choice){return choice.document&&(data.crewDocuments||[]).find(file=>file.path==='inbox/'+choice.document);}
 function syncGoalExamples(locked){
  const box=el('crew-examples');box.hidden=selectedScenario!=='plan'||selectedCrewRole!==0||!!selectedOpenTaskVisitor;
@@ -18,8 +18,8 @@ function syncGoalExamples(locked){
   const needsConnection=choice.document&&!exampleDocument(choice)&&el('crew-document-add').disabled;
   button.disabled=locked||box.hidden||!!needsConnection;
   button.setAttribute('aria-pressed',String(el('crew-prompt').value===choice.prompt));
-  button.dataset.teamHint=goalTeamHint(choice);
-  button.title=goalTeamHint(choice)+(needsConnection?' Connect a model to attach the sample file.':'');
+  button.dataset.goalHint=goalHint(choice);
+  button.title=goalHint(choice)+(needsConnection?' Connect a model to attach the sample file.':'');
  });
 }
 el('crew-goal-choices').onclick=async event=>{

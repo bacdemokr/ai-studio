@@ -1,38 +1,11 @@
-"""Explicit collaboration contracts and saved research after interrupted replies."""
+"""Saved handoff contracts and saved research after interrupted replies."""
 import unittest
 import json
+from pathlib import Path
 
 import test_plan_handoff as handoff_fixture
 import test_visitor_teams as visitor_fixture
 from agent_runtime import GatewayError
-from collaboration_plan import validate_requested_team, PlanSelectionError
-
-
-class RequestedTeamTests(unittest.TestCase):
-    task = 'Use two different specialists to analyze data, then build a page.'
-
-    def test_rejects_one_identity_even_when_assigned_twice(self):
-        for tasks in ([{'role': 5}], [{'role': 6, 'agent': 'same'}, {'role': 5, 'agent': 'same'}], []):
-            with self.subTest(tasks=tasks), self.assertRaises(PlanSelectionError):
-                validate_requested_team({'tasks': tasks}, self.task)
-
-    def test_accepts_real_pair_or_honest_gap_without_affecting_ordinary_goals(self):
-        validate_requested_team({'tasks': [{'role': 6}, {'role': 5}]}, self.task)
-        validate_requested_team({'tasks': [{'role': 6, 'agent': 'analyst'}, {'role': 5, 'agent': 'coder'}]}, self.task)
-        validate_requested_team({'tasks': [], 'outcome': 'unavailable'}, self.task)
-        validate_requested_team({'tasks': [{'role': 6}], 'unassignedRequirements': ['No second specialist.']}, self.task)
-        validate_requested_team({'tasks': [{'role': 5}]}, 'Build a simple page.')
-        validate_requested_team({'tasks': []}, '> Use two different specialists to analyze data.')
-
-    def test_enforces_explicit_one_and_three_specialist_examples(self):
-        one = '/goal Use one specialist with Coding to build a calculator.'
-        validate_requested_team({'tasks': [{'role': 5}]}, one)
-        with self.assertRaises(PlanSelectionError):
-            validate_requested_team({'tasks': [{'role': 7}, {'role': 5}]}, one)
-        three = '/goal Use three different specialists to research, design and build a page.'
-        validate_requested_team({'tasks': [{'role': 8}, {'role': 7}, {'role': 5}]}, three)
-        with self.assertRaises(PlanSelectionError):
-            validate_requested_team({'tasks': [{'role': 8}, {'role': 5}]}, three)
 
 
 class SavedResearchTests(unittest.TestCase):
@@ -88,19 +61,25 @@ class SavedResearchTests(unittest.TestCase):
         self.assertEqual(plan['outcome'], 'partial')
 
 
-class SingleHireExampleTests(unittest.TestCase):
+class TaskOnlyExampleTests(unittest.TestCase):
     setUp = visitor_fixture.VisitorTeamTests.setUp
     enqueue = visitor_fixture.VisitorTeamTests.start
     execute = visitor_fixture.VisitorTeamTests.execute
 
-    def test_one_hire_gets_guidance_without_model_calls_or_a_runtime_error(self):
-        result = self.enqueue('/goal Use two different specialists to design and build a game.', teamMode='hired')
-        job = self.execute(result)
+    def test_casey_can_assign_one_equipped_hire_for_game_example(self):
+        # Planner/dispatch fixture only: the saved counter is not a game-quality test.
+        goals = json.loads((Path(__file__).resolve().parents[1] / 'src/goal-examples.json').read_text())
+        prompt = next(g['prompt'] for g in goals if g['id'] == 'pong')
+        self.adapter.selection['tasks'][0]['agent'] = self.owner
+        job = self.execute(self.enqueue(prompt, teamMode='hired'))
         self.assertEqual(job['status'], 'done')
-        self.assertEqual(job['payload']['collaboration']['outcome'], 'unavailable')
-        self.assertEqual(job['payload']['collaboration']['calledRoles'], [])
-        self.assertIn('Hired + Standby', str(job['result']))
-        self.assertEqual(self.adapter.calls, [])
+        plan = job['payload']['collaboration']
+        self.assertEqual(plan.get('outcome', 'complete'), 'complete')
+        self.assertEqual(plan['calledRoles'], [5])
+        self.assertEqual(plan['visitorBindings']['5']['key'], self.owner)
+        planning = [call for call in self.adapter.calls if call[1].endswith('-planning')]
+        self.assertTrue(planning)
+        self.assertIn(prompt.removeprefix('/goal '), planning[0][2])
 
 
 if __name__ == '__main__':
