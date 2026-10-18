@@ -153,12 +153,12 @@
  #bac-planner #agent-campus[data-room=mission]:not([data-world-overview=true]) .campus-layout{grid-template-columns:minmax(0,1fr) clamp(440px,34vw,640px)!important}
  #bac-planner #agent-campus #studio-standby>summary{font-size:17px;padding:16px 24px}
  #bac-planner #agent-campus #studio-standby-count{font-size:14px;min-width:26px;height:26px}
- #bac-planner #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content{padding:22px 24px;gap:14px;overflow-y:auto}
- #bac-planner #agent-campus #studio-crew-passport .studio-companion-name{gap:18px}
- #bac-planner #agent-campus #studio-crew-passport .studio-avatar{width:58px;height:64px}
- #bac-planner #agent-campus #studio-crew-passport h3{font-size:36px!important}
- #bac-planner #agent-campus #studio-crew-role{font-size:20px!important}
- #bac-planner #agent-campus #studio-crew-passport .studio-model-label{font-size:14px;padding:5px 8px}
+ #bac-planner #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content{padding:16px 24px;gap:12px;overflow-y:auto}
+ #bac-planner #agent-campus #studio-crew-passport .studio-companion-name{gap:12px}
+ #bac-planner #agent-campus #studio-crew-passport .studio-avatar{width:42px;height:46px}
+ #bac-planner #agent-campus #studio-crew-passport h3{font-size:26px!important}
+ #bac-planner #agent-campus #studio-crew-role{font-size:14px!important}
+ #bac-planner #agent-campus #studio-crew-passport .studio-model-label{font-size:13px;padding:4px 7px}
  #bac-planner #agent-campus #studio-crew-conversation{font-size:18px;line-height:1.6}
  #bac-planner #agent-campus #studio-crew-conversation :is(p,.chat-message,.chat-prose){font-size:18px!important;line-height:1.6}
  #bac-planner #agent-campus #studio-crew-conversation .chat-message>small{font-size:14px}

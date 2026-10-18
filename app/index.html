@@ -816,10 +816,10 @@ body{margin:0;padding:0;width:100%;max-width:none}
 
 #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content{display:flex;flex-direction:column;overflow:hidden;padding:18px;gap:10px}
 #studio-crew-passport .studio-companion-name{flex:none;margin:4px 0;gap:12px}
-#studio-crew-passport .studio-avatar{width:44px;height:48px}
-#studio-crew-passport h3{font-size:24px;margin:0 0 5px!important}
+#studio-crew-passport .studio-avatar{width:36px;height:40px}
+#studio-crew-passport h3{font-size:24px!important;margin:0!important}
 .studio-crew-identity{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
-#studio-crew-role{font-size:13px}
+#studio-crew-role{font-size:13px!important;line-height:1.4!important}
 #studio-crew-conversation{flex:1;min-height:100px;overflow:auto;border-top:1px solid #344553;padding:12px 2px;overscroll-behavior:contain}
 #studio-crew-chat{flex:none;background:#1b2933;border:1px solid #3b4c59;border-radius:14px;padding:10px}
 #studio-crew-chat label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
@@ -1255,7 +1255,7 @@ body{margin:0;padding:0;width:100%;max-width:none}
 #studio-crew-agent-skills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 #studio-crew-agent-skills[hidden]{display:none}
 
-#studio-crew-passport .studio-agent-title{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+#studio-crew-passport .studio-agent-title{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px}
 #studio-crew-agent-actions:not([hidden]){display:flex}
 
 .studio-sound{display:flex;align-items:center;gap:3px;flex-shrink:0}
@@ -1479,12 +1479,12 @@ body{margin:0;padding:0;width:100%;max-width:none}
  #bac-planner #agent-campus[data-room=mission]:not([data-world-overview=true]) .campus-layout{grid-template-columns:minmax(0,1fr) clamp(440px,34vw,640px)!important}
  #bac-planner #agent-campus #studio-standby>summary{font-size:17px;padding:16px 24px}
  #bac-planner #agent-campus #studio-standby-count{font-size:14px;min-width:26px;height:26px}
- #bac-planner #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content{padding:22px 24px;gap:14px;overflow-y:auto}
- #bac-planner #agent-campus #studio-crew-passport .studio-companion-name{gap:18px}
- #bac-planner #agent-campus #studio-crew-passport .studio-avatar{width:58px;height:64px}
- #bac-planner #agent-campus #studio-crew-passport h3{font-size:36px!important}
- #bac-planner #agent-campus #studio-crew-role{font-size:20px!important}
- #bac-planner #agent-campus #studio-crew-passport .studio-model-label{font-size:14px;padding:5px 8px}
+ #bac-planner #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content{padding:16px 24px;gap:12px;overflow-y:auto}
+ #bac-planner #agent-campus #studio-crew-passport .studio-companion-name{gap:12px}
+ #bac-planner #agent-campus #studio-crew-passport .studio-avatar{width:42px;height:46px}
+ #bac-planner #agent-campus #studio-crew-passport h3{font-size:26px!important}
+ #bac-planner #agent-campus #studio-crew-role{font-size:14px!important}
+ #bac-planner #agent-campus #studio-crew-passport .studio-model-label{font-size:13px;padding:4px 7px}
  #bac-planner #agent-campus #studio-crew-conversation{font-size:18px;line-height:1.6}
  #bac-planner #agent-campus #studio-crew-conversation :is(p,.chat-message,.chat-prose){font-size:18px!important;line-height:1.6}
  #bac-planner #agent-campus #studio-crew-conversation .chat-message>small{font-size:14px}
@@ -81293,7 +81293,7 @@ render();
       if(selection){selection.removeAllRanges();for(const range of ranges)if(range.commonAncestorContainer.isConnected)selection.addRange(range);}
     }
   }
-  const buildInfo={"version": "0.2.3", "commit": "d7837355cfd23ed5337d2834ef138610e3565d19", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
+  const buildInfo={"version": "0.2.3", "commit": "2f420a7fc3dce96ac9165e58d16fe8312a4f96d2", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
   // Only codes and source locations are retained. Never retain Error.message, bodies or URLs.
 const browserDiagnostics=[];
 const diagnosticRoutes=new Set('session state runtime diagnostics telemetry settings settings/models settings/start settings/team-model settings/connections settings/connections/preferences settings/connections/check settings/connections/models settings/scenario-model settings/scenario-models credential-session agents onboard profile agent-model delete-agent agent-policy crew-policy jobs upload decision retry-reaction reset crew-chat-reset bac-reset heartbeat team-model telegram telegram/test file workspace-files agent-documents evidence security'.split(' '));

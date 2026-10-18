@@ -413,10 +413,10 @@
 
 #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content{display:flex;flex-direction:column;overflow:hidden;padding:18px;gap:10px}
 #studio-crew-passport .studio-companion-name{flex:none;margin:4px 0;gap:12px}
-#studio-crew-passport .studio-avatar{width:44px;height:48px}
-#studio-crew-passport h3{font-size:24px;margin:0 0 5px!important}
+#studio-crew-passport .studio-avatar{width:36px;height:40px}
+#studio-crew-passport h3{font-size:24px!important;margin:0!important}
 .studio-crew-identity{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
-#studio-crew-role{font-size:13px}
+#studio-crew-role{font-size:13px!important;line-height:1.4!important}
 #studio-crew-conversation{flex:1;min-height:100px;overflow:auto;border-top:1px solid #344553;padding:12px 2px;overscroll-behavior:contain}
 #studio-crew-chat{flex:none;background:#1b2933;border:1px solid #3b4c59;border-radius:14px;padding:10px}
 #studio-crew-chat label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
@@ -852,5 +852,5 @@
 #studio-crew-agent-skills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 #studio-crew-agent-skills[hidden]{display:none}
 
-#studio-crew-passport .studio-agent-title{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+#studio-crew-passport .studio-agent-title{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px}
 #studio-crew-agent-actions:not([hidden]){display:flex}

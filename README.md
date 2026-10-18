@@ -78,7 +78,7 @@ For multi-agent quality and responsiveness, a rehearsed External Endpoint is rec
 
 **Settings → Reset → Issue report** shows the app version, source branch/commit, local modifications and pinned runtime versions. **Copy diagnostics** includes build identity, current connection/workload state and recent safe diagnostic events. **Download** exports a larger report. Neither includes credentials, prompts, responses or file contents. `/health` and the startup log identify the running server build as well.
 
-`VERSION` uses standard `major.minor.patch` numbers without leading zeros. The previous `0.2.001` label is normalized to **0.2.1**; this release is **0.2.3**, and the next newly authorized GitLab publication will be **0.2.4**. Prepare the next version with `python3 -B scripts/build_info.py bump patch`, commit it with the changes, then rebuild so the UI and logs identify the delivered commit. Local builds, restarts, tests, and retries of the same push do not change the version. Change the major/minor series deliberately when agreed. Publication remains an explicit maintainer action.
+`VERSION` uses standard `major.minor.patch` numbers without leading zeros. The previous `0.2.001` label is normalized to **0.2.1**; the current release series stays at **0.2.3** across GitLab updates. Change the version only when a maintainer explicitly requests a new release version, not on every commit or push. When a version change is agreed, use `python3 -B scripts/build_info.py bump patch` (or the agreed part). After committing, rebuild so the UI and logs identify the delivered source commit, even when the version stays the same. Publication remains an explicit maintainer action.
 
 ### Diagnose an issue
 
