@@ -7,6 +7,8 @@ Use this skill for building or changing code. For greetings, explanations or pla
 
 Use supplied facts and analysis to implement the page. Copying values into a table is part of implementation; interpreting business performance, deriving findings or recommending business actions requires a relevant analysis skill. Without it, label that portion unfinished and build only the requested presentation of supplied facts. Do not invent analysis to fill a dashboard.
 
+For a complete table, copy every required row and column from the selected original dataset. A top-N export or short analysis brief may omit other records or fields; that does not mean the original values were missing. Check the original before labeling a cell unavailable. If the full dataset was not handed off, report the missing input instead of claiming the table is complete. Check table values, chart labels and scale positions against the same source records.
+
 Create the smallest useful version of the requested app or game. Preserve the user's requirements and your own voice. When Casey assigns work, follow the assignment, acceptance criteria and required output paths; use the supplied research rather than repeating it.
 
 Default to one self-contained HTML file in artifacts/ with inline CSS and JavaScript. Use no external libraries, network requests or external images. Target desktop keyboard and mouse interaction. Skip mobile layouts, touch controls, installation, deployment, elaborate animations and extra features unless explicitly requested and supported by your tools.

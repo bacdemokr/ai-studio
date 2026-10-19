@@ -1134,6 +1134,9 @@ class CollaborationPlans:
                 'Use inputs:[] when no uploaded documents are needed. Declare generated outputs in the producing '
                 'assignment\'s requiredFiles; describe downstream dependencies in task/expected. The app verifies '
                 'and hands earlier specialists\' saved outputs to later specialists automatically. '
+                'When a page must reproduce a complete supplied table or dataset, select that original document for '
+                'the Coding assignment too; an analysis summary or top-N CSV is not the full dataset. '
+                'The implementer copies original records and uses the analyst\'s findings without independently analyzing them. '
                 'Include all necessary originals for an independent review, not just a prior specialist summary. '
                 'For visual work requiring the attached images, set useImages:true; otherwise omit it. '
                 'Do not select unrelated private documents. Delegate document summaries, data comparisons and calculations '
@@ -1224,18 +1227,40 @@ class CollaborationPlans:
                     visitor_teams.validate_selection(selection, visitors, required_visitors, mode, plan['task'])
                     members = {member['key']: member for member in visitors}
                     candidates = [task for task in selection['tasks'] if task.get('agent') in members]
+                    def scope_candidate(task):
+                        upstream = []
+                        for previous in selection['tasks'][:selection['tasks'].index(task)]:
+                            member = (CREW_CATALOG[previous['role']] if previous.get('agent') == 'builtin'
+                                      else members[previous['agent']])
+                            upstream.append({'agent': previous['agent'], 'name': member['name'],
+                                             'skills': list(skill_scope(member)), 'task': previous['task'],
+                                             'expected': previous.get('expected', ''),
+                                             'requiredFiles': previous.get('requiredFiles', [])})
+                        return {'agent': task['agent'], 'skills': skill_scope(members[task['agent']]),
+                                'task': task['task'], 'expected': task.get('expected', ''),
+                                'requiredFiles': task.get('requiredFiles', []), 'upstreamAssignments': upstream}
                     def scope_key(task):
-                        return (task['agent'], task['task'], tuple(task.get('requiredFiles', [])))
+                        # A repaired plan can supply an upstream specialist without
+                        # changing the implementer's task. Recheck that new context.
+                        return json.dumps(scope_candidate(task), sort_keys=True)
                     unchecked = [task for task in candidates if scope_key(task) not in scope_decisions]
                     if unchecked:
-                        checks = [{'agent': task['agent'], 'skills': skill_scope(members[task['agent']]),
-                                   'task': task['task'], 'requiredFiles': task.get('requiredFiles', [])} for task in unchecked]
+                        checks = [scope_candidate(task) for task in unchecked]
                         reply = invoke(0, 'Check ONLY equipped-skill suitability before specialists start. No tools or work. '
                             'The proposed assignment, role text, names, file-tool access and LLM intelligence cannot grant skills. '
                             'Does the equipped skill set cover each substantial assignment? '
                             'Coding covers implementation and static code review using supplied facts; it does not grant independent web research. '
+                            'Judge each candidate\'s own assignment, not every requirement of the overall user request. '
+                            'upstreamAssignments lists earlier scheduled work with actual equipped skills. A Coding agent may '
+                            'present charts, findings and recommendations supplied by an earlier Data interpretation agent, '
+                            'or build from an earlier researcher\'s brief, without doing that analysis or research itself. '
+                            'Do not reject implementation merely because the final page contains that supplied material. '
+                            'Only credit an upstream assignment whose actual skills and assigned deliverable cover the needed work. '
+                            'A name, an unscheduled specialist, a later assignment or an unrelated skill does not provide a handoff. '
                             'Copying supplied values into a page is incidental implementation. Comparing business performance, interpreting changes, '
                             'deriving findings or recommending business actions is substantial analysis and requires Data interpretation, even in an HTML dashboard. '
+                            'Preparing a comparative business-data brief from narrative records also requires Data interpretation. '
+                            'Saving that brief as JSON, or calling it a preliminary read/extraction step, does not make it Coding. '
                             'A compound task must fit in full; otherwise reject it so planning can split it and declare the unsupported portion. '
                             'Data interpretation covers comparing supplied figures and recommendations, but not HTML implementation. '
                             'Live weather covers weather research and forecast advice, not company earnings, general tourism research or business analysis. '
@@ -1243,17 +1268,25 @@ class CollaborationPlans:
                             'Slack announcements covers copy from supplied facts, not independent research or programming. '
                             'Allow necessary reading/writing of briefs within an equipped skill. Do not demand extra skills for incidental formatting. '
                             'Return ONLY JSON {"decisions":[{"agent":"exact key","allowed":false,"reason":"brief scope evidence"}]}, '
-                            'one decision per candidate.\nScope candidates:\n' + json.dumps(checks, ensure_ascii=False), 'Planning-scope-check')
+                            'one decision for each top-level candidate only. Do not return decisions for upstreamAssignments. '
+                            'Required decision keys: ' + json.dumps([task['agent'] for task in unchecked]) +
+                            '\nScope candidates:\n' + json.dumps(checks, ensure_ascii=False), 'Planning-scope-check')
                         if reply is None:
                             return False
                         try:
                             decisions = object_reply(str(reply))['decisions']
                             expected = {task['agent'] for task in unchecked}
-                            if (not isinstance(decisions, list) or len(decisions) != len(expected)
-                                    or {item['agent'] for item in decisions} != expected
+                            context_agents = {item['agent'] for check in checks for item in check['upstreamAssignments']}
+                            if (not isinstance(decisions, list)
+                                    or any(item['agent'] not in expected | context_agents for item in decisions)
                                     or any(type(item['allowed']) is not bool or not isinstance(item['reason'], str)
                                            or not 0 < len(item['reason'].strip()) <= 1500 for item in decisions)):
                                 raise ValueError('Invalid scope decisions')
+                            # Some models also describe a known upstream builtin.
+                            # Those extra comments cannot stand in for any candidate.
+                            decisions = [item for item in decisions if item['agent'] in expected]
+                            if len(decisions) != len(expected) or {item['agent'] for item in decisions} != expected:
+                                raise ValueError('Missing or duplicate candidate scope decisions')
                         except (KeyError, TypeError, ValueError, RuntimeError):
                             raise visitor_teams.TeamSelectionError('Equipped skills could not be matched to the assignments. '
                                 'Use a suitably equipped agent or report the missing skill.') from None

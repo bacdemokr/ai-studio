@@ -23,6 +23,7 @@ class ProtectedTeamFeedbackTests(unittest.TestCase):
         original.activity = {'toolCount': 1}
 
         def respond(*args, **kwargs):
+            original.request_prompt = args[2]
             now = time.time()
             for owner, role, action, reason, offset in evidence:
                 app.protection_activity.observe(owner, role, owner, [dict(
@@ -47,6 +48,13 @@ class ProtectedTeamFeedbackTests(unittest.TestCase):
             with self.subTest(host=host):
                 answer, original=self.run_reply([('owner',None,'deny','policy-denied',0)],host=host)
                 self.assertIs(answer,original)
+
+    def test_tool_error_does_not_rule_out_host_side_policy_denial(self):
+        answer, original = self.run_reply()
+        self.assertIs(answer, original)
+        self.assertIn('leave its cause unconfirmed', original.request_prompt)
+        self.assertIn('does not prove or rule out an OpenShell denial', original.request_prompt)
+        self.assertIn('host-side policy logs separately', original.request_prompt)
 
     def test_errors_other_agents_crew_old_denials_and_allows_are_not_relabelled(self):
         for evidence in ([], [('other', None, 'deny', 'policy-denied', 0)],

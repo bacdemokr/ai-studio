@@ -45,7 +45,11 @@ class PolicyControls:
                        'Host-file approval, import by host path and write-back are not available. '
                        'Do not ask for file permissions in the website approval panel. '
                        'For external host files, ask the user to upload the file instead. '
-                       'Earlier chat references to host-file grants describe a removed feature.')
+                       'Earlier chat references to host-file grants describe a removed feature. '
+                       'When a network tool fails without an explicit policy decision, report the failed '
+                       'attempt and leave its cause unconfirmed. A generic connection error does not '
+                       'prove or rule out an OpenShell denial. Do not claim website approval is '
+                       'unnecessary: the app checks host-side policy logs separately after this turn.')
         reader = getattr(self.adapter, 'policy_events', None)
         if profile.get('protection') != 'openshell' or not callable(reader):
             return self.adapter.respond(agent_id, session, prompt, **kwargs)

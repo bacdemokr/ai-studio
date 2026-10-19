@@ -4,7 +4,7 @@ const page=await browser.newPage({viewport:{width:1440,height:1100}}),errors=[];
 await page.context().grantPermissions(['clipboard-read','clipboard-write']);
 const telegramWrites=[];page.on('request',request=>{if(request.method()==='POST'&&new URL(request.url()).pathname.startsWith('/api/telegram'))telegramWrites.push(new URL(request.url()).pathname);});
 await page.getByRole('button',{name:'Settings',exact:true}).click();await page.locator('[data-connection-tab=telegram]').click();await page.locator('#studio-settings-telegram-panel').waitFor({state:'visible'});
-assert.deepEqual(await page.locator('[data-settings-tab]').allTextContents(),['Model','Location','Telegram','Reset','About']);
+assert.deepEqual(await page.locator('[data-settings-tab]').allTextContents(),['Model','Location','Telegram','Reset']);
 assert(await page.locator('#studio-settings-model-panel').isHidden());
 assert(await page.locator('#studio-telegram-test').isHidden());assert(await page.locator('#studio-telegram-disconnect').isHidden());
 assert(await page.locator('#studio-telegram-status').isHidden());

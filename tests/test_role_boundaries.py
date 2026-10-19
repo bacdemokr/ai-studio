@@ -62,12 +62,80 @@ class RoleBoundaryTests(unittest.TestCase):
         self.assertIn('"decisions"', contract)
         self.assertNotIn('JSON object with summary and tasks', contract)
 
+    def test_upstream_analysis_repair_rechecks_unchanged_coding_assignment(self):
+        coding = {'role': 5, 'agent': self.owner, 'task': 'Build a page using the supplied analysis and recommendations.',
+                  'expected': 'HTML presenting the supplied findings.', 'inputs': [],
+                  'requiredFiles': ['artifacts/counter.html'], 'roleFit': 'Coding implements the supplied analysis.'}
+        analysis = {'role': 6, 'agent': 'builtin', 'task': 'Compare the supplied figures and recommend next actions.',
+                    'expected': 'An analysis brief with findings and recommendations.', 'inputs': [],
+                    'requiredFiles': ['artifacts/analysis.md'], 'roleFit': 'Data interpretation covers analysis.'}
+        self.adapter.selection = {'summary': 'Build the dashboard.', 'tasks': [coding]}
+        self.adapter.repaired_selection = {'summary': 'Analyze first, then implement.', 'tasks': [analysis, coding]}
+        original = self.adapter.respond
+        checks = []
+
+        def respond(agent, session, prompt, **kwargs):
+            if session.endswith('-planning-scope-check'):
+                self.adapter.calls.append((agent, session, prompt))
+                candidates, _ = json.JSONDecoder().raw_decode(prompt.rsplit('Scope candidates:\n', 1)[1])
+                candidate = candidates[0]
+                checks.append(candidate)
+                upstream = candidate.get('upstreamAssignments', [])
+                allowed = bool(upstream and 'data-analysis' in upstream[0]['skills'])
+                decisions = [{'agent': self.owner, 'allowed': allowed,
+                    'reason': 'Analysis is supplied by the preceding specialist.' if allowed else 'No analysis handoff is scheduled.'}]
+                if upstream:
+                    decisions.insert(0, {'agent': 'builtin', 'allowed': True, 'reason': 'Ada supplies analysis.'})
+                return json.dumps({'decisions': decisions})
+            if agent.endswith('-r6') and '-working' in session:
+                self.adapter.calls.append((agent, session, prompt))
+                path = self.adapter.agents[agent] / 'artifacts/analysis.md'
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text('The supplied values are 10 and 20. The second is twice the first. Verify the source before acting.')
+                return 'Saved analysis to artifacts/analysis.md.'
+            return original(agent, session, prompt, **kwargs)
+
+        self.adapter.respond = respond
+        job = self.execute(self.start('/goal Compare supplied values 10 and 20, recommend an action, and build a dashboard.', teamMode='mixed'))
+        plan = job['payload']['collaboration']
+        self.assertEqual(len(checks), 2, 'Adding the analysis handoff must invalidate the cached scope rejection.')
+        self.assertEqual(checks[0]['task'], checks[1]['task'])
+        self.assertEqual(checks[0]['upstreamAssignments'], [])
+        upstream = checks[1]['upstreamAssignments']
+        self.assertEqual(upstream[0]['name'], 'Ada')
+        self.assertEqual(upstream[0]['skills'], ['data-analysis'])
+        self.assertEqual(upstream[0]['requiredFiles'], ['artifacts/analysis.md'])
+        self.assertEqual(plan['teamSelectionRecovery']['status'], 'corrected')
+        self.assertEqual(plan['calledRoles'], [6, 5])
+        self.assertEqual(plan['outcome'], 'complete')
+
     def test_custom_programming_role_without_skills_cannot_contribute(self):
         self.app.configure(self.owner, {**self.app.profile(self.owner), 'skills': []})
         job = self.execute(self.start(teamMode='hired'))
         self.assertEqual(job['payload']['collaboration']['calledRoles'], [])
         self.assertEqual(job['payload']['collaboration']['outcome'], 'unavailable')
         self.assertFalse(self.specialists())
+
+    def test_scope_comments_cannot_replace_duplicate_or_missing_candidate_decisions(self):
+        allowed = {'agent': self.owner, 'allowed': True, 'reason': 'Coding covers implementation.'}
+        for decisions in ([], [allowed, allowed],
+                          [allowed, {'agent': 'unknown', 'allowed': True, 'reason': 'Unrecognized identity.'}]):
+            with self.subTest(decisions=decisions):
+                self.adapter.calls.clear()
+                original = fixture.VisitorAdapter.respond.__get__(self.adapter)
+
+                def respond(agent, session, prompt, **kwargs):
+                    if session.endswith('-planning-scope-check'):
+                        return json.dumps({'decisions': decisions})
+                    if session.endswith('-planning-team-repair'):
+                        return json.dumps({'summary': 'Could not verify suitability.', 'tasks': [],
+                                           'outcome': 'unavailable', 'answer': 'No work assigned.'})
+                    return original(agent, session, prompt, **kwargs)
+
+                self.adapter.respond = respond
+                job = self.execute(self.start(teamMode='hired'))
+                self.assertEqual(job['payload']['collaboration']['outcome'], 'unavailable')
+                self.assertFalse(self.specialists())
 
     def test_missing_suitability_is_rejected_before_binding(self):
         with self.assertRaisesRegex(TeamSelectionError, 'roleFit'):
