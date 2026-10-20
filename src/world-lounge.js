@@ -163,7 +163,7 @@ function setCollection(agents,key){
     }
     const tone=loungeVoices[a.tone]?a.tone:'kind';
     if(r.persona!==a.persona||r.name!==a.name||r.tone!==tone||r.purpose!==(a.purpose||'')){if(loungeSpeaker===r)endLoungeSpeech();r.saidIntro=false;r.line=0;}
-    r.deleting=!!a.deleting;
+    r.deleting=!!a.deleting;r.heartbeat=!!a.techRadar||(a.skills||[]).includes('radar');
     if(r.deleting){
       if(loungeSpeaker===r)endLoungeSpeech();
       r.completionCue=false;r.target=null;
@@ -243,7 +243,9 @@ function startLoungeSpeech(){
   let r=newcomer||ordered.find(r=>r.completionCue);
   if(!r){
     if(!motion||loungeTime<nextLoungeIdle)return;
-    const others=eligible.filter(r=>r.key!==lastLoungeSpeaker),candidates=others.length?others:eligible;
+    // Paused heartbeat agents also stay out of ambient chatter.
+    const idle=eligible.filter(r=>!r.heartbeat);if(!idle.length)return;
+    const others=idle.filter(r=>r.key!==lastLoungeSpeaker),candidates=others.length?others:idle;
     r=candidates[Math.floor(Math.random()*candidates.length)];
   }
   if(newcomer)welcomeSpeakers.shift();

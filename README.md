@@ -200,6 +200,8 @@ Keyless local servers need no API key. Provider keys entered in these settings a
 2. **Agent lounge:** chat with a hired agent, inspect files, or approve OpenShell access.
 3. **Open Task:** enter Stage 3 from the studio overview or Studio Map. Casey coordinates your task in one room.
 
+Each Hiring preset keeps its core skill **Fixed**: Weather buddy / Live weather, Tech Radar / Tech Radar, Arxivbot / Web research, Slack Announcer / Slack announcements, Programmer / Coding, Web researcher / Web research, and Data analyst / Data interpretation. You can add or remove extra skills; custom roles remain freely editable. Tech Radar agents do not participate in periodic Lounge chatter, including while Heartbeat is paused; actual updates still appear.
+
 **Programmer** equips the **Coding** skill for small, self-contained desktop pages and games. It saves a working file and applies focused follow-up edits. **Web researcher** equips **Web research** for brief, cited answers, reading supplied URLs first. Both work directly in the Lounge and can join Casey's team; role and tone remain separate from tool permissions. Research creates a file only when requested or needed for a handoff. OpenShell researchers can save that brief inside their protected workspace; network access still needs the relevant policy approval.
 
 
