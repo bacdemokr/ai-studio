@@ -9,6 +9,7 @@ const agentBlueprint=`<div class="agent-blueprint" aria-label="An agent combines
 window.BacAgentBlueprint=agentBlueprint;
 el('crew-goal-intro').textContent=window.BacCrewCatalog[0].collaboration.description;
 function goalHint(choice){return choice.detail;}
+function goalPrompt(choice){const location='the city selected in Settings > Location';return choice.prompt.replace(location,()=>runtime.location?.city||location);}
 el('crew-goal-choices').innerHTML=goalExamples.map(g=>`<button type="button" data-goal-example="${escape(g.id)}" data-goal-hint="${escape(goalHint(g))}" aria-pressed="false" title="${escape(goalHint(g))}" aria-controls="studio-crew-prompt">${escape(g.title)}</button>`).join('');
 function exampleDocument(choice){return choice.document&&(data.crewDocuments||[]).find(file=>file.path==='inbox/'+choice.document);}
 function syncGoalExamples(locked){
@@ -17,7 +18,7 @@ function syncGoalExamples(locked){
   const choice=goalExamples.find(g=>g.id===button.dataset.goalExample);
   const needsConnection=choice.document&&!exampleDocument(choice)&&el('crew-document-add').disabled;
   button.disabled=locked||box.hidden||!!needsConnection;
-  button.setAttribute('aria-pressed',String(el('crew-prompt').value===choice.prompt));
+  button.setAttribute('aria-pressed',String(el('crew-prompt').value===goalPrompt(choice)));
   button.dataset.goalHint=goalHint(choice);
   button.title=goalHint(choice)+(needsConnection?' Connect a model to attach the sample file.':'');
  });
@@ -31,7 +32,7 @@ el('crew-goal-choices').onclick=async event=>{
  const selection=crewDocumentSelection();
  selection.example=choice.document?'inbox/'+choice.document:'';
  selection.lockedExample=choice.requiredDocument?selection.example:'';
- prompt.value=choice.prompt;prompt.dispatchEvent(new Event('input',{bubbles:true}));
+ prompt.value=goalPrompt(choice);prompt.dispatchEvent(new Event('input',{bubbles:true}));
  prompt.focus({preventScroll:true});prompt.setSelectionRange(prompt.value.length,prompt.value.length);prompt.scrollTop=0;
  if(choice.document){
   const existing=exampleDocument(choice);

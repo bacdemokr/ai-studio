@@ -33,6 +33,39 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
   await page.waitForFunction(()=>BacCampus.inspect().roundtable.guests.every(g=>g.phase==='returned'));
   await page.evaluate(()=>BacCampus.setLive(seatingState));await seats(2);assert.equal((await inspect()).roundtable.visible,false);
   await page.evaluate(()=>renderSeating(2,'done'));await seats(2);assert.equal((await inspect()).roundtable.visible,false);
-  assert.deepEqual(errors,[]);console.log('PASS: chairs follow 0/1/2/3/5/12 hires; completed reactions leave no duplicate furniture; active reactions and cancellation share the roster.');
+  // One contributor and five idle hires return together after a completed task.
+  await page.evaluate(()=>{
+   renderSeating(6);const s=seatingState;s.visitorTeamMode='hired';
+   s.agents.forEach((a,i)=>a.displayed=i===0||i===5);
+   Object.assign(s.agents[5],{visitorKey:hires[0].key,name:'Jinny',avatar:hires[0].avatar,role:'Programmer'});
+   s.crewMission={id:'finished-task',visitorJobId:'finished-task',kind:'plan',status:'done',visitorsPresent:true,visitorsFinished:true,assignedRoles:[5],activeStages:[],enabledRoles:[0,5],completed:[5]};
+   BacCampus.setLive(s);
+  });
+  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.find(v=>v.key==='jinny')?.phase==='working');
+  const desk=(await inspect()).visitorTravel.find(v=>v.key==='jinny').position;
+  await page.evaluate(()=>BacCampus.setLive(seatingState));
+  assert.deepEqual((await inspect()).visitorTravel.find(v=>v.key==='jinny').position,desk,'Completion alone keeps the contributor at the desk');
+  await page.evaluate(()=>BacCampus.overview({instant:true}));
+  assert.equal((await inspect()).visitorTravel.find(v=>v.key==='jinny').phase,'working','Overview does not release a completed desk');
+  await page.evaluate(()=>{BacCampus.setRoom('mission',{instant:true});BacCampus.setRoom('lounge',{instant:true});BacCampus.setLive(seatingState);});
+  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===0);
+  assert.equal((await inspect()).residents.filter(r=>r.visible).length,6,'All six hires return to Lounge');
+  await page.evaluate(()=>{BacCampus.setLive(seatingState);BacCampus.setRoom('mission',{instant:true});});
+  const allSeated=()=>page.waitForFunction(()=>{const v=BacCampus.inspect().visitorTravel;return v.length===6&&v.every(v=>v.phase==='seated'&&v.role===null);});
+  await allSeated();await seats(6);
+  // The next plan initially retains old bindings; they must not replay old work.
+  await page.evaluate(()=>{Object.assign(seatingState.crewMission,{id:'next-task',status:'running',activeStages:[0]});BacCampus.setLive(seatingState);});
+  await allSeated();
+  await page.evaluate(()=>{Object.assign(seatingState.crewMission,{visitorJobId:'next-task',visitorsFinished:false,activeStages:[5],completed:[]});BacCampus.setLive(seatingState);});
+  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.find(v=>v.key==='jinny')?.phase==='working');
+  await page.evaluate(()=>BacCampus.setRoom('lounge',{instant:true}));
+  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===1);
+  assert.equal((await inspect()).visitorTravel[0].phase,'working','Navigation preserves active work');
+  // The result can be ready while optional reactions keep the job running.
+  await page.evaluate(()=>{Object.assign(seatingState.crewMission,{visitorsFinished:true,activeStages:[],completed:[5]});BacCampus.setLive(seatingState);});
+  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===0);
+  await page.evaluate(()=>BacCampus.setRoom('mission',{instant:true}));await allSeated();await seats(6);
+  assert(!(await inspect()).crewExchange[5].visible,'No duplicate built-in specialist appears');
+  assert.deepEqual(errors,[]);console.log('PASS: chairs follow 0/1/2/3/5/12 hires; six-hire Lounge return, standby re-entry, saved history, next-plan bindings, active work and result-ready reactions.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -3,6 +3,7 @@ const visitorTravel=new Map();
 const visitorLayer=document.createElement('div');visitorLayer.className='world-roundtable';viewport.append(visitorLayer);
 const visitorBenches=new THREE.Group();scene.add(visitorBenches);
 let visitorBenchKey='';
+let releasedVisitorJob='';
 function planPoint(x,z){const floor=scenarioFloors.find(s=>s.id==='plan');return new THREE.Vector3(floor.x+x,.05,floor.z+z);}
 function visitorRoute(v,points,phase,destination='working'){
   v.route=[v.group.position.clone(),...points.map(p=>p.clone())].filter((p,i,all)=>!i||p.distanceTo(all[i-1])>.001);
@@ -11,11 +12,26 @@ function visitorRoute(v,points,phase,destination='working'){
   v.length=v.route.slice(1).reduce((sum,p,i)=>sum+p.distanceTo(v.route[i]),0);
 }
 function disposeVisitor(v){visitorTravel.delete(v.key);scene.remove(v.group);clearGeometry(v.group);v.node.remove();}
+function visitorCorridor(position,toTask){
+  const points=[...scenarioPath('plan').map(([x,z])=>new THREE.Vector3(x,.05,z)),planPoint(-8.8,0)];
+  if(position.x<=points[0].x)return toTask?points:[];
+  if(position.x>=points.at(-1).x)return toTask?[new THREE.Vector3(position.x,.05,points.at(-1).z)]:[new THREE.Vector3(position.x,.05,points.at(-1).z),...points.reverse()];
+  // Retarget along the shared corridor, never through a previous desk or seat.
+  let nearest=null,segment=0,distance=Infinity;
+  for(let i=0;i<points.length-1;i++){
+    const point=new THREE.Line3(points[i],points[i+1]).closestPointToPoint(position,true,new THREE.Vector3());
+    const gap=point.distanceToSquared(position);
+    if(gap<distance){nearest=point;segment=i;distance=gap;}
+  }
+  return [nearest,...(toTask?points.slice(segment+1):points.slice(0,segment+1).reverse())];
+}
+function visitorApproach(v,target){
+  const aisle=new THREE.Vector3(target.x,.05,planPoint(0,0).z);
+  return [...visitorCorridor(v.group.position,true),aisle,target];
+}
 function returnVisitor(v){
   if(v.phase==='returning')return;
-  // Reverse a partial arrival rather than jumping across walls.
-  const route=v.fromLounge&&v.phase==='entering'?v.route.slice(0,v.segment+1).reverse():[planPoint(v.group.position.x-(scenarioFloors.find(s=>s.id==='plan').x),0),planPoint(-8.8,0),...scenarioPath('plan').slice().reverse().map(([x,z])=>new THREE.Vector3(x,.05,z)),v.home];
-  visitorRoute(v,[...route,v.home],'returning');v.fromLounge=false;
+  visitorRoute(v,[...visitorCorridor(v.group.position,false),v.home],'returning');
 }
 function syncVisitorResidents(){
   for(const r of residents){
@@ -34,7 +50,13 @@ function syncVisitorCollection(){
 }
 function syncVisitorTeam(){
   if(activeScenario!=='plan')return;
-  const job=state.crewMission,active=job?.kind==='plan'&&job.visitorsPresent;
+  const job=state.crewMission,visitorJob=job?.visitorJobId||job?.id;
+  const finished=job?.visitorsFinished??job?.status==='done';
+  // Leaving a finished task releases its desks for this visit. Saved results
+  // remain available, but reopening Open Task seats these hires on standby.
+  if(!job)releasedVisitorJob='';
+  else if(room==='lounge'&&!overview&&finished)releasedVisitorJob=visitorJob;
+  const active=job?.kind==='plan'&&job.visitorsPresent&&visitorJob!==releasedVisitorJob;
   const selected=new Map(active?state.agents.flatMap((a,role)=>a.visitorKey&&a.displayed!==false?[[a.visitorKey,{...a,taskTitle:a.role,role}]]:[]):[]);
   const following=['mixed','hired'].includes(state.visitorTeamMode)&&room==='mission'&&!overview;
   // Reaction guests use their own actors and seats. Never clone them on a bench.
@@ -46,7 +68,7 @@ function syncVisitorTeam(){
   for(const v of visitorTravel.values())if(!desired.has(v.key)){
     if(reacting.has(v.key))disposeVisitor(v);else returnVisitor(v);
   }
-  const seats=new Map(waiting.map((a,i)=>[a.key,planPoint((i%4-(Math.min(waiting.length-Math.floor(i/4)*4,4)-1)/2)*4.5,5.4-Math.floor(i/4)*1.5)]));
+  const seats=new Map(waiting.map((a,i)=>[a.key,planPoint((i%4-(Math.min(waiting.length-Math.floor(i/4)*4,4)-1)/2)*4.5,6.4-Math.floor(i/4)*1.5)]));
   const benchKey=waiting.map(a=>a.key).join(':');
   if(benchKey!==visitorBenchKey){
     visitorBenchKey=benchKey;
@@ -70,12 +92,11 @@ function syncVisitorTeam(){
       const rig=createCharacter(avatar);rig.group.scale.setScalar(1.15);rig.group.userData.visitorAgent=key;
       rig.group.position.copy(loungeRoom.localToWorld(resident.group.position.clone()));scene.add(rig.group);
       const node=document.createElement('button');node.type='button';node.className='campus-agent-label';node.dataset.visitorAgent=key;node.innerHTML='<b></b><small></small>';visitorLayer.append(node);
-      v={...rig,key,node,home:rig.group.position.clone(),fromLounge:true};visitorTravel.set(key,v);
+      v={...rig,key,node,home:rig.group.position.clone()};visitorTravel.set(key,v);
       node.onclick=()=>{if(v.role!==null&&activeScenario==='plan'&&state.agents[v.role]?.visitorKey===key)choose(v.role);else root.dispatchEvent(new CustomEvent('bac:collection-select',{detail:key}));};
-      visitorRoute(v,[...scenarioPath('plan').map(([x,z])=>new THREE.Vector3(x,.05,z)),planPoint(-8.8,0),planPoint(target.x-scenarioFloors.find(s=>s.id==='plan').x,0),target],'entering',destination);
+      visitorRoute(v,visitorApproach(v,target),'entering',destination);
     }else if(v.phase==='returning'||v.destination!==destination||v.target.distanceTo(target)>.05){
-      const back=v.phase==='returning'?v.route.slice(0,v.segment+1).reverse():[];
-      visitorRoute(v,[...back,target],'entering',destination);v.fromLounge=false;
+      visitorRoute(v,visitorApproach(v,target),'entering',destination);
     }
     if(['body','color','accessory','protection'].some(field=>v.appearance[field]!==avatar[field])){
       const rig=createCharacter(avatar);v.group.remove(v.body);clearGeometry(v.body);v.group.add(rig.body);v.body=rig.body;v.arms=rig.arms;v.legs=rig.legs;v.appearance=rig.appearance;
@@ -95,7 +116,7 @@ function animateVisitors(dt){
       while(v.segment<v.route.length-2){const length=v.route[v.segment].distanceTo(v.route[v.segment+1]);if(distance<length)break;distance-=length;v.segment++;}
       const a=v.route[v.segment],b=v.route[v.segment+1]||a;
       v.group.position.lerpVectors(a,b,Math.min(1,distance/Math.max(.001,a.distanceTo(b))));v.group.rotation.y=Math.atan2(b.x-a.x,b.z-a.z);
-      if(fraction===1){if(v.phase==='returning'){disposeVisitor(v);continue;}v.phase=v.destination;v.segment=v.route.length-1;v.group.position.copy(v.target);v.fromLounge=false;}
+      if(fraction===1){if(v.phase==='returning'){disposeVisitor(v);continue;}v.phase=v.destination;v.segment=v.route.length-1;v.group.position.copy(v.target);}
     }
     const stepping=['entering','returning'].includes(v.phase)&&motion&&!reduced.matches,working=v.phase==='working'&&v.working,seated=v.phase==='seated';
     if(!stepping)v.group.rotation.y=v.phase==='working'||seated?Math.PI:0;

@@ -2,8 +2,8 @@
   {
     "id": "travel",
     "title": "Travel guide",
-    "detail": "A three-day Berlin plan with weather and official tourism links",
-    "prompt": "/goal Plan a three-day visit to Berlin starting tomorrow. Check the available weather forecast and find three interesting places using official tourism sources. Build one self-contained HTML page with a day-by-day plan, reasons to visit, useful source links and clear weather limitations. Use exact ISO dates. Keep the research brief; do not invent unavailable forecasts."
+    "detail": "A three-day plan for your Settings location, with weather and official tourism links",
+    "prompt": "/goal Plan a three-day visit to the city selected in Settings > Location starting tomorrow. Check the available weather forecast and find three interesting places using official tourism sources. Build one self-contained HTML page with a day-by-day plan, reasons to visit, useful source links and clear weather limitations. Use exact ISO dates. Keep the research brief; do not invent unavailable forecasts."
   },
   {
     "id": "drone",
@@ -41,7 +41,7 @@
   {
     "id": "event",
     "title": "Event page",
-    "detail": "A webpage and announcement from supplied event details",
-    "prompt": "/goal Create one self-contained HTML event page and a short social announcement for a fictional NVIDIA developer meetup in Zurich next Friday, 14:00-17:00, for 30 attendees. Use this agenda: welcome 14:00-14:15, agent demo 14:15-15:00, hands-on session 15:00-17:00. Show the exact date, mark the venue TBD and label the event fictional. Use only these supplied details, without additional research. Do not publish or send anything."
+    "detail": "An event webpage and announcement for your Settings location",
+    "prompt": "/goal Create one self-contained HTML event page and a short social announcement for a fictional NVIDIA developer meetup in the city selected in Settings > Location next Friday, 14:00-17:00, for 30 attendees. Use this agenda: welcome 14:00-14:15, agent demo 14:15-15:00, hands-on session 15:00-17:00. Show the exact date, mark the venue TBD and label the event fictional. Use only these supplied details, without additional research. Do not publish or send anything."
   }
 ]

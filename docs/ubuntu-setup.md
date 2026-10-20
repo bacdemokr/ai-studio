@@ -83,6 +83,8 @@ Open **http://localhost:8080** on the laptop. Keep the model URL pointing to the
 
 The Docker installation includes OpenShell. For this host-development setup, configure it before running a protected personal agent.
 
+When OpenShell is configured, app startup prepares its shared image cache in the background. A temporary default-deny sandbox is created and removed without a model call, credentials or attendee files. The UI remains usable during preparation; a short note appears under the protection options. Each agent still gets its own sandbox and website approvals. Cold downloads can still delay an immediate hire, and a failed warmup does not prevent normal startup or the usual protected-agent preparation. Issue report diagnostics include warmup status and duration. This uses the existing OpenShell runtime and adds no deployment dependency.
+
 For protected agents, Docker Engine **28+** must work under the same normal account (`docker version` and `docker info`). Docker being installed alone does not guarantee account access. A group change requires logging in again. Follow the [official installation prerequisites](https://docs.nvidia.com/openshell/latest/about/installation).
 
 The app pins OpenShell **0.1.4** for the CLI, gateway, supervisor and sandbox runtime. For a fresh Ubuntu development account:

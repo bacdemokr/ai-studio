@@ -109,7 +109,8 @@ function endResidentDrag(cancel=false){
  if(!cancel)root.dispatchEvent(new CustomEvent('bac:collection-select',{detail:r.key}));
  return true;
 }
-let loungeTime=0,loungeSpeaker=null,lastLoungeSpeaker='',nextLoungeSpeech=.9;
+const loungeIdleInterval=30;
+let loungeTime=0,loungeSpeaker=null,lastLoungeSpeaker='',nextLoungeSpeech=.9,nextLoungeIdle=loungeIdleInterval;
 const welcomeSpeakers=[];
 function queueWelcome(key){
   endLoungeSpeech();
@@ -176,13 +177,11 @@ function setCollection(agents,key){
       r.completionCue=true;nextLoungeSpeech=loungeTime;
     }
     if(!replyHeld)r.missionSignature=signature;
-    // Once assigned, stay quiet except for an observed successful completion.
-    r.hasMission=!!latest||a.activity?.kind==='mission'||r.hasMission;
     // Shared-event reservations protect identity; only unfinished activity makes the resident busy.
     const occupied='activity' in a?!!a.activity:['queued','running','waiting','stopping'].includes(latest?.status);
     if(occupied)r.completionCue=false;
     r.name=a.name;r.purpose=a.purpose||'';r.persona=loungePersonalities[a.persona]?a.persona:'guide';r.tone=tone;r.verbosity=a.verbosity||'balanced';r.pending=occupied;
-    if(loungeSpeaker===r&&(r.pending||(r.hasMission&&!r.completionSpeech)))endLoungeSpeech();
+    if(loungeSpeaker===r&&r.pending)endLoungeSpeech();
     if(r.deleting)r.activity='deleting';
     else if(r.pending)r.activity='assigned';
     else if(r.activity==='assigned')r.activity='resting';
@@ -191,7 +190,7 @@ function setCollection(agents,key){
     r.halo.visible=r.key===key||r.pending||loungeSpeaker===r;
   });
   residentMeshes.length=0;residents.forEach(r=>r.group.traverse(o=>{if(o.isMesh){o.userData.resident=r.key;residentMeshes.push(o);}}));
-  if(!residents.length){lastLoungeSpeaker='';nextLoungeSpeech=loungeTime+.9;}
+  if(!residents.length){lastLoungeSpeaker='';nextLoungeSpeech=loungeTime+.9;nextLoungeIdle=loungeTime+loungeIdleInterval;}
   syncVisitorCollection();
 }
 function chooseLoungeTarget(r){
@@ -236,10 +235,17 @@ function startLoungeSpeech(){
   while(welcomeSpeakers.length&&!residents.some(r=>r.key===welcomeSpeakers[0]&&!r.pending&&!r.deleting&&!r.atOpenTask&&!r.atRoundtable))welcomeSpeakers.shift();
   const newcomer=residents.find(r=>r.key===welcomeSpeakers[0]);
   if(!motion&&!newcomer&&!residents.some(r=>r.completionCue))return;
-  const eligible=residents.filter(r=>!r.deleting&&!r.atRoundtable&&!r.atOpenTask&&!r.pending&&(!r.hasMission||r.completionCue)&&(r.completionCue||(!r.hovered&&!r.focused)));if(!eligible.length&&!newcomer)return;
+  const eligible=residents.filter(r=>!r.deleting&&!r.atRoundtable&&!r.atOpenTask&&!r.pending&&(r.completionCue||(!r.hovered&&!r.focused)));if(!eligible.length&&!newcomer)return;
   const start=(residents.findIndex(r=>r.key===lastLoungeSpeaker)+1)%Math.max(1,residents.length);
   const ordered=[...residents.slice(start),...residents.slice(0,start)].filter(r=>eligible.includes(r));
-  const r=newcomer||ordered.find(r=>r.completionCue)||ordered.find(r=>!r.saidIntro)||ordered[0];
+  // Greetings and actual replies are immediate. Ambient chatter has one shared
+  // 30-second cadence, regardless of roster size or previous conversations.
+  let r=newcomer||ordered.find(r=>r.completionCue);
+  if(!r){
+    if(!motion||loungeTime<nextLoungeIdle)return;
+    const others=eligible.filter(r=>r.key!==lastLoungeSpeaker),candidates=others.length?others:eligible;
+    r=candidates[Math.floor(Math.random()*candidates.length)];
+  }
   if(newcomer)welcomeSpeakers.shift();
   r.completionSpeech=!newcomer&&!!r.completionCue;if(!newcomer)r.completionCue=false;
   r.speechText=r.completionSpeech?r.replyExcerpt:compactLoungeLine(newcomer?welcomeLine(r):loungeLine(r),r);r.saidIntro=true;
@@ -247,6 +253,7 @@ function startLoungeSpeech(){
   const speech=r.node.querySelector('.world-resident-speech');speech.textContent=r.speechText;speech.hidden=false;r.node.dataset.speaking='true';r.node.setAttribute('aria-describedby',speech.id);
   r.node.title=r.completionSpeech?'From the latest reply · open the full conversation':'Personality vignette · select to open this agent’s workspace';r.speechUntil=loungeTime+(r.completionSpeech?Math.min(14,Math.max(6,r.speechText.length/20)):5.8);r.target=null;
   loungeSpeaker=r;lastLoungeSpeaker=r.key;
+  nextLoungeIdle=loungeTime+loungeIdleInterval;
   // Measure at the cue itself; observer notifications can lag room/fullscreen changes.
   const view=viewport.getBoundingClientRect();
   if(view.width&&view.height&&view.right>0&&view.left<innerWidth&&view.bottom>0&&view.top<innerHeight)studioSound.speak(r.persona,r.group.position.x/24);

@@ -27,6 +27,9 @@ class PlanAdapter(Adapter):
             self.after_call(role, prompt)
         if role == self.fail_role and role is not None:
             raise RuntimeError('Fixture policy denial')
+        if session.endswith('-planning-captain-scope-check'):
+            return json.dumps({'decisions': [{'agent': 'casey', 'allowed': True,
+                                             'reason': 'Fixture conversational answer within captain scope.'}]})
         if session.endswith('-planning'):
             # These legacy dispatcher tests explicitly select the built-in backup team.
             return json.dumps({**self.plan, 'tasks': [{**task, 'agent': task.get('agent', 'builtin')} for task in self.plan['tasks']]})

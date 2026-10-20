@@ -142,6 +142,8 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
         self.db_path = self.directory / 'studio.sqlite'
         self.adapter = adapter
         self.stop = threading.Event()
+        from openshell_warmup import StartupWarmup
+        self.openshell_warmup = StartupWarmup(self.stop, getattr(adapter, 'prewarm_openshell', None), self.diagnostics)
         self.signal = threading.Event()
         self.status_cache = (0, {})
         self.status_lock = threading.Lock()
@@ -276,6 +278,7 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
             self.deletion_worker.start()
             self.heartbeat_worker = threading.Thread(target=self.heartbeat.work, daemon=True, name='radar-heartbeat-relay')
             self.heartbeat_worker.start()
+            self.openshell_warmup.start()
 
     def retire_host_file_grants(self):
         """Retire the removed file bridge without touching original host files.
@@ -712,7 +715,8 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
                 if not self.status_cache[1] or time.monotonic() - self.status_cache[0] > ttl:
                     value = self.runtime_health.observe(self.adapter.status(), time.monotonic())
                     self.status_cache = (time.monotonic(), value)
-        result = {**self.status_cache[1], 'instance': self.boot_id}
+        result = {**self.status_cache[1], 'instance': self.boot_id,
+                  'openshellWarmup': dict(self.openshell_warmup.state)}
         import model_connections
         if model_connections.enabled():
             shared = model_connections.public()

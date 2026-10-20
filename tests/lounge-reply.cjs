@@ -1,12 +1,12 @@
-const assert=require('node:assert/strict'),{execFileSync}=require('node:child_process'),{chromium}=require('playwright');
+const assert=require('node:assert/strict'),path=require('node:path'),{pathToFileURL}=require('node:url'),{chromium}=require('playwright');
 (async()=>{
- const fixture=JSON.parse(execFileSync('python3',[__dirname+'/showcase_fixture.py'],{encoding:'utf8'}));
  const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});
  try{
  const page=await browser.newPage({viewport:{width:1500,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.addInitScript(()=>window.setInterval=()=>0);
- await page.route('**/api/session',r=>r.fulfill({json:fixture.state}));await page.route('**/api/state',r=>r.fulfill({json:fixture.state}));
- await page.goto(process.env.BASE_URL||'http://127.0.0.1:8082');await page.waitForFunction(()=>window.BacStudio);
+ // Renderer-only behavior; independent of the retired Event Brief fixture.
+ await page.goto(pathToFileURL(path.resolve(__dirname,'../app/index.html')).href);await page.waitForFunction(()=>window.BacCampus);
+ await page.waitForFunction(()=>document.getElementById('agent-campus').dataset.boot==='error');
+ await page.evaluate(()=>delete document.getElementById('agent-campus').dataset.boot);
  await page.locator('.world-room-map [data-world-room=lounge]').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
  await page.evaluate(()=>{
   window.agents=[{key:'weather',name:'Scout',persona:'guide',purpose:'Check weather.',skills:['weather'],pending:1,latestMission:{id:'weather-1',status:'running'}},{key:'writer',name:'Jinny',persona:'maker',purpose:'Write clearly.',skills:['writer'],pending:1,latestMission:{id:'writer-1',status:'running'}}];

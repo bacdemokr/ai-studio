@@ -112,6 +112,17 @@ class DiagnosticStorageTests(unittest.TestCase):
         self.assertEqual(cause('Search quota reached; not an OpenShell error'), 'rate-limit')
         self.assertEqual(cause('OpenShell policy denied the request'), 'reported-openshell-denial')
 
+    def test_startup_warmup_is_included_without_private_command_output(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = Diagnostics(folder)
+            store.observe_runtime({'openshellWarmup': {'state': 'ready', 'elapsedMs': 14000,
+                                                       'commandOutput': CANARY}})
+            store.emit('openshell.warmup', status='done', elapsedMs=14000, commandOutput=CANARY)
+            report = store.report(secrets.token_hex(12))
+            self.assertEqual(report['runtime']['openshellWarmup'], {'state': 'ready', 'elapsedMs': 14000})
+            self.assertTrue(any(e['event'] == 'openshell.warmup' and e['status'] == 'done' for e in report['events']))
+            self.assertNotIn(CANARY, json.dumps(report))
+
 
 class DiagnosticHTTPTests(unittest.TestCase):
     def setUp(self):

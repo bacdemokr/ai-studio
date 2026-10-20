@@ -25,7 +25,7 @@ class AdaptivePlanTests(unittest.TestCase):
                 result = self.start()
                 self.app.execute(self.app.next_job())
                 job = self.job(result)
-                self.assertEqual(self.called(), [0])
+                self.assertEqual(self.called(), [0, 0] if outcome == 'complete' else [0])
                 self.assertEqual(job['status'], 'done')
                 self.assertEqual(job['payload']['collaboration']['outcome'], outcome)
                 self.assertEqual(job['payload']['collaboration']['calledRoles'], [])

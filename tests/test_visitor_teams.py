@@ -46,6 +46,10 @@ class VisitorAdapter(Adapter):
         self.calls.append((agent, session, prompt))
         if self.after:
             self.after(agent, session)
+        if session.endswith('-planning-captain-scope-check'):
+            # Keep named-participant validation independent of the model scope verdict.
+            return json.dumps({'decisions': [{'agent': 'casey', 'allowed': True,
+                                             'reason': 'Fixture direct-answer scope decision.'}]})
         if session.endswith('-planning-scope-check'):
             candidates, _ = json.JSONDecoder().raw_decode(prompt.rsplit('Scope candidates:\n', 1)[1])
             return json.dumps({'decisions': [{'agent': item['agent'], 'allowed': True,

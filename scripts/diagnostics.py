@@ -167,6 +167,10 @@ class Diagnostics:
             if runtime.get(key) in ('ready', 'slow', 'unavailable', 'ok', 'timeout', 'refused', 'error'):
                 state[key] = runtime[key]
         state['connections'] = {}
+        warmup = runtime.get('openshellWarmup', {})
+        if warmup.get('state') in ('checking', 'preparing', 'cleaning', 'ready', 'unavailable', 'not-configured', 'skipped', 'cancelled'):
+            state['openshellWarmup'] = {'state': warmup['state']}
+            if number(warmup.get('elapsedMs')) is not None:state['openshellWarmup']['elapsedMs'] = number(warmup['elapsedMs'])
         for key in ('local', 'api'):
             value = runtime.get('modelConnections', {}).get('connections', {}).get(key, {})
             state['connections'][key] = {k: value[k] for k in ('ready', 'enabled') if type(value.get(k)) is bool}
@@ -232,7 +236,7 @@ class Diagnostics:
         workload = self.workload(studio,participant)
         with self.lock:
             rows = [r for r in self.recent if r.get('participant') == participant or
-                    (not r.get('participant') and r.get('event') in ('server.started', 'runtime.changed'))]
+                    (not r.get('participant') and r.get('event') in ('server.started', 'runtime.changed', 'openshell.warmup'))]
             limit, budget = (400, 200_000) if full else (80, 48_000)
             chosen = []
             for row in reversed(rows[-limit:]):

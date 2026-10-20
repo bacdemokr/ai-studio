@@ -41,9 +41,11 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
   assert.equal((await inspect()).visitorTravel[0].phase,'working');assert.deepEqual((await inspect()).visitorTravel[0].position,point);
   assert(!(await inspect()).residents.find(r=>r.key==='pixel').visible);
   await page.evaluate(()=>BacCampus.setLive(fixtureState));assert.deepEqual((await inspect()).visitorTravel[0].position,point,'Completed history keeps the same desk');
-  await page.evaluate(()=>{fixtureState.crewMission=null;fixtureState.agents.forEach((a,i)=>a.displayed=i===0);BacCampus.setLive(fixtureState);});
-  // Returning labels keep their size at the scene/panel boundary.
+  // Lounge releases completed work without deleting the saved plan.
   await page.evaluate(()=>BacCampus.setRoom('lounge',{instant:true}));
+  assert.equal((await inspect()).visitorTravel[0].phase,'returning');
+  await page.evaluate(()=>BacCampus.setLive(fixtureState));
+  // Returning labels keep their size at the scene/panel boundary.
   const samples=await page.evaluate(async()=>{
    const rows=[],until=performance.now()+2500;
    while(performance.now()<until){
@@ -61,6 +63,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
   assert(samples.every(x=>x.left>=11&&x.right<=x.view-11),'Return labels stay inside scene boundary');
   await wait(()=>BacCampus.inspect().visitorTravel.length===0);
   await page.evaluate(()=>BacCampus.setRoom('mission',{instant:true}));
+  assert.equal((await inspect()).visitorTravel.length,0,'Saved history must not summon the released desk occupant');
   // Cancellation in the corridor must reverse from the current position.
   await page.evaluate(()=>fixturePlan('running','pixel',5,'job2'));await page.waitForTimeout(700);
   const before=(await inspect()).visitorTravel[0].position;
@@ -69,9 +72,9 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
   // Assign another role before the walk home completes, preserving one actor.
   await page.evaluate(()=>fixturePlan('running','pixel',8,'job3'));assert.equal((await inspect()).visitorTravel.length,1);
   await wait(()=>BacCampus.inspect().visitorTravel[0]?.phase==='working');assert.equal((await inspect()).visitorTravel[0].role,8);
-  // Completing offscreen keeps the participant at its desk until reset or reassignment.
+  // Finishing while the presenter is already in Lounge releases the desk too.
   await page.evaluate(()=>{BacCampus.setRoom('lounge');fixturePlan('done','pixel',8,'job3');});
-  assert.equal((await inspect()).visitorTravel[0].phase,'working');
+  assert.equal((await inspect()).visitorTravel[0].phase,'returning');
   await page.evaluate(()=>{fixtureState.crewMission=null;fixtureState.agents.forEach((a,i)=>a.displayed=i===0);BacCampus.setLive(fixtureState);});
   s=await inspect();assert.deepEqual(s.visitorTravel[0].destination,s.residents.find(r=>r.key==='pixel').position,'Reassignment retains the full route home, not just the last turning point');
   await wait(()=>BacCampus.inspect().visitorTravel.length===0);assert((await inspect()).residents.find(r=>r.key==='pixel').visible);

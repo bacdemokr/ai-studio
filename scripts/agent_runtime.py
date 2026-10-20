@@ -169,6 +169,11 @@ def initial_config():
     })
 
 
+def prewarm_openshell(stop, publish):
+    from openshell_warmup import prepare
+    return prepare(stop, publish)
+
+
 def ensure_openshell():
     """Prepare the pinned native plugin once; never silently lower protection."""
     from agent_policy import configured
