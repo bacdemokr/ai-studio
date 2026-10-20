@@ -1104,7 +1104,7 @@ class CollaborationPlans:
                 'Match the requested deliverable: a summary, comparison table, invitation or explanation is a chat answer or Markdown, '
                 'not a request for an HTML page. Do not add deliverables the user did not request. '
                 'This is a short multi-agent demo: meaningful collaboration is part of the experience. '
-                'Prefer two complementary specialists over one when both can make distinct, useful contributions to the requested result using their equipped skills and actual tools. '
+                'Prefer two or three complementary specialists over one when each can make a distinct, useful contribution to the requested result using their equipped skills and actual tools. '
                 'Before giving everything to a programmer, consider whether another available specialist can usefully contribute research, data interpretation or interface planning that the implementation will use. '
                 'Explain each contribution and its concrete handoff in the plan. Keep the work proportionate to a short demo; do not invent requirements, duplicate work or add token participation merely to increase the headcount. '
                 'One specialist remains appropriate when no useful complementary contribution is available. You decide the team size; this is a preference, not a minimum or a fixed sequence. Respect explicit participant and review requests. '

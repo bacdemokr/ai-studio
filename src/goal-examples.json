@@ -15,7 +15,7 @@
     "id": "stores",
     "title": "Store email review",
     "detail": "A dashboard of the five stores in the supplied sample email",
-    "document": "FAKE_OUTLOOK_FRANCE_STORE_STATUS_THREAD_shortversion.txt",
+    "document": "demo-france-store-status-email-thread.txt",
     "requiredDocument": true,
     "prompt": "/goal Analyze the attached fictional France store email thread and create one self-contained HTML dashboard. Compare the five stores with last year, distinguish margin rates from profit amounts, and show comparison charts, a store table and three practical next actions. Identify missing data, keep the fictional-data label visible and do not invent figures. Use the supplied email; no web research is needed."
   },

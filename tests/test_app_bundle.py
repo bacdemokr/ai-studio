@@ -116,7 +116,7 @@ class AppPreflightTests(unittest.TestCase):
             module.unlink()
             self.assertNotEqual(check().returncode, 0)
             module.write_text(saved)
-            document = root/'scenario/FAKE_OUTLOOK_FRANCE_STORE_STATUS_THREAD_shortversion.txt'
+            document = root/'scenario/demo-france-store-status-email-thread.txt'
             content = document.read_text()
             document.unlink()
             self.assertIn('Incomplete app bundle: missing scenario/', check().stderr)

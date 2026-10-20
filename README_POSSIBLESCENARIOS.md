@@ -143,7 +143,7 @@ The run completed in approximately two minutes. The recorded combined agent time
 
 > /goal I would like the team to look at our last email exchange we have had about the current situation of our stores, what happened since last year. From there dump a rapid summary about what happened since last year, display our benefits, decide what should be the best actions to take to improve. All that being output as one nice html page. And look at the document shared (the email thread)
 
-**Attached document:** [`FAKE_OUTLOOK_FRANCE_STORE_STATUS_THREAD_shortversion.txt`](scenario/FAKE_OUTLOOK_FRANCE_STORE_STATUS_THREAD_shortversion.txt)
+**Attached document:** [`demo-france-store-status-email-thread.txt`](scenario/demo-france-store-status-email-thread.txt)
 
 ### Team
 
@@ -156,7 +156,7 @@ Casey coordinates the work and passes Ada's structured analysis to Cody.
 
 | Step | Phase | Participant | Status | Details |
 |---:|---|---|---|---|
-| 00 | User request | **User** | Submitted | **Request:** Review the supplied email thread about the current situation of the five stores. Summarize what changed since last year, highlight the benefits, decide which actions should be taken, and present everything in one polished HTML page.<br><br>**Attached document:** `FAKE_OUTLOOK_FRANCE_STORE_STATUS_THREAD_shortversion.txt`. |
+| 00 | User request | **User** | Submitted | **Request:** Review the supplied email thread about the current situation of the five stores. Summarize what changed since last year, highlight the benefits, decide which actions should be taken, and present everything in one polished HTML page.<br><br>**Attached document:** `demo-france-store-status-email-thread.txt`. |
 | 01 | Plan | **Casey** | Plan ready | **Approach:** Read the email thread first and extract the store-performance data. Assign Ada to analyze the year-over-year results and benefits, then assign Cody to build a single HTML page containing the summary, benefits, and recommended actions. No external research is required because all data is in the supplied document. |
 | 02 | Contribution | **Ada** | Delivered | **Casey's assignment:** Read the full email thread and extract each store's year-over-year sales result, main challenge or explanation, and recommended action. Identify overall benefits-such as the impact of store redesign, traffic, and conversion gains-and synthesize recommended actions across the stores.<br><br>**Expected result:** A concise analysis saved to `artifacts/store-analysis.md`, including a store-by-store table with the name, year-over-year percentage, challenge, and action; a benefits summary; and prioritized improvement actions with rationale.<br><br>**Received:** Casey's brief.<br><br>**Result:** Ada delivered the analysis. |
 | 03 | Review | **Casey** | More work needed | **After Ada's result:** The analysis contains store-by-store year-over-year data, a benefits summary, and prioritized actions. Cody should now build the self-contained HTML page using this analysis. |

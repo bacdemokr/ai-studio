@@ -71,7 +71,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   const document=page.locator('#studio-crew-documents input[type=checkbox]');
   assert.equal(await document.count(),1);assert(await document.isChecked());
   assert(await document.isDisabled());assert.equal(await document.getAttribute('data-required-example'),'true');
-  assert.match(await page.locator('#studio-crew-documents').innerText(),/FAKE_OUTLOOK_FRANCE_STORE_STATUS_THREAD/);
+  assert.match(await page.locator('#studio-crew-documents').innerText(),/demo-france-store-status-email-thread\.txt/);
   await document.evaluate(node=>{node.checked=false;node.dispatchEvent(new Event('change',{bubbles:true}));});
   assert(await document.isChecked(),'The required store email cannot be unchecked');
   await page.locator('[data-goal-example=stores]').click();assert(await document.isChecked());
