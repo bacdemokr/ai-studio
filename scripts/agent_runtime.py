@@ -1,9 +1,11 @@
 """OpenClaw 2026.9.4 adapter. Credentials and native workspaces stay on the host."""
 from deletion_residue import CleanupPrerequisiteError
 import contextlib
+import copy
 import fcntl
 import hashlib
 import json
+import logging
 import os
 from pathlib import Path
 import re
@@ -455,8 +457,26 @@ def collaboration_capabilities(profile, role=None):
     return {'tools': tools, 'limits': limits}
 
 
+def _patch_already_applied(current, patch):
+    """Conservatively recognize unchanged registration fields, not merge patches generally.
+
+    Lists must match in full (including allow/deny lists). Null can mean removal
+    to the native merge operation, so leave those patches to the gateway.
+    """
+    if type(current) is not type(patch) or patch is None:
+        return False
+    if isinstance(patch, dict):
+        return all(key in current and _patch_already_applied(current[key], value)
+                   for key, value in patch.items())
+    if isinstance(patch, list):
+        return len(current) == len(patch) and all(
+            _patch_already_applied(a, b) for a, b in zip(current, patch))
+    return current == patch
+
+
 def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
     """Write native identity/skill files, then atomically publish a scoped agent entry."""
+    started = time.monotonic()
     if bootstrap and (agent_id != 'bac-host' or role or profile.get('protection', 'standard') != 'standard'):
         raise ValueError('Offline bootstrap is restricted to the unprotected BaC host.')
     if not config_path().exists():
@@ -469,10 +489,15 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
     equipped = list(profile['skills'])
     radar_exec = not role and 'radar' in equipped
     allow = tool_allowlist(profile, role)
+    lock_started = time.monotonic()
     with config_lock():
+        lock_seconds = time.monotonic() - lock_started
         config = c.read_json(config_path())
         if bootstrap and agent_id in config['agents']['entries']:
             return
+        # apply() mutates config, including providers. Compare with the original
+        # disk snapshot so model/connection changes can never look pre-applied.
+        on_disk = copy.deepcopy(config)
         config['agents']['defaults']['maxConcurrent'] = 2
         config['agents']['ownership'] = 'explicit'
         config.setdefault('tools', {}).setdefault('fs', {})['workspaceOnly'] = False
@@ -550,10 +575,17 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
             # this path as a fallback for a failed live agent registration.
             config['agents']['entries'][agent_id] = entry
             save_config(config)
+            update = 'bootstrap'
         else:
-            gateway_config_patch(patch, replace_paths)
+            update = 'unchanged' if _patch_already_applied(on_disk, patch) else 'patched'
+            if update == 'patched':
+                gateway_config_patch(patch, replace_paths)
+            # Disk equality does not prove the running gateway has loaded this
+            # identity. Keep the live barrier, also after an app restart.
             _expected_identity[agent_id] = stamp
     (workspace / '.bac-prepared-only').unlink(missing_ok=True)
+    logging.info('Agent registration %s mode=%s update=%s lock=%.3fs total=%.3fs',
+                 agent_id, control or 'normal', update, lock_seconds, time.monotonic() - started)
 
 
 class NativeCleanupPending(RuntimeError):
@@ -831,6 +863,8 @@ def gateway(path, payload=None, timeout=settings.AGENT_TIMEOUT_SECONDS):
 
 
 def respond(agent_id, session, prompt, images=None, json_response=False, timeout=None):
+    readiness_started = time.monotonic()
+    identity_checks = model_checks = 0
     response_deadline = time.monotonic() + timeout if timeout is not None else None
     # Cold gateways can pause discovery while initializing sandboxes. Share one
     # bounded read-only readiness window, respecting a shorter caller deadline.
@@ -844,6 +878,7 @@ def respond(agent_id, session, prompt, images=None, json_response=False, timeout
     if expected:
         while True:
             read_timeout = min(15, remaining())
+            identity_checks += 1
             try:live = live_agents(timeout=read_timeout)
             except (RuntimeError, subprocess.TimeoutExpired):
                 # Native sandbox preparation can briefly stall gateway discovery.
@@ -861,6 +896,7 @@ def respond(agent_id, session, prompt, images=None, json_response=False, timeout
     # an agent POST that might already have performed a tool side effect.
     while True:
         read_timeout = min(3, remaining())
+        model_checks += 1
         try:models = gateway('/v1/models', timeout=read_timeout)
         except GatewayError as error:
             if error.reason != 'timeout':raise
@@ -871,6 +907,8 @@ def respond(agent_id, session, prompt, images=None, json_response=False, timeout
         if time.monotonic() >= deadline:
             raise RuntimeError('OpenClaw has not loaded this new agent yet. Check the gateway configuration and retry the mission.')
         time.sleep(min(.2, remaining()))
+    logging.info('Agent readiness %s identity_checks=%d model_checks=%d total=%.3fs',
+                 agent_id, identity_checks, model_checks, time.monotonic() - readiness_started)
     import user_location
     prompt = prompt + '\n\n' + user_location.context()
     started = time.time()

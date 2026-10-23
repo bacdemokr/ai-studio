@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const nodes=new Map(),calls=[];
 function el(id){if(!nodes.has(id))nodes.set(id,{innerHTML:'',title:'',classList:{toggle(){}},setAttribute(k,v){this[k]=v;}});return nodes.get(id);}
-const context={Map,Set,JSON,Date,el,window:{BacCrewCatalog:[{name:'Dylan',protection:'openshell'}]},selectedCrewRole:0,room:'lounge',agentId:'a',data:{profile:{name:'A',protection:'openshell'},agents:[{key:'a'},{key:'b'}],jobs:[],protectionEvents:[]},api(route,body,owner){return new Promise((resolve,reject)=>calls.push({route,owner,resolve,reject}));}};
+const context={Map,Set,JSON,Date,el,window:{BacCrewCatalog:[{name:'Dylan',protection:'openshell'}]},selectedCrewRole:0,room:'lounge',selectedCrewVisitor:()=>null,agentId:'a',data:{profile:{name:'A',protection:'openshell'},agents:[{key:'a'},{key:'b'}],jobs:[],protectionEvents:[]},api(route,body,owner){return new Promise((resolve,reject)=>calls.push({route,owner,resolve,reject}));}};
 vm.createContext(context);
 const source=fs.readFileSync('src/studio-policies.js','utf8');
 vm.runInContext(source.slice(source.indexOf('const policyBadgeReports='),source.indexOf('function policyTarget()')),context);

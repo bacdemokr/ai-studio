@@ -21,12 +21,16 @@ CATALOG = {
                'hosts': ['export.arxiv.org', 'arxiv.org']},
     'weather': {'title': 'Weather & city lookup', 'description': 'Read live weather and look up a city.',
                 'hosts': ['api.open-meteo.com', 'geocoding-api.open-meteo.com', 'wttr.in']},
-    'zurich': {'title': 'Zurich visitor guide', 'description': 'Read public pages for event and travel ideas.',
-               'hosts': ['www.zuerich.com']},
     'search': {'title': 'Wikipedia search', 'description': 'Search public Wikipedia articles without an API key.',
                'hosts': ['en.wikipedia.org']},
     'github': {'title': 'Public GitHub API', 'description': 'Read public project information; no account credentials.',
                'hosts': ['api.github.com']},
+}
+
+# Resolve older saved grants without suggesting event-specific destinations.
+_LEGACY_CATALOG = {
+    'zurich': {'title': 'Zurich visitor guide', 'description': 'Read public pages for event and travel ideas.',
+               'hosts': ['www.zuerich.com']},
 }
 
 
@@ -44,6 +48,8 @@ def destination_permission(host):
 def permission_rule(key):
     if key in CATALOG:
         return CATALOG[key]
+    if key in _LEGACY_CATALOG:
+        return _LEGACY_CATALOG[key]
     if not isinstance(key, str) or not key.startswith('host:') or destination_permission(key[5:]) != key:
         raise ValueError('Choose an available public-read permission.')
     return {'title': key[5:], 'description': 'Requested destination. Approve this exact host only; redirects need their own approval.', 'hosts': [key[5:]]}

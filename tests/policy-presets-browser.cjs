@@ -12,9 +12,9 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
  },{route,body,owner});}
  let approved=false,release,fail=false;
  const gate=new Promise(resolve=>release=resolve);
- const presets={papers:{title:'arXiv papers',hosts:['export.arxiv.org','arxiv.org']},weather:{title:'Weather & city lookup',hosts:['api.open-meteo.com','geocoding-api.open-meteo.com','wttr.in']},zurich:{title:'Zurich visitor guide',hosts:['www.zuerich.com']},wiki:{title:'Wikipedia search',hosts:['en.wikipedia.org']},github:{title:'Public GitHub API',hosts:['api.github.com']}};
+ const presets={papers:{title:'arXiv papers',hosts:['export.arxiv.org','arxiv.org']},weather:{title:'Weather & city lookup',hosts:['api.open-meteo.com','geocoding-api.open-meteo.com','wttr.in']},search:{title:'Wikipedia search',hosts:['en.wikipedia.org']},github:{title:'Public GitHub API',hosts:['api.github.com']}};
  let submitted;
- const policy=()=>({status:'applied',requested:approved?Object.keys(presets):[],catalog:{...presets,'host:one.test':{title:'one.test',hosts:['one.test']}},pendingAccess:[{host:'one.test'}],sandboxes:['fixture']});
+ const policy=()=>({status:'applied',requested:approved?Object.keys(presets):[],recommended:[],catalog:{...presets,'host:example.com':{title:'example.com',hosts:['example.com']}},pendingAccess:[{host:'example.com'}],sandboxes:['fixture']});
  await page.route('**/api/agent-policy',async route=>{
   if(route.request().method()==='POST'){submitted=route.request().postDataJSON();await gate;approved=true;}
   return route.fulfill({json:policy()});
@@ -33,7 +33,8 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
  await page.locator('#studio-agent-policy').click();
  const section=page.locator('[data-policy-section="preset"]');
  await section.locator('.policy-access-card').first().waitFor();
- assert.equal(await section.locator('.policy-access-card').count(),5);
+ assert.equal(await section.locator('.policy-access-card').count(),4);
+ assert.doesNotMatch(await section.innerText(),/Zurich|example\.com/);
  const boxes=await section.locator('.policy-access-card').evaluateAll(nodes=>nodes.map(n=>({x:n.getBoundingClientRect().x,y:n.getBoundingClientRect().y,height:n.getBoundingClientRect().height})));
  assert(boxes.every(b=>b.x===boxes[0].x&&b.height<100));
  await page.screenshot({path:'/tmp/bac-preset-list.png'});
@@ -44,5 +45,5 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
  assert.equal(await section.locator('.policy-access-card').count(),0);
  assert.equal(await page.locator('[data-policy-section="blocked"] .policy-access-card').count(),1);
  assert.deepEqual(errors,[]);
- console.log('PASS: compact five-row presets and scoped Approve all preserve pending requests');
+ console.log('PASS: four common presets omit Zurich/example.com; scoped Approve all preserves pending requests');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

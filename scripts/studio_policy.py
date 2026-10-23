@@ -197,8 +197,6 @@ class PolicyControls:
         from tech_radar import SOURCES
         radar_hosts=[source['host'] for source in SOURCES] if role is None and 'radar' in profile.get('skills',[]) else []
         report['recommended'] = list(RESEARCH_APPROVALS) if role is not None else ['host:'+host for host in radar_hosts]
-        if role is None and not radar_hosts:
-            report['recommended'] += ['host:example.com']
         for key in approved + report['recommended']:
             catalog[key] = permission_rule(key)
         with self.db() as db:

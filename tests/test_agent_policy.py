@@ -361,7 +361,7 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual({e['reason'] for e in report['connectionIssues']}, {'dns-failed', 'destination-blocked'})
         self.assertEqual(len(report['recentDenied']), 1)
         self.assertNotIn({'host': 'example.com', 'reason': 'blocked'}, report['pendingAccess'])
-        self.assertIn('host:example.com', report['recommended'])  # Explicit teaching preset, not a denial.
+        self.assertNotIn('host:example.com', report['recommended'])  # Neither a preset nor a policy denial.
 
     def test_http_ocsf_denial_appears_in_latest_conversation(self):
         self.run_job({'prompt': "What's the weather like today?"})

@@ -16,6 +16,10 @@ Open Task shows a warning when using Local because complex tasks may take longer
 
 The demo manages its own skill files. Native skill file watching and autonomous skill reviews are disabled: repeated file-change notifications can rebuild metadata for every retained agent and delay the gateway. Unchanged files are left untouched; registration publishes an instruction revision when content changes. After editing skill files directly outside the app, re-prepare the agent or restart the runtime.
 
+Registration skips the native configuration update only when all proposed fields already match the saved configuration, including the instruction revision, model connection and complete tool lists. The next request still verifies that the running gateway has loaded the expected identity. Real edits and Casey's tool-mode transitions continue through the native update path. This avoids redundant registration overhead; it does not prewarm models or guarantee faster generation.
+
+Host-side profiling with Python logging at INFO includes registration lock/total time and readiness time/discovery counts. These entries contain no prompts, file contents or credentials; model-request time remains separate.
+
 | Provider | Default endpoint | OpenClaw API format |
 | --- | --- | --- |
 | NVIDIA Inference (Employee only) | `https://inference-api.nvidia.com/v1` | `openai-completions` |

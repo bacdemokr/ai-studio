@@ -49,6 +49,7 @@ class BulkPolicyTests(unittest.TestCase):
             self.assertEqual(apply.call_count,1)
         self.assertEqual(self.saved()[0],sorted(individual_permissions(keys)))
         self.assertNotIn('host:example.com',self.saved()[0])
+        self.assertNotIn('host:www.zuerich.com',self.saved()[0])
         with self.assertRaises(Problem):
             self.studio.policy_change(self.owner,{'permissions':keys,'allow':True,'scope':'presets'})
 
@@ -58,6 +59,29 @@ class BulkPolicyTests(unittest.TestCase):
             with self.subTest(scope=scope),self.assertRaises(Problem):
                 self.studio.policy_change(self.owner,{'permissions':['host:unrelated.org'],'allow':True,'scope':scope})
         self.assertEqual(self.saved(),([],0))
+
+    def test_common_presets_omit_event_and_example_sites_but_exact_requests_can_be_approved(self):
+        report = self.studio.policy_report(self.owner)
+        self.assertNotIn('zurich', report['catalog'])
+        self.assertNotIn('host:example.com', report['recommended'])
+        self.request('Read https://example.com and https://www.zuerich.com')
+        keys = ['host:example.com', 'host:www.zuerich.com']
+        self.studio.policy_change(self.owner, {'permissions': keys, 'allow': True})
+        self.assertEqual(self.saved(), (keys, 0))
+
+    def test_legacy_zurich_grant_remains_readable_and_revocable(self):
+        self.studio.ensure_agent(self.owner, self.studio.profile(self.owner))
+        with self.studio.db() as db:
+            db.execute('INSERT INTO agent_policies (owner,approved) VALUES (?,?)',
+                       (self.owner, json.dumps(['zurich'])))
+        self.adapter.permissions['bac-' + self.owner] = ['zurich']
+        report = self.studio.policy_report(self.owner)
+        self.assertEqual(report['status'], 'applied')
+        self.assertEqual(report['requested'], ['host:www.zuerich.com'])
+        self.assertEqual(self.saved()[0], ['zurich'])
+        self.studio.policy_change(self.owner, {'permission': 'host:www.zuerich.com', 'allow': False})
+        self.assertEqual(self.saved(), ([], 0))
+        self.assertEqual(self.studio.policy_report(self.owner)['status'], 'applied')
 
     def test_existing_approvals_and_other_agents_are_preserved(self):
         self.studio.policy_change(self.owner,{'permission':'papers','allow':True})
