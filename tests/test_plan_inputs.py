@@ -16,7 +16,7 @@ class PlanInputs(unittest.TestCase):
     def test_every_phase_knows_team_capabilities_and_exec_scope(self):
         self.start()
         self.app.execute(self.app.next_job())
-        self.assertEqual(len(self.adapter.calls), 7)
+        self.assertEqual(len(self.adapter.calls), 8)
         self.assertIn('"skills": ["data-analysis"]', self.adapter.calls[0][2])
         self.assertIn('"skillScope"', self.adapter.calls[0][2])
         for _, _, prompt in self.adapter.calls:
@@ -148,7 +148,7 @@ class PlanInputs(unittest.TestCase):
         self.adapter.respond = respond
         self.start('/plan Analyze sales (1).csv and independently verify it.')
         self.app.execute(self.app.next_job())
-        self.assertEqual(len(checked), 4)
+        self.assertEqual(len(checked), 5)
         team = self.app.crew_owner(self.owner)
         for role in (0, 6, 4):
             self.assertEqual(list(self.app.workspace(team, role).glob('inbox/plan-input-*')), [])

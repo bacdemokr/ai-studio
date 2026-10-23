@@ -85,16 +85,16 @@ class CollaborationTests(unittest.TestCase):
         self.app.execute(self.app.next_job())
         job = self.job(result)
         self.assertEqual(job['status'], 'done')
-        self.assertEqual([a.rsplit('-r',1)[1] for a,_,_ in self.adapter.calls], ['0','8','0','6','0','7','0'])
-        self.assertIn('Verified contribution from Scout', self.adapter.calls[2][2])
-        self.assertIn('Verified contribution from Ada', self.adapter.calls[4][2])
-        self.assertIn('Verified contribution from Iris', self.adapter.calls[6][2])
+        self.assertEqual([a.rsplit('-r',1)[1] for a,_,_ in self.adapter.calls], ['0','0','8','0','6','0','7','0'])
+        self.assertIn('Verified contribution from Scout', self.adapter.calls[3][2])
+        self.assertIn('Verified contribution from Ada', self.adapter.calls[5][2])
+        self.assertIn('Verified contribution from Iris', self.adapter.calls[7][2])
         self.assertEqual(len(self.app.state(self.owner)['agents']), 1)
         self.assertIn('bac-' + self.owner, self.adapter.agents)
         self.assertEqual(len(self.adapter.reaction_calls), 1)
         self.assertIs(job['payload']['includeHiredAgents'], False)
         self.assertEqual(set(job['payload']['collaboration']['outputs']), {'8','6','7'})
-        self.assertEqual(len({session for _,session,_ in self.adapter.calls}), 7)
+        self.assertEqual(len({session for _,session,_ in self.adapter.calls}), 8)
         self.assertEqual(self.app.available_file(self.owner, job['result']['files'][0]).read_text(), job['result']['answer'])
 
     def test_captain_cannot_skip_planned_code_review_on_saved_file_claim(self):
@@ -191,7 +191,7 @@ class CollaborationTests(unittest.TestCase):
             if role==8:self.app.decision(team,result['id'],'cancel')
         self.adapter.after_call=stop
         self.app.execute(self.app.next_job())
-        self.assertEqual(len(self.adapter.calls),2)
+        self.assertEqual(len(self.adapter.calls),3)
         self.assertEqual(self.job(result)['status'],'cancelled')
 
     def test_failure_preserves_completed_contributions(self):
@@ -199,7 +199,7 @@ class CollaborationTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,'policy denial'):self.app.execute(self.app.next_job())
         plan=self.job(result)['payload']['collaboration']
         self.assertEqual(set(plan['outputs']),{'8'})
-        self.assertEqual(len(self.adapter.calls),4)
+        self.assertEqual(len(self.adapter.calls),5)
         self.assertNotIn('answer',self.job(result)['result'])
 
     def test_researcher_is_unprotected_and_retired_dylan_chat_is_rejected(self):

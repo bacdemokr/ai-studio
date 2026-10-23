@@ -12,10 +12,15 @@ class DirectScopeAdapter(PlanAdapter):
         self.plan = {'summary': 'I can answer directly.', 'tasks': [], 'answer': 'Direct answer.'}
         self.decision = decision
         self.repair = repair
+        self.scope_checks = 0
 
     def respond(self, agent, session, prompt, **kwargs):
         if session.endswith('-planning-captain-scope-check'):
             self.calls.append((agent, session, prompt))
+            self.scope_checks += 1
+            if self.repair and self.scope_checks > 1:
+                return json.dumps({'decisions': [{'agent': 'casey', 'allowed': True,
+                    'reason': 'The repaired plan delegates analysis rather than doing it in the assignment.'}]})
             return json.dumps({'decisions': [self.decision]})
         if session.endswith('-planning-input-repair'):
             self.calls.append((agent, session, prompt))
@@ -27,9 +32,11 @@ class DirectScopeAdapter(PlanAdapter):
 
 
 class CaptainDirectScopeTests(unittest.TestCase):
-    def run_case(self, decision, repair=None):
+    def run_case(self, decision, repair=None, proposed=None):
         with tempfile.TemporaryDirectory() as directory:
             adapter = DirectScopeAdapter(decision, repair)
+            if proposed is not None:
+                adapter.plan = proposed
             app = Studio(directory, adapter, start_worker=False)
             owner = app.session()[0]['id']
             app.onboard(owner, {'name': 'Personal', 'skills': ['web']})
@@ -69,6 +76,19 @@ class CaptainDirectScopeTests(unittest.TestCase):
         job, _ = self.run_case({'agent': 'casey', 'allowed': 'true', 'reason': 'Not a boolean.'})
         self.assertEqual(job['payload']['collaboration']['outcome'], 'unavailable')
         self.assertNotIn('Direct answer.', job['result']['answer'])
+
+    def test_delegating_rendering_does_not_skip_caseys_own_scope_check(self):
+        proposed = {'summary': 'I calculated the rates and identified the riskiest inventory.',
+            'tasks': [{'role': 5, 'agent': 'builtin',
+                       'task': 'Render my computed risk ranking and my recommended action as HTML.'}]}
+        job, calls = self.run_case({'agent': 'casey', 'allowed': False,
+            'reason': 'Casey performed the analysis itself inside the plan.'}, proposed=proposed)
+        plan = job['payload']['collaboration']
+        self.assertEqual(plan['outcome'], 'unavailable')
+        self.assertEqual(plan['calledRoles'], [])
+        check = next(prompt for _, session, prompt in calls if session.endswith('-planning-captain-scope-check'))
+        self.assertIn(proposed['tasks'][0]['task'], check)
+        self.assertEqual(sum(s.endswith('-planning-input-repair') for _, s, _ in calls), 1)
 
 
 if __name__ == '__main__':

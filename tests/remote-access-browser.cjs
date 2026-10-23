@@ -72,7 +72,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs/promises'),{chrom
   await page.locator('.world-campus-room[data-world-room=workshop]').click();await page.locator('#studio-name').fill('Remote QA');await page.locator('#studio-create').click();
   await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Remote QA'&&!BacCampus.inspect().arrival);
   const instruction='# Remote QA\nRead the brief.\n한국어도 복사됩니다.';
-  await page.route('**/api/agent-documents*',r=>r.fulfill({json:{name:'Remote QA',description:'Fixture instructions',documents:[{filename:'AGENTS.md',group:'agent',status:'ready',content:instruction,updated:1}]}}));
+  await page.route('**/api/agent-documents*',r=>r.fulfill({json:{name:'Remote QA',description:'Fixture instructions',documents:[{path:'AGENTS.md',filename:'AGENTS.md',group:'agent',status:'ready',revision:'fixture',content:instruction,updated:1}]}}));
   await page.locator('#studio-agent-code').click();await copyAndPaste('[data-code-copy="0"]',instruction);await close();
   await page.locator('#studio-agent-name').click();await copyAndPaste('#studio-identity-copy',instruction);await close();
   await page.locator('#studio-focus').click();

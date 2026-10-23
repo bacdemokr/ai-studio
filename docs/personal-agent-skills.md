@@ -38,7 +38,7 @@ Profiles and selected skill IDs persist at Hiring; workspace definitions are wri
 
 ## Persona transparency
 
-**Instructions** opens AGENTS.md, IDENTITY.md and SOUL.md side by side. Each supports Copy; definition downloads are omitted. Click the agent name or portrait to browse all saved definitions, skills and memory. **Files** shows only that agent’s uploads/results and is hidden when empty.
+**Instructions** keeps three editable panels for AGENTS.md, IDENTITY.md and SOUL.md. Click the agent name/portrait to edit all displayed files, including equipped skills and memory, in **Agent Files**. Use **Save changes** while the agent is idle; Instructions saves its three files and keeps other file drafts for Agent Files. Switching files keeps drafts; explicit saves survive workspace preparation and app restarts. Custom file instructions take precedence over generated persona defaults on subsequent tasks, without granting skills or tool permissions. **Edit agent** still controls the displayed profile, equipped skills and model. **Files** shows only that agent’s uploads/results and is hidden when empty.
 
 The editor’s Tone and Role are written verbatim into SOUL.md (outer whitespace is trimmed; internal line breaks are preserved). Preset buttons insert their visible label and description. Bare words such as Cynical are not secretly expanded. The separate Shared boundaries section asks the agent to follow that persona while avoiding severe profanity, abuse, hate/threats, invented evidence and permission bypass. Tool/security instructions remain in AGENTS.md and the equipped skills; they are not hidden personality rewrites. Existing native files update on the next run after restart or profile edit.
 

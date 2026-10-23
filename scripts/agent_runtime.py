@@ -199,6 +199,8 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
     """Materialize definitions and skills without starting a runtime or model request."""
     protected = profile.get('protection', 'standard') == 'openshell'
     workspace = Path(workspace)
+    from document_edits import edited_paths
+    edited = edited_paths(workspace)
     fresh = not (workspace / 'IDENTITY.md').exists()
     workspace.mkdir(parents=True, exist_ok=True, mode=0o700)
     if fresh:
@@ -284,7 +286,7 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
             'with citations and clearly identify the missing coverage. Do not retry browsing after a budget notice.\n')
     if role is None:
         from personal_voice import signature
-        if reply_format := signature(profile):
+        if reply_format := signature({**profile, '_editedDocuments': sorted(edited)}):
             files['SOUL.md'] += '\n# Signature replies\n' + reply_format + '\n'
     if not protected:
         files['AGENTS.md'] = files['AGENTS.md'].replace('Work only in this workspace.',
@@ -329,6 +331,8 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
             files['AGENTS.md'] += '\n# Actual capabilities and limits\n' + json.dumps(collaboration_capabilities(profile, role), ensure_ascii=False) + '\n'
     legacy_files = {}
     def write(target, content):
+        if target.relative_to(workspace).as_posix() in edited and target.exists():
+            return
         previous = target.read_text(encoding='utf-8', errors='replace') if target.exists() else None
         if previous != content and (overwrite or previous is None or (target.name in legacy_files and previous == legacy_files[target.name])):
             target.write_text(content, encoding='utf-8')
@@ -515,7 +519,7 @@ def register(agent_id, workspace, profile, role=None, *, bootstrap=False):
         # Publish real instruction edits even when the equipped skill names and
         # model stay the same. File watching is disabled for app-managed skills.
         revision = hashlib.sha256(json.dumps(entry, sort_keys=True).encode())
-        definitions = [workspace/name for name in ('IDENTITY.md', 'SOUL.md', 'AGENTS.md', 'HEARTBEAT.md')]
+        definitions = [workspace/name for name in ('IDENTITY.md', 'SOUL.md', 'AGENTS.md', 'USER.md', 'MEMORY.md', 'TOOLS.md', 'HEARTBEAT.md')]
         definitions += [workspace/'skills'/('bac-'+skill)/'SKILL.md' for skill in equipped]
         for definition in definitions:
             if definition.is_file():

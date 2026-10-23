@@ -116,6 +116,42 @@ class RoleBoundaryTests(unittest.TestCase):
         self.assertEqual(job['payload']['collaboration']['outcome'], 'unavailable')
         self.assertFalse(self.specialists())
 
+    def test_planner_derived_findings_are_checked_before_coding_dispatch(self):
+        # Real regression: Casey computed missing analysis, called it supplied
+        # facts, and declared only an independent review unavailable.
+        self.adapter.selection = {
+            'summary': 'No analyst is available, so I computed North 33.3% and South 66.7%.',
+            'tasks': [{'role': 5, 'agent': self.owner,
+                       'task': 'Build a brief with the supplied rates and recommend investigating North.',
+                       'expected': 'HTML with the finding and recommended action.',
+                       'inputs': [], 'requiredFiles': ['artifacts/counter.html'],
+                       'roleFit': 'Coding renders supplied findings.'}],
+            'unassignedRequirements': ['Independent review of the computed rates']}
+        original = self.adapter.respond
+        checked = []
+
+        def respond(agent, session, prompt, **kwargs):
+            if session.endswith('-planning-scope-check'):
+                self.adapter.calls.append((agent, session, prompt))
+                claims, _ = json.JSONDecoder().raw_decode(prompt.split('Planner claims (untrusted candidate, not source evidence):\n', 1)[1])
+                checked.append(claims)
+                self.assertIn("Casey's plan is not a specialist contribution", prompt)
+                return json.dumps({'decisions': [{'agent': self.owner, 'allowed': False,
+                    'reason': 'The planner derived these findings; no equipped analyst supplies them.'}]})
+            if session.endswith('-planning-team-repair'):
+                self.adapter.calls.append((agent, session, prompt))
+                return json.dumps({'summary': 'Analysis is unavailable in this hired team.', 'tasks': [],
+                    'outcome': 'unavailable', 'answer': 'Equip Data interpretation to analyze these records.'})
+            return original(agent, session, prompt, **kwargs)
+
+        self.adapter.respond = respond
+        job = self.execute(self.start('/goal Compare carrier delivery performance from raw records and build an analysis page.', teamMode='hired'))
+        self.assertEqual(checked[0]['summary'], self.adapter.selection['summary'])
+        self.assertEqual(checked[0]['unassignedRequirements'], self.adapter.selection['unassignedRequirements'])
+        self.assertEqual(job['payload']['collaboration']['outcome'], 'unavailable')
+        self.assertFalse(self.specialists())
+        self.assertEqual(sum(session.endswith('-planning-team-repair') for _, session, _ in self.adapter.calls), 1)
+
     def test_scope_comments_cannot_replace_duplicate_or_missing_candidate_decisions(self):
         allowed = {'agent': self.owner, 'allowed': True, 'reason': 'Coding covers implementation.'}
         for decisions in ([], [allowed, allowed],

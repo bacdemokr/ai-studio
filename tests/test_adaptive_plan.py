@@ -35,7 +35,7 @@ class AdaptivePlanTests(unittest.TestCase):
     def test_one_specialist_is_enough(self):
         self.adapter.plan['tasks'] = [{'role': 7, 'task': 'Write a short greeting.'}]
         result = self.start(); self.app.execute(self.app.next_job())
-        self.assertEqual(self.called(), [0, 7, 0])
+        self.assertEqual(self.called(), [0, 0, 7, 0])
         self.assertEqual(self.job(result)['payload']['collaboration']['calledRoles'], [7])
 
     def test_expected_result_is_validated_saved_and_sent_to_specialist(self):
@@ -44,8 +44,8 @@ class AdaptivePlanTests(unittest.TestCase):
         result = self.start(); self.app.execute(self.app.next_job())
         plan = self.job(result)['payload']['collaboration']
         self.assertEqual(plan['handoffs']['7']['expected'], self.adapter.plan['tasks'][0]['expected'])
-        self.assertIn('Expected result and acceptance criteria from Casey:',self.adapter.calls[1][2])
-        self.assertIn(plan['handoffs']['7']['expected'],self.adapter.calls[1][2])
+        self.assertIn('Expected result and acceptance criteria from Casey:',self.adapter.calls[2][2])
+        self.assertIn(plan['handoffs']['7']['expected'],self.adapter.calls[2][2])
         for expected in ('', None, ['invented'], 'x'*1501):
             with self.subTest(expected=expected), self.assertRaises(RuntimeError):
                 read_plan(json.dumps({'summary':'Write','tasks':[{'role':7,'task':'Write','expected':expected}]}))
@@ -67,7 +67,7 @@ class AdaptivePlanTests(unittest.TestCase):
                 self.adapter.respond = respond
                 result = self.start(); self.app.execute(self.app.next_job())
                 plan = self.job(result)['payload']['collaboration']
-                self.assertEqual(self.called(), [0,8,0] if finish_after==1 else [0,8,0,6,0])
+                self.assertEqual(self.called(), [0,0,8,0] if finish_after==1 else [0,0,8,0,6,0])
                 self.assertEqual(plan['skippedRoles'], [6,7] if finish_after==1 else [7])
                 self.assertEqual(len(plan['outputs']), finish_after)
                 self.assertIn('no additional agents', plan['checks'][-1]['reason'])
@@ -88,7 +88,7 @@ class AdaptivePlanTests(unittest.TestCase):
         self.adapter.respond = respond
         result = self.start(); self.app.execute(self.app.next_job())
         plan = self.job(result)['payload']['collaboration']
-        self.assertEqual(self.called(), [0,8,0])
+        self.assertEqual(self.called(), [0,0,8,0])
         self.assertEqual(plan['outcome'], 'unavailable')
         self.assertEqual(set(plan['outputs']), {'8'})
         self.assertEqual(plan['skippedRoles'], [6,7])
@@ -103,7 +103,7 @@ class AdaptivePlanTests(unittest.TestCase):
         self.app.execute(self.app.next_job())
         self.assertEqual(self.job(result)['payload']['collaboration']['outcome'], 'partial')
         self.assertIn('Verified contribution from Scout', self.job(result)['result']['answer'])
-        self.assertEqual(self.called(), [0,8,0,0])
+        self.assertEqual(self.called(), [0,0,8,0,0])
         self.assertEqual(set(self.job(result)['payload']['collaboration']['outputs']), {'8'})
 
     def test_final_review_reports_unavailable_capability_after_one_specialist(self):
@@ -118,7 +118,7 @@ class AdaptivePlanTests(unittest.TestCase):
         self.adapter.respond = respond
         result = self.start(); self.app.execute(self.app.next_job())
         plan = self.job(result)['payload']['collaboration']
-        self.assertEqual(self.called(), [0,5,0])
+        self.assertEqual(self.called(), [0,0,5,0])
         self.assertEqual(plan['checks'][-1]['outcome'], 'unavailable')
         self.assertEqual(plan['outcome'], 'unavailable')
         self.assertIn('not been deployed', self.job(result)['result']['answer'])
@@ -142,7 +142,7 @@ class AdaptivePlanTests(unittest.TestCase):
         team = self.app.crew_owner(self.owner)
         self.assertEqual(list((self.app.workspace(team,0)/'inbox').glob('plan-*')), [])
         self.assertTrue(any(path.endswith('.py') for path in self.job(result)['result']['files']))
-        self.assertEqual(self.called(), [0,5,0,4,0])
+        self.assertEqual(self.called(), [0,0,5,0,4,0])
 
     def test_invalid_decisions_and_empty_answers_are_rejected(self):
         for value in ({'done':'true','reason':'x','answer':'x'}, {'done':True,'reason':'x'},

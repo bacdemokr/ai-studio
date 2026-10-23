@@ -33,7 +33,7 @@ class CaptainControlsTests(unittest.TestCase):
         self.adapter.respond = respond
         result = self.start()
         self.app.execute(self.app.next_job())
-        self.assertEqual(modes, ['none', 'read', 'read', 'read'])
+        self.assertEqual(modes, ['none', 'none', 'read', 'read', 'read'])
         team = self.app.crew_owner(self.owner)
         self.app.enqueue(team, {'kind':'crew-chat','crewRole':0,'prompt':'Create a short note.'})
         self.app.execute(self.app.next_job())

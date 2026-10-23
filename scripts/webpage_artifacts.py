@@ -7,7 +7,9 @@ from pathlib import Path
 DEMO_CODING_INSTRUCTIONS = (
     '\nDEMO CODING PACE: applies when this assignment requires implementation. '
     'Prioritize a usable desktop demo quickly. Implement the requested core behavior with simple readable code, '
-    'one clear layout and native browser controls. No mobile layouts, mobile breakpoints, touch controls or mobile testing. '
+    'one clear layout and native browser controls. The desktop preview iframe can be narrower than the screen: '
+    'use a fluid page width capped by max-width, not a fixed-width page or body min-width. '
+    'Contain wide tables in their own horizontal scroll area. No separate mobile layout, touch controls or mobile testing. '
     'Do not add optional features, elaborate animations, themes, settings, persistence, frameworks or multiple files '
     'unless the current user explicitly requires them. A useful small result is preferable to an unfinished polished one. '
     'Keep generated source compact: render repeated questions, cards or options from shared data and reusable functions '

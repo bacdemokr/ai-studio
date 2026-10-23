@@ -36,7 +36,7 @@ class PartialPlanTests(unittest.TestCase):
         pages = [f for f in job['result']['files'] if f.endswith('.html')]
         self.assertEqual(len(pages), 1)
         self.assertIn('Saved counter', self.app.available_file(self.owner, pages[0]).read_text())
-        self.assertEqual(len(self.adapter.calls), 2, 'Do not repeat completed work or retry the model')
+        self.assertEqual(len(self.adapter.calls), 3, 'Do not repeat completed work or retry the model')
         self.assertEqual(self.adapter.reaction_calls, [])
 
     def test_connection_failure_before_any_contribution_is_not_a_partial_success(self):
@@ -74,7 +74,7 @@ class PartialPlanTests(unittest.TestCase):
         result = self.start('/plan Build and test a dashboard, then deploy it.')
         self.app.execute(self.app.next_job())
         job = self.job(result); plan = job['payload']['collaboration']
-        self.assertEqual(len(self.adapter.calls), 7)
+        self.assertEqual(len(self.adapter.calls), 8)
         self.assertEqual(plan['calledRoles'], [6, 7, 5])
         self.assertEqual(plan['outcome'], 'partial')
         self.assertEqual(plan['remaining'], plan['checks'][-1]['remaining'])

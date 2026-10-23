@@ -101,6 +101,8 @@ class PlanEdgeCases(unittest.TestCase):
         def respond(agent,session,prompt,**kwargs):
             if session.startswith('bac-roundtable-'):return 'A personal reaction.'
             self.adapter.calls.append((agent,session,prompt))
+            if session.endswith('-planning-captain-scope-check'):
+                return json.dumps({'decisions':[{'agent':'casey','allowed':True,'reason':'Delegates the work.'}]})
             if '-checking-' in session:return json.dumps({'done':False,'reason':'Review is required.'})
             if session.endswith('-planning'):return json.dumps(self.adapter.plan)
             if session.endswith('-reviewing'):return json.dumps({'done':True,'reason':'Complete.','answer':'Combined'})
@@ -126,7 +128,7 @@ class PlanEdgeCases(unittest.TestCase):
         self.assertEqual(sum(r is not None for r in results),1)
 
     def test_stop_at_each_model_phase_starts_no_later_call(self):
-        for stop_at in range(1,8):
+        for stop_at in range(1,9):
             with self.subTest(stop_at=stop_at):
                 self.adapter.calls.clear();first=self.start();team=self.app.crew_owner(self.owner)
                 def stop(role,prompt):
@@ -162,6 +164,8 @@ class PlanEdgeCases(unittest.TestCase):
                 result=self.start();team=self.app.crew_owner(self.owner)
                 original=self.adapter.respond
                 def respond(agent,session,prompt,**kwargs):
+                    if session.endswith('-planning-captain-scope-check'):
+                        return json.dumps({'decisions':[{'agent':'casey','allowed':True,'reason':'Delegates the work.'}]})
                     if '-checking-' in session:return json.dumps({'done':False,'reason':'Review is required.'})
                     if session.endswith('-planning'):return json.dumps(self.adapter.plan)
                     if agent.endswith('-r5'):
@@ -206,7 +210,7 @@ class PlanEdgeCases(unittest.TestCase):
             with self.subTest(order=order):
                 self.adapter.plan['tasks']=[{'role':role,'task':'Do your part'} for role in order]
                 self.adapter.calls.clear();result=self.start();self.app.execute(self.app.next_job())
-                self.assertEqual([int(agent.rsplit('-r',1)[1]) for agent,_,_ in self.adapter.calls],[0,*[item for role in order[:-1] for item in (role,0)],order[-1],0])
+                self.assertEqual([int(agent.rsplit('-r',1)[1]) for agent,_,_ in self.adapter.calls],[0,0,*[item for role in order[:-1] for item in (role,0)],order[-1],0])
                 self.assertEqual(self.job(result)['status'],'done')
 
     def test_preparation_failure_makes_no_unprotected_model_call(self):

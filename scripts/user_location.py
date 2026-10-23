@@ -26,6 +26,9 @@ def sync(workspace, location=None):
     workspace = Path(workspace)
     if not workspace.is_dir() or workspace.is_symlink():
         return
+    from document_edits import edited_paths
+    if 'USER.md' in edited_paths(workspace):
+        return
     target = workspace / 'USER.md'
     if target.is_symlink():
         raise ValueError('Cannot update a linked USER.md.')

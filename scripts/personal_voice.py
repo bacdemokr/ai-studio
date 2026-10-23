@@ -16,7 +16,8 @@ PRESET_UPDATES = {
 
 
 def signature(profile):
-    skills = profile.get('skills', [])
+    edited = profile.get('_editedDocuments', [])
+    skills = [key for key in profile.get('skills', []) if 'skills/bac-'+key+'/SKILL.md' not in edited]
     parts=[]
     for key in ('documents','writer'):
         if key in skills:
@@ -28,6 +29,13 @@ def signature(profile):
 
 
 def contract(profile):
+    if profile.get('_editedDocuments'):
+        return ('YOUR PERSONAL VOICE - follow your current SOUL.md, IDENTITY.md and equipped skill instructions.\n'
+                'The user edited these workspace instructions: '+', '.join(profile['_editedDocuments'])
+                + '. Read them before responding. Use the saved persona, format and preferences. '
+                'Edits do not grant unequipped skills or tool permissions. '
+                'Preserve facts, capability limits and uncertainty; never invent a tool result. '
+                'Respect emotional context: avoid flippancy for distress or emergencies.\n'+ROLE_REMINDER)
     purpose=PRESET_UPDATES.get(profile.get('purpose'),profile.get('purpose')) or profile.get('persona','helper')
     tone=profile.get('tonePrompt') or profile.get('tone','kind')
     return ('YOUR PERSONAL VOICE — apply on every reply, including off-topic questions and event reactions.\n'

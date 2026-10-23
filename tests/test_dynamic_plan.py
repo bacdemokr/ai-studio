@@ -31,7 +31,7 @@ class DynamicPlanTests(unittest.TestCase):
         self.app.execute(self.app.next_job())
         job = self.job(result)
         self.assertEqual(job['status'], 'done')
-        self.assertEqual([int(a.rsplit('-r', 1)[1]) for a, _, _ in self.adapter.calls], [0, 5, 0, 4, 0])
+        self.assertEqual([int(a.rsplit('-r', 1)[1]) for a, _, _ in self.adapter.calls], [0, 0, 5, 0, 4, 0])
         self.assertEqual({ext for ext, _ in received}, {'.py', '.json'})
         self.assertTrue(any('return a + b' in text for _, text in received))
         team = self.app.crew_owner(self.owner)
@@ -74,7 +74,7 @@ class DynamicPlanTests(unittest.TestCase):
         result = self.start('/plan Interpret this table and design a dashboard.')
         self.app.execute(self.app.next_job())
         self.assertEqual(self.job(result)['status'], 'done')
-        self.assertEqual([int(a.rsplit('-r', 1)[1]) for a, _, _ in self.adapter.calls], [0, 6, 0, 7, 0, 5, 0])
+        self.assertEqual([int(a.rsplit('-r', 1)[1]) for a, _, _ in self.adapter.calls], [0, 0, 6, 0, 7, 0, 5, 0])
         for role in (6, 7, 8):
             with self.assertRaises(Problem):
                 self.app.enqueue(team, {'kind': 'crew', 'preset': True, 'brief': {'schema': 2}, 'enabledRoles': [0, role]})
@@ -100,4 +100,4 @@ class DynamicPlanTests(unittest.TestCase):
         self.adapter.after_call = lambda role, prompt: self.app.decision(team, result['id'], 'cancel') if role == 5 else None
         self.app.execute(self.app.next_job())
         self.assertEqual(self.job(result)['status'], 'cancelled')
-        self.assertEqual(len(self.adapter.calls), 2)
+        self.assertEqual(len(self.adapter.calls), 3)

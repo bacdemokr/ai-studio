@@ -485,6 +485,14 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
         profile['avatar'] = avatar_for(owner, profile.get('avatar'))
         profile.setdefault('tone', 'kind')
         profile.setdefault('verbosity', 'balanced')
+        from document_edits import edited_paths
+        from agent_documents import CORE_DOCUMENTS, OPTIONAL_DOCUMENTS
+        allowed = {name for name, _ in CORE_DOCUMENTS + OPTIONAL_DOCUMENTS}
+        allowed.update('skills/bac-'+key+'/SKILL.md' for key in profile['skills'])
+        workspace = self.workspace(owner)
+        edited = {path for path in edited_paths(workspace) & allowed if (workspace/path).is_file()}
+        if edited:
+            profile['_editedDocuments'] = sorted(edited)
         return profile
 
     def onboard(self, owner, data):

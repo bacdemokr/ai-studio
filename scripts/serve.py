@@ -274,6 +274,13 @@ class Handler(SimpleHTTPRequestHandler):
             if self.path == '/api/team-model':
                 import team_models
                 return self.json_response(team_models.select(studio,studio.crew_owner(owner, scenario),data))
+            if self.path == '/api/agent-documents':
+                from agent_documents import save_documents
+                from studio import CREW_CATALOG
+                role = data.get('role')
+                if role is not None and (type(role) is not int or role not in range(len(CREW_CATALOG))):
+                    raise Problem('Choose a valid crew member.')
+                return self.json_response(save_documents(studio, studio.crew_owner(owner, scenario) if role is not None else owner, data, role))
             if self.path == '/api/bac-reset' and data.get('scope', 'scenario') not in ('scenario', 'all'):
                 raise Problem('Choose whether to reset this scenario or all scenarios.')
             routes = {
