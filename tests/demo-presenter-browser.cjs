@@ -41,12 +41,14 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   const mode=await page.locator('#studio-crew-team-mode [aria-pressed=true]').getAttribute('data-team-mode');
   const examples=require('../src/goal-examples.json'),chips=page.locator('[data-goal-example]');
   assert.equal(await chips.count(),examples.length);
+  assert.equal(await page.locator('html').getAttribute('lang'),'ko');
+  for(const example of examples){assert.match(example.title,/[가-힣]/);assert.match(example.prompt,/^\/goal [가-힣]/);}
   for(const example of examples)assert.equal(await page.locator('[data-goal-example='+example.id+']').getAttribute('title'),example.detail);
   assert.equal(await page.getByRole('button',{name:'Try a goal'}).count(),0);
   await page.locator('#studio-crew-prompt').fill('/goal My unfinished draft');
   for(const id of ['travel','drone','pong','event']){
    await page.locator('[data-goal-example='+id+']').click();
-   assert.equal(await page.locator('#studio-crew-prompt').inputValue(),examples.find(g=>g.id===id).prompt);
+   assert.equal(await page.locator('#studio-crew-prompt').inputValue(),examples.find(g=>g.id===id).prompt.replaceAll('{{city}}','Seoul'));
    assert.equal(await page.locator('[data-goal-example='+id+']').getAttribute('aria-pressed'),'true');
    assert.equal(await page.locator('#studio-dialog').isVisible(),false,'Examples fill the composer without a dialog');
    assert.equal(await page.locator('#studio-crew-team-mode [aria-pressed=true]').getAttribute('data-team-mode'),mode);
@@ -57,6 +59,20 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   assert(await page.locator('#studio-crew-examples').evaluate(e=>e.scrollWidth<=e.clientWidth+1),'Chips wrap within a narrow side panel');
   await page.locator('#studio-crew-examples').screenshot({path:'/tmp/bac-inline-goals-narrow.png'});
   await page.setViewportSize({width:1600,height:1050});
+  await page.locator('#studio-config').click();
+  await page.locator('#studio-settings-location-tab').click();
+  assert.equal(await page.locator('#studio-location-city').inputValue(),'Seoul');
+  await page.locator('#studio-location-city').fill('부산');
+  await page.locator('#studio-save-settings').click();
+  await page.waitForFunction(()=>document.querySelector('#studio-settings-status').textContent.includes('저장했습니다'));
+  await page.keyboard.press('Escape');
+  for(const id of ['travel','event']){
+   await page.locator('[data-goal-example='+id+']').click();
+   const prompt=await page.locator('#studio-crew-prompt').inputValue();
+   assert.equal(prompt,examples.find(g=>g.id===id).prompt.replaceAll('{{city}}','부산'));
+   assert(!prompt.includes('{{city}}'));
+  }
+  assert.equal((await page.evaluate(()=>fetch('/api/settings').then(r=>r.json()))).location.city,'부산');
   await page.locator('#studio-crew-prompt').fill('/goal My edited goal');
   assert.equal(await page.locator('[data-goal-example][aria-pressed=true]').count(),0);
   let releaseUpload,uploadStarted;

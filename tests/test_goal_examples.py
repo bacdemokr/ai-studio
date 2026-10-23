@@ -31,8 +31,8 @@ class GoalExamplesTests(unittest.TestCase):
             self.assertTrue(item['detail'])
             self.assertNotRegex(item['prompt'], r'(?i)\b(specialists?|hiring|hire|handoff|Coding|UX design|Web research specialist|Data interpretation|Slack announcements)\b')
         travel = next(item for item in examples if item['id'] == 'travel')
-        self.assertIn('weather forecast', travel['prompt'])
-        self.assertIn('official tourism sources', travel['prompt'])
+        self.assertIn('일기예보', travel['prompt'])
+        self.assertIn('공식 관광 자료', travel['prompt'])
 
 
 if __name__ == '__main__':

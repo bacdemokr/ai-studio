@@ -54,7 +54,7 @@ PROVIDERS = {
     'openai': {'label': 'OpenAI', 'baseUrl': 'https://api.openai.com/v1', 'api': 'openai-responses'},
     'anthropic': {'label': 'Anthropic', 'baseUrl': 'https://api.anthropic.com', 'api': 'anthropic-messages'},
 }
-DEFAULT_LOCATION = {'city': 'Zurich'}
+DEFAULT_LOCATION = {'city': 'Seoul'}
 DEFAULT_EVENT = {'region': 'Europe / EMEA', 'city': 'Zurich', 'language': 'English', 'venue': ''}
 
 

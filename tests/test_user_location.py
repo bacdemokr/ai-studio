@@ -48,7 +48,7 @@ class UserLocationTests(unittest.TestCase):
         self.assertIn('Seoul', (self.studio.workspace(third)/'USER.md').read_text())
 
     def test_default_validation_and_model_independence(self):
-        self.assertEqual(settings.location(), {'city':'Zurich'})
+        self.assertEqual(settings.location(), {'city':'Seoul'})
         saved = {'provider':'local','profiles':{'local':{'model':'keep'}},'event':{'city':'Tokyo'}}
         settings.persist(saved)
         for city in ('', ' ', 'x'*81, 'Seoul\nTokyo', None):
@@ -65,14 +65,14 @@ class UserLocationTests(unittest.TestCase):
             return {'choices':[{'message':{'content':'ok'}}]}
         with patch.object(runtime,'gateway', side_effect=gateway):
             runtime.respond('test','same-session','Weather in Paris?')
-            settings.save(self.studio, {'section':'location','location':{'city':'Seoul'}})
+            settings.save(self.studio, {'section':'location','location':{'city':'Busan'}})
             runtime.respond('test','same-session','Weather today?')
         self.assertEqual([c['user'] for c in calls], ['same-session']*2)
-        self.assertIn('Zurich', calls[0]['messages'][0]['content'])
+        self.assertIn('Seoul', calls[0]['messages'][0]['content'])
         self.assertIn('Weather in Paris?', calls[0]['messages'][0]['content'])
         self.assertIn('takes precedence', calls[0]['messages'][0]['content'])
-        self.assertIn('Seoul', calls[1]['messages'][0]['content'])
-        self.assertNotIn('Zurich', calls[1]['messages'][0]['content'])
+        self.assertIn('Busan', calls[1]['messages'][0]['content'])
+        self.assertNotIn('Seoul', calls[1]['messages'][0]['content'])
 
     def test_migration_is_idempotent_and_does_not_touch_other_files(self):
         workspace = self.studio.workspace(self.owner)

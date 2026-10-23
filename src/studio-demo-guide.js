@@ -7,9 +7,9 @@ const agentBlueprint=`<div class="agent-blueprint" aria-label="An agent combines
  <div class="agent-blueprint-tools"><b>Permitted tools</b><span>Read, write, search or fetch</span><small>Read tool results → decide the next action → answer when ready.</small><small>OpenShell can isolate tool execution and restrict access.</small></div></section>
  <span class="agent-blueprint-arrow" aria-hidden="true">↓</span><div class="agent-blueprint-output">Response or saved result <span>Inspect the evidence; completion is not guaranteed.</span></div></div>`;
 window.BacAgentBlueprint=agentBlueprint;
-el('crew-goal-intro').textContent=window.BacCrewCatalog[0].collaboration.description;
+el('crew-goal-intro').textContent='원하는 작업을 알려주세요. Casey가 알맞은 팀을 구성하고 결과를 모아줍니다.';
 function goalHint(choice){return choice.detail;}
-function goalPrompt(choice){const location='the city selected in Settings > Location';return choice.prompt.replace(location,()=>runtime.location?.city||location);}
+function goalPrompt(choice){return choice.prompt.replaceAll('{{city}}',()=>runtime.location?.city||'Seoul');}
 el('crew-goal-choices').innerHTML=goalExamples.map(g=>`<button type="button" data-goal-example="${escape(g.id)}" data-goal-hint="${escape(goalHint(g))}" aria-pressed="false" title="${escape(goalHint(g))}" aria-controls="studio-crew-prompt">${escape(g.title)}</button>`).join('');
 function exampleDocument(choice){return choice.document&&(data.crewDocuments||[]).find(file=>file.path==='inbox/'+choice.document);}
 function syncGoalExamples(locked){
@@ -20,7 +20,7 @@ function syncGoalExamples(locked){
   button.disabled=locked||box.hidden||!!needsConnection;
   button.setAttribute('aria-pressed',String(el('crew-prompt').value===goalPrompt(choice)));
   button.dataset.goalHint=goalHint(choice);
-  button.title=goalHint(choice)+(needsConnection?' Connect a model to attach the sample file.':'');
+  button.title=goalHint(choice)+(needsConnection?' 예시 파일을 첨부하려면 모델을 연결해주세요.':'');
  });
 }
 el('crew-goal-choices').onclick=async event=>{

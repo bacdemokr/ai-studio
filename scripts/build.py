@@ -91,7 +91,7 @@ fragment = fragment.replace('<!-- STUDIO_SCRIPT -->', '<script>' + studio_js.rep
 fragment = fragment.replace('<!-- NVIDIA_THEME -->', '<style>\n' + (ROOT / 'src/nvidia-theme.css').read_text(encoding='utf-8') + '\n</style>')
 version = build_info['version']
 page = '''<!doctype html>
-<html lang="en">
+<html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

@@ -116,7 +116,7 @@ for(const crew of [false,true]){
 }
 let chatSending=false;
 const isPlanCommand=value=>/^\s*\/(?:goals?|plans?)(?:\s|$)/i.test(value);
-const planLocationHint='Use /goal with Casey in Open Task. Lounge agents and other teammates accept direct messages only.';
+const planLocationHint='팀 작업은 Open Task에서 Casey에게 /goal로 요청해주세요. 다른 에이전트와는 직접 대화할 수 있습니다.';
 function clearPlanLocationHint(crew=false){
  const prefix=crew?'crew-':'',notice=el(prefix+'chat-error');
  if(!isPlanCommand(el(prefix+'prompt').value)&&notice.textContent===planLocationHint)notice.hidden=true;
@@ -205,7 +205,7 @@ function renderConversation(){
   log.innerHTML=(data.jobs.length>=30?'<small class="chat-history-note">Recent conversations · up to 30 missions</small>':'')+(jobs.length?jobs.map(j=>{
     if(j.payload.collaboration)return collaborationHistoryMarkup(j);
     const held=shieldReplyHeld(j),result=held?{}:j.result||{},pending=['queued','running','waiting','stopping'].includes(j.status);
-    const status={queued:'Waiting to start…',running:j.events?.at(-1)?.title==='Preparing OpenShell'?'Preparing your protected runtime…':'Working on your request…',waiting:'Waiting for a decision.',stopping:'Stopping after the current model call…',cancelled:'Stopped.'}[j.status];
+    const status={queued:'시작을 기다리고 있어요…',running:j.events?.at(-1)?.title==='Preparing OpenShell'?'OpenShell 실행환경을 준비하고 있어요…':'요청을 처리하고 있어요…',waiting:'Waiting for a decision.',stopping:'Stopping after the current model call…',cancelled:'Stopped.'}[j.status];
     return '<article class="chat-turn" data-chat-turn="'+escape(j.id)+'">'+(j.kind==='heartbeat'?'':'<div class="chat-message chat-user"><small>'+escape(j.payload.sender||'You')+'</small><div>'+escape(j.payload.prompt||'').replace(/\n/g,'<br>')+imageHistoryMarkup(j.payload.images,j.id)+'</div></div>')+'<div class="chat-message chat-agent"><small>'+escape(j.result?.systemNotice?'System':data.profile?.name||'Agent')+(j.kind==='heartbeat'?' · Heartbeat':'')+' · '+escape(new Date(j.created*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))+'</small>'+(j.kind==='heartbeat'?'<small class="heartbeat-delivery">'+escape(result.telegram==='sent'?'Sent to Telegram':result.telegram==='failed'?'Telegram delivery failed. Your summary is saved here.':['pending','sending'].includes(result.telegram)?'Telegram delivery unconfirmed':'')+'</small>':'')+customSkillMarkup(result.activity)+(held?shieldReplyWait:'<div class="chat-prose">'+messageMarkup(result.answer||result.error||(pending?'':status||'No text reply was returned.'))+'</div>')+(!held&&pending?'<div class="chat-progress" role="status">'+escape(status)+(j.status!=='stopping'?chatStopButton(j.id):'')+'</div>':'')+(!held&&result.source?'<small class="heartbeat-source">'+'Technical discovery · '+'Published '+escape(result.source.published)+' · Feed excerpt<br><a href="'+escape(result.source.url)+'" target="_blank" rel="noopener noreferrer">'+escape(result.source.title)+'</a></small>':'')+webpageButtons(result.files,j.id)+(result.files||[]).filter(f=>!/\.html$/i.test(f)&&(!f.endsWith('.md')||!result.answer)).map(f=>'<details class="chat-file"><summary data-chat-file="'+escape(f)+'">'+escape(f.split('/').pop())+'</summary><div class="chat-file-body"></div></details>').join('')+'</div></article>';
   }).join(''):'<p class="chat-empty">No messages yet.</p>');
   loadChatImages(log,agentId);
@@ -250,7 +250,7 @@ for(const id of ['crew-prompt']){
  anchor.className='studio-command-anchor';input.before(anchor);anchor.append(input,menu);
  menu.className='studio-command-menu';menu.id=input.id+'-commands';menu.hidden=true;menu.setAttribute('role','listbox');menu.setAttribute('aria-label','Commands');
  option.type='button';option.id=menu.id+'-plan';option.setAttribute('role','option');option.setAttribute('aria-selected','true');
- option.innerHTML='<strong>/goal</strong><span>Collaborate with the BaC team</span><small>↵</small>';menu.append(option);
+ option.innerHTML='<strong>/goal</strong><span>팀을 구성해 함께 작업하기</span><small>↵</small>';menu.append(option);
  input.setAttribute('aria-controls',menu.id);input.setAttribute('aria-autocomplete','list');
  const close=()=>{menu.hidden=true;input.removeAttribute('aria-activedescendant');};
  const enabled=()=>selectedScenario==='plan'&&selectedCrewRole===0&&input.dataset.planEnabled==='true';

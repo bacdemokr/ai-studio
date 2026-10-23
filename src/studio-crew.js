@@ -347,7 +347,7 @@ function renderMissionControl(){
  el('board').classList.toggle('has-plan',!!job);
  intro.querySelector('h3').textContent=job?'Execution trace':'No active plan';
  intro.querySelector('[data-mission-total]').textContent=job?collaborationTime(job):'';
- intro.querySelector('p').textContent=job?job.payload.collaboration.task:'Send /goal to Casey to start.';
+ intro.querySelector('p').textContent=job?job.payload.collaboration.task:'Casey에게 /goal로 작업을 요청해보세요.';
  const reasoningButton=el('mission-reasoning');
  reasoningButton.onclick=()=>{missionReasoningOpen=!missionReasoningOpen;renderMissionControl();};
  if(!job){
@@ -488,9 +488,9 @@ function syncCrewComposer(){
  const teamMode=effectiveTeamMode(),teamLocked=resetInProgress||!!activePlan||crewChatSending||!!data.bacResetting;
  el('crew-team-mode').querySelectorAll('[data-team-mode]').forEach(button=>{button.setAttribute('aria-pressed',String(button.dataset.teamMode===teamMode));button.disabled=teamLocked;});
  const noHires=teamMode==='hired'&&!(data.agents||[]).some(a=>!a.deleting);
- el('crew-team-hint').hidden=!noHires;el('crew-team-hint').textContent=noHires?'Hire agents with the skills your goal needs.':'';
+ el('crew-team-hint').hidden=!noHires;el('crew-team-hint').textContent=noHires?'작업에 필요한 스킬을 가진 에이전트를 고용해주세요.':'';
  el('crew-chat-connection').hidden=!blocked;
- el('crew-chat-connection').textContent=visitorMissing?'This agent was removed. Start a new task with Casey.':visitor?.skills?.includes('radar')?'Tech Radar uses Heartbeat. Manual chat is disabled.':crewDocumentUpload?'Adding document…':resetInProgress?'Resetting…':data.bacResetting?'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(visitor?personalModel(visitor).connected:(teamRuntime().teamModel??runtime.model))?(visitor?personalModelNotice(visitor):'Model not connected. Enable Local or External Endpoint in Settings.'):'Run ./bac start on this computer to connect the team runtime.';
+ el('crew-chat-connection').textContent=visitorMissing?'This agent was removed. Start a new task with Casey.':visitor?.skills?.includes('radar')?'Tech Radar uses Heartbeat. Manual chat is disabled.':crewDocumentUpload?'Adding document…':resetInProgress?'Resetting…':data.bacResetting?'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…':captainPlanning?'Casey가 팀 작업을 진행하고 있어요. 완료 후 다시 메시지를 보낼 수 있습니다.':memberWorking?'작업 중입니다. 이 에이전트가 작업을 마치면 다시 메시지를 보낼 수 있습니다.':!(visitor?personalModel(visitor).connected:(teamRuntime().teamModel??runtime.model))?(visitor?personalModelNotice(visitor):'Model not connected. Enable Local or External Endpoint in Settings.'):'Run ./bac start on this computer to connect the team runtime.';
 }
 function renderCrewPassport(){
  syncFileButtons();
@@ -525,7 +525,7 @@ function renderCrewPassport(){
  const key=crewDraftKey(i),switched=key!==crewChatKey;
  if(switched){if(crewChatKey)crewDrafts.set(crewChatKey,el('crew-prompt').value);crewChatKey=key;el('crew-prompt').value=crewDrafts.get(key)??defaultCrewPrompt(i);el('crew-chat-error').hidden=true;}
  renderImageDrafts(true);
- el('crew-prompt').placeholder='Message '+name+'…'+(i===0?' or /goal a task with the BaC team':'');
+ el('crew-prompt').placeholder=name+'에게 메시지 보내기'+(i===0?' · 팀 작업은 /goal로 시작하세요':'…');
  el('crew-prompt').dataset.planEnabled=String(i===0);syncCrewComposer();
  const turns=(data.crewChats||[]).filter(j=>j.payload.crewRole===i||(j.payload.collaboration&&(j.payload.collaboration.origin?.role===i||j.payload.collaboration.handoffs?.[i]||j.payload.collaboration.tasks?.some(t=>t.role===i)||j.payload.collaboration.activeRole===i))).map(j=>({...j,direct:true}));
  turns.sort((a,b)=>a.created-b.created);

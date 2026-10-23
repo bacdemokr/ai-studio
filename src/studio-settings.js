@@ -27,7 +27,7 @@ function syncResetButtons(){
 }
 settingsButton.onclick=()=>openModelConnections();
 el('dialog').addEventListener('close',()=>{for(const id of ['connect-key','telegram-token'])if(el(id))el(id).value='';});
-function settingsUtilityPanels(){return `  <section id="studio-settings-location-panel" role="tabpanel" aria-labelledby="studio-settings-location-tab" hidden><label for="studio-location-city">City</label><input id="studio-location-city" autocomplete="address-level2" maxlength="80" required aria-describedby="studio-location-note"><small id="studio-location-note">Default city for weather and local requests.</small></section>
+function settingsUtilityPanels(){return `  <section id="studio-settings-location-panel" role="tabpanel" aria-labelledby="studio-settings-location-tab" hidden><label for="studio-location-city">도시</label><input id="studio-location-city" autocomplete="address-level2" maxlength="80" required aria-describedby="studio-location-note"><small id="studio-location-note">날씨와 지역 관련 요청에 사용할 기본 도시입니다.</small></section>
   <section id="studio-settings-telegram-panel" role="tabpanel" aria-labelledby="studio-settings-telegram-tab" hidden>
   <p>Sends summaries from the <strong>Tech Radar skill</strong> only.</p>
   <label for="studio-telegram-token">Bot token (from <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer">@BotFather</a>)</label><input id="studio-telegram-token" type="password" autocomplete="off" spellcheck="false" placeholder="Token from @BotFather (e.g. 123456789:ABCdef...)">
@@ -141,7 +141,7 @@ async function openModelConnections(){
   <div class="connection-scenarios">${scenarioRoute('plan','Open Task')}</div>
   <div class="connection-footer"><p id="studio-connections-status" role="status"></p><button type="button" id="studio-connections-save" class="studio-primary">Save changes</button></div></div></section>
   ${settingsUtilityPanels()}
-  <p id="studio-settings-status" role="status"></p><div class="studio-dialog-actions"><button type="button" id="studio-start-agents" class="studio-secondary" ${runtime.gateway?'hidden':''}>Start agents</button><button type="submit" class="studio-primary" id="studio-save-settings" hidden>Save location</button></div></form>`);
+  <p id="studio-settings-status" role="status"></p><div class="studio-dialog-actions"><button type="button" id="studio-start-agents" class="studio-secondary" ${runtime.gateway?'hidden':''}>Start agents</button><button type="submit" class="studio-primary" id="studio-save-settings" hidden>위치 저장</button></div></form>`);
  bindDiagnosticActions();
  const form=el('config-form');
  const panel=el('model-connections'),notice=el('connections-status'),owner=agentId,scenario=selectedScenario;
@@ -202,7 +202,7 @@ async function openModelConnections(){
    if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
    el('settings-'+button.dataset.settingsTab+'-panel').hidden=!active;
   }
-  el('save-settings').hidden=!['location','telegram'].includes(tab);el('save-settings').textContent=tab==='telegram'?'Connect Telegram':'Save location';
+  el('save-settings').hidden=!['location','telegram'].includes(tab);el('save-settings').textContent=tab==='telegram'?'Connect Telegram':'위치 저장';
   el('start-agents').hidden=tab!=='model'||!!runtime.gateway;el('settings-status').textContent='';
   if(tab==='reset')syncResetButtons();
   if(tab==='telegram'&&!telegram)loadTelegram();
@@ -217,7 +217,7 @@ async function openModelConnections(){
    el('settings-'+tab+'-tab').focus();
   };
  }
- el('location-city').value=settings.location?.city||'Zurich';
+ el('location-city').value=settings.location?.city||'Seoul';
  el('agent-reset').onclick=()=>resetStudio('lounge');for(const button of el('settings-reset-panel').querySelectorAll('[data-reset-scenario]'))button.onclick=()=>resetStudio('bac',null,button.dataset.resetScenario);el('reset-all').onclick=()=>resetStudio('all');syncResetButtons();
  async function utilityAction(action){
   if(working||!current())return;
@@ -235,7 +235,7 @@ async function openModelConnections(){
   if(tab==='location'){
    const field=el('location-city');if(!field.checkValidity()){field.reportValidity();return;}
    const city=field.value.trim();
-   utilityAction(async status=>{status.textContent='Saving location…';const saved=await api('settings',{section:'location',location:{city}});settings.location=saved.location;runtime.location=saved.location;if(current()){field.value=saved.location.city;status.textContent='Saved. Applies to every agent’s next request.';}});
+   utilityAction(async status=>{status.textContent='위치를 저장하고 있어요…';const saved=await api('settings',{section:'location',location:{city}});settings.location=saved.location;runtime.location=saved.location;if(current()){field.value=saved.location.city;status.textContent='저장했습니다. 모든 에이전트의 다음 요청부터 적용됩니다.';}});
   }else{
    const values={token:el('telegram-token').value.trim(),chatId:el('telegram-chat').value.trim()};++telegramRevision;
    utilityAction(async status=>{status.textContent='Checking bot…';const value=await api('telegram',values);if(current()){telegram=value;showTelegram();el('telegram-token').value='';status.textContent='Bot connected. Send a test to check delivery.';}});

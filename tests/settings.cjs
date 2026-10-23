@@ -22,7 +22,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   await page.locator('#studio-settings-model-tab').press('ArrowLeft');assert(await page.locator('#studio-settings-reset-panel').isVisible());
   await page.locator('#studio-settings-reset-tab').press('ArrowRight');assert(await page.locator('#studio-model-connections').isVisible());
   await page.locator('#studio-settings-location-tab').click();assert.equal(await page.locator('#studio-location-city').inputValue(),'Seoul');
-  await page.locator('#studio-save-settings').click();await page.waitForFunction(()=>document.querySelector('#studio-settings-status').textContent.startsWith('Saved.'));
+  await page.locator('#studio-save-settings').click();await page.waitForFunction(()=>document.querySelector('#studio-settings-status').textContent.startsWith('저장했습니다.'));
   assert.equal((await page.evaluate(()=>fetch('/api/settings').then(r=>r.json()))).location.city,'Seoul');
   await page.locator('#studio-settings-telegram-tab').click();assert.equal(await page.locator('#studio-telegram-token').inputValue(),'fixture-token');
   await page.locator('#studio-save-settings').click();await page.waitForFunction(()=>document.querySelector('#studio-settings-status').textContent.startsWith('Bot connected.'));

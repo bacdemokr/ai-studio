@@ -1,47 +1,47 @@
 [
   {
     "id": "travel",
-    "title": "Travel guide",
-    "detail": "A three-day plan for your Settings location, with weather and official tourism links",
-    "prompt": "/goal Plan a three-day visit to the city selected in Settings > Location starting tomorrow. Check the available weather forecast and find three interesting places using official tourism sources. Build one self-contained HTML page with a day-by-day plan, reasons to visit, useful source links and clear weather limitations. Use exact ISO dates. Keep the research brief; do not invent unavailable forecasts."
+    "title": "3일 여행 가이드",
+    "detail": "설정한 도시의 날씨와 공식 관광 정보를 담은 여행 계획",
+    "prompt": "/goal 내일부터 3일간 {{city}} 여행을 계획해줘. 확인 가능한 일기예보와 공식 관광 자료를 바탕으로 가볼 만한 곳 3곳을 찾아줘. 날짜별 일정, 추천 이유, 출처 링크, 날씨 정보의 한계를 담아 HTML 파일 하나로 열리는 웹페이지를 만들어줘. 날짜는 YYYY-MM-DD로 표시하고, 조사는 짧게 진행해줘. 확인할 수 없는 예보는 지어내지 말아줘. 페이지와 설명은 한국어로 작성해줘."
   },
   {
     "id": "drone",
-    "title": "Drone research",
-    "detail": "Recent papers in a compact research dashboard",
-    "prompt": "/goal Create a self-contained HTML dashboard about drone swarm control research from the past six months. Include up to three research papers or preprints with short summaries, source links, publication or revision dates, and any verified NVIDIA connection. State the exact date window, exclude news articles, and distinguish revision dates from original publication dates. Fewer qualifying papers are fine; an NVIDIA connection is not required. Keep research brief and clearly label evidence gaps."
+    "title": "드론 연구 동향",
+    "detail": "최근 논문을 간단히 비교하는 리서치 대시보드",
+    "prompt": "/goal 최근 6개월간의 드론 군집 제어 연구를 정리해 HTML 파일 하나로 열리는 대시보드를 만들어줘. 연구 논문이나 프리프린트는 최대 3편으로, 짧은 요약, 출처 링크, 최초 발표일과 수정일, 확인된 NVIDIA 관련 내용을 담아줘. 조사 기간의 시작일과 종료일을 명시하고, 뉴스 기사는 제외해줘. 최초 발표일과 수정일은 구분해줘. 조건에 맞는 논문이 적으면 그대로 제시하고, NVIDIA와 관련이 없어도 괜찮아. 조사는 짧게 진행하고 확인하지 못한 부분은 표시해줘. 페이지와 설명은 한국어로 작성해줘."
   },
   {
     "id": "stores",
-    "title": "Store email review",
-    "detail": "A dashboard of the five stores in the supplied sample email",
+    "title": "매장 실적 분석",
+    "detail": "예시 이메일 속 5개 매장의 실적을 비교하는 대시보드",
     "document": "demo-france-store-status-email-thread.txt",
     "requiredDocument": true,
-    "prompt": "/goal Analyze the attached fictional France store email thread and create one self-contained HTML dashboard. Compare the five stores with last year, distinguish margin rates from profit amounts, and show comparison charts, a store table and three practical next actions. Identify missing data, keep the fictional-data label visible and do not invent figures. Use the supplied email; no web research is needed."
+    "prompt": "/goal 첨부한 프랑스 매장 관련 가상 이메일을 분석해 HTML 파일 하나로 열리는 대시보드를 만들어줘. 5개 매장의 실적을 전년과 비교하고, 이익률과 이익 금액을 구분해줘. 비교 차트, 매장별 표, 실천할 수 있는 다음 행동 3가지를 담아줘. 빠진 데이터는 표시하고 수치를 지어내지 말아줘. 가상 데이터라는 안내를 잘 보이게 넣어줘. 첨부 이메일만 사용하고 웹 조사는 하지 않아도 돼. 페이지와 설명은 한국어로 작성해줘."
   },
   {
     "id": "gpu",
-    "title": "GPU portfolio",
+    "title": "GPU 포트폴리오",
     "document": "datacenter_gpu_portfolio.csv",
-    "prompt": "/goal Analyze the attached demo GPU portfolio CSV and create one compact, self-contained HTML dashboard. Rank the five highest single-GPU TDP values, compare memory capacity and bandwidth, and explain three useful findings, including products with the same TDP. Include a TDP bar chart and full portfolio comparison table, and save the top-five CSV and a short analysis brief. Sort TDP numerically descending and preserve source order for ties; normalize bandwidth units. Keep configurable maximums and \"up to\" qualifiers visible. These are supplied demo figures, not verified current specifications, measured power or rack totals. Do not infer performance or energy efficiency from TDP alone. No web research is needed.",
-    "detail": "GPU power, memory and bandwidth comparisons from the supplied CSV"
+    "prompt": "/goal 첨부한 데모용 GPU 포트폴리오 CSV를 분석해 HTML 파일 하나로 열리는 간결한 대시보드를 만들어줘. GPU 한 개의 TDP가 높은 제품 상위 5개를 나열하고, 메모리 용량과 대역폭도 비교해줘. TDP가 같은 제품을 포함해 의미 있는 분석 결과 3가지를 설명해줘. TDP 막대 차트와 전체 제품 비교표를 넣고, 상위 5개 CSV와 짧은 분석 메모도 저장해줘. TDP는 숫자 기준 내림차순으로 정렬하고, 동률이면 원본 순서를 유지해줘. 대역폭 단위는 통일하고, 설정 가능한 최댓값과 “최대”라는 조건을 명확히 표시해줘. 제공된 수치는 데모용이며, 검증된 최신 사양이나 실측 소비전력, 랙 전체의 값이 아니라는 점을 밝혀줘. TDP만으로 성능이나 에너지 효율을 추정하지 말아줘. 웹 조사는 필요 없어. 페이지와 설명은 한국어로 작성해줘.",
+    "detail": "CSV로 GPU의 TDP, 메모리 용량, 대역폭 비교"
   },
   {
     "id": "bill",
-    "title": "Bill splitter",
-    "detail": "A small calculator for splitting a bill and tip",
-    "prompt": "/goal Build a compact desktop bill-splitter as one self-contained HTML file. Include bill amount, tip percentage and number of people, then show the tip, total and amount per person. Reject blank, non-finite or negative amounts and require at least one whole person. Include clear labels, keyboard-friendly controls and a reset button. No external libraries, network access or saved remote data."
+    "title": "더치페이 계산기",
+    "detail": "팁을 포함해 1인당 금액을 계산하는 간단한 웹페이지",
+    "prompt": "/goal 데스크톱용 더치페이 계산기를 HTML 파일 하나로 만들어줘. 결제 금액, 팁 비율, 인원수를 입력하면 팁 금액, 총액, 1인당 금액을 보여줘. 금액이 비어 있거나 유한한 숫자가 아니거나 음수이면 안내하고, 인원수는 1 이상의 정수만 허용해줘. 입력 항목을 명확히 표시하고, 키보드로도 편하게 조작할 수 있게 해줘. 초기화 버튼도 넣어줘. 외부 라이브러리, 네트워크 접속, 원격 데이터 저장은 사용하지 말아줘. 화면과 설명은 한국어로 작성해줘."
   },
   {
     "id": "pong",
-    "title": "Ping-pong game",
-    "detail": "A playable two-player game with keyboard controls",
-    "prompt": "/goal Build a simple two-player ping-pong game as one self-contained HTML file. Use A and Q for the left paddle and P and M for the right paddle. Include a bouncing ball, correct collisions on both paddles, scores, visible controls and a restart button. Handle simultaneous keys, key release and lost focus. Keep the game small and desktop-focused, with no external libraries or web research."
+    "title": "2인용 탁구 게임",
+    "detail": "키보드로 함께 즐기는 간단한 게임",
+    "prompt": "/goal 간단한 2인용 탁구 게임을 HTML 파일 하나로 만들어줘. 왼쪽 패들은 A와 Q, 오른쪽 패들은 P와 M 키로 움직이게 해줘. 튀어 다니는 공, 양쪽 패들의 정확한 충돌 처리, 점수, 잘 보이는 조작 안내, 다시 시작 버튼을 넣어줘. 여러 키를 동시에 누를 때, 키에서 손을 뗄 때, 창이 포커스를 잃을 때도 자연스럽게 동작해야 해. 데스크톱에서 즐길 수 있는 작은 게임으로 만들고, 외부 라이브러리나 웹 조사는 사용하지 말아줘. 화면과 설명은 한국어로 작성해줘."
   },
   {
     "id": "event",
-    "title": "Event page",
-    "detail": "An event webpage and announcement for your Settings location",
-    "prompt": "/goal Create one self-contained HTML event page and a short social announcement for a fictional NVIDIA developer meetup in the city selected in Settings > Location next Friday, 14:00-17:00, for 30 attendees. Use this agenda: welcome 14:00-14:15, agent demo 14:15-15:00, hands-on session 15:00-17:00. Show the exact date, mark the venue TBD and label the event fictional. Use only these supplied details, without additional research. Do not publish or send anything."
+    "title": "개발자 모임 페이지",
+    "detail": "설정한 도시에서 열리는 가상 모임의 웹페이지와 홍보 문구",
+    "prompt": "/goal 다음 주 금요일 {{city}}에서 열리는 가상의 NVIDIA 개발자 모임을 소개하는 웹페이지와 짧은 소셜 홍보 문구를 만들어줘. 웹페이지는 HTML 파일 하나로 열리게 해줘. 시간은 14:00-17:00, 참가자는 30명이야. 일정은 환영 인사 14:00-14:15, 에이전트 데모 14:15-15:00, 실습 15:00-17:00으로 해줘. 정확한 날짜를 표시하고, 장소는 “미정”, 행사는 “가상 행사”라고 밝혀줘. 제공된 정보만 사용하고 추가 조사는 하지 말아줘. 실제 게시나 전송은 하지 말고, 페이지와 홍보 문구는 한국어로 작성해줘."
   }
 ]

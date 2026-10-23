@@ -128,10 +128,10 @@ function fillCreator(creating){
   el('onboarding').querySelectorAll('[name=protection]').forEach(i=>i.checked=i.value===(p.protection||'standard'));
   el('onboarding').querySelector('.studio-protection-picker').hidden=!creating;
   el('onboarding').querySelectorAll('[name=protection]').forEach(i=>i.disabled=!creating);
-  el('creator-title').textContent=creating?'Hire your own Agent.':'Edit '+p.name;
+  el('creator-title').textContent=creating?'나만의 에이전트를 구성해보세요.':p.name+' 편집';
   el('creator-note').hidden=true;
   el('creator-note').textContent='';
-  el('create').textContent=creating?'Hire my agent':'Save my agent';el('cancel-create').hidden=!data.profile;updateCreatorSubmit();
+  el('create').textContent=creating?'에이전트 고용':'변경사항 저장';el('cancel-create').hidden=!data.profile;updateCreatorSubmit();
   updateDraft();el('workshop').scrollTop=0;
 }
 function setRoom(next,options={}){
