@@ -46,18 +46,14 @@ class TeamModeTests(unittest.TestCase):
                                      (8, 'web', 'Scout')):
             with self.subTest(role=role):
                 plan = {'tasks': [{'role': role, 'agent': 'builtin'}]}
-                validate_selection(plan, [{'key': 'weather', 'name': 'Weather', 'skills': ['weather']}], [], 'mixed',
-                                   '/goal Complete this task.')
-                validate_selection(plan, [{'key': self.owner, 'name': 'Pixel', 'skills': [skill]}], [], 'mixed',
-                                   '/goal Ask ' + standby + ' to complete this task.')
+                validate_selection(plan, [{'key': 'weather', 'name': 'Weather', 'skills': ['weather']}], [], 'mixed')
+                validate_selection({**plan, 'requestedAgents': [standby]}, [{'key': self.owner, 'name': 'Pixel', 'skills': [skill]}], [], 'mixed')
                 with self.assertRaisesRegex(TeamSelectionError, 'must use a suitable hired agent'):
-                    validate_selection(plan, [{'key': self.owner, 'name': 'Pixel', 'skills': [skill]}], [], 'mixed',
-                                       '/goal Complete this task.')
+                    validate_selection(plan, [{'key': self.owner, 'name': 'Pixel', 'skills': [skill]}], [], 'mixed')
         with self.assertRaisesRegex(TeamSelectionError, 'must use a suitable hired agent'):
             validate_selection({'tasks': [{'role': 5, 'agent': 'builtin'}],
                                 'declinedAgents': [{'agent': self.owner, 'reason': 'Prefer standby.'}]},
-                               [{'key': self.owner, 'name': 'Pixel', 'skills': ['builder']}], [], 'mixed',
-                               '/goal Build a counter.')
+                               [{'key': self.owner, 'name': 'Pixel', 'skills': ['builder']}], [], 'mixed')
 
     def test_hired_only_never_falls_back_after_invalid_repair(self):
         self.adapter.auto_agents = False
@@ -101,14 +97,14 @@ class TeamModeTests(unittest.TestCase):
         self.assertEqual({c[0] for c in self.adapter.calls}, {'bac-' + self.manager + '-r0', 'bac-' + self.owner})
 
     def test_hired_only_requires_an_available_hire_before_enqueue(self):
-        with patch('visitor_teams.capture', return_value=([], [], [])), self.assertRaisesRegex(Problem, r'No hired agents are ready. Hire an agent or choose Hired \+ Standby\.'):
+        with patch('visitor_teams.capture', return_value=([], [])), self.assertRaisesRegex(Problem, r'No hired agents are ready. Hire an agent or choose Hired \+ Standby\.'):
             self.start(teamMode='hired')
         with self.app.db() as db:
             self.assertEqual(db.execute("SELECT count(*) FROM jobs WHERE kind='crew-chat'").fetchone()[0], 0)
 
     def test_unavailable_hires_are_not_told_to_hire_a_specific_role(self):
         unavailable = [{'name': 'Pixel', 'reason': 'Busy or unavailable.'}]
-        with patch('visitor_teams.capture', return_value=([], [], unavailable)), self.assertRaisesRegex(
+        with patch('visitor_teams.capture', return_value=([], unavailable)), self.assertRaisesRegex(
                 Problem, r'Check their status in the Lounge or choose Hired \+ Standby\.'):
             self.start(teamMode='hired')
 

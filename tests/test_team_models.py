@@ -129,7 +129,7 @@ class TeamModelTests(unittest.TestCase):
         profile={'baseUrl':'http://localhost:8000/v1','model':'local','apiKey':'','contextWindow':32768}
         config=settings.apply_to_config(config,'local',profile)
         self.assertEqual(config['agents']['entries'][agent]['model'],'bac-team/'+selected)
-        with self.app.db() as db:member=self.app.crew_roster(db,crew,{},preset=True)[8]
+        member=self.app.crew_roster(crew)[8]
         with patch.object(self.app.adapter,'register') as register:
             self.app.prepare_builtin_crew(crew,8,member)
             self.assertEqual(register.call_args.args[2]['_teamModel'],selected)

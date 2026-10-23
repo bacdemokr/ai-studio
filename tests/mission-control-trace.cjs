@@ -102,6 +102,10 @@ assert(!render(base).includes('Why this agent'));
 assert(!context.collaborationMarkup(chatJob,0).includes('Why this agent'));
 assert(!context.missionControlTraceMarkup({...fitJob,payload:{...fitJob.payload,roster:[]}}).includes('Jinny &lt;saved&gt;'));
 assert.match(context.missionControlTraceMarkup({...fitJob,payload:{...fitJob.payload,roster:[]}}),/Requested agent/);
+const unavailableJob={...fitJob,payload:{...fitJob.payload,roster:[],unavailableVisitors:[{key:'jinny',name:'Jinny <saved>',reason:'Preparing.'}]}};
+assert.match(context.missionControlTraceMarkup(unavailableJob),/Jinny &lt;saved&gt;/);
+const declinedStandby={...fitJob,payload:{...fitJob.payload,roster:[],collaboration:{...fitPlan,declinedAgents:[{agent:'Cody',reason:'Hired only is selected.'}]}}};
+assert.match(context.missionControlTraceMarkup(declinedStandby),/<strong>Cody<\/strong>/);
 console.log('PASS: assignment reasons and declined hires in chat and Mission Control; historical identities, escaping and legacy plans.');
 
 // The final reply and specialist research are distinct files, not two team responses.

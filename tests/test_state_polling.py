@@ -26,6 +26,7 @@ class StatePollingTests(unittest.TestCase):
             if etag:headers['If-None-Match']=etag
             connection.request('GET','/api/state',headers=headers)
             response=connection.getresponse()
+            self.assertEqual(response.headers.get_all('Cache-Control'),['no-store'])
             return response.status,response.getheader('ETag'),response.read()
         finally:connection.close()
 

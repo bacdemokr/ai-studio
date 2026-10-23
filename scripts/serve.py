@@ -47,7 +47,6 @@ class Handler(SimpleHTTPRequestHandler):
         if etag:
             self.send_header('ETag', etag)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
-        self.send_header('Cache-Control','no-store')
         self.send_header('Content-Length', str(len(body)))
         if cookie:
             self.send_header('Set-Cookie', 'bac_session=' + cookie + '; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000')
@@ -292,7 +291,7 @@ class Handler(SimpleHTTPRequestHandler):
                 '/api/delete-agent': lambda: studio.delete_agent(owner, data, enqueue_only=True),
                 '/api/agent-policy': lambda: studio.policy_change(owner, data),
                 '/api/crew-policy': lambda: studio.crew_policy_change(studio.crew_owner(owner, scenario), data),
-                '/api/jobs': lambda: studio.enqueue(studio.crew_owner(owner, scenario) if data.get('kind') in ('crew','crew-chat') else owner, data, lead=owner if data.get('kind')=='crew' and data.get('preset') is not True else None),
+                '/api/jobs': lambda: studio.enqueue(studio.crew_owner(owner, scenario) if data.get('kind')=='crew-chat' else owner, data),
                 '/api/upload': lambda: studio.upload(studio.crew_owner(owner, scenario) if 'crewRole' in data else owner, data),
                 '/api/decision': lambda: studio.decision(studio.job_owner(owner, data.get('id')), data.get('id'), data.get('action')),
                 '/api/retry-reaction': lambda: studio.retry_reaction(studio.job_owner(owner, data.get('id')), data),

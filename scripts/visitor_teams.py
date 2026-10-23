@@ -5,7 +5,6 @@ Keep the current dispatcher so cancellation, verified handoffs and recovery are 
 """
 import json
 from role_boundaries import TEAM_ROLE_BOUNDARY, skill_scope, implementation_scope
-import re
 
 ROLE_SKILLS = {
     4: ('builder',),
@@ -31,48 +30,6 @@ def team_mode(data):
     return 'mixed' if include else 'builtin'
 
 
-def mentions(text, name):
-    return re.search(r'(?<![\w])' + re.escape(name) + r'(?![A-Za-z0-9_])', text, re.I)
-
-
-def direct_request(task):
-    text = re.sub(r'```.*?```', '', task, flags=re.S)
-    return '\n'.join(line for line in text.splitlines() if not line.lstrip().startswith('>'))
-
-
-def excluded(text, match):
-    return bool(re.search(r"(?:do not|don't|never|without|except|exclude|skip|not)\s+(?:(?:use|ask|let|include|involve)\s+)?$",
-                          text[max(0, match.start()-40):match.start()], re.I)
-                or re.match(r"(?:은|는|을|를|도)?\s*(?:빼|제외|말고|참여시키지|쓰지|사용하지)|\s+(?:should|must)\s+not\b", text[match.end():], re.I))
-
-
-def explicit_builtin(task, role):
-    """An explicitly named standby remains eligible even when a hire has its skill."""
-    name = BUILTIN_NAMES.get(role)
-    text = direct_request(task or '')
-    match = mentions(text, name) if name else None
-    return bool(match and not excluded(text, match))
-
-
-def requirements(task, members):
-    """Conservative direct-name backstop, using only the visitor's request, never files."""
-    text = direct_request(task)
-    found = []
-    for member in members:
-        match = mentions(text, member['name'])
-        if not match:
-            continue
-        clause = re.split(r'[\n.!?;]', text[:match.start()])[-1] + text[match.start():].split('\n')[0]
-        if excluded(text, match):
-            continue
-        if not re.search(r'\b(?:use|ask|let|have|include|involve|assign|instead|replace|must)\b|참여|대신|맡|해줘|해주세요|시켜|써줘|사용', clause, re.I):
-            continue
-        # Detect explicit participants only. Role semantics belong to Casey;
-        # neighboring words may describe a different agent or an input file.
-        found.append({'key': member['key'], 'name': member['name'], 'role': None})
-    return found
-
-
 def hired_members(db, owner):
     rows = db.execute("SELECT id,profile FROM agents WHERE kind='personal' AND participant="
                       "(SELECT participant FROM agents WHERE id=?) AND profile IS NOT NULL AND deleting=0 "
@@ -80,31 +37,17 @@ def hired_members(db, owner):
     return [{**json.loads(row['profile']), 'key': row['id'], 'role': 'Hired specialist'} for row in rows]
 
 
-def require_opt_in(db, owner, task):
-    """Do not silently replace an explicitly requested person when participation is off."""
-    from studio import Problem
-    required = requirements(task, hired_members(db, owner))
-    if required:
-        raise Problem('Choose Hired only or Hired + Standby to assign ' + ', '.join(m['name'] for m in required) + '.', 409)
-
-
-def capture(studio, db, owner, task):
+def capture(studio, db, owner):
+    """Capture actual availability. Participation intent belongs to Casey's plan."""
     from studio import Problem
     all_members = hired_members(db, owner)
-    required = requirements(task, all_members)
     import personal_models
     runtime = studio.runtime_status() if all_members else {}
-    request = direct_request(task)
     members, unavailable = [], []
     for member in all_members:
-        match = mentions(request, member['name'])
-        if match and excluded(request, match):
-            unavailable.append({'name': member['name'], 'reason': 'Excluded by the visitor.'})
-            continue
+        identity = {'key': member['key'], 'name': member['name']}
         if not personal_models.ready(member, runtime):
-            if any(item['key'] == member['key'] for item in required):
-                raise Problem(member['name'] + ': ' + personal_models.unavailable(member), 409)
-            unavailable.append({'name': member['name'], 'reason': personal_models.unavailable(member)})
+            unavailable.append({**identity, 'reason': personal_models.unavailable(member)})
             continue
         try:
             studio.require_available(db, member['key'])
@@ -112,21 +55,13 @@ def capture(studio, db, owner, task):
         except Problem:
             preparing = db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind='prepare-agent' "
                                    "AND status='running'", (member['key'],)).fetchone()
-            reason = ('is still preparing. Try again when preparation finishes.' if preparing else
-                      'is busy or unavailable. Finish its current work before including it.')
-            if any(item['key'] == member['key'] for item in required):
-                raise Problem(member['name'] + ' ' + reason, 409)
-            unavailable.append({'name': member['name'], 'reason': 'Preparing.' if preparing else 'Busy or unavailable.'})
+            unavailable.append({**identity, 'reason': 'Preparing.' if preparing else 'Busy or unavailable.'})
         else:
             members.append(member)
-    if len(required) > 3:
-        raise Problem('This demo can assign three specialists per task. Split this request so every named agent can participate.', 409)
-    return members, required, unavailable
+    return members, unavailable
 
 
-def instructions(members, required, mode='mixed'):
-    if not members and mode != 'hired':
-        return ''
+def instructions(members, unavailable=(), mode='mixed'):
     from agent_runtime import collaboration_capabilities
     choices = [{**{key: m.get(key) for key in ('key', 'name', 'purpose', 'skills')},
                 'skillScope': skill_scope(m), 'implementationScope': implementation_scope(m),
@@ -151,22 +86,39 @@ def instructions(members, required, mode='mixed'):
             'Do not invent a skill or use purpose text to justify missing skills. '
             'implementationScope:"missing-coding" means Coding is not equipped. Do not assign coding or an HTML deliverable, '
             'even to a Programmer or custom developer, and even if write is available. '
-            'For a named agent you cannot suitably assign, include declinedAgents:[{"agent":"exact hired key",'
-            '"reason":"role mismatch and the suitable role needed"}]. Do not list a declined agent in tasks. '
+            'Interpret participation from the whole current user request, including negation and corrections. '
+            'Return requestedAgents and excludedAgents as arrays of identities: exact hired keys or the standby names '
+            'Vera, Cody, Ada, Iris, Scout. requestedAgents contains only people the user asks to participate; '
+            'excludedAgents contains only people the user asks to leave out. An incidental mention, filename, quoted '
+            'example or optional suggestion does not make someone required. Use [] when there is no such instruction. '
+            'Never assign an excluded or unavailable agent. A requested standby overrides hired priority only in mixed mode. '
+            'For a requested agent you cannot assign because of skills, availability, team mode or the three-slot limit, '
+            'include declinedAgents:[{"agent":"same identity","reason":"specific limitation and next step"}]. '
+            'Do not list a declined agent in tasks. Do not silently replace a requested unavailable person. '
             'Explain each declined request in summary and the final answer, not only in JSON metadata. '
             'An independent reviewer must be a different agent. Keep assignments small and concrete: enough '
             'evidence for the requested result, a saved handoff, then stop. For research the shared ceiling is '
             '150 seconds, two searches or five direct fetches; stop earlier once the required facts are supported. '
             'No optional polish or repeated verification.\nHired agents:\n' + json.dumps(choices, ensure_ascii=False) +
-            '\nRequired participants detected from the direct request:\n' + json.dumps(required, ensure_ascii=False) + '\n')
+            '\nUnavailable hired agents (context only, cannot be assigned):\n' + json.dumps(unavailable, ensure_ascii=False) + '\n')
 
 
 class TeamSelectionError(RuntimeError):
     """A planner response needs explicit identities before any work may start."""
 
 
-def validate_selection(plan, members, required, mode='mixed', task=''):
+def validate_selection(plan, members, unavailable=(), mode='mixed'):
     available = {m['key']: m for m in members}
+    known = {**{m['key']: m['name'] for m in unavailable if m.get('key')},
+             **{m['key']: m.get('name', m['key']) for m in members},
+             **{name: name for name in BUILTIN_NAMES.values()}}
+    requested = set(plan.get('requestedAgents', []))
+    excluded = set(plan.get('excludedAgents', []))
+    if (requested | excluded) - known.keys() or requested & excluded:
+        raise TeamSelectionError('Participation requests must identify known agents and cannot both request and exclude the same agent.')
+    selected = {assignment_identity(t) for t in plan['tasks']}
+    if selected & excluded:
+        raise TeamSelectionError('The plan assigns an agent it also excludes. Re-read the request and correct the participation decision.')
     formats = plan.get('requestedFormats', [])
     declared = [path for task in plan['tasks'] for path in task.get('requiredFiles', [])]
     # A coding assignment may use the existing verified HTML collector without
@@ -183,10 +135,10 @@ def validate_selection(plan, members, required, mode='mixed', task=''):
                       if assignment.get('agent') not in (None, 'builtin')}
     if mode == 'mixed':
         for assignment in plan['tasks']:
-            if assignment.get('agent') not in (None, 'builtin') or explicit_builtin(task, assignment.get('role')):
+            if assignment.get('agent') not in (None, 'builtin') or assignment_identity(assignment) in requested:
                 continue
             skills = ROLE_SKILLS.get(assignment.get('role'), ())
-            candidates = [member for member in members if member['key'] not in selected_hires
+            candidates = [member for member in members if member['key'] not in selected_hires | excluded
                           and any(skill in member.get('skills', []) for skill in skills)]
             if candidates:
                 names = ', '.join(member.get('name', member['key']) for member in candidates)
@@ -228,17 +180,22 @@ def validate_selection(plan, members, required, mode='mixed', task=''):
         seen.add(key)
     declined = plan.get('declinedAgents', [])
     declined_keys = {m['agent'] for m in declined}
-    if len(declined_keys) != len(declined) or declined_keys - available.keys() or declined_keys & seen:
-        raise TeamSelectionError('Declined agents must be available hired agents, listed once and not assigned work.')
-    missing = [m['name'] for m in required if m['key'] not in seen | declined_keys]
+    if len(declined_keys) != len(declined) or declined_keys - known.keys() or declined_keys & selected:
+        raise TeamSelectionError('Declined agents must be known agents, listed once and not assigned work.')
+    missing = [known[key] for key in sorted(requested - selected - declined_keys)]
     if missing:
-        raise TeamSelectionError('The visitor explicitly requested ' + ', '.join(missing) +
-                                 '. Assign suitable requested work or explain the role mismatch in declinedAgents. Do not substitute a reaction or replacement.')
+        raise TeamSelectionError('The plan identifies a participation request for ' + ', '.join(missing) +
+                                 '. Assign suitable requested work or explain the limitation in declinedAgents. Do not substitute a reaction or replacement.')
 
 
-def bind(plan, roster, members, required, task, mode='mixed'):
+def assignment_identity(assignment):
+    key = assignment.get('agent', 'builtin')
+    return BUILTIN_NAMES.get(assignment['role']) if key == 'builtin' else key
+
+
+def bind(plan, roster, members, unavailable=(), mode='mixed'):
     """Apply Casey's explicit choices. Never infer or rewrite roles from prose."""
-    validate_selection(plan, members, required, mode, task)
+    validate_selection(plan, members, unavailable, mode)
     available = {m['key']: m for m in members}
     bindings = {}
     for assignment in plan['tasks']:
@@ -250,7 +207,7 @@ def bind(plan, roster, members, required, task, mode='mixed'):
         assignment['name'] = roster[assignment['role']]['name']
     plan['visitorBindings'] = bindings
     declined = {m['agent'] for m in plan.get('declinedAgents', [])}
-    plan['requiredAgents'] = [m for m in required if m['key'] not in declined]
+    plan['requiredAgents'] = [m for m in members if m['key'] in plan.get('requestedAgents', []) and m['key'] not in declined]
 
 
 def validate(studio, owner, member):

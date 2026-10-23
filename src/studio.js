@@ -305,9 +305,6 @@
         resultKey=key;el('result-title').textContent=job.status==='done'?'Result':job.status==='error'?'This mission needs attention.':job.kind==='crew'?'Your crew is building the plan.':'Working…';
         el('read-aloud').hidden=!job.result.answer;
         el('result').replaceChildren();
-        if(job.status==='waiting'){
-          const box=document.createElement('div');box.className='studio-waiting';box.innerHTML='The plan needs '+job.payload.capacity.spark+' demo devices and '+job.payload.capacity.workstation+' workstations. Your available equipment does not cover it.<br><button class="studio-primary" data-decision="approve-equipment">Plan additional equipment</button><button class="studio-secondary" data-decision="cancel">Cancel and revise</button>';el('result').append(box);
-        }
         const answer=document.createElement('div');answer.textContent=job.result.answer||job.result.error||Object.values(job.payload.outputs||{}).slice(-1)[0]||(job.status==='queued'?'Your mission is saved in the queue.':job.status==='cancelled'?'This mission was cancelled.':'The agent is working. Actual handoffs and saved files appear in the evidence panel.');el('result').append(answer);
         const apps=(job.result.files||[]).filter(f=>f.endsWith('.html'));
         if(apps.length){const preview=document.createElement('div');preview.className='studio-app-preview';preview.innerHTML=''+apps.map(path=>`<button class="studio-primary" data-studio-file="${escape(path)}">Play your app</button>`).join('');el('result').prepend(preview);}

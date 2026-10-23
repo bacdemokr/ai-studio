@@ -229,28 +229,26 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
             owners = [row['id'] for row in db.execute("SELECT id FROM agents WHERE deleting=0 AND kind='personal'")]
         import user_location
         from personal_voice import PRESET_UPDATES
+        from role_boundaries import required_role_skills
         for owner in owners:
             profile = self.profile(owner)
             if profile:
+                original = json.dumps(profile)
                 if 'notes' in profile.get('skills', []):
                     profile['skills'] = list(dict.fromkeys('radar' if key=='notes' else key for key in profile['skills']))
                     if profile.get('purpose','').startswith('Watch my uploaded meeting notes every 30 seconds.'):
                         profile['purpose'] = 'Every 30 seconds, summarize one technical article or announcement not yet shared. Share useful discoveries in my chosen tone; skip politics, stocks and company earnings.'
-                    with self.db() as db:
-                        db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(profile), owner))
-                        db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
                 if profile.get('purpose') in PRESET_UPDATES:
                     profile['purpose'] = PRESET_UPDATES[profile['purpose']]
-                    with self.db() as db:
-                        db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(profile), owner))
-                        db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
-                from role_boundaries import required_role_skills
                 missing = set(required_role_skills(profile.get('purpose', ''))) - set(profile.get('skills', []))
                 if missing:
                     profile['skills'] = sorted(set(profile.get('skills', [])) | missing)
+                migrated = json.dumps(profile)
+                if migrated != original:
+                    # Persist the final profile once; retain the legacy session copy.
                     with self.db() as db:
-                        db.execute('UPDATE agents SET profile=? WHERE id=?', (json.dumps(profile), owner))
-                        db.execute('UPDATE participants SET profile=? WHERE id=?', (json.dumps(profile), owner))
+                        db.execute('UPDATE agents SET profile=? WHERE id=?', (migrated, owner))
+                        db.execute('UPDATE participants SET profile=? WHERE id=?', (migrated, owner))
                 runtime.write_workspace(self.workspace(owner), profile)
             user_location.sync(self.workspace(owner))
         with self.db() as db:
@@ -839,7 +837,7 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
                 'deleting': any(a['key'] == owner and a['deleting'] for a in agents),
                 'protectionEvents': self.protection_activity.snapshot({a['key'] for a in agents}, team)}
 
-    def crew_roster(self, db, owner, members, preset=False, lead=None):
+    def crew_roster(self, owner):
         """Stable Open Task slots; retired slots are never eligible for dispatch."""
         return [{**member, 'name':member['name'], 'role':member['role'],
                  'skills':list(ROLE_SKILLS[role]), 'id':self.crew_native_id(owner,role),
@@ -900,7 +898,6 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
         return {'path': 'inbox/' + name, 'textPath': 'inbox/' + name + '.txt' if extracted is not None else 'inbox/' + name}
 
     def require_team_idle(self, db, owner):
-        from studio import Problem
         self.require_bac_not_resetting(db, owner)
         if not db.execute('SELECT 1 FROM agents WHERE id=? AND deleting=0', (owner,)).fetchone():
             raise Problem('This workspace is unavailable or being deleted.', 409)
@@ -909,7 +906,7 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
         if db.execute("SELECT 1 FROM jobs WHERE owner=? AND kind IN ('crew','crew-chat','prepare') AND status IN ('queued','running','waiting','stopping')", (owner,)).fetchone():
             raise Problem('The team is busy. Finish or stop its current work first.', 409)
 
-    def enqueue(self, owner, data, source='web', due=0, lead=None):
+    def enqueue(self, owner, data, source='web', due=0):
         if data.get('kind') in ('crew','prepare'):
             raise Problem('This workflow is retired. Send /goal to Casey in Open Task.',410)
         # Automatic Tech Radar heartbeats use their own delivery path.
@@ -931,8 +928,7 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
             task = text(plan_task(data['prompt']), 5995, 'Task after /goal')
             owner = self.crew_owner(owner)
             data = {**data, 'kind':'crew-chat', 'crewRole':0, 'skill':None}
-            lead = None
-        profile = self.profile(lead or owner)
+        profile = self.profile(owner)
         preset = data.get('kind') == 'crew-chat'
         if not profile and not preset:
             raise Problem('Create your agent first.')
@@ -982,7 +978,7 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
             if profile or not preset:
-                available = self.require_available(db, lead or owner)
+                available = self.require_available(db, owner)
                 if kind in ('chat', 'reminder'):
                     self.require_manual_chat(json.loads(available['profile']))
             elif not db.execute('SELECT 1 FROM agents WHERE id=? AND deleting=0', (owner,)).fetchone():
@@ -998,22 +994,17 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
                     "SELECT 1 FROM jobs WHERE owner=? AND kind='crew-chat' AND status IN ('queued','running','waiting','stopping') AND (CASE WHEN json_type(payload,'$.collaboration')='object' THEN status IN ('running','stopping') AND json_extract(payload,'$.collaboration.activeRole')=? ELSE json_extract(payload,'$.crewRole')=? END) LIMIT 1", (owner, role, role)).fetchone():
                 raise Problem('This agent is working. Wait for the current task to finish or stop it before sending a new message.', 409)
             if collaborative:
-                if origin['role'] is None:
-                    original = self.require_available(db, origin['owner'])
-                    self.require_manual_chat(json.loads(original['profile']))
                 self.require_team_idle(db, owner)
-                from visitor_teams import capture, require_opt_in
+                from visitor_teams import capture
                 if include_hired:
-                    visitors, required, unavailable = capture(self, db, owner, task)
+                    visitors, unavailable = capture(self, db, owner)
                     if mode == 'hired' and not visitors:
                         next_step = ('Check their status in the Lounge' if unavailable else 'Hire an agent')
                         raise Problem('No hired agents are ready. ' + next_step + ' or choose Hired + Standby.', 409)
                     payload['roster'] = visitors
-                    payload['requiredVisitors'] = required
                     payload['unavailableVisitors'] = unavailable
                     payload['roundtable'] = self.capture_roundtable(db, owner, selected=[member['key'] for member in visitors])
                 else:
-                    require_opt_in(db, owner, task)
                     # OFF keeps the established built-in task + personal reactions flow.
                     # The toggle controls specialist assignments, not closing reactions.
                     payload['roundtable'] = self.capture_roundtable(db, owner)
@@ -1077,14 +1068,7 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
                                'detail': 'An in-flight model call may finish and write files. Further roles will not start.' if status == 'stopping' else 'Removed from the queue; saved work is preserved.', 'role': 0})
                 db.execute('UPDATE jobs SET status=?,events=?,updated=? WHERE id=?', (status, json.dumps(events[-40:]), time.time(), job_id))
                 return {'status': status}
-            if row['status'] != 'waiting' or row['kind'] != 'crew' or action != 'approve-equipment':
-                raise Problem('This decision is not available.', 409)
-            payload = json.loads(row['payload'])
-            payload['equipmentDecision'] = 'Plan additional equipment, pending availability. Do not imply procurement is confirmed.'
-            db.execute("UPDATE jobs SET status='queued',payload=?,due=? WHERE id=?", (json.dumps(payload), time.time(), job_id))
-        self.event(job_id, 'You approved a planning assumption', 'Additional equipment remains to be confirmed.', 2)
-        self.signal.set()
-        return {'status': 'queued'}
+            raise Problem('This decision is not available.', 409)
 
     def stop_checkpoint(self, job_id):
         with self.db() as db:
@@ -1267,8 +1251,7 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
             profile = dict(profile)
             personal_models.prepare(self, profile)
             if agent_id in self.provisioned:return agent_id
-            native = profile if role is None else {'name': ROLES[role][0], 'persona': ROLES[role][2], 'skills': list(ROLE_SKILLS[role])}
-            self.adapter.register(agent_id, self.workspace(owner, role), native, ROLES[role][1] if role is not None else None)
+            self.adapter.register(agent_id, self.workspace(owner), profile, None)
             self.provisioned.add(agent_id)
         return agent_id
 

@@ -267,6 +267,7 @@ class RoleBoundaryTests(unittest.TestCase):
     def test_partial_team_preserves_decline_in_final_result(self):
         weather = self.app.add_agent(self.owner, {'name':'Rain','purpose':'Weather advice.','skills':['weather']})['agentId']
         self.adapter.selection['tasks'][0]['agent'] = self.owner
+        self.adapter.participation = {'requestedAgents': [self.owner, weather]}
         self.adapter.selection['declinedAgents'] = [{'agent':weather,'reason':'Weather does not cover earnings analysis.'}]
         job = self.execute(self.start('/goal Have Pixel build a counter. Ask Rain to analyze NVIDIA earnings.', teamMode='hired'))
         plan = job['payload']['collaboration']

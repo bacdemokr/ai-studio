@@ -128,6 +128,48 @@ class OwnershipTests(unittest.TestCase):
         for role in (0,4,5,6,7,8):
             self.assertTrue((self.studio.workspace(team,role)/'SOUL.md').is_file())
 
+    def test_existing_team_lookup_does_not_wait_for_an_unrelated_writer(self):
+        from concurrent.futures import ThreadPoolExecutor
+        team=self.studio.crew_owner(self.owner)
+        with ThreadPoolExecutor(1) as pool, self.studio.db() as writer, \
+                patch.object(self.studio,'initialize_crew_workspaces') as initialize:
+            writer.execute('BEGIN IMMEDIATE')
+            try:
+                for owner in (self.owner,team):
+                    self.assertEqual(pool.submit(self.studio.crew_owner,owner).result(timeout=2),team)
+            finally:
+                writer.rollback()
+            initialize.assert_not_called()
+
+    def test_existing_team_lookup_still_rejects_retired_accounts(self):
+        team=self.studio.crew_owner(self.owner)
+        with self.studio.db() as db:
+            db.execute('UPDATE participants SET retiring=1 WHERE id=?',(self.person['id'],))
+        for owner in (self.owner,team):
+            with self.subTest(owner=owner), self.assertRaises(Problem) as caught:
+                self.studio.crew_owner(owner)
+            self.assertEqual(caught.exception.status,401)
+
+    def test_retirement_between_lookup_and_creation_is_rechecked(self):
+        import contextlib
+        database=self.studio.db
+        calls=0
+        @contextlib.contextmanager
+        def retire_after_lookup():
+            nonlocal calls
+            calls+=1
+            with database() as db:
+                yield db
+            if calls==1:
+                with database() as db:
+                    db.execute('UPDATE participants SET retiring=1 WHERE id=?',(self.person['id'],))
+        with patch.object(self.studio,'db',retire_after_lookup), self.assertRaises(Problem) as caught:
+            self.studio.crew_owner(self.owner)
+        self.assertEqual(caught.exception.status,401)
+        with database() as db:
+            self.assertEqual(db.execute('SELECT count(*) FROM crew_contexts').fetchone()[0],0)
+        self.assertFalse(self.studio.crew_resources)
+
     def test_reading_session_state_does_not_allocate_crew_resources(self):
         before=set((self.studio.directory/'workspaces').iterdir())
         for _ in range(3):
@@ -186,8 +228,19 @@ class OwnershipTests(unittest.TestCase):
     def test_retired_personal_lead_cannot_replace_team_captain(self):
         team=self.studio.crew_owner(self.owner)
         with self.assertRaisesRegex(Problem,'workflow is retired'):
-            self.studio.enqueue(team,{'kind':'crew','brief':{'schema':2}},lead=self.owner)
+            self.studio.enqueue(team,{'kind':'crew','brief':{'schema':2}})
         self.assertFalse(list(self.studio.workspace(self.owner).parent.glob(self.owner+'-*')))
+
+    def test_retired_equipment_decision_cannot_requeue_a_legacy_job(self):
+        team=self.studio.crew_owner(self.owner)
+        job=self.studio.enqueue(team,{'kind':'crew-chat','crewRole':0,'prompt':'Hello'})['id']
+        with self.studio.db() as db:
+            db.execute("UPDATE jobs SET kind='crew',status='waiting' WHERE id=?",(job,))
+        with self.assertRaises(Problem) as caught:
+            self.studio.decision(team,job,'approve-equipment')
+        self.assertEqual(caught.exception.status,409)
+        self.assertEqual(self.studio.evidence(team,job)['mission']['status'],'waiting')
+        self.assertEqual(self.studio.decision(team,job,'cancel')['status'],'cancelled')
 
     def test_http_uses_team_for_chat_preparation_policy_and_files_after_switch(self):
         server=create_server('127.0.0.1',0,self.studio)
@@ -203,6 +256,7 @@ class OwnershipTests(unittest.TestCase):
             finally:conn.close()
         self.assertEqual(request('prepare-demo',{'background':True})[0],410)
         self.assertEqual(request('jobs',{'kind':'crew','preset':True})[0],410)
+        self.assertIsNone(self.studio.existing_crew_owner(self.owner))
         self.assertEqual(request('team-model',{'role':0,'model':'nvidia/nvidia/nemotron-3.5-lightning'})[0],200)
         team=self.studio.crew_owner(self.owner)
         self.finish()

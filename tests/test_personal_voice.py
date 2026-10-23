@@ -11,6 +11,34 @@ from test_studio import Studio, Adapter
 
 
 class PersonalVoiceTests(unittest.TestCase):
+    def test_chained_legacy_radar_migration_writes_only_the_final_profile(self):
+        with tempfile.TemporaryDirectory() as temp:
+            studio=Studio(temp,Adapter(),start_worker=False)
+            owner=studio.session()[0]['id']
+            profile=studio.onboard(owner,{'name':'Radar','skills':['radar']})
+            profile.update(skills=['notes'],purpose='Watch my uploaded meeting notes every 30 seconds.')
+            memory=studio.workspace(owner)/'MEMORY.md'
+            memory.write_text('Keep my saved preference.')
+            with studio.db() as db:
+                db.execute('CREATE TABLE profile_updates (source TEXT, profile TEXT)')
+                for table in ('agents','participants'):
+                    db.execute('UPDATE '+table+' SET profile=? WHERE id=?',(json.dumps(profile),owner))
+                    db.execute(f'''CREATE TRIGGER audit_{table}_profile AFTER UPDATE OF profile ON {table}
+                        BEGIN INSERT INTO profile_updates VALUES ('{table}', NEW.profile); END''')
+            restarted=Studio(temp,Adapter(),start_worker=False)
+            expected=restarted.profile(owner)
+            self.assertEqual(expected['skills'],['radar'])
+            self.assertTrue(expected['purpose'].startswith('Every 20 seconds,'))
+            with restarted.db() as db:
+                updates=db.execute('SELECT source,profile FROM profile_updates').fetchall()
+                self.assertCountEqual([r['source'] for r in updates],['agents','participants'])
+                self.assertTrue(all(json.loads(r['profile'])==expected for r in updates))
+                db.execute('DELETE FROM profile_updates')
+            Studio(temp,Adapter(),start_worker=False)
+            with restarted.db() as db:
+                self.assertEqual(db.execute('SELECT count(*) FROM profile_updates').fetchone()[0],0)
+            self.assertEqual(memory.read_text(),'Keep my saved preference.')
+
     def test_workspace_keeps_literal_voice_once_and_combined_signature(self):
         with tempfile.TemporaryDirectory() as temp:
             profile={'name':'Orbit','persona':'guide','purpose':'Explain robotics with practical examples.',

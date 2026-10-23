@@ -202,11 +202,10 @@ class PersonalModelTests(unittest.TestCase):
         self.hire()
         external = self.hire('Writer', model='api/nvidia/other-model')
         with self.app.db() as db:
-            members, _, unavailable = visitor_teams.capture(self.app, db, self.owner, 'Write a page.')
+            members, unavailable = visitor_teams.capture(self.app, db, self.owner)
             self.assertEqual([row['name'] for row in members], ['Writer'])
             self.assertEqual(unavailable[0]['name'], 'Pixel')
-            with self.assertRaisesRegex(Problem, 'Pixel: Local model'):
-                visitor_teams.capture(self.app, db, self.owner, 'Have Pixel write a page.')
+            self.assertIn('Local model', unavailable[0]['reason'])
         with self.app.db() as db:
             reaction = self.app.capture_roundtable(db, self.owner)
             self.assertEqual([m['name'] for m in reaction['members']], ['Writer'])

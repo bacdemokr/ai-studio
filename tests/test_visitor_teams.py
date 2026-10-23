@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from test_studio import Studio, Adapter, Problem, safe_file
 from agent_runtime import GatewayError
-from visitor_teams import requirements
+from visitor_teams import instructions
 
 
 BARCELONA_REQUEST = '''/goal Have Pixel and the built-in researcher Scout work together on a small Barcelona travel guide.
@@ -15,18 +15,6 @@ BARCELONA_REQUEST = '''/goal Have Pixel and the built-in researcher Scout work t
 Scout: Find three interesting places to visit, using official tourism sources. Keep the research brief and provide one useful fact and a source link for each place.
 
 Pixel: Turn Scout's findings into one self-contained HTML page with three attractive cards and a button to show or hide each place's details. Use no external libraries.'''
-
-
-class NamedAssignmentTests(unittest.TestCase):
-    def test_prose_never_determines_a_named_agents_runtime_role(self):
-        for request in (BARCELONA_REQUEST,
-                        'Have Pixel and the built-in researcher Scout work together on a travel guide.',
-                        "Have Scout find places, then get Pixel to turn the findings into a page.",
-                        'Pixel이 코딩을 맡아줘. Scout가 조사해서 바르셀로나 여행 페이지 만들어줘.'):
-            with self.subTest(request=request):
-                self.assertEqual(requirements(request, [{'name': 'Pixel', 'key': 'pixel'}]),
-                                 [{'key': 'pixel', 'name': 'Pixel', 'role': None}])
-
 
 
 class VisitorAdapter(Adapter):
@@ -41,6 +29,7 @@ class VisitorAdapter(Adapter):
         self.check_done = False
         self.check_partial = False
         self.after = None
+        self.participation = {}
 
     def respond(self, agent, session, prompt, **kwargs):
         self.calls.append((agent, session, prompt))
@@ -59,10 +48,13 @@ class VisitorAdapter(Adapter):
                                               and self.repaired_selection is not None else self.selection))
             # Simulated planner identities, not natural-language interpretation.
             if self.auto_agents and 'Hired agents:\n' in prompt:
-                required, _ = json.JSONDecoder().raw_decode(prompt.split('Required participants detected from the direct request:\n', 1)[1])
+                members, _ = json.JSONDecoder().raw_decode(prompt.split('Hired agents:\n', 1)[1])
+                candidates = [m for m in members if 'builder' in m.get('skills', [])]
+                chosen = next((m for m in candidates if m['name'] == 'Pixel'), candidates[0] if candidates else None)
                 preferred_role = 5 if any(t['role'] == 5 for t in selection['tasks']) else next((t['role'] for t in selection['tasks']), None)
                 for task in selection['tasks']:
-                    task.setdefault('agent', required[0]['key'] if required and task['role'] == preferred_role else 'builtin')
+                    task.setdefault('agent', chosen['key'] if chosen and task['role'] == preferred_role else 'builtin')
+            selection.update(self.participation)
             for task in selection['tasks']:
                 if task.get('agent') not in (None, 'builtin'):
                     task.setdefault('roleFit', 'The saved programming purpose covers this prototype.')
@@ -130,11 +122,10 @@ class VisitorTeamTests(unittest.TestCase):
         self.assertIn('not as an assigned specialist', personal_calls[-1][2])
         self.assertFalse(any('VISITOR TEAM SELECTION' in c[2] for c in self.adapter.calls))
 
-    def test_off_named_agent_explains_opt_in_before_queuing_any_work(self):
-        with self.assertRaisesRegex(Problem, r'Choose Hired only or Hired \+ Standby to assign Pixel'):
-            self.start(includeHiredAgents=False)
-        with self.app.db() as db:
-            self.assertEqual(db.execute("SELECT count(*) FROM jobs WHERE kind='crew-chat'").fetchone()[0], 0)
+    def test_legacy_builtin_mode_does_not_infer_participation_from_names(self):
+        job = self.execute(self.start(includeHiredAgents=False))
+        self.assertEqual(job['status'], 'done')
+        self.assertTrue(self.specialists()[-1][0].endswith('-r5'))
 
     def test_off_ignores_names_in_quotes_and_negative_requests(self):
         for prompt in ('/goal Build a counter.\n> Ask Pixel to code.', "/goal Don't use Pixel. Build a counter."):
@@ -216,12 +207,13 @@ class VisitorTeamTests(unittest.TestCase):
         self.assertEqual(job['payload']['collaboration']['visitorBindings'], {})
         self.assertTrue(self.specialists()[0][0].endswith('-r5'))
 
-    def test_explicitly_excluded_builder_is_not_automatically_selected(self):
-        self.app.configure(self.owner, {**self.app.profile(self.owner), 'skills': ['builder']})
+    def test_caseys_exclusion_keeps_hire_visible_but_does_not_dispatch_it(self):
+        self.adapter.selection['tasks'][0]['agent'] = 'builtin'
+        self.adapter.participation = {'excludedAgents': [self.owner]}
         for request in ("Don't let Pixel do the coding. Build a counter.", 'Pixel은 빼고 코딩해줘.'):
             with self.subTest(request=request):
                 job = self.execute(self.start('/goal ' + request))
-                self.assertEqual(job['payload']['roster'], [])
+                self.assertEqual([m['key'] for m in job['payload']['roster']], [self.owner])
                 self.assertEqual(job['payload']['collaboration']['visitorBindings'], {})
                 self.assertTrue(self.specialists()[-1][0].endswith('-r5'))
                 self.assertFalse(any(call[0] == 'bac-' + self.owner for call in self.adapter.calls))
@@ -254,6 +246,8 @@ class VisitorTeamTests(unittest.TestCase):
         self.assertIn('Approve the required sites', job['result']['answer'])
 
     def test_explicit_builtin_name_keeps_that_agent(self):
+        self.adapter.selection['tasks'][0]['agent'] = 'builtin'
+        self.adapter.participation = {'requestedAgents': ['Cody']}
         self.app.add_agent(self.owner, {'name': 'Maker', 'skills': ['builder']})
         job = self.execute(self.start('/goal Ask Cody to build a counter.'))
         self.assertTrue(self.specialists()[0][0].endswith('-r5'))
@@ -312,24 +306,25 @@ class VisitorTeamTests(unittest.TestCase):
     def test_explicit_model_bindings_are_not_rewritten_by_old_role_hints(self):
         from visitor_teams import bind
         pixel = {**self.app.profile(self.owner), 'key': self.owner}
-        with self.app.db() as db:
-            roster = self.app.crew_roster(db, self.manager, {}, preset=True)
+        roster = self.app.crew_roster(self.manager)
         plan = {'summary': 'Scout researches and Pixel codes.', 'tasks': [
             {'role': 8, 'agent': 'builtin', 'task': 'Find places.'},
             {'role': 5, 'agent': self.owner, 'task': 'Build the guide.', 'roleFit': 'Pixel’s saved programming role covers the webpage.'}]}
-        required = [{'key': self.owner, 'name': 'Pixel', 'role': 8}]
-        bind(plan, roster, [pixel], required, BARCELONA_REQUEST)
+        plan['requestedAgents'] = [self.owner, 'Scout']
+        bind(plan, roster, [pixel])
         self.assertEqual([t['name'] for t in plan['tasks']], ['Scout', 'Pixel'])
         self.assertEqual([t['role'] for t in plan['tasks']], [8, 5])
 
     def test_confirmed_builtin_choice_is_not_replaced_by_a_suitable_hire(self):
         self.app.configure(self.owner, {**self.app.profile(self.owner), 'skills': ['builder']})
         self.adapter.selection['tasks'][0]['agent'] = 'builtin'
+        self.adapter.participation = {'requestedAgents': ['Cody']}
         job = self.execute(self.start('/goal Let Cody build a counter.'))
         self.assertEqual(job['payload']['collaboration']['visitorBindings'], {})
         self.assertTrue(self.specialists()[0][0].endswith('-r5'))
 
     def test_required_participant_is_added_when_casey_attempts_direct_answer(self):
+        self.adapter.participation = {'requestedAgents': [self.owner]}
         self.adapter.repaired_selection = self.adapter.selection
         self.adapter.selection = {'summary': 'No help needed.', 'tasks': [], 'answer': 'Here is a draft.'}
         job = self.execute(self.start())
@@ -342,26 +337,32 @@ class VisitorTeamTests(unittest.TestCase):
             self.execute(self.start('/goal Build a counter.'))
         self.assertEqual(self.specialists(), [])
 
-    def test_named_busy_agent_is_not_silently_replaced(self):
+    def test_named_busy_agent_is_visible_as_unavailable_and_cannot_be_assigned(self):
         self.app.enqueue(self.owner, {'kind': 'chat', 'prompt': 'Weather now?'})
-        with self.assertRaisesRegex(Problem, 'Pixel is busy'):
-            self.start()
+        self.adapter.selection = {'summary': 'Pixel is busy.', 'tasks': [], 'outcome': 'unavailable',
+            'answer': 'Wait for Pixel to finish.', 'requestedAgents': [self.owner],
+            'declinedAgents': [{'agent': self.owner, 'reason': 'Busy or unavailable.'}]}
+        job = self.execute(self.start())
+        self.assertEqual(job['payload']['roster'], [])
+        self.assertEqual(job['payload']['unavailableVisitors'][0]['key'], self.owner)
+        self.assertEqual(job['payload']['collaboration']['outcome'], 'unavailable')
+        self.assertFalse(self.specialists())
+        self.assertIn('Pixel: Busy', job['result']['answer'])
 
-    def test_named_agent_warming_up_is_preparing_not_busy_with_user_work(self):
+    def test_only_hire_preparing_reports_no_ready_team_not_inferred_requirement(self):
         self.app.enqueue(self.owner, {'kind': 'chat', 'prompt': 'Synthetic preparation'})
         with self.app.db() as db:
             db.execute("UPDATE jobs SET kind='prepare-agent',status='running' WHERE owner=?", (self.owner,))
-        with self.assertRaisesRegex(Problem, 'Pixel is still preparing'):
+        with self.assertRaisesRegex(Problem, 'No hired agents are ready'):
             self.start(teamMode='hired')
         self.assertEqual(self.specialists(), [])
 
-    def test_disconnected_lounge_uses_backups_unless_personal_agent_is_named(self):
+    def test_disconnected_hire_is_not_a_submission_error_even_when_mentioned(self):
         status = {'ready': False, 'gateway': True, 'model': False, 'teamReady': True, 'teamModel': True}
         with patch.object(self.app, 'runtime_status', return_value=status):
-            with self.assertRaisesRegex(Problem, 'Local model is not connected'):
-                self.start()
-            job = self.execute(self.start('/goal Build a counter.'))
+            job = self.execute(self.start('/goal Do not have Pixel code. Have Cody build a counter.'))
         self.assertEqual(job['payload']['roster'], [])
+        self.assertIn('model', job['payload']['unavailableVisitors'][0]['reason'])
         self.assertTrue(self.specialists()[-1][0].endswith('-r5'))
 
     def test_unnamed_busy_agent_is_not_reserved(self):
@@ -424,6 +425,7 @@ class VisitorTeamTests(unittest.TestCase):
             self.app.enqueue(self.owner, {'kind': 'chat', 'prompt': 'Overlap'})
 
     def test_required_peer_cannot_be_skipped_by_success_checkpoint(self):
+        self.adapter.participation = {'requestedAgents': [self.owner]}
         self.adapter.check_done = True
         self.adapter.selection['tasks'].insert(0, {'role': 6, 'agent': 'builtin', 'task': 'Describe the counter.'})
         job = self.execute(self.start())
@@ -437,6 +439,7 @@ class VisitorTeamTests(unittest.TestCase):
         self.assertEqual(self.specialists()[0][0], 'bac-' + self.owner)
 
     def test_named_agent_still_attempts_work_after_missing_upstream_handoff(self):
+        self.adapter.participation = {'requestedAgents': [self.owner]}
         self.adapter.selection['tasks'].insert(0, {'role': 8, 'agent': 'builtin', 'task': 'Research counter design.',
                                                  'requiredFiles': ['artifacts/research.md']})
         job = self.execute(self.start())
@@ -449,6 +452,7 @@ class VisitorTeamTests(unittest.TestCase):
         self.assertIn('artifacts/research.md', plan['finalAnswer'])
 
     def test_named_agent_cannot_be_skipped_by_partial_checkpoint(self):
+        self.adapter.participation = {'requestedAgents': [self.owner]}
         self.adapter.check_done = self.adapter.check_partial = True
         self.adapter.selection['tasks'].insert(0, {'role': 6, 'agent': 'builtin', 'task': 'Describe the counter.'})
         job = self.execute(self.start())
@@ -456,9 +460,8 @@ class VisitorTeamTests(unittest.TestCase):
         self.assertEqual(job['payload']['collaboration']['outcome'], 'partial')
         self.assertEqual(self.specialists()[-1][0], 'bac-' + self.owner)
 
-    def test_name_in_quote_code_negative_or_substring_is_not_forced(self):
-        members = [{'name': 'Pixel', 'key': self.owner}]
-        for task in ('> Ask Pixel to code.', '```Ask Pixel to code.```', 'Do not use Pixel to code.',
-                     'Pixel은 제외하고 만들어줘.', 'Use Pixelated graphics.'):
-            with self.subTest(task=task):
-                self.assertEqual(requirements(task, members), [])
+    def test_instructions_delegate_contextual_intent_to_casey(self):
+        text = instructions([{'name': 'Pixel', 'key': self.owner, 'skills': ['builder']}])
+        self.assertIn('requestedAgents', text)
+        self.assertIn('excludedAgents', text)
+        self.assertNotIn('Required participants detected', text)

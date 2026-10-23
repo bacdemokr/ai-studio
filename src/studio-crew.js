@@ -4,9 +4,9 @@ function assignmentFitMarkup(task){
  return reason?'<p class="crew-assignment-fit"><span>Why this agent</span>'+escape(reason)+'</p>':'';
 }
 function declinedAssignmentsMarkup(job){
- const declined=job.payload.collaboration.declinedAgents||[],roster=job.payload.roster||[];
+ const declined=job.payload.collaboration.declinedAgents||[],roster=[...(job.payload.roster||[]),...(job.payload.unavailableVisitors||[])];
  if(!declined.length)return '';
- return '<div class="crew-declined-assignments"><small>Not assigned</small><ul>'+declined.map(item=>'<li><strong>'+escape(roster.find(member=>member.key===item.agent)?.name||'Requested agent')+'</strong><span>'+escape(item.reason)+'</span></li>').join('')+'</ul></div>';
+ return '<div class="crew-declined-assignments"><small>Not assigned</small><ul>'+declined.map(item=>'<li><strong>'+escape(roster.find(member=>member.key===item.agent)?.name||(defaultNames.includes(item.agent)?item.agent:'Requested agent'))+'</strong><span>'+escape(item.reason)+'</span></li>').join('')+'</ul></div>';
 }
 function assignedVisitor(role){return selectedScenario==='plan'?seatedCollaboration()?.payload.collaboration.visitorBindings?.[role]:null;}
 function selectedCrewVisitor(){return selectedScenario==='plan'&&selectedOpenTaskVisitor?(data.agents||[]).find(agent=>agent.key===selectedOpenTaskVisitor&&!agent.deleting):assignedVisitor(selectedCrewRole);}

@@ -1,4 +1,5 @@
 """Disposable real HTTP/SQLite dispatcher with simulated model replies."""
+import json
 import os
 from pathlib import Path
 import signal
@@ -15,6 +16,14 @@ from serve import create_server
 
 class BrowserAdapter(VisitorAdapter):
     def respond(self, agent, session, prompt, **kwargs):
+        # Simulate the model's explicit identity selection for this browser case.
+        # Production code no longer infers mandatory participants from prose.
+        request = prompt.split('Current user task:\n', 1)[-1].split('\n', 1)[0]
+        if session.endswith('-planning') and request == 'Have Cody build a counter.':
+            self.calls.append((agent, session, prompt))
+            return json.dumps({**self.selection, 'requestedAgents': ['Cody'],
+                               'excludedAgents': [], 'declinedAgents': [],
+                               'tasks': [{**task, 'agent': 'builtin'} for task in self.selection['tasks']]})
         if '-working' in session and agent.count('-') == 1:
             time.sleep(min(15, max(0, float(os.environ.get('BAC_TEST_VISITOR_DELAY', '0')))))
         return super().respond(agent, session, prompt, **kwargs)

@@ -81323,7 +81323,7 @@ render();
       if(selection){selection.removeAllRanges();for(const range of ranges)if(range.commonAncestorContainer.isConnected)selection.addRange(range);}
     }
   }
-  const buildInfo={"version": "0.2.3", "commit": "22cd57d7174ece48a64d3acf44ab98d8906ac26a", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
+  const buildInfo={"version": "0.2.3", "commit": "bf1efcd781c5fec078c78b793da902f9ac213d49", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
   // Only codes and source locations are retained. Never retain Error.message, bodies or URLs.
 const browserDiagnostics=[];
 const diagnosticRoutes=new Set('session state runtime diagnostics telemetry settings settings/models settings/start settings/team-model settings/connections settings/connections/preferences settings/connections/check settings/connections/models settings/scenario-model settings/scenario-models credential-session agents onboard profile agent-model delete-agent agent-policy crew-policy jobs upload decision retry-reaction reset crew-chat-reset bac-reset heartbeat team-model telegram telegram/test file workspace-files agent-documents evidence security'.split(' '));
@@ -81651,9 +81651,6 @@ function bindDiagnosticActions(){
         resultKey=key;el('result-title').textContent=job.status==='done'?'Result':job.status==='error'?'This mission needs attention.':job.kind==='crew'?'Your crew is building the plan.':'Working…';
         el('read-aloud').hidden=!job.result.answer;
         el('result').replaceChildren();
-        if(job.status==='waiting'){
-          const box=document.createElement('div');box.className='studio-waiting';box.innerHTML='The plan needs '+job.payload.capacity.spark+' demo devices and '+job.payload.capacity.workstation+' workstations. Your available equipment does not cover it.<br><button class="studio-primary" data-decision="approve-equipment">Plan additional equipment</button><button class="studio-secondary" data-decision="cancel">Cancel and revise</button>';el('result').append(box);
-        }
         const answer=document.createElement('div');answer.textContent=job.result.answer||job.result.error||Object.values(job.payload.outputs||{}).slice(-1)[0]||(job.status==='queued'?'Your mission is saved in the queue.':job.status==='cancelled'?'This mission was cancelled.':'The agent is working. Actual handoffs and saved files appear in the evidence panel.');el('result').append(answer);
         const apps=(job.result.files||[]).filter(f=>f.endsWith('.html'));
         if(apps.length){const preview=document.createElement('div');preview.className='studio-app-preview';preview.innerHTML=''+apps.map(path=>`<button class="studio-primary" data-studio-file="${escape(path)}">Play your app</button>`).join('');el('result').prepend(preview);}
@@ -81708,9 +81705,9 @@ function assignmentFitMarkup(task){
  return reason?'<p class="crew-assignment-fit"><span>Why this agent</span>'+escape(reason)+'</p>':'';
 }
 function declinedAssignmentsMarkup(job){
- const declined=job.payload.collaboration.declinedAgents||[],roster=job.payload.roster||[];
+ const declined=job.payload.collaboration.declinedAgents||[],roster=[...(job.payload.roster||[]),...(job.payload.unavailableVisitors||[])];
  if(!declined.length)return '';
- return '<div class="crew-declined-assignments"><small>Not assigned</small><ul>'+declined.map(item=>'<li><strong>'+escape(roster.find(member=>member.key===item.agent)?.name||'Requested agent')+'</strong><span>'+escape(item.reason)+'</span></li>').join('')+'</ul></div>';
+ return '<div class="crew-declined-assignments"><small>Not assigned</small><ul>'+declined.map(item=>'<li><strong>'+escape(roster.find(member=>member.key===item.agent)?.name||(defaultNames.includes(item.agent)?item.agent:'Requested agent'))+'</strong><span>'+escape(item.reason)+'</span></li>').join('')+'</ul></div>';
 }
 function assignedVisitor(role){return selectedScenario==='plan'?seatedCollaboration()?.payload.collaboration.visitorBindings?.[role]:null;}
 function selectedCrewVisitor(){return selectedScenario==='plan'&&selectedOpenTaskVisitor?(data.agents||[]).find(agent=>agent.key===selectedOpenTaskVisitor&&!agent.deleting):assignedVisitor(selectedCrewRole);}

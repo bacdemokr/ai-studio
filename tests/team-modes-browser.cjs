@@ -36,7 +36,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   const job=(await state()).crewChats.find(j=>j.payload.teamMode==='hired');assert.equal(job.status,'done');assert.equal(job.payload.collaboration.visitorBindings[5].name,'Pixel');
   await mode.selectOption('mixed');assert.equal(await page.evaluate(()=>BacCampus.inspect().visitorTravel.find(v=>v.name==='Pixel').phase),'working','Changing the next team mode keeps the completed participant at its desk');
   await page.locator('.world-room-map [data-world-room=lounge]').click();assert.equal(await mode.isVisible(),false);
-  await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===1&&BacCampus.inspect().visitorTravel[0].name==='Pixel'&&BacCampus.inspect().visitorTravel[0].phase==='working');
+  await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling&&BacCampus.inspect().visitorTravel.length===0);
   await choose('plan');await page.waitForFunction(()=>BacCampus.inspect().visitorTravel.length===2);
   await page.locator('#studio-bac-reset').click();await page.locator('#studio-team-reset-confirm').click();
   await page.waitForFunction(()=>document.querySelector('#studio-crew-team-mode [aria-pressed=true]').dataset.teamMode==='hired'&&!document.querySelector('#studio-crew-team-mode button').disabled);

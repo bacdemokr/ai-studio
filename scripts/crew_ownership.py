@@ -92,9 +92,24 @@ class CrewOwnership:
 
     def crew_owner(self, owner, scenario=None):
         """Resolve the authenticated owner's shared team; never another account's."""
-        from studio import Problem, ROLES, ACTIVE_ROLES
+        from studio import Problem, ACTIVE_ROLES
         from scenarios import validate
         if scenario is not None:validate(scenario)
+
+        def lookup(db):
+            account = db.execute('''SELECT a.participant,a.kind,p.retiring,c.owner AS team
+                FROM agents a JOIN participants p ON p.id=a.participant
+                LEFT JOIN crew_contexts c ON c.participant=a.participant AND c.scenario=?
+                WHERE a.id=?''', (scenario or 'plan', owner)).fetchone()
+            if not account:raise Problem('Agent not found.',404)
+            if account['retiring']:raise Problem('Open the Agent Studio page to start a session.',401)
+            return account, owner if account['kind']=='crew' and scenario is None else account['team']
+
+        # A committed team already has all its definition files. Resolving it
+        # needs no write lock, but must still enforce account/retirement checks.
+        with self.db() as db:
+            _, found = lookup(db)
+            if found:return found
         resources = []
         try:
             # Keep registration and all definition files within the same
@@ -102,13 +117,11 @@ class CrewOwnership:
             # recreate directories after cleanup has captured/deleted the team.
             with contextlib.ExitStack() as workspaces, self.db() as db:
                 db.execute('BEGIN IMMEDIATE')
-                account = db.execute('SELECT a.participant,a.kind,p.retiring FROM agents a JOIN participants p ON p.id=a.participant WHERE a.id=?', (owner,)).fetchone()
-                if not account:raise Problem('Agent not found.',404)
-                if account['retiring']:raise Problem('Open the Agent Studio page to start a session.',401)
-                if account['kind']=='crew' and scenario is None:return owner
+                # Another request may have created the team or retired the
+                # account since the read. Recheck under the creation fence.
+                account, found = lookup(db)
+                if found:return found
                 scenario=scenario or 'plan'
-                found = db.execute('SELECT owner FROM crew_contexts WHERE participant=? AND scenario=?', (account['participant'],scenario)).fetchone()
-                if found:return found['owner']
                 team = secrets.token_hex(12)
                 db.execute("INSERT INTO agents(id,participant,created,kind) VALUES (?,?,?,'crew')", (team,account['participant'],time.time()))
                 db.execute('INSERT INTO crew_contexts(owner,participant,scenario) VALUES (?,?,?)', (team,account['participant'],scenario))
