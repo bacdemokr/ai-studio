@@ -36,7 +36,7 @@
     'data-analysis':['Data interpretation','데이터 비교와 결과 해석.'],
     'interface-design':['UX design','화면 구성과 사용 흐름 설계.'],
     documents:['Three Takeaways','핵심 세 가지로 요약.'],
-    web:['Web research','출처를 확인하며 자료 조사.'],
+    web:['Web research','출처 기반 자료 조사.'],
     writer:['Slack announcements','Slack 공지 초안 작성.'],
     memory:['Remember what matters','다음 대화를 위해 취향 기억.'],
     weather:['Live weather','현재 날씨와 예보 확인.']

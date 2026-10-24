@@ -1427,7 +1427,7 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
         reply_text = str(answer)
         if role == 0:
             hint = ('참고로, 팀 프로젝트를 원한다면 메시지 앞에 `/goal`을 추가해줘.'
-                    if re.search(r'[가-힣]', payload['prompt']) else
+                    if re.search(r'[가-힣]', reply_text) else
                     'For a team project, add `/goal` at the start of your message.')
             if hint not in reply_text:
                 reply_text += '\n\n' + hint

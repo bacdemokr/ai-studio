@@ -9,7 +9,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   const choose=async id=>{await page.locator('.world-room-map [data-world-scenario="'+id+'"]').click();await page.waitForFunction(id=>BacCampus.inspect().navigation.activeScenario===id&&!BacCampus.inspect().navigation.travelling,id);};
   const teamControl=page.locator('#studio-crew-team-mode');
   const mode={selectOption:async value=>teamControl.locator('[data-team-mode="'+value+'"]').click(),inputValue:async()=>teamControl.locator('[aria-pressed=true]').getAttribute('data-team-mode'),isDisabled:async()=>teamControl.locator('button').first().isDisabled(),isVisible:async()=>teamControl.isVisible()};
-  await choose('plan');assert.equal(await mode.inputValue(),'hired');assert.deepEqual(await teamControl.locator('button').allTextContents(),['Hired only','Hired + Standby']);
+  await choose('plan');assert.equal(await mode.inputValue(),'hired');assert.deepEqual(await teamControl.locator('button').allTextContents(),['고용한 에이전트만','고용 + 대기 에이전트']);
   await page.locator('#studio-crew-prompt').fill('/goal Build a counter.');await page.locator('#studio-crew-send').click();
   await page.locator('#studio-crew-chat-error').filter({hasText:'No hired agents are ready'}).waitFor({state:'visible'});
   assert.equal(await page.locator('#studio-crew-chat-error').innerText(),'No hired agents are ready. Hire an agent or choose Hired + Standby.');

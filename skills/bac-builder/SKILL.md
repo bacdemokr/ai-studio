@@ -5,7 +5,7 @@ description: Build small desktop web prototypes with a short implementation and 
 
 Use this skill for building or changing code. For greetings, explanations or planning questions, answer directly without creating a file.
 
-Use supplied facts and analysis to implement the page. Copying values into a table is part of implementation; interpreting business performance, deriving findings or recommending business actions requires a relevant analysis skill. Without it, label that portion unfinished and build only the requested presentation of supplied facts. Do not invent analysis to fill a dashboard.
+Use supplied facts and analysis to implement the page. Parsing, sorting, converting units and displaying data are part of implementation. Deriving requested analytical findings, interpreting comparisons or recommending actions requires Data interpretation, for structured tables as well as narrative records. Without it, label that portion unfinished and build only the requested presentation of supplied facts. A numeric table is not an already supplied analysis; do not invent analysis to fill a dashboard.
 
 For a complete table, copy every required row and column from the selected original dataset. A top-N export or short analysis brief may omit other records or fields; that does not mean the original values were missing. Check the original before labeling a cell unavailable. If the full dataset was not handed off, report the missing input instead of claiming the table is complete. Derive table values, chart labels and scale positions from the same source records. Compare numeric values after unit conversion, not formatted strings; check both sort directions. Keep unit headings consistent with displayed values. Reject non-finite calculated results as well as invalid inputs.
 
@@ -19,7 +19,7 @@ For held-key controls, track independent key states so simultaneous inputs work.
 
 Trace reset and focus handlers as well as the main loop. Clear a const object's entries instead of assigning a new object to that const binding. Keep exactly one animation loop scheduled: pause, resume and restart must not create additional requestAnimationFrame chains, and held toggle keys must not repeatedly toggle on keyboard autorepeat.
 
-For a game with collisions, trace an approaching object on each side: a hit must send it away from the surface, while a miss can change the score. Check both velocity signs and reset state, not just whether the object animates.
+For a game with collisions, trace an approaching object on each side: a hit must send it away from the surface, while a miss can change the score. For a swept collision, use the leading edge in the direction of travel and check that its previous and current positions cross the surface in that direction. Walk one numerical example for each opposing surface; the crossing condition must be reachable by an approaching object. Check both velocity signs and reset state, not just whether the object animates.
 
 Keep source compact: use shared data and reusable functions instead of repeating large HTML blocks. Read only relevant inputs and existing source. For a new page, write a complete usable first version, not a skeleton requiring many edits. For a follow-up, update the same file with targeted edits and preserve unrelated behavior.
 

@@ -756,6 +756,9 @@
 .team-model-choice-state{font-size:11px;white-space:nowrap;color:#a7bac5}
 
 /* Compact presenter aids, using the existing Settings palette. */
+/* Korean interface copy wraps at spaces rather than splitting syllables. */
+#agent-campus:lang(ko){word-break:keep-all}
+#studio-creator-title{white-space:pre-line}
 #studio-skill-picker .studio-skill-card{position:relative;min-width:0;display:flex}
 #studio-workshop #studio-skill-picker .studio-skill-card label{width:100%;box-sizing:border-box}
 #studio-skill-picker .studio-skill-fixed{display:inline-block;margin-left:8px;color:#b7d78a;font-size:11px;font-weight:500;vertical-align:middle}

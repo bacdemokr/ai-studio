@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 from test_studio import Adapter, Studio, Problem
 
 class CrewChatTests(unittest.TestCase):
@@ -18,8 +19,9 @@ class CrewChatTests(unittest.TestCase):
         return job
 
     def test_korean_captain_chat_keeps_reminder_without_dispatching_a_team(self):
-        self.send(0, '너는 어떤 일을 할 수 있어?')
-        self.send(0, '웹페이지도 만들 수 있어?')
+        with patch.object(self.adapter, 'respond', return_value='팀의 작업을 조율할 수 있어요.'):
+            self.send(0, '너는 어떤 일을 할 수 있어?')
+            self.send(0, 'Can you help our team?')
         chats = self.studio.state(self.owner)['crewChats']
         self.assertEqual(len(chats), 2)
         for job in chats:
@@ -27,6 +29,12 @@ class CrewChatTests(unittest.TestCase):
             self.assertTrue(job['result']['answer'].endswith(
                 '참고로, 팀 프로젝트를 원한다면 메시지 앞에 `/goal`을 추가해줘.'))
         self.assertEqual(len(self.adapter.agents), 1)
+
+    def test_explicit_english_reply_keeps_english_reminder(self):
+        with patch.object(self.adapter, 'respond', return_value='I can coordinate your team.'):
+            self.send(0, '영어로 답변해줘.')
+        answer = self.studio.state(self.owner)['crewChats'][0]['result']['answer']
+        self.assertTrue(answer.endswith('For a team project, add `/goal` at the start of your message.'))
 
     def test_roles_have_native_identity_and_separate_persistent_conversations(self):
         self.send(0, 'Help plan my event')

@@ -14,8 +14,7 @@ class GoalExamplesTests(unittest.TestCase):
         for item in examples:
             if item.get('document'):
                 self.assertTrue((ROOT / 'scenario' / item['document']).is_file())
-        stores = next(item for item in examples if item['id'] == 'stores')
-        self.assertIs(stores.get('requiredDocument'), True)
+        self.assertNotIn('stores', [item['id'] for item in examples])
         gpu = next(item for item in examples if item['id'] == 'gpu')
         with (ROOT / 'scenario' / gpu['document']).open(newline='') as source:
             rows = list(csv.DictReader(source))

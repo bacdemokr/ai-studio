@@ -52,7 +52,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs/promises'),{chrom
   assert(await page.locator('#studio-config').isVisible());
   await page.locator('#studio-config').click();await page.locator('[data-connection-tab=location]').click();
   await page.locator('#studio-location-city').fill('Seoul');await page.locator('#studio-save-settings').click();
-  await page.waitForFunction(()=>document.querySelector('#studio-settings-status').textContent.startsWith('Saved.'));await close();
+  await page.waitForFunction(()=>document.querySelector('#studio-settings-status').textContent.startsWith('저장했습니다.'));await close();
   assert.equal((await api('settings')).location.city,'Seoul');
   await page.locator('#studio-config').click();await page.locator('[data-connection-tab=telegram]').click();
   await page.locator('#studio-settings-reset-tab').click();await page.locator('#studio-settings-model-tab').click();

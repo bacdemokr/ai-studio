@@ -21,6 +21,7 @@ import ops_common as c
 import runtime_settings as settings
 from browser_capability import BROWSER_LIMIT
 from role_boundaries import ROLE_BOUNDARY
+from response_language import RESPONSE_LANGUAGE
 from tech_radar import HEARTBEAT_SECONDS
 
 VERSION = '2026.9.4'
@@ -278,6 +279,8 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
                      'Embody the role and behavioral preferences in SOUL.md throughout the conversation. Separate confirmed facts, assumptions and missing information.\n',
     }
     files['AGENTS.md'] += '\n# Browser capability\n' + BROWSER_LIMIT + '\n'
+    # Native heartbeats also read this file without going through respond().
+    files['AGENTS.md'] += '\n# Response language\n' + RESPONSE_LANGUAGE + '\n'
     if role is None and 'web' in equipped:
         files['AGENTS.md'] += ('\n# Research size\n'
             'Keep each research reply focused: at most two searches and five page fetches per user request, '
@@ -319,7 +322,7 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
         if member:
             expertise = member['collaboration']
             files['IDENTITY.md'] = '# Identity\nName: ' + profile['name'] + '\nRole: ' + expertise['title'] + '\nTeam: BaC\n'
-            files['SOUL.md'] = ('# Character\nBe clear, practical and honest. Follow the user\'s language and requested format.\n'
+            files['SOUL.md'] = ('# Character\nBe clear, practical and honest. Follow the response-language preference and the user\'s requested format.\n'
                                 '# Communication style\n' + expertise.get('voice', 'Be clear, practical and honest.') + '\n'
                                 '# Expertise\n' + expertise['description'] + '\n'
                                 '# Open Task role boundary\n' + expertise.get('scope', '') + '\n'
@@ -910,7 +913,8 @@ def respond(agent_id, session, prompt, images=None, json_response=False, timeout
     logging.info('Agent readiness %s identity_checks=%d model_checks=%d total=%.3fs',
                  agent_id, identity_checks, model_checks, time.monotonic() - readiness_started)
     import user_location
-    prompt = prompt + '\n\n' + user_location.context()
+    # Apply to existing/edited workspaces too, without rewriting user documents.
+    prompt = prompt + '\n\n' + user_location.context() + '\n\n' + RESPONSE_LANGUAGE
     started = time.time()
     content = prompt if not images else [{'type':'text','text':prompt}]+[{'type':'image_url','image_url':{'url':'data:'+image['mime']+';base64,'+image['data']}} for image in images]
     request_started = time.monotonic()

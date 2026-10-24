@@ -10,6 +10,26 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   page.setDefaultTimeout(15000);page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.method()==='POST')posts.push(r.url());});
   await page.goto('http://127.0.0.1:'+port);await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.personalModels);
   await page.locator('.world-room-map [data-world-room=workshop]').click();
+  assert.equal(await page.locator('#studio-edit-agent').textContent(),'Edit Agent');
+  assert.equal(await page.locator('#studio-crew-edit-agent').textContent(),'Edit Agent');
+  for(const width of [1600,1280,1024]){
+   await page.setViewportSize({width,height:1050});
+   const splitWords=await page.locator('#studio-creator-title, #studio-skill-picker small').evaluateAll(nodes=>{
+    const broken=[];
+    for(const element of nodes){
+     const text=element.firstChild;if(text?.nodeType!==Node.TEXT_NODE)continue;
+     for(const match of text.textContent.matchAll(/[가-힣]{2,}/g)){
+      const range=document.createRange();range.setStart(text,match.index);range.setEnd(text,match.index+match[0].length);
+      if(new Set([...range.getClientRects()].map(r=>Math.round(r.top))).size>1)broken.push(match[0]);
+     }
+    }
+    return broken;
+   });
+   assert.deepEqual(splitWords,[],`Korean words stay intact at ${width}px`);
+   if(width===1280)await page.locator('#studio-workshop').screenshot({path:'/tmp/bac-korea-hiring-wrap.png'});
+  }
+  await page.setViewportSize({width:1600,height:1050});
+
   const versionLabel=page.locator('.world-build-version');
   assert.equal(await versionLabel.innerText(),'v'+version);
   const labelBox=await versionLabel.boundingBox(),overviewBox=await page.locator('.world-overview-button').boundingBox();
@@ -41,6 +61,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   const mode=await page.locator('#studio-crew-team-mode [aria-pressed=true]').getAttribute('data-team-mode');
   const examples=require('../src/goal-examples.json'),chips=page.locator('[data-goal-example]');
   assert.equal(await chips.count(),examples.length);
+  assert.equal(await page.locator('[data-goal-example=stores]').count(),0);
   assert.equal(await page.locator('html').getAttribute('lang'),'ko');
   for(const example of examples){assert.match(example.title,/[가-힣]/);assert.match(example.prompt,/^\/goal [가-힣]/);}
   for(const example of examples)assert.equal(await page.locator('[data-goal-example='+example.id+']').getAttribute('title'),example.detail);
@@ -78,19 +99,16 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   let releaseUpload,uploadStarted;
   const uploadGate=new Promise(r=>releaseUpload=r),uploadSeen=new Promise(r=>uploadStarted=r);
   await page.route('**/api/upload',async route=>{uploadStarted();await uploadGate;await route.continue();});
-  await page.locator('[data-goal-example=stores]').click();await uploadSeen;
-  assert.equal(await page.locator('#studio-crew-prompt').inputValue(),examples.find(g=>g.id==='stores').prompt);
+  await page.locator('[data-goal-example=gpu]').click();await uploadSeen;
+  assert.equal(await page.locator('#studio-crew-prompt').inputValue(),examples.find(g=>g.id==='gpu').prompt);
   assert.equal(await chips.evaluateAll(nodes=>nodes.every(n=>n.disabled)),true,'Uploads lock the draft and example controls');
   assert.equal(await page.locator('#studio-crew-send').isDisabled(),true);
-  releaseUpload();await page.waitForFunction(()=>!document.querySelector('[data-goal-example=stores]').disabled);
+  releaseUpload();await page.waitForFunction(()=>!document.querySelector('[data-goal-example=gpu]').disabled);
   await page.unroute('**/api/upload');
   const document=page.locator('#studio-crew-documents input[type=checkbox]');
   assert.equal(await document.count(),1);assert(await document.isChecked());
-  assert(await document.isDisabled());assert.equal(await document.getAttribute('data-required-example'),'true');
-  assert.match(await page.locator('#studio-crew-documents').innerText(),/demo-france-store-status-email-thread\.txt/);
-  await document.evaluate(node=>{node.checked=false;node.dispatchEvent(new Event('change',{bubbles:true}));});
-  assert(await document.isChecked(),'The required store email cannot be unchecked');
-  await page.locator('[data-goal-example=stores]').click();assert(await document.isChecked());
+  assert(await document.isEnabled(),'The CSV example remains optional');
+  await page.locator('[data-goal-example=gpu]').click();assert(await document.isChecked());
   assert.equal(posts.filter(u=>u.endsWith('/api/upload')).length,1,'Selecting the same sample reuses the attachment');
   assert.equal(posts.filter(u=>u.endsWith('/api/jobs')).length,0,'Examples must never submit model jobs');
   const gpu=examples.find(g=>g.id==='gpu');
@@ -104,21 +122,21 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.locator('#studio-crew-send').click();
   await page.waitForFunction(()=>document.querySelector('#studio-crew-chat-error').textContent.includes('CSV draft captured'));
   assert(gpuSubmission.prompt.includes(gpu.document));
-  assert(!gpuSubmission.prompt.includes(examples.find(g=>g.id==='stores').document));
+  assert(!gpuSubmission.prompt.includes('demo-france-store-status-email-thread.txt'));
   await page.unroute('**/api/jobs');
-  await page.locator('[data-goal-example=stores]').click();
+  await page.locator('[data-goal-example=gpu]').click();
   assert.equal(await document.count(),1,'Switching between samples attaches only the selected file');
   await page.locator('[data-goal-example=gpu]').click();assert(await document.isChecked());
-  assert.equal(posts.filter(u=>u.endsWith('/api/upload')).length,2,'CSV sample is reused');
-  await page.locator('[data-goal-example=stores]').click();
-  const sample=examples.find(g=>g.id==='stores').document;
+  assert.equal(posts.filter(u=>u.endsWith('/api/upload')).length,1,'CSV sample is reused');
+  await page.locator('[data-goal-example=gpu]').click();
+  const sample=examples.find(g=>g.id==='gpu').document;
   for(const id of ['travel','drone','pong','event']){
    await page.locator('[data-goal-example='+id+']').click();
-   assert.equal(await document.count(),0,'Switching examples detaches the sample email');
+   assert.equal(await document.count(),0,'Switching examples detaches the sample CSV');
    assert.equal(await page.locator('#studio-crew-documents').isVisible(),false);
-   await page.locator('[data-goal-example=stores]').click();assert(await document.isChecked());
+   await page.locator('[data-goal-example=gpu]').click();assert(await document.isChecked());
   }
-  await page.locator('#studio-crew-prompt').fill(examples.find(g=>g.id==='stores').prompt+' Keep it brief.');
+  await page.locator('#studio-crew-prompt').fill(examples.find(g=>g.id==='gpu').prompt+' Keep it brief.');
   assert(await document.isChecked(),'Editing the sample goal keeps its attachment');
   await page.locator('#studio-crew-document-input').setInputFiles({name:'my-notes.txt',mimeType:'text/plain',buffer:Buffer.from('User supplied notes')});
   await page.waitForFunction(()=>!document.querySelector('[data-goal-example=travel]').disabled);
@@ -131,11 +149,11 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.waitForFunction(()=>document.querySelector('#studio-crew-chat-error').textContent.includes('Test captured'));
   assert(submitted.prompt.includes('my-notes.txt'));assert(!submitted.prompt.includes(sample),'Detached sample must not be sent with another goal');
   await page.unroute('**/api/jobs');
-  await page.locator('[data-goal-example=stores]').click();assert.equal(await document.count(),2);
+  await page.locator('[data-goal-example=gpu]').click();assert.equal(await document.count(),2);
   await page.locator('#studio-crew-prompt').fill('/goal ');
   assert.equal(await document.count(),1,'Clearing the draft detaches the example document');
-  assert.equal(posts.filter(u=>u.endsWith('/api/upload')).length,3,'Switching examples never uploads either sample twice');
-  await document.uncheck();await page.locator('[data-goal-example=stores]').click();
+  assert.equal(posts.filter(u=>u.endsWith('/api/upload')).length,2,'Switching examples never uploads the sample twice');
+  await document.uncheck();await page.locator('[data-goal-example=gpu]').click();
   assert.equal(await page.locator('#studio-crew-documents input:checked').count(),1,'The user document stays unchecked');
   await page.route('**/api/jobs',async route=>{submitted=route.request().postDataJSON();await route.fulfill({contentType:'application/json',body:JSON.stringify({id:'intercepted-submission'})});});
   await page.locator('#studio-crew-send').click();
@@ -143,7 +161,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   assert(submitted.prompt.includes(sample));assert(!submitted.prompt.includes('my-notes.txt'));
   assert.equal(await document.count(),1,'Successful submission releases the sample from the next draft');
   await page.unroute('**/api/jobs');
-  await page.locator('[data-goal-example=stores]').click();
+  await page.locator('[data-goal-example=gpu]').click();
   await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.personalModels);
   await page.locator('.world-room-map [data-world-scenario=plan]').click();
   await page.waitForFunction(()=>BacCampus.inspect().navigation.activeScenario==='plan'&&!BacCampus.inspect().navigation.travelling);
