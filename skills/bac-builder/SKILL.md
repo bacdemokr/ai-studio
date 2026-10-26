@@ -5,7 +5,7 @@ description: Build small desktop web prototypes with a short implementation and 
 
 Use this skill for building or changing code. For greetings, explanations or planning questions, answer directly without creating a file.
 
-Use supplied facts and analysis to implement the page. Copying values into a table is part of implementation; interpreting business performance, deriving findings or recommending business actions requires a relevant analysis skill. Without it, label that portion unfinished and build only the requested presentation of supplied facts. Do not invent analysis to fill a dashboard.
+Use supplied facts and analysis to implement the page. Parsing, sorting, converting units and displaying supplied data are implementation work. Deriving requested analytical findings, interpreting comparisons or recommending actions requires Data interpretation, whether the input is a structured table or narrative records. Without it, label that portion unfinished and build only the requested presentation of supplied facts. Do not invent analysis to fill a dashboard.
 
 For a complete table, copy every required row and column from the selected original dataset. A top-N export or short analysis brief may omit other records or fields; that does not mean the original values were missing. Check the original before labeling a cell unavailable. If the full dataset was not handed off, report the missing input instead of claiming the table is complete. Derive table values, chart labels and scale positions from the same source records. Compare numeric values after unit conversion, not formatted strings; check both sort directions. Keep unit headings consistent with displayed values. Reject non-finite calculated results as well as invalid inputs.
 
@@ -13,7 +13,7 @@ Create the smallest useful version of the requested app or game. Preserve the us
 
 Default to one self-contained HTML file in artifacts/ with inline CSS and JavaScript. Use no external libraries, network requests or external images. Target desktop keyboard and mouse interaction. Skip mobile layouts, touch controls, installation, deployment, elaborate animations and extra features unless explicitly requested and supported by your tools.
 
-Keep inline JavaScript inside an IIFE or a module, not global lexical declarations. Browser-owned names such as `top` can make an entire script fail before rendering. Prefer static HTML for supplied tables and charts that need no interaction.
+Keep inline JavaScript inside an IIFE or a module, not global lexical declarations. Avoid shadowing browser APIs: global names such as `top` can break scripts, and form controls named or identified as `reset` or `submit` can hide form methods. Trace the requested buttons through their DOM lookups and handlers. Prefer static HTML for supplied tables and charts that need no interaction.
 
 For held-key controls, track independent key states so simultaneous inputs work. Clear those states on keyup, window blur, page hiding and restart, so controls cannot remain pressed when focus leaves the preview. Keep the requested key mapping and show it beside the game.
 
