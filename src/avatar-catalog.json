@@ -36,6 +36,23 @@
       ]
     },
     {
+      "id": "hanbok-man",
+      "label": "한복 남성",
+      "name": "마루",
+      "accessories": [
+        "norigae",
+        "pouch",
+        "flower",
+        "glasses",
+        "backpack"
+      ],
+      "palettes": [
+        "hanbok-indigo",
+        "hanbok-jade",
+        "hanbok-rose"
+      ]
+    },
+    {
       "id": "fox-companion",
       "label": "여우",
       "name": "여우비",
@@ -51,6 +68,42 @@
         "fox-arctic",
         "fox-silver",
         "fox-fennec"
+      ]
+    },
+    {
+      "id": "cat",
+      "label": "고양이",
+      "name": "나비",
+      "accessories": [
+        "scarf",
+        "bowtie",
+        "glasses",
+        "pouch",
+        "norigae"
+      ],
+      "palettes": [
+        "cat-ginger",
+        "cat-tuxedo",
+        "cat-silver",
+        "cat-cocoa"
+      ]
+    },
+    {
+      "id": "bunny",
+      "label": "달토끼",
+      "name": "달콩",
+      "accessories": [
+        "pestle",
+        "moon",
+        "pouch",
+        "scarf",
+        "carrot"
+      ],
+      "palettes": [
+        "bunny-snow",
+        "bunny-oat",
+        "bunny-grey",
+        "bunny-cocoa"
       ]
     },
     {
@@ -104,59 +157,6 @@
         "crab-ocean",
         "crab-sand",
         "crab-rose"
-      ]
-    },
-    {
-      "id": "cat",
-      "label": "고양이",
-      "name": "나비",
-      "accessories": [
-        "scarf",
-        "bowtie",
-        "glasses",
-        "pouch",
-        "norigae"
-      ],
-      "palettes": [
-        "cat-ginger",
-        "cat-tuxedo",
-        "cat-silver",
-        "cat-cocoa"
-      ]
-    },
-    {
-      "id": "bunny",
-      "label": "달토끼",
-      "name": "달콩",
-      "accessories": [
-        "pestle",
-        "moon",
-        "pouch",
-        "scarf",
-        "carrot"
-      ],
-      "palettes": [
-        "bunny-snow",
-        "bunny-oat",
-        "bunny-grey",
-        "bunny-cocoa"
-      ]
-    },
-    {
-      "id": "hanbok-man",
-      "label": "한복 남성",
-      "name": "마루",
-      "accessories": [
-        "norigae",
-        "pouch",
-        "flower",
-        "glasses",
-        "backpack"
-      ],
-      "palettes": [
-        "hanbok-indigo",
-        "hanbok-jade",
-        "hanbok-rose"
       ]
     }
   ],

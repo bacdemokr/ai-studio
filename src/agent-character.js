@@ -53,8 +53,8 @@ function equipAccessory(body,face,appearance,color,arms){
   const kind=appearance.body,id=appearance.accessory;
   if(!id||id==='none')return;
   const rig={
-    'hanbok-woman':{top:1.43,eye:1.14,half:.28,neck:.88,chest:.72,back:.64},
-    'hanbok-man':{top:1.43,eye:1.14,half:.28,neck:.88,chest:.72,back:.64},
+    'hanbok-woman':{top:1.43,eye:1.105,half:.34,neck:.88,chest:.72,back:.64},
+    'hanbok-man':{top:1.43,eye:1.105,half:.34,neck:.88,chest:.72,back:.64},
     classic:{top:1.27,eye:1.005,half:.34,neck:.78,chest:.62,back:.57},
     round:{top:1.34,eye:1.005,half:.4,neck:.78,chest:.62,back:.57},
     rover:{top:1.23,eye:1.005,half:.38,neck:.78,chest:.62,back:.57},
@@ -324,30 +324,49 @@ function createAnimal(appearance,color,group,body,palette){
 // chima or roomy baji share the existing articulated walking/seated rig.
 function createHanbok(appearance,color,group,body,palette){
   const female=appearance.body==='hanbok-woman',arms=[],legs=[];
-  const fabric=palette?.base??0x465e8b,ivory=palette?.light??0xf5ead5,ink=0x292b33,skin=0xe9bc9e;
+  const fabric=palette?.base??0x465e8b,ivory=palette?.light??0xf5ead5,hair=0x343039,skin=0xffd7ba;
   function oval(parent,x,y,z,sx,sy,sz,tint){const m=new THREE.Mesh(robotSphereGeometry,mat(tint));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=true;parent.add(m);return m;}
-  oval(body,0,1.14,0,.265,.29,.235,skin);
-  oval(body,0,1.31,-.045,.275,.15,.23,ink);
-  if(female){oval(body,0,1.20,-.245,.14,.14,.10,ink);box(body,0,1.20,-.30,.37,.018,.018,palette?.accent??fabric);}
+  // Rounded cloth doll proportions, with a continuous hairline around the head.
+  oval(body,0,1.10,.015,.345,.32,.29,skin);
+  const crown=new THREE.Mesh(new THREE.SphereGeometry(1,32,20,0,Math.PI*2,0,1.28),mat(hair));
+  crown.position.set(0,1.10,.005);crown.scale.set(.355,.335,.302);crown.castShadow=true;body.add(crown);
+  oval(body,0,1.12,-.16,.325,.26,.15,hair);
+  if(female){
+    for(const side of [-1,1]){
+      const fringe=oval(body,side*.145,1.30,.19,.18,.072,.095,hair);fringe.rotation.z=side*.25;
+      oval(body,side*.305,1.14,.055,.055,.16,.10,hair);
+    }
+    // Single low braided plait and a small daenggi ribbon at the back.
+    for(let i=0;i<4;i++)oval(body,(i%2?.018:-.018),.97-i*.065,-.25,.065,.065,.055,hair);
+    for(const side of [-1,1]){const ribbon=oval(body,side*.035,.70,-.255,.03,.095,.018,fabric);ribbon.rotation.z=side*.17;}
+  }else{
+    const fringe=oval(body,-.08,1.29,.20,.235,.09,.09,hair);fringe.rotation.z=.18;
+    oval(body,.20,1.28,.18,.10,.075,.09,hair);
+  }
   for(const side of [-1,1]){
-    oval(body,side*.10,1.15,.223,.023,.033,.014,ink);
-    oval(body,side*.15,1.07,.209,.048,.022,.012,0xd9958c);
-    const arm=new THREE.Group();arm.position.set(side*.27,.83,0);body.add(arm);arms.push(arm);
-    oval(arm,side*.035,-.15,0,.12,.22,.125,ivory);
-    box(arm,side*.035,-.29,.005,.19,.07,.21,fabric);
-    oval(arm,side*.035,-.35,.015,.075,.075,.075,skin);
-    const leg=new THREE.Group();leg.position.set(side*.13,.40,0);body.add(leg);legs.push(leg);
-    oval(leg,0,-.12,0,.13,.23,.14,female?ivory:fabric);
-    box(leg,0,-.33,.045,.18,.09,.28,ink);
+    oval(body,side*.115,1.105,.290,.032,.043,.019,0x302c32);
+    oval(body,side*.115-.009,1.12,.307,.009,.012,.006,0xffffff);
+    oval(body,side*.205,1.025,.252,.055,.027,.013,0xf2a6a0);
+    const arm=new THREE.Group();arm.position.set(side*.23,.78,0);body.add(arm);arms.push(arm);
+    const sleeve=oval(arm,side*.065,-.09,.005,.115,.17,.13,ivory);sleeve.rotation.z=side*.30;
+    oval(arm,side*.10,-.215,.01,.09,.045,.105,fabric);
+    oval(arm,side*.11,-.26,.02,.065,.06,.065,skin);
+    const leg=new THREE.Group();leg.position.set(side*.12,.36,0);body.add(leg);legs.push(leg);
+    oval(leg,0,-.10,0,.115,.18,.13,female?ivory:fabric);
+    oval(leg,0,-.275,.065,.105,.065,.17,0x343443);
+    oval(leg,0,-.245,.10,.073,.025,.10,ivory);
   }
-  if(female){const skirt=new THREE.Mesh(new THREE.CylinderGeometry(.23,.43,.57,32),mat(fabric));skirt.position.set(0,.43,0);skirt.scale.z=.8;skirt.castShadow=true;body.add(skirt);
-    for(let i=-3;i<=3;i++){const pleat=box(body,i*.09,.40,.31-Math.abs(i)*.018,.008,.43,.014,new THREE.Color(fabric).multiplyScalar(.92).getHex());pleat.rotation.z=-i*.025;}
+  if(female){
+    const points=[[.0,.0],[.28,.0],[.36,.025],[.39,.09],[.37,.22],[.31,.36],[.23,.49],[.20,.53]].map(([x,y])=>new THREE.Vector2(x,y));
+    const skirt=new THREE.Mesh(new THREE.LatheGeometry(points,40),mat(fabric));skirt.position.set(0,.16,0);skirt.scale.z=.85;skirt.castShadow=true;body.add(skirt);
   }
-  box(body,0,.78,0,.47,.27,.32,ivory);
-  for(const side of [-1,1]){const collar=box(body,side*.065,.86,.18,.045,.19,.025,0xfffaf0);collar.rotation.z=side*.6;}
-  const loop=new THREE.Mesh(new THREE.TorusGeometry(.058,.018,6,16),mat(fabric));loop.scale.set(1,.48,1);loop.position.set(.13,.77,.19);body.add(loop);
-  for(const [x,y,len,angle] of [[.12,.65,.22,-.15],[.18,.68,.17,.25]]){const ribbon=box(body,x,y,.19,.045,len,.025,fabric);ribbon.rotation.z=angle;}
-  box(body,0,1.03,.232,.065,.012,.012,0xa76b61);
-  equipCharacter(body,{position:{z:.235}},appearance,color,arms);
+  oval(body,0,.71,0,.275,.175,.22,ivory);
+  // A small white dongjeong and cloth goreum replace the rigid oversized collar.
+  for(const side of [-1,1]){const collar=oval(body,side*.055,.81,.196,.025,.09,.018,0xfffcf0);collar.rotation.z=side*.53;}
+  for(const side of [-1,1]){const loop=oval(body,.08+side*.04,.73,.223,.06,.026,.018,fabric);loop.rotation.z=side*.3;}
+  for(const [x,y,len,angle] of [[.09,.64,.09,-.13],[.15,.66,.075,.22]]){const tie=oval(body,x,y,.223,.023,len,.015,fabric);tie.rotation.z=angle;}
+  // Tiny curved smile, rather than a hard straight mouth.
+  const smile=new THREE.Mesh(new THREE.TorusGeometry(.035,.008,6,16,Math.PI),mat(0xaa6e6b));smile.rotation.z=Math.PI;smile.position.set(0,1.015,.296);body.add(smile);
+  equipCharacter(body,{position:{z:.29}},appearance,color,arms);
   return {group,body,arms,legs,appearance,color};
 }
