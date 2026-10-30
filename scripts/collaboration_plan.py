@@ -1350,6 +1350,8 @@ class CollaborationPlans:
                     '\nComplete this contribution now using tools when appropriate. '
                     'Required saved files: ' + json.dumps(assignment.get('requiredFiles', [])) + '. '
                     'Actually write required files using your tools and verify they exist before claiming they are saved. '
+                    'When reusing a required deliverable from an earlier request, save it again at the required path '
+                    'for this assignment; a read of an old file alone may not establish a current handoff after a reset. '
                     'Include the findings, source URLs and limitations in a research brief, not merely a completion notice. '
                     'Return the actual result, with sources, limitations and any saved file paths, '
                     'using the concise handoff format above. Do not claim other agents have acted. '
@@ -1396,7 +1398,10 @@ class CollaborationPlans:
                             'No saved update to the required handoff files was verified: ' + json.dumps(missing) + '. ' +
                             ('This is the one permitted code repair, in a fresh conversation. Read the existing source files listed below, '
                              'make only the necessary edits, and save the corrected files. Preserve working features. '
-                             'Do not recreate the whole implementation or repeat completed writes. '
+                             'Do not recreate the whole implementation or repeat writes already verified for this assignment. '
+                             'The listed missing files have no verified current handoff. If an existing file already '
+                             'meets the assignment, write its contents back to the required path unchanged now; '
+                             'reading it or reporting an earlier save does not deliver it for this repair. '
                              if implements_page(role) else
                              'This is the one permitted handoff repair, in the SAME conversation containing your previous tool results. ') +
                             'Do not research again, fetch new pages, or repeat the whole task. Use the evidence already obtained. '

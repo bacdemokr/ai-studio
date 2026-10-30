@@ -7,7 +7,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});
   const page=await browser.newPage({viewport:{width:1600,height:1050}}),errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error('PAGE ERROR',e.message);});
   await page.goto('http://127.0.0.1:'+port);await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.testFixture);
-  for(const [name,role] of [['Jinny','Programmer'],['Orbit','Web researcher']]){
+  for(const [name,role] of [['Jinny','프로그래머'],['Orbit','웹 조사원']]){
    await page.evaluate(()=>BacStudio.setRoom('workshop'));await page.locator('#studio-name').fill(name);
    await page.getByRole('button',{name:role,exact:true}).click();await page.locator('input[name=protection][value=standard]').check();
    await page.locator('#studio-create').click();await page.waitForFunction(name=>BacStudio.inspect().profile?.name===name&&BacStudio.inspect().room==='lounge',name);

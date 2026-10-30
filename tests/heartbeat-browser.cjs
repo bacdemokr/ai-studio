@@ -73,7 +73,7 @@ assert(!await page.locator('#studio-skill-picker input[value=radar]').isChecked(
 assert(!await page.locator('#studio-skill-picker input[value=documents]').isChecked());
 await page.locator('#studio-create').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Paper'&&BacStudio.inspect().room==='lounge');
 const paperProfile=await page.evaluate(()=>BacStudio.inspect().profile);
-assert.deepEqual(paperProfile.skills,['web']);assert.match(paperProfile.purpose,/find three relevant arXiv papers/);
+assert.deepEqual(paperProfile.skills,['web']);assert.match(paperProfile.purpose,/관련 arXiv 논문 세 편을 찾아줘/);
 assert(await page.locator('#studio-radar-monitor').isHidden());
 await page.screenshot({path:'/tmp/bac-arxivbot.png'});
 assert.deepEqual(errors,[]);console.log('PASS: Telegram native paste without requests or draft loss, paused/resumed scene, invalid token feedback, session-only token, explicit test, Tech Radar hire, pause/resume, native-summary chat rendering, one relay, reload disconnection and on-demand arXiv researcher without heartbeat.');
