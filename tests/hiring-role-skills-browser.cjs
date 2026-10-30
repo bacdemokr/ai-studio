@@ -14,17 +14,20 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   assert.equal(await page.locator('#studio-skill-picker input[value="interface-design"]').isVisible(),true);
   await page.getByRole('button',{name:/^Playful/}).click();
   const selected=()=>page.locator('#studio-skill-picker input:checked').evaluateAll(nodes=>nodes.map(n=>n.value));
-  const cases=[['Programmer',['builder']],['Web researcher',['web']],['Data analyst',['data-analysis']],['Arxivbot',['web']],['Weather buddy',['weather']],['Tech Radar',['radar']],['Slack Announcer',['writer']]];
+  const cases=[['Programmer',['builder']],['Web researcher',['web']],['Data analyst',['data-analysis']],['arXiv researcher',['web']],['Weather buddy',['weather']],['Tech Radar',['radar']],['Slack writer',['writer']]];
   for(const [name,skills] of cases){
    await page.getByRole('button',{name,exact:true}).click();assert.deepEqual(await selected(),skills);
+   assert.equal(await page.locator('#studio-purpose').isEditable(),name!=='Tech Radar',name+' role editability');
+   assert.equal(await page.locator('#studio-role-fixed').isVisible(),name==='Tech Radar');
+   assert.equal(await page.locator('#studio-tone-prompt').isEditable(),true,'Tone stays editable');
    const fixed=await page.locator('#studio-skill-picker input:disabled').evaluateAll(nodes=>nodes.map(n=>n.value));
    assert.deepEqual(fixed,skills,name+' fixed skill');
    if(fixed.length){await page.locator('#studio-skill-picker input[value="'+fixed[0]+'"]').evaluate(input=>input.click());assert.deepEqual(await selected(),skills,'Fixed skill cannot be unchecked');}
    await page.locator('#studio-apply-prompt').click();assert.deepEqual(await selected(),skills,name+' must retain its own skills after Apply');
-   assert.match(await page.locator('#studio-purpose').inputValue(),/Playful/);
+   assert.match(await page.locator('#studio-tone-prompt').inputValue(),/Playful/);
   }
   for(const role of ['I am a programmer.','Help me with coding.','Help me with programming.']){
-   await page.locator('#studio-purpose').fill('Tone: Playful (Light & witty)\nRole: '+role);
+   await page.locator('#studio-purpose').fill(role);
    await page.locator('#studio-apply-prompt').click();assert.deepEqual(await selected(),['builder'],role);
   }
   await page.getByRole('button',{name:'Programmer',exact:true}).click();await page.locator('#studio-apply-prompt').click();
@@ -75,10 +78,11 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
    await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
    await page.locator('#studio-edit-agent').click();
    assert.equal(await page.locator('#studio-skill-picker input[value="'+skill+'"]').isDisabled(),true,name+' remains fixed after saving/reloading');
+   assert.equal(await page.locator('#studio-purpose').isEditable(),name!=='Tech Radar',name+' role lock survives reload');
    assert.equal(await page.locator('#studio-skill-picker input[value="builder"]').isChecked(),true,name+' keeps extra skills');
    await page.locator('#studio-skill-picker input[value="builder"]').uncheck();
   }
-  await page.locator('#studio-purpose').fill('Tone: Playful (Light & witty)\nRole: Help me think through everyday decisions.');
+  await page.locator('#studio-purpose').fill('Help me think through everyday decisions.');
   assert.equal(await page.locator('#studio-skill-picker input:disabled').count(),0);
   for(const box of await page.locator('#studio-skill-picker input').all())await box.setChecked(false);
   await page.locator('#studio-create').click();await page.locator('#studio-onboarding').waitFor({state:'hidden'});

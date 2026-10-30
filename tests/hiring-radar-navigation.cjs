@@ -30,7 +30,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   }
   await room('workshop');
   await page.locator('#studio-body-picker [data-body=round]').click();
-  await page.locator('#studio-color-picker [data-avatar-color=coral]').click();
+  await page.locator('#studio-color-picker [data-avatar-color=orbit-rose]').click();
   // The role stays Weather buddy; Heartbeat comes from the additional skill.
   await page.locator('#studio-skill-picker input[value=radar]').check();
   await page.locator('#studio-create').click();
@@ -43,7 +43,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.equal(await page.evaluate(()=>BacStudio.inspect().room),'workshop');
   assert.equal(await page.locator('.studio-heartbeat-status').count(),1,'Heartbeat is mounted even in Hiring');
 
-  for(const body of ['classic','round','rover','operative','claw','crab']){
+  for(const body of ['classic','round','fox-companion','operative','claw','crab','cat','bunny','panda']){
    await page.locator('#studio-body-picker [data-body='+body+']').click();await preview();
    assert.equal(await page.evaluate(()=>BacCampus.inspect().draftPreview.avatar.body),body);
   }

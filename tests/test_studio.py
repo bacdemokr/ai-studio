@@ -252,6 +252,42 @@ class StudioTests(unittest.TestCase):
         self.studio.configure(self.owner, {**profile, 'avatar': avatar})
         self.assertEqual(self.studio.profile(self.owner)['avatar'], avatar)
 
+    def test_curated_appearances_and_saved_legacy_outfits_round_trip(self):
+        from studio import AVATAR_CATALOG, avatar_for
+        for body in AVATAR_CATALOG['bodies']:
+            for color in body['palettes']:
+                for accessory in ['none', *body['accessories']]:
+                    avatar = {'body': body['id'], 'color': color, 'accessory': accessory}
+                    self.assertEqual(avatar_for(self.owner, avatar), avatar)
+        profile = self.studio.profile(self.owner)
+        for body, accessory in [('fox-companion', 'flower'), ('bunny', 'carrot'), ('panda', 'bamboo'),
+                                ('rover', 'cap'), ('claw', 'headset'), ('cat', 'antenna')]:
+            avatar = {'body': body, 'color': 'amber', 'accessory': accessory}
+            self.studio.configure(self.owner, {**profile, 'avatar': avatar})
+            restarted = Studio(self.temp.name, self.adapter, start_worker=False)
+            self.assertEqual(restarted.profile(self.owner)['avatar'], avatar)
+            self.assertEqual(restarted.state(self.owner)['agents'][0]['avatar'], avatar)
+
+    def test_character_palettes_persist_without_changing_legacy_colors(self):
+        from studio import AVATAR_CATALOG, avatar_for
+        profile = self.studio.profile(self.owner)
+        for body in AVATAR_CATALOG['bodies']:
+            avatar = {'body': body['id'], 'color': body['palettes'][-1], 'accessory': 'none'}
+            self.studio.configure(self.owner, {**profile, 'avatar': avatar})
+            restarted = Studio(self.temp.name, self.adapter, start_worker=False)
+            self.assertEqual(restarted.profile(self.owner)['avatar'], avatar)
+        for owner in [str(i) for i in range(100)]:
+            self.assertIn(avatar_for(owner)['color'], ('green', 'cyan', 'amber', 'coral', 'violet', 'ice'))
+        with self.assertRaises(Problem):
+            avatar_for(self.owner, {'body': 'panda', 'color': 'unknown-palette', 'accessory': 'none'})
+
+    def test_old_fox_alias_does_not_change_saved_claw_identity(self):
+        from studio import avatar_for
+        old = {'body': 'fox', 'color': 'coral', 'accessory': 'headset'}
+        self.assertEqual(avatar_for(self.owner, old), {**old, 'body': 'claw'})
+        new = {'body': 'fox-companion', 'color': 'coral', 'accessory': 'scarf'}
+        self.assertEqual(avatar_for(self.owner, new), new)
+
     def test_agent_collection_keeps_native_identity_memory_files_and_jobs_separate(self):
         scout = self.add_agent()
         self.studio.enqueue(self.owner, {'prompt': 'remember my preferences'})

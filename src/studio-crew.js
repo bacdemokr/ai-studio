@@ -512,7 +512,7 @@ function renderCrewPassport(){
  el('crew-name').textContent=name;syncTeamTotalTime();el('crew-role').textContent=role;
  const model=visitor?personalModel(visitor):teamModel(i);renderCrewModel(model,visitor);
  if(!teamModelDialog.hidden)renderModelResults();
- const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';portrait.style.setProperty('--avatar-accent',appearanceColors[avatar.color]||appearanceColors.green);
+ renderAvatarPortrait(el('crew-portrait'),avatar);
  el('crew-policy').hidden=(visitor&&!visitorAvailable(visitor))||(visitor?.protection||window.BacCrewCatalog[i].protection)!=='openshell';
  syncPolicyBadges();
  if(selectedOpenTaskVisitor){

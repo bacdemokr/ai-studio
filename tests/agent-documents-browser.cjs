@@ -61,6 +61,12 @@ const {spawn}=require('node:child_process'),{chromium}=require('playwright');
   await page.keyboard.press('Escape');await page.reload();
   await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Jinny');
   await page.locator('.world-room-map [data-world-room=lounge]').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
+  await page.locator('#studio-edit-agent').click();
+  await page.locator('#studio-tone-prompt').fill('Friendly and concise.\n한국어로 답해줘.');
+  await page.locator('#studio-purpose').fill('Build small accessible webpages.');
+  await page.locator('#studio-create').click();await page.locator('#studio-onboarding').waitFor({state:'hidden'});
+  assert.equal(await page.evaluate(()=>BacStudio.inspect().profile.tonePrompt),'Friendly and concise.\n한국어로 답해줘.');
+  assert.deepEqual(new Map((await apiRead()).documents.map(d=>[d.path,d.content])),expected,'Profile edits preserve manually edited Markdown');
   await page.locator('#studio-agent-name').click();await source.waitFor();assert.equal(await source.inputValue(),expected.get('SOUL.md'));
   // Concurrent changes reject the stale draft and Discard loads the newer file.
   await source.fill('# My conflicting draft\n');

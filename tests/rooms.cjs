@@ -18,7 +18,7 @@ const {chromium}=require('playwright');
  assert(resized.x>=viewport.x&&resized.y>=viewport.y&&resized.x+resized.width<=viewport.x+viewport.width&&resized.y+resized.height<=viewport.y+viewport.height,'Quick guide must remain inside the main view');
  await paper.locator('.world-room-paper-close').click();assert.equal(await paper.isVisible(),false);
  await page.locator('button[data-room=lounge]').click();assert.equal(await page.locator('[data-resident]').count(),0);assert(await page.locator('#studio-lounge-empty').isVisible());await page.locator('#studio-empty-create').click();
- const looks=[{body:'classic',color:'green',accessory:'antenna'},{body:'round',color:'cyan',accessory:'headset'},{body:'rover',color:'coral',accessory:'glasses'}],keys=[];
+ const looks=[{body:'classic',color:'robot-silver',accessory:'antenna'},{body:'round',color:'orbit-pearl',accessory:'headset'},{body:'fox-companion',color:'fox-red',accessory:'glasses'}],keys=[];
  for(let i=0;i<looks.length;i++){
    if(i)await page.locator('#studio-add-agent').click();
    const avatar=looks[i];await page.locator('#studio-body-picker [data-body='+avatar.body+']').click();await page.locator('#studio-name').fill(['Jinny','Orbit','Rover'][i]);
@@ -32,13 +32,13 @@ const {chromium}=require('playwright');
  await page.reload();await page.waitForFunction(()=>BacStudio.inspect().agents?.length===3);
  assert.equal(await page.evaluate(()=>BacStudio.inspect().room),'lounge');assert.deepEqual(await page.evaluate(()=>BacStudio.inspect().agents.map(a=>a.avatar)),looks);
  await page.locator('[data-resident="'+keys[0]+'"]').click();await page.waitForFunction(k=>BacStudio.inspect().agentId===k,keys[0]);
- await page.locator('#studio-edit-agent').click();await page.locator('[data-avatar-color=violet]').click();await page.locator('#studio-create').click();await page.waitForFunction(()=>BacStudio.inspect().profile.avatar.color==='violet');await page.locator('#studio-alert button').click();
- assert.equal((await page.evaluate(()=>BacCampus.inspect().residents))[0].avatar.color,'violet');
+ await page.locator('#studio-edit-agent').click();await page.locator('[data-avatar-color=robot-graphite]').click();await page.locator('#studio-create').click();await page.waitForFunction(()=>BacStudio.inspect().profile.avatar.color==='robot-graphite');await page.locator('#studio-alert button').click();
+ assert.equal((await page.evaluate(()=>BacCampus.inspect().residents))[0].avatar.color,'robot-graphite');
  // The whole collection grows; the mission room still has five role stations.
  await page.locator('button[data-room=mission]').click();assert.equal(await page.locator('[data-campus-agent]').count(),5);
  await page.locator('#studio-room-action').click();await page.locator('.event-crew-choice summary').click();await page.locator('[name=member1]').selectOption(keys[1]);await page.locator('[name=member2]').selectOption(keys[2]);await page.locator('#studio-launch-event').click();await page.waitForFunction(()=>BacStudio.inspect().jobs[0]?.status==='done');
  const roster=await page.evaluate(()=>BacStudio.inspect().jobs[0].payload.roster);
- assert.equal(roster[0].avatar.color,'violet');assert.deepEqual(roster[1].avatar,looks[1]);assert.deepEqual(roster[2].avatar,looks[2]);
+ assert.equal(roster[0].avatar.color,'robot-graphite');assert.deepEqual(roster[1].avatar,looks[1]);assert.deepEqual(roster[2].avatar,looks[2]);
  assert.deepEqual((await page.evaluate(()=>BacCampus.inspect().crewAvatars)).slice(0,3),roster.slice(0,3).map(m=>m.avatar));
  // Camera sizing and actual renderer survive native fullscreen in every room.
  for(const room of ['workshop','lounge','mission']){

@@ -14,7 +14,6 @@ box(loungeRoom,-8.85,1.36,0,.22,.055,12,0x63778b);
 box(loungeRoom,0,2.0,-5.97,7.0,2.0,.14,0x0c121b);displayTitle(loungeRoom,roomTitles.lounge,0,2.1,-5.86,6.2,1.0);
 box(loungeRoom,0,1.28,-5.855,5.8,.025,.012,0x76b900,true);
 for(const x of [-6.4,6.4]){box(loungeRoom,x,.45,-4.65,3.1,.7,.94,0x334453);box(loungeRoom,x,.9,-5.07,3.1,.7,.17,0x45596c);box(loungeRoom,x-1.5,.7,-4.65,.15,.7,.95,0x45596c);box(loungeRoom,x+1.5,.7,-4.65,.15,.7,.95,0x45596c);}
-const loungeBrand=sign(loungeRoom,'Build-a-Claw',-4,.04,5.65,3.2,.38,'#8fabc2');loungeBrand.rotation.x=-Math.PI/2;
 const residentPods=new THREE.Group();loungeRoom.add(residentPods);
 function clearGeometry(parent){const shared=new Set([boxGeometry,robotHeadGeometry,robotSphereGeometry,robotLensGeometry]),geometries=new Set();parent.traverse(o=>{if(o.geometry&&!shared.has(o.geometry))geometries.add(o.geometry);});geometries.forEach(g=>g.dispose());parent.clear();}
 /* LOUNGE_LIFE */
@@ -28,7 +27,6 @@ box(workshopRoom,-3.3,1.57,-3.985,3.6,.025,.012,0x76b900,true);
 cylinder(workshopRoom,0,.14,.5,1.85,.25,0x182432,64);cylinder(workshopRoom,0,.29,.5,1.65,.08,0x5e7184,64);
 const draftRing=ring(workshopRoom,0,.345,.5,1.57,0x76b900);
 for(const x of [-4.5,4.5]){box(workshopRoom,x,.75,-2.2,1.25,1.5,.85,0x314356);for(let y=.25;y<1.4;y+=.22)box(workshopRoom,x,y,-1.765,1.0,.065,.02,0x768d9f);box(workshopRoom,x+.42,1.32,-1.74,.08,.08,.02,0x76b900,true);}
-const workBrand=displayTitle(workshopRoom,'Welcome to Build-a-Claw!',0,.025,3.25,7.6,.60,'#c1d0de');workBrand.rotation.x=-Math.PI/2;
 function setDraft(profile){
   draftProfile=profile;const avatar={...(profile.avatar||avatarDefaults[0]),protection:profile.protection||'standard'},key=JSON.stringify(avatar);if(key===draftKey)return;
   const next=createCharacter(avatar);next.group.scale.setScalar(2.05);next.group.position.set(0,.35,.5);

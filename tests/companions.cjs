@@ -4,7 +4,9 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
  for(const body of ['operative','claw','crab']){
   await p.locator('.world-room-map [data-world-room=workshop]').click();await p.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
   await p.locator('[data-body='+body+']').click();await p.locator('#studio-name').fill(body);
-  for(const accessory of ['none','antenna','headset','glasses','cap']){await p.locator('#studio-accessory').selectOption(accessory);assert.equal(await p.evaluate(()=>BacCampus.inspect().draft.avatar.body),body);}
+  const accessories=await p.locator('#studio-accessory option').evaluateAll(options=>options.map(o=>o.value));
+  assert.equal(accessories.length,6);
+  for(const accessory of accessories){await p.locator('#studio-accessory').selectOption(accessory);assert.equal(await p.evaluate(()=>BacCampus.inspect().draft.avatar.body),body);}
   await p.screenshot({path:'/private/tmp/bac-avatar-'+body+'.png'});
   await p.locator('#studio-create').click();await p.waitForFunction(body=>BacStudio.inspect().profile?.name===body,body);await p.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
   await p.waitForFunction(()=>BacStudio.inspect().room==='lounge');

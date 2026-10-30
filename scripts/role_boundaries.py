@@ -77,14 +77,14 @@ ROLE_TEMPLATES = [{'label': 'Weather buddy',
              'Face blogs in my chosen tone. Include older articles; never repeat. Skip politics, stocks and '
              'earnings.',
   'skills': ['radar']},
- {'label': 'Arxivbot',
+ {'label': 'arXiv researcher',
   'requiredSkills': ['web'],
   'summary': 'Three relevant papers on a topic you choose.',
   'purpose': 'When I give you a research topic, find three relevant arXiv papers. Summarize each paper’s '
              'main idea, include its title, authors, date and link, and briefly compare them in my chosen '
              'tone. Ask for a topic if none is given.',
   'skills': ['web']},
- {'label': 'Slack Announcer',
+ {'label': 'Slack writer',
   'requiredSkills': ['writer'],
   'summary': 'Emoji-led updates in your chosen voice.',
   'purpose': 'Answer in the style of a concise Slack announcement: an emoji-led headline and short, useful '

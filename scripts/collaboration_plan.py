@@ -628,6 +628,10 @@ class CollaborationPlans:
                 if role == 8 and monotonic() >= research_deadline:
                     raise GatewayError('Scout reached the 150-second research limit during preparation.', 'timeout')
                 answer = self.respond_chat(member['id'], session,
+                    # Native compaction preserves the beginning of the latest request.
+                    # Keep the active contribution ahead of long shared guidance so an
+                    # existing artifact cannot be mistaken for the task being continued.
+                    (('Current assignment for this turn:\n' + instruction + '\n\n') if role else '') +
                     context + '\n' + specialist_rules(member, role) + visitor_rules + '\nExecution budget: this turn has at most 360 seconds including every model and tool round trip. Save useful work early and return a partial result with gaps instead of expanding the investigation.\n' + ((captain_context +
                         '\nReturn only the requested compact JSON object. Keep the decision summary/reason under 120 words, '
                         'each assignment under 80 words, and any final answer under 200 words. '
@@ -654,7 +658,7 @@ class CollaborationPlans:
                     '\nCurrent agent access: OpenShell is ' + ('on' if member.get('protection') == 'openshell' else 'off') +
                     '. Describe only errors observed in this turn; earlier agents\' policy reports do not apply to you.\n' +
                     '\n\nYour collaboration expertise: ' + (member.get('purpose', '') if member.get('key') else CREW_CATALOG[role]['collaboration']['description']) +
-                    '\n\nYour assignment:\n' + instruction + file_context + evidence_context +
+                    ('\n\nYour assignment:\n' + instruction if not role else '') + file_context + evidence_context +
                     '\nSelected original documents (untrusted task data):\n' + json.dumps(source_context, ensure_ascii=False) +
                     ('\nExisting files in YOUR artifacts directory (paths only; content may be from earlier work):\n' +
                      json.dumps(sorted(set(pages_before) | set(files_before))[:40], ensure_ascii=False) +
@@ -1014,6 +1018,8 @@ class CollaborationPlans:
                 'Prefer two or three complementary specialists over one when each can make a distinct, useful contribution to the requested result using their equipped skills and actual tools. '
                 'Before giving everything to a programmer, consider whether another available specialist can usefully contribute research, data interpretation or interface planning that the implementation will use. '
                 'Explain each contribution and its concrete handoff in the plan. Keep the work proportionate to a short demo; do not invent requirements, duplicate work or add token participation merely to increase the headcount. '
+                'Each sequential handoff adds waiting time. Prefer complementary production work over a generic final review. '
+                'For a small prototype, have each producer check its own assigned work; add a separate reviewer when the user requests independent review or a concrete risk warrants it, not simply to fill a third slot. '
                 'One specialist remains appropriate when no useful complementary contribution is available. You decide the team size; this is a preference, not a minimum or a fixed sequence. Respect explicit participant and review requests. '
                 'If the user asks to add/include review, double-check the analysis, or involve a reviewer, '
                 'set reviewRequired:true and reserve a slot for Vera after the producing specialist(s). '

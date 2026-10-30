@@ -4,8 +4,8 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
  try{
   const page=await browser.newPage({viewport:{width:1500,height:1000}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
-  await page.goto(process.env.BASE_URL||'http://127.0.0.1:8082');await page.waitForFunction(()=>window.BacStudio);
-  for(const [body,color,accessory] of [['claw','violet','glasses'],['crab','coral','cap'],['round','cyan','headset']]){
+  await page.goto(process.env.BASE_URL||'http://127.0.0.1:8082');await page.waitForFunction(()=>window.BacStudio?.inspect().agentId);
+  for(const [body,color,accessory] of [['fox-companion','fox-silver','scarf'],['bunny','bunny-oat','carrot'],['panda','panda-brown','bamboo']]){
    await page.locator('.world-room-map [data-world-room=workshop]').click();
    await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
    await page.locator('#studio-body-picker [data-body='+body+']').click();

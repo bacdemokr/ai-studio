@@ -71,7 +71,7 @@ class RequiredRoleSkillsTests(unittest.TestCase):
     def test_lounge_presets_keep_core_skills_through_edits_and_upgrade(self):
         self.app.onboard(self.owner, {'name': 'Helper', 'purpose': 'Help me think.', 'skills': []})
         cases = [('Weather buddy', 'weather'), ('Tech Radar', 'radar'),
-                 ('Arxivbot', 'web'), ('Slack Announcer', 'writer')]
+                 ('arXiv researcher', 'web'), ('Slack writer', 'writer')]
         saved = []
         for label, skill in cases:
             with self.subTest(role=label):

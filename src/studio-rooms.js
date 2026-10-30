@@ -71,21 +71,50 @@ el('agent-model-panel').addEventListener('keydown',event=>{if(event.key==='Escap
 el('agent-model-panel').addEventListener('toggle',()=>{if(el('agent-model-panel').open)renderCreatorModels();});
 el('agent-model-settings').onclick=openModelSettings;
 const appearanceColors={green:'#76b900',cyan:'#55bfff',amber:'#f4b34f',coral:'#ff8873',violet:'#b49aff',ice:'#cbddea'};
-const appearanceNames={classic:'Jinny',round:'Orbit',rover:'Scout',operative:'Smith',claw:'Pixel',crab:'Sage'};
+const appearanceCatalog=/* AVATAR_CATALOG */;
+const appearanceNames={rover:'Scout',...Object.fromEntries(appearanceCatalog.bodies.map(body=>[body.id,body.name]))};
+function avatarAppearanceStyle(avatar={}){
+ const palette=appearanceCatalog.palettes[avatar.color];
+ return '--avatar-accent:'+(palette?.accent||appearanceColors[avatar.color]||appearanceColors.green)+(palette?';--avatar-base:'+palette.base+';--avatar-light:'+palette.light+';--avatar-dark:'+palette.dark:'');
+}
+function renderAvatarPortrait(node,avatar={}){
+ node.dataset.body=avatar.body||'classic';node.dataset.accessory=avatar.accessory||'none';
+ node.style.cssText=avatarAppearanceStyle(avatar);
+}
+function renderPalettes(preserveSaved=false){
+ const body=appearanceCatalog.bodies.find(body=>body.id===draftAvatar.body);
+ const options=[...(body?.palettes||Object.keys(appearanceColors))];
+ if(preserveSaved&&!options.includes(draftAvatar.color)&&(appearanceCatalog.palettes[draftAvatar.color]||appearanceColors[draftAvatar.color]))options.push(draftAvatar.color);
+ if(!options.includes(draftAvatar.color))draftAvatar.color=options[0];
+ el('color-picker').innerHTML=options.map(id=>{
+  const palette=appearanceCatalog.palettes[id],label=palette?.label||(id[0].toUpperCase()+id.slice(1)+' (saved)');
+  const swatch=palette?'linear-gradient(135deg,'+palette.base+' 0 40%,'+palette.light+' 40% 65%,'+palette.dark+' 65% 100%)':appearanceColors[id];
+  return '<button type="button" data-avatar-color="'+escape(id)+'" style="--swatch:'+swatch+'" aria-label="'+escape(label)+'" title="'+escape(label)+'" aria-pressed="false"></button>';
+ }).join('');
+}
+function renderAccessories(preserveSaved=false){
+ const body=appearanceCatalog.bodies.find(body=>body.id===draftAvatar.body);
+ const options=['none',...(body?.accessories||['antenna','headset','glasses','cap','backpack'])];
+ // Existing agents keep a previously saved outfit until the user changes it.
+ const saved=preserveSaved&&!options.includes(draftAvatar.accessory)&&appearanceCatalog.accessories[draftAvatar.accessory];
+ if(saved)options.push(draftAvatar.accessory);
+ if(!options.includes(draftAvatar.accessory))draftAvatar.accessory='none';
+ el('accessory').innerHTML=options.map(id=>'<option value="'+escape(id)+'">'+escape(appearanceCatalog.accessories[id])+(saved&&id===draftAvatar.accessory?' (saved)':'')+'</option>').join('');
+ el('accessory').value=draftAvatar.accessory;
+ el('saved-appearance').hidden=!!body;
+ el('saved-appearance').textContent=body?'':'Rover · saved appearance';
+}
 const roomCopy={
   workshop:'Hiring',
   lounge:'Agent lounge',
   mission:'Open Task'
 };
-function avatarBadge(avatar={}){return `<span class="studio-avatar tiny" aria-hidden="true" data-body="${escape(avatar.body||'classic')}" data-accessory="${escape(avatar.accessory||'antenna')}" style="--avatar-accent:${appearanceColors[avatar.color]||appearanceColors.green}"><i></i><i></i></span>`;}
+function avatarBadge(avatar={}){return `<span class="studio-avatar tiny" aria-hidden="true" data-body="${escape(avatar.body||'classic')}" data-accessory="${escape(avatar.accessory||'none')}" style="${avatarAppearanceStyle(avatar)}"><i></i><i></i></span>`;}
 // Presets and custom text edit the same two fields; no hidden tone overrides.
 function creatorPrompt(){
-  const text=el('purpose').value.trim();
-  const tone=text.match(/^[ \t]*(?:-[ \t]+)?Tone:[ \t]*([^]*?)(?=^[ \t]*(?:-[ \t]+)?Role:|$(?![^]))/im);
-  const role=text.match(/^[ \t]*(?:-[ \t]+)?Role:[ \t]*([^]*?)(?=^[ \t]*(?:-[ \t]+)?Tone:|$(?![^]))/im);
-  return {tonePrompt:tone?tone[1].trim():'',purpose:role?role[1].trim():tone?'':text};
+  return {tonePrompt:el('tone-prompt').value.trim(),purpose:el('purpose').value.trim()};
 }
-function writeCreatorPrompt(tone,role){el('purpose').value='- Tone: '+tone+'\n- Role: '+role;}
+function writeCreatorPrompt(tone,role){el('tone-prompt').value=tone;el('purpose').value=role;}
 function tonePromptLabel(key){return tones[key][0]+' ('+tones[key][1]+')';}
 function matchesTonePrompt(key,text){return [tones[key][0],tonePromptLabel(key)].some(value=>value.toLowerCase()===text.toLowerCase());}
 function savedTonePrompt(profile){return profile.tonePrompt??tonePromptLabel(profile.tone||'kind');}
@@ -100,8 +129,13 @@ function availableAgentName(body){
 }
 function updateDraft(){
   syncRequiredRoleSkills();
-  el('body-picker').querySelectorAll('button[data-body]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.body===draftAvatar.body));
+  el('body-picker').querySelectorAll('button[data-body]').forEach(b=>{
+   const selected=b.dataset.body===draftAvatar.body;b.setAttribute('aria-pressed',selected);
+   const body=appearanceCatalog.bodies.find(body=>body.id===b.dataset.body);
+   b.querySelector('.body-glyph').style.cssText=avatarAppearanceStyle(selected?draftAvatar:{color:body.palettes[0]});
+  });
   el('color-picker').querySelectorAll('button[data-avatar-color]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.avatarColor===draftAvatar.color));
+  el('palette-name').textContent=appearanceCatalog.palettes[draftAvatar.color]?.label||((draftAvatar.color||'')[0]?.toUpperCase()+(draftAvatar.color||'').slice(1)+' (saved)');
   draftAvatar.accessory=el('accessory').value;
   const verbosity='balanced';
   // Status badges elsewhere in the studio are not editor controls.
@@ -114,13 +148,13 @@ function fillCreator(creating){
   const n=data.agents?.length||0;
   const used=new Set((data.agents||[]).map(a=>[a.avatar?.body,a.avatar?.color,a.avatar?.accessory].join(':')));
   let defaults;
-  for(let offset=0;offset<12;offset++){const index=n+offset,body=['classic','round','rover','operative','claw','crab'][index%6];defaults={body,color:Object.keys(appearanceColors)[index%6],accessory:'none'};if(!used.has([defaults.body,defaults.color,defaults.accessory].join(':')))break;}
+  for(let offset=0;offset<12;offset++){const index=n+offset,body=appearanceCatalog.bodies[index%appearanceCatalog.bodies.length];defaults={body:body.id,color:body.palettes[Math.floor(index/appearanceCatalog.bodies.length)%body.palettes.length],accessory:'none'};if(!used.has([defaults.body,defaults.color,defaults.accessory].join(':')))break;}
   const name=availableAgentName(defaults.body);
   const p=creating?{name,persona:'guide',purpose:roleTemplates[0].purpose,skills:[...roleTemplates[0].skills],avatar:defaults}:data.profile;
   if(!p)return fillCreator(true);
   draftNameEdited=!creating;
   draftModel=creating?'':p.model||'shared';draftModelChosen=!creating;el('agent-model-search').value='';el('agent-model-panel').open=false;
-  el('name').value=p.name;writeCreatorPrompt(savedTonePrompt(p),p.purpose||(creating?'':personas[p.persona]));persona=p.persona;draftAvatar={...(p.avatar||defaults)};el('accessory').value=draftAvatar.accessory;
+  el('name').value=p.name;writeCreatorPrompt(savedTonePrompt(p),p.purpose||(creating?'':personas[p.persona]));persona=p.persona;draftAvatar={...(p.avatar||defaults)};renderAccessories(!creating);renderPalettes(!creating);
   draftTone=p.tone||'kind';
   el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(roleTemplates[Number(b.dataset.roleTemplate)]?.purpose===p.purpose)));
   el('role-hint').textContent='';
@@ -172,13 +206,13 @@ function renderRooms(){
   el('gateway-state').textContent=runtime.testFixture?'Test fixture · no live gateway':gatewayLabel();
   el('model-state').textContent=runtime.testFixture?'Test fixture · no live model':runtime.model?'Connected':'Not connected';
   el('shell-state').textContent=runtime.openshell||'Optional · not configured';
-  if(data.profile){const a=data.profile.avatar||{};el('portrait').dataset.body=a.body||'classic';el('portrait').dataset.accessory=a.accessory||'antenna';el('portrait').style.setProperty('--avatar-accent',appearanceColors[a.color]||appearanceColors.green);}
+  if(data.profile)renderAvatarPortrait(el('portrait'),data.profile.avatar);
   window.BacCampus?.setCollection(agents,agentId);
   renderPolicySelector();
 }
 function agentForm(creating=false){if(creating&&(data.agents?.length||0)>=(data.agentLimit||12)){alert('Your lounge is full. You can edit any of your existing agents.');return;}fillCreator(creating);if(creating)setRoom('workshop');else{editingInPlace=true;renderRoomVisibility();}el('workshop').scrollTop=0;}
-el('color-picker').innerHTML=Object.entries(appearanceColors).map(([name,color])=>`<button type="button" data-avatar-color="${name}" style="--swatch:${color}" aria-label="${name[0].toUpperCase()+name.slice(1)}" aria-pressed="false"></button>`).join('');
-el('body-picker').onclick=e=>{const b=e.target.closest('[data-body]');if(b){draftAvatar.body=b.dataset.body;if(draftMode==='new'&&!draftNameEdited)el('name').value=availableAgentName(draftAvatar.body);updateDraft();}};
+el('body-picker').innerHTML=appearanceCatalog.bodies.map(body=>'<button type="button" data-body="'+escape(body.id)+'" aria-pressed="false"><span class="studio-body-art" aria-hidden="true"><span class="body-glyph '+escape(body.id)+'" style="'+avatarAppearanceStyle({color:body.palettes[0]})+'"><i></i><i></i></span></span><span>'+escape(body.label)+'</span></button>').join('');
+el('body-picker').onclick=e=>{const b=e.target.closest('[data-body]');if(b){draftAvatar.body=b.dataset.body;renderAccessories();renderPalettes();if(draftMode==='new'&&!draftNameEdited)el('name').value=availableAgentName(draftAvatar.body);updateDraft();}};
 el('color-picker').onclick=e=>{const b=e.target.closest('[data-avatar-color]');if(b){draftAvatar.color=b.dataset.avatarColor;updateDraft();}};
 el('accessory').onchange=updateDraft;el('name').addEventListener('input',()=>{draftNameEdited=true;updateDraft();});
 const roleTemplates=/* ROLE_TEMPLATES */;
@@ -186,6 +220,10 @@ el('role-templates').innerHTML=roleTemplates.map((t,i)=>`<button type="button" d
 function selectedRoleTemplate(){return roleTemplates.find(t=>t.purpose.toLowerCase()===creatorPrompt().purpose.trim().toLowerCase());}
 function syncRequiredRoleSkills(){
   const template=selectedRoleTemplate(),required=template?.requiredSkills||[];
+  // The scheduled Radar role follows its fixed skill, including its check interval.
+  const fixedRole=required.includes('radar');
+  el('purpose').readOnly=fixedRole;
+  el('role-fixed').hidden=!fixedRole;
   el('skill-picker').querySelectorAll('input').forEach(input=>{
     const fixed=required.includes(input.value),card=input.closest('.studio-skill-card');
     input.disabled=fixed;if(fixed)input.checked=true;
@@ -200,6 +238,7 @@ function selectRoleSkills(skills){
 }
 el('role-templates').onclick=e=>{const button=e.target.closest('[data-role-template]');if(!button)return;const template=roleTemplates[Number(button.dataset.roleTemplate)];writeCreatorPrompt(creatorPrompt().tonePrompt,template.purpose);el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));selectRoleSkills(template.skills);};
 el('purpose').addEventListener('input',()=>{el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed','false'));el('role-hint').textContent='';syncCreatorTone();updateDraft();});
+el('tone-prompt').addEventListener('input',()=>{syncCreatorTone();updateDraft();});
 el('apply-prompt').onclick=()=>{
   syncCreatorTone();
   const role=creatorPrompt().purpose.toLowerCase();

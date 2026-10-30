@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Validate inputs before importing the skill registry or assembling the page.
 # Missing files should leave the last working build intact and identify the cause.
 required = ['scripts/serve.py', 'scripts/resource_links.py', 'scripts/studio.py', 'scripts/container_runtime.py',
-            'scripts/agent_runtime.py', 'scripts/role_boundaries.py', 'src/goal-examples.json',
+            'scripts/agent_runtime.py', 'scripts/role_boundaries.py', 'src/goal-examples.json', 'src/avatar-catalog.json',
             'src/assets/agent-harness-big-picture.png', 'src/assets/openshell-overview.png',
             'runtime/research-guard/index.mjs', 'runtime/research-guard/openclaw.plugin.json']
 for name in required:
@@ -61,6 +61,7 @@ world_scene = world_scene.replace('/* WORLD_SCENARIOS */', (ROOT / 'src/world-sc
 world_scene = world_scene.replace('/* WORLD_PROTECTION */', (ROOT / 'src/world-protection.js').read_text(encoding='utf-8'))
 world_scene = world_scene.replace('/* WORLD_ROUNDTABLE */', (ROOT / 'src/world-roundtable.js').read_text(encoding='utf-8'))
 world_scene = world_scene.replace('/* BUILD_VERSION */', json.dumps(build_info['version']).replace('</', '<\\/'))
+world_scene = world_scene.replace('/* AVATAR_PALETTES */', json.dumps(json.loads((ROOT / 'src/avatar-catalog.json').read_text())['palettes']).replace('</', '<\\/'))
 campus_js = '(function(){const exports={};\n' + vendor + '\nconst THREE=exports;\n' + (ROOT / 'src/campus.js').read_text(encoding='utf-8').replace('/* STUDIO_SOUND */', (ROOT / 'src/studio-sound.js').read_text(encoding='utf-8')).replace('/* WORLD_SCENE */', world_scene) + '\n})();'
 fragment = fragment.replace('<!-- CAMPUS_SCRIPT -->', '<script>' + campus_js.replace('</script', '<\\/script') + '</script>')
 studio_js = (ROOT / 'src/studio.js').read_text(encoding='utf-8')
@@ -77,6 +78,7 @@ for module in ('json', 'compare', 'settings', 'crew', 'telemetry',
     if studio_js.count(marker) != 1:
         raise ValueError('Expected one include marker: ' + marker)
     studio_js = studio_js.replace(marker, (ROOT / ('src/studio-' + module + '.js')).read_text(encoding='utf-8'))
+studio_js = studio_js.replace('/* AVATAR_CATALOG */', json.dumps(json.loads((ROOT / 'src/avatar-catalog.json').read_text())).replace('</', '<\\/'))
 agent_big_picture = 'data:image/png;base64,' + base64.b64encode(
     (ROOT / 'src/assets/agent-harness-big-picture.png').read_bytes()).decode('ascii')
 openshell_overview = 'data:image/png;base64,' + base64.b64encode(

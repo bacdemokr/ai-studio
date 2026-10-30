@@ -90,7 +90,7 @@
   const demoSkills=['weather','radar','web','builder','writer','data-analysis','interface-design'],extraSkills=['documents','memory'];
   const skillCards=keys=>keys.map(key=>{const [title,detail]=capabilities[key];return `<div class="studio-skill-card"><label><input type="checkbox" value="${key}"><span><strong>${title}<span class="studio-skill-fixed" hidden>Fixed</span></strong><small>${detail}</small></span></label></div>`;}).join('');
   el('skill-picker').innerHTML=skillCards(demoSkills)+'<div hidden>'+skillCards(extraSkills)+'</div>';
-  el('tone-picker').innerHTML=Object.entries(tones).map(([key,[title,detail]])=>`<button type="button" data-tone="${key}" aria-pressed="${key==='kind'}"><strong>${title}</strong><small>${detail}</small></button>`).join('');
+  el('tone-picker').innerHTML=Object.entries(tones).map(([key,[title,detail]])=>`<button type="button" data-tone="${key}" aria-pressed="${key==='kind'}"><strong>${title}</strong><small>${key==='cynical'?'Dry & skeptical':detail}</small></button>`).join('');
   const missionCards=keys=>keys.map(key=>missions.find(m=>m.id===key)).filter(Boolean).map(m=>`<button class="studio-mission" data-studio-mission="${m.id}" aria-pressed="false" style="--mission-color:${m.color}"><span>${m.icon}</span><em>${m.tag}</em><strong>${m.title}</strong><small>${m.sub}</small></button>`).join('');
   el('missions').innerHTML=missionCards(demoSkills)+'<details class="studio-extra-skills"><summary>More scenarios</summary><div class="studio-missions">'+missionCards(extraSkills)+'</div></details>';
   let alertTimer=null;

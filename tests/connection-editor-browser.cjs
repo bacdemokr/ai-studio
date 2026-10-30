@@ -24,6 +24,19 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.equal(await page.locator('#studio-connect-load').count(),0);
   assert.equal(await page.locator('#studio-connect-context').inputValue(),'131072');
   assert(await page.locator('#studio-connect-context').isHidden());
+  // Connection-level errors stay visible while the compact editor hides routing controls.
+  await page.route('**/api/settings/connections/preferences',r=>r.fulfill({status:409,json:{error:'Fixture connection is busy.'}}));
+  await page.locator('[data-connection-enable=api]').uncheck();
+  await page.waitForFunction(()=>document.querySelector('#studio-connections-status').textContent==='Fixture connection is busy.');
+  assert(await page.locator('#studio-connections-status').isVisible(),'Connection toggle failure must remain visible while editing');
+  assert(await page.locator('[data-connection-enable=api]').isChecked(),'Failed toggle preserves the established connection');
+  await page.unroute('**/api/settings/connections/preferences');
+  await page.route('**/api/settings/connections/check',r=>r.fulfill({status:503,json:{error:'Fixture connection check failed.'}}));
+  await page.locator('#studio-connections-check').click();
+  await page.waitForFunction(()=>document.querySelector('#studio-connections-status').textContent==='Fixture connection check failed.');
+  assert(await page.locator('#studio-connections-status').isVisible(),'Connection refresh failure must remain visible while editing');
+  assert.equal(await page.locator('#studio-connect-context').inputValue(),'131072','A failed check preserves the editor draft');
+  await page.unroute('**/api/settings/connections/check');
   await page.locator('#studio-connect-cancel').click();
   // An old provider's delayed model response must not overwrite the new provider.
   let release,started;
