@@ -109,7 +109,7 @@
     {
       "id": "operative",
       "label": "비밀 요원",
-      "name": "까망요원",
+      "name": "스미스",
       "accessories": [
         "earpiece",
         "briefcase",
@@ -126,7 +126,7 @@
     {
       "id": "claw",
       "label": "가재",
-      "name": "집게콩",
+      "name": "집게",
       "accessories": [
         "bowtie",
         "scarf",
@@ -144,7 +144,7 @@
     {
       "id": "crab",
       "label": "꽃게",
-      "name": "꽃게랑",
+      "name": "꽃게",
       "accessories": [
         "flower",
         "bowtie",
