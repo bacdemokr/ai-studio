@@ -14,11 +14,11 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   assert.equal(await page.locator('#studio-skill-picker input[value="interface-design"]').isVisible(),true);
   await page.getByRole('button',{name:/^재치 있게/}).click();
   const selected=()=>page.locator('#studio-skill-picker input:checked').evaluateAll(nodes=>nodes.map(n=>n.value));
-  const cases=[['프로그래머',['builder']],['웹 조사원',['web']],['데이터 분석가',['data-analysis']],['arXiv 연구원',['web']],['날씨 도우미',['weather']],['기술 소식',['radar']],['Slack 작성자',['writer']]];
+  const cases=[['프로그래머',['builder']],['웹 조사원',['web']],['데이터 분석가',['data-analysis']],['arXiv 연구원',['web']],['날씨 도우미',['weather']],['테크 레이더',['radar']],['Slack 작성자',['writer']]];
   for(const [name,skills] of cases){
    await page.getByRole('button',{name,exact:true}).click();assert.deepEqual(await selected(),skills);
-   assert.equal(await page.locator('#studio-purpose').isEditable(),name!=='기술 소식',name+' role editability');
-   assert.equal(await page.locator('#studio-role-fixed').isVisible(),name==='기술 소식');
+   assert.equal(await page.locator('#studio-purpose').isEditable(),name!=='테크 레이더',name+' role editability');
+   assert.equal(await page.locator('#studio-role-fixed').isVisible(),name==='테크 레이더');
    assert.equal(await page.locator('#studio-tone-prompt').isEditable(),true,'Tone stays editable');
    const fixed=await page.locator('#studio-skill-picker input:disabled').evaluateAll(nodes=>nodes.map(n=>n.value));
    assert.deepEqual(fixed,skills,name+' fixed skill');
@@ -78,7 +78,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
    await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
    await page.locator('#studio-edit-agent').click();
    assert.equal(await page.locator('#studio-skill-picker input[value="'+skill+'"]').isDisabled(),true,name+' remains fixed after saving/reloading');
-   assert.equal(await page.locator('#studio-purpose').isEditable(),name!=='기술 소식',name+' role lock survives reload');
+   assert.equal(await page.locator('#studio-purpose').isEditable(),name!=='테크 레이더',name+' role lock survives reload');
    assert.equal(await page.locator('#studio-skill-picker input[value="builder"]').isChecked(),true,name+' keeps extra skills');
    await page.locator('#studio-skill-picker input[value="builder"]').uncheck();
   }

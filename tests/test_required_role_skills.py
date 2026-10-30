@@ -70,7 +70,7 @@ class RequiredRoleSkillsTests(unittest.TestCase):
     @offline_config
     def test_lounge_presets_keep_core_skills_through_edits_and_upgrade(self):
         self.app.onboard(self.owner, {'name': 'Helper', 'purpose': 'Help me think.', 'skills': []})
-        cases = [('날씨 도우미', 'weather'), ('기술 소식', 'radar'),
+        cases = [('날씨 도우미', 'weather'), ('테크 레이더', 'radar'),
                  ('arXiv 연구원', 'web'), ('Slack 작성자', 'writer')]
         saved = []
         for label, skill in cases:

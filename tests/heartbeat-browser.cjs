@@ -46,7 +46,7 @@ await page.screenshot({path:'/tmp/bac-heartbeat-telegram.png'});
 await page.locator('#studio-dialog').evaluate(node=>node.close());
 await page.waitForFunction(previous=>BacCampus.inspect().clock>previous,modalClock);
 await page.locator('.world-room-map [data-world-room=workshop]').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
-await page.locator('#studio-name').fill('Echo');await page.getByRole('button',{name:'기술 소식',exact:true}).click();await page.locator('#studio-create').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Echo');await page.waitForFunction(()=>BacStudio.inspect().room==='lounge');
+await page.locator('#studio-name').fill('Echo');await page.getByRole('button',{name:'테크 레이더',exact:true}).click();await page.locator('#studio-create').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Echo');await page.waitForFunction(()=>BacStudio.inspect().room==='lounge');
 await page.waitForFunction(()=>document.querySelector('#studio-conversation').textContent.includes('TEST FIXTURE:'));
 await page.locator('#studio-radar-monitor button').click();await page.waitForFunction(()=>document.querySelector('#studio-radar-monitor').textContent.includes('Paused'));
 await page.waitForTimeout(3500);assert.equal(await page.locator('.chat-turn').count(),1);

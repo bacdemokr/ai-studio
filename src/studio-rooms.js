@@ -72,7 +72,7 @@ el('agent-model-panel').addEventListener('toggle',()=>{if(el('agent-model-panel'
 el('agent-model-settings').onclick=openModelSettings;
 const appearanceColors={green:'#76b900',cyan:'#55bfff',amber:'#f4b34f',coral:'#ff8873',violet:'#b49aff',ice:'#cbddea'};
 const appearanceCatalog=/* AVATAR_CATALOG */;
-const appearanceNames={rover:'Scout',...Object.fromEntries(appearanceCatalog.bodies.map(body=>[body.id,body.name]))};
+const appearanceNames={rover:'바퀴봇',round:'동글이',panda:'곰콩',...Object.fromEntries(appearanceCatalog.bodies.map(body=>[body.id,body.name]))};
 function avatarAppearanceStyle(avatar={}){
  const palette=appearanceCatalog.palettes[avatar.color];
  return '--avatar-accent:'+(palette?.accent||appearanceColors[avatar.color]||appearanceColors.green)+(palette?';--avatar-base:'+palette.base+';--avatar-light:'+palette.light+';--avatar-dark:'+palette.dark:'');
@@ -87,7 +87,7 @@ function renderPalettes(preserveSaved=false){
  if(preserveSaved&&!options.includes(draftAvatar.color)&&(appearanceCatalog.palettes[draftAvatar.color]||appearanceColors[draftAvatar.color]))options.push(draftAvatar.color);
  if(!options.includes(draftAvatar.color))draftAvatar.color=options[0];
  el('color-picker').innerHTML=options.map(id=>{
-  const palette=appearanceCatalog.palettes[id],label=palette?.label||(id[0].toUpperCase()+id.slice(1)+' (saved)');
+  const palette=appearanceCatalog.palettes[id],label=palette?.label||(id[0].toUpperCase()+id.slice(1)+' (기존)' );
   const swatch=palette?'linear-gradient(135deg,'+palette.base+' 0 40%,'+palette.light+' 40% 65%,'+palette.dark+' 65% 100%)':appearanceColors[id];
   return '<button type="button" data-avatar-color="'+escape(id)+'" style="--swatch:'+swatch+'" aria-label="'+escape(label)+'" title="'+escape(label)+'" aria-pressed="false"></button>';
  }).join('');
@@ -99,10 +99,10 @@ function renderAccessories(preserveSaved=false){
  const saved=preserveSaved&&!options.includes(draftAvatar.accessory)&&appearanceCatalog.accessories[draftAvatar.accessory];
  if(saved)options.push(draftAvatar.accessory);
  if(!options.includes(draftAvatar.accessory))draftAvatar.accessory='none';
- el('accessory').innerHTML=options.map(id=>'<option value="'+escape(id)+'">'+escape(appearanceCatalog.accessories[id])+(saved&&id===draftAvatar.accessory?' (saved)':'')+'</option>').join('');
+ el('accessory').innerHTML=options.map(id=>'<option value="'+escape(id)+'">'+escape(appearanceCatalog.accessories[id])+(saved&&id===draftAvatar.accessory?' (기존)' :'')+'</option>').join('');
  el('accessory').value=draftAvatar.accessory;
  el('saved-appearance').hidden=!!body;
- el('saved-appearance').textContent=body?'':'Rover · saved appearance';
+ el('saved-appearance').textContent=body?'':'기존 캐릭터';
 }
 const roomCopy={
   workshop:'Hiring',
@@ -128,7 +128,7 @@ function syncCreatorTone(){
   draftTone=Object.keys(tones).find(key=>matchesTonePrompt(key,tone))||'kind';
 }
 function availableAgentName(body){
-  const baseName=appearanceNames[body]||'Agent';let name=baseName,number=2;
+  const baseName=appearanceNames[body]||'친구';let name=baseName,number=2;
   while(data.agents?.some(a=>a.name.toLowerCase()===name.toLowerCase()))name=baseName+'_'+number++;
   return name;
 }
@@ -140,7 +140,7 @@ function updateDraft(){
    b.querySelector('.body-glyph').style.cssText=avatarAppearanceStyle(selected?draftAvatar:{color:body.palettes[0]});
   });
   el('color-picker').querySelectorAll('button[data-avatar-color]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.avatarColor===draftAvatar.color));
-  el('palette-name').textContent=appearanceCatalog.palettes[draftAvatar.color]?.label||((draftAvatar.color||'')[0]?.toUpperCase()+(draftAvatar.color||'').slice(1)+' (saved)');
+  el('palette-name').textContent=appearanceCatalog.palettes[draftAvatar.color]?.label||((draftAvatar.color||'')[0]?.toUpperCase()+(draftAvatar.color||'').slice(1)+' (기존)' );
   draftAvatar.accessory=el('accessory').value;
   const verbosity='balanced';
   // Status badges elsewhere in the studio are not editor controls.
@@ -167,7 +167,7 @@ function fillCreator(creating){
   el('onboarding').querySelectorAll('[name=protection]').forEach(i=>i.checked=i.value===(p.protection||'standard'));
   el('onboarding').querySelector('.studio-protection-picker').hidden=!creating;
   el('onboarding').querySelectorAll('[name=protection]').forEach(i=>i.disabled=!creating);
-  el('creator-title').textContent=creating?'나만의 에이전트\n구성하기':'Edit '+p.name;
+  el('creator-title').textContent=creating?'나만의 에이전트':'Edit '+p.name;
   el('creator-note').hidden=true;
   el('creator-note').textContent='';
   el('create').textContent=creating?'에이전트 고용':'변경사항 저장';el('cancel-create').hidden=!data.profile;updateCreatorSubmit();

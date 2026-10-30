@@ -3,7 +3,7 @@
     {
       "id": "classic",
       "label": "꼬마 로봇",
-      "name": "두리",
+      "name": "삐봇",
       "accessories": [
         "antenna",
         "headset",
@@ -56,7 +56,7 @@
     {
       "id": "operative",
       "label": "비밀 요원",
-      "name": "까망이",
+      "name": "까망요원",
       "accessories": [
         "earpiece",
         "briefcase",
@@ -73,7 +73,7 @@
     {
       "id": "claw",
       "label": "가재",
-      "name": "집게",
+      "name": "집게콩",
       "accessories": [
         "bowtie",
         "scarf",
@@ -91,7 +91,7 @@
     {
       "id": "crab",
       "label": "꽃게",
-      "name": "꽃돌이",
+      "name": "꽃게랑",
       "accessories": [
         "flower",
         "bowtie",
@@ -166,25 +166,25 @@
     "panda"
   ],
   "accessories": {
-    "none": "소품 없음",
-    "antenna": "안테나",
+    "none": "착용 안 함",
+    "antenna": "신호 안테나",
     "headset": "헤드폰",
     "glasses": "동그란 안경",
     "cap": "야구 모자",
-    "backpack": "작은 배낭",
-    "earpiece": "비밀 이어폰",
+    "backpack": "꼬마 배낭",
+    "earpiece": "요원 이어폰",
     "briefcase": "작은 서류 가방",
     "watch": "손목시계",
     "bowtie": "나비넥타이",
     "scarf": "포근한 목도리",
-    "pirate": "Pirate hat",
+    "pirate": "해적 모자",
     "flower": "꽃 한 송이",
-    "flag": "Little flag",
+    "flag": "작은 깃발",
     "carrot": "간식 당근",
-    "bamboo": "Bamboo snack",
+    "bamboo": "대나무 간식",
     "norigae": "매듭 장식",
     "pouch": "작은 복주머니",
-    "pestle": "떡방아 절굿공이",
+    "pestle": "떡방아 공이",
     "moon": "보름달 장식"
   },
   "palettes": {
