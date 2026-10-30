@@ -1,11 +1,11 @@
 // Presenter aids are local drafts. Selecting an example never starts a task.
 window.BacOverviewImages={agent:'__AGENT_BIG_PICTURE_DATA_URL__',openshell:'__OPENSHELL_OVERVIEW_DATA_URL__'};
-const agentBlueprint=`<div class="agent-blueprint" aria-label="An agent combines a language model, instructions, skills and memory inside a tool runtime">
- <div class="agent-blueprint-input">Your request <span>or a scheduled Heartbeat</span></div><span class="agent-blueprint-arrow" aria-hidden="true">↓</span>
- <section class="agent-blueprint-runtime"><header>Agent runtime <small>OpenClaw coordinates the loop</small></header>
- <div class="agent-blueprint-parts"><article><b>Role &amp; voice</b><span>Purpose and behavior</span></article><article><b>Language model</b><span>Reasons and selects actions</span></article><article><b>Skills</b><span>Instructions for specific work</span></article><article><b>Memory &amp; files</b><span>Saved context and evidence</span></article></div>
- <div class="agent-blueprint-tools"><b>Permitted tools</b><span>Read, write, search or fetch</span><small>Read tool results → decide the next action → answer when ready.</small><small>OpenShell can isolate tool execution and restrict access.</small></div></section>
- <span class="agent-blueprint-arrow" aria-hidden="true">↓</span><div class="agent-blueprint-output">Response or saved result <span>Inspect the evidence; completion is not guaranteed.</span></div></div>`;
+const agentBlueprint=`<div class="agent-blueprint" aria-label="에이전트는 언어 모델, 지침, 스킬, 기억을 도구 실행환경과 함께 사용합니다">
+ <div class="agent-blueprint-input">사용자의 요청 <span>또는 주기적인 Heartbeat</span></div><span class="agent-blueprint-arrow" aria-hidden="true">↓</span>
+ <section class="agent-blueprint-runtime"><header>에이전트 실행환경 <small>OpenClaw가 실행 과정을 연결합니다</small></header>
+ <div class="agent-blueprint-parts"><article><b>역할과 말투</b><span>목적과 행동 방식</span></article><article><b>언어 모델</b><span>판단하고 행동 선택</span></article><article><b>스킬</b><span>특정 작업을 위한 지침</span></article><article><b>기억과 파일</b><span>저장된 맥락과 근거</span></article></div>
+ <div class="agent-blueprint-tools"><b>허용된 도구</b><span>읽기, 쓰기, 검색, 자료 가져오기</span><small>도구 결과 확인 → 다음 행동 판단 → 준비되면 답변</small><small>OpenShell로 도구 실행을 격리하고 접근을 제한할 수 있습니다.</small></div></section>
+ <span class="agent-blueprint-arrow" aria-hidden="true">↓</span><div class="agent-blueprint-output">답변 또는 저장된 결과 <span>근거를 확인해주세요. 항상 성공하는 것은 아닙니다.</span></div></div>`;
 window.BacAgentBlueprint=agentBlueprint;
 el('crew-goal-intro').textContent='원하는 작업을 알려주세요. Casey가 알맞은 팀을 구성하고 결과를 모아줍니다.';
 function goalHint(choice){return choice.detail;}

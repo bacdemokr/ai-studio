@@ -25,25 +25,25 @@ class RequiredRoleSkillsTests(unittest.TestCase):
         self.presets = {p['label']: p for p in ROLE_TEMPLATES}
 
     def test_onboard_and_add_agent_supply_the_fixed_skill_without_dropping_extras(self):
-        programmer = self.presets['Programmer']
+        programmer = self.presets['프로그래머']
         profile = self.app.onboard(self.owner, {'name': 'Pixel', 'purpose': programmer['purpose'], 'skills': []})
         self.assertEqual(profile['skills'], ['builder'])
-        researcher = self.presets['Web researcher']
+        researcher = self.presets['웹 조사원']
         added = self.app.add_agent(self.owner, {'name': 'Orbit', 'purpose': researcher['purpose'], 'skills': ['writer']})
         self.assertEqual(self.app.profile(added['agentId'])['skills'], ['web', 'writer'])
-        analyst = self.presets['Data analyst']
+        analyst = self.presets['데이터 분석가']
         added = self.app.add_agent(self.owner, {'name': 'Dana', 'purpose': analyst['purpose'], 'skills': ['builder']})
         self.assertCountEqual(self.app.profile(added['agentId'])['skills'], ['data-analysis', 'builder'])
         self.assertTrue((self.app.workspace(added['agentId']) / 'skills/bac-data-analysis/SKILL.md').is_file())
 
     @offline_config
     def test_edit_cannot_remove_core_but_custom_role_can_have_no_skills(self):
-        self.app.onboard(self.owner, {'name': 'Pixel', 'purpose': self.presets['Programmer']['purpose'], 'skills': ['builder', 'web']})
+        self.app.onboard(self.owner, {'name': 'Pixel', 'purpose': self.presets['프로그래머']['purpose'], 'skills': ['builder', 'web']})
         profile = self.app.configure(self.owner, {'name': 'Pixel', 'skills': ['web'], 'tonePrompt': 'Curious.'})
         self.assertEqual(profile['skills'], ['builder', 'web'])
-        profile = self.app.configure(self.owner, {**profile, 'purpose': self.presets['Web researcher']['purpose'], 'skills': []})
+        profile = self.app.configure(self.owner, {**profile, 'purpose': self.presets['웹 조사원']['purpose'], 'skills': []})
         self.assertEqual(profile['skills'], ['web'])
-        profile = self.app.configure(self.owner, {**profile, 'purpose': self.presets['Data analyst']['purpose'], 'skills': []})
+        profile = self.app.configure(self.owner, {**profile, 'purpose': self.presets['데이터 분석가']['purpose'], 'skills': []})
         self.assertEqual(profile['skills'], ['data-analysis'])
         profile = self.app.configure(self.owner, {**profile, 'skills': ['builder']})
         self.assertCountEqual(profile['skills'], ['data-analysis', 'builder'])
@@ -52,7 +52,7 @@ class RequiredRoleSkillsTests(unittest.TestCase):
         self.assertEqual(profile['tonePrompt'], 'Curious.')
 
     def test_restart_repairs_legacy_presets_and_leaves_custom_profiles_unchanged(self):
-        profile = self.app.onboard(self.owner, {'name': 'Pixel', 'purpose': self.presets['Programmer']['purpose'], 'skills': ['writer']})
+        profile = self.app.onboard(self.owner, {'name': 'Pixel', 'purpose': self.presets['프로그래머']['purpose'], 'skills': ['writer']})
         custom = self.app.add_agent(self.owner, {'name': 'Helper', 'purpose': 'Help me think.', 'skills': []})['agentId']
         # Model a persisted pre-upgrade profile whose core skill was removed.
         profile['skills'] = ['writer']
@@ -70,8 +70,8 @@ class RequiredRoleSkillsTests(unittest.TestCase):
     @offline_config
     def test_lounge_presets_keep_core_skills_through_edits_and_upgrade(self):
         self.app.onboard(self.owner, {'name': 'Helper', 'purpose': 'Help me think.', 'skills': []})
-        cases = [('Weather buddy', 'weather'), ('Tech Radar', 'radar'),
-                 ('Arxivbot', 'web'), ('Slack Announcer', 'writer')]
+        cases = [('날씨 도우미', 'weather'), ('기술 소식', 'radar'),
+                 ('arXiv 연구원', 'web'), ('Slack 작성자', 'writer')]
         saved = []
         for label, skill in cases:
             with self.subTest(role=label):
@@ -91,3 +91,21 @@ class RequiredRoleSkillsTests(unittest.TestCase):
         self.assertEqual(restarted.profile(self.owner)['skills'], [])
         for owner, skill in saved:
             self.assertCountEqual(restarted.profile(owner)['skills'], [skill, 'builder'])
+
+    @offline_config
+    def test_english_saved_presets_keep_fixed_skills_after_korean_upgrade(self):
+        self.app.onboard(self.owner, {'name': 'Helper', 'purpose': 'Help me think.', 'skills': []})
+        for preset in ROLE_TEMPLATES:
+            with self.subTest(role=preset['label']):
+                self.assertLessEqual(len(preset['purpose']), 240)
+                self.assertRegex(preset['purpose'], '[가-힣]')
+                previous = preset['purposeAliases'][0]
+                profile = self.app.configure(self.owner, {
+                    'name': 'Helper', 'purpose': previous, 'skills': [],
+                    'tonePrompt': 'Keep my custom wording exactly.',
+                })
+                self.assertEqual(profile['skills'], preset['requiredSkills'])
+                self.assertEqual(profile['purpose'], previous)
+                self.assertEqual(profile['tonePrompt'], 'Keep my custom wording exactly.')
+                profile = self.app.configure(self.owner, {**profile, 'purpose': preset['purpose'], 'skills': []})
+                self.assertEqual(profile['skills'], preset['requiredSkills'])

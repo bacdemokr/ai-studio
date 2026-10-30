@@ -9,7 +9,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.goto('http://127.0.0.1:'+port);await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.testFixture);
   for(const name of ['Jinny','Orbit','Scout','Smith','Pixel','Sage']){
    await page.evaluate(()=>BacStudio.setRoom('workshop'));await page.locator('#studio-name').fill(name);
-   await page.getByRole('button',{name:name==='Jinny'?'Programmer':'Weather buddy',exact:true}).click();
+   await page.getByRole('button',{name:name==='Jinny'?'프로그래머':'날씨 도우미',exact:true}).click();
    await page.locator('input[name=protection][value=standard]').check();await page.locator('#studio-create').click();
    await page.waitForFunction(name=>BacStudio.inspect().profile?.name===name&&BacStudio.inspect().room==='lounge',name);
   }

@@ -3,9 +3,9 @@
     "id": "plan",
     "number": "03",
     "title": "Open Task",
-    "eyebrow": "Your task, the right team",
-    "description": "Give Casey a task for your selected team.",
-    "team": "Casey + your hires, with optional standby specialists",
+    "eyebrow": "원하는 작업, 알맞은 팀",
+    "description": "Casey에게 팀이 함께할 작업을 알려주세요.",
+    "team": "Casey와 고용한 에이전트, 필요하면 대기 중인 전문가까지",
     "action": "Open Task",
     "accent": "#a1d65e",
     "floor": "#2a333e",
@@ -13,13 +13,13 @@
       0
     ],
     "guide": {
-      "intro": "Give Casey a task for your selected team.",
+      "intro": "Casey에게 원하는 결과를 알려주면 역할과 스킬에 맞는 팀을 구성합니다.",
       "points": [
-        "Hired only (default) uses your hires. Choose Hired + Standby to include backups.",
-        "Send /goal with the result you want, or select an example below Casey. Attach any relevant files.",
-        "Track work in Mission Control, then open the answer and files in Results."
+        "기본값인 “고용한 에이전트만”은 직접 고용한 팀원만 사용합니다. “고용 + 대기 에이전트”를 선택하면 대기 중인 전문가도 참여할 수 있어요.",
+        "/goal 뒤에 원하는 작업을 적거나 Casey 아래의 예시를 선택하세요. 필요한 자료도 함께 첨부해주세요.",
+        "Mission Control에서 진행 과정을 보고, Results에서 답변과 결과 파일을 확인하세요."
       ],
-      "note": "Casey matches the task to roles and equipped skills. If neither fits, it explains the gap. Remove /goal to chat directly with Casey."
+      "note": "역할과 스킬이 부족하면 Casey가 그 이유를 설명합니다. /goal 없이 메시지를 보내면 Casey와 직접 대화할 수 있어요."
     }
   }
 ]

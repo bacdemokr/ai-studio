@@ -179,7 +179,7 @@ class RoleBoundaryTests(unittest.TestCase):
 
     def test_researchers_file_tools_do_not_qualify_them_for_implementation(self):
         for preset in ROLE_TEMPLATES:
-            if preset['label'] == 'Programmer':
+            if 'builder' in preset['skills']:
                 continue
             member = {**preset, 'key': self.owner, 'name': 'Orbit'}
             for role in (5, 8):
@@ -191,7 +191,7 @@ class RoleBoundaryTests(unittest.TestCase):
             validate_selection({'tasks': [task]}, [member], [], 'hired')
 
     def test_implementation_guard_requires_coding_for_preset_and_custom_roles(self):
-        programmer = next(p for p in ROLE_TEMPLATES if p['label'] == 'Programmer')
+        programmer = next(p for p in ROLE_TEMPLATES if p['requiredSkills'] == ['builder'])
         task = {'role': 5, 'agent': self.owner, 'requiredFiles': ['artifacts/index.html'],
                 'roleFit': 'The saved purpose covers frontend implementation.'}
         for purpose in (programmer['purpose'], 'I build accessible browser applications.'):
@@ -202,7 +202,7 @@ class RoleBoundaryTests(unittest.TestCase):
             validate_selection({'tasks': [task]}, [member], [], 'hired')
 
     def test_bad_research_assignment_gets_corrected_without_dispatch(self):
-        researcher = next(p for p in ROLE_TEMPLATES if p['label'] == 'Web researcher')
+        researcher = next(p for p in ROLE_TEMPLATES if p['label'] == '웹 조사원')
         self.app.configure(self.owner, {**self.app.profile(self.owner), 'purpose': researcher['purpose'], 'skills': ['web']})
         original = self.adapter.respond
         def respond(agent, session, prompt, **kwargs):

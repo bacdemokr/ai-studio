@@ -41,7 +41,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await choose('fixture-b');assert.deepEqual(writes.at(-1),{role:5,model:'fixture-b'});
   await page.locator('[data-campus-agent="0"]').click();await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Casey');assert.equal(await badge.innerText(),'fixture-b');
   // Reserve a hired agent, then complete a real dispatcher job while Casey's picker is open.
-  await page.evaluate(()=>BacStudio.setRoom('workshop'));await page.locator('#studio-name').fill('Pixel');await page.getByRole('button',{name:'Programmer',exact:true}).click();await page.locator('#studio-create').click();
+  await page.evaluate(()=>BacStudio.setRoom('workshop'));await page.locator('#studio-name').fill('Pixel');await page.getByRole('button',{name:'프로그래머',exact:true}).click();await page.locator('#studio-create').click();
   await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Pixel'&&BacStudio.inspect().agents.every(a=>!a.pending));await navigate('plan');
   const start=async()=>{const headers={...mutationHeaders,'x-bac-agent':await page.evaluate(()=>BacStudio.inspect().agentId),'x-bac-scenario':'plan'};delete headers['content-length'];const r=await page.request.post(url+'/api/jobs',{headers,data:{kind:'crew-chat',crewRole:0,teamMode:'hired',prompt:'/goal Have Pixel build a counter.'}});assert.equal(r.status(),200,await r.text());return r.json();};
   await badge.click();await search.fill('fixture');await start();await page.evaluate(()=>BacStudio.refresh());

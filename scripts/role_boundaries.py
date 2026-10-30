@@ -77,14 +77,14 @@ ROLE_TEMPLATES = [{'label': 'Weather buddy',
              'Face blogs in my chosen tone. Include older articles; never repeat. Skip politics, stocks and '
              'earnings.',
   'skills': ['radar']},
- {'label': 'Arxivbot',
+ {'label': 'arXiv researcher',
   'requiredSkills': ['web'],
   'summary': 'Three relevant papers on a topic you choose.',
   'purpose': 'When I give you a research topic, find three relevant arXiv papers. Summarize each paper’s '
              'main idea, include its title, authors, date and link, and briefly compare them in my chosen '
              'tone. Ask for a topic if none is given.',
   'skills': ['web']},
- {'label': 'Slack Announcer',
+ {'label': 'Slack writer',
   'requiredSkills': ['writer'],
   'summary': 'Emoji-led updates in your chosen voice.',
   'purpose': 'Answer in the style of a concise Slack announcement: an emoji-led headline and short, useful '
@@ -113,11 +113,33 @@ ROLE_TEMPLATES = [{'label': 'Weather buddy',
   'skills': ['data-analysis']}]
 
 
+# Keep the visitor wording as aliases for agents saved before localization.
+_KOREAN_PRESETS = {
+    'Weather buddy': ('날씨 도우미', '현재 날씨와 실용적인 외출 조언.',
+        '현재 날씨를 확인하고 옷차림이나 외출 여부를 결정하도록 도와줘. 조언은 짧고 실용적으로 해줘.'),
+    'Tech Radar': ('기술 소식', '20초마다 새로운 기술 기사를 확인.',
+        '20초마다 NVIDIA 또는 Hugging Face 블로그에서 아직 소개하지 않은 기술 기사나 발표를 하나씩 골라, 내가 선택한 말투로 알려줘. 예전 기사도 포함하되 같은 기사는 반복하지 마. 정치, 주가, 실적 소식은 제외해줘.'),
+    'arXiv researcher': ('arXiv 연구원', '관심 주제에 맞는 논문 세 편.',
+        '연구 주제를 알려주면 관련 arXiv 논문 세 편을 찾아줘. 각 논문의 핵심, 제목, 저자, 날짜, 링크를 정리하고 내가 선택한 말투로 간단히 비교해줘. 주제가 없으면 먼저 물어봐줘.'),
+    'Slack writer': ('Slack 작성자', '선택한 말투로 간결한 공지 작성.',
+        '이모지로 시작하는 제목과 짧고 유용한 문장으로 Slack 공지 초안을 작성해줘. 내가 선택한 말투와 제공한 사실을 유지해줘. 초안만 작성하고 실제 전송이나 게시는 하지 마.'),
+    'Programmer': ('프로그래머', '작은 데스크톱 웹페이지와 게임.',
+        'HTML 파일 하나로 실행되는 작은 데스크톱 웹페이지나 게임을 만들고 개선해줘. 작동하는 결과물을 저장하고, 수정할 때는 기존 기능을 유지하며 확인은 짧게 해줘. 협업할 때는 제공된 조사 결과를 활용해줘.'),
+    'Web researcher': ('웹 조사원', '출처 링크를 포함한 짧은 조사.',
+        '공개 자료를 바탕으로 질문에 답해줘. 제공된 링크를 먼저 읽고 확인한 사실은 출처를 밝혀줘. 근거가 부족하면 그 한계를 설명해줘. 조사는 짧게 진행하고, 요청받았거나 협업에 필요하면 결과를 저장해줘.'),
+    'Data analyst': ('데이터 분석가', '제공된 표와 CSV에서 의미 있는 분석.',
+        '제공된 표, CSV, JSON을 분석해줘. 단위, 계산 방법, 한계를 명확히 하며 수치를 비교하고 순위를 정리해줘. 유용한 결과를 메모나 CSV로 저장하고 웹페이지가 필요하면 Coding 담당자에게 전달해줘. 없는 데이터는 지어내지 마.'),
+}
+for _template in ROLE_TEMPLATES:
+    _template['purposeAliases'] = [_template['purpose']]
+    _template['label'], _template['summary'], _template['purpose'] = _KOREAN_PRESETS[_template['label']]
+
+
 def required_role_skills(purpose):
     """Only named presets have fixed skills; custom roles stay freely editable."""
     normalized = purpose.strip().casefold() if isinstance(purpose, str) else ''
     return next((tuple(template.get('requiredSkills', ())) for template in ROLE_TEMPLATES
-                 if template['purpose'].casefold() == normalized), ())
+                 if normalized in {text.casefold() for text in [template['purpose'], *template.get('purposeAliases', [])]}), ())
 
 
 def implementation_scope(profile):

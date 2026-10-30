@@ -16,7 +16,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.waitForFunction(()=>document.querySelector('#studio-crew-conversation').textContent.includes('The team delivered the counter.'));
   assert.match(await page.locator('#studio-crew-conversation').innerText(),/Cody/);
   await page.evaluate(()=>BacStudio.setRoom('workshop'));await page.locator('#studio-name').fill('Pixel');
-  await page.getByRole('button',{name:'Programmer',exact:true}).click();
+  await page.getByRole('button',{name:'프로그래머',exact:true}).click();
   await page.locator('input[name="protection"][value="openshell"]').check();
   await page.locator('#studio-create').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Pixel');
   const original=await page.evaluate(()=>BacStudio.inspect().profile);

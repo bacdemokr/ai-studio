@@ -40,6 +40,7 @@ const {pathToFileURL}=require('node:url'),{chromium}=require('playwright');
   assert(samples.speeches[1].time-samples.speeches[0].time>=29.9,'One shared cadence, not a timer per agent');
   assert.deepEqual(new Set(samples.speeches.map(r=>r.key)),new Set(['completed','failed']),'Past success/failure does not silence idle agents; busy/deleting/heartbeat agents stay quiet, even when heartbeat is paused');
   assert.equal(samples.maximum,1);
+  assert(samples.speeches.every(r=>/[가-힣]/.test(r.speech)), 'Ambient chatter is Korean');
   assert(samples.speeches.every(r=>r.speech!=='An old answer.'),'Old replies are not replayed as chatter');
   // A real new reply interrupts idle chatter immediately, without waiting 30s.
   await page.evaluate(()=>{
@@ -51,7 +52,7 @@ const {pathToFileURL}=require('node:url'),{chromium}=require('playwright');
   assert(await page.evaluate(()=>BacCampus.inspect().clock-replyStarted<3));
   // Newcomer greetings retain priority too.
   await page.evaluate(()=>BacCampus.welcomeAgent('heartbeat-paused'));
-  await page.waitForFunction(()=>BacCampus.inspect().residents.some(r=>r.key==='heartbeat-paused'&&r.speech==='Hi, I’m Paused Radar.'));
+  await page.waitForFunction(()=>BacCampus.inspect().residents.some(r=>r.key==='heartbeat-paused'&&r.speech==='안녕하세요, Paused Radar입니다.'));
   await page.evaluate(()=>clearInterval(idleSampler));
   // A heartbeat-only Lounge remains silent after a full idle interval.
   await page.evaluate(()=>{

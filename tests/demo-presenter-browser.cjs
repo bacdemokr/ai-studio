@@ -41,11 +41,11 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.locator('[data-room-info=workshop]').click();
   await page.locator('[data-paper-term=agent]').click();
   assert(await page.locator('.world-term-paper .agent-blueprint').isVisible());
-  assert.match(await page.locator('.world-term-paper').innerText(),/Heartbeat schedules checks/);
+  assert.match(await page.locator('.world-term-paper').innerText(),/Heartbeat는 같은 에이전트/);
   await page.screenshot({path:'/tmp/bac-agent-blueprint.png'});await page.keyboard.press('Escape');
   assert(await page.locator('[data-paper-term=agent]').evaluate(e=>e===document.activeElement));
   await page.locator('[data-paper-term=openshell]').click();
-  assert.match(await page.locator('.world-term-paper').innerText(),/network destinations need policy approval/);
+  assert.match(await page.locator('.world-term-paper').innerText(),/인터넷 접속 대상은 정책에 따라 승인/);
   assert.equal(await page.locator('.world-term-paper details, .world-term-paper summary').count(),0);
   assert(await page.locator('.world-term-paper pre').isVisible());
   assert.match(await page.locator('.world-term-paper pre').innerText(),/openshell sandbox create/);

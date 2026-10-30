@@ -8,23 +8,19 @@
     <h3 id="studio-creator-title">나만의 에이전트
 구성하기</h3><p class="studio-muted" id="studio-creator-note" hidden></p>
     <label for="studio-name">에이전트 이름</label><input id="studio-name" value="Jinny" maxlength="32" required autocomplete="off">
-    <fieldset class="studio-appearance"><legend>모습 꾸미기</legend><div id="studio-body-picker" class="studio-body-picker" aria-label="Robot body">
-      <button type="button" data-body="classic" aria-pressed="true"><span class="body-glyph classic"><i></i><i></i></span>Classic</button>
-      <button type="button" data-body="round" aria-pressed="false"><span class="body-glyph round"><i></i><i></i></span>Orbit</button>
-      <button type="button" data-body="rover" aria-pressed="false"><span class="body-glyph rover"><i></i><i></i></span>Rover</button>
-      <button type="button" data-body="operative" aria-pressed="false"><span class="body-glyph operative"><i></i><i></i></span>Smith</button>
-      <button type="button" data-body="claw" aria-pressed="false"><span class="body-glyph claw"><i></i><i></i></span>Claw</button>
-      <button type="button" data-body="crab" aria-pressed="false"><span class="body-glyph crab"><i></i><i></i></span>Crab</button>
-    </div><div class="studio-appearance-details"><div><label>대표 색상</label><div id="studio-color-picker" class="studio-color-picker"></div></div><label for="studio-accessory">Accessory<select id="studio-accessory"><option value="none">No accessory</option><option value="antenna">Signal antenna</option><option value="headset">Studio headphones</option><option value="glasses">Round glasses</option><option value="cap">Builder cap</option></select></label></div></fieldset>
-    <fieldset class="studio-style-group"><legend>말투</legend><div id="studio-tone-picker" class="studio-tone-picker"></div></fieldset>
-    <label for="studio-purpose">역할 정하기</label>
-    <div id="studio-role-templates" class="studio-role-templates" aria-label="Choose an agent role"></div>
-    <label for="studio-purpose" class="studio-custom-role-label">직접 역할을 적어도 좋아요</label>
-    <textarea id="studio-purpose" rows="6" maxlength="1100" required aria-describedby="studio-role-hint" placeholder="- Tone: 다정하고 호기심이 많으며 가끔 재치 있게 말해줘.&#10;- Role: 예산 안에서 즐거운 여행을 계획하도록 도와줘."></textarea>
-    <button type="button" class="studio-secondary" id="studio-apply-prompt">역할 적용 · 스킬 추천</button>
-    <small id="studio-role-hint" class="studio-muted" role="status"></small>
+    <fieldset class="studio-appearance"><legend>함께할 든든한 조수는?</legend><div id="studio-body-picker" class="studio-body-picker" aria-label="Character"></div><small id="studio-saved-appearance" class="studio-muted" hidden></small><div class="studio-appearance-details"><div><label id="studio-palette-label">색상 조합</label><div id="studio-color-picker" class="studio-color-picker" role="group" aria-labelledby="studio-palette-label"></div><small id="studio-palette-name" aria-live="polite"></small></div><label for="studio-accessory">액세서리<select id="studio-accessory"><option value="none">없음</option></select></label></div></fieldset>
+    <fieldset class="studio-style-group studio-preset-group"><legend>말투 선택</legend><div id="studio-tone-picker" class="studio-tone-picker"></div></fieldset>
+    <fieldset class="studio-style-group studio-preset-group"><legend>역할 선택</legend><div id="studio-role-templates" class="studio-role-templates" aria-label="에이전트 역할 선택"></div></fieldset>
+    <section class="studio-customize" aria-label="말투와 역할 직접 입력">
+      <label for="studio-tone-prompt">말투</label>
+      <textarea id="studio-tone-prompt" rows="2" maxlength="800" placeholder="원하는 말투를 적어주세요…"></textarea>
+      <label for="studio-purpose">역할 <span id="studio-role-fixed" hidden title="Tech Radar 스킬에서 정한 역할입니다">고정</span></label>
+      <textarea id="studio-purpose" rows="4" maxlength="240" required aria-describedby="studio-role-hint" placeholder="어떤 일을 도와주면 좋을까요?"></textarea>
+      <button type="button" class="studio-secondary" id="studio-apply-prompt">스킬 추천</button>
+      <small id="studio-role-hint" class="studio-muted" role="status"></small>
+    </section>
     <fieldset class="studio-style-group"><legend>스킬 선택</legend><div id="studio-skill-picker"></div></fieldset>
-    <fieldset class="studio-protection-picker"><legend>OpenShell protection</legend><label><input type="radio" name="protection" value="standard" checked><span><b>OpenShell off</b><small>도구가 이 컴퓨터의 파일을 읽고 수정할 수 있습니다.</small></span></label><label><input type="radio" name="protection" value="openshell"><span><b>OpenShell on</b><small>샌드박스 안에서 파일과 인터넷 접근을 제한합니다.</small></span></label></fieldset>
+    <fieldset class="studio-protection-picker"><legend>OpenShell protection</legend><label><input type="radio" name="protection" value="standard" checked><span><b>OpenShell off</b><small>도구가 이 컴퓨터의 파일을 읽고 수정할 수 있습니다.</small></span></label><label><input type="radio" name="protection" value="openshell"><span><b>OpenShell on</b><small>격리된 실행환경에서 파일과 인터넷 접근을 제한합니다.</small></span></label></fieldset>
     <small id="studio-protection-warmup" class="studio-muted" role="status" hidden>OpenShell을 준비하고 있어요. 에이전트 설정은 계속할 수 있습니다.</small>
     <details id="studio-agent-model-panel" class="studio-agent-model-panel"><summary>Model <span id="studio-agent-model-summary">Not connected</span></summary><input id="studio-agent-model-search" type="search" aria-label="Search models" placeholder="Search models or providers…" autocomplete="off" aria-controls="studio-agent-model-results" aria-describedby="studio-agent-model-note"><div id="studio-agent-model-results" class="studio-agent-model-results" role="group" aria-label="Model choices"></div><div class="studio-agent-model-help"><small id="studio-agent-model-note" class="studio-muted" role="status"></small><button type="button" id="studio-agent-model-settings" class="studio-model-settings-link">Model settings</button></div></details>
     <div class="studio-creator-actions"><button type="button" class="studio-secondary" id="studio-cancel-create" hidden>취소</button><button type="submit" class="studio-primary" id="studio-create">에이전트 고용 <span>↗</span></button></div>
@@ -36,7 +32,7 @@
 <article><span>02 / INFERENCE</span><h4>Model</h4><b id="studio-model-state">Checking model…</b><p></p></article>
 <article><span>03 / ACCESS</span><h4>OpenShell</h4><b id="studio-shell-state">Checking configuration…</b><p>Choose protection per personal agent. Approve its internet access in Policies.</p><button class="studio-secondary" id="studio-connection-security">Open Policies</button></article>
 </div></section>
-<section id="studio-policies" class="studio-policies" hidden aria-label="Agent policies"><div class="studio-policy-toolbar"><label for="studio-policy-agent">AGENT (OpenShell)<select id="studio-policy-agent"></select></label><button type="button" id="studio-policy-view" class="studio-secondary" aria-haspopup="dialog" disabled>View policy</button></div><div id="studio-policy-content"></div></section>
+<section id="studio-policies" class="studio-policies" hidden aria-label="Agent policies"><div class="studio-policy-toolbar"><label for="studio-policy-agent">AGENT (OpenShell)<select id="studio-policy-agent"></select></label><button type="button" id="studio-policy-view" class="studio-secondary" aria-haspopup="dialog" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M11 2H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7zM11 2v5h5M7 11h6M7 14h4"/></svg>View policy</button></div><div id="studio-policy-content"></div></section>
 <aside id="studio-passport">
   <div class="studio-passport-head"><span class="studio-kicker">YOUR AGENT / YOUR RULES</span><span class="studio-spark">✦</span></div>
   <div id="studio-lounge-empty"><div class="studio-avatar"><i></i><i></i></div><h3>첫 에이전트를 고용해보세요.</h3></div>

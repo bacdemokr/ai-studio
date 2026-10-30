@@ -51,7 +51,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert.equal(await page.evaluate(()=>BacStudio.inspect().jobs.filter(j=>j.kind==='heartbeat').length),count);
   // Removing Radar restores chat; adding it back disables every manual entry
   // point, even though the Weather buddy purpose and weather skill remain.
-  await page.locator('#studio-edit-agent').click();await page.getByRole('button',{name:'Weather buddy',exact:true}).click();await page.locator('#studio-create').click();
+  await page.locator('#studio-edit-agent').click();await page.getByRole('button',{name:'날씨 도우미',exact:true}).click();await page.locator('#studio-create').click();
   await page.waitForFunction(()=>BacStudio.inspect().profile?.skills.includes('weather'));await blocked(false);
   await page.locator('#studio-edit-agent').click();await page.locator('#studio-skill-picker input[value="radar"]').check();await page.locator('#studio-create').click();
   await page.waitForFunction(()=>['radar','weather'].every(skill=>BacStudio.inspect().profile?.skills.includes(skill)));await blocked(true);

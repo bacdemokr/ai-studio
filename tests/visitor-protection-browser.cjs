@@ -8,7 +8,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   const page=await browser.newPage({viewport:{width:1600,height:1050},reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:'+port);await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.testFixture);
   await page.evaluate(()=>BacStudio.setRoom('workshop'));
-  await page.locator('#studio-name').fill('Orbit');await page.getByRole('button',{name:'Web researcher',exact:true}).click();
+  await page.locator('#studio-name').fill('Orbit');await page.getByRole('button',{name:'웹 조사원',exact:true}).click();
   await page.locator('input[name=protection][value=openshell]').check();await page.locator('#studio-create').click();
   await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Orbit'&&BacStudio.inspect().room==='lounge');
   const owner=await page.evaluate(()=>BacStudio.inspect().agentId),started=Date.now()/1000;

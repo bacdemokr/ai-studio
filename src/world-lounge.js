@@ -1,68 +1,68 @@
 // Idle personality vignettes and brief excerpts of actual completed replies.
 // All timing runs on the scene clock: no requests, timers or background jobs.
 const loungePersonalities={
-  guide:{title:'Helper',speed:.70,rest:[2.8,5.2],intro:name=>`Hey, I'm ${name}. Happy to help.`,lines:[
-    'Small steps. We’ll figure it out.',
-    'I like making tricky things feel simple.',
-    'New here? You’re in good company.',
-    'Ask away. There’s no silly question.',
-    'A little encouragement goes a long way.'
+  guide:{title:'도우미',speed:.70,rest:[2.8,5.2],intro:name=>`안녕하세요, ${name}입니다. 함께해요!`,lines:[
+    '하나씩 해보죠. 같이 풀어봐요.',
+    '복잡한 걸 쉽게 풀어내는 게 좋아요.',
+    '처음 오셨나요? 잘 오셨어요.',
+    '편하게 물어보세요. 사소한 질문도 좋아요.',
+    '작은 응원 한마디가 꽤 힘이 되죠.'
   ]},
-  maker:{title:'Creator',speed:1.02,rest:[1.2,3.0],intro:name=>`I'm ${name}. What should we build?`,lines:[
-    'I learn best by making things.',
-    'What if we tried something a little different?',
-    'Give me an idea. I’ll bring the curiosity.',
-    'My favorite question? “What if?”',
-    'Small experiments. Plenty of possibilities.'
+  maker:{title:'제작자',speed:1.02,rest:[1.2,3.0],intro:name=>`저는 ${name}입니다. 뭘 만들어볼까요?`,lines:[
+    '직접 만들어보면 제일 잘 배우게 돼요.',
+    '조금 다르게 해보면 어떨까요?',
+    '아이디어만 주세요. 호기심은 제가 챙길게요.',
+    '제가 좋아하는 질문은 “이렇게 해보면?”이에요.',
+    '작은 실험에도 가능성은 많아요.'
   ]},
-  analyst:{title:'Researcher',speed:.57,rest:[3.8,6.5],intro:name=>`I'm ${name}. Let’s look a little closer.`,lines:[
-    'I like a good question — and clear evidence.',
-    'Details are kind of my thing.',
-    'First, understand. Then, decide.',
-    'A fresh perspective can change the picture.',
-    'Curious, careful, and always asking why.'
+  analyst:{title:'연구원',speed:.57,rest:[3.8,6.5],intro:name=>`저는 ${name}입니다. 조금 더 살펴볼까요?`,lines:[
+    '좋은 질문과 확실한 근거가 좋아요.',
+    '작은 차이를 찾는 게 제 취향이에요.',
+    '먼저 이해하고, 그다음 결정하죠.',
+    '다르게 보면 새로운 게 보이기도 해요.',
+    '꼼꼼히 살피고, “왜?”를 묻는 편이에요.'
   ]}
 };
 // Short, authored greetings reflect voice; answer length governs actual task replies.
 const loungeVoices={
-  direct:{guide:['A clear goal. A useful next step.','Let’s make the plan actionable.'],maker:['Less talk. Let’s build a first version.','Start small. Try it. Improve it.'],analyst:['Show me the evidence.','Facts first. Conclusions second.']},
-  playful:{guide:['Think of me as a GPS for tricky ideas.','One small step for you. One happy checklist for me.'],maker:['Ideas in, tiny inventions out.','My hobby? Giving “what if” a prototype.'],analyst:['I collect sources, not rumors.','A mystery? Let me get my imaginary magnifying glass.']},
-  cynical:{guide:['Another meeting? Only if we leave with a plan.','“We’ll figure it out” could use a checklist.'],maker:['Another big idea? Let’s see if the tiny version works.','A slide deck? I’d rather build the thing.'],analyst:['Bold claim. Got a source?','Just guess? No thanks. Bring me evidence.']}
+  direct:{guide:['목표는 명확하게, 다음 행동은 구체적으로.','바로 실행할 수 있는 계획을 세우죠.'],maker:['말은 줄이고, 첫 버전부터 만들어보죠.','작게 시작해서, 해보고, 고치죠.'],analyst:['근거부터 보여주세요.','사실부터 확인하고 결론을 내리죠.']},
+  playful:{guide:['복잡한 아이디어의 내비게이션이라고 생각해주세요.','한 걸음 나아가면 제 체크리스트도 신나요.'],maker:['아이디어를 넣으면 작은 발명품이 나옵니다.','제 취미요? “만약에”를 시제품으로 바꾸기요.'],analyst:['제 수집품은 소문보다 출처예요.','수수께끼인가요? 마음의 돋보기를 꺼내볼게요.']},
+  cynical:{guide:['또 회의요? 끝나고 할 일이 생긴다면 좋죠.','“어떻게든 되겠지”에도 체크리스트는 필요하죠.'],maker:['거창한 아이디어군요. 작은 버전부터 돌려보죠.','발표 자료요? 일단 만들어보는 게 낫겠어요.'],analyst:['자신 있는 주장이네요. 출처는요?','그냥 추측하라고요? 근거부터 주세요.']}
 };
 // Idle dialogue is authored flavor, never a claim that research or tool work occurred.
 // Use the purpose only to pick a topic; never recite the user's instructions.
 function purposeDialogue(r){
   const text=r.purpose.trim().toLowerCase();
   const domains=[
-    [/weather|forecast|날씨|기상/,['weather','Bring a city. I’ll focus on its weather.','Weather first. Outdoor plans second.','The weather has opinions. So do umbrellas.','An outdoor picnic? Let’s at least check the forecast.']],
-    [/document|pdf|slide|deck|summar|문서|요약|슬라이드/,['documents','Let’s find the key points.','Three points. Straight to the takeaway.','Big deck. Tiny summary.','More slides. Still looking for the point.']],
-    [/travel|trip|food|여행|맛집/,['travel plans','Let’s shape a trip around what you enjoy.','Destination, dates, budget. Let’s start there.','My kind of adventure includes a snack stop.','A packed itinerary? Congratulations on inventing a commute.']],
-    [/research|compare|조사|연구/,['research','Let’s take a closer look at your question.','Give me a question and the evidence to examine.','A good source is my kind of treasure.','Sounds convincing. That is not the same as being true.']],
-    [/app|game|code|build|앱|게임|코딩|개발/,['building things','We can start with a small version of your idea.','Pick one feature. Let’s make it work.','Tiny prototype, big curiosity.','Another grand idea? Show me the smallest useful version.']],
-    [/writ|content|invitation|campaign|글|작성|마케팅/,['writing','Let’s find the right words for your audience.','Audience, message, format. That’s my starting point.','Blank pages don’t scare me. Bland headlines do.','“Revolutionary”? Let’s write something people might believe.']]
+    [/weather|forecast|날씨|기상/,['날씨','도시를 알려주시면 날씨부터 살펴볼게요.','날씨부터 확인하고 외출 계획을 세우죠.','날씨도 변덕이 있죠. 우산은 그걸 잘 알아요.','소풍이요? 일단 일기예보부터 보죠.']],
+    [/document|pdf|slide|deck|summar|문서|요약|슬라이드/,['문서 정리','핵심부터 같이 찾아봐요.','세 가지로, 핵심만 정리하죠.','두꺼운 자료도 요약하면 가벼워져요.','슬라이드는 많은데, 요점은 어디 있을까요?']],
+    [/travel|trip|food|여행|맛집/,['여행 계획','좋아하는 것부터 여행에 담아봐요.','목적지, 날짜, 예산부터 정하죠.','제 여행 계획에는 간식 시간이 꼭 있어요.','빈틈없는 일정이군요. 여행이 아니라 출근 같아요.']],
+    [/research|compare|조사|연구/,['자료 조사','궁금한 점을 조금 더 살펴봐요.','질문과 살펴볼 자료를 알려주세요.','믿을 만한 출처는 보물 같아요.','그럴듯하네요. 사실인지는 따로 봐야겠지만요.']],
+    [/app|game|code|build|앱|게임|코딩|개발/,['만들기','아이디어를 작은 버전부터 만들어봐요.','기능 하나를 골라서 제대로 만들어보죠.','시제품은 작게, 호기심은 크게!','큰 아이디어군요. 쓸 만한 최소 버전부터 볼까요?']],
+    [/writ|content|invitation|campaign|글|작성|마케팅/,['글쓰기','읽는 사람에게 잘 전해질 표현을 찾아봐요.','독자, 메시지, 형식부터 정하죠.','빈 문서보다 심심한 제목이 더 무서워요.','“혁신적”이라고요? 일단 믿을 만하게 써보죠.']]
   ];
   const match=domains.find(([pattern])=>pattern.test(text));
   const tone=['kind','direct','playful','cynical'].includes(r.tone)?r.tone:'kind';
   const voiceIndex={kind:1,direct:2,playful:3,cynical:4}[tone];
   const lines=match?[match[1][voiceIndex],{
-    kind:`Happy to help with ${match[1][0]}.`,
-    direct:`Let’s focus on ${match[1][0]}.`,
-    playful:`A little ${match[1][0]}, a little curiosity.`,
-    cynical:`${match[1][0][0].toUpperCase()+match[1][0].slice(1)}. Preferably without the busywork.`
+    kind:`${match[1][0]}, 함께하면 더 수월할 거예요.`,
+    direct:`${match[1][0]}부터 집중해보죠.`,
+    playful:`${match[1][0]}에 호기심 한 스푼!`,
+    cynical:`${match[1][0]}, 불필요한 일은 빼고 해보죠.`
   }[tone]]:(loungeVoices[tone]?.[r.persona]||loungePersonalities[r.persona].lines);
   return lines[r.line++%lines.length];
 }
 function compactLoungeLine(text,r){
   const line=String(text||'').replace(/\s+/g,' ').trim();
   if(line&&Array.from(line).length<=80)return line;
-  return {kind:'Ready when you are.',direct:'What’s the next step?',playful:'What are we trying today?',cynical:'Ready. Let’s make it worth the effort.'}[r.tone]||'Ready when you are.';
+  return {kind:'준비되면 말씀해주세요.',direct:'다음은 뭘 할까요?',playful:'오늘은 뭘 해볼까요?',cynical:'준비됐어요. 보람 있는 일을 해보죠.'}[r.tone]||'준비되면 말씀해주세요.';
 }
 function loungeLine(r){
   if(r.purpose)return purposeDialogue(r);
   const mood=loungePersonalities[r.persona],voice=loungeVoices[r.tone];
   if(!voice)return r.saidIntro?mood.lines[r.line++%mood.lines.length]:mood.intro(r.name);
   const lines=voice[r.persona],line=lines[r.line++%lines.length];
-  return (r.saidIntro?'':`I'm ${r.name}. `)+line;
+  return (r.saidIntro?'':`${r.name}입니다. `)+line;
 }
 // An excerpt, not another model call: preserve the reply's wording and persona.
 function loungeReplyExcerpt(answer){
@@ -118,7 +118,7 @@ function queueWelcome(key){
   nextLoungeSpeech=loungeTime;
 }
 function welcomeLine(r){
-  return `Hi, I’m ${r.name}.`;
+  return `안녕하세요, ${r.name}입니다.`;
 }
 function residentRandom(r){r.seed=(Math.imul(r.seed,1664525)+1013904223)>>>0;return r.seed/4294967296;}
 function residentSeed(key){let seed=2166136261;for(const c of key)seed=Math.imul(seed^c.charCodeAt(0),16777619)>>>0;return seed;}
@@ -253,7 +253,7 @@ function startLoungeSpeech(){
   r.speechText=r.completionSpeech?r.replyExcerpt:compactLoungeLine(newcomer?welcomeLine(r):loungeLine(r),r);r.saidIntro=true;
   r.node.dataset.speechKind=r.completionSpeech?'reply':'idle';
   const speech=r.node.querySelector('.world-resident-speech');speech.textContent=r.speechText;speech.hidden=false;r.node.dataset.speaking='true';r.node.setAttribute('aria-describedby',speech.id);
-  r.node.title=r.completionSpeech?'From the latest reply · open the full conversation':'Personality vignette · select to open this agent’s workspace';r.speechUntil=loungeTime+(r.completionSpeech?Math.min(14,Math.max(6,r.speechText.length/20)):5.8);r.target=null;
+  r.node.title=r.completionSpeech?'최근 답변의 일부입니다 · 전체 대화 보기':'말투에 맞춘 짧은 잡담입니다 · 선택하면 대화를 열어요';r.speechUntil=loungeTime+(r.completionSpeech?Math.min(14,Math.max(6,r.speechText.length/20)):5.8);r.target=null;
   loungeSpeaker=r;lastLoungeSpeaker=r.key;
   nextLoungeIdle=loungeTime+loungeIdleInterval;
   // Measure at the cue itself; observer notifications can lag room/fullscreen changes.

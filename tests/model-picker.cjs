@@ -17,7 +17,7 @@ class Element{
  const context={document:{createElement:()=>panel=new Element()},root,el,runtime:{teamModels:models,teamModel:true,teamReady:true},window:{BacCrewCatalog:[{},{},{}]},resetInProgress:false,teamRuntime:()=>({teamReady:true}),teamModel:()=>models[0],agentId:'owner',selectedScenario:'plan',defaultNames:['Casey','Vera','Cody'],escape:String,dialogRevision:0,refreshVersion:0,stateCache:new Map(),data:{teamSelections:['unchanged']},render(){},alert(){},api:async(path,body,owner)=>{assert.equal(path,'team-model');assert.equal(owner,'owner');if(save)await save;return {teamSelections:[body.model]};}};
  context.dialog=()=>{context.dialogRevision++;el('dialog').open=true;};vm.createContext(context);
  const source=fs.readFileSync('src/studio-crew.js','utf8');
- vm.runInContext(source.slice(source.indexOf('const teamModelDialog='),source.indexOf("root.addEventListener('click',async event=>{")),context);
+ vm.runInContext(source.slice(source.indexOf('const teamModelDialog='),source.indexOf('function collaborationRoleOrder(')),context);
  const open=async role=>root.emit('click',{target:{closest:()=>({dataset:{standbyModel:String(role)}})}});
  const choose=async model=>panel.emit('click',{target:{closest:selector=>selector==='[data-model-choice]'?{dataset:{modelChoice:model}}:null}});
  for(let i=0;i<60;i++){

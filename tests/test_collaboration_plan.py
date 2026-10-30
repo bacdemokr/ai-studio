@@ -79,6 +79,28 @@ class CollaborationTests(unittest.TestCase):
         self.start();self.app.execute(self.app.next_job())
         self.assertTrue(all('PRIVATE_LOUNGE_DISCUSSION' not in prompt for _,_,prompt in self.adapter.calls))
 
+    def test_active_specialist_assignment_precedes_shared_guidance_and_old_artifacts(self):
+        from browser_capability import BROWSER_LIMIT
+        assignment = 'Create the NEW_CALENDAR page for the current request.'
+        self.adapter.plan = {'summary': 'Build the requested calendar.', 'tasks': [
+            {'role': 5, 'task': assignment}]}
+        owner = self.app.crew_owner(self.owner)
+        old = self.app.workspace(owner, 5) / 'artifacts' / 'old-calculator.html'
+        old.parent.mkdir(parents=True, exist_ok=True)
+        old.write_text('<html><body>Previous calculator</body></html>')
+        self.start('/goal Create a calendar page.')
+        self.app.execute(self.app.next_job())
+        prompts = [prompt for agent, _, prompt in self.adapter.calls if agent.endswith('-r5')]
+        self.assertTrue(prompts)
+        for prompt in prompts:
+            # The native latest-request excerpt must retain the active task even
+            # when its middle is dropped during compaction. Do not erase old work.
+            self.assertIn(assignment, prompt[:400])
+            self.assertLess(prompt.index(assignment), prompt.index(BROWSER_LIMIT))
+            self.assertEqual(prompt.count(assignment), 1)
+            self.assertIn('artifacts/old-calculator.html', prompt)
+        self.assertEqual(old.read_text(), '<html><body>Previous calculator</body></html>')
+
     def test_command_routes_to_captain_and_runs_real_handoffs(self):
         result = self.start()
         self.assertTrue(result['collaboration'])

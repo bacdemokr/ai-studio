@@ -27,8 +27,9 @@
   /* STUDIO_DIAGNOSTICS */
   const goalExamples=/* GOAL_EXAMPLES */;
   const titles = {'nvidia-webpage':'NVIDIA event page','nvidia-social':'NVIDIA social copy','nvidia-research':'NVIDIA theme research','event-page':'Event page studio',radar:'Tech Radar',weather:'Live weather',web:'Web research',documents:'Three Takeaways',builder:'Coding',writer:'Slack announcements','data-analysis':'Data interpretation','interface-design':'UX design',memory:'Personal memory'};
-  const personas = {guide:'Explains ideas and turns them into practical plans.',maker:'Turns ideas into drafts, prototypes and small apps.',analyst:'Researches questions and compares the evidence.'};
-  const tones={kind:['Kind','Warm & encouraging'],direct:['Direct','Clear & candid'],playful:['Playful','Light & witty'],cynical:['Cynical','Dry humor & skepticism']};
+  const personas = {guide:'아이디어를 쉽게 설명하고 실천할 수 있는 계획으로 정리해줘.',maker:'아이디어를 초안이나 시제품, 작은 앱으로 만들어줘.',analyst:'질문을 조사하고 근거를 비교해줘.'};
+  const tones={kind:['다정하게','따뜻한 격려'],direct:['솔직하게','명확하고 담백하게'],playful:['재치 있게','가볍고 유쾌하게'],cynical:['시니컬하게','건조한 유머와 의심']};
+  const legacyTones={kind:['Kind','Warm & encouraging'],direct:['Direct','Clear & candid'],playful:['Playful','Light & witty'],cynical:['Cynical','Dry humor & skepticism']};
   const verbosityLabels={brief:'Brief',balanced:'Balanced',verbose:'Detailed'};
   const capabilities={
     radar:['Tech Radar','20초마다 새로운 기술 소식.'],

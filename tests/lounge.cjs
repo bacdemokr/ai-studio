@@ -14,7 +14,7 @@ const {chromium}=require('playwright');
    await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
    const name=['Jinny','Orbit','Scout'][index];
    await page.locator('#studio-name').fill(name);await page.getByRole('button',{name:role,exact:true}).click();
-   await page.locator('[data-body='+['classic','round','rover'][index]+']').click();
+   await page.locator('[data-body='+['classic','round','fox-companion'][index]+']').click();
    await page.locator('input[name=protection][value=standard]').check();await page.locator('#studio-create').click();
    await page.waitForFunction(({name,count})=>BacStudio.inspect().agents?.length===count&&BacStudio.inspect().profile?.name===name&&BacStudio.inspect().room==='lounge',{name,count:index+1});
   }

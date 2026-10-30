@@ -36,11 +36,12 @@ MAX_AGENTS = 12
 ROLE_AVATARS = [dict(body=b, color=c, accessory=a) for b, c, a in (
     ('classic', 'green', 'pirate'), ('round', 'cyan', 'headset'), ('rover', 'amber', 'cap'),
     ('round', 'coral', 'antenna'), ('classic', 'violet', 'glasses'), ('claw', 'ice', 'headset'), ('classic', 'cyan', 'glasses'), ('round', 'violet', 'cap'), ('rover', 'cyan', 'glasses'))]
-AVATAR_OPTIONS = {'body': ('classic', 'round', 'rover', 'cat', 'operative', 'claw', 'crab'),
-                  'color': ('green', 'cyan', 'amber', 'coral', 'violet', 'ice'),
-                  'accessory': ('none', 'antenna', 'headset', 'glasses', 'cap')}
+AVATAR_CATALOG = json.loads((Path(__file__).resolve().parents[1] / 'src/avatar-catalog.json').read_text())
+AVATAR_OPTIONS = {'body': tuple(body['id'] for body in AVATAR_CATALOG['bodies']) + tuple(AVATAR_CATALOG['legacyBodies']),
+                  'color': ('green', 'cyan', 'amber', 'coral', 'violet', 'ice') + tuple(AVATAR_CATALOG['palettes']),
+                  'accessory': tuple(AVATAR_CATALOG['accessories'])}
 LEGACY_AVATAR_DEFAULTS = {'body': ('classic', 'round', 'rover', 'cat', 'claw', 'crab'),
-                          'color': AVATAR_OPTIONS['color'],
+                          'color': ('green', 'cyan', 'amber', 'coral', 'violet', 'ice'),
                           'accessory': ('antenna', 'headset', 'glasses', 'cap')}
 
 

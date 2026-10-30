@@ -12,29 +12,32 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.locator('.world-room-map [data-world-room=workshop]').click();
   assert.equal(await page.locator('#studio-skill-picker input[value="data-analysis"]').isVisible(),true);
   assert.equal(await page.locator('#studio-skill-picker input[value="interface-design"]').isVisible(),true);
-  await page.getByRole('button',{name:/^Playful/}).click();
+  await page.getByRole('button',{name:/^재치 있게/}).click();
   const selected=()=>page.locator('#studio-skill-picker input:checked').evaluateAll(nodes=>nodes.map(n=>n.value));
-  const cases=[['Programmer',['builder']],['Web researcher',['web']],['Data analyst',['data-analysis']],['Arxivbot',['web']],['Weather buddy',['weather']],['Tech Radar',['radar']],['Slack Announcer',['writer']]];
+  const cases=[['프로그래머',['builder']],['웹 조사원',['web']],['데이터 분석가',['data-analysis']],['arXiv 연구원',['web']],['날씨 도우미',['weather']],['기술 소식',['radar']],['Slack 작성자',['writer']]];
   for(const [name,skills] of cases){
    await page.getByRole('button',{name,exact:true}).click();assert.deepEqual(await selected(),skills);
+   assert.equal(await page.locator('#studio-purpose').isEditable(),name!=='기술 소식',name+' role editability');
+   assert.equal(await page.locator('#studio-role-fixed').isVisible(),name==='기술 소식');
+   assert.equal(await page.locator('#studio-tone-prompt').isEditable(),true,'Tone stays editable');
    const fixed=await page.locator('#studio-skill-picker input:disabled').evaluateAll(nodes=>nodes.map(n=>n.value));
    assert.deepEqual(fixed,skills,name+' fixed skill');
    if(fixed.length){await page.locator('#studio-skill-picker input[value="'+fixed[0]+'"]').evaluate(input=>input.click());assert.deepEqual(await selected(),skills,'Fixed skill cannot be unchecked');}
    await page.locator('#studio-apply-prompt').click();assert.deepEqual(await selected(),skills,name+' must retain its own skills after Apply');
-   assert.match(await page.locator('#studio-purpose').inputValue(),/Playful/);
+   assert.match(await page.locator('#studio-tone-prompt').inputValue(),/재치 있게/);
   }
   for(const role of ['I am a programmer.','Help me with coding.','Help me with programming.']){
-   await page.locator('#studio-purpose').fill('Tone: Playful (Light & witty)\nRole: '+role);
+   await page.locator('#studio-purpose').fill(role);
    await page.locator('#studio-apply-prompt').click();assert.deepEqual(await selected(),['builder'],role);
   }
-  await page.getByRole('button',{name:'Programmer',exact:true}).click();await page.locator('#studio-apply-prompt').click();
+  await page.getByRole('button',{name:'프로그래머',exact:true}).click();await page.locator('#studio-apply-prompt').click();
   await page.locator('#studio-skill-picker input[value="web"]').check();
   await page.locator('#studio-apply-prompt').click();assert.deepEqual(await selected(),['web','builder'],'Apply preserves extra skills');
   await page.locator('#studio-skill-picker input[value="web"]').uncheck();
   await page.locator('#studio-name').fill('Jinny');await page.locator('input[name=protection][value=standard]').check();await page.locator('#studio-create').click();
   await page.waitForFunction(()=>BacStudio.inspect().room==='lounge'&&BacStudio.inspect().profile?.name==='Jinny');
   const original=await page.evaluate(()=>BacStudio.inspect().profile);assert.deepEqual(original.skills,['builder']);assert.equal(original.tone,'playful');
-  await page.locator('#studio-edit-agent').click();await page.getByRole('button',{name:'Web researcher',exact:true}).click();await page.locator('#studio-apply-prompt').click();await page.locator('#studio-create').click();
+  await page.locator('#studio-edit-agent').click();await page.getByRole('button',{name:'웹 조사원',exact:true}).click();await page.locator('#studio-apply-prompt').click();await page.locator('#studio-create').click();
   await page.waitForFunction(()=>BacStudio.inspect().profile?.skills.join(',')==='web');assert.equal(await page.evaluate(()=>BacStudio.inspect().profile.tone),'playful');
   await page.reload();await page.waitForFunction(()=>BacStudio.inspect().profile?.skills.join(',')==='web');
   await page.locator('.world-room-map [data-world-room=lounge]').click();
@@ -48,7 +51,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   assert.equal(await page.locator('#studio-skill-picker input[value="web"]').isDisabled(),true);
   assert.equal(await page.locator('#studio-skill-picker input[value="data-analysis"]').isChecked(),true);
   if(process.env.BAC_TEST_ARTIFACT_DIR)await page.locator('#studio-skill-picker').screenshot({path:process.env.BAC_TEST_ARTIFACT_DIR+'/fixed-skills.png'});
-  await page.getByRole('button',{name:'Data analyst',exact:true}).click();
+  await page.getByRole('button',{name:'데이터 분석가',exact:true}).click();
   await page.locator('#studio-name').fill('Dana');
   await page.locator('#studio-create').click();await page.locator('#studio-onboarding').waitFor({state:'hidden'});
   await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Dana'&&BacStudio.inspect().profile?.skills.join(',')==='data-analysis');
@@ -75,10 +78,11 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
    await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
    await page.locator('#studio-edit-agent').click();
    assert.equal(await page.locator('#studio-skill-picker input[value="'+skill+'"]').isDisabled(),true,name+' remains fixed after saving/reloading');
+   assert.equal(await page.locator('#studio-purpose').isEditable(),name!=='기술 소식',name+' role lock survives reload');
    assert.equal(await page.locator('#studio-skill-picker input[value="builder"]').isChecked(),true,name+' keeps extra skills');
    await page.locator('#studio-skill-picker input[value="builder"]').uncheck();
   }
-  await page.locator('#studio-purpose').fill('Tone: Playful (Light & witty)\nRole: Help me think through everyday decisions.');
+  await page.locator('#studio-purpose').fill('Help me think through everyday decisions.');
   assert.equal(await page.locator('#studio-skill-picker input:disabled').count(),0);
   for(const box of await page.locator('#studio-skill-picker input').all())await box.setChecked(false);
   await page.locator('#studio-create').click();await page.locator('#studio-onboarding').waitFor({state:'hidden'});

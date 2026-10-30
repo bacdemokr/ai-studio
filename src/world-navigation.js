@@ -18,34 +18,34 @@ roomMap.classList.add('world-scenario-map');
 roomMap.innerHTML='<span class="world-map-caption">STUDIO MAP</span><div class="world-map-stages">'+['workshop','lounge'].map(id=>'<button type="button" data-world-room="'+id+'"><i>'+studioRooms[id].number+'</i><span>'+studioRooms[id].title+'</span></button>').join('')+'<button type="button" data-world-scenario="plan"><i>03</i><span>Open Task</span></button></div>';
 navigationLayer.append(roomMap);
 const roomGuides={
-  workshop:{label:'ROOM 01 / QUICK GUIDE',title:'Hiring',anchor:new THREE.Vector3(-.85,2.12,-3.92),intro:'Create a personal <button type="button" class="world-paper-term" data-paper-term="agent">agent</button> with a recognizable identity and a clear job to do.',points:['Choose its appearance, name, working style and voice.','Choose each <button type="button" class="world-paper-term" data-paper-term="skill">skill</button> that fits the role you want it to perform.','Choose whether <button type="button" class="world-paper-term" data-paper-term="openshell">OpenShell</button> protection should isolate its tools and file access.'],note:'Each hire keeps its own profile and workspace and can join Open Task. Agents with Tech Radar use Heartbeat instead of manual chat.'},
-  lounge:{label:'ROOM 02 / QUICK GUIDE',title:'Agent Lounge',anchor:new THREE.Vector3(3.75,2.12,-5.78),intro:'Meet your hired agents and give each one work in its own context.',points:['Select an agent to open its conversation, memory and files.','Run a suggested mission, write a request, or watch Tech Radar check for new articles with Heartbeat.','Review visible activity, results and OpenShell policy decisions before trusting the outcome.'],note:'Each agent keeps its own persona, skills and workspace. Ready and Busy describe observed work, not model capability.'},
-  mission:{label:'STAGE 03 / QUICK GUIDE',anchor:new THREE.Vector3(2.45,4.02,-6.98)},
+  workshop:{label:'1단계 / 이용 안내',title:'Hiring',anchor:new THREE.Vector3(-.85,2.12,-3.92),intro:'나만의 개성과 역할을 가진 <button type="button" class="world-paper-term" data-paper-term="agent">에이전트</button>를 만들어보세요.',points:['모습과 이름, 말투와 역할을 정해주세요.','맡길 일에 필요한 <button type="button" class="world-paper-term" data-paper-term="skill">스킬</button>을 선택해주세요.','<button type="button" class="world-paper-term" data-paper-term="openshell">OpenShell</button>로 도구 실행과 파일 접근을 보호할지 선택해주세요.'],note:'에이전트마다 프로필과 작업 공간이 생기며, Open Task에도 참여할 수 있어요. Tech Radar는 직접 채팅 대신 Heartbeat로 소식을 전합니다.'},
+  lounge:{label:'2단계 / 이용 안내',title:'Agent Lounge',anchor:new THREE.Vector3(3.75,2.12,-5.78),intro:'고용한 에이전트와 대화하고, 각자의 역할에 맞는 일을 맡겨보세요.',points:['에이전트를 선택하면 대화, 기억, 파일을 볼 수 있어요.','예시를 눌러보거나 직접 요청해보세요. Tech Radar는 Heartbeat로 새로운 기사를 확인합니다.','실행 기록과 결과, OpenShell의 허용·차단 내역을 함께 확인해주세요.'],note:'에이전트마다 말투, 스킬, 작업 공간이 따로 있어요. Ready와 Busy는 현재 작업 상태를 나타냅니다.'},
+  mission:{label:'3단계 / 이용 안내',anchor:new THREE.Vector3(2.45,4.02,-6.98)},
 };
 function roomGuide(id){
   const guide=roomGuides[id];if(id!=='mission')return guide;
   const scenario=scenarioFloors.find(item=>item.id===activeScenario);
   if(!scenario)return null;
-  return {...guide,label:'STAGE '+scenario.number+' / QUICK GUIDE',title:scenario.title,intro:escape(scenario.guide?.intro||scenario.description),points:(scenario.guide?.points||[]).map(point=>escape(point)),note:scenario.guide?.note||''};
+  return {...guide,label:Number(scenario.number)+'단계 / 이용 안내',title:scenario.title,intro:escape(scenario.guide?.intro||scenario.description),points:(scenario.guide?.points||[]).map(point=>escape(point)),note:scenario.guide?.note||''};
 }
 const termGuides={
-  agent:{title:'How an agent works',overview:'agent',body:['An agent is a software worker powered by a language model and configured for a particular purpose.','In Build-a-Claw, each agent combines an identity, instructions, selected skills, memory and a separate workspace. It can reason about a request and use the tools allowed by its runtime policy.','Skills guide how work is done; they do not grant tool or network permissions. Heartbeat schedules checks using the same agent and its instructions. Review the agent’s actions and results.']},
-  openshell:{title:'How OpenShell protection works',overview:'openshell',body:['OpenClaw connects the agent to an isolated OpenShell sandbox. Tool file access stays inside it, and network destinations need policy approval. The model connection is configured separately.','It combines:<br>• sandboxed execution<br>• controlled resource access<br>• credential protection<br>• formal policy verification','Approve a blocked destination in OpenShell Policy, then retry. A failed website or search service is not automatically a policy block.'],details:`<section class="world-term-command"><h3>Runtime command</h3><p>Illustrative command; the sandbox name and policy path are generated on this host.</p><pre>openshell sandbox create &#92;
+  agent:{title:'에이전트는 어떻게 일하나요?',overview:'agent',body:['에이전트는 언어 모델을 바탕으로, 정해진 목적에 맞게 일하는 소프트웨어입니다.','AI Studio의 에이전트는 이름과 역할, 지침, 스킬, 기억, 작업 공간을 갖습니다. 요청을 판단하고 허용된 도구를 사용해 일을 진행합니다.','스킬은 일하는 방법을 안내하며 도구나 인터넷 접근 권한을 부여하지는 않습니다. Heartbeat는 같은 에이전트와 지침으로 주기적인 확인을 실행합니다. 실제 행동과 결과도 함께 살펴보세요.']},
+  openshell:{title:'OpenShell은 어떻게 보호하나요?',overview:'openshell',body:['OpenClaw는 에이전트의 도구를 격리된 OpenShell 실행환경에 연결합니다. 파일 접근은 그 안에서 이뤄지고, 인터넷 접속 대상은 정책에 따라 승인해야 합니다. 모델 연결은 별도로 설정합니다.','다음 기능을 함께 제공합니다.<br>• 격리된 환경에서 실행<br>• 자원 접근 제어<br>• 인증 정보 보호<br>• 정책 검증','차단된 사이트는 OpenShell Policy에서 승인한 뒤 다시 요청하세요. 사이트나 검색 서비스의 오류가 모두 정책 차단을 의미하지는 않습니다.'],details:`<section class="world-term-command"><h3>실행 명령 예시</h3><p>아래는 예시입니다. 실행환경 이름과 정책 파일 경로는 이 컴퓨터에서 생성됩니다.</p><pre>openshell sandbox create &#92;
   --name &lt;agent-runtime-id&gt; &#92;
   --from openclaw &#92;
   --policy &lt;data-dir&gt;/openclaw/policies/default-deny.json &#92;
   --no-auto-providers &#92;
-  --detach -- sleep infinity</pre><p>The adapter checks supported flags first. If <code>--detach</code> is unavailable, it uses <code>-- true</code> instead.</p></section>`},
-  skill:{title:'Skill : What is it',body:['A skill is a reusable set of instructions that teaches an agent how to approach a particular kind of work.','Equipping a skill makes that guidance available to the agent. It does not bypass permissions or guarantee that the skill was used in every answer.','Runtime activity and result evidence show what the agent actually read or used while completing a task.']}
+  --detach -- sleep infinity</pre><p>지원 옵션을 먼저 확인합니다. <code>--detach</code>를 사용할 수 없으면 <code>-- true</code>를 사용합니다.</p></section>`},
+  skill:{title:'스킬이란 무엇인가요?',body:['스킬은 특정한 일을 어떻게 수행할지 알려주는 재사용 가능한 지침입니다.','스킬을 추가하면 에이전트가 그 지침을 참고할 수 있습니다. 권한을 우회하거나 모든 답변에서 반드시 사용한다는 뜻은 아닙니다.','실행 기록과 결과를 보면 에이전트가 실제로 어떤 자료와 도구를 사용했는지 확인할 수 있습니다.']}
 };
 const roomPaper=document.createElement('aside');roomPaper.className='world-room-paper';roomPaper.hidden=true;roomPaper.setAttribute('role','dialog');roomPaper.setAttribute('aria-modal','false');roomPaper.setAttribute('aria-labelledby','world-room-paper-title');
-roomPaper.innerHTML='<button type="button" class="world-room-paper-close" aria-label="Close room information">×</button><div class="world-room-paper-content"><div class="world-room-paper-drag" title="Drag to move"><span aria-hidden="true">•••</span><small></small><h2 id="world-room-paper-title"></h2></div><p class="world-room-paper-intro"></p><ol></ol><p class="world-room-paper-note"></p></div><button type="button" class="world-room-paper-resize" aria-label="Resize information window" title="Drag to resize"></button>';
+roomPaper.innerHTML='<button type="button" class="world-room-paper-close" aria-label="이용 안내 닫기">×</button><div class="world-room-paper-content"><div class="world-room-paper-drag" title="끌어서 이동"><span aria-hidden="true">•••</span><small></small><h2 id="world-room-paper-title"></h2></div><p class="world-room-paper-intro"></p><ol></ol><p class="world-room-paper-note"></p></div><button type="button" class="world-room-paper-resize" aria-label="안내 창 크기 조절" title="끌어서 크기 조절"></button>';
 navigationLayer.append(roomPaper);
 const termPaper=document.createElement('aside');termPaper.className='world-room-paper world-term-paper';termPaper.hidden=true;termPaper.setAttribute('role','dialog');termPaper.setAttribute('aria-modal','false');termPaper.setAttribute('aria-labelledby','world-term-paper-title');
-termPaper.innerHTML='<button type="button" class="world-room-paper-close" aria-label="Close definition">×</button><div class="world-room-paper-content"><div class="world-room-paper-drag" title="Drag to move"><span aria-hidden="true">•••</span><small>FIELD NOTES / GLOSSARY</small><h2 id="world-term-paper-title"></h2></div><div class="world-term-paper-body"></div></div><button type="button" class="world-room-paper-resize" aria-label="Resize definition window" title="Drag to resize"></button>';
+termPaper.innerHTML='<button type="button" class="world-room-paper-close" aria-label="용어 설명 닫기">×</button><div class="world-room-paper-content"><div class="world-room-paper-drag" title="끌어서 이동"><span aria-hidden="true">•••</span><small>알아두면 좋은 용어</small><h2 id="world-term-paper-title"></h2></div><div class="world-term-paper-body"></div></div><button type="button" class="world-room-paper-resize" aria-label="설명 창 크기 조절" title="끌어서 크기 조절"></button>';
 navigationLayer.append(termPaper);
 const termOverview=document.createElement('aside');termOverview.className='world-term-overview';termOverview.hidden=true;termOverview.setAttribute('role','dialog');termOverview.setAttribute('aria-modal','true');termOverview.setAttribute('aria-labelledby','world-term-overview-title');
-termOverview.innerHTML='<button type="button" class="world-room-paper-close" aria-label="Close overview">×</button><div><div class="world-room-paper-drag" title="Drag to move"><span aria-hidden="true">•••</span><h2 id="world-term-overview-title"></h2></div><img></div>';
+termOverview.innerHTML='<button type="button" class="world-room-paper-close" aria-label="개요 닫기">×</button><div><div class="world-room-paper-drag" title="끌어서 이동"><span aria-hidden="true">•••</span><h2 id="world-term-overview-title"></h2></div><img></div>';
 navigationLayer.append(termOverview);
 function movablePaper(paper,limits={}){
   const handle=paper.querySelector('.world-room-paper-drag'),resizer=paper.querySelector('.world-room-paper-resize'),margin=10;
@@ -145,8 +145,8 @@ function openTermOverview(trigger,key){
   const source=window.BacOverviewImages?.[key];if(!source)return;
   const image=termOverview.querySelector('img');
   termOverviewReturn=trigger;image.src=source;
-  image.alt=key==='openshell'?'OpenShell architecture showing its gateway, supervisor, sandbox isolation, policy lifecycle and approved egress':'AI agent overview showing an LLM combined with a harness of tools, instructions, memory and guardrails in an observe, plan and act loop';
-  termOverview.querySelector('h2').textContent=key==='openshell'?'OpenShell overview':'Agent overview';
+  image.alt=key==='openshell'?'OpenShell의 게이트웨이, 실행 감독, 격리, 정책 적용과 허용된 외부 연결 구조':'언어 모델이 도구, 지침, 기억, 보호 규칙과 함께 관찰·계획·실행하는 에이전트 구조';
+  termOverview.querySelector('h2').textContent=key==='openshell'?'OpenShell 구조':'에이전트 구조';
   termOverview.classList.toggle('is-maximized',key==='openshell');
   termPaper.setAttribute('aria-hidden','true');termOverview.hidden=false;
   termOverview.querySelector('.world-room-paper-close').focus({preventScroll:true});
@@ -180,7 +180,7 @@ function openRoomInfo(id,trigger){
 function openTermInfo(id,trigger){
   const guide=termGuides[id];if(!guide)return;
   termInfoReturn=trigger;termPaper.querySelector('h2').textContent=guide.title;
-  const overview=guide.overview?'<p class="term-overview-link"><a href="#" data-term-overview="'+guide.overview+'">Overview</a></p>':'';
+  const overview=guide.overview?'<p class="term-overview-link"><a href="#" data-term-overview="'+guide.overview+'">구조 한눈에 보기</a></p>':'';
   termPaper.querySelector('.world-term-paper-body').innerHTML=overview+(id==='agent'?(window.BacAgentBlueprint||''):'')+guide.body.map(paragraph=>'<p>'+paragraph+'</p>').join('')+(guide.details||'');
   termPaper.hidden=false;navigationLayer.dataset.termOpen='true';
   termPaper.querySelector('.world-room-paper-close').focus({preventScroll:true});

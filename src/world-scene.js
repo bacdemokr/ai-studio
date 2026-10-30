@@ -112,7 +112,6 @@ function createScene() {
     const points=[new THREE.Vector3(x,.073,z+1.05),new THREE.Vector3(x,.073,.4),new THREE.Vector3(0,.073,.4)];
     const route=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:colors[routes.length],transparent:true,opacity:.2}));missionRoom.add(route);routes.push(route);
   });
-  const brand=sign(missionRoom,'NVIDIA',-3.5,.075,6.7,2.8,.62,'#aebdce');brand.rotation.x=-Math.PI/2;
   // Only the selected space uses the live rig. Other floors are quiet scenery,
   // not duplicate agents or model executions.
   const missionShell=missionRoom.clone(true);

@@ -139,8 +139,8 @@ function renderModelResults(){
  const displayName=model=>model.source==='local'?'Local':model.label.split('/').at(-1);
  const nemotron=model=>(model.label+' '+model.id).toLowerCase().includes('nemotron');
  models.sort((a,b)=>Number(nemotron(b))-Number(nemotron(a))||displayName(a).localeCompare(displayName(b))||a.id.localeCompare(b.id));
- teamModelDialog.querySelector('.team-model-count').textContent=models.length?(models.length+' models'+(models.length>40?' · Showing the first 40. Refine your search.':'')):'No matching models';
- const markup=models.slice(0,40).map(m=>'<button type="button" data-model-choice="'+escape(m.id)+'" aria-pressed="'+(m.id===selected)+'" '+(modelPickerSaving||locked||(modelPickerVisitor&&!m.connected)?'disabled':'')+'><span><strong>'+escape(displayName(m))+'</strong><small>'+escape(modelPickerVisitor?(m.source==='local'?m.label:m.source==='shared'?'Uses the shared connection':m.id.split('/').slice(2).join('/')):m.id)+'</small></span><span class="team-model-choice-state">'+(modelPickerVisitor&&!m.connected?'Not connected':m.id===selected?'✓':m.source==='api'?'External Endpoint':'')+'</span></button>').join('');
+ teamModelDialog.querySelector('.team-model-count').textContent=models.length?(models.length>40?'Showing 40 of '+models.length+' models · Search to narrow the list.':models.length+' models'):'No matching models';
+ const markup=models.slice(0,40).map(m=>'<button type="button" data-model-choice="'+escape(m.id)+'" title="'+escape(m.id)+'" aria-pressed="'+(m.id===selected)+'" '+(modelPickerSaving||locked||(modelPickerVisitor&&!m.connected)?'disabled':'')+'><span><strong>'+escape(displayName(m))+'</strong><small>'+escape(modelPickerVisitor?(m.source==='local'?m.label:m.source==='shared'?'Uses the shared connection':m.id.split('/').slice(2).join('/')):m.id)+'</small></span><span class="team-model-choice-state">'+(modelPickerVisitor&&!m.connected?'Not connected':m.id===selected?'Selected':!modelPickerVisitor||m.source==='api'?'External Endpoint':'')+'</span></button>').join('');
  const results=teamModelDialog.querySelector('.team-model-results');
  if(modelPickerMarkup!==markup){modelPickerMarkup=markup;results.innerHTML=markup;}
  teamModelDialog.querySelector('.team-model-count').textContent=locked||teamModelDialog.querySelector('.team-model-count').textContent;
@@ -512,7 +512,7 @@ function renderCrewPassport(){
  el('crew-name').textContent=name;syncTeamTotalTime();el('crew-role').textContent=role;
  const model=visitor?personalModel(visitor):teamModel(i);renderCrewModel(model,visitor);
  if(!teamModelDialog.hidden)renderModelResults();
- const portrait=el('crew-portrait');portrait.dataset.body=avatar.body||'classic';portrait.dataset.accessory=avatar.accessory||'antenna';portrait.style.setProperty('--avatar-accent',appearanceColors[avatar.color]||appearanceColors.green);
+ renderAvatarPortrait(el('crew-portrait'),avatar);
  el('crew-policy').hidden=(visitor&&!visitorAvailable(visitor))||(visitor?.protection||window.BacCrewCatalog[i].protection)!=='openshell';
  syncPolicyBadges();
  if(selectedOpenTaskVisitor){
