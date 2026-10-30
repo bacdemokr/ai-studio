@@ -87,6 +87,10 @@ def avatar_for(owner, avatar=None):
         return defaults
     if not isinstance(avatar, dict) or set(avatar) != set(AVATAR_OPTIONS):
         raise Problem('Choose a body, color and accessory for your agent.')
+    # Retired Korea costumes load as animals without losing the saved agent.
+    if avatar.get('body') in ('hanbok-woman', 'hanbok-man'):
+        body, color = ('tiger', 'tiger-gold') if avatar['body'] == 'hanbok-woman' else ('capybara', 'capy-sand')
+        avatar = {**avatar, 'body': body, 'color': color}
     if avatar.get('body') == 'fox':
         avatar = {**avatar, 'body': 'claw'}
     if any(not isinstance(avatar[key], str) or avatar[key] not in options for key, options in AVATAR_OPTIONS.items()):

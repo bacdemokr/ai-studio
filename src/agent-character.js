@@ -9,7 +9,7 @@ function createCharacter(avatar=avatarDefaults[0]){
   const appearance={...avatarDefaults[0],...avatar},palette=characterPalettes[appearance.color],color=palette?.accent??avatarColors[appearance.color]??avatarColors.green;
   const group=new THREE.Group(),body=new THREE.Group();group.add(body);
   if(appearance.body==='fox')appearance.body='claw';
-  if(appearance.body.startsWith('hanbok-'))return createHanbok(appearance,color,group,body,palette);
+  if(['tiger','capybara'].includes(appearance.body))return createKoreaAnimal(appearance,color,group,body,palette);
   if(appearance.body==='operative')return createOperative(appearance,color,group,body,palette);
   if(appearance.body==='claw')return createClaw(appearance,color,group,body,palette);
   if(['fox-companion','bunny','panda'].includes(appearance.body))return createAnimal(appearance,color,group,body,palette);
@@ -53,8 +53,8 @@ function equipAccessory(body,face,appearance,color,arms){
   const kind=appearance.body,id=appearance.accessory;
   if(!id||id==='none')return;
   const rig={
-    'hanbok-woman':{top:1.43,eye:1.105,half:.34,neck:.88,chest:.72,back:.64},
-    'hanbok-man':{top:1.43,eye:1.105,half:.34,neck:.88,chest:.72,back:.64},
+    tiger:{top:1.39,eye:1.12,half:.36,neck:.79,chest:.67,back:.60},
+    capybara:{top:1.34,eye:1.13,half:.35,neck:.78,chest:.66,back:.60},
     classic:{top:1.27,eye:1.005,half:.34,neck:.78,chest:.62,back:.57},
     round:{top:1.34,eye:1.005,half:.4,neck:.78,chest:.62,back:.57},
     rover:{top:1.23,eye:1.005,half:.38,neck:.78,chest:.62,back:.57},
@@ -73,7 +73,11 @@ function equipAccessory(body,face,appearance,color,arms){
   color=palette?(['scarf','bowtie','flag'].includes(id)?palette.dark:palette.base):color;
   const front=kind==='operative'?.18:kind==='crab'?.29:.29;
   const oval=(parent,x,y,z,sx,sy,sz,tint)=>{const mesh=new THREE.Mesh(robotSphereGeometry,mat(tint));mesh.position.set(x,y,z);mesh.scale.set(sx,sy,sz);mesh.castShadow=true;parent.add(mesh);return mesh;};
-  if(id==='pouch'||id==='norigae'){
+  if(id==='mandarin'){
+    oval(outfit,0,rig.top+.075,.015,.105,.085,.10,0xed9b39);
+    box(outfit,0,rig.top+.16,.015,.018,.035,.018,0x6c6240);
+    const leaf=oval(outfit,.045,rig.top+.16,.015,.06,.012,.027,0x64864a);leaf.rotation.z=.25;
+  }else if(id==='pouch'||id==='norigae'){
     const x=.22,y=rig.chest-.18,z=kind==='crab'?.35:.32;
     box(outfit,x,y+.09,z,.016,.15,.016,ink);
     if(id==='pouch'){
@@ -320,53 +324,44 @@ function createAnimal(appearance,color,group,body,palette){
 }
 
 
-// Korea edition: short jeogori, white dongjeong and asymmetric goreum;
-// chima or roomy baji share the existing articulated walking/seated rig.
-function createHanbok(appearance,color,group,body,palette){
-  const female=appearance.body==='hanbok-woman',arms=[],legs=[];
-  const fabric=palette?.base??0x465e8b,ivory=palette?.light??0xf5ead5,hair=0x343039,skin=0xffd7ba;
-  function oval(parent,x,y,z,sx,sy,sz,tint){const m=new THREE.Mesh(robotSphereGeometry,mat(tint));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=true;parent.add(m);return m;}
-  // Rounded cloth doll proportions, with a continuous hairline around the head.
-  oval(body,0,1.10,.015,.345,.32,.29,skin);
-  const crown=new THREE.Mesh(new THREE.SphereGeometry(1,32,20,0,Math.PI*2,0,1.28),mat(hair));
-  crown.position.set(0,1.10,.005);crown.scale.set(.355,.335,.302);crown.castShadow=true;body.add(crown);
-  oval(body,0,1.12,-.16,.325,.26,.15,hair);
-  if(female){
-    for(const side of [-1,1]){
-      const fringe=oval(body,side*.145,1.30,.19,.18,.072,.095,hair);fringe.rotation.z=side*.25;
-      oval(body,side*.305,1.14,.055,.055,.16,.10,hair);
-    }
-    // Single low braided plait and a small daenggi ribbon at the back.
-    for(let i=0;i<4;i++)oval(body,(i%2?.018:-.018),.97-i*.065,-.25,.065,.065,.055,hair);
-    for(const side of [-1,1]){const ribbon=oval(body,side*.035,.70,-.255,.03,.095,.018,fabric);ribbon.rotation.z=side*.17;}
-  }else{
-    const fringe=oval(body,-.08,1.29,.20,.235,.09,.09,hair);fringe.rotation.z=.18;
-    oval(body,.20,1.28,.18,.10,.075,.09,hair);
-  }
+// Soft animal rigs share walking and seated joints with the other companions.
+function createKoreaAnimal(appearance,color,group,body,palette){
+  const tiger=appearance.body==='tiger',arms=[],legs=[];
+  const fur=palette.base,cream=palette.light,dark=palette.dark;
+  function oval(parent,x,y,z,sx,sy,sz,tint){const mesh=new THREE.Mesh(robotSphereGeometry,mat(tint));mesh.position.set(x,y,z);mesh.scale.set(sx,sy,sz);mesh.castShadow=true;parent.add(mesh);return mesh;}
+  oval(body,0,.56,0,tiger?.29:.33,.35,.27,fur);
+  oval(body,0,.54,.235,.20,.23,.05,cream);
+  oval(body,0,1.06,.01,tiger?.37:.35,tiger?.30:.27,tiger?.30:.37,fur);
   for(const side of [-1,1]){
-    oval(body,side*.115,1.105,.290,.032,.043,.019,0x302c32);
-    oval(body,side*.115-.009,1.12,.307,.009,.012,.006,0xffffff);
-    oval(body,side*.205,1.025,.252,.055,.027,.013,0xf2a6a0);
-    const arm=new THREE.Group();arm.position.set(side*.23,.78,0);body.add(arm);arms.push(arm);
-    const sleeve=oval(arm,side*.065,-.09,.005,.115,.17,.13,ivory);sleeve.rotation.z=side*.30;
-    oval(arm,side*.10,-.215,.01,.09,.045,.105,fabric);
-    oval(arm,side*.11,-.26,.02,.065,.06,.065,skin);
-    const leg=new THREE.Group();leg.position.set(side*.12,.36,0);body.add(leg);legs.push(leg);
-    oval(leg,0,-.10,0,.115,.18,.13,female?ivory:fabric);
-    oval(leg,0,-.275,.065,.105,.065,.17,0x343443);
-    oval(leg,0,-.245,.10,.073,.025,.10,ivory);
+    oval(body,side*.26,1.30,-.015,tiger?.115:.06,tiger?.12:.065,.075,tiger?dark:fur);
+    oval(body,side*.26,1.315,.045,tiger?.07:.035,tiger?.07:.035,.025,cream);
+    if(tiger){
+      oval(body,side*.12,.99,.275,.15,.11,.08,cream);
+      for(let i=0;i<2;i++){const stripe=oval(body,side*(.29-i*.015),1.10-i*.095,.20+i*.018,.075,.022,.035,dark);stripe.rotation.z=side*(.25+i*.15);}
+    }
+    const eye=oval(body,side*(tiger?.14:.235),1.13,tiger?.284:.29,tiger?.032:.025,tiger?.045:.025,.018,0x302d2a);
+    oval(body,eye.position.x-.008,1.142,eye.position.z+.015,.009,.010,.006,0xffffff);
+    const arm=new THREE.Group();arm.position.set(side*(tiger?.27:.29),.70,0);body.add(arm);arms.push(arm);
+    oval(arm,side*.025,-.15,.035,.10,.19,.11,fur);
+    oval(arm,side*.025,-.29,.06,.105,.065,.115,tiger?cream:dark);
+    if(tiger)for(let i=0;i<2;i++)oval(arm,side*.04,-.08-i*.10,.13,.08,.018,.015,dark);
+    const leg=new THREE.Group();leg.position.set(side*.14,.27,0);body.add(leg);legs.push(leg);
+    oval(leg,0,-.12,.065,.12,.14,.17,fur);
+    oval(leg,0,-.18,.16,.11,.055,.095,tiger?cream:dark);
   }
-  if(female){
-    const points=[[.0,.0],[.28,.0],[.36,.025],[.39,.09],[.37,.22],[.31,.36],[.23,.49],[.20,.53]].map(([x,y])=>new THREE.Vector2(x,y));
-    const skirt=new THREE.Mesh(new THREE.LatheGeometry(points,40),mat(fabric));skirt.position.set(0,.16,0);skirt.scale.z=.85;skirt.castShadow=true;body.add(skirt);
+  if(tiger){
+    for(const [x,y,len] of [[0,1.30,.075],[-.10,1.28,.055],[.10,1.28,.055]])oval(body,x,y,.21,.025,len,.025,dark);
+    oval(body,0,1.015,.35,.043,.028,.025,dark);
+    const smile=new THREE.Mesh(new THREE.TorusGeometry(.035,.007,6,16,Math.PI),mat(dark));smile.rotation.z=Math.PI;smile.position.set(0,.96,.349);body.add(smile);
+    const tail=new THREE.Group();tail.position.set(.18,.35,-.22);tail.rotation.z=-.55;body.add(tail);
+    oval(tail,0,.19,-.05,.075,.31,.075,fur);
+    for(let i=0;i<4;i++)oval(tail,0,.05+i*.12,-.05,.079,.025,.079,dark);
+  }else{
+    // Broad, blunt muzzle and tiny high ears make a capybara, not a bear.
+    oval(body,0,1.00,.32,.265,.145,.25,new THREE.Color(fur).lerp(new THREE.Color(cream),.25).getHex());
+    for(const side of [-1,1])oval(body,side*.105,1.06,.552,.025,.016,.009,dark);
+    box(body,0,.93,.546,.085,.012,.012,dark);
   }
-  oval(body,0,.71,0,.275,.175,.22,ivory);
-  // A small white dongjeong and cloth goreum replace the rigid oversized collar.
-  for(const side of [-1,1]){const collar=oval(body,side*.055,.81,.196,.025,.09,.018,0xfffcf0);collar.rotation.z=side*.53;}
-  for(const side of [-1,1]){const loop=oval(body,.08+side*.04,.73,.223,.06,.026,.018,fabric);loop.rotation.z=side*.3;}
-  for(const [x,y,len,angle] of [[.09,.64,.09,-.13],[.15,.66,.075,.22]]){const tie=oval(body,x,y,.223,.023,len,.015,fabric);tie.rotation.z=angle;}
-  // Tiny curved smile, rather than a hard straight mouth.
-  const smile=new THREE.Mesh(new THREE.TorusGeometry(.035,.008,6,16,Math.PI),mat(0xaa6e6b));smile.rotation.z=Math.PI;smile.position.set(0,1.015,.296);body.add(smile);
-  equipCharacter(body,{position:{z:.29}},appearance,color,arms);
+  equipCharacter(body,{position:{z:tiger?.284:.265}},appearance,color,arms);
   return {group,body,arms,legs,appearance,color};
 }

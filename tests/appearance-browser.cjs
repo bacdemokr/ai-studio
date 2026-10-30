@@ -17,7 +17,7 @@ const catalog=require('../src/avatar-catalog.json');
    assert.equal(await page.evaluate(()=>BacCampus.inspect().draftPreview.avatar.color),body.palettes[0]);
    if(process.env.BAC_TEST_ARTIFACT_DIR){
     fs.mkdirSync(process.env.BAC_TEST_ARTIFACT_DIR,{recursive:true});
-    await page.locator('#studio-accessory').selectOption(body.id==='bunny'?'pestle':body.id.startsWith('hanbok-')?'norigae':'pouch');
+    await page.locator('#studio-accessory').selectOption(body.id==='bunny'?'pestle':body.id==='capybara'?'mandarin':'pouch');
     await page.waitForTimeout(250);
     await page.screenshot({path:process.env.BAC_TEST_ARTIFACT_DIR+'/'+body.id+'.png'});
    }

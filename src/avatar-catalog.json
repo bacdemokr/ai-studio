@@ -19,37 +19,37 @@
       ]
     },
     {
-      "id": "hanbok-woman",
-      "label": "한복 여성",
-      "name": "아라",
+      "id": "tiger",
+      "label": "호랑이",
+      "name": "호돌이",
       "accessories": [
-        "norigae",
+        "scarf",
+        "glasses",
         "pouch",
         "flower",
-        "glasses",
         "backpack"
       ],
       "palettes": [
-        "hanbok-rose",
-        "hanbok-jade",
-        "hanbok-indigo"
+        "tiger-gold",
+        "tiger-white",
+        "tiger-apricot"
       ]
     },
     {
-      "id": "hanbok-man",
-      "label": "한복 남성",
-      "name": "마루",
+      "id": "capybara",
+      "label": "카피바라",
+      "name": "카피",
       "accessories": [
-        "norigae",
-        "pouch",
-        "flower",
+        "mandarin",
+        "scarf",
         "glasses",
-        "backpack"
+        "pouch",
+        "flower"
       ],
       "palettes": [
-        "hanbok-indigo",
-        "hanbok-jade",
-        "hanbok-rose"
+        "capy-sand",
+        "capy-cocoa",
+        "capy-cream"
       ]
     },
     {
@@ -185,7 +185,8 @@
     "norigae": "매듭 장식",
     "pouch": "작은 복주머니",
     "pestle": "떡방아 공이",
-    "moon": "보름달 장식"
+    "moon": "보름달 장식",
+    "mandarin": "머리 위 귤"
   },
   "palettes": {
     "robot-silver": {
@@ -439,6 +440,48 @@
       "light": "#f5ead5",
       "dark": "#28374c",
       "accent": "#b98267"
+    },
+    "tiger-gold": {
+      "label": "황금빛",
+      "base": "#e7a14c",
+      "light": "#fff2d9",
+      "dark": "#48382d",
+      "accent": "#648e78"
+    },
+    "tiger-white": {
+      "label": "백호",
+      "base": "#e8e6df",
+      "light": "#fff9eb",
+      "dark": "#535660",
+      "accent": "#82a2ae"
+    },
+    "tiger-apricot": {
+      "label": "살구빛",
+      "base": "#dfa477",
+      "light": "#fff1d9",
+      "dark": "#705042",
+      "accent": "#9b778e"
+    },
+    "capy-sand": {
+      "label": "모래빛",
+      "base": "#b88e63",
+      "light": "#d7b58b",
+      "dark": "#604b38",
+      "accent": "#73977a"
+    },
+    "capy-cocoa": {
+      "label": "코코아",
+      "base": "#937353",
+      "light": "#c5a079",
+      "dark": "#4e4035",
+      "accent": "#879b80"
+    },
+    "capy-cream": {
+      "label": "크림빛",
+      "base": "#d1b18a",
+      "light": "#eddbb9",
+      "dark": "#766149",
+      "accent": "#a4b688"
     }
   }
 }

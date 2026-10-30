@@ -252,6 +252,12 @@ class StudioTests(unittest.TestCase):
         self.studio.configure(self.owner, {**profile, 'avatar': avatar})
         self.assertEqual(self.studio.profile(self.owner)['avatar'], avatar)
 
+    def test_retired_hanbok_appearances_load_as_animals(self):
+        from studio import avatar_for
+        for old, new, color in [('hanbok-woman', 'tiger', 'tiger-gold'), ('hanbok-man', 'capybara', 'capy-sand')]:
+            self.assertEqual(avatar_for(self.owner, {'body': old, 'color': 'hanbok-rose', 'accessory': 'pouch'}),
+                             {'body': new, 'color': color, 'accessory': 'pouch'})
+
     def test_curated_appearances_and_saved_legacy_outfits_round_trip(self):
         from studio import AVATAR_CATALOG, avatar_for
         for body in AVATAR_CATALOG['bodies']:
