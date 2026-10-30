@@ -3,7 +3,7 @@
     {
       "id": "classic",
       "label": "꼬마 로봇",
-      "name": "지니",
+      "name": "스파크",
       "accessories": [
         "antenna",
         "headset",
@@ -21,7 +21,7 @@
     {
       "id": "tiger",
       "label": "호랑이",
-      "name": "호돌이",
+      "name": "토르",
       "accessories": [
         "scarf",
         "glasses",
@@ -38,7 +38,7 @@
     {
       "id": "panda",
       "label": "판다",
-      "name": "바오",
+      "name": "쿠바오",
       "accessories": [
         "scarf",
         "bowtie",
@@ -55,7 +55,7 @@
     {
       "id": "fox-companion",
       "label": "여우",
-      "name": "여우비",
+      "name": "쿠냥",
       "accessories": [
         "scarf",
         "bowtie",
@@ -126,7 +126,7 @@
     {
       "id": "claw",
       "label": "가재",
-      "name": "집게",
+      "name": "베라",
       "accessories": [
         "bowtie",
         "scarf",
@@ -144,7 +144,7 @@
     {
       "id": "crab",
       "label": "꽃게",
-      "name": "꽃게",
+      "name": "루빈",
       "accessories": [
         "flower",
         "bowtie",
