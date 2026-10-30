@@ -36,20 +36,20 @@
       ]
     },
     {
-      "id": "capybara",
-      "label": "카피바라",
-      "name": "카피",
+      "id": "panda",
+      "label": "판다",
+      "name": "바오",
       "accessories": [
-        "mandarin",
         "scarf",
+        "bowtie",
         "glasses",
-        "pouch",
-        "flower"
+        "backpack",
+        "bamboo"
       ],
       "palettes": [
-        "capy-sand",
-        "capy-cocoa",
-        "capy-cream"
+        "panda-classic",
+        "panda-brown",
+        "panda-slate"
       ]
     },
     {
@@ -163,7 +163,7 @@
   "legacyBodies": [
     "rover",
     "round",
-    "panda"
+    "capybara"
   ],
   "accessories": {
     "none": "착용 안 함",
@@ -400,21 +400,21 @@
       "accent": "#88aab0"
     },
     "panda-classic": {
-      "label": "Black & white",
+      "label": "검정 · 흰색",
       "base": "#e7ebe6",
       "light": "#f5f2e6",
       "dark": "#28343e",
       "accent": "#7e9d69"
     },
     "panda-brown": {
-      "label": "Brown & cream",
+      "label": "갈색 · 크림",
       "base": "#e6d6bc",
       "light": "#f5e8cf",
       "dark": "#77604d",
       "accent": "#799e8d"
     },
     "panda-slate": {
-      "label": "Slate & ivory",
+      "label": "푸른 회색 · 아이보리",
       "base": "#e1e7e7",
       "light": "#f4f0e4",
       "dark": "#5c6e81",
