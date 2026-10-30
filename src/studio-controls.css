@@ -353,3 +353,8 @@
  #studio-dialog #studio-connection-editor .connection-editor-bottom{align-items:flex-start}
  #studio-dialog #studio-connection-editor .studio-dialog-actions{flex-wrap:wrap;justify-content:flex-end}
 }
+
+/* Compact Korea-edition portraits; saved legacy portraits remain available. */
+.body-glyph:is(.hanbok-woman,.hanbok-man),.studio-avatar:is([data-body=hanbok-woman],[data-body=hanbok-man]){background:#e9bc9e;border-radius:45% 45% 40% 40%!important;border-top:9px solid #292b33;box-shadow:0 8px 0 -2px var(--avatar-base,#465e8b)}
+.body-glyph.hanbok-woman::before,.studio-avatar[data-body=hanbok-woman]::before{content:"";position:absolute;width:12px;height:12px;border-radius:50%;background:#292b33;right:-7px;top:0}
+.body-glyph:is(.hanbok-woman,.hanbok-man) i{background:#292b33;box-shadow:none}

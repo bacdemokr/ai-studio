@@ -2,14 +2,14 @@
   "bodies": [
     {
       "id": "classic",
-      "label": "Classic",
-      "name": "Jinny",
+      "label": "꼬마 로봇",
+      "name": "두리",
       "accessories": [
         "antenna",
         "headset",
         "glasses",
-        "cap",
-        "backpack"
+        "pouch",
+        "norigae"
       ],
       "palettes": [
         "robot-silver",
@@ -19,33 +19,32 @@
       ]
     },
     {
-      "id": "round",
-      "label": "Orbit",
-      "name": "Orbit",
+      "id": "hanbok-woman",
+      "label": "한복 여성",
+      "name": "아라",
       "accessories": [
-        "antenna",
-        "headset",
+        "norigae",
+        "pouch",
+        "flower",
         "glasses",
-        "cap",
         "backpack"
       ],
       "palettes": [
-        "orbit-pearl",
-        "orbit-slate",
-        "robot-cream",
-        "orbit-rose"
+        "hanbok-rose",
+        "hanbok-jade",
+        "hanbok-indigo"
       ]
     },
     {
       "id": "fox-companion",
-      "label": "Fox",
-      "name": "Rusty",
+      "label": "여우",
+      "name": "여우비",
       "accessories": [
         "scarf",
         "bowtie",
         "glasses",
-        "backpack",
-        "flower"
+        "pouch",
+        "norigae"
       ],
       "palettes": [
         "fox-red",
@@ -56,14 +55,14 @@
     },
     {
       "id": "operative",
-      "label": "Smith",
-      "name": "Smith",
+      "label": "비밀 요원",
+      "name": "까망이",
       "accessories": [
         "earpiece",
         "briefcase",
         "watch",
-        "cap",
-        "backpack"
+        "pouch",
+        "norigae"
       ],
       "palettes": [
         "smith-black",
@@ -73,14 +72,14 @@
     },
     {
       "id": "claw",
-      "label": "Claw",
-      "name": "Pixel",
+      "label": "가재",
+      "name": "집게",
       "accessories": [
         "bowtie",
         "scarf",
-        "pirate",
         "backpack",
-        "flag"
+        "pouch",
+        "norigae"
       ],
       "palettes": [
         "claw-coral",
@@ -91,14 +90,14 @@
     },
     {
       "id": "crab",
-      "label": "Crab",
-      "name": "Sage",
+      "label": "꽃게",
+      "name": "꽃돌이",
       "accessories": [
         "flower",
-        "pirate",
-        "flag",
         "bowtie",
-        "backpack"
+        "backpack",
+        "pouch",
+        "norigae"
       ],
       "palettes": [
         "crab-rust",
@@ -109,14 +108,14 @@
     },
     {
       "id": "cat",
-      "label": "Cat",
-      "name": "Mochi",
+      "label": "고양이",
+      "name": "나비",
       "accessories": [
         "scarf",
         "bowtie",
         "glasses",
-        "backpack",
-        "flower"
+        "pouch",
+        "norigae"
       ],
       "palettes": [
         "cat-ginger",
@@ -127,14 +126,14 @@
     },
     {
       "id": "bunny",
-      "label": "Bunny",
-      "name": "Pip",
+      "label": "달토끼",
+      "name": "달콩",
       "accessories": [
+        "pestle",
+        "moon",
+        "pouch",
         "scarf",
-        "bowtie",
-        "carrot",
-        "backpack",
-        "flower"
+        "carrot"
       ],
       "palettes": [
         "bunny-snow",
@@ -144,43 +143,49 @@
       ]
     },
     {
-      "id": "panda",
-      "label": "Panda",
-      "name": "Bao",
+      "id": "hanbok-man",
+      "label": "한복 남성",
+      "name": "마루",
       "accessories": [
-        "scarf",
-        "bowtie",
+        "norigae",
+        "pouch",
+        "flower",
         "glasses",
-        "backpack",
-        "bamboo"
+        "backpack"
       ],
       "palettes": [
-        "panda-classic",
-        "panda-brown",
-        "panda-slate"
+        "hanbok-indigo",
+        "hanbok-jade",
+        "hanbok-rose"
       ]
     }
   ],
   "legacyBodies": [
-    "rover"
+    "rover",
+    "round",
+    "panda"
   ],
   "accessories": {
-    "none": "No accessory",
-    "antenna": "Signal antenna",
-    "headset": "Studio headphones",
-    "glasses": "Round glasses",
-    "cap": "Baseball cap",
-    "backpack": "Tiny backpack",
-    "earpiece": "Secret earpiece",
-    "briefcase": "Mission briefcase",
-    "watch": "Agent watch",
-    "bowtie": "Bow tie",
-    "scarf": "Cozy scarf",
+    "none": "소품 없음",
+    "antenna": "안테나",
+    "headset": "헤드폰",
+    "glasses": "동그란 안경",
+    "cap": "야구 모자",
+    "backpack": "작은 배낭",
+    "earpiece": "비밀 이어폰",
+    "briefcase": "작은 서류 가방",
+    "watch": "손목시계",
+    "bowtie": "나비넥타이",
+    "scarf": "포근한 목도리",
     "pirate": "Pirate hat",
-    "flower": "Flower",
+    "flower": "꽃 한 송이",
     "flag": "Little flag",
-    "carrot": "Emergency carrot",
-    "bamboo": "Bamboo snack"
+    "carrot": "간식 당근",
+    "bamboo": "Bamboo snack",
+    "norigae": "매듭 장식",
+    "pouch": "작은 복주머니",
+    "pestle": "떡방아 절굿공이",
+    "moon": "보름달 장식"
   },
   "palettes": {
     "robot-silver": {
@@ -413,6 +418,27 @@
       "light": "#f4f0e4",
       "dark": "#5c6e81",
       "accent": "#b99570"
+    },
+    "hanbok-rose": {
+      "label": "꽃분홍 · 크림",
+      "base": "#c96580",
+      "light": "#fff1d8",
+      "dark": "#413147",
+      "accent": "#76a68b"
+    },
+    "hanbok-jade": {
+      "label": "옥빛 · 아이보리",
+      "base": "#69a99d",
+      "light": "#fff4df",
+      "dark": "#294b57",
+      "accent": "#dfad65"
+    },
+    "hanbok-indigo": {
+      "label": "쪽빛 · 미색",
+      "base": "#465e8b",
+      "light": "#f5ead5",
+      "dark": "#28374c",
+      "accent": "#b98267"
     }
   }
 }

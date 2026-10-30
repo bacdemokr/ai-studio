@@ -15,6 +15,12 @@ const catalog=require('../src/avatar-catalog.json');
    await page.locator('#studio-body-picker [data-body="'+body.id+'"]').click();
    assert.deepEqual(await page.locator('#studio-color-picker button').evaluateAll(nodes=>nodes.map(n=>n.dataset.avatarColor)),body.palettes);
    assert.equal(await page.evaluate(()=>BacCampus.inspect().draftPreview.avatar.color),body.palettes[0]);
+   if(process.env.BAC_TEST_ARTIFACT_DIR){
+    fs.mkdirSync(process.env.BAC_TEST_ARTIFACT_DIR,{recursive:true});
+    await page.locator('#studio-accessory').selectOption(body.id==='bunny'?'pestle':body.id.startsWith('hanbok-')?'norigae':'pouch');
+    await page.waitForTimeout(250);
+    await page.screenshot({path:process.env.BAC_TEST_ARTIFACT_DIR+'/'+body.id+'.png'});
+   }
    for(const color of body.palettes){
     await page.locator('#studio-color-picker [data-avatar-color="'+color+'"]').click();
     assert.equal(await page.evaluate(()=>BacCampus.inspect().draftPreview.avatar.color),color);
