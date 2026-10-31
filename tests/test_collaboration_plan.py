@@ -119,20 +119,38 @@ class CollaborationTests(unittest.TestCase):
         self.assertEqual(len({session for _,session,_ in self.adapter.calls}), 8)
         self.assertEqual(self.app.available_file(self.owner, job['result']['files'][0]).read_text(), job['result']['answer'])
 
-    def test_captain_cannot_skip_planned_code_review_on_saved_file_claim(self):
+    def test_captain_can_skip_optional_code_review_when_it_adds_no_required_work(self):
         self.adapter.plan={'summary':'Build then review','tasks':[
             {'role':5,'task':'Implement the game'}, {'role':4,'task':'Review startup and controls'}]}
         original=self.adapter.respond
         def respond(agent,session,prompt,**kwargs):
             if '-checking-' in session:
-                return json.dumps({'done':True,'outcome':'complete','reason':'Cody saved the file.', 'answer':'Ready to play.'})
+                return json.dumps({'done':True,'outcome':'complete',
+                    'reason':'The requested game is delivered; no independent review was requested and no concrete risk remains.',
+                    'answer':'Game delivered. Browser execution was not tested; optional review was skipped.'})
             return original(agent,session,prompt,**kwargs)
         self.adapter.respond=respond
         result=self.start('/plan Build a browser game');self.app.execute(self.app.next_job())
         plan=self.job(result)['payload']['collaboration']
+        self.assertEqual(plan['calledRoles'],[5])
+        self.assertEqual(plan['skippedRoles'],[4])
+        self.assertTrue(plan['checks'][0]['done'])
+
+    def test_explicit_code_review_still_runs_when_captain_tries_to_stop(self):
+        self.adapter.plan={'summary':'Build then review','tasks':[
+            {'role':5,'task':'Implement the game'}, {'role':4,'task':'Review startup and controls'}]}
+        original=self.adapter.respond
+        def respond(agent,session,prompt,**kwargs):
+            if '-checking-' in session:
+                return json.dumps({'done':True,'outcome':'complete','reason':'Cody saved the file.', 'answer':'Ready.'})
+            return original(agent,session,prompt,**kwargs)
+        self.adapter.respond=respond
+        result=self.start('/goal Build a browser game and include an independent review.')
+        self.app.execute(self.app.next_job())
+        plan=self.job(result)['payload']['collaboration']
         self.assertEqual(plan['calledRoles'],[5,4])
         self.assertFalse(plan['checks'][0]['done'])
-        self.assertIn('saved file is not evidence',plan['checks'][0]['reason'])
+        self.assertIn('explicitly requested independent review',plan['checks'][0]['reason'])
 
     def test_partial_code_result_can_stop_without_forcing_review(self):
         self.adapter.plan={'summary':'Build then review','tasks':[
@@ -148,6 +166,19 @@ class CollaborationTests(unittest.TestCase):
         plan=self.job(result)['payload']['collaboration']
         self.assertEqual(plan['calledRoles'],[5])
         self.assertEqual(plan['outcome'],'partial')
+        self.assertEqual(len(self.adapter.reaction_calls),1)
+        reaction=self.adapter.reaction_calls[0][2]
+        self.assertIn('"outcome": "partial"',reaction)
+        self.assertIn('"unfinishedRequirements": ["Implementation"]',reaction)
+        self.assertEqual(self.job(result)['payload']['roundtable']['replies'][self.owner]['status'],'done')
+
+    def test_unavailable_without_work_does_not_start_personal_reactions(self):
+        self.adapter.plan={'summary':'No useful work can be completed with this team.',
+                           'tasks':[], 'outcome':'unavailable', 'answer':'This team cannot perform the requested work.'}
+        result=self.start('/plan Perform work this team cannot do.')
+        self.app.execute(self.app.next_job())
+        self.assertEqual(self.job(result)['payload']['collaboration']['outcome'],'unavailable')
+        self.assertFalse(self.adapter.reaction_calls)
 
     def test_normal_message_only_runs_selected_agent(self):
         self.app.enqueue(self.owner, {'kind':'chat','prompt':'Please plan a workshop'})
@@ -247,7 +278,7 @@ class CollaborationTests(unittest.TestCase):
             self.app.execute(self.app.next_job())
         self.assertEqual(len(self.adapter.calls),1)
         prompt=self.adapter.calls[0][2]
-        pool,_=json.JSONDecoder().raw_decode(prompt.split('available pool to match the current request: ',1)[1])
+        pool,_=json.JSONDecoder().raw_decode(prompt.split('Team capabilities (valid at every stage, not proof of successful execution):\n',1)[1])
         self.assertNotIn('Dylan',[member['name'] for member in pool])
         self.assertIn('Scout',[member['name'] for member in pool])
         self.assertEqual(self.job(result)['payload']['collaboration']['outputs'],{})

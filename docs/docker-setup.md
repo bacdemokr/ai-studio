@@ -24,6 +24,8 @@ Open **http://localhost:8080** on the host or **http://SPARK_IP:8080** from anot
 
 The model stays on the host; Linux host networking reaches localhost. BaC installs no model weights or GPU drivers, and `./bac start` does not launch local inference. Start or reuse a separately configured server with `./bac vllm`, or run another compatible server before enabling Local. Its pinned OpenClaw and OpenShell runtimes are isolated from existing host installations. No host Python or Node is required for `./bac start`.
 
+See the [local model helper](local-model.md) for configuration and lifecycle commands. A host GPU is needed only for local GPU inference, not for the API-connected app. Minimum CPU/RAM requirements have not been benchmarked. For source development on other hosts, see [development](development.md).
+
 ## Commands
 
 | Action | Command |

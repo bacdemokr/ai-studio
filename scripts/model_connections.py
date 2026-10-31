@@ -221,8 +221,7 @@ def preferences(studio,data,owner=None,participant=None):
 
 def native(value):
     provider=value['_provider'];credential=value.get('_credentialProvider',provider)
-    return {'baseUrl':secrets.proxy_url(credential,value['baseUrl']) if value.get('apiKey') else value['baseUrl'],
-            'apiKey':'session-only' if value.get('apiKey') else 'local-only','api':settings.PROVIDERS[provider]['api'],
+    return {**secrets.native_route(credential,value),'api':settings.PROVIDERS[provider]['api'],
             'models':[{'id':value['model'],'name':value['model'],'input':['text'],'reasoning':False,
                        'contextWindow':value['contextWindow'],'contextTokens':value['contextWindow'],
                        'maxTokens':settings.output_token_limit(value['contextWindow']),

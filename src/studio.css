@@ -129,17 +129,31 @@
 #studio-config-form [role=tabpanel]>small{display:block;margin-top:12px;color:#aebbc8}
 #studio-dialog:has(#studio-config-form,#studio-model-connections) #studio-dialog-kicker{font-size:28px;letter-spacing:-.5px;text-transform:none;color:#f4f6f8;font-weight:700}
 /* Small runtime meter remains inside the native fullscreen surface. */
-#studio-telemetry{position:relative;font-size:14px;color:#b6c7d5;margin-right:6px}
-#studio-telemetry summary{cursor:pointer;list-style:none;display:flex;gap:13px;padding:9px 11px;border:1px solid #344755;border-radius:5px;background:#111c25;font-variant-numeric:tabular-nums;white-space:nowrap}
+#studio-telemetry{position:relative;font-size:13px;color:#b6c7d5;margin-right:6px}
+#studio-telemetry summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;min-height:34px;padding:7px 10px;border:1px solid #33434f;border-radius:9px;background:#14202aeF;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1.2;box-sizing:border-box;transition:background-color .15s,border-color .15s}
 #studio-telemetry summary::-webkit-details-marker{display:none}
-#studio-telemetry[open] summary{border-color:#76b900}
-#studio-telemetry .usage-panel{position:absolute;z-index:60;bottom:calc(100% + 12px);right:0;width:360px;max-width:calc(100vw - 48px);max-height:55vh;overflow:auto;background:#101b25;border:1px solid #455f73;border-radius:8px;padding:20px;box-shadow:0 14px 45px #0009;font-size:15px}
-#studio-telemetry .usage-agent{margin-top:17px}
-#studio-telemetry .usage-track{height:6px;background:#293947;border-radius:3px;margin:8px 0;overflow:hidden}
+#studio-telemetry summary:hover,#studio-telemetry[open] summary{border-color:#526675;background:#1b2a35}
+#studio-telemetry summary:focus-visible{outline:2px solid #99b5c8;outline-offset:3px}
+#studio-telemetry .usage-stat{display:inline-flex;align-items:baseline;gap:5px}
+#studio-telemetry .usage-stat+.usage-stat{border-left:1px solid #3a4b5766;padding-left:10px}
+#studio-telemetry .usage-label{font-size:11px;font-weight:500;color:#95a9b9;letter-spacing:.02em}
+#studio-telemetry .usage-value{font-size:12px;font-weight:600;color:#e1ebf2;min-width:4.4ch;text-align:right}
+#studio-telemetry .usage-chevron{width:13px;height:13px;flex:none;fill:none;stroke:#a4bac9;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+#studio-telemetry[open] .usage-chevron{transform:rotate(180deg)}
+#studio-telemetry .usage-unavailable{font-size:12px;color:#a6bac9}
+#studio-telemetry .usage-panel{position:absolute;z-index:60;bottom:calc(100% + 8px);right:0;width:340px;max-width:calc(100vw - 32px);max-height:55vh;box-sizing:border-box;overflow:auto;background:#13202af5;backdrop-filter:blur(12px);border:1px solid #354b5a;border-radius:12px;padding:16px;box-shadow:0 10px 32px #0006;font-size:13px;line-height:1.5}
+#studio-telemetry .usage-heading{gap:12px;margin-bottom:10px}
+#studio-telemetry .usage-heading strong{font-size:14px;color:#e1ebf2}
+#studio-telemetry .usage-heading>span{font-size:11px;color:#91a5b5}
+#studio-telemetry .usage-empty{margin:0;color:#99aebd;font-size:12px}
+#studio-telemetry .usage-agent{margin-top:14px}
+#studio-telemetry .usage-track{height:4px;background:#293947;border-radius:3px;margin:7px 0;overflow:hidden}
 #studio-telemetry .usage-track i{display:block;height:100%;background:#76b900;transition:width .4s}
-#studio-telemetry .usage-agent .spread:last-child,#studio-telemetry small{font-size:13px;color:#a5b6c4;line-height:1.5}
-#studio-telemetry .usage-total{margin-top:20px;margin-bottom:9px}
-#studio-telemetry hr{border:0;border-top:1px solid #344755;margin:16px 0}
+#studio-telemetry .usage-agent .spread:not(:first-child),#studio-telemetry small{font-size:11px;color:#91a6b6;line-height:1.5}
+#studio-telemetry .usage-total{margin-top:16px;margin-bottom:5px}
+#studio-telemetry .usage-total strong{color:#e1ebf2;font-size:15px;font-variant-numeric:tabular-nums}
+#studio-telemetry .usage-host{font-size:12px;margin-bottom:3px}
+#studio-telemetry hr{border:0;border-top:1px solid #34475580;margin:14px 0}
 
 /* Completed run metrics use the same compact surfaces as Settings. */
 .studio-usage-time{color:#d6e0e7}
@@ -203,10 +217,35 @@
 #studio-lanes.studio-plan-control,#studio-surface #studio-lanes.studio-plan-control{display:flex;flex-direction:column;gap:18px;align-items:stretch;margin-left:6px;padding-left:20px;border-left:1px solid #3c5260}
 #studio-surface #studio-board.has-plan .studio-board-intro{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 #studio-surface #studio-board.has-plan .studio-board-intro h3{font-size:20px;margin:0!important}
+.mission-trace-heading{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+#studio-board [data-mission-total]:empty{display:none}
 #studio-surface #studio-board.has-plan .studio-board-intro p,#studio-surface #studio-board.has-plan .studio-board-intro .studio-kicker{display:none}
 .mission-reasoning-control{flex:0 0 100%}
-#agent-campus .mission-reasoning-control button{border:0;background:transparent;color:#b8d98d;padding:2px 0;font-size:14px;font-weight:600;text-decoration:underline;text-underline-offset:4px}
-#agent-campus .mission-reasoning-control button:hover{color:#ddf4c0}
+.mission-updates{position:sticky;bottom:12px;height:0;display:flex;align-items:flex-start;justify-content:center;pointer-events:none;z-index:2}
+.mission-updates[hidden]{display:none}
+#agent-campus .mission-updates button{display:flex;align-items:center;gap:10px;transform:translateY(-100%);pointer-events:auto;border:1px solid #52694b;border-radius:999px;background:#20322bee;color:#e0ebd7;padding:8px 14px;font-size:12px;font-weight:500;line-height:1.4;box-shadow:0 4px 16px #0005;backdrop-filter:blur(8px)}
+#agent-campus .mission-updates button:hover{background:#2b4335;border-color:#85a568}
+#agent-campus .mission-updates button:focus-visible{outline:2px solid #a9cc7d;outline-offset:3px}
+#agent-campus .mission-reasoning-control button{border:1px solid #344854;border-radius:7px;background:#17252e;color:#c5d5df;padding:7px 12px;font-size:13px;font-weight:500}
+#agent-campus .mission-reasoning-control button:hover{background:#20333c;border-color:#668242}
+#agent-campus .mission-reasoning-control button[aria-expanded=true]{color:#cee9a6;border-color:#587c35;background:#203023}
+.mission-model-reasoning{border-top:1px solid #33464e;margin-top:18px;padding-top:14px}
+.mission-reasoning-heading{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.mission-reasoning-heading strong{font-size:13px;color:#cee0c1}
+.mission-reasoning-heading span,.mission-reasoning-note{font-size:11px;color:#8fa6b3}
+#studio-lanes .mission-reasoning-note{font-size:12px;line-height:1.5;margin:5px 0 10px}
+#studio-lanes .mission-reasoning-call{border-bottom:1px solid #2c3e48;padding:0;margin:0}
+#studio-lanes .mission-reasoning-call>summary{display:flex;align-items:center;gap:10px;padding:10px 0;margin:0;cursor:pointer;list-style:none;font-size:13px;line-height:1.5;font-weight:500}
+#studio-lanes .mission-reasoning-call>summary:focus-visible{outline:2px solid #76b900;outline-offset:2px;border-radius:3px}
+.mission-reasoning-call>summary::before{content:'›';color:#9bb684;transition:transform .15s}
+.mission-reasoning-call[open]>summary::before{transform:rotate(90deg)}
+.mission-reasoning-call>summary>small{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#8da4b1;font-size:11px;flex:1}
+.mission-reasoning-call>summary>span{flex-shrink:0}
+.mission-reasoning-call>summary>em{font-style:normal;font-size:10px;color:#9cb285;flex-shrink:0}
+.mission-reasoning-turn{padding:0 0 12px}
+.mission-reasoning-turn>small{font-size:10px;color:#91a6b1}
+.mission-reasoning-text{max-height:260px;overflow:auto;overscroll-behavior:contain;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;font-size:13px;color:#beced8;padding:8px 12px;margin-top:5px;background:#101c24;border-radius:6px}
+#studio-lanes .mission-reasoning-empty{font-size:12px;line-height:1.6;color:#93a7b4;margin:8px 0}
 .mission-plan-step{position:relative;display:grid;grid-template-columns:170px minmax(0,1fr);border:1px solid #30434f;border-radius:10px;background:#15232c}
 .mission-plan-step::before{content:'';position:absolute;left:-26px;top:27px;width:9px;height:9px;border:1px solid #6a8292;border-radius:50%;background:#14212a}
 .mission-plan-step[data-step-state=done]::before,.mission-plan-step[data-step-state=working]::before{background:#76b900;border-color:#76b900}

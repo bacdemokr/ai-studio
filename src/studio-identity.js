@@ -167,7 +167,7 @@ function attachmentPreviewMarkup(name,text,extracted=false){
  }
  return '<h1>'+escape(name)+'</h1><p class="note">'+escape(note)+'</p>'+content;
 }
-async function openAttachmentTab(path,workspace){
+async function openAttachmentTab(path,workspace,localFile){
  const target=agentId,scenario=selectedScenario,name=path.split('/').pop();
  const tab=window.open('about:blank','_blank');
  if(!tab){alert('Allow pop-ups for this site to preview attachments.','error');return;}
@@ -177,7 +177,7 @@ async function openAttachmentTab(path,workspace){
  show('<h1>'+escape(name)+'</h1><p role="status">Loading file…</p>');
  const read=filePath=>api('file?path='+encodeURIComponent(filePath)+'&workspace='+encodeURIComponent(workspace),undefined,target,scenario);
  try{
-  const file=await read(path);if(tab.closed)return;
+  const file=localFile??await read(path);if(tab.closed)return;
   const binary=file.encoding==='base64';
   const readable=binary?await read(path+'.txt'):file;
   if(tab.closed)return;

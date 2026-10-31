@@ -16,7 +16,7 @@ const {chromium}=require('playwright');
    keys.push(await page.evaluate(()=>BacStudio.inspect().agentId));await page.locator('#studio-alert button').click();
   }
   // Deletion always shows the selected identity; dismissing never changes the collection.
-  await page.locator('#studio-delete-agent').click();assert.equal(await page.locator('#studio-dialog h3').innerText(),'Delete Scout?');
+  await page.locator('#studio-delete-agent').click();assert.equal(await page.locator('#studio-dialog h3').innerText(),'“You sure you won’t need me?”');assert.equal(await page.locator('#studio-delete-confirm').innerText(),'Delete Scout');
   assert.match(await page.locator('#studio-dialog').innerText(),/chats, memory and files/);
   assert.equal(await page.evaluate(()=>document.activeElement.id),'studio-delete-cancel');await page.keyboard.press('Escape');
   assert.equal((await page.evaluate(()=>BacStudio.inspect().agents)).length,3);

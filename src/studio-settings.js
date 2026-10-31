@@ -95,7 +95,9 @@ async function resetStudio(scope,sourceButton=null,scenario=selectedScenario){
    clearTimeout(comparisonTimer);comparison=null;comparePanel.replaceChildren();delete comparePanel.dataset.batch;
    if(!changingAgent&&(agentId===originalSelection||agents.some(a=>a.key===agentId))){openAgentState(state);fillCreator(true);setRoom('workshop');}
   }
-  status.textContent=scope==='all'?'All stages reset.':scope==='bac'?(stageScenarios.find(s=>s.id===scenario)?.title||'Scenario')+' reset.':'Lounge agents reset.';
+  const confirmation=scope==='all'?'All stages reset.':scope==='bac'?(stageScenarios.find(s=>s.id===scenario)?.title||'Scenario')+' reset.':'Lounge agents reset.';
+  if(sourceButton){status.hidden=true;status.textContent='';alert(confirmation,'success');}
+  else status.textContent=confirmation;
   if(background)alert(completed+' agent'+(completed===1?'':'s')+' removed.','success');
  }catch(error){
   const message=(scope==='all'&&teamCleared?'Stage 3 was reset. ':'')+(completed?`${completed} / ${total} removed. `:'')+error.message;

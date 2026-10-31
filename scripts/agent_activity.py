@@ -134,11 +134,6 @@ def collect(state, agent, session, started=0, skill_paths=None):
     except (OSError,ValueError,TypeError,sqlite3.Error):return {'source':'OpenClaw transcript','available':False,'calls':[]}
 
 
-def require_action(activity, action):
-    if not any(c.get('tool')=='exec' and action in c.get('actions',[c.get('action')]) and c.get('status')=='completed' for c in activity.get('calls',[])):
-        raise ValueError('No completed '+action+' tool call was observed in the native agent transcript.')
-
-
 def heartbeat_failure(state, agent, started):
     """Return only a fixed operational diagnosis, never raw transcript contents."""
     path=Path(state)/'agents'/agent/'agent/openclaw-agent.sqlite'

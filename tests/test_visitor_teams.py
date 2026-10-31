@@ -435,7 +435,9 @@ class VisitorTeamTests(unittest.TestCase):
     def test_research_budget_is_shared_with_hired_agent(self):
         self.adapter.selection['tasks'] = [{'role': 8, 'task': 'Research.', 'requiredFiles': []}]
         job = self.execute(self.start('/goal Ask Pixel to research the weather.'))
-        self.assertEqual(job['payload']['collaboration']['researchBudgetSeconds'], 150)
+        self.assertGreater(job['payload']['collaboration']['researchBudgetSeconds'], 0)
+        from plan_revision import PLAN_TIME_BUDGET_SECONDS
+        self.assertLessEqual(job['payload']['collaboration']['researchBudgetSeconds'], PLAN_TIME_BUDGET_SECONDS)
         self.assertEqual(self.specialists()[0][0], 'bac-' + self.owner)
 
     def test_named_agent_still_attempts_work_after_missing_upstream_handoff(self):

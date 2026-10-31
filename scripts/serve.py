@@ -149,6 +149,12 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.json_response(studio.crew_policy_report(studio.crew_owner(owner, scenario), int(values[0])))
             if parsed.path == '/api/evidence':
                 return self.json_response(studio.evidence(studio.job_owner(owner, parse_qs(parsed.query).get('id',[''])[0]), parse_qs(parsed.query).get('id',[''])[0]))
+            if parsed.path == '/api/model-reasoning':
+                import model_reasoning
+                query=parse_qs(parsed.query,keep_blank_values=True)
+                if set(query)!={'id'} or len(query['id'])!=1:raise Problem('Choose one mission.')
+                job=query['id'][0]
+                return self.json_response(model_reasoning.report(studio,studio.job_owner(owner,job),job))
             if parsed.path == '/api/agent-documents':
                 from agent_documents import read_documents
                 query=parse_qs(parsed.query,keep_blank_values=True)

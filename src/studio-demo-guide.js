@@ -10,20 +10,18 @@ window.BacAgentBlueprint=agentBlueprint;
 el('crew-goal-intro').textContent=window.BacCrewCatalog[0].collaboration.description;
 function goalHint(choice){return choice.detail;}
 function goalPrompt(choice){const location='the city selected in Settings > Location';return choice.prompt.replace(location,()=>runtime.location?.city||location);}
-el('crew-goal-choices').innerHTML=goalExamples.map(g=>`<button type="button" data-goal-example="${escape(g.id)}" data-goal-hint="${escape(goalHint(g))}" aria-pressed="false" title="${escape(goalHint(g))}" aria-controls="studio-crew-prompt">${escape(g.title)}</button>`).join('');
-function exampleDocument(choice){return choice.document&&(data.crewDocuments||[]).find(file=>file.path==='inbox/'+choice.document);}
+el('crew-goal-choices').innerHTML='<div class="studio-goal-options">'+goalExamples.map(g=>`<button type="button" data-goal-example="${escape(g.id)}" data-goal-hint="${escape(goalHint(g))}" aria-pressed="false" title="${escape(goalHint(g))}" aria-controls="studio-crew-prompt">${escape(g.title)}</button>`).join('')+'</div>';
 function syncGoalExamples(locked){
  const box=el('crew-examples');box.hidden=selectedScenario!=='plan'||selectedCrewRole!==0||!!selectedOpenTaskVisitor;
  box.querySelectorAll('[data-goal-example]').forEach(button=>{
   const choice=goalExamples.find(g=>g.id===button.dataset.goalExample);
-  const needsConnection=choice.document&&!exampleDocument(choice)&&el('crew-document-add').disabled;
-  button.disabled=locked||box.hidden||!!needsConnection;
+  button.disabled=locked||box.hidden;
   button.setAttribute('aria-pressed',String(el('crew-prompt').value===goalPrompt(choice)));
   button.dataset.goalHint=goalHint(choice);
-  button.title=goalHint(choice)+(needsConnection?' Connect a model to attach the sample file.':'');
+  button.title=goalHint(choice);
  });
 }
-el('crew-goal-choices').onclick=async event=>{
+el('crew-goal-choices').onclick=event=>{
  const button=event.target.closest('[data-goal-example]');
  if(!button||button.disabled||selectedCrewRole!==0||selectedOpenTaskVisitor||selectedScenario!=='plan')return;
  syncCrewComposer();if(button.disabled)return;
@@ -32,13 +30,9 @@ el('crew-goal-choices').onclick=async event=>{
  const selection=crewDocumentSelection();
  selection.example=choice.document?'inbox/'+choice.document:'';
  selection.lockedExample=choice.requiredDocument?selection.example:'';
+ if(selection.example)selection.excluded.delete(selection.example);
  prompt.value=goalPrompt(choice);prompt.dispatchEvent(new Event('input',{bubbles:true}));
  prompt.focus({preventScroll:true});prompt.setSelectionRange(prompt.value.length,prompt.value.length);prompt.scrollTop=0;
- if(choice.document){
-  const existing=exampleDocument(choice);
-  if(existing){excludedCrewDocuments().delete(existing.path);renderCrewDocuments();}
-  else await uploadCrewDocuments([new File([choice.documentContent],choice.document,{type:choice.document.endsWith('.csv')?'text/csv':'text/plain'})],{example:true});
- }
 };
 function issueReportPanel(){return `<details id="studio-issue-report" class="studio-issue-report"><summary>Issue report</summary><div id="studio-issue-report-content">
  <header class="studio-issue-heading"><div><h3>AI Studio <span class="studio-issue-version">v${escape(buildInfo.version)}</span></h3></div></header>

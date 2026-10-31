@@ -32,7 +32,7 @@ Heartbeat follows the effective Hiring/Lounge connection, including a ready fall
 
 ## Arxivbot is a chat assistant
 
-Hiring also offers **Arxivbot**: give it a topic and it searches for three relevant arXiv papers, summarizes the abstracts and compares the papers with titles, authors, dates and links. Its **Web research** skill is fixed; extra skills can be added. It has no periodic heartbeat or automatic Telegram delivery. Tech Radar remains the recurring discovery preset with a fixed **Tech Radar** skill. Agents with Tech Radar are excluded from periodic Lounge chatter, even when Heartbeat is paused; actual updates remain visible.
+Hiring also offers **arXiv researcher**: give it a topic and it searches for three relevant arXiv papers, summarizes the abstracts and compares the papers with titles, authors, dates and links. Its **Web research** skill is fixed; extra skills can be added. It has no periodic heartbeat or automatic Telegram delivery. Tech Radar remains the recurring discovery preset with a fixed role and **Tech Radar** skill. Agents with Tech Radar are excluded from periodic Lounge chatter, even when Heartbeat is paused; actual updates remain visible.
 
 ## Optional Telegram
 

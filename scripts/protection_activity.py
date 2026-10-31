@@ -45,7 +45,17 @@ class ProtectionActivity:
     def forget(self, owner):
         with self.lock:
             self.events = deque((e for e in self.events if e['owner'] != owner), maxlen=128)
-            for cancelled in self.watchers.pop(owner, set()):cancelled.set()
+            for cancelled in self.watchers.pop(owner, {}):cancelled.set()
+
+    def observe_active(self, owner, role, agent_id, logs):
+        """Reuse live policy reads only inside this identity's current watch window."""
+        with self.lock:
+            windows = [(cancelled, started)
+                       for cancelled, (watched_role, watched_agent, started)
+                       in self.watchers.get(owner, {}).items()
+                       if watched_role == role and watched_agent == agent_id]
+        for cancelled, started in windows:
+            self.observe(owner, role, agent_id, logs, started, cancelled)
 
     def snapshot(self, owners, crew_owner):
         now = time.time()
@@ -66,7 +76,7 @@ class ProtectionActivity:
         started = time.time()
         finished = threading.Event()
         cancelled = threading.Event()
-        with self.lock:self.watchers.setdefault(owner, set()).add(cancelled)
+        with self.lock:self.watchers.setdefault(owner, {})[cancelled] = (role, agent_id, started)
         def read():
             try:
                 self.observe(owner, role, agent_id, reader(agent_id), started, cancelled)
@@ -85,7 +95,7 @@ class ProtectionActivity:
                 with self.lock:
                     watchers = self.watchers.get(owner)
                     if watchers is not None:
-                        watchers.discard(cancelled)
+                        watchers.pop(cancelled, None)
                         if not watchers:self.watchers.pop(owner, None)
         threading.Thread(target=sample, daemon=True, name='bac-policy-observer').start()
         try:

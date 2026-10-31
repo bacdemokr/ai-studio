@@ -22,6 +22,9 @@ assert(context.attachmentPreviewMarkup('a.xlsx','Sheet A1: text',true).includes(
  assert.equal(tab.opener,null);assert.equal(requests[0].target,'orbit');assert.equal(requests[0].scenario,'plan');assert(requests[0].path.includes('workspace=0'));
  assert.equal(links[0].download,'data.csv');assert(pages.at(-1).includes('<table>'));assert(pages.at(-1).includes("default-src 'none'"));
  await context.openAttachmentTab('inbox/book.xlsx','0');assert(requests.at(-1).path.includes('book.xlsx.txt'));assert.equal(links.at(-1).download,'book.xlsx');
+ const savedReads=requests.length;
+ await context.openAttachmentTab('inbox/sample.csv','0',{content:'GPU,TDP\nSample,600'});
+ assert.equal(requests.length,savedReads);assert(pages.at(-1).includes('Sample'));assert(pages.at(-1).includes('<table>'));assert.equal(links.at(-1).download,'sample.csv');
  failure=true;await context.openAttachmentTab('inbox/missing.txt','0');assert(pages.at(-1).includes('File unavailable &lt;test&gt;'));
  const before=requests.length;popup=false;await context.openAttachmentTab('inbox/data.csv','0');assert.equal(requests.length,before);assert(pages.at(-1).includes('Allow pop-ups'));
  popup=true;closed=true;const renders=pages.length;await context.openAttachmentTab('inbox/data.csv','0');assert.equal(pages.length,renders);

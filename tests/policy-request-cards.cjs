@@ -7,7 +7,7 @@ const report={_targetKey:'smith:personal',status:'applied',sandboxes:[{}],reques
  pendingAccess:[{host:hosts[0],reason:'blocked'},{host:hosts[1],reason:'requested'}]};
 const context=vm.createContext({el,policyTarget:()=>({key:'smith:personal',name:'Smith_2',mode:'openshell'}),
  policySnapshot:report,policyCrewRole:null,policySaving:false,policyLoading:false,agentId:'smith',
- data:{agents:[{key:'smith',pending:0}]},escape:String});
+ data:{agents:[{key:'smith',pending:0}]},escape:String,policyRecentActivity:()=>''});
 const source=fs.readFileSync('src/studio-policies.js','utf8');
 vm.runInContext(source.slice(source.indexOf('function renderPolicy(){'),source.indexOf("el('policy-agent').onchange=")),context);
 context.renderPolicy();

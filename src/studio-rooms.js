@@ -231,11 +231,12 @@ function syncRequiredRoleSkills(){
     card.querySelector('label').title=fixed?'Included with '+template.label:'';
   });
 }
-function selectRoleSkills(skills){
+function selectRoleSkills(skills,showHint=false){
   el('skill-picker').querySelectorAll('input').forEach(input=>input.checked=skills.includes(input.value));
-  el('role-hint').textContent=skills.length?'Suggested skills selected.':'No matching skills suggested. You can continue without them.';
+  el('role-hint').textContent=showHint?(skills.length?'Skills selected.':'No matching skills.'):'';
   updateDraft();
 }
+el('skill-picker').addEventListener('change',()=>{el('role-hint').textContent='';});
 el('role-templates').onclick=e=>{const button=e.target.closest('[data-role-template]');if(!button)return;const template=roleTemplates[Number(button.dataset.roleTemplate)];writeCreatorPrompt(creatorPrompt().tonePrompt,template.purpose);el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));selectRoleSkills(template.skills);};
 el('purpose').addEventListener('input',()=>{el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed','false'));el('role-hint').textContent='';syncCreatorTone();updateDraft();});
 el('tone-prompt').addEventListener('input',()=>{syncCreatorTone();updateDraft();});
@@ -244,9 +245,9 @@ el('apply-prompt').onclick=()=>{
   const role=creatorPrompt().purpose.toLowerCase();
   // Preset wording mentions teammates and outputs too; it is not a request to equip their skills.
   const template=selectedRoleTemplate();
-  if(template){selectRoleSkills(template.requiredSkills?.length?[...new Set([...template.skills,...[...el('skill-picker').querySelectorAll('input:checked')].map(i=>i.value)])]:template.skills);return;}
+  if(template){selectRoleSkills(template.requiredSkills?.length?[...new Set([...template.skills,...[...el('skill-picker').querySelectorAll('input:checked')].map(i=>i.value)])]:template.skills,true);return;}
   const rules={radar:/heartbeat|tech radar|technical feeds|하트비트|기술.*소식/,weather:/weather|forecast|travel|trip|날씨|여행/,web:/research|paper|arxiv|논문|search|online|web|travel|trip|cafe|restaurant|리서치|조사|검색|웹|여행|맛집|카페/,documents:/takeaway|three points|meeting|notes|회의|메모|document|report|pdf|ppt|slides|deck|summar|요약|슬라이드|csv|spreadsheet|문서|보고서|자료|엑셀/,builder:/app|game|prototype|code|coding|programmer|programming|website|webpage|앱|게임|코딩|개발|웹사이트/,writer:/slack|announcement|공지|message|email|메시지|메일|writ|draft|content|invitation|social|campaign|marketing|copy|작성|글쓰기|초대|마케팅|콘텐츠/,memory:/remember|memor|preference|기억|선호/};
-  selectRoleSkills(Object.entries(rules).filter(([skill,rule])=>rule.test(role)).map(([skill])=>skill));
+  selectRoleSkills(Object.entries(rules).filter(([skill,rule])=>rule.test(role)).map(([skill])=>skill),true);
 };
 el('onboarding').querySelectorAll('[name=protection]').forEach(input=>input.onchange=updateDraft);
 el('tone-picker').onclick=e=>{const button=e.target.closest('[data-tone]');if(button){draftTone=button.dataset.tone;writeCreatorPrompt(tonePromptLabel(draftTone),creatorPrompt().purpose);updateDraft();}};
@@ -280,7 +281,8 @@ async function waitForAgentDeletion(target,name,onWaiting=()=>{}){
 el('delete-agent').onclick=()=>{
   if(!data.profile||pendingWrites||changingAgent||removingAgent)return;
   const target=agentId,name=data.profile.name;
-  dialog('YOUR COLLECTION',`<div class="studio-delete-identity">${avatarBadge(data.profile.avatar)}<span>REMOVE A TEAMMATE</span></div><h3>Delete ${escape(name)}?</h3><p>Permanently delete this agent, its chats, memory and files.</p><p class="studio-muted">Pending and scheduled tasks are cancelled; active tasks involving this agent stop.</p><p id="studio-delete-error" role="alert" hidden></p><div class="studio-delete-actions"><button class="studio-secondary" id="studio-delete-cancel" autofocus>Keep agent</button><button class="studio-danger" id="studio-delete-confirm">Delete ${escape(name)}</button></div>`);
+  dialog('REMOVE AGENT',`<div class="studio-delete-identity">${avatarBadge(data.profile.avatar)}<div><span class="studio-delete-speaker">${escape(name)}</span><h3>“You sure you won’t need me?”</h3></div></div><p>Deleting <strong>${escape(name)}</strong> permanently removes this agent’s chats, memory and files.</p><p class="studio-delete-note">Pending and scheduled tasks are cancelled. Active tasks involving this agent stop.</p><p id="studio-delete-error" role="alert" hidden></p><div class="studio-delete-actions"><button class="studio-secondary" id="studio-delete-cancel" autofocus>Keep ${escape(name)}</button><button class="studio-danger" id="studio-delete-confirm">Delete ${escape(name)}</button></div>`);
+  el('dialog').classList.add('studio-delete-dialog');
   el('delete-cancel').onclick=()=>el('dialog').close();el('delete-cancel').focus();
   el('delete-confirm').onclick=async()=>{
     if(target!==agentId)return;

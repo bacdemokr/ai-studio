@@ -1,10 +1,9 @@
 // Both directions require native OpenShell policy evidence, never an approval click.
 const protectionSeen=new Set(),protectionHits=new Map(),protectionCooldown=new Map();
-const protectionReplies=new Map();
 const externalActivitySeen=new Set(),externalActivityPrimed=new Set(),nativeAllowSeen=new Map();
-function protectionReplyDelay(owner,role=null){
-  const key=owner+':'+(role===null?'personal':role),hold=protectionReplies.get(key);
-  if(hold&&performance.now()<hold.until)return hold;
+function protectionReplyDelay(){
+  // Keep the chat/bubble interface while showing completed replies alongside
+  // the shield animation. Native verification and event timing are unchanged.
   return null;
 }
 let protectionPrimed=false;
@@ -12,6 +11,26 @@ const protectionLayer=document.createElement('div');protectionLayer.className='w
 function protectionTarget(event){return event.role===null?(visitorTravel.get(event.owner)?.group||residents.find(r=>r.key===event.owner)?.group):robots[event.role]?.robot;}
 function protectionVisible(event){
   return !overview&&!journey&&(event.role!==null?room==='mission':visitorTravel.has(event.owner)?room==='mission'&&activeScenario==='plan':room==='lounge');
+}
+function placeProtectionNotice(hit,point){
+  const speaker=room==='lounge'&&hit.event.role===null
+    ?residents.find(r=>r.key===hit.event.owner&&r.node.dataset.speaking==='true'):null;
+  if(speaker){
+    // A reply and its policy outcome share one readable card instead of
+    // competing for the same point above the character's head.
+    if(hit.label.parentNode!==speaker.node){
+      hit.label.dataset.inline='true';
+      speaker.node.insertBefore(hit.label,speaker.node.querySelector('.world-resident-speech'));
+      hit.label.style.removeProperty('left');hit.label.style.removeProperty('top');hit.label.style.removeProperty('display');
+      placeResident(speaker);
+    }
+    return;
+  }
+  if(hit.label.parentNode!==protectionLayer){delete hit.label.dataset.inline;protectionLayer.append(hit.label);}
+  positionLabel(hit.label,point);
+  const half=hit.label.offsetWidth/2;
+  hit.label.style.left=Math.max(half+8,Math.min(viewport.clientWidth-half-8,parseFloat(hit.label.style.left)))+'px';
+  hit.label.style.top=Math.max(hit.label.offsetHeight+8,Math.min(viewport.clientHeight-8,parseFloat(hit.label.style.top)))+'px';
 }
 function disposeProtection(hit){
   scene.remove(hit.group);hit.label.remove();
@@ -92,11 +111,7 @@ function animateExternalConnection(hit,age,duration){
   hit.packets.forEach((packet,i)=>{packet.visible=motion;packet.position.copy(hit.curve.getPoint(((age*.6+i*.5)%1)*.88));packet.material.opacity=fade;});
   hit.label.dataset.phase=hit.phase;hit.label.style.opacity=String(fade);
   hit.group.updateMatrixWorld(true);
-  positionLabel(hit.label,hit.group.localToWorld(hit.globe.position.clone().add(new THREE.Vector3(0,1.35,0))));
-  // Keep the notice readable when an agent is near a viewport edge or zoomed in.
-  const half=hit.label.offsetWidth/2;
-  hit.label.style.left=Math.max(half+8,Math.min(viewport.clientWidth-half-8,parseFloat(hit.label.style.left)))+'px';
-  hit.label.style.top=Math.max(hit.label.offsetHeight+8,Math.min(viewport.clientHeight-8,parseFloat(hit.label.style.top)))+'px';
+  placeProtectionNotice(hit,hit.group.localToWorld(hit.globe.position.clone().add(new THREE.Vector3(0,1.35,0))));
 }
 function queueExternalConnection(event){
   const key=event.owner+':'+(event.role===null?'personal':event.role),target=protectionTarget(event);
@@ -147,10 +162,6 @@ function observeProtection(events=[]){
     if(event.action==='allow'&&protectionHits.get(key)?.event.action==='deny')continue;
     if(event.action==='allow')nativeAllowSeen.set(key,performance.now());
     else protectionCooldown.set(cooldownKey,performance.now());
-    if(event.action==='deny'&&protectionVisible(event)){
-      const hold={time:event.time,until:performance.now()+3000};protectionReplies.set(key,hold);
-      setTimeout(()=>{if(protectionReplies.get(key)===hold){protectionReplies.delete(key);root.dispatchEvent(new Event('bac:protection-reveal'));}},3000);
-    }
     if(event.action==='allow'){queueExternalConnection(event);continue;}
     if(protectionHits.has(key)){disposeProtection(protectionHits.get(key));protectionHits.delete(key);}
     if(protectionHits.size>=3){const [oldKey,old]=protectionHits.entries().next().value;disposeProtection(old);protectionHits.delete(oldKey);}
@@ -220,6 +231,6 @@ function animateProtection(now){
       hit.packet.material.opacity=t<0?1:Math.max(0,1-t/.7);hit.glow.material.opacity=.25*hit.packet.material.opacity;hit.trail.material.opacity=.8*hit.packet.material.opacity;
     }
     hit.label.dataset.phase=hit.phase;hit.label.style.opacity=String(motion?(t<0?.5:fade):1);
-    positionLabel(hit.label,hit.group.position.clone().add(new THREE.Vector3(0,2.65,0)));
+    placeProtectionNotice(hit,hit.group.position.clone().add(new THREE.Vector3(0,2.65,0)));
   }
 }

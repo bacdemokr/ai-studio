@@ -3,6 +3,7 @@ from unittest.mock import patch
 import test_collaboration_plan as fixture
 from agent_runtime import GatewayError
 from collaboration_plan import compact_contributions
+from plan_revision import PLAN_TIME_BUDGET_SECONDS
 
 
 class OutputRetryTests(unittest.TestCase):
@@ -143,7 +144,7 @@ class OutputRetryTests(unittest.TestCase):
         def respond(*args,**kwargs):
             try:return original(*args,**kwargs)
             except GatewayError:
-                clock[0]=580
+                clock[0]=PLAN_TIME_BUDGET_SECONDS-20
                 raise
         self.adapter.respond=respond
         result=self.start()
@@ -191,13 +192,13 @@ class OutputRetryTests(unittest.TestCase):
             if session.endswith('-output-retry'):timeouts.append(kwargs['timeout'])
             try:return original(agent,session,prompt,**kwargs)
             except GatewayError:
-                clock[0]=550
+                clock[0]=90
                 raise
         self.adapter.respond=respond
         result=self.start()
         with patch('collaboration_plan.monotonic',side_effect=lambda:clock[0]):
             self.app.execute(self.app.next_job())
-        self.assertEqual(timeouts,[50])
+        self.assertEqual(timeouts,[PLAN_TIME_BUDGET_SECONDS-90])
 
     def test_failed_retry_exports_newest_saved_snapshot(self):
         self.install_failure(always=True)

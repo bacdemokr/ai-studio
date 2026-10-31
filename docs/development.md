@@ -2,16 +2,15 @@
 
 ## Branches and versions
 
-Current workflow (October 15, 2026):
+Development stays on `preview/visitor-agent-teams`. Event snapshots and regional branches are separate:
 
-- `preview/visitor-agent-teams`: Hiring, Agent Lounge and Open Task.
-- `archive/event-brief-final-2026-10-15`: exact final visitor version containing Event Brief, preserved before removal.
-- `preview/stage3-scenarios`: established preview, including the ping-pong example and stability fixes. Visitor changes are not promoted here automatically.
-- `dev`: testing snapshot from before the ping-pong example. Keep it unchanged until preview promotion is explicitly agreed.
-- `bac/1001-zurich`: frozen Zurich snapshot for existing event setups.
-- `main` and released tags require explicit release approval. GitHub `bacdemokr/ai-studio` is private; publication there requires a separate request. Spark fixes from its preview branch can be reviewed and merged into GitLab preview without updating `dev` or `main`.
+- `bac/1023-kazakhstan`: frozen at `0e4dc58dbb8bb05a28559281ba3f8203210cec3f` (v0.2.3).
+- `bac/1102-uae` and `bac/1109-korea`: event branches; visitor development does not update them automatically.
+- `archive/event-brief-final-2026-10-15`: final Event Brief source before retirement.
 
-For this experiment, use `git switch preview/visitor-agent-teams`, then `git pull --ff-only`. Use `./bac start --keep-data` to preserve rehearsal data; plain `./bac start` clears it. Do not switch or merge branches while a demo is running.
+Do not update event snapshots, other development branches, release tags or external mirrors without an explicit publication request. Change `VERSION` only when a new version is requested; publication alone does not bump it. After committing, rebuild so build information identifies the delivered source even if the version is unchanged.
+
+For visitor development, use `git switch preview/visitor-agent-teams`, then `git pull --ff-only`. Use `./bac start --keep-data` to preserve rehearsal data; plain `./bac start` clears it. Do not switch or merge branches while a demo is running.
 
 Promote a tested preview only after target-hardware rehearsal and review. A release tag can point to the approved commit on any branch; it does not require first merging to `main`. Tags preserve code, not runtime data. Keep published tags and event snapshots unchanged.
 
@@ -72,6 +71,25 @@ The UI sends a per-tab browser-view ID; the server admits one participant before
 
 Team creation registers its identities and writes the initial workspace definitions within the same transaction that guards session retirement. A failed setup rolls back its newly allocated directories; a retiring session cannot hire agents or create another team. `tests/test_crew_ownership.py` and `tests/test_session_cleanup.py` cover initialization failures and overlapping cleanup.
 
+## Optional browser installation
+
+Playwright automates browser checks on Windows, Linux and macOS. It is a development dependency only: BaC, its Docker services and the movable information windows run normally without Playwright, Node.js on the host, or any Playwright-managed browser. In a source checkout, `./bac start` reports when the optional local Playwright package is absent but does not delay or block startup.
+
+To prepare Chromium, Firefox and Microsoft Edge for tests, run from the repository root:
+
+```bash
+npm install --save-dev playwright
+npx playwright install chromium firefox msedge
+```
+
+On supported Linux systems, Playwright can install the required OS libraries too:
+
+```bash
+npx playwright install --with-deps chromium firefox msedge
+```
+
+Microsoft Edge availability depends on the operating system and CPU architecture; it may not be available on ARM64 Linux systems such as DGX Spark. Installing a browser does not automatically run every test against it: tests launch Chromium with `chromium.launch()`, Edge with `chromium.launch({channel: 'msedge'})`, or Firefox with `firefox.launch()`. Do not add Playwright to `docker/runtime/package.json`, which contains production runtime dependencies.
+
 ## Exploratory rehearsal
 
 For the visitor branch, also use the [visitor-team regression checklist](visitor-regression.md). It covers both current team modes, per-hire models, role-or-skill suitability, explicit participants and the five in-app example goals. Use affected tests for focused maintenance; a full exploratory rehearsal is a separate step, with model and target-host coverage recorded explicitly.
@@ -108,6 +126,10 @@ failures are not. This is a functional capacity test, not a real-model load benc
 `tests/test_tech_radar.py` covers unread article selection, feed caching/failures, deduplication, pause/resume, tenant isolation, failed delivery and session credentials. For UI testing, run `python3 -B tests/fixture_heartbeat.py`, then `BASE_URL=http://127.0.0.1:8087 node tests/heartbeat-browser.cjs` with Playwright. This fixture sends no external messages.
 
 `python3 -B tests/heartbeat_protocol.py /path/to/bac-data/openclaw` uses the installed pinned runtime read-only with temporary configuration and random ports. It waits for a real 20-second native heartbeat and tests exec/read/write flow using a deterministic protocol fixture, not a real model. It does not touch the live gateway. Real-model summary quality and delivery to a real Telegram chat require a separate rehearsal.
+
+## Retired code and compatibility
+
+The active app does not ship the old Event Brief page renderer or its frontend-only handoff/social-draft tests. The archive branch retains that workflow. Keep stable role indexes, retired-route responses and migrations for old data and credentials: they support safe upgrades, ownership and cleanup. Current Open Task trace and handoff tests cover the active workflow.
 
 ## Further reference
 

@@ -1,5 +1,8 @@
 """One evidence-backed repair, restricted to specialists already in this plan."""
-PLAN_TIME_BUDGET_SECONDS = 600
+# Five-minute execution ceiling; the prompt still encourages finishing promptly.
+PLAN_TIME_BUDGET_SECONDS = 300
+PLAN_REVIEW_RESERVE_SECONDS = 15
+PLAN_REVISION_MIN_SECONDS = 35
 
 
 class PlanBudgetExceeded(RuntimeError):
@@ -48,7 +51,11 @@ def stale_revision_pages(plan):
 REVISION_INSTRUCTIONS = (
     '\nYou may request ONE targeted revision from a specialist who already participated, '
     'only when a saved contribution or review identifies a concrete defect that prevents an original requirement '
-    'from being met. Optional polish, personal taste and unavailable tools are not reasons to repeat work. '
+    'from being met. Prioritize missing deliverables, failure to load, broken primary interactions and '
+    'materially misleading results. Minor rounding, chart styling or wording issues can be disclosed '
+    'without another generation pass; do not describe known inaccuracies as correct. Explicit user '
+    'accuracy requirements still apply. Optional polish, personal taste and unavailable tools are not '
+    'reasons to repeat work. '
     'A generic request to read the file again, confirm it was saved, or verify every requirement is NOT a blocking defect. '
     'Successful saved-file evidence already establishes delivery, not browser execution. If no concrete failure '
     'has been observed, finish with any unperformed execution checks stated as limitations. '

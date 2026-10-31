@@ -78,7 +78,6 @@ function restorePersonalDraft(next,agents){
 }
 const imageKey=crew=>agentId+(crew?':crew:'+selectedScenario+':'+selectedCrewRole:':personal');
 function pendingImages(crew=false){return chatImageDrafts.get(imageKey(crew))||[];}
-function clearChatImages(crew=false){chatImageDrafts.delete(imageKey(crew));renderImageDrafts(crew);}
 // Acknowledgement clears only the submitted draft, not later typing or attachments.
 function captureChatDraft(crew=false){return {crew,crewRole:selectedCrewRole,key:imageKey(crew),roleKey:crewDraftKey(selectedCrewRole),prompt:el((crew?'crew-':'')+'prompt').value,images:pendingImages(crew).slice()};}
 function acknowledgeChatDraft(draft){

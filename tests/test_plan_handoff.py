@@ -65,6 +65,26 @@ class PlanHandoffTests(unittest.TestCase):
         for role in (8, 5):
             self.assertFalse(list((self.app.workspace(self.app.crew_owner(self.owner), role)/'inbox').glob('plan-*')))
 
+    def test_short_handoff_selector_delivers_only_verified_output(self):
+        self.configure(initial='saved')
+        self.adapter.plan['tasks'][1]['inputs'] = ['brief.md']
+        plan = self.run_plan()['payload']['collaboration']
+        self.assertEqual(plan['calledRoles'], [8, 5])
+        self.assertNotIn('inputSelectionRecovery', plan)
+        self.assertEqual(plan['tasks'][1]['inputs'], [])
+        self.assertTrue(plan['outputs']['8']['files'])
+        self.assertNotIn('handoffRecovery', plan)
+        self.assertEqual(len(self.research_sessions), 1)
+
+    def test_short_handoff_selector_cannot_bypass_missing_output(self):
+        self.configure(initial='missing', repair='missing')
+        self.adapter.plan['tasks'][1]['inputs'] = ['brief.md']
+        plan = self.run_plan()['payload']['collaboration']
+        self.assertEqual(plan['calledRoles'], [8])
+        self.assertEqual(plan['outcome'], 'partial')
+        self.assertNotIn('5', plan['outputs'])
+        self.assertNotIn('inputSelectionRecovery', plan)
+
     def test_code_recovery_uses_fresh_session_and_existing_source(self):
         self.adapter.plan['tasks'] = [{'role':5, 'task':'Fix artifacts/game.html',
                                       'requiredFiles':['artifacts/game.html']}]

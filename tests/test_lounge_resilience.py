@@ -47,7 +47,9 @@ class LoungeResilienceTests(unittest.TestCase):
         self.profile = self.app.configure(self.owner, {**self.profile, 'model':'shared'})
         self.app.execute(self.next_job()); self.tick()
         self.assertTrue(self.adapter.cadence[self.profile['id']])
-        self.assertEqual(self.adapter.profiles[self.profile['id']]['_connectionConfig']['baseUrl'],
+        route = self.adapter.profiles[self.profile['id']]['_connectionConfig']['baseUrl']
+        self.assertIn('/provider/local-', route)
+        self.assertEqual(session_secrets._local_routes[route.split('/provider/',1)[1].split('/',1)[0]],
                          settings.PROVIDERS['local']['baseUrl'])
 
         original = connections.status
@@ -64,7 +66,9 @@ class LoungeResilienceTests(unittest.TestCase):
         self.tick(31)
         job = self.next_job(31); self.assertIsNotNone(job)
         self.app.execute(job); self.tick(60)
-        self.assertEqual(self.adapter.profiles[self.profile['id']]['_connectionConfig']['baseUrl'],
+        route = self.adapter.profiles[self.profile['id']]['_connectionConfig']['baseUrl']
+        self.assertIn('/provider/local-', route)
+        self.assertEqual(session_secrets._local_routes[route.split('/provider/',1)[1].split('/',1)[0]],
                          settings.PROVIDERS['local']['baseUrl'])
 
     def test_explicit_local_agent_waits_without_switching_to_api(self):

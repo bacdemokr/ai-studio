@@ -81,11 +81,18 @@ const fitPlan={...base,visitorBindings:{8:{key:'orbit',name:'Orbit'}},
  declinedAgents:[{agent:'jinny',reason:decline}]};
 const fitJob={id:'fit',status:'running',payload:{prompt:'/goal Research and build',roster:[{key:'jinny',name:'Jinny <saved>'}],collaboration:fitPlan}};
 const advancedPlan={...fitPlan,calledRoles:[8],handoffs:{8:{task:'Find sources.',receivedFrom:[]}},outputs:{8:{answer:'Sources support the conclusion <carefully>.'}}};
+vm.runInContext("missionReasoningCache.set('fixture',{report:{recorded:true,active:true,calls:[{id:'call-1',role:8,phase:'Working',status:'finished',turns:[{index:1,model:'fixture-model',sections:[{kind:'summary',text:'Public summary <script>unsafe</script>'}]}]}]}})",context);
 const advanced=render(advancedPlan,'running',{},true);
-assert.deepEqual(kinds(advanced),['user','plan','reasoning','contribution','reasoning','planned']);
-assert.equal((advanced.match(/· REASONING</g)||[]).length,2);
+const normal=render(advancedPlan,'running',{},false);
+assert(!normal.includes('mission-model-reasoning'));
+assert(!normal.includes('Public summary'));
+assert.match(normal,/Sources support the conclusion &lt;carefully&gt;/);
+assert.match(source,/missionReasoningOpen\?'Hide advanced reasoning':'Advanced reasoning'/);
+assert.deepEqual(kinds(advanced),['user','plan','contribution','planned']);
+assert.equal((advanced.match(/mission-model-reasoning/g)||[]).length,2);
 assert(advanced.includes(escape(fit)));assert.match(advanced,/Sources support the conclusion &lt;carefully&gt;/);
-assert.match(advanced,/not private model chain-of-thought/);assert(!advanced.includes('<carefully>'));
+assert.match(advanced,/Reasoning summary/);assert.match(advanced,/Public summary &lt;script&gt;unsafe&lt;\/script&gt;/);
+assert.match(advanced,/Opening this view does not run the model again/);assert(!advanced.includes('<carefully>'));assert(!advanced.includes('<script>'));
 for(const markup of [context.missionControlTraceMarkup(fitJob),context.collaborationMarkup(fitJob,0)]){
  assert.match(markup,/Why this agent/);assert(markup.includes(escape(fit)));
  assert.match(markup,/Not assigned/);assert(markup.includes('Jinny &lt;saved&gt;'));

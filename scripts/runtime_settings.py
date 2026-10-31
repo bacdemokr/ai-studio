@@ -256,7 +256,7 @@ def verify_connection(provider, profile):
 def apply_to_config(config, provider, profile):
     ref='bac-'+provider+'/'+profile['model']
     config.setdefault('models',{}).setdefault('providers',{})['bac-'+provider]={
-        'baseUrl':secrets.proxy_url(provider,profile['baseUrl']) if profile['apiKey'] else profile['baseUrl'],'apiKey':'session-only' if profile['apiKey'] else 'local-only','api':PROVIDERS[provider]['api'],
+        **secrets.native_route(provider,profile),'api':PROVIDERS[provider]['api'],
         'models':[{'id':profile['model'],'name':profile['model'],'input':['text','image'],'reasoning':False,
                    'contextWindow':profile['contextWindow'],'contextTokens':profile['contextWindow'],'maxTokens':output_token_limit(profile['contextWindow']),
                    'cost':{'input':0,'output':0,'cacheRead':0,'cacheWrite':0}}]}

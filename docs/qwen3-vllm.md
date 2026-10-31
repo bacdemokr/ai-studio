@@ -45,3 +45,9 @@ exec vllm serve nvidia/Qwen3.6-35B-A3B-NVFP4 \
 The `sm_121a`, FlashInfer, NVFP4, and memory settings are hardware/build-specific; use the settings validated for your GPU and vLLM environment. Restart vLLM after changing launch arguments. In BaC, connect to `http://127.0.0.1:8000/v1` and select the model ID reported by the server.
 
 `--max-num-batched-tokens 8192` is a vLLM scheduling/batching setting, not the maximum number of tokens an agent may generate in one response. OpenClaw's response-token budget and task timeout are separate controls. Disabling thinking addresses runaway reasoning; it does not increase either OpenClaw limit. For tasks that specifically need Qwen reasoning, change the template value to `true` for that run/profile.
+
+### Mission Control reasoning display
+
+**Advanced reasoning** can display separately returned `reasoning` or `reasoning_content` from configured local servers, with or without an API key. It does not enable thinking or change this preset. With the latency-oriented `enable_thinking: false` setting above, no reasoning text is expected and the panel reports that it is unavailable.
+
+Field names depend on the server version. Current [vLLM protocol code](https://github.com/vllm-project/vllm/blob/main/vllm/entrypoints/openai/chat_completion/protocol.py) uses `reasoning`, while earlier compatible responses may use `reasoning_content`. [llama.cpp's server](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md) supports a separate reasoning field through `--reasoning-format deepseek`; `none` leaves it in the ordinary answer. The app does not split ordinary answer text or infer reasoning from `<think>` tags. These formats are covered by HTTP fixtures; running actual Qwen weights on every server/version is not implied.

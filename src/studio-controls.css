@@ -151,7 +151,7 @@
 /* Stage 3 should be readable at normal desktop zoom, including large displays. */
 @media(min-width:1100px){
  #bac-planner #agent-campus[data-room=mission]:not([data-world-overview=true]) .campus-layout{grid-template-columns:minmax(0,1fr) clamp(440px,34vw,640px)!important}
- #bac-planner #agent-campus #studio-standby>summary{font-size:17px;padding:16px 24px}
+ #bac-planner #agent-campus #studio-standby>summary{font-size:17px;padding:7px 24px}
  #bac-planner #agent-campus #studio-standby-count{font-size:14px;min-width:26px;height:26px}
  #bac-planner #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content{padding:16px 24px;gap:12px;overflow-y:auto}
  #bac-planner #agent-campus #studio-crew-passport .studio-companion-name{gap:12px}
@@ -169,13 +169,18 @@
  #bac-planner #agent-campus #studio-crew-passport #campus-roster small{font-size:14px}
 }
 
+/* Keep Casey's header and examples compact without shrinking agent controls. */
+#bac-planner #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content:has(#studio-crew-examples:not([hidden])){padding-top:12px;gap:8px}
+#bac-planner #agent-campus #studio-crew-passport:has(#studio-crew-examples:not([hidden])) .studio-companion-name{margin:0}
+#bac-planner #agent-campus #studio-crew-passport:has(#studio-crew-examples:not([hidden])) .studio-agent-title{margin-bottom:2px}
+
 /* Empty Mission Control describes the current workflow without preset cards. */
 #studio-surface #studio-board:not(.has-plan) .studio-board-intro{display:block;padding:24px 8px}
 #studio-surface #studio-board:not(.has-plan) .studio-kicker{display:none}
 
 /* Keep total process time inline with Casey's identity. */
 #studio-crew-passport .studio-captain-heading{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px}
-#studio-team-total-time{margin:0;color:#b9d88a;font:500 13px/1.4 Arial,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+#studio-team-total-time,#studio-board [data-mission-total]{margin:0;color:#b9d88a;font:500 13px/1.4 Arial,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
 #studio-team-total-time[hidden]{display:none}
 
 .studio-radar-info{min-width:0}
@@ -353,3 +358,14 @@
  #studio-dialog #studio-connection-editor .connection-editor-bottom{align-items:flex-start}
  #studio-dialog #studio-connection-editor .studio-dialog-actions{flex-wrap:wrap;justify-content:flex-end}
 }
+
+/* Make room for replies; expanding never changes the draft or team choice. */
+#bac-planner #agent-campus #studio-crew-prompt{height:calc(6em + 16px);transition:height .18s ease,min-height .18s ease}
+#bac-planner #agent-campus #studio-crew-chat.is-reading{padding:8px 12px}
+#bac-planner #agent-campus #studio-crew-chat.is-reading .studio-goal-toolbar{margin-bottom:4px}
+#bac-planner #agent-campus #studio-crew-chat.is-reading #studio-crew-prompt{height:40px!important;min-height:40px;padding-block:4px;resize:none}
+#bac-planner #agent-campus #studio-crew-chat.is-reading .studio-compose-actions{margin-top:0}
+#bac-planner #agent-campus #studio-crew-chat.is-reading .studio-compose-actions>button{min-height:36px;padding:6px 10px}
+#bac-planner #agent-campus #studio-crew-chat.is-reading #studio-crew-send{font-size:14px}
+@media(pointer:coarse){#bac-planner #agent-campus #studio-crew-chat.is-reading .studio-compose-actions>button{min-height:44px}}
+@media(prefers-reduced-motion:reduce){#bac-planner #agent-campus #studio-crew-prompt{transition:none}}

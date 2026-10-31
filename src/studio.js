@@ -152,7 +152,7 @@
     const cacheKey=scenario+':'+target,conditional=path==='state'&&payload===undefined,cached=conditional?stateCache.get(cacheKey):null;
     if(cached)headers['If-None-Match']=cached.etag;
     const options = payload===undefined ? {headers} : {method:'POST',headers:{...headers,'Content-Type':'application/json','X-BaC-CSRF':csrf},body:JSON.stringify(payload)};
-    const readTimeout=payload===undefined?(['session','state'].includes(path)?30000:path.split('?')[0]==='diagnostics'?5000:/^(?:agent-policy|crew-policy)(?:\?|$)/.test(path)?45000:0):0;
+    const readTimeout=payload===undefined?(['session','state'].includes(path)?30000:['diagnostics','model-reasoning'].includes(path.split('?')[0])?5000:/^(?:agent-policy|crew-policy)(?:\?|$)/.test(path)?45000:0):0;
     const controller=readTimeout?new AbortController():null;
     const timeout=controller?setTimeout(()=>controller.abort(),readTimeout):null;
     if(controller)options.signal=controller.signal;
@@ -189,6 +189,9 @@
     // Keep the last click instead of rejecting it. Foreground writes still
     // finish in their original workspace before switching.
     while(pendingWrites||removingAgent||hiringArrival){
+      // An explicit selection may finish the visual arrival, but never skip
+      // the save/state binding that owns the new agent's workspace.
+      if(hiringArrival)window.BacCampus?.finishArrival();
       await new Promise(resolve=>setTimeout(resolve,50));
       if(version!==agentSwitchVersion)return;
     }
@@ -219,10 +222,28 @@
   }
   el('agent-list').onclick=e=>{const b=e.target.closest('[data-agent-key]');if(b)switchAgent(b.dataset.agentKey);};
   let dialogRevision=0;
-  function dialog(kicker, html) {dialogRevision++;el('dialog').classList.remove('studio-agent-documents','studio-agent-code');el('dialog').classList.toggle('studio-page-preview',['EVENT PAGE','WEBPAGE PREVIEW'].includes(kicker));el('dialog-kicker').textContent=kicker;el('dialog-body').innerHTML=html;if(kicker==='Settings')el('dialog-body').scrollTop=0;if(!el('dialog').open)el('dialog').showModal();}
+  function dialog(kicker, html) {dialogRevision++;el('dialog').classList.remove('studio-agent-documents','studio-agent-code','studio-delete-dialog');el('dialog').classList.toggle('studio-page-preview',['EVENT PAGE','WEBPAGE PREVIEW'].includes(kicker));el('dialog-kicker').textContent=kicker;el('dialog-body').innerHTML=html;if(kicker==='Settings')el('dialog-body').scrollTop=0;if(!el('dialog').open)el('dialog').showModal();}
   el('dialog').addEventListener('close',()=>{dialogRevision++;});
   el('dialog-close').onclick=()=>el('dialog').close();
-  el('dialog').addEventListener('click',e=>{if(e.target===el('dialog')&&!removingAgent){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
+  function dismissOnBackdrop(modal,canClose=()=>true){
+    let startedOutside=false;
+    const outside=event=>{
+      if(event.target!==modal)return false;
+      const r=modal.getBoundingClientRect();
+      return event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom;
+    };
+    modal.addEventListener('pointerdown',event=>{startedOutside=event.button===0&&outside(event);});
+    modal.addEventListener('pointercancel',()=>{startedOutside=false;});
+    modal.addEventListener('close',()=>{startedOutside=false;});
+    modal.addEventListener('click',event=>{
+      const dismiss=startedOutside&&event.button===0&&outside(event);startedOutside=false;
+      if(!dismiss||!modal.open||!canClose())return;
+      // Honor the same save/reset guards as Escape. Never treat a text drag
+      // ending outside the dialog as a request to close it.
+      if(modal.dispatchEvent(new Event('cancel',{cancelable:true}))&&modal.open)modal.close();
+    });
+  }
+  dismissOnBackdrop(el('dialog'),()=>!removingAgent);
   function setup() {
     dialog('CONNECTIONS',`<h3>Connections</h3><div class="studio-runtime-grid"><div><b>Model</b><small>${runtime.model?'Connected':'Not connected'}</small></div><div><b>OpenClaw</b><small>${gatewayLabel()}</small></div><div><b>OpenShell</b><small>${escape(runtime.openshell||'Not configured')}</small></div></div>`);
   }
@@ -354,7 +375,30 @@
     renderCrewPassport();
   }
   /* STUDIO_CREW */
-  async function refresh(){if(changingAgent||removingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion&&target===agentId&&!changingAgent&&state!==data){data=state;render();}}catch(error){if(version===refreshVersion){if(error.status===401){connected=false;agentId='';stateCache.clear();personalDrafts.clear();crewDrafts.clear();chatImageDrafts.clear();el('dialog').close();await boot();if(connected){openAgentState(data);alert('Previous demo session cleared. Ready for a new demo.');}}else if(error.status===404){try{const state=await api('state',undefined,'');if(version===refreshVersion&&!changingAgent){el('dialog').close();openAgentState(state);alert('This agent was deleted in another tab. Your collection is up to date.');}}catch(recovery){alert(recovery.message,'error');}}else if(!document.hidden)alert(error.message,'error');}}finally{if(version===refreshVersion)busy=false;}}
+  async function refresh(){if(changingAgent||removingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion)statePollFailures=0;if(version===refreshVersion&&target===agentId&&!changingAgent&&state!==data){data=state;render();}}catch(error){if(version===refreshVersion){statePollFailures++;if(error.status===401){connected=false;agentId='';stateCache.clear();personalDrafts.clear();crewDrafts.clear();chatImageDrafts.clear();el('dialog').close();await boot();if(connected){openAgentState(data);alert('Previous demo session cleared. Ready for a new demo.');}}else if(error.status===404){try{const state=await api('state',undefined,'');if(version===refreshVersion&&!changingAgent){el('dialog').close();openAgentState(state);alert('This agent was deleted in another tab. Your collection is up to date.');}}catch(recovery){alert(recovery.message,'error');}}else if(!document.hidden)alert(error.message,'error');}}finally{if(version===refreshVersion)busy=false;scheduleStatePoll();}}
+  let statePollTimer=null,statePollFailures=0,statePollFastUntil=0;
+  function statePollDelay(){
+    if(statePollFailures)return Math.min(30000,3500*2**Math.min(statePollFailures-1,4));
+    const active=job=>['queued','running','stopping'].includes(job.status)&&(!job.due||job.due<=Date.now()/1000+1);
+    const working=pendingWrites||hiringArrival||(data.jobs||[]).some(active)||(data.crewChats||[]).some(active)
+      ||(data.agents||[]).some(agent=>agent.pending||['queued','running','stopping'].includes(agent.workspacePreparation));
+    // Native policy logs can arrive just after a job finishes. Keep a bounded
+    // tail of fast polls without prolonging the job or delaying its reply.
+    if(working)statePollFastUntil=Date.now()+8000;
+    return working||Date.now()<statePollFastUntil?650:3500;
+  }
+  function scheduleStatePoll(delay=statePollDelay()){
+    clearTimeout(statePollTimer);statePollTimer=null;
+    if(document.hidden||!connected)return;
+    // Schedule after completion so slow state requests never pile up.
+    statePollTimer=setTimeout(async()=>{
+      statePollTimer=null;
+      if(busy||changingAgent||removingAgent){scheduleStatePoll();return;}
+      await refresh();
+    },delay);
+  }
+  document.addEventListener('visibilitychange',()=>scheduleStatePoll(0));
+  window.addEventListener('focus',()=>scheduleStatePoll(0));
   el('equipped').onclick=e=>{const button=e.target.closest('[data-try-skill]');if(button)el('missions').querySelector('[data-studio-mission="'+button.dataset.trySkill+'"]')?.click();};
   el('missions').onclick=e=>{const button=e.target.closest('[data-studio-mission]');if(!button)return;const mission=missions.find(m=>m.id===button.dataset.studioMission);if(!data.profile){alert('Hire an agent first.');agentForm(true);el('name').focus();return;}if(!data.profile.skills.includes(mission.id)){
       let notice=el('mission-skill-notice');if(!notice){notice=document.createElement('div');notice.id='studio-mission-skill-notice';notice.className='studio-mission-skill-notice';el('missions').before(notice);}
@@ -463,9 +507,9 @@
       root.dataset.boot='error';root.setAttribute('aria-busy','false');
       status.querySelector('span').textContent='Could not open the studio. Please try again.';
       status.querySelector('button').hidden=false;
-    }finally{booting=false;}
+    }finally{booting=false;scheduleStatePoll();}
   }
   root.querySelector('.studio-boot-status button').onclick=()=>boot();
-  boot();setInterval(()=>{if(!document.hidden&&!busy)refresh();},1500);setInterval(async()=>{if(connected&&!document.hidden){try{const nextRuntime=await api('runtime');if(runtime.instance&&nextRuntime.instance!==runtime.instance){if(!nextRuntime.model)alert('Server restarted. Your agents and results are saved; reconnect the model to continue.');}runtime=nextRuntime;runtimeBadge();}catch{}}},10000);
+  boot();setInterval(async()=>{if(connected&&!document.hidden){try{const nextRuntime=await api('runtime');if(runtime.instance&&nextRuntime.instance!==runtime.instance){if(!nextRuntime.model)alert('Server restarted. Your agents and results are saved; reconnect the model to continue.');}runtime=nextRuntime;runtimeBadge();}catch{}}},10000);
   window.BacStudio={refresh,inspect:()=>({profile:data.profile,agentId,agents:data.agents,jobs:data.jobs,runtime,board,room}),showBoard,setRoom};
 })();

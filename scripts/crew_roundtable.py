@@ -74,7 +74,7 @@ def reaction_prompt(member, language, evidence, previous=(), *, collaboration=Fa
         prompt = prompt.replace('different booth', 'different topic').replace('event context', 'task and result context')
         prompt = prompt.replace('citing a metric, booth, or schedule detail is optional.', 'mentioning a concrete result detail is optional.')
         prompt = prompt.replace('A booth review is optional.', 'React to the supplied result; do not claim to have opened files or tested it.')
-        prompt += '\nIf the supplied outcome is partial, do not describe unfinished requirements as completed.'
+        prompt += '\nIf the supplied outcome is partial, react briefly to the available work or a stated limitation. Do not invent missing findings, describe unfinished requirements as completed, or imply that this comment completes the requested independent review.'
     return prompt
 
 
@@ -163,11 +163,13 @@ class RoundtableControls:
         self.signal.set()
         return {'id': row['id'], 'member': key}
 
-    def run_roundtable(self, row, payload):
+    def run_roundtable(self, row, payload, *, budget_seconds=None):
         meeting = payload.get('roundtable')
         if not meeting or not meeting['members']:
             return
         owner, job_id = row['owner'], row['id']
+        deadline = time.monotonic() + max(0, budget_seconds) if budget_seconds is not None else None
+        budget_reached = False
         collaboration = bool(payload.get('collaboration'))
         language = 'the same language as the supplied final response' if collaboration else payload['brief']['language']
         subject = 'completed response' if collaboration else 'event package'
@@ -186,10 +188,21 @@ class RoundtableControls:
                 self.event_stage_files(owner, job_id, payload, -1, '')
             self.event(job_id, 'Roundtable updated', 'Personal reactions are saved with the '+subject+'.', 0, payload=json.dumps(payload))
 
+        def out_of_time():
+            nonlocal budget_reached
+            if deadline is None or time.monotonic() < deadline:
+                return False
+            budget_reached = True
+            for member in pending:
+                key = member['key']
+                if meeting['replies'].get(key, {}).get('status') not in ('done', 'error'):
+                    meeting['replies'][key] = {'status':'skipped', 'reason':'The demo time budget was used. The task result is already available.'}
+            return True
+
         # Take turns so every guest receives completed earlier remarks. Parallel
         # drafting meant the first two guests could never see each other's point.
         for member in pending:
-            if self.stop_checkpoint(job_id):
+            if self.stop_checkpoint(job_id) or out_of_time():
                 break
             key = member['key']
             attempt = meeting['replies'].get(key, {}).get('attempt', 1)
@@ -205,12 +218,13 @@ class RoundtableControls:
                 reply.update(status='error', error=message, completed=time.time())
                 persist()
                 continue
-            if self.stop_checkpoint(job_id):
+            if self.stop_checkpoint(job_id) or out_of_time():
                 break
             self.event(job_id, member['name']+' is considering the result', 'Personal roundtable reaction', 0, payload=json.dumps(payload))
             try:
                 prompt = reaction_prompt(member, language, evidence, prior_reactions, collaboration=collaboration)
-                answer = self.protected_response(agent, 'bac-roundtable-'+job_id+'-'+key+'-'+str(attempt), prompt, key)
+                timing = {'timeout':max(.1, deadline - time.monotonic())} if deadline is not None else {}
+                answer = self.protected_response(agent, 'bac-roundtable-'+job_id+'-'+key+'-'+str(attempt), prompt, key, **timing)
                 if self.stop_checkpoint(job_id):
                     break
                 if not isinstance(answer, str) or not answer.strip() or len(answer) > 2500:
@@ -226,5 +240,5 @@ class RoundtableControls:
                     break
                 reply.update(status='error', error='This agent could not give a reaction. The '+subject+' is still available.', completed=time.time())
             persist()
-        meeting['status'] = 'cancelled' if self.stop_checkpoint(job_id) else 'done'
+        meeting['status'] = 'cancelled' if self.stop_checkpoint(job_id) else 'skipped' if budget_reached else 'done'
         persist()

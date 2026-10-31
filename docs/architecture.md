@@ -19,6 +19,7 @@ The app owns accounts/agent selection, durable jobs, team orchestration, validat
 | HTTP and ownership checks | `scripts/serve.py` |
 | Jobs, profiles, persistence | `scripts/studio.py` |
 | Native runtime, activity and files | `scripts/agent_runtime.py`, `scripts/agent_activity.py`, `scripts/agent_documents.py` |
+| Provider-returned reasoning | `scripts/model_reasoning.py`, `src/studio-crew.js` |
 | Open Task planning, handoffs and reactions | `scripts/collaboration_plan.py`, `scripts/collaboration_prompts.py`, `scripts/visitor_teams.py`, `scripts/plan_handoff.py`, `scripts/plan_revision.py`, `scripts/crew_roundtable.py` |
 | Build identity and support diagnostics | `scripts/build_info.py`, `scripts/diagnostics.py`, `src/studio-diagnostics.js` |
 | Shared connections and credentials | `scripts/model_connections.py`, `scripts/scenario_models.py`, `scripts/runtime_settings.py`, `scripts/session_secrets.py`, `scripts/team_models.py` |
@@ -36,11 +37,13 @@ Each worker receives its assignment, selected input files and verified earlier h
 
 Casey’s chat and Mission Control show saved assignment reasons and declined named participants. Mission Control also shows actual plan bindings, assignments, handoffs and Casey's review. Old plans without recorded reasons do not gain invented explanations. Results shows the team response and verified saved files, with partial work labeled clearly. HTML previews run in a restricted iframe; file access remains scoped to the authenticated account and selected workspace. Usage & time reports recorded calls and token totals without claiming provider billing accuracy.
 
+Mission Control opens the final response by default and shows the same elapsed/total time as Casey. Advanced reasoning displays provider-returned text only, without another model call. Updates preserve the reader's position; an explicit notice offers a jump to new content.
+
 ## Persistence and compatibility
 
 SQLite and workspaces live outside the checkout. The session cookie authenticates the participant; `X-BaC-Agent` selects only an agent they own. Browser-entered model keys are memory-only; validated `api.cfg` credentials are stored separately on the host. Neither is included in browser state or native agent definitions. See [credential storage](session-credentials.md). Native files are separate per personal agent and crew role.
 
-The Lounge shows Ready or Busy from actual work. Open Task reserves selected hires until their calls and result writes finish. Entering Open Task pauses hired Heartbeats without starting model calls. Completed workers stay at their desks until a new confirmed plan replaces them.
+The Lounge shows Ready or Busy from actual work. Open Task reserves selected hires until their calls and result writes finish. Entering Open Task pauses hired Heartbeats without starting model calls. Completed workers stay at their desks while the visitor remains in Open Task. Returning to Lounge brings all hires back; re-entering Open Task seats idle hires on the waiting benches.
 
 Open Task preserves stable role slots and native identities across upgrades. Retired Event Brief slots are never eligible for new tasks or workspace preparation. Its historical database records remain for ownership and safe cleanup; its routes reject new work. The final Event Brief implementation is preserved in `archive/event-brief-final-2026-10-15`.
 
@@ -48,7 +51,7 @@ Deletion fences an identity before stopping active work. Cleanup operates only o
 
 ## Polling and performance
 
-State is checked every 1.5 seconds while the page is visible. `/api/state` authenticates and builds the current snapshot, then returns an ETag. An unchanged conditional request returns 304 with no history body. The tab caches snapshots per agent; unchanged responses do not rebuild the UI. Agent switching and stale-response guards still apply. The server still performs its state query and hash; this is a network/render optimization, not an assertion that polling costs nothing.
+While visible, the page checks state every 650 ms during active work and for eight seconds afterward, or every 3.5 seconds when idle. Requests do not overlap; failures back off to 30 seconds and hidden tabs pause polling. `/api/state` authenticates and builds the snapshot before computing its ETag. An unchanged response returns 304 without a history body or UI rebuild. Agent-specific caches and stale-response guards remain in place. Conditional requests save transfer/render work, not the server's state calculation.
 
 A state response lists each exact workspace/query only once and reuses the result for file indicators and reset state. The next poll reads files again, including native writes that bypass HTTP. Listings retain the existing 100-file cap and ordering, but stop path validation/stat calls after that cap. Retired role slots are excluded from current chat queries while their stored rows remain intact. SQLite indexes serve per-owner history and per-role crew chats. Runtime readiness and host metrics have short caches. The scene limits rendering to roughly 30 FPS and pauses expensive work while hidden. Large model inference remains the dominant task latency; these changes do not claim higher model tokens/second.
 

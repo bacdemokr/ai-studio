@@ -19,7 +19,7 @@ Send these prompts to **Casey in Open Task** with `/goal`. Attach the sample ema
 
 ## In-app starting points
 
-Use the **Example goals** chips below Casey’s introduction for editable versions of these examples, **Event page**, and **GPU portfolio**. Travel uses a relative start date to avoid stale demo dates. The store example attaches the same fictional email linked below. GPU portfolio attaches a demo CSV for analysis and a comparison webpage. Bill splitter requests a compact calculator. Tooltips describe the requested outcome; Casey chooses the team from available skills and tools. Nothing starts until you send the goal. These shorter templates are adapted from the historical prompts below; their results and timings are not those historical measurements.
+Use the example buttons below Casey’s introduction for editable versions of these examples, **Event page**, and **GPU portfolio**. Travel guide and Event page use **Settings → Location**; Travel also uses a relative start date. Store email review stages the fictional email linked below; GPU portfolio stages a demo CSV for analysis and a comparison webpage. Sample files upload only when you send the goal, so browsing templates does not accumulate files. Bill splitter requests a compact calculator. Tooltips describe the outcome; Casey chooses the team from available skills and tools. These templates are adapted from the historical prompts below; their results and timings are not those historical measurements.
 
 The Event page template asks the current team to create a fictional meetup page and social draft from supplied details. It runs entirely in Open Task. The former fixed-team Event Brief is archived at `archive/event-brief-final-2026-10-15`.
 

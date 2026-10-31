@@ -1,5 +1,6 @@
 """Short-lived, process-memory credentials. No filesystem persistence."""
 import copy
+import hashlib
 import socket
 import ssl
 import errno
@@ -16,6 +17,7 @@ _lock = threading.RLock()
 _values = {}
 _closed = {}
 _proxy = None
+_local_routes = {}
 
 
 def put(key, value, lease):
@@ -105,11 +107,19 @@ class Proxy(BaseHTTPRequestHandler):
         import runtime_settings as settings
         # No credentials from the gateway are forwarded. Destinations come only from validated profiles.
         sent=False
+        collector=None
+        complete=False
         try:
             if self.headers.get('Authorization')!='Bearer session-only' and self.headers.get('x-api-key')!='session-only':raise ValueError()
             _, prefix, provider, suffix = self.path.split('/',3)
-            if prefix!='provider' or provider not in (*settings.PROVIDERS, 'team'):raise ValueError()
-            if provider == 'team':
+            with _lock:local_base = _local_routes.get(provider)
+            if prefix!='provider' or (not local_base and provider not in (*settings.PROVIDERS, 'team')):raise ValueError()
+            if local_base:
+                # Endpoint-bound routes for explicitly configured keyless local
+                # servers. Never fall back here when a credential expires.
+                profile={'baseUrl':local_base,'apiKey':''}
+                provider='local'
+            elif provider == 'team':
                 from team_models import credentials
                 profile = credentials()
             else:
@@ -124,6 +134,8 @@ class Proxy(BaseHTTPRequestHandler):
             size=int(self.headers.get('Content-Length','0'))
             if not 0<=size<=8*1024*1024:raise ValueError()
             payload=self.rfile.read(size) if size else None
+            import model_reasoning
+            payload,collector=model_reasoning.request(payload,provider,base_url=profile['baseUrl'])
             headers={'Content-Type':'application/json','Accept':self.headers.get('Accept','application/json')}
             if provider=='anthropic':
                 headers['x-api-key']=profile['apiKey'];headers['anthropic-version']=self.headers.get('anthropic-version','2023-06-01')
@@ -131,8 +143,12 @@ class Proxy(BaseHTTPRequestHandler):
             elif profile['apiKey']:headers['Authorization']='Bearer '+profile['apiKey']
             request=urllib.request.Request(profile['baseUrl']+relative,data=payload,headers=headers,method=self.command)
             with settings.provider_opener(provider).open(request,timeout=180) as response:
+                if collector:collector.streaming='text/event-stream' in response.headers.get('Content-Type','')
                 self.send_response(200);self.send_header('Content-Type',response.headers.get('Content-Type','application/json'));self.send_header('Connection','close');self.end_headers();sent=True
-                while chunk := response.read1(65536):self.wfile.write(chunk);self.wfile.flush()
+                while chunk := response.read1(65536):
+                    self.wfile.write(chunk);self.wfile.flush()
+                    if collector:collector.feed(chunk)
+                complete=True
                 self.close_connection=True
         except urllib.error.HTTPError as error:
             if sent:
@@ -164,15 +180,37 @@ class Proxy(BaseHTTPRequestHandler):
                 self.send_header('Content-Length',str(len(body)))
                 self.end_headers();self.wfile.write(body)
             except OSError:pass
+        finally:
+            if collector:collector.finish(complete)
 
 
-def proxy_url(provider, base_url):
+def proxy_url(provider, base_url, *, keyless=False):
     global _proxy
     with _lock:
+        if keyless:
+            if provider!='local':raise ValueError('Only local endpoints may be keyless.')
+            provider='local-'+hashlib.sha256(base_url.encode()).hexdigest()[:24]
+            _local_routes[provider]=base_url
         if _proxy is None:
             _proxy=ThreadingHTTPServer(('127.0.0.1',0),Proxy)
             threading.Thread(target=_proxy.serve_forever,daemon=True,name='credential-proxy').start()
         return 'http://127.0.0.1:%d/provider/%s%s' % (_proxy.server_port,provider,urllib.parse.urlsplit(base_url).path)
+
+
+def native_route(provider, profile):
+    """Use the same observation path for keyed APIs and configured local servers."""
+    if provider=='local' and not profile.get('apiKey') and not profile.get('requiresKey'):
+        return {'baseUrl':proxy_url(provider,profile['baseUrl'],keyless=True),'apiKey':'session-only'}
+    if profile.get('apiKey') or (provider=='local' and profile.get('requiresKey')):
+        return {'baseUrl':proxy_url(provider,profile['baseUrl']),'apiKey':'session-only'}
+    return {'baseUrl':profile['baseUrl'],'apiKey':'local-only'}
+
+
+def observes(base_url):
+    """Only our own live relay can remove a transport marker before inference."""
+    parsed=urllib.parse.urlsplit(base_url or '')
+    return bool(_proxy and parsed.hostname=='127.0.0.1' and parsed.port==_proxy.server_port
+                and parsed.path.startswith('/provider/'))
 
 
 def purge_legacy(home):

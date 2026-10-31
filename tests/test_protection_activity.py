@@ -58,3 +58,62 @@ class ProtectionActivityTests(unittest.TestCase):
         with tracker.watch('owner',None,'personal',reader):result='model result'
         self.assertEqual(result,'model result');self.assertTrue(done.wait(1))
         self.assertEqual(tracker.snapshot({'owner'},'owner'),[])
+
+    def test_policy_reads_share_current_evidence_without_waiting_for_sampler(self):
+        tracker = ProtectionActivity()
+        with patch('protection_activity.threading.Thread'), tracker.watch('owner', None, 'native', lambda _: []):
+            now = time.time()
+            deny = {'time': now, 'host': 'example.com', 'action': 'deny',
+                    'reason': 'policy-denied', 'fingerprint': 'shared'}
+            tracker.observe_active('owner', None, 'native', [deny])
+            tracker.observe_active('owner', None, 'native', [deny])
+            tracker.observe('owner', None, 'native', [deny], now)
+            self.assertEqual(len(tracker.snapshot({'owner'}, 'owner')), 1)
+        tracker.forget('owner')
+
+    def test_policy_read_reuse_preserves_identity_freshness_and_native_evidence(self):
+        tracker = ProtectionActivity()
+        now = time.time()
+        deny = {'time': now, 'host': 'example.com', 'action': 'deny',
+                'reason': 'policy-denied', 'fingerprint': 'fresh'}
+        tracker.observe_active('owner', None, 'native', [deny])
+        self.assertEqual(tracker.snapshot({'owner'}, 'owner'), [])
+        with patch('protection_activity.threading.Thread'), tracker.watch('owner', None, 'native', lambda _: []):
+            for owner, role, agent in [('other', None, 'native'), ('owner', 8, 'native'), ('owner', None, 'other')]:
+                tracker.observe_active(owner, role, agent, [deny])
+            tracker.observe_active('owner', None, 'native', [
+                {**deny, 'time': now-10}, {**deny, 'time': now+60},
+                {**deny, 'reason': 'dns-failed'}, {'host': 'example.com'}])
+            self.assertEqual(tracker.snapshot({'owner'}, 'owner'), [])
+            tracker.forget('owner')
+            tracker.observe_active('owner', None, 'native', [deny])
+            self.assertEqual(tracker.snapshot({'owner'}, 'owner'), [])
+
+    def test_removed_owner_cancels_an_inflight_shared_read(self):
+        tracker = ProtectionActivity()
+        with patch('protection_activity.threading.Thread'), tracker.watch('owner', 8, 'native', lambda _: []):
+            original = tracker.observe
+            def race(*args):
+                tracker.forget('owner')
+                return original(*args)
+            with patch.object(tracker, 'observe', side_effect=race):
+                tracker.observe_active('owner', 8, 'native', [
+                    {'time': time.time(), 'host': 'example.com', 'action': 'deny', 'reason': 'policy-denied'}])
+            self.assertEqual(tracker.snapshot(set(), 'owner'), [])
+
+    def test_shared_window_closes_after_the_existing_final_reads(self):
+        tracker = ProtectionActivity()
+        real_thread, threads = threading.Thread, []
+        def thread(*args, **kwargs):
+            result = real_thread(*args, **kwargs)
+            threads.append(result)
+            return result
+        with patch('protection_activity.threading.Thread', side_effect=thread):
+            with tracker.watch('owner', None, 'native', lambda _: []):
+                pass
+        threads[0].join(4)
+        self.assertFalse(threads[0].is_alive())
+        self.assertEqual(tracker.watchers, {})
+        tracker.observe_active('owner', None, 'native', [
+            {'time': time.time(), 'host': 'example.com', 'action': 'deny', 'reason': 'policy-denied'}])
+        self.assertEqual(tracker.snapshot({'owner'}, 'owner'), [])

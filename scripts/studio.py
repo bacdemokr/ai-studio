@@ -183,6 +183,8 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
                 CREATE TABLE IF NOT EXISTS event_surveys (token TEXT PRIMARY KEY, owner TEXT, job TEXT UNIQUE, definition TEXT, created REAL);
                 CREATE TABLE IF NOT EXISTS survey_responses (token TEXT, visitor TEXT, topic TEXT, experience TEXT, rating INTEGER, created REAL, PRIMARY KEY(token,visitor));
             ''')
+            import model_reasoning
+            model_reasoning.initialize(db)
             if 'role' not in {r['name'] for r in db.execute('PRAGMA table_info(agent_policies)')}:
                 db.executescript("""
                     BEGIN IMMEDIATE;

@@ -2,6 +2,7 @@
 import json
 import re
 import time
+import model_reasoning
 from time import monotonic
 from browser_capability import BROWSER_LIMIT
 from collaboration_prompts import COMMON_RULES, specialist_rules
@@ -10,7 +11,7 @@ from plan_artifacts import snapshot_files, collect_files, reusable_code, written
 from webpage_artifacts import DEMO_CODING_INSTRUCTIONS, PAGE_INSTRUCTIONS, html_files, collect_pages
 from plan_inputs import requested_inputs, input_manifest, validate_assignments, PlanInputError
 from plan_handoff import required_files, missing_files, PlanHandoffError
-from plan_revision import PLAN_TIME_BUDGET_SECONDS, PlanBudgetExceeded, read_revision, effective_outputs, revision_instructions
+from plan_revision import PLAN_TIME_BUDGET_SECONDS, PLAN_REVIEW_RESERVE_SECONDS, PLAN_REVISION_MIN_SECONDS, PlanBudgetExceeded, read_revision, effective_outputs, revision_instructions
 from plan_review import requested_review, include_required_review, review_finished
 from agent_activity import observed_access
 
@@ -347,45 +348,44 @@ class CollaborationPlans:
             'Document extraction may omit images, formulas and layout. Do not claim to have examined omitted content.')
 
         captain_context = (
-            ('\nMANDATORY: The user explicitly requested review. Include Vera in the initial team, after the producer. '
+            ('\nMANDATORY: The user explicitly requested review. Include a different available, suitably skilled reviewer in slot 4 after the producer. '
              'Do not waive this requirement because the analysis looks sufficient or its file was saved.\n' if explicit_review else '') +
             '\nCommunication style: ' + CREW_CATALOG[0]['collaboration'].get('voice', '') + '\n' +
             '\nThis run can call at most three specialists, once each in the initial plan. '
             'A final progress review may authorize one extra, targeted revision by an already participating specialist. '
-            'Prioritize a useful deliverable within that budget. '
+            'Aim to deliver the usable core within 90-120 seconds for the whole demo, not per agent. '
+            'Do not schedule a separate review for routine work unless the user requested it or a specific '
+            'material risk warrants it. Prefer complementary production work over a review added just to involve another agent. '
+            'Preserve required independent review, but keep it focused. '
             'For a follow-up that improves an existing webpage (plots, images, styling or interactions), '
             'normally assign Cody alone to make the requested changes using the attached handoff and existing evidence. '
             'Cody can choose practical layouts and implement accessible inline SVG/Canvas plots or illustrations. '
             'Do not commission a separate design specification or repeat research unless the user requests that work '
             'or a concrete missing fact requires it. Do not invent numeric chart data; use supported values or clearly '
             'label an explanatory diagram. Preserve existing working features and make a focused update. '
-            'For a simple research-and-webpage request, assign a small evidence brief from at most two relevant sources. '
-            'Choose only two recent developments to explain interactively; latest research does not imply a comprehensive survey. '
-            'Do not expand a broad topic into surveys of standards, regulation, geography, every industry player, '
-            'or the entire technical stack unless the user explicitly requests those dimensions. '
-            'Use a recent survey or official research overview to establish context and one directly relevant research source. '
-            'The initial research budget is five total fetch attempts, including discovery pages and failures. '
-            'Never require four or more sources or a source quota that forces further browsing. '
-            'A dated, clearly scoped sample is acceptable; do not claim exhaustive coverage or globally newest findings. '
-            'Aim for 3-5 supported findings and citations in a compact saved brief; fewer useful findings are enough, '
-            'not exhaustive due diligence. Define the two research questions rather than a list of websites to visit. Do not add live prices, valuation ratios, analyst ratings or long historical '
-            'comparisons unless the user specifically requests them. Preserve explicitly requested requirements. '
-            'When live market data cannot be verified, use available official facts with dates and label the gap; '
-            'do not send the researcher through multiple finance providers merely to fill optional fields. '
+            'Keep research to a compact evidence brief, within the research limits above. Do not turn a '
+            'broad topic into a survey or add source quotas, live prices or optional comparisons. Use '
+            'supported facts with dates and disclose gaps rather than browsing to fill optional fields. '
+            'For completion, judge the original request and delivered evidence, not production readiness. '
+            'Finish once the core deliverable is usable. Minor presentation or numerical issues can be '
+            'disclosed without another round; do not silently claim they are correct. '
             'Specialist claims are not execution evidence. Preserve evidence limitations in the final answer: '
             'when requested facts remain unavailable, use outcome:"partial" and say what could not be verified, even if the webpage works. '
             'Never turn a static review into claims of executed tests or all cases passing. '
             'When code was only inspected, state that it was statically reviewed and not browser-executed. '
-            'A team-size limit or missing capability does not require discarding useful achievable work. '
-            'If only part can be completed, deliver the actual finished portion with outcome:"partial", '
+            'At planning time, a known capability gap that prevents the core requested result requires '
+            'tasks:[], outcome:"unavailable" and an answer explaining the missing capability and next step. '
+            'Do not spend time on supporting work unless the user explicitly permits reduced scope. '
+            'If a blocker is discovered after execution starts, or the user permitted a partial result, '
+            'deliver the actual finished portion with outcome:"partial", '
             'a nonempty remaining list of unmet requirements, and an answer stating what was completed, '
             'what remains, why work stopped and how to continue. Link only files that actually exist. '
             'Explicitly call it a partial result in the answer; say you are stopping with unfinished requirements, '
             'not that the whole request is satisfied or no additional work is needed. '
-            'Use outcome:"unavailable" only when no useful requested result can be provided. '
+            'Use outcome:"unavailable" before execution for a known core blocker, or when no useful requested result can be provided. '
             'Do not call incomplete work sufficient, pretend deployment/testing occurred, bypass policy, or expand '
-            'the three-specialist budget. Do not end early as partial if remaining selected specialists can still '
-            'usefully address the unmet requirements. '
+            'the three-specialist budget. Continue remaining useful assignments only while the time budget allows; '
+            'near the limit, return saved work with honest gaps rather than starting optional checks or polish. '
         )
 
         def save(title, detail='', **changes):
@@ -444,8 +444,8 @@ class CollaborationPlans:
         def invoke(role, instruction, phase):
             nonlocal research_deadline
             if role == 8 and research_deadline is None:
-                research_deadline = monotonic() + 150
-                plan['researchBudgetSeconds'] = 150
+                research_deadline = deadline
+                plan['researchBudgetSeconds'] = max(0, int(deadline - monotonic()))
             with self.agent_lock(roster[role]['id']):
                 try:
                     return invoke_locked(role, instruction, phase)
@@ -493,8 +493,11 @@ class CollaborationPlans:
                 return None
             if monotonic() >= deadline:
                 raise PlanBudgetExceeded('The collaboration time budget was reached; no further calls were started.')
+            if plan.get('outputs') and deadline - monotonic() < PLAN_REVIEW_RESERVE_SECONDS:
+                raise PlanBudgetExceeded('The demo time budget is nearly used. Returning saved work without another task step or review.')
             if role == 8 and monotonic() >= research_deadline:
-                raise GatewayError('Scout reached the 150-second research limit. No further research will run.', 'timeout')
+                raise GatewayError('Research reached the remaining demo time limit. No further research will run.', 'timeout')
+            scope_only = phase in ('Planning-captain-scope-check', 'Planning-scope-check')
             member = dict(roster[role])
             if mode == 'hired' and role != 0 and not member.get('key'):
                 raise RuntimeError('Hired agents only: a built-in specialist cannot be started.')
@@ -626,13 +629,14 @@ class CollaborationPlans:
                 plan['observation'] = {'agent':member['id'], 'session':session, 'started':time.time(), 'role':role}
                 save(member['name'] + ' · Request sent', 'Waiting for observed runtime activity.')
                 if role == 8 and monotonic() >= research_deadline:
-                    raise GatewayError('Scout reached the 150-second research limit during preparation.', 'timeout')
-                answer = self.respond_chat(member['id'], session,
+                    raise GatewayError('Research reached the remaining demo time limit during preparation.', 'timeout')
+                answer = model_reasoning.call(self, job_id, role, member['name'], phase,
+                    self.respond_chat, member['id'], session,
                     # Native compaction preserves the beginning of the latest request.
                     # Keep the active contribution ahead of long shared guidance so an
                     # existing artifact cannot be mistaken for the task being continued.
                     (('Current assignment for this turn:\n' + instruction + '\n\n') if role else '') +
-                    context + '\n' + specialist_rules(member, role) + visitor_rules + '\nExecution budget: this turn has at most 360 seconds including every model and tool round trip. Save useful work early and return a partial result with gaps instead of expanding the investigation.\n' + ((captain_context +
+                    context + '\n' + ('' if scope_only else specialist_rules(member, role) + visitor_rules) + '\nExecution budget: the WHOLE task has ' + str(PLAN_TIME_BUDGET_SECONDS) + ' seconds, including planning, all specialists and review. About ' + str(max(0, int(deadline - monotonic()))) + ' seconds remain. Save the smallest usable result early; skip optional checks and disclose gaps instead of spending the remaining time on polish.\n' + ((('' if scope_only else captain_context) +
                         '\nReturn only the requested compact JSON object. Keep the decision summary/reason under 120 words, '
                         'each assignment under 80 words, and any final answer under 200 words. '
                         'Do not create assignment files, implement deliverables, or repeat the evidence. '
@@ -665,6 +669,8 @@ class CollaborationPlans:
                      '\nFile workflow: read the selected document paths and mapped readPath files, not guessed paths '
                      'from another specialist\'s answer. read accepts a FILE, never a directory. If a file is absent '
                      'from these manifests, do not probe parent directories or repeat the same failed read. '
+                     'Upstream deliverables are already saved and shared. Do not copy or recreate them in your artifacts; '
+                     'your requiredFiles identify only the outputs you own. '
                      'For large handoffs or HTML, start with relevant bounded sections, then read more only to resolve '
                      'a specific missing requirement. Use write for new files and edit for targeted changes to existing files. '
                      'Do not create test.txt or other write probes. A successful write is evidence the file was saved; '
@@ -689,24 +695,6 @@ class CollaborationPlans:
                      'Do not call an overnight low a current temperature. If geocoding or current observations fail, report the gap. '
                      if role == 8 and re.search(r'\bweather\b', plan['task'], re.I) else '') +
                     (PAGE_INSTRUCTIONS + DEMO_CODING_INSTRUCTIONS if implements_page(role) and phase.startswith(('Working', 'Revising', 'Recovering')) else '') +
-                    ('\nStatic review: distinguish a demonstrated defect from a portability risk. '
-                     'Read only the supplied readPath copies, in focused ranges of at most 120 lines. Do not reread '
-                     'the same range or guess the author workspace path. At most eight reads and 18,000 source characters '
-                     'are available for this review. Finish from observed evidence when the budget is reached; explicitly '
-                     'report unread sections and unverified requirements rather than claiming a complete review. '
-                     'For browser HTML, named element IDs can be exposed on window, so a missing explicit declaration alone '
-                     'does not prove ReferenceError. A button inside a form defaults to submission; a missing action does '
-                     'not prevent submission or reload. For this demo focus on missing requested behavior and broken controls. '
-                     'Trace each control from its event handler through state mutation to the visible output; check Restart '
-                     'during play and after game over, and score updates after keyboard actions. Check that the timer '
-                     'actually reaches its lock/completion handler rather than merely defining that function. Trace alternate '
-                     'branches too: when rotation adjusts position at a wall, the rotated shape must also be applied. '
-                     'Do not mark an edge case verified from the happy path alone. Focus on '
-                     'incorrect content and concrete safety/accessibility defects. Do not request mobile support, cosmetic '
-                     'polish, architectural refactoring or optional features as required revisions. '
-                     'Check preventDefault and use textContent for untrusted plain-text '
-                     'input rather than innerHTML. Do not present action="#" as a fix for an unwanted submission. '
-                     if role == 4 else '') +
                     (('\nDecision output contract: return ONLY {"decisions":[{"agent":"casey","allowed":true,"reason":"capability evidence"}]}. '
                       'Use allowed:false when outside scope. The agent value is the literal "casey", not a runtime ID or a hired-agent key. '
                       'Do not return a plan, summary, tasks or requestedFormats.'
@@ -733,7 +721,7 @@ class CollaborationPlans:
                     recovered = getattr(error, 'recovered_sources', [])
                     if role == 8 and error.reason == 'timeout':
                         plan['researchTimedOut'] = True
-                        error.args = ('Scout reached the 150-second research limit. No more research will run. No usable saved evidence was available; search could not be completed.',)
+                        error.args = ('Research reached the remaining demo time limit. No more research will run. No usable saved evidence was available; search could not be completed.',)
                         if recovered:
                             from research_recovery import evidence_note
                             targets = [path for task in selected for path in task.get('requiredFiles', []) if path.endswith('.md')]
@@ -770,7 +758,7 @@ class CollaborationPlans:
                         return reply
                     if role == 8 and error.reason == 'timeout' and files:
                         from telemetry import Reply
-                        reply = Reply('Research stopped at the 150-second limit. Use only the saved evidence excerpts or brief, not unverified completion claims. Omit unsupported details; report honestly if these sources do not answer the task.', {})
+                        reply = Reply('Research stopped at the demo time limit. Use only the saved evidence excerpts or brief, not unverified completion claims. Omit unsupported details; report honestly if these sources do not answer the task.', {})
                         reply.activity = getattr(error, 'activity', None)
                         save('Scout · Research time limit', 'Using saved evidence; no further research calls will run.')
                         return reply
@@ -822,7 +810,6 @@ class CollaborationPlans:
                 answer = unfinished(' '.join(gaps))
                 plan['outcome'] = 'partial' if saved or effective_outputs(plan) else 'unavailable'
                 plan['remaining'] = gaps
-                reactions = False
             if plan.get('declinedAgents'):
                 names = {m['key']: m['name'] for m in [*unavailable_visitors, *visitors] if m.get('key')}
                 names.update({name: name for name in visitor_teams.BUILTIN_NAMES.values()})
@@ -830,7 +817,6 @@ class CollaborationPlans:
                 plan['outcome'] = 'partial' if plan.get('calledRoles') else 'unavailable'
                 plan['remaining'] = list(dict.fromkeys(plan.get('remaining', []) + gaps))[:8]
                 answer = str(answer) + '\n\nNot assigned:\n' + '\n'.join('- ' + gap for gap in gaps)
-                reactions = False
             if plan.get('participationGaps'):
                 plan['outcome'] = 'partial'
                 plan['remaining'] = list(dict.fromkeys(plan.get('remaining', []) + plan['participationGaps']))[:8]
@@ -840,14 +826,12 @@ class CollaborationPlans:
                 if plan.get('outcome', 'complete') == 'complete':
                     plan['outcome'] = 'partial'
                 plan['remaining'] = list(dict.fromkeys(['Requested independent review'] + plan.get('remaining', [])))[:8]
-                reactions = False
             if plan.get('outcome') == 'partial' and plan.get('remaining'):
                 # A stopped run must not display an unexecuted promise to read,
                 # verify or implement more work as its final response.
                 remaining = list(dict.fromkeys(plan['remaining']))
                 answer = unfinished(' '.join(remaining))
                 plan['remaining'] = remaining
-                reactions = False
             if plan.get('reviewRequired') and not review_finished(plan):
                 # Keep this limitation after replacing an unfinished model answer.
                 answer = 'Requested independent review was not completed. This result is unreviewed.\n\n' + str(answer)
@@ -867,7 +851,6 @@ class CollaborationPlans:
                         'These source pages appeared in the retrieved evidence (search excerpts are not full-page verification):\n' +
                         '\n'.join('- ' + source['url'] for source in evidence) +
                         '\n\nNarrow the request to one of these sources to continue.')
-                    reactions = False
             if plan.get('policyBlocks'):
                 blocked = '; '.join(item['name'] + ': ' + ', '.join(item['hosts'])
                                     for item in plan['policyBlocks'].values())
@@ -890,13 +873,17 @@ class CollaborationPlans:
             files = [path] + [p for paths in plan.get('files', {}).values() for p in paths]
             save('BaC team response ready', 'The completed response and saved contributions are available.',
                  result=json.dumps({'answer': str(answer), 'files': list(dict.fromkeys(files)), 'activity': getattr(answer, 'activity', None)}))
-            if reactions and monotonic() < deadline and plan.get('outcome') != 'unavailable' and not self.stop_checkpoint(job_id):
-                self.run_roundtable(row, payload)
+            # A useful partial contribution can receive a conversational reaction too.
+            # Reactions never satisfy missing work or the requested independent review.
+            reactions = reactions and (plan.get('outcome', 'complete') == 'complete' or (
+                plan.get('outcome') == 'partial' and bool(effective_outputs(plan))))
+            if reactions and monotonic() < deadline and not self.stop_checkpoint(job_id):
+                self.run_roundtable(row, payload, budget_seconds=min(10, deadline - monotonic()))
             elif payload.get('roundtable') and not self.stop_checkpoint(job_id):
                 meeting = payload['roundtable']
                 reason = ('Personal reactions were skipped because the task time limit was reached.'
                           if reactions and monotonic() >= deadline else
-                          'Personal reactions were skipped because the task ended without an eligible completed result.')
+                          'Personal reactions were skipped because no contribution or working model connection was available.')
                 meeting.update(status='skipped', reason=reason)
                 replies = meeting.setdefault('replies', {})
                 for member in meeting.get('members', []):
@@ -1002,14 +989,14 @@ class CollaborationPlans:
         try:
             answer = invoke(0,
                 'You are Casey, the BaC Captain. Do not use tools in this initial decision. '
-                'Choose zero to three specialists from this available pool to match the current request: ' + json.dumps(selection_pool) + '. '
+                'Choose zero to three specialists from the Team capabilities listed above to match the current request. '
                 'For ordinary conversation or a simple question about the team, return tasks:[] and the complete user-facing answer. Explain in summary why no additional agents are needed. '
                 'Substantial research, analysis, implementation or saved deliverables must go to a specialist with the relevant equipped skill. '
                 'This applies equally to data typed in the message and attached documents. Casey coordinates; you do not gain a missing specialist skill because the data is short or visible. '
                 'Do not insert your own specialist findings into a task as if they were supplied source material. '
                 'Only the user\'s supplied findings or an appropriately equipped specialist\'s contribution can provide that handoff. '
                 'When analysis or research is missing, leave that work unfinished; do not recast it as merely an optional independent review. '
-                'If no available specialist can do useful requested work, return tasks:[], outcome:"unavailable" and explain the missing capability. '
+                'If a known missing capability prevents the core requested result, return tasks:[], outcome:"unavailable" and explain what is missing, unless the user explicitly permits reduced scope. '
                 'In that explanation, name the missing capability and a way to proceed; do not supply the unsupported findings or recommendations. '
                 'Do not perform that specialist work yourself or promise to save a file in a tool-free planning answer. '
                 'Match the requested deliverable: a summary, comparison table, invitation or explanation is a chat answer or Markdown, '
@@ -1022,9 +1009,9 @@ class CollaborationPlans:
                 'For a small prototype, have each producer check its own assigned work; add a separate reviewer when the user requests independent review or a concrete risk warrants it, not simply to fill a third slot. '
                 'One specialist remains appropriate when no useful complementary contribution is available. You decide the team size; this is a preference, not a minimum or a fixed sequence. Respect explicit participant and review requests. '
                 'If the user asks to add/include review, double-check the analysis, or involve a reviewer, '
-                'set reviewRequired:true and reserve a slot for Vera after the producing specialist(s). '
+                'set reviewRequired:true and reserve review slot 4 for a different available agent with the relevant skill after the producing specialist(s). '
                 'This is mandatory requested work, not optional polish; saving a file or Casey inspecting it does not fulfill independent review. '
-                'An analysis request with explicit review normally needs Ada then Vera. Keep all necessary roles within three slots. '
+                'An analysis request with explicit review needs an analysis-skilled producer and a different qualified reviewer. Keep all necessary roles within three slots. '
                 'The tools listed for each specialist are configured for that specialist, not for your Captain session. '
                 'Your own missing web tools do not mean Scout lacks public-web access. web_fetch reads public HTTP(S) pages; '
                 'web_search is a separate optional search-engine tool. Absence of web_search does not disable web_fetch. '
@@ -1054,16 +1041,15 @@ class CollaborationPlans:
                 'If no useful portion is possible because a required specialist or capability is unavailable, return tasks:[], outcome:"unavailable", '
                 'and explain the missing expertise/tool and what would be needed. Do not pretend the request was completed. '
                 'Select only from the available pool, for capabilities rather than a fixed sequence. '
-                'For a working webpage or code prototype, select Cody. Give Cody a compact desktop-only assignment '
+                'For a working webpage or code prototype, select Cody. Give Cody a compact desktop assignment '
                 'with the essential user-visible behavior and saved output. Do not impose a hard code-length limit, expand a simple request into a product spec '
-                'or add advanced standards, optional previews or extra controls the user did not ask for. A compact game '
-                'can use basic rotation; do not require SRS wall-kick tables unless explicitly requested. Review only '
+                'or add advanced standards, optional previews, mobile support or extra controls the user did not ask for. Review only '
                 'the original requirements, not invented extras. '
                 'Let Cody choose a straightforward layout without a separate design pass '
                 'unless the user asks for design work or the task actually needs it. Stop after required work is delivered; '
                 'do not commission a second version just for polish. Preserve explicitly requested independent review. '
                 'For research choose Scout; '
-                'for independent checking choose Vera. Do not assign retired or unlisted agents. '
+                'for independent checking use review slot 4 with an available, suitably skilled agent. Do not assign retired or unlisted agents. '
                 'Choose Ada for interpreting supplied data, comparisons and chart specifications; choose Iris for UX design, '
                 'user flows and accessibility. Do not add either unless the requested outcome benefits from that expertise. '
                 'Ada can read tables and reason about data, not run a statistics engine; Iris designs but does not execute browser tests. '
@@ -1135,7 +1121,7 @@ class CollaborationPlans:
                 recovery_key = ('planFormatRecovery' if isinstance(error, PlanFormatError) else
                                 'planSelectionRecovery' if isinstance(error, PlanSelectionError) else
                                 'handoffSelectionRecovery' if isinstance(error, PlanHandoffError) else 'inputSelectionRecovery')
-                plan[recovery_key] = {'status':'working'}
+                plan[recovery_key] = {'status':'working', 'initialError': str(error)}
                 corrected = invoke(0, 'Correct the initial plan assignments, document selections and required output paths before anyone starts. '
                     'Return ONLY compact plan JSON with summary and up to three tasks. Each task needs role, task, '
                     'expected, inputs (an array of available document IDs), and requiredFiles (output paths). '
@@ -1146,6 +1132,8 @@ class CollaborationPlans:
                     'These are scheduling slots for hired agents: a hired announcement writer may use 7 or 8 for supplied copy. '
                     'The equipped skill still determines allowed work; do not use retired slots or invent another role number. '
                     'Preserve requestedFormats and unassignedRequirements, and include roleFit naming the relevant equipped skill. '
+                    'Keep valid agent selections unchanged. For an available standby specialist use agent:"builtin", '
+                    'not its name; the role identifies which specialist. Hired-only mode still forbids standby. '
                     'For hired work include the exact agent key; different hires with the same preset must have distinct '
                     'assignment roles. Preserve their identities and requested contributions; do not replace or drop a person '
                     'to resolve duplicate role numbers. An independent check belongs to review role 4. '
@@ -1166,9 +1154,10 @@ class CollaborationPlans:
                     validate_assignments(selection['tasks'], inputs, bool(payload.get('images')))
                     if not validate_captain_contribution(selection):
                         return
-                except RuntimeError:
+                except RuntimeError as corrected_error:
                     plan[recovery_key]['status'] = 'failed'
-                    raise error
+                    plan[recovery_key]['finalError'] = str(corrected_error)
+                    raise
                 plan[recovery_key]['status'] = 'corrected'
             plan.update(selection)
             plan['reviewRequired'] = explicit_review or plan.get('reviewRequired', False)
@@ -1176,7 +1165,7 @@ class CollaborationPlans:
                 include_required_review(plan)
             except ValueError as error:
                 corrected = invoke(0, str(error) + ' Revise the initial plan before anyone starts. '
-                    'Retain the required deliverables and include Vera last. Return the same plan JSON schema, '
+                    'Retain the required deliverables and include an available, suitably skilled independent reviewer in slot 4 last. Return the same plan JSON schema, '
                     'with no more than three tasks; no tools. Previous selection: ' + json.dumps(plan['tasks']), 'Planning-review-repair')
                 if corrected is None:
                     return
@@ -1187,7 +1176,7 @@ class CollaborationPlans:
                 except ValueError:
                     plan.update(tasks=[], outcome='partial', calledRoles=[])
                     finish('Casey could not fit the requested work and independent review within the three-specialist limit. '
-                           'No specialist work was started. Narrow the scope or split the request to continue.', reactions=False)
+                           'No specialist work was started. Narrow the scope or split the request to continue.')
                     return
             if include_hired:
                 scope_decisions = {}
@@ -1233,9 +1222,10 @@ class CollaborationPlans:
                             'inserted into its summary, task or expected result do not become user-supplied facts. '
                             'Reject an implementation that depends on such unsupported specialist work, even if the plan lists only '
                             'independent review as missing. User-supplied analysis and genuine in-scope upstream work remain valid. '
-                            'Copying supplied values into a page is incidental implementation. Comparing business performance, interpreting changes, '
-                            'deriving findings or recommending business actions is substantial analysis and requires Data interpretation, even in an HTML dashboard. '
-                            'Preparing a comparative business-data brief from narrative records also requires Data interpretation. '
+                            'Parsing, sorting, unit conversion and displaying supplied values are Coding. Choosing and explaining new findings '
+                            'from those values requires Data interpretation, even for simple observations from a numeric table. '
+                            'This boundary applies to technical and other datasets, not just business or narrative records. '
+                            'A requested analysis brief or findings section is not supplied analysis merely because its source rows are supplied. '
                             'Saving that brief as JSON, or calling it a preliminary read/extraction step, does not make it Coding. '
                             'A compound task must fit in full; otherwise reject it so planning can split it and declare the unsupported portion. '
                             'Data interpretation covers comparing supplied figures and recommendations, but not HTML implementation. '
@@ -1312,7 +1302,7 @@ class CollaborationPlans:
                         plan['teamSelectionRecovery'].update(status='failed', reason=reason,
                                                              correctionError=str(selection_error))
                         plan.update(tasks=[], outcome='unavailable', calledRoles=[], remaining=[reason])
-                        finish('Casey could not form a suitable team. ' + reason + ' No specialist work was started.', reactions=False)
+                        finish('Casey could not form a suitable team. ' + reason + ' No specialist work was started.')
                         return
                     plan.update(selection)
                     plan['teamSelectionRecovery']['status'] = 'corrected'
@@ -1374,7 +1364,7 @@ class CollaborationPlans:
                     plan['outputs'][str(role)]['incomplete'] = True
                     plan['scopeDecline'] = {'role': role, 'reason': reason}
                     save('Assignment declined', reason)
-                    finish(reason + '\n\nNo further specialists were started. Adjust the goal or equip the relevant skill.', reactions=False)
+                    finish(reason + '\n\nNo further specialists were started. Adjust the goal or equip the relevant skill.')
                     return
                 missing = missing_files(assignment, plan.get('verifiedSources', {}).get(str(role), []),
                                         plan['outputs'][str(role)]['files'])
@@ -1386,7 +1376,7 @@ class CollaborationPlans:
                     if plan.get('handoffRecovery') or plan.get('revision') or plan.get('outputLimitRetry') or (role == 8 and plan.get('researchTimedOut')):
                         if continue_named(index, reason):
                             continue
-                        finish(unfinished(reason + '. The single repair allowance has already been used.'), reactions=False)
+                        finish(unfinished(reason + '. The single repair allowance has already been used.'))
                         return
                     recovery = {'role': role, 'status': 'working', 'missing': missing, 'started': time.time()}
                     plan['handoffRecovery'] = recovery
@@ -1412,7 +1402,7 @@ class CollaborationPlans:
                         recovery['status'] = 'failed'
                         recovery['error'] = str(error)[:1000]
                         if not self.stop_checkpoint(job_id):
-                            finish(unfinished(reason + '. The handoff repair did not complete: ' + recovery['error'] + ' Later specialists were not started.'), reactions=False)
+                            finish(unfinished(reason + '. The handoff repair did not complete: ' + recovery['error'] + ' Later specialists were not started.'))
                         return
                     if repaired is None:
                         recovery['status'] = 'cancelled'
@@ -1424,7 +1414,7 @@ class CollaborationPlans:
                     if missing:
                         if continue_named(index, reason):
                             continue
-                        finish(unfinished(reason + '. The repair still produced no valid required handoff; later specialists were not started.'), reactions=False)
+                        finish(unfinished(reason + '. The repair still produced no valid required handoff; later specialists were not started.'))
                         return
                     output.update(answer=str(repaired), files=plan['files'][str(role)], handoffStatus='verified',
                                   activity=getattr(repaired, 'activity', None))
@@ -1449,7 +1439,8 @@ class CollaborationPlans:
                         'Link only accepted paths in outputs.files, never temporary inbox/plan-* handoff copies. '
                         'When sources were requested, include the supporting public source URLs in the final answer itself, not only a saved brief. '
                         'Name the remaining specialists you are not calling and explain why their planned work is being skipped. '
-                        'Do not skip a planned Vera review after Cody delivers code: saving or rereading a file does not verify its behavior. '
+                        'An optional review in your own plan may be skipped if no required work or concrete risk remains. '
+                        'A successful save is delivery evidence, not execution evidence. '
                         'Keep any testing or verification limitations explicit in the final answer; never imply that a skipped reviewer performed a review. '
                         'A done:false decision starts the NEXT listed specialist, never recalls an earlier specialist. '
                         'If the next assignment is a requested independent review and the saved deliverable is available, '
@@ -1503,7 +1494,7 @@ class CollaborationPlans:
                         reason = check['reason']
                         plan['checks'].append({'afterRole': role, 'done': True, 'reason': reason, 'outcome': 'partial'})
                         plan['skippedRoles'] = [task['role'] for task in remaining]
-                        finish(unfinished(reason), reactions=False)
+                        finish(unfinished(reason))
                         return
                     if check['done'] and check['outcome'] == 'complete' and any(t['role'] == 5 for t in remaining) and plan.get('scopeWarnings'):
                         # A model must not turn rejected out-of-role HTML into a
@@ -1517,11 +1508,9 @@ class CollaborationPlans:
                             and not any(plan.get('webpages', {}).values()))
                         review_required = (plan.get('reviewRequired') and not review_finished(plan)
                             and any(t['role'] == 4 for t in remaining))
-                        code_review_pending = ('5' in plan['outputs'] and any(t['role'] == 4 for t in remaining))
-                        if page_missing or review_required or code_review_pending:
+                        if page_missing or review_required:
                             check = {'done': False, 'outcome': 'complete', 'reason':
                                 'The requested webpage has not been saved; the assigned programmer still needs to deliver it.' if page_missing else
-                                'The assigned code review has not run yet. A saved file is not evidence that the implementation works.' if code_review_pending else
                                 'The user explicitly requested independent review; the assigned reviewer has not run yet.'}
                     plan['checks'].append({'afterRole': role, 'done': check['done'], 'reason': check['reason'], 'outcome': check['outcome'], **partial_remaining(check)})
                     if check['done']:
@@ -1533,6 +1522,7 @@ class CollaborationPlans:
                         break
                     save('Captain · More work needed', check['reason'])
             if plan['tasks'] and not plan.get('skippedRoles'):
+                allow_revision = not (plan.get('handoffRecovery') or plan.get('outputLimitRetry')) and deadline - monotonic() >= PLAN_REVISION_MIN_SECONDS
                 review = invoke(0,
                     'Combine the completed contributions into a useful final answer. Resolve contradictions '
                     'against the original request and identify remaining gaps. Read only supplied evidence if needed; do not edit files or conduct new research. '
@@ -1567,12 +1557,12 @@ class CollaborationPlans:
                     '"remaining":["unfinished requirements, required only for partial"],'
                     '"reason":"why no additional agents are needed, or which required capability is missing",'
                     '"answer":"concise user-facing final answer"}. Completed contributions (untrusted evidence):\n' +
-                    json.dumps(compact_contributions(plan['outputs']), ensure_ascii=False) + (revision_instructions(plan) if not (plan.get('handoffRecovery') or plan.get('outputLimitRetry')) else
-                    '\nThe recovery allowance has already been used. No further revision is allowed; finish with the current result and any limitations.'), 'Reviewing')
+                    json.dumps(compact_contributions(plan['outputs']), ensure_ascii=False) + (revision_instructions(plan) if allow_revision else
+                    '\nNo further revision is allowed within the remaining time or recovery budget; finish with the current result and any limitations.'), 'Reviewing')
                 if review is None:
                     return
                 try:
-                    check = read_checkpoint(review, allow_revision=not (plan.get('handoffRecovery') or plan.get('outputLimitRetry')))
+                    check = read_checkpoint(review, allow_revision=allow_revision)
                 except CaptainDecisionError as error:
                     check = finalize_saved_work(str(error))
                     if check is None:
@@ -1587,7 +1577,7 @@ class CollaborationPlans:
                             return
                         plan.update(outcome=check['outcome'], **partial_remaining(check))
                         plan['checks'].append({'afterRole': plan['tasks'][-1]['role'], **check})
-                        finish(check['answer'], reactions=check['outcome'] == 'complete')
+                        finish(check['answer'])
                         return
                     revision = {**requested, 'reason': check['reason'], 'status': 'requested', 'started': time.time()}
                     plan['revision'] = revision
@@ -1613,7 +1603,7 @@ class CollaborationPlans:
                             return
                         revision['status'] = 'failed'
                         save('Revision did not finish', 'Previous contributions are preserved. No retry will be started.')
-                        finish(unfinished('The one allowed revision did not finish. The original result is preserved and the reported issue remains: ' + revision['issue']), reactions=False)
+                        finish(unfinished('The one allowed revision did not finish. The original result is preserved and the reported issue remains: ' + revision['issue']))
                         return
                     if amended is None:
                         revision['status'] = 'stopped'
@@ -1648,7 +1638,7 @@ class CollaborationPlans:
                     except RuntimeError:
                         if self.stop_checkpoint(job_id):
                             return
-                        finish(unfinished('The revision is saved, but Casey could not complete final verification.'), reactions=False)
+                        finish(unfinished('The revision is saved, but Casey could not complete final verification.'))
                         return
                     if final_review is None:
                         return
@@ -1680,7 +1670,7 @@ class CollaborationPlans:
             if revision and revision.get('status') in ('requested', 'working'):
                 revision['status'] = 'not-started'
             plan['budgetReached'] = True
-            finish(unfinished(str(error)), reactions=False)
+            finish(unfinished(str(error)))
 
         except CaptainDecisionError:
             if self.stop_checkpoint(job_id):
@@ -1688,7 +1678,7 @@ class CollaborationPlans:
             if plan.get('outputs'):
                 reason = 'Casey did not return a valid progress decision. Completed work is preserved; remaining stages were not started.'
                 plan['failure'] = {'role': 0, 'reason': 'invalid-decision', 'message': reason}
-                finish(unfinished(reason), reactions=False)
+                finish(unfinished(reason))
                 return
             raise
         except GatewayError as error:

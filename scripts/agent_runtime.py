@@ -331,12 +331,11 @@ def write_workspace(workspace, profile, role=None, overwrite=True):
                                   'Complete the current request using only verified evidence and available tools. '
                                   'Previous artifacts are not evidence for a new task unless explicitly supplied.\n')
             files['AGENTS.md'] += '\n# Actual capabilities and limits\n' + json.dumps(collaboration_capabilities(profile, role), ensure_ascii=False) + '\n'
-    legacy_files = {}
     def write(target, content):
         if target.relative_to(workspace).as_posix() in edited and target.exists():
             return
         previous = target.read_text(encoding='utf-8', errors='replace') if target.exists() else None
-        if previous != content and (overwrite or previous is None or (target.name in legacy_files and previous == legacy_files[target.name])):
+        if previous != content and (overwrite or previous is None):
             target.write_text(content, encoding='utf-8')
     def copy(source, target, replace=overwrite):
         content = source.read_bytes()
@@ -911,6 +910,18 @@ def respond(agent_id, session, prompt, images=None, json_response=False, timeout
                  agent_id, identity_checks, model_checks, time.monotonic() - readiness_started)
     import user_location
     prompt = prompt + '\n\n' + user_location.context()
+    # Capture provider-published text; NVIDIA GPT 6+ calls opt in to summaries at
+    # the relay. Do not change reasoning effort,
+    # model registration or native tool-call replay to enable a display feature.
+    import model_reasoning, session_secrets
+    if model_reasoning.capturing():
+        try:
+            config = c.read_json(config_path())
+            entry = config.get('agents', {}).get('entries', {}).get(agent_id, {})
+            model = entry.get('model') or config.get('agents', {}).get('defaults', {}).get('model', {}).get('primary')
+            route = config.get('models', {}).get('providers', {}).get(str(model).split('/', 1)[0], {})
+            if session_secrets.observes(route.get('baseUrl')):prompt = model_reasoning.tag(prompt)
+        except (OSError, ValueError, TypeError, AttributeError):pass
     started = time.time()
     content = prompt if not images else [{'type':'text','text':prompt}]+[{'type':'image_url','image_url':{'url':'data:'+image['mime']+';base64,'+image['data']}} for image in images]
     request_started = time.monotonic()
@@ -936,7 +947,7 @@ def respond(agent_id, session, prompt, images=None, json_response=False, timeout
             error.recovered_sources = recovered_sources(root() / 'state', agent_id, session, started)
         if isinstance(error, GatewayError) and error.reason == 'timeout' and timeout is not None:
             import team_models
-            if team_models.role_for(agent_id) == 8 or re.fullmatch(r'bac-plan-[a-f0-9]{24}-8-[a-z0-9-]+', session):
+            if team_models.role_for(agent_id) == 8 or re.fullmatch(r'bac-plan-[a-f0-9]{24}-[0-9]+-[a-z0-9-]+|bac-roundtable-[a-f0-9]{24}-[a-f0-9]{24}-[0-9]+', session):
                 try:
                     cli('gateway','call','sessions.abort','--params',json.dumps({'agentId':agent_id,'key':'agent:'+agent_id+':openai-user:'+session,'clearQueued':True}),timeout=5)
                 except (RuntimeError, subprocess.TimeoutExpired):
