@@ -29,9 +29,13 @@ The app owns accounts/agent selection, durable jobs, team orchestration, validat
 
 ## Open Task execution and attribution
 
+Lounge and direct specialist chats include the current equipped-skill scope on each turn, including edited personas. A familiar topic does not authorize another kind of work: webpage implementation requires Coding. Page-generation instructions and automatic HTML export are limited to Coding-equipped agents; ordinary conversation and in-scope notes remain available. This is a model-guided role boundary, not an operating-system file restriction.
+
 Casey plans work for up to three specialists. Hired only uses available hired agents; Hired + Standby also permits Scout, Cody, Ada, Iris and Vera. The dispatcher validates captured team mode, identities, tools, dependencies and required handoffs before each call. A substantive assignment must fit the explicitly equipped skill, as well as permitted tools. Naming an agent does not override this boundary. Role suitability is model-guided; tool and policy enforcement are separate. Model claims alone do not prove that a file was saved.
 
 Each worker receives its assignment, selected input files and verified earlier handoffs. Casey checks observed results and has one shared repair/recovery allowance. Partial work remains available when a required contribution fails. Independent review uses a different agent; closing personal reactions are separate opinions.
+
+File-workflow prompts reuse available input text and successful write/edit receipts instead of routine save-confirmation reads. Missing content, uncertain writes, concrete repairs and assigned reviews can still require targeted reads. The application's handoff checks remain unchanged; a saved file does not prove correct content or successful browser execution.
 
 ## Results presentation
 

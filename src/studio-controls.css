@@ -169,10 +169,10 @@
  #bac-planner #agent-campus #studio-crew-passport #campus-roster small{font-size:14px}
 }
 
-/* Keep Casey's header and examples compact without shrinking agent controls. */
-#bac-planner #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content:has(#studio-crew-examples:not([hidden])){padding-top:12px;gap:8px}
-#bac-planner #agent-campus #studio-crew-passport:has(#studio-crew-examples:not([hidden])) .studio-companion-name{margin:0}
-#bac-planner #agent-campus #studio-crew-passport:has(#studio-crew-examples:not([hidden])) .studio-agent-title{margin-bottom:2px}
+/* Keep Casey compact even while busy work hides the examples. */
+#bac-planner #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content:has(#studio-crew-chat:not([hidden]) #studio-crew-hired-option:not([hidden])){padding-top:12px;gap:8px}
+#bac-planner #agent-campus #studio-crew-passport:has(#studio-crew-chat:not([hidden]) #studio-crew-hired-option:not([hidden])) .studio-companion-name{margin:0}
+#bac-planner #agent-campus #studio-crew-passport:has(#studio-crew-chat:not([hidden]) #studio-crew-hired-option:not([hidden])) .studio-agent-title{margin-bottom:2px}
 
 /* Empty Mission Control describes the current workflow without preset cards. */
 #studio-surface #studio-board:not(.has-plan) .studio-board-intro{display:block;padding:24px 8px}

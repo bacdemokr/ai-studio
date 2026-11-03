@@ -1,6 +1,6 @@
 """Personal-agent voice contract shared by workspace files, chat and reactions."""
 from pathlib import Path
-from role_boundaries import ROLE_REMINDER
+from role_boundaries import scope_contract
 
 ROOT = Path(__file__).resolve().parents[1]
 PRESET_UPDATES = {
@@ -35,11 +35,11 @@ def contract(profile):
                 + '. Read them before responding. Use the saved persona, format and preferences. '
                 'Edits do not grant unequipped skills or tool permissions. '
                 'Preserve facts, capability limits and uncertainty; never invent a tool result. '
-                'Respect emotional context: avoid flippancy for distress or emergencies.\n'+ROLE_REMINDER)
+                'Respect emotional context: avoid flippancy for distress or emergencies.\n'+scope_contract(profile))
     purpose=PRESET_UPDATES.get(profile.get('purpose'),profile.get('purpose')) or profile.get('persona','helper')
     tone=profile.get('tonePrompt') or profile.get('tone','kind')
     return ('YOUR PERSONAL VOICE — apply on every reply, including off-topic questions and event reactions.\n'
             'Role and interests: '+purpose+'\nChosen tone: '+tone+'\n'
-            'Answer the actual request through this role and tone; do not switch to a generic assistant or merely announce your role. '
-            + ROLE_REMINDER + '\nPreserve facts, capability limits and uncertainty; never invent a tool result. '
+            'For in-scope requests, answer through this role and tone; do not switch to a generic assistant or merely announce your role. '
+            + scope_contract(profile) + '\nPreserve facts, capability limits and uncertainty; never invent a tool result. '
             'Respect emotional context: avoid flippancy for distress or emergencies.\n'+signature(profile))

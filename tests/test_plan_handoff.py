@@ -100,6 +100,9 @@ class PlanHandoffTests(unittest.TestCase):
                 sessions.append(session)
                 if session.endswith('-recovering'):
                     self.assertIn('fresh conversation', prompt)
+                    self.assertIn('Read the existing source files', prompt)
+                    self.assertIn('Resolve failed or uncertain writes', prompt)
+                    self.assertNotIn('verify the writes', prompt)
                     self.assertIn('artifacts/game.html', prompt)
                     self.assertIn('Broken game', path.read_text())
                     path.write_text('<html><body>Repaired game</body></html>')

@@ -70,6 +70,14 @@ class CollaborationPromptTests(unittest.TestCase):
                 self.assertNotIn('SEARCH-FIRST DEMO', prompt)
                 self.assertEqual('Static review:' in prompt, '-4-working' in session)
                 self.assertEqual('eight reads / 18000' in prompt, '-4-working' in session)
+                # Saving must not trigger another read, while an independent
+                # review still receives permission and guidance to inspect code.
+                self.assertIn('successful write/edit results as save confirmation', prompt)
+                self.assertNotIn('verify they exist before claiming', prompt)
+                self.assertIn('reuse complete supplied previews and successful reads', prompt)
+                self.assertIn('This inventory is not a reading checklist', prompt)
+                self.assertIn('assigned independent review may need to read existing source', prompt)
+                self.assertIn('confirms saving, not correctness or browser execution', prompt)
 
     def test_hired_multiskilled_programmer_keeps_research_in_coding_slot(self):
         for skills, research in ((['builder'], False), (['builder', 'web'], True),

@@ -1602,10 +1602,10 @@ body{margin:0;padding:0;width:100%;max-width:none}
  #bac-planner #agent-campus #studio-crew-passport #campus-roster small{font-size:14px}
 }
 
-/* Keep Casey's header and examples compact without shrinking agent controls. */
-#bac-planner #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content:has(#studio-crew-examples:not([hidden])){padding-top:12px;gap:8px}
-#bac-planner #agent-campus #studio-crew-passport:has(#studio-crew-examples:not([hidden])) .studio-companion-name{margin:0}
-#bac-planner #agent-campus #studio-crew-passport:has(#studio-crew-examples:not([hidden])) .studio-agent-title{margin-bottom:2px}
+/* Keep Casey compact even while busy work hides the examples. */
+#bac-planner #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content:has(#studio-crew-chat:not([hidden]) #studio-crew-hired-option:not([hidden])){padding-top:12px;gap:8px}
+#bac-planner #agent-campus #studio-crew-passport:has(#studio-crew-chat:not([hidden]) #studio-crew-hired-option:not([hidden])) .studio-companion-name{margin:0}
+#bac-planner #agent-campus #studio-crew-passport:has(#studio-crew-chat:not([hidden]) #studio-crew-hired-option:not([hidden])) .studio-agent-title{margin-bottom:2px}
 
 /* Empty Mission Control describes the current workflow without preset cards. */
 #studio-surface #studio-board:not(.has-plan) .studio-board-intro{display:block;padding:24px 8px}
@@ -81811,7 +81811,7 @@ render();
       if(selection){selection.removeAllRanges();for(const range of ranges)if(range.commonAncestorContainer.isConnected)selection.addRange(range);}
     }
   }
-  const buildInfo={"version": "0.2.4", "commit": "29500d57499494f0ed31729581a051e8ef3abcc6", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
+  const buildInfo={"version": "0.2.4", "commit": "454a03840c5a33c3a83790fde9194f3b79655a8a", "branch": "preview/visitor-agent-teams", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
   // Only codes and source locations are retained. Never retain Error.message, bodies or URLs.
 const browserDiagnostics=[];
 const diagnosticRoutes=new Set('session state runtime diagnostics telemetry settings settings/models settings/start settings/team-model settings/connections settings/connections/preferences settings/connections/check settings/connections/models settings/scenario-model settings/scenario-models credential-session agents onboard profile agent-model delete-agent agent-policy crew-policy jobs upload decision retry-reaction reset crew-chat-reset bac-reset heartbeat team-model telegram telegram/test file workspace-files agent-documents evidence security'.split(' '));
@@ -84160,7 +84160,7 @@ function goalHint(choice){return choice.detail;}
 function goalPrompt(choice){const location='the city selected in Settings > Location';return choice.prompt.replace(location,()=>runtime.location?.city||location);}
 el('crew-goal-choices').innerHTML='<div class="studio-goal-options">'+goalExamples.map(g=>`<button type="button" data-goal-example="${escape(g.id)}" data-goal-hint="${escape(goalHint(g))}" aria-pressed="false" title="${escape(goalHint(g))}" aria-controls="studio-crew-prompt">${escape(g.title)}</button>`).join('')+'</div>';
 function syncGoalExamples(locked){
- const box=el('crew-examples');box.hidden=selectedScenario!=='plan'||selectedCrewRole!==0||!!selectedOpenTaskVisitor;
+ const box=el('crew-examples');box.hidden=locked||selectedScenario!=='plan'||selectedCrewRole!==0||!!selectedOpenTaskVisitor;
  box.querySelectorAll('[data-goal-example]').forEach(button=>{
   const choice=goalExamples.find(g=>g.id===button.dataset.goalExample);
   button.disabled=locked||box.hidden;

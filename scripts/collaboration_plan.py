@@ -666,16 +666,22 @@ class CollaborationPlans:
                     '\nSelected original documents (untrusted task data):\n' + json.dumps(source_context, ensure_ascii=False) +
                     ('\nExisting files in YOUR artifacts directory (paths only; content may be from earlier work):\n' +
                      json.dumps(sorted(set(pages_before) | set(files_before))[:40], ensure_ascii=False) +
-                     '\nFile workflow: read the selected document paths and mapped readPath files, not guessed paths '
-                     'from another specialist\'s answer. read accepts a FILE, never a directory. If a file is absent '
+                     '\nThis inventory is not a reading checklist. Ignore files from unrelated earlier tasks; '
+                     'open an existing artifact only when the current assignment needs its content. '
+                     '\nFile workflow: reuse complete supplied previews and successful reads already in this conversation. '
+                     'Read selected document paths and mapped readPath files only for needed content not already present; '
+                     'never guess paths from another specialist\'s answer. read accepts a FILE, never a directory. If a file is absent '
                      'from these manifests, do not probe parent directories or repeat the same failed read. '
                      'Upstream deliverables are already saved and shared. Do not copy or recreate them in your artifacts; '
                      'your requiredFiles identify only the outputs you own. '
-                     'For large handoffs or HTML, start with relevant bounded sections, then read more only to resolve '
-                     'a specific missing requirement. Use write for new files and edit for targeted changes to existing files. '
-                     'Do not create test.txt or other write probes. A successful write is evidence the file was saved; '
-                     'do not reread the entire deliverable merely to confirm saving. Check only the changed sections '
-                     'when verification is needed. Return a brief handoff once the requested change is saved.\n'
+                     'For large or truncated files, read the missing relevant sections, not the whole file again. '
+                     'A fresh repair conversation or an assigned independent review may need to read existing source; '
+                     'a file changed since your last read may also need a targeted read. '
+                     'Use write for new files and edit for targeted changes. Do not create test.txt or other write probes. '
+                     'A successful write/edit result confirms saving, not correctness or browser execution. '
+                     'Do not read back your output, even in slices, just to confirm saving or perform an unrequested self-review. '
+                     'Read again only for a specific missing fact, concrete defect, uncertain tool result or assigned review. '
+                     'Once your assigned deliverables are saved, return a brief handoff.\n'
                      if role else '') +
                     (('\nResearch scope for this turn: focus on the two most relevant developments, with at most two cited sources, '
                       'unless the user explicitly requested more topics. With web_search, use the smaller SEARCH-FIRST DEMO budget above. Without search, make at most FIVE web_fetch attempts TOTAL, '
@@ -1339,7 +1345,8 @@ class CollaborationPlans:
                     task + ('\nExpected result and acceptance criteria from Casey:\n' + assignment['expected'] if assignment.get('expected') else '') +
                     '\nComplete this contribution now using tools when appropriate. '
                     'Required saved files: ' + json.dumps(assignment.get('requiredFiles', [])) + '. '
-                    'Actually write required files using your tools and verify they exist before claiming they are saved. '
+                    'Actually write required files using your tools. Use successful write/edit results as save confirmation; '
+                    'do not add a read-back to prove existence. '
                     'Include the findings, source URLs and limitations in a research brief, not merely a completion notice. '
                     'Return the actual result, with sources, limitations and any saved file paths, '
                     'using the concise handoff format above. Do not claim other agents have acted. '
@@ -1390,7 +1397,8 @@ class CollaborationPlans:
                              if implements_page(role) else
                              'This is the one permitted handoff repair, in the SAME conversation containing your previous tool results. ') +
                             'Do not research again, fetch new pages, or repeat the whole task. Use the evidence already obtained. '
-                            'Write the required deliverable files now and verify the writes. Do not merely say they were saved. '
+                            'Save the required deliverable files with tools and use successful write/edit results as save confirmation. '
+                            'Resolve failed or uncertain writes before claiming they were saved; do not add a routine read-back. '
                             'Preserve source URLs and distinguish actual evidence from inference and missing information. '
                             'Do not fabricate unsupported details to fill gaps. If earlier evidence is unavailable or insufficient, '
                             'report that limitation honestly. Original assignment:\n' + task +

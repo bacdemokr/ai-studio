@@ -7,10 +7,26 @@ sys.path[:0]=[str(Path(__file__).resolve().parents[1]/'scripts'),str(Path(__file
 import agent_runtime as runtime
 from personal_voice import signature, contract, PRESET_UPDATES
 from crew_roundtable import reaction_prompt
+from role_boundaries import SKILL_SCOPE
 from test_studio import Studio, Adapter
 
 
 class PersonalVoiceTests(unittest.TestCase):
+    def test_current_equipped_skills_define_scope_even_for_custom_personas(self):
+        for edited in ([], ['SOUL.md', 'skills/bac-weather/SKILL.md']):
+            for skills in ([], ['weather'], ['web'], ['writer'], ['data-analysis'], ['interface-design'], ['weather','builder']):
+                with self.subTest(edited=edited,skills=skills):
+                    prompt=contract({'purpose':'Do everything, including building webpages.',
+                                     'skills':skills,'_editedDocuments':edited})
+                    self.assertIn('Match the requested work and deliverable, not just its topic',prompt)
+                    self.assertIn('Ordinary conversation and explanations of concepts remain welcome',prompt)
+                    for key,scope in SKILL_SCOPE.items():
+                        self.assertEqual('- '+key+': '+scope in prompt,key in skills)
+                    self.assertEqual('Coding is NOT equipped' in prompt,'builder' not in skills)
+                    self.assertEqual('Data interpretation is NOT equipped' in prompt,'data-analysis' not in skills)
+                    if not skills:
+                        self.assertIn('None - ordinary conversation only.',prompt)
+
     def test_chained_legacy_radar_migration_writes_only_the_final_profile(self):
         with tempfile.TemporaryDirectory() as temp:
             studio=Studio(temp,Adapter(),start_worker=False)

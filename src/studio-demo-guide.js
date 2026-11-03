@@ -12,7 +12,7 @@ function goalHint(choice){return choice.detail;}
 function goalPrompt(choice){const location='the city selected in Settings > Location';return choice.prompt.replace(location,()=>runtime.location?.city||location);}
 el('crew-goal-choices').innerHTML='<div class="studio-goal-options">'+goalExamples.map(g=>`<button type="button" data-goal-example="${escape(g.id)}" data-goal-hint="${escape(goalHint(g))}" aria-pressed="false" title="${escape(goalHint(g))}" aria-controls="studio-crew-prompt">${escape(g.title)}</button>`).join('')+'</div>';
 function syncGoalExamples(locked){
- const box=el('crew-examples');box.hidden=selectedScenario!=='plan'||selectedCrewRole!==0||!!selectedOpenTaskVisitor;
+ const box=el('crew-examples');box.hidden=locked||selectedScenario!=='plan'||selectedCrewRole!==0||!!selectedOpenTaskVisitor;
  box.querySelectorAll('[data-goal-example]').forEach(button=>{
   const choice=goalExamples.find(g=>g.id===button.dataset.goalExample);
   button.disabled=locked||box.hidden;

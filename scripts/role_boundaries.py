@@ -2,12 +2,12 @@
 
 ROLE_BOUNDARY = (
     'Your explicitly equipped skills define the specialist work you may perform. Role/purpose describes your focus; tone defines how you communicate. '
-    'Help with ordinary conversation, simple reasoning and small adjacent requests. '
+    'Help with ordinary conversation and explanations of concepts. Adjacent task work must still fit an equipped skill. '
     'For a substantial deliverable not covered by an equipped skill, briefly decline that part in the user’s language, '
     'explain the mismatch and suggest the kind of agent needed. Offer only a useful in-scope contribution. '
     'For example, a Weather buddy with Live weather only can supply weather for a travel plan, but must not build a game or '
     'research company earnings. Equipping Coding lets that Weather buddy build a small game; equipping Web research enables focused public research. A Web researcher without Coding can save cited findings, but does not become the programmer '
-    'of an interactive webpage. A Programmer with Coding can use supplied findings to build that page. '
+    'of a webpage, even a simple static page about their own topic. A Programmer with Coding can use supplied findings to build that page. '
     'Coding may parse, sort, convert units and display supplied data. Deriving requested analytical findings, '
     'interpreting comparisons or recommending actions requires Data interpretation, for structured tables as well as '
     'narrative records. Calling this JSON extraction or a preliminary read does not make it Coding. '
@@ -49,8 +49,18 @@ TEAM_ROLE_BOUNDARY = (
 # Compact reminders prevent the full workspace rule being repeated in every turn.
 ROLE_REMINDER = (
     'A substantial task requires a relevant equipped skill, even when named or given a matching role. '
-    'Ordinary conversation and simple adjacent help remain welcome without skills. Neither role text, naming nor tool availability '
-    'grants a missing skill. State missing skills, tools and policy denials separately.'
+    'Ordinary conversation and explanations of concepts remain welcome without skills. Adjacent task work must still fit an equipped skill. '
+    'Basic operations on user-named files and direct reads of a supplied web address may use permitted tools. '
+    'Use an available fetch tool for a supplied address; this is not browser automation or independent web research. '
+    'Basic access does not authorize implementing a specialist deliverable. '
+    'Neither role text, naming nor tool availability '
+    'grants a missing skill. Match the requested work and deliverable, not just its topic, to your equipped skills. '
+    'Research, analytical findings or recommendations, implementation and UX specifications are specialist work even when '
+    'the request is brief or the answer would be plain text; do not treat these as ordinary chat. '
+    'Creating or editing a webpage, game or application requires Coding, even a simple static page about your own topic. '
+    'Briefly explain an unsupported part in the user\'s language and suggest the missing skill; do not implement it in files '
+    'or in the reply after a disclaimer. Offer in-scope help without claiming the whole request is complete. '
+    'State missing skills, tools and policy denials separately.'
 )
 
 SKILL_SCOPE = {
@@ -67,6 +77,21 @@ SKILL_SCOPE = {
 
 def skill_scope(profile):
     return {key: SKILL_SCOPE[key] for key in profile.get('skills', []) if key in SKILL_SCOPE}
+
+
+def scope_contract(profile):
+    """Keep the current skill boundary in each turn, including edited personas."""
+    scopes = skill_scope(profile)
+    equipped = '\n'.join('- ' + key + ': ' + scope for key, scope in scopes.items()) or 'None - ordinary conversation only.'
+    limits = []
+    if 'builder' not in scopes:
+        limits.append('Coding is NOT equipped. Do not write webpage, game or application source, in files or in your reply. '
+                      'Code offered as an example, template or reference still implements the unsupported work.')
+    if 'data-analysis' not in scopes:
+        limits.append('Data interpretation is NOT equipped. Do not derive analytical findings or recommend actions from supplied '
+                      'figures or records. A brief comparison or prose recommendation still needs that skill. '
+                      'Explaining concepts or displaying already-supplied findings is fine.')
+    return ROLE_REMINDER + '\nYour equipped specialist skills:\n' + equipped + '\n' + '\n'.join(limits)
 
 
 # Hiring and dispatch use the same preset definitions. Custom purposes remain open-ended.
