@@ -37,14 +37,18 @@ class CollaborationPromptTests(unittest.TestCase):
             if '-8-working' in session:
                 self.assertIn('SEARCH-FIRST DEMO', prompt)
                 self.assertIn('For NVDA earnings', prompt)
-                self.assertIn('150-second research budget', prompt)
+                self.assertIn('Research shares the overall demo time budget', prompt)
             else:
                 self.assertNotIn('SEARCH-FIRST DEMO', prompt)
                 self.assertNotIn('For NVDA earnings', prompt)
-            if '-0-' in session:
+            if '-0-' in session and not session.endswith(('-planning-captain-scope-check', '-planning-scope-check')):
                 self.assertIn('Research planning limits', prompt)
                 self.assertIn('at most two focused searches', prompt)
                 self.assertIn('at most five total fetch attempts', prompt)
+            if session.endswith(('-planning-captain-scope-check', '-planning-scope-check')):
+                self.assertNotIn('Research planning limits', prompt)
+                self.assertNotIn('A final progress review may authorize', prompt)
+                self.assertIn('equipped', prompt)
             if session.endswith('-planning-captain-scope-check'):
                 contract = prompt.rsplit('Decision output contract:', 1)[1]
                 self.assertIn('"agent":"casey"', contract)
@@ -59,10 +63,21 @@ class CollaborationPromptTests(unittest.TestCase):
         calls = self.run_plan(adapter, [])
         for session, prompt in calls:
             if '-5-working' in session or '-4-working' in session:
-                self.assertIn('validate raw required inputs', prompt)
+                self.assertIn('Number.isInteger on whole-count inputs', prompt)
+                self.assertIn('visible, enabled start control', prompt)
                 self.assertIn('IIFE or module', prompt)
                 self.assertIn('Static inspection', prompt)
                 self.assertNotIn('SEARCH-FIRST DEMO', prompt)
+                self.assertEqual('Static review:' in prompt, '-4-working' in session)
+                self.assertEqual('eight reads / 18000' in prompt, '-4-working' in session)
+                # Saving must not trigger another read, while an independent
+                # review still receives permission and guidance to inspect code.
+                self.assertIn('successful write/edit results as save confirmation', prompt)
+                self.assertNotIn('verify they exist before claiming', prompt)
+                self.assertIn('reuse complete supplied previews and successful reads', prompt)
+                self.assertIn('This inventory is not a reading checklist', prompt)
+                self.assertIn('assigned independent review may need to read existing source', prompt)
+                self.assertIn('confirms saving, not correctness or browser execution', prompt)
 
     def test_hired_multiskilled_programmer_keeps_research_in_coding_slot(self):
         for skills, research in ((['builder'], False), (['builder', 'web'], True),
@@ -72,7 +87,8 @@ class CollaborationPromptTests(unittest.TestCase):
                 work = [prompt for session, prompt in calls if '-5-working' in session]
                 self.assertEqual(len(work), 1)
                 self.assertEqual('SEARCH-FIRST DEMO' in work[0], research)
-                self.assertIn('validate raw required inputs', work[0])
+                self.assertIn('Number.isInteger on whole-count inputs', work[0])
+                self.assertIn('visible, enabled start control', work[0])
 
 
 if __name__ == '__main__':

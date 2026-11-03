@@ -67,7 +67,7 @@ class PlanRoleScopeTests(unittest.TestCase):
                     self.assertIn('Complete ONLY the contribution Casey assigned', prompt)
                     self.assertNotIn('This run can call at most three specialists', prompt)
                     self.assertIn('Your /plan role boundary:', prompt)
-                elif role == 0:
+                elif role == 0 and '-scope-check' not in session:
                     self.assertIn('This run can call at most three specialists', prompt)
 
     def test_legitimate_early_finish_without_out_of_scope_page_still_allowed(self):

@@ -97,9 +97,10 @@ class DemoSkillsTests(unittest.TestCase):
                 content = (workspace / ('skills/bac-' + skill + '/SKILL.md')).read_text()
                 self.assertIn('description: ' + runtime.project_skill_description(skill), content)
                 if skill == 'builder':
-                    self.assertIn('update the same file with targeted edits', content)
-                    self.assertIn('without creating a file', content)
-                    self.assertIn('Do not reread merely to confirm', content)
+                    self.assertIn('make targeted edits to the existing file', content)
+                    self.assertIn('without creating files', content)
+                    self.assertIn('Do not read your output back, even in slices, for save confirmation', content)
+                    self.assertIn('resets an active run', content)
                 else:
                     self.assertIn('In the Lounge', content)
                     self.assertIn('collaboration research handoff', content)

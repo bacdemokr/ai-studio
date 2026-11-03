@@ -6,6 +6,7 @@ from studio import Studio
 from test_studio import Adapter
 with tempfile.TemporaryDirectory() as d:
  s=Studio(d,Adapter(),start_worker=False);o=s.session()[0]['id'];s.onboard(o,{'name':'Draft tester','persona':'guide','skills':['documents']});s.add_agent(o,{'name':'Second','persona':'guide','skills':['documents']});state=s.state(o);state.update(csrf='fixture',canConfigure=True,runtime={'ready':True,'gateway':True,'model':True,'installed':True});print(json.dumps(state))`],{encoding:'utf8'}));
+const connections={connections:{local:{provider:'local',enabled:true,ready:true,model:'original',message:'Ready'},api:{provider:'nvidia',enabled:false,ready:false,model:'',message:'Not configured'}},loungePreference:'auto',scenarioPreferences:{plan:'auto'}};
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});let failures=0;
  async function pasteImage(page,crew,name){
@@ -20,6 +21,8 @@ with tempfile.TemporaryDirectory() as d:
   const page=await browser.newPage({viewport:{width:1500,height:1100}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.route(/\/api\/(session|state)$/,r=>r.fulfill({json:state}));
+  await page.route('**/api/settings/connections',r=>r.fulfill({json:connections}));
+  await page.route('**/api/settings/connections/models',r=>r.fulfill({json:{models:[{id:'original'}]}}));
   await page.route('**/api/telegram',r=>r.fulfill({json:{connected:false}}));
   await page.route('**/api/runtime',r=>r.fulfill({json:state.runtime}));
   await page.route('**/api/settings',r=>r.fulfill({json:{provider:'local',providers:{local:{label:'Local',baseUrl:'http://localhost:8000/v1'}},profiles:{local:{model:'original',contextWindow:32768}}}}));
@@ -30,7 +33,7 @@ with tempfile.TemporaryDirectory() as d:
   finally{await page.close();}
  }
  try{
-  for(const crew of [false,true])await scenario(crew?'crew draft survives delayed send and role switch':'personal draft survives delayed send',async page=>{
+  for(const crew of [false,true])await scenario(crew?'Open Task draft survives delayed send and Lounge navigation':'personal draft survives delayed send',async page=>{
    let finish,calls=0;
    await page.route('**/api/jobs',async r=>{calls++;assert.equal(r.request().postDataJSON().images.length,1);await new Promise(resolve=>finish=resolve);await r.fulfill({json:{id:'sent-'+calls}});});
    await page.evaluate(room=>BacStudio.setRoom(room),crew?'mission':'lounge');await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
@@ -40,9 +43,9 @@ with tempfile.TemporaryDirectory() as d:
    await input.fill('First message');await input.press('Enter');await page.waitForFunction(crew=>document.querySelector(crew?'#studio-crew-send':'#studio-send').disabled,crew);
    assert.equal(calls,1);await input.fill('Next draft must remain');
    await pasteImage(page,crew,'next.png');await previews.nth(1).waitFor();
-   if(crew){await page.locator('[data-crew-member="3"]').click();await input.fill('Morgan draft');}
+   if(crew){await page.evaluate(()=>BacStudio.setRoom('lounge'));await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);await page.locator('#studio-prompt').fill('Independent Lounge draft');}
    finish();await page.waitForFunction(crew=>!document.querySelector(crew?'#studio-crew-send':'#studio-send').disabled,crew);
-   if(crew){assert.equal(await input.inputValue(),'Morgan draft');await page.locator('[data-crew-member="0"]').click();}
+   if(crew){assert.equal(await page.locator('#studio-prompt').inputValue(),'Independent Lounge draft');await page.evaluate(()=>BacStudio.setRoom('mission'));await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);}
    assert.equal(await input.inputValue(),'Next draft must remain');
    assert.equal(await previews.count(),1);assert.equal(await previews.first().getAttribute('alt'),'next.png');
   });
@@ -71,27 +74,29 @@ with tempfile.TemporaryDirectory() as d:
   });
   await scenario('old model connect cannot close or change a reopened settings form',async page=>{
    let finish,posts=0;
-   await page.route('**/api/settings',async r=>{
-    if(r.request().method()==='POST'){posts++;await new Promise(resolve=>finish=resolve);return r.fulfill({json:{}});}
-    return r.fulfill({json:{provider:'local',providers:{local:{label:'Local',baseUrl:'http://localhost:8000/v1'}},profiles:{local:{model:'original',contextWindow:32768}}}});
+   await page.route('**/api/settings/connections',async r=>{
+    if(r.request().method()==='POST'){posts++;await new Promise(resolve=>finish=resolve);return r.fulfill({json:connections});}
+    return r.fulfill({json:connections});
    });
-   await page.locator('#studio-config').click();await page.locator('#studio-model').fill('first-model');await page.locator('#studio-save-settings').click();
-   await page.waitForFunction(()=>document.querySelector('#studio-save-settings').disabled);assert.equal(posts,1);
-   await page.locator('#studio-dialog-close').click();await page.locator('#studio-config').click();await page.locator('#studio-model').fill('new-unsaved-draft');
+   const open=async()=>{await page.locator('#studio-config').click();await page.locator('[data-connection-edit="local"]').click();};
+   await open();await page.locator('#studio-connect-model').fill('first-model');await page.locator('#studio-connect-apply').click();
+   await page.waitForFunction(()=>document.querySelector('#studio-connect-apply').disabled);assert.equal(posts,1);
+   await page.locator('#studio-dialog-close').click();await open();await page.locator('#studio-connect-model').fill('new-unsaved-draft');
    finish();await page.waitForTimeout(350);
    assert(await page.locator('#studio-dialog').evaluate(e=>e.open),'Old completion closed new dialog');
-   assert.equal(await page.locator('#studio-model').inputValue(),'new-unsaved-draft');
+   assert.equal(await page.locator('#studio-connect-model').inputValue(),'new-unsaved-draft');
   });
   await scenario('repeated submit starts only one model connection',async page=>{
    let finish,posts=0;
-   await page.route('**/api/settings',async r=>{
-    if(r.request().method()==='POST'){posts++;await new Promise(resolve=>finish=resolve);return r.fulfill({json:{}});}
-    return r.fulfill({json:{provider:'local',providers:{local:{label:'Local',baseUrl:'http://localhost:8000/v1'}},profiles:{local:{model:'original',contextWindow:32768}}}});
+   await page.route('**/api/settings/connections',async r=>{
+    if(r.request().method()==='POST'){posts++;await new Promise(resolve=>finish=resolve);return r.fulfill({json:connections});}
+    return r.fulfill({json:connections});
    });
-   await page.locator('#studio-config').click();await page.locator('#studio-model').fill('model');
-   await page.evaluate(()=>{const f=document.querySelector('#studio-config-form');f.requestSubmit();f.requestSubmit();});
+   await page.locator('#studio-config').click();await page.locator('[data-connection-edit="local"]').click();await page.locator('#studio-connect-model').fill('model');
+   await page.evaluate(()=>{const button=document.querySelector('#studio-connect-apply');button.click();button.click();});
    await page.waitForTimeout(250);assert.equal(posts,1,'Duplicate connection request');finish();
-   await page.waitForFunction(()=>!document.querySelector('#studio-dialog').open);
+   await page.waitForFunction(()=>document.querySelector('#studio-connect-status').textContent==='Connected.');
+   assert(await page.locator('#studio-connect-apply').isEnabled(),'Completed connection unlocks editing');
   });
  }finally{await browser.close();}
  if(failures)process.exitCode=1;

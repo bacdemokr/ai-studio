@@ -31,7 +31,7 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   events.push(event('visitor-denied'));await page.evaluate(()=>BacStudio.refresh());
   await page.waitForFunction(()=>BacCampus.inspect().protectionHits.some(h=>h.id==='visitor-denied'&&h.visible));
   assert.match(await page.locator('.world-protection-hit:visible').innerText(),/Request blocked.*example.com.*OpenShell/s);
-  assert(await page.evaluate(owner=>!!BacCampus.protectionReplyDelay(owner,null),owner));
+  assert.equal(await page.evaluate(owner=>BacCampus.protectionReplyDelay(owner,null),owner),null,'The shield must not defer replies');
   assert.equal(await page.evaluate(()=>BacCampus.inspect().residents.find(r=>r.key===BacStudio.inspect().agentId).visible),false);
   await page.screenshot({path:'/tmp/bac-visitor-openshell-denied.png'});
   await page.waitForFunction(()=>!BacCampus.inspect().protectionHits.length);

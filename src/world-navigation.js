@@ -199,7 +199,15 @@ termOverview.onkeydown=e=>{
   if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeTermOverview();}
   else if(e.key==='Tab'){e.preventDefault();termOverview.querySelector('.world-room-paper-close').focus();}
 };
-root.addEventListener('pointerdown',e=>{if(!roomPaper.hidden&&!e.target.closest('.world-room-paper,.world-term-overview,[data-room-info]'))closeRoomInfo(false);},true);
+root.addEventListener('pointerdown',event=>{
+  if(event.button!==0||event.target.closest('dialog[open]'))return;
+  // Dismiss only the top information layer, preserving the page beneath it.
+  if(!termOverview.hidden){
+    if(!termOverview.contains(event.target)&&!event.target.closest('[data-term-overview]'))closeTermOverview(false);
+  }else if(!termPaper.hidden){
+    if(!termPaper.contains(event.target)&&!event.target.closest('[data-paper-term]'))closeTermInfo(false);
+  }else if(!roomPaper.hidden&&!roomPaper.contains(event.target)&&!event.target.closest('[data-room-info]'))closeRoomInfo(false);
+},true);
 const roomInfoMarkers=Object.keys(roomGuides).map(id=>{
   const node=document.createElement('button');node.type='button';node.className='world-room-info';node.dataset.roomInfo=id;
   node.textContent='i';node.setAttribute('aria-label','About '+studioRooms[id].title);node.title='About '+studioRooms[id].title;

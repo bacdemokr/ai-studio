@@ -220,6 +220,13 @@ class PlanInputs(unittest.TestCase):
             with self.subTest(selection=selection), self.assertRaises(RuntimeError):
                 read_plan(json.dumps({'summary': 'Test', 'tasks': [{'role': 6, 'task': 'Read', 'inputs': selection}]}))
         self.adapter.plan['tasks'] = [{'role': 6, 'task': 'Read', 'inputs': ['../../private.txt']}]
+        original = self.adapter.respond
+        def respond(agent, session, prompt, **kwargs):
+            answer = original(agent, session, prompt, **kwargs)
+            # Repeat the invalid selection on repair, rather than the fixture's
+            # generic non-JSON answer, so both attempts exercise file access.
+            return json.dumps(self.adapter.plan) if session.endswith('-planning-input-repair') else answer
+        self.adapter.respond = respond
         self.start()
         with self.assertRaisesRegex(RuntimeError, 'unavailable document'):
             self.app.execute(self.app.next_job())
@@ -254,6 +261,67 @@ class PlanInputs(unittest.TestCase):
                     {'task': 'Implement', 'requiredFiles': ['artifacts/future.md']}]
                 with self.assertRaisesRegex(RuntimeError, 'unavailable document'):
                     validate_assignments(tasks, [], False)
+
+    def test_unique_prior_handoff_basename_is_not_an_upload(self):
+        tasks = read_plan(json.dumps({'summary': 'Research then build', 'tasks': [
+            {'role': 8, 'agent': 'builtin', 'task': 'Research',
+             'inputs': [], 'requiredFiles': ['artifacts/research-brief.md']},
+            {'role': 5, 'agent': 'builtin', 'task': 'Build from the brief',
+             'inputs': ['research-brief.md', 'document-0'],
+             'requiredFiles': ['artifacts/index.html']}]}))['tasks']
+        validate_assignments(tasks, [{'id': 'document-0'}], False)
+        self.assertEqual(tasks[1]['inputs'], ['document-0'])
+        self.assertEqual([t['agent'] for t in tasks], ['builtin', 'builtin'])
+
+    def test_basename_does_not_expand_file_access_or_forward_dependencies(self):
+        for key in ('unknown.md', 'index.html', 'future.md', '../brief.md',
+                    './brief.md', '/brief.md', 'ARTIFACTS/brief.md',
+                    'brief.md.txt', 'document-9', 'private.txt'):
+            with self.subTest(key=key), self.assertRaisesRegex(RuntimeError, 'unavailable document'):
+                validate_assignments([
+                    {'task': 'Research', 'requiredFiles': ['artifacts/brief.md']},
+                    {'task': 'Build', 'inputs': [key], 'requiredFiles': ['artifacts/index.html']},
+                    {'task': 'Later', 'requiredFiles': ['artifacts/future.md']}],
+                    [{'id': 'document-0', 'name': 'private.txt'}], False)
+
+    def test_ambiguous_basename_needs_exact_prior_path(self):
+        for selected in ('brief.md', 'artifacts/a/brief.md'):
+            tasks = [
+                {'task': 'Research', 'requiredFiles': ['artifacts/a/brief.md']},
+                {'task': 'Build', 'inputs': [selected]},
+                {'task': 'Later', 'requiredFiles': ['artifacts/b/brief.md']}]
+            if selected == 'brief.md':
+                with self.assertRaisesRegex(RuntimeError, 'unavailable document'):
+                    validate_assignments(tasks, [], False)
+            else:
+                validate_assignments(tasks, [], False)
+                self.assertEqual(tasks[1]['inputs'], [])
+
+    def test_unknown_input_error_identifies_selector_without_blaming_agents(self):
+        with self.assertRaisesRegex(RuntimeError, 'Invalid inputs:.*missing.txt.*Keep valid agent'):
+            validate_assignments([{'task': 'Read', 'inputs': ['missing.txt']}], [], False)
+
+    def test_repair_reports_latest_error_and_preserves_original_diagnostic(self):
+        self.adapter.plan = {'summary': 'Research', 'tasks': [
+            {'role': 8, 'task': 'Research', 'inputs': ['missing.txt']}]}
+        original = self.adapter.respond
+        def respond(agent, session, prompt, **kwargs):
+            if session.endswith('-planning-input-repair'):
+                self.assertIn('agent:"builtin", not its name', prompt)
+                self.assertIn('Invalid inputs: ["missing.txt"]', prompt)
+                return json.dumps({'summary': 'Research', 'tasks': [
+                    {'role': 8, 'agent': 'Scout', 'task': 'Research', 'inputs': []}]})
+            return original(agent, session, prompt, **kwargs)
+        self.adapter.respond = respond
+        result = self.start()
+        with self.assertRaisesRegex(RuntimeError, 'invalid hired agent selection'):
+            self.app.execute(self.app.next_job())
+        plan = self.job(result)['payload']['collaboration']
+        recovery = plan['inputSelectionRecovery']
+        self.assertIn('unavailable document', recovery['initialError'])
+        self.assertIn('invalid hired agent selection', recovery['finalError'])
+        self.assertEqual(recovery['status'], 'failed')
+        self.assertTrue(all(agent.endswith('-r0') for agent, _, _ in self.adapter.calls))
 
     def test_symlink_cannot_be_used_as_document(self):
         inbox = self.app.workspace(self.owner) / 'inbox'

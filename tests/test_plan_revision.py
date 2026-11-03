@@ -2,7 +2,7 @@ import json
 import unittest
 from unittest.mock import patch
 import test_collaboration_plan as fixture
-from plan_revision import read_revision, revision_instructions
+from plan_revision import read_revision, revision_instructions, PLAN_TIME_BUDGET_SECONDS
 
 
 class RevisionTests(unittest.TestCase):
@@ -339,7 +339,7 @@ class RevisionTests(unittest.TestCase):
         original=self.adapter.respond
         def respond(agent,session,prompt,**kwargs):
             answer=original(agent,session,prompt,**kwargs)
-            if session.endswith('-reviewing'):clock[0]=601
+            if session.endswith('-reviewing'):clock[0]=PLAN_TIME_BUDGET_SECONDS+1
             return answer
         self.adapter.respond=respond
         result=self.start()

@@ -103,7 +103,9 @@ function syncVisitorTeam(){
     }
     v.job=assigned?job.id:null;v.role=member.role;v.name=member.name;v.title=member.taskTitle;
     v.working=assigned&&(job.activeStages||[]).includes(member.role);
-    v.node.querySelector('b').textContent=v.name;v.node.setAttribute('aria-label','Select '+v.name);
+    const label=v.node.querySelector('b');if(label.textContent!==v.name)label.textContent=v.name;
+    const accessibleName='Select '+v.name+(v.phase==='working'&&v.working?', working':'');
+    if(v.node.getAttribute('aria-label')!==accessibleName)v.node.setAttribute('aria-label',accessibleName);
   }
   syncVisitorResidents();
 }
@@ -124,9 +126,13 @@ function animateVisitors(dt){
     v.legs.forEach((leg,j)=>leg.rotation.x=seated?-Math.PI/2:stepping?Math.sin(clock*9+j*Math.PI)*.4:0);
     v.arms.forEach((arm,j)=>arm.rotation.x=seated?-.35:stepping?Math.sin(clock*9+j*Math.PI)*.3:working?-.7:0);
     const status=v.node.querySelector('small');
-    if(working)status.innerHTML='<span class="crew-working-badge"><span aria-hidden="true" class="crew-working-dot"></span>Working</span><span class="crew-working-role">'+escape(v.title)+'</span>';
-    else status.textContent=v.phase==='returning'?'Returning to Lounge':v.phase==='entering'?(v.destination==='seated'?'Joining Open Task':'Taking a workbench'):seated?'Standby':v.title;
-    v.node.setAttribute('aria-label','Select '+v.name+(working?', working':''));
+    const statusText=working?'<span class="crew-working-badge"><span aria-hidden="true" class="crew-working-dot"></span>Working</span><span class="crew-working-role">'+escape(v.title)+'</span>':v.phase==='returning'?'Returning to Lounge':v.phase==='entering'?(v.destination==='seated'?'Joining Open Task':'Taking a workbench'):seated?'Standby':v.title;
+    if(v.statusText!==statusText||v.statusWorking!==working){
+      if(working)status.innerHTML=statusText;else status.textContent=statusText;
+      v.statusText=statusText;v.statusWorking=working;
+    }
+    const accessibleName='Select '+v.name+(working?', working':'');
+    if(v.node.getAttribute('aria-label')!==accessibleName)v.node.setAttribute('aria-label',accessibleName);
     v.node.classList.toggle('visitor-waiting',seated);v.node.classList.toggle('working',working);v.node.classList.toggle('selected',activeScenario==='plan'&&(state.selectedVisitorKey===v.key||v.role!==null&&activeSelection===v.role));
     v.node.hidden=!(overview||journey||room==='mission'&&activeScenario==='plan'||room==='lounge'&&stepping);
     positionLabel(v.node,v.group.position.clone().add(new THREE.Vector3(0,2.2,0)));

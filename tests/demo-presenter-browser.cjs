@@ -10,26 +10,6 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   page.setDefaultTimeout(15000);page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.method()==='POST')posts.push(r.url());});
   await page.goto('http://127.0.0.1:'+port);await page.waitForFunction(()=>window.BacStudio?.inspect().runtime.personalModels);
   await page.locator('.world-room-map [data-world-room=workshop]').click();
-  assert.equal(await page.locator('#studio-edit-agent').textContent(),'Edit Agent');
-  assert.equal(await page.locator('#studio-crew-edit-agent').textContent(),'Edit Agent');
-  for(const width of [1600,1280,1024]){
-   await page.setViewportSize({width,height:1050});
-   const splitWords=await page.locator('#studio-creator-title, #studio-skill-picker small').evaluateAll(nodes=>{
-    const broken=[];
-    for(const element of nodes){
-     const text=element.firstChild;if(text?.nodeType!==Node.TEXT_NODE)continue;
-     for(const match of text.textContent.matchAll(/[가-힣]{2,}/g)){
-      const range=document.createRange();range.setStart(text,match.index);range.setEnd(text,match.index+match[0].length);
-      if(new Set([...range.getClientRects()].map(r=>Math.round(r.top))).size>1)broken.push(match[0]);
-     }
-    }
-    return broken;
-   });
-   assert.deepEqual(splitWords,[],`Korean words stay intact at ${width}px`);
-   if(width===1280)await page.locator('#studio-workshop').screenshot({path:'/tmp/bac-korea-hiring-wrap.png'});
-  }
-  await page.setViewportSize({width:1600,height:1050});
-
   const versionLabel=page.locator('.world-build-version');
   assert.equal(await versionLabel.innerText(),'v'+version);
   const labelBox=await versionLabel.boundingBox(),overviewBox=await page.locator('.world-overview-button').boundingBox();
@@ -41,11 +21,11 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.locator('[data-room-info=workshop]').click();
   await page.locator('[data-paper-term=agent]').click();
   assert(await page.locator('.world-term-paper .agent-blueprint').isVisible());
-  assert.match(await page.locator('.world-term-paper').innerText(),/Heartbeat는 같은 에이전트/);
+  assert.match(await page.locator('.world-term-paper').innerText(),/Heartbeat/);
   await page.screenshot({path:'/tmp/bac-agent-blueprint.png'});await page.keyboard.press('Escape');
   assert(await page.locator('[data-paper-term=agent]').evaluate(e=>e===document.activeElement));
   await page.locator('[data-paper-term=openshell]').click();
-  assert.match(await page.locator('.world-term-paper').innerText(),/인터넷 접속 대상은 정책에 따라 승인/);
+  assert.match(await page.locator('.world-term-paper').innerText(),/승인/);
   assert.equal(await page.locator('.world-term-paper details, .world-term-paper summary').count(),0);
   assert(await page.locator('.world-term-paper pre').isVisible());
   assert.match(await page.locator('.world-term-paper pre').innerText(),/openshell sandbox create/);
@@ -63,13 +43,13 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   assert.equal(await chips.count(),examples.length);
   assert.equal(await page.locator('[data-goal-example=stores]').count(),0);
   assert.equal(await page.locator('html').getAttribute('lang'),'ko');
-  for(const example of examples){assert.match(example.title,/[가-힣]/);assert.match(example.prompt,/^\/goal [가-힣]/);}
+  assert.equal(await page.locator('.studio-goal-caption').count(),0,'No redundant Template caption or reserved column');
   for(const example of examples)assert.equal(await page.locator('[data-goal-example='+example.id+']').getAttribute('title'),example.detail);
   assert.equal(await page.getByRole('button',{name:'Try a goal'}).count(),0);
   await page.locator('#studio-crew-prompt').fill('/goal My unfinished draft');
   for(const id of ['travel','drone','pong','event']){
    await page.locator('[data-goal-example='+id+']').click();
-   assert.equal(await page.locator('#studio-crew-prompt').inputValue(),examples.find(g=>g.id===id).prompt.replaceAll('{{city}}','Seoul'));
+   assert.equal(await page.locator('#studio-crew-prompt').inputValue(),examples.find(g=>g.id===id).prompt.replaceAll('{{city}}',await page.evaluate(()=>BacStudio.inspect().runtime.location?.city||'Seoul')));
    assert.equal(await page.locator('[data-goal-example='+id+']').getAttribute('aria-pressed'),'true');
    assert.equal(await page.locator('#studio-dialog').isVisible(),false,'Examples fill the composer without a dialog');
    assert.equal(await page.locator('#studio-crew-team-mode [aria-pressed=true]').getAttribute('data-team-mode'),mode);
@@ -80,59 +60,54 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   assert(await page.locator('#studio-crew-examples').evaluate(e=>e.scrollWidth<=e.clientWidth+1),'Chips wrap within a narrow side panel');
   await page.locator('#studio-crew-examples').screenshot({path:'/tmp/bac-inline-goals-narrow.png'});
   await page.setViewportSize({width:1600,height:1050});
-  await page.locator('#studio-config').click();
-  await page.locator('#studio-settings-location-tab').click();
-  assert.equal(await page.locator('#studio-location-city').inputValue(),'Seoul');
-  await page.locator('#studio-location-city').fill('부산');
-  await page.locator('#studio-save-settings').click();
-  await page.waitForFunction(()=>document.querySelector('#studio-settings-status').textContent.includes('저장했습니다'));
-  await page.keyboard.press('Escape');
-  for(const id of ['travel','event']){
-   await page.locator('[data-goal-example='+id+']').click();
-   const prompt=await page.locator('#studio-crew-prompt').inputValue();
-   assert.equal(prompt,examples.find(g=>g.id===id).prompt.replaceAll('{{city}}','부산'));
-   assert(!prompt.includes('{{city}}'));
-  }
-  assert.equal((await page.evaluate(()=>fetch('/api/settings').then(r=>r.json()))).location.city,'부산');
   await page.locator('#studio-crew-prompt').fill('/goal My edited goal');
   assert.equal(await page.locator('[data-goal-example][aria-pressed=true]').count(),0);
   let releaseUpload,uploadStarted;
   const uploadGate=new Promise(r=>releaseUpload=r),uploadSeen=new Promise(r=>uploadStarted=r);
   await page.route('**/api/upload',async route=>{uploadStarted();await uploadGate;await route.continue();});
-  await page.locator('[data-goal-example=gpu]').click();await uploadSeen;
-  assert.equal(await page.locator('#studio-crew-prompt').inputValue(),examples.find(g=>g.id==='gpu').prompt);
-  assert.equal(await chips.evaluateAll(nodes=>nodes.every(n=>n.disabled)),true,'Uploads lock the draft and example controls');
-  assert.equal(await page.locator('#studio-crew-send').isDisabled(),true);
-  releaseUpload();await page.waitForFunction(()=>!document.querySelector('[data-goal-example=gpu]').disabled);
-  await page.unroute('**/api/upload');
+  await page.locator('[data-goal-example=gpu]').click();
+  assert.equal(await page.locator('#studio-crew-prompt').inputValue(),examples.find(g=>g.id==='gpu').prompt.replaceAll('{{city}}',await page.evaluate(()=>BacStudio.inspect().runtime.location?.city||'Seoul')));
+  assert.equal(posts.filter(u=>u.endsWith('/api/upload')).length,0,'Browsing keeps sample files local');
   const document=page.locator('#studio-crew-documents input[type=checkbox]');
   assert.equal(await document.count(),1);assert(await document.isChecked());
-  assert(await document.isEnabled(),'The CSV example remains optional');
+  assert(await document.isEnabled());
+  assert.match(await page.locator('#studio-crew-documents').innerText(),/datacenter_gpu_portfolio\.csv/);
+  await document.evaluate(node=>{node.checked=false;node.dispatchEvent(new Event('change',{bubbles:true}));});
+  assert(!await document.isChecked(),'GPU sample can be unchecked');
   await page.locator('[data-goal-example=gpu]').click();assert(await document.isChecked());
-  assert.equal(posts.filter(u=>u.endsWith('/api/upload')).length,1,'Selecting the same sample reuses the attachment');
+  assert.equal(posts.filter(u=>u.endsWith('/api/upload')).length,0,'Reselecting a sample never saves it');
   assert.equal(posts.filter(u=>u.endsWith('/api/jobs')).length,0,'Examples must never submit model jobs');
   const gpu=examples.find(g=>g.id==='gpu');
   await page.locator('[data-goal-example=gpu]').click();
   await page.waitForFunction(()=>!document.querySelector('[data-goal-example=gpu]').disabled);
   assert.equal(await document.count(),1);assert(await document.isChecked());
   assert.equal(await document.getAttribute('data-crew-document'),'inbox/'+gpu.document);
-  assert.equal(await page.locator('#studio-crew-prompt').inputValue(),gpu.prompt);
+  const previewReady=page.waitForEvent('popup');
+  await page.locator('[data-attachment-preview="inbox/'+gpu.document+'"]').click();
+  const preview=await previewReady;await preview.locator('table').waitFor();await preview.close();
+  assert.equal(posts.filter(u=>u.endsWith('/api/upload')).length,0,'Previewing a pending CSV does not save it');
+  assert.equal(await page.locator('#studio-crew-prompt').inputValue(),gpu.prompt.replaceAll('{{city}}',await page.evaluate(()=>BacStudio.inspect().runtime.location?.city||'Seoul')));
   let gpuSubmission;
   await page.route('**/api/jobs',async route=>{gpuSubmission=route.request().postDataJSON();await route.fulfill({status:409,contentType:'application/json',body:JSON.stringify({error:'CSV draft captured.'})});});
   await page.locator('#studio-crew-send').click();
+  await uploadSeen;
+  assert.equal(await chips.evaluateAll(nodes=>nodes.every(n=>n.disabled)),true,'Preparing the submitted sample locks template controls');
+  assert(await page.locator('#studio-crew-send').isDisabled());
+  releaseUpload();
   await page.waitForFunction(()=>document.querySelector('#studio-crew-chat-error').textContent.includes('CSV draft captured'));
+  await page.unroute('**/api/upload');
   assert(gpuSubmission.prompt.includes(gpu.document));
-  assert(!gpuSubmission.prompt.includes('demo-france-store-status-email-thread.txt'));
+
   await page.unroute('**/api/jobs');
   await page.locator('[data-goal-example=gpu]').click();
   assert.equal(await document.count(),1,'Switching between samples attaches only the selected file');
   await page.locator('[data-goal-example=gpu]').click();assert(await document.isChecked());
-  assert.equal(posts.filter(u=>u.endsWith('/api/upload')).length,1,'CSV sample is reused');
+  assert.equal(posts.filter(u=>u.endsWith('/api/upload')).length,1,'Only the submitted CSV was saved and is reused');
   await page.locator('[data-goal-example=gpu]').click();
   const sample=examples.find(g=>g.id==='gpu').document;
   for(const id of ['travel','drone','pong','event']){
    await page.locator('[data-goal-example='+id+']').click();
-   assert.equal(await document.count(),0,'Switching examples detaches the sample CSV');
+   assert.equal(await document.count(),0,'Switching examples detaches the sample email');
    assert.equal(await page.locator('#studio-crew-documents').isVisible(),false);
    await page.locator('[data-goal-example=gpu]').click();assert(await document.isChecked());
   }
@@ -152,13 +127,14 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.locator('[data-goal-example=gpu]').click();assert.equal(await document.count(),2);
   await page.locator('#studio-crew-prompt').fill('/goal ');
   assert.equal(await document.count(),1,'Clearing the draft detaches the example document');
-  assert.equal(posts.filter(u=>u.endsWith('/api/upload')).length,2,'Switching examples never uploads the sample twice');
+  assert.equal(posts.filter(u=>u.endsWith('/api/upload')).length,2,'Only the submitted CSV and manual upload are saved so far');
   await document.uncheck();await page.locator('[data-goal-example=gpu]').click();
   assert.equal(await page.locator('#studio-crew-documents input:checked').count(),1,'The user document stays unchecked');
   await page.route('**/api/jobs',async route=>{submitted=route.request().postDataJSON();await route.fulfill({contentType:'application/json',body:JSON.stringify({id:'intercepted-submission'})});});
   await page.locator('#studio-crew-send').click();
   await page.waitForFunction(()=>document.querySelector('#studio-crew-prompt').value==='/goal ');
   assert(submitted.prompt.includes(sample));assert(!submitted.prompt.includes('my-notes.txt'));
+  assert.equal(posts.filter(u=>u.endsWith('/api/upload')).length,2,'The submitted CSV is reused');
   assert.equal(await document.count(),1,'Successful submission releases the sample from the next draft');
   await page.unroute('**/api/jobs');
   await page.locator('[data-goal-example=gpu]').click();

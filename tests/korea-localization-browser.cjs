@@ -16,6 +16,14 @@ const presets=JSON.parse(execFileSync('python3',['-c','import sys,json;sys.path.
   assert.match(await page.locator('#studio-tone-prompt').inputValue(),/[가-힣]/);
   assert.equal(await page.locator('#studio-purpose').inputValue(),presets[0].purpose);
   assert.equal(await page.locator('#studio-body-picker button').count(),9);
+  const catalog=require('../src/avatar-catalog.json');
+  for(const body of catalog.bodies){
+   await page.locator('[data-body="'+body.id+'"]').first().click();
+   assert.equal(await page.locator('#studio-name').inputValue(),body.name,'Character default name: '+body.id);
+  }
+  await page.locator('[data-body=classic]').first().click();
+  assert.equal(await page.locator('#studio-name').inputValue(),'스파크');
+
   for(const tone of ['kind','direct','playful','cynical']){
    await page.locator('[data-tone='+tone+']').click();assert.match(await page.locator('#studio-tone-prompt').inputValue(),/[가-힣]/);
   }

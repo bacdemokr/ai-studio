@@ -53,7 +53,9 @@ class Adapter:
 
     def respond(self, agent_id, session, prompt):
         self.calls.append((agent_id, session, prompt))
-        if self.profiles.get(agent_id, {}).get('protection') == 'openshell' and 'weather' in prompt.lower():
+        # Capability descriptions can mention weather without requesting a fetch.
+        request = prompt.split('\n\nUser request:\n', 1)[-1]
+        if self.profiles.get(agent_id, {}).get('protection') == 'openshell' and 'weather' in request.lower():
             from agent_policy import individual_permissions
             allowed = 'host:api.open-meteo.com' in individual_permissions(self.permissions.get(agent_id, []))
             self.policy_logs.setdefault(agent_id, []).insert(0, {'action': 'allow' if allowed else 'deny', 'host': 'api.open-meteo.com', 'binary': '/usr/bin/curl', 'source': 'Simulated test fixture'})

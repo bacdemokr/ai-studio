@@ -29,7 +29,7 @@ def include_required_review(plan):
         return
     reviewers = [task for task in tasks if task['role'] == 4]
     if not reviewers and len(tasks) >= 3:
-        raise ValueError('Reserve one of the three specialist slots for the requested Vera review.')
+        raise ValueError('Reserve one of the three specialist slots for the requested independent review.')
     originals = list(dict.fromkeys(key for task in tasks for key in task.get('inputs', [])))
     review = reviewers[0] if reviewers else {
         'role': 4,
@@ -45,7 +45,7 @@ def include_required_review(plan):
         review['useImages'] = True
     plan['tasks'] = [task for task in tasks if task['role'] != 4] + [review]
     if not reviewers:
-        plan['summary'] += ' Vera will independently review the result, as requested.'
+        plan['summary'] += ' A different qualified agent will independently review the result, as requested.'
     if plan.get('answer'):
         plan['captainDraft'] = plan.pop('answer')
 

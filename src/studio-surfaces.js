@@ -3,6 +3,7 @@ const surfaceStore=document.createElement('div');surfaceStore.id='studio-surface
 const surfaceDialog=document.createElement('dialog');surfaceDialog.id='studio-surface';surfaceDialog.setAttribute('aria-labelledby','studio-surface-title');
 surfaceDialog.innerHTML='<header><h2 id="studio-surface-title"></h2><button type="button" class="studio-secondary" id="studio-surface-close" aria-label="Close panel">×</button></header><div id="studio-surface-body"></div>';
 root.append(surfaceDialog);
+dismissOnBackdrop(surfaceDialog);
 let activeSurface=null;
 const planResults=document.createElement('section');planResults.id='studio-plan-results';planResults.className='studio-plan-results';planResults.hidden=true;surfaceStore.append(planResults);
 planResults.onclick=event=>{const file=event.target.closest('[data-plan-file]');if(file)openFile(file.dataset.planFile,file.dataset.planJob);};
@@ -121,7 +122,13 @@ function syncTeamTotalTime(){
   if(timer.textContent!==label)timer.textContent=label;
   timer.hidden=!label;
 }
-setInterval(()=>syncTeamTotalTime(),1000);
+setInterval(()=>{
+  syncTeamTotalTime();
+  if(!el('board').getClientRects().length)return;
+  const timer=el('board').querySelector('[data-mission-total]'),plan=missionControlPlan();
+  const label=plan?collaborationTime(plan):'';
+  if(timer.textContent!==label)timer.textContent=label;
+},1000);
 function syncSurface(){
   teamConnectionBar.dataset.connected=String(!!teamReady());
   el('team-connection-label').textContent=teamReady()?((data.teamConnection?.effectiveSource||data.teamConnection?.provider)==='local'?'Local model configured':'API connected'):teamRuntime().teamModel?'Runtime offline':'Model not connected';

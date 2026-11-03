@@ -6,7 +6,7 @@ async function scenario(mode){
  let pending=0,maximum=0,acked=0,waits=0;
  const accepted=new Map(),attempts=new Map(),jobs=new Map();
  const context=vm.createContext({comparison:null,comparisonTimer:null,comparisonSending:false,
-  runtime:{ready:true},data:{agents:Array.from({length:12},(_,i)=>({key:'agent-'+i,name:'Agent '+i}))},
+  runtime:{ready:true},personalReady:()=>true,radarChatDisabled:()=>false,data:{agents:Array.from({length:12},(_,i)=>({key:'agent-'+i,name:'Agent '+i}))},
   el:()=>({value:'Hello'}),syncComposer(){},drawComparison(){},pendingImages:()=>[],
   captureChatDraft:()=>({images:[]}),acknowledgeChatDraft(){acked++;},refresh:async()=>{},clearTimeout,
   setTimeout(callback){waits++;if(mode==='cancel')context.comparison=null;return setTimeout(callback,0);},

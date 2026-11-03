@@ -162,6 +162,10 @@ class PolicyControls:
         # Verify legacy native rule names against the original saved representation.
         # A read only expands the display; the next explicit edit migrates storage.
         report = self.adapter.policy_status(profile['id'], profile.get('protection', 'standard'), approved)
+        # The panel/badge may read a native decision before the background
+        # observer does. Reuse that evidence; never animate requested URLs or
+        # replay historical denials when someone merely opens the policy panel.
+        self.protection_activity.observe_active(owner, role, profile['id'], report.get('logs', []))
         denials = self.remember_policy_denials(owner, report.get('logs', []), role)
         report['observedDenied'] = denials
         approved = individual_permissions(approved)

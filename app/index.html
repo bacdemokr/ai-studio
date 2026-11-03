@@ -243,17 +243,31 @@ body{margin:0;padding:0;width:100%;max-width:none}
 #studio-config-form [role=tabpanel]>small{display:block;margin-top:12px;color:#aebbc8}
 #studio-dialog:has(#studio-config-form,#studio-model-connections) #studio-dialog-kicker{font-size:28px;letter-spacing:-.5px;text-transform:none;color:#f4f6f8;font-weight:700}
 /* Small runtime meter remains inside the native fullscreen surface. */
-#studio-telemetry{position:relative;font-size:14px;color:#b6c7d5;margin-right:6px}
-#studio-telemetry summary{cursor:pointer;list-style:none;display:flex;gap:13px;padding:9px 11px;border:1px solid #344755;border-radius:5px;background:#111c25;font-variant-numeric:tabular-nums;white-space:nowrap}
+#studio-telemetry{position:relative;font-size:13px;color:#b6c7d5;margin-right:6px}
+#studio-telemetry summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;min-height:34px;padding:7px 10px;border:1px solid #33434f;border-radius:9px;background:#14202aeF;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1.2;box-sizing:border-box;transition:background-color .15s,border-color .15s}
 #studio-telemetry summary::-webkit-details-marker{display:none}
-#studio-telemetry[open] summary{border-color:#76b900}
-#studio-telemetry .usage-panel{position:absolute;z-index:60;bottom:calc(100% + 12px);right:0;width:360px;max-width:calc(100vw - 48px);max-height:55vh;overflow:auto;background:#101b25;border:1px solid #455f73;border-radius:8px;padding:20px;box-shadow:0 14px 45px #0009;font-size:15px}
-#studio-telemetry .usage-agent{margin-top:17px}
-#studio-telemetry .usage-track{height:6px;background:#293947;border-radius:3px;margin:8px 0;overflow:hidden}
+#studio-telemetry summary:hover,#studio-telemetry[open] summary{border-color:#526675;background:#1b2a35}
+#studio-telemetry summary:focus-visible{outline:2px solid #99b5c8;outline-offset:3px}
+#studio-telemetry .usage-stat{display:inline-flex;align-items:baseline;gap:5px}
+#studio-telemetry .usage-stat+.usage-stat{border-left:1px solid #3a4b5766;padding-left:10px}
+#studio-telemetry .usage-label{font-size:11px;font-weight:500;color:#95a9b9;letter-spacing:.02em}
+#studio-telemetry .usage-value{font-size:12px;font-weight:600;color:#e1ebf2;min-width:4.4ch;text-align:right}
+#studio-telemetry .usage-chevron{width:13px;height:13px;flex:none;fill:none;stroke:#a4bac9;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+#studio-telemetry[open] .usage-chevron{transform:rotate(180deg)}
+#studio-telemetry .usage-unavailable{font-size:12px;color:#a6bac9}
+#studio-telemetry .usage-panel{position:absolute;z-index:60;bottom:calc(100% + 8px);right:0;width:340px;max-width:calc(100vw - 32px);max-height:55vh;box-sizing:border-box;overflow:auto;background:#13202af5;backdrop-filter:blur(12px);border:1px solid #354b5a;border-radius:12px;padding:16px;box-shadow:0 10px 32px #0006;font-size:13px;line-height:1.5}
+#studio-telemetry .usage-heading{gap:12px;margin-bottom:10px}
+#studio-telemetry .usage-heading strong{font-size:14px;color:#e1ebf2}
+#studio-telemetry .usage-heading>span{font-size:11px;color:#91a5b5}
+#studio-telemetry .usage-empty{margin:0;color:#99aebd;font-size:12px}
+#studio-telemetry .usage-agent{margin-top:14px}
+#studio-telemetry .usage-track{height:4px;background:#293947;border-radius:3px;margin:7px 0;overflow:hidden}
 #studio-telemetry .usage-track i{display:block;height:100%;background:#76b900;transition:width .4s}
-#studio-telemetry .usage-agent .spread:last-child,#studio-telemetry small{font-size:13px;color:#a5b6c4;line-height:1.5}
-#studio-telemetry .usage-total{margin-top:20px;margin-bottom:9px}
-#studio-telemetry hr{border:0;border-top:1px solid #344755;margin:16px 0}
+#studio-telemetry .usage-agent .spread:not(:first-child),#studio-telemetry small{font-size:11px;color:#91a6b6;line-height:1.5}
+#studio-telemetry .usage-total{margin-top:16px;margin-bottom:5px}
+#studio-telemetry .usage-total strong{color:#e1ebf2;font-size:15px;font-variant-numeric:tabular-nums}
+#studio-telemetry .usage-host{font-size:12px;margin-bottom:3px}
+#studio-telemetry hr{border:0;border-top:1px solid #34475580;margin:14px 0}
 
 /* Completed run metrics use the same compact surfaces as Settings. */
 .studio-usage-time{color:#d6e0e7}
@@ -317,10 +331,35 @@ body{margin:0;padding:0;width:100%;max-width:none}
 #studio-lanes.studio-plan-control,#studio-surface #studio-lanes.studio-plan-control{display:flex;flex-direction:column;gap:18px;align-items:stretch;margin-left:6px;padding-left:20px;border-left:1px solid #3c5260}
 #studio-surface #studio-board.has-plan .studio-board-intro{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 #studio-surface #studio-board.has-plan .studio-board-intro h3{font-size:20px;margin:0!important}
+.mission-trace-heading{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+#studio-board [data-mission-total]:empty{display:none}
 #studio-surface #studio-board.has-plan .studio-board-intro p,#studio-surface #studio-board.has-plan .studio-board-intro .studio-kicker{display:none}
 .mission-reasoning-control{flex:0 0 100%}
-#agent-campus .mission-reasoning-control button{border:0;background:transparent;color:#b8d98d;padding:2px 0;font-size:14px;font-weight:600;text-decoration:underline;text-underline-offset:4px}
-#agent-campus .mission-reasoning-control button:hover{color:#ddf4c0}
+.mission-updates{position:sticky;bottom:12px;height:0;display:flex;align-items:flex-start;justify-content:center;pointer-events:none;z-index:2}
+.mission-updates[hidden]{display:none}
+#agent-campus .mission-updates button{display:flex;align-items:center;gap:10px;transform:translateY(-100%);pointer-events:auto;border:1px solid #52694b;border-radius:999px;background:#20322bee;color:#e0ebd7;padding:8px 14px;font-size:12px;font-weight:500;line-height:1.4;box-shadow:0 4px 16px #0005;backdrop-filter:blur(8px)}
+#agent-campus .mission-updates button:hover{background:#2b4335;border-color:#85a568}
+#agent-campus .mission-updates button:focus-visible{outline:2px solid #a9cc7d;outline-offset:3px}
+#agent-campus .mission-reasoning-control button{border:1px solid #344854;border-radius:7px;background:#17252e;color:#c5d5df;padding:7px 12px;font-size:13px;font-weight:500}
+#agent-campus .mission-reasoning-control button:hover{background:#20333c;border-color:#668242}
+#agent-campus .mission-reasoning-control button[aria-expanded=true]{color:#cee9a6;border-color:#587c35;background:#203023}
+.mission-model-reasoning{border-top:1px solid #33464e;margin-top:18px;padding-top:14px}
+.mission-reasoning-heading{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.mission-reasoning-heading strong{font-size:13px;color:#cee0c1}
+.mission-reasoning-heading span,.mission-reasoning-note{font-size:11px;color:#8fa6b3}
+#studio-lanes .mission-reasoning-note{font-size:12px;line-height:1.5;margin:5px 0 10px}
+#studio-lanes .mission-reasoning-call{border-bottom:1px solid #2c3e48;padding:0;margin:0}
+#studio-lanes .mission-reasoning-call>summary{display:flex;align-items:center;gap:10px;padding:10px 0;margin:0;cursor:pointer;list-style:none;font-size:13px;line-height:1.5;font-weight:500}
+#studio-lanes .mission-reasoning-call>summary:focus-visible{outline:2px solid #76b900;outline-offset:2px;border-radius:3px}
+.mission-reasoning-call>summary::before{content:'›';color:#9bb684;transition:transform .15s}
+.mission-reasoning-call[open]>summary::before{transform:rotate(90deg)}
+.mission-reasoning-call>summary>small{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#8da4b1;font-size:11px;flex:1}
+.mission-reasoning-call>summary>span{flex-shrink:0}
+.mission-reasoning-call>summary>em{font-style:normal;font-size:10px;color:#9cb285;flex-shrink:0}
+.mission-reasoning-turn{padding:0 0 12px}
+.mission-reasoning-turn>small{font-size:10px;color:#91a6b1}
+.mission-reasoning-text{max-height:260px;overflow:auto;overscroll-behavior:contain;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;font-size:13px;color:#beced8;padding:8px 12px;margin-top:5px;background:#101c24;border-radius:6px}
+#studio-lanes .mission-reasoning-empty{font-size:12px;line-height:1.6;color:#93a7b4;margin:8px 0}
 .mission-plan-step{position:relative;display:grid;grid-template-columns:170px minmax(0,1fr);border:1px solid #30434f;border-radius:10px;background:#15232c}
 .mission-plan-step::before{content:'';position:absolute;left:-26px;top:27px;width:9px;height:9px;border:1px solid #6a8292;border-radius:50%;background:#14212a}
 .mission-plan-step[data-step-state=done]::before,.mission-plan-step[data-step-state=working]::before{background:#76b900;border-color:#76b900}
@@ -410,6 +449,19 @@ body{margin:0;padding:0;width:100%;max-width:none}
 #studio-dialog .studio-danger{background:#c45048;border:1px solid #df6c64;color:white;padding:12px 18px;border-radius:3px;font-weight:600}
 #studio-dialog .studio-danger:hover{background:#da6259}#studio-dialog button:disabled{opacity:.5;cursor:wait}
 #studio-delete-error{color:#ffc1b9;border-left:2px solid #df6c64;padding-left:12px}
+#studio-dialog.studio-delete-dialog{width:min(620px,calc(100vw - 32px));padding:24px;border-radius:12px}
+#studio-dialog.studio-delete-dialog .studio-dialog-heading{margin-bottom:22px}
+#studio-dialog.studio-delete-dialog .studio-delete-identity{gap:16px;margin:0 0 20px;letter-spacing:0}
+#studio-dialog.studio-delete-dialog .studio-delete-identity>div{min-width:0}
+#studio-dialog.studio-delete-dialog .studio-avatar.tiny{width:48px;height:48px;min-width:48px;margin:0;border-radius:14px;gap:9px}
+#studio-dialog.studio-delete-dialog .studio-delete-speaker{display:block;color:#91a6b5;font-size:12px;font-weight:500;margin-bottom:6px;overflow-wrap:anywhere}
+#studio-dialog.studio-delete-dialog h3{color:#f0f4f7;font-size:24px;line-height:1.3;letter-spacing:-.4px;font-weight:600;margin:0;text-wrap:balance}
+#studio-dialog.studio-delete-dialog p{font-size:14px;line-height:1.6;margin:8px 0;overflow-wrap:anywhere}
+#studio-dialog.studio-delete-dialog p strong{color:#dce5eb;font-weight:500}
+#studio-dialog.studio-delete-dialog .studio-delete-note{font-size:13px;color:#90a3b1}
+#studio-dialog.studio-delete-dialog .studio-delete-actions{gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid #2b3c46}
+#studio-dialog.studio-delete-dialog .studio-delete-actions button{max-width:100%;font-size:14px;padding:9px 14px;border-radius:7px;overflow-wrap:anywhere;white-space:normal}
+@media(max-width:480px){#studio-dialog.studio-delete-dialog{padding:20px}#studio-dialog.studio-delete-dialog h3{font-size:21px}}
 .studio-rooms{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 32px 27px}
 #agent-campus .studio-rooms button{display:flex;align-items:center;gap:17px;text-align:left;border:1px solid #34414e;border-radius:5px;background:linear-gradient(125deg,#1b2631,#101720);padding:19px 21px;color:#e3edf7;min-width:0;position:relative}
 .studio-rooms button b{display:block;font-size:22px;font-weight:600}.studio-rooms button small{display:block;color:#9fadb9;font-size:15px;margin-top:7px}.studio-rooms button i{font-size:15px;font-style:normal;margin-left:auto;color:#647787}.room-symbol{font-size:30px;color:#b8cddd}
@@ -534,10 +586,15 @@ body{margin:0;padding:0;width:100%;max-width:none}
 #agent-campus .world-resident[data-speaking=true]:after{content:'';position:absolute;bottom:-7px;left:var(--speech-tail,50%);width:12px;height:12px;transform:translateX(-50%) rotate(45deg);background:#e0ebf3;border-right:1px solid var(--resident-color);border-bottom:1px solid var(--resident-color)}
 .world-resident[data-speaking=true] b{font-size:17px}.world-resident[data-speaking=true] small{color:#4b6273;font-size:14px;margin-top:3px}
 .world-resident-speech{display:block;margin-top:9px;font-size:18px;line-height:1.45;font-weight:500;white-space:normal;overflow-wrap:anywhere;animation:lounge-speech-in .2s ease-out}
-#agent-campus .world-resident[data-speaking=true][data-speech-kind=idle] small{display:none}
+.world-resident[data-speech-kind=reply] .world-resident-speech{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:6;line-clamp:6;max-height:8.7em;overflow:hidden}
+#agent-campus .world-resident .world-protection-hit[data-inline]{position:static;transform:none;box-sizing:border-box;width:100%;max-width:none;margin:8px 0 0;padding:6px 8px;border-radius:6px;box-shadow:none;text-align:left;pointer-events:none}
+#agent-campus .world-resident .world-protection-hit[data-inline] b{font-size:12px;line-height:1.4}
+#agent-campus .world-resident .world-protection-hit[data-inline] small{display:block;font-size:11px;line-height:1.3;color:#b6dacf;margin:1px 0 0}
+#agent-campus .world-resident .world-protection-hit[data-inline] span{display:none}
+#agent-campus .world-resident[data-speaking=true][data-speech-kind=idle]>small{display:none}
 .world-resident[data-speech-kind=idle] .world-resident-speech{font-size:16px;line-height:1.4;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;max-height:4.2em;overflow:hidden}
 @keyframes lounge-speech-in{from{opacity:0}to{opacity:1}}
-@media(max-width:560px){#agent-campus[data-room=lounge] #campus-viewport{min-height:430px}#agent-campus .world-resident[data-speaking=true]{width:218px;padding:10px 12px 12px}.world-resident-speech{font-size:17px;margin-top:7px}}
+@media(max-width:560px){#agent-campus[data-room=lounge] #campus-viewport{min-height:430px}#agent-campus .world-resident[data-speaking=true]{width:218px;padding:10px 12px 12px}.world-resident-speech{font-size:17px;margin-top:7px}.world-resident[data-speech-kind=reply] .world-resident-speech{-webkit-line-clamp:2;line-clamp:2;max-height:2.9em}}
 @media(prefers-reduced-motion:reduce){.world-resident-speech{animation:none}}
 
 /* Crew selection lives beside the world, with the same treatment as the lounge. */
@@ -650,6 +707,7 @@ body{margin:0;padding:0;width:100%;max-width:none}
 #agent-campus .world-expanded #studio-config{position:static;margin:0;width:38px;height:36px;font-size:22px;padding:2px}
 #agent-campus #studio-surface{box-sizing:border-box;width:min(1040px,calc(100vw - 48px));height:fit-content;max-width:none;max-height:calc(100dvh - 64px);padding:0;color:#f3f6fa;background:#141b23;border:1px solid #34434e;border-radius:14px;box-shadow:0 24px 100px #000b;overflow:hidden}
 #agent-campus #studio-surface:has(#studio-plan-results){width:min(820px,calc(100vw - 48px))}
+@media(min-width:801px){#agent-campus #studio-surface:has(#studio-board){width:min(1280px,calc(100vw - 48px))}}
 #agent-campus #studio-surface[open]{display:flex!important;flex-direction:column}
 #studio-surface::backdrop{background:#050a10a8;backdrop-filter:blur(5px)}
 #studio-surface>header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 26px 18px;border-bottom:1px solid #2d3d48;flex-shrink:0}
@@ -694,11 +752,14 @@ body{margin:0;padding:0;width:100%;max-width:none}
 #agent-campus .campus-sim[data-actionable=true]:hover{filter:brightness(1.15)}
 #agent-campus .campus-sim[data-actionable=true]:focus-visible{outline:2px solid #e3f1ff;outline-offset:3px}
 
-#studio-role-templates{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
-#studio-role-templates button{padding:11px 8px;background:#17232e;border:1px solid #415364;border-radius:5px;color:#e1ebf3;font:inherit;cursor:pointer}
-#studio-role-templates button[aria-pressed=true]{border-color:#76b900;background:#22341b;color:#d9f2bc}
-#studio-role-hint{display:block;margin-top:8px}
-#studio-role-hint:empty{display:none}
+#studio-role-templates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:10px 0}
+#studio-role-templates button{min-width:0;min-height:48px;padding:10px 12px;background:#141f2a;border:1px solid #435463;border-radius:4px;color:#eef4fa;font:inherit;line-height:1.3;text-align:left;cursor:pointer;transition:background-color .15s,border-color .15s}
+#studio-role-templates button:hover:not(:disabled){border-color:#718697;background:#1b2935}
+#studio-role-templates button[aria-pressed=true]{border-color:#76b900;background:#1b2923;color:#eef4fa;box-shadow:inset 3px 0 #76b900}
+#studio-role-templates button[aria-pressed=true]:hover:not(:disabled){border-color:#8dcc35;background:#213229}
+.studio-skill-suggestion{display:flex;align-items:center;gap:10px;margin-top:10px}
+#studio-workshop #studio-role-hint{display:block;min-width:0;margin:0;color:#91a6b5;font-size:12px;font-weight:400;line-height:1.4}
+#studio-workshop #studio-role-hint:empty{display:none}
 
 #studio-workshop .studio-preset-group{margin-top:20px}
 #studio-workshop .studio-preset-group legend{margin-bottom:8px;font-size:14px;color:#bccbd6}
@@ -712,7 +773,7 @@ body{margin:0;padding:0;width:100%;max-width:none}
 #studio-workshop #studio-purpose{min-height:106px}
 #studio-workshop #studio-purpose:read-only{background:#14212a;border-color:#30414e;color:#aabcc9}
 #studio-workshop :is(#studio-tone-prompt,#studio-purpose)::placeholder{color:#879ba9}
-#studio-workshop #studio-apply-prompt{margin-top:10px;padding:8px 12px;font-size:14px;border-radius:6px}
+#studio-workshop #studio-apply-prompt{flex:none;margin:0;padding:8px 12px;font-size:14px;border-radius:6px}
 
 #studio-workshop #studio-skill-picker label:has(input:checked){border-color:#76b900;background:#1f2c20}
 #studio-equipped{display:grid;grid-template-columns:1fr;gap:7px}
@@ -1058,8 +1119,8 @@ body{margin:0;padding:0;width:100%;max-width:none}
 #agent-campus .plan-live-activity [data-activity-status=completed] small{color:#b6d997;background:#76b90012}
 #agent-campus .plan-live-activity [data-activity-status=failed] small{color:#eebbb2;background:#d5847214}
 #agent-campus .plan-live-activity p{font-size:11px;margin-top:10px;color:#91a7b5}
-#studio-standby{border-radius:8px;background:#111e27}
-#studio-standby>summary{font-size:13px;padding:12px 14px}
+#bac-planner #studio-standby{margin:4px 0 0;border-radius:8px;background:#111e27}
+#bac-planner #studio-standby>summary{font-size:13px;margin:0;padding:6px 14px}
 #studio-standby-count{display:inline-flex;align-items:center;justify-content:center;min-width:21px;height:21px;padding:0 5px;border-radius:6px;background:#76b90016;font-size:11px}
 #agent-campus .studio-standby-content{max-height:var(--standby-space,220px);border-radius:10px;border-color:#405460;padding:14px;background:#14232d;box-shadow:0 16px 32px #0005}
 #studio-standby-list li{padding:14px 0}
@@ -1216,11 +1277,11 @@ body{margin:0;padding:0;width:100%;max-width:none}
 .studio-source-preview{white-space:pre-wrap;overflow-wrap:anywhere;background:#0e1a22;border:1px solid #304650;border-radius:12px;padding:18px;font-size:13px;line-height:1.6;max-height:55vh;overflow:auto}
 .studio-goal-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px}
 .studio-team-caption{font-size:12px;color:#afc0cb}.studio-goal-toolbar #studio-crew-hired-option{margin:0;flex:1}
-#bac-planner #agent-campus #studio-crew-examples{flex:none;border-top:1px solid #344553;padding:14px 2px 4px}
+#bac-planner #agent-campus #studio-crew-examples{flex:none;border-top:1px solid #344553;padding:10px 2px 2px}
 #bac-planner #agent-campus #studio-crew-examples[hidden]{display:none}
-#bac-planner #agent-campus #studio-crew-goal-intro{margin:0 0 18px;color:#afc0cb;font-size:16px;line-height:1.6}
-#bac-planner #agent-campus .studio-goal-caption{display:block;margin:0 0 9px;color:#8196a4;font-size:12px;line-height:1.4}
-#bac-planner #agent-campus .studio-goal-chips{display:flex;flex-wrap:wrap;gap:7px}
+#bac-planner #agent-campus #studio-crew-goal-intro{margin:0 0 10px;color:#afc0cb;font-size:16px;line-height:1.4;text-wrap:pretty}
+#bac-planner #agent-campus .studio-goal-chips{display:block}
+#bac-planner #agent-campus .studio-goal-options{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
 #bac-planner #agent-campus .studio-goal-chips button{position:relative;appearance:none;margin:0;border:1px solid #31434f;border-radius:7px;padding:7px 11px;background:#0d1920;color:#acbfcc;font:inherit;font-size:12px;font-weight:500;line-height:1.4;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
 #bac-planner #agent-campus .studio-goal-chips button::after{display:none;content:attr(data-goal-hint);position:absolute;z-index:20;left:50%;top:calc(100% + 7px);width:max-content;max-width:270px;box-sizing:border-box;padding:7px 9px;border:1px solid #4b606c;border-radius:7px;background:#17262f;color:#e7eef5;box-shadow:0 8px 22px #0008;font-size:12px;font-weight:500;line-height:1.35;text-align:left;white-space:normal;pointer-events:none;opacity:0;visibility:hidden;transform:translate(-50%,-3px);transition:opacity .12s,transform .12s,visibility .12s}
 #bac-planner #agent-campus .studio-goal-chips button:hover::after,#bac-planner #agent-campus .studio-goal-chips button:focus-visible::after{display:block;opacity:1;visibility:visible;transform:translate(-50%,0)}
@@ -1526,7 +1587,7 @@ body{margin:0;padding:0;width:100%;max-width:none}
 /* Stage 3 should be readable at normal desktop zoom, including large displays. */
 @media(min-width:1100px){
  #bac-planner #agent-campus[data-room=mission]:not([data-world-overview=true]) .campus-layout{grid-template-columns:minmax(0,1fr) clamp(440px,34vw,640px)!important}
- #bac-planner #agent-campus #studio-standby>summary{font-size:17px;padding:16px 24px}
+ #bac-planner #agent-campus #studio-standby>summary{font-size:17px;padding:7px 24px}
  #bac-planner #agent-campus #studio-standby-count{font-size:14px;min-width:26px;height:26px}
  #bac-planner #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content{padding:16px 24px;gap:12px;overflow-y:auto}
  #bac-planner #agent-campus #studio-crew-passport .studio-companion-name{gap:12px}
@@ -1544,13 +1605,18 @@ body{margin:0;padding:0;width:100%;max-width:none}
  #bac-planner #agent-campus #studio-crew-passport #campus-roster small{font-size:14px}
 }
 
+/* Keep Casey compact even while busy work hides the examples. */
+#bac-planner #agent-campus[data-room=mission] .campus-layout #studio-crew-passport .studio-crew-passport-content:has(#studio-crew-chat:not([hidden]) #studio-crew-hired-option:not([hidden])){padding-top:12px;gap:8px}
+#bac-planner #agent-campus #studio-crew-passport:has(#studio-crew-chat:not([hidden]) #studio-crew-hired-option:not([hidden])) .studio-companion-name{margin:0}
+#bac-planner #agent-campus #studio-crew-passport:has(#studio-crew-chat:not([hidden]) #studio-crew-hired-option:not([hidden])) .studio-agent-title{margin-bottom:2px}
+
 /* Empty Mission Control describes the current workflow without preset cards. */
 #studio-surface #studio-board:not(.has-plan) .studio-board-intro{display:block;padding:24px 8px}
 #studio-surface #studio-board:not(.has-plan) .studio-kicker{display:none}
 
 /* Keep total process time inline with Casey's identity. */
 #studio-crew-passport .studio-captain-heading{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px}
-#studio-team-total-time{margin:0;color:#b9d88a;font:500 13px/1.4 Arial,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+#studio-team-total-time,#studio-board [data-mission-total]{margin:0;color:#b9d88a;font:500 13px/1.4 Arial,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
 #studio-team-total-time[hidden]{display:none}
 
 .studio-radar-info{min-width:0}
@@ -1734,6 +1800,16 @@ body{margin:0;padding:0;width:100%;max-width:none}
 .body-glyph.tiger::before,.studio-avatar[data-body=tiger]::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent 38%,var(--avatar-dark,#48382d) 38% 46%,transparent 46% 54%,var(--avatar-dark,#48382d) 54% 62%,transparent 62%);height:25%}
 .body-glyph.capybara::before,.studio-avatar[data-body=capybara]::before{content:"";position:absolute;left:15%;right:15%;bottom:4%;height:40%;border-radius:35%;background:var(--avatar-light,#d7b58b)}
 .body-glyph:is(.tiger,.capybara) i{background:#302d2a;box-shadow:none;border-radius:50%}
+/* Make room for replies; expanding never changes the draft or team choice. */
+#bac-planner #agent-campus #studio-crew-prompt{height:calc(6em + 16px);transition:height .18s ease,min-height .18s ease}
+#bac-planner #agent-campus #studio-crew-chat.is-reading{padding:8px 12px}
+#bac-planner #agent-campus #studio-crew-chat.is-reading .studio-goal-toolbar{margin-bottom:4px}
+#bac-planner #agent-campus #studio-crew-chat.is-reading #studio-crew-prompt{height:40px!important;min-height:40px;padding-block:4px;resize:none}
+#bac-planner #agent-campus #studio-crew-chat.is-reading .studio-compose-actions{margin-top:0}
+#bac-planner #agent-campus #studio-crew-chat.is-reading .studio-compose-actions>button{min-height:36px;padding:6px 10px}
+#bac-planner #agent-campus #studio-crew-chat.is-reading #studio-crew-send{font-size:14px}
+@media(pointer:coarse){#bac-planner #agent-campus #studio-crew-chat.is-reading .studio-compose-actions>button{min-height:44px}}
+@media(prefers-reduced-motion:reduce){#bac-planner #agent-campus #studio-crew-prompt{transition:none}}
 
 /* The spaces live in the scene. Cards are only the accessible WebGL fallback. */
 #studio-scenarios{grid-column:1/-1;width:min(980px,calc(100% - 64px));margin:32px auto;color:#e9f1f5}
@@ -1780,7 +1856,7 @@ body{margin:0;padding:0;width:100%;max-width:none}
 <button class="studio-secondary" id="studio-room-action" hidden></button>
 <nav hidden class="studio-safety-bar" id="studio-safety-bar" aria-label="Studio controls"><span>YOU STAY IN CONTROL</span><button id="studio-security">◇ Security lab</button><button id="studio-help">Help &amp; fallback</button><button id="studio-reset">Reset mission board</button></nav>
 <section id="studio-collection" class="studio-collection" hidden aria-label="My agents"><div class="studio-collection-heading"><div><span class="studio-kicker">MY AGENTS</span><p></p></div></div><div id="studio-agent-list" class="studio-agent-list"></div><small class="studio-muted" id="studio-collection-note"></small></section>
-<div id="studio-board" hidden><div class="studio-board-intro"><span class="studio-kicker">MISSION CONTROL</span><h3>Different roles. Shared evidence.</h3><div class="mission-reasoning-control"><button type="button" id="studio-mission-reasoning" aria-expanded="false" hidden>Show me advanced reasoning</button></div><p>Each specialist receives the brief and the previous deliverables. The reviewer checks the whole plan.</p><p class="mission-plan-inputs" data-mission-total></p></div><div id="studio-lanes"></div></div>
+<div id="studio-board" hidden><div class="studio-board-intro"><span class="studio-kicker">MISSION CONTROL</span><div class="mission-trace-heading"><h3>Different roles. Shared evidence.</h3><span data-mission-total role="timer"></span></div><div class="mission-reasoning-control"><button type="button" id="studio-mission-reasoning" aria-expanded="false" aria-controls="studio-lanes" hidden>Advanced reasoning</button></div><p>Each specialist receives the brief and the previous deliverables.</p></div><div id="studio-lanes"></div><div id="studio-mission-updates" class="mission-updates" hidden><button type="button" aria-label="Go to latest update"><span>New updates</span><span aria-hidden="true">↓</span></button></div></div>
 <aside id="studio-workshop"><div class="studio-passport-head"><span class="studio-kicker">DESIGN YOUR AGENT</span><span class="studio-spark">✦</span></div>
   <form id="studio-onboarding">
     <h3 id="studio-creator-title">나만의 에이전트</h3><p class="studio-muted" id="studio-creator-note" hidden></p>
@@ -1793,8 +1869,10 @@ body{margin:0;padding:0;width:100%;max-width:none}
       <textarea id="studio-tone-prompt" rows="2" maxlength="800" placeholder="원하는 말투를 적어주세요…"></textarea>
       <label for="studio-purpose">역할 <span id="studio-role-fixed" hidden title="Tech Radar 스킬에서 정한 역할입니다">고정</span></label>
       <textarea id="studio-purpose" rows="4" maxlength="240" required aria-describedby="studio-role-hint" placeholder="어떤 일을 도와주면 좋을까요?"></textarea>
-      <button type="button" class="studio-secondary" id="studio-apply-prompt">스킬 추천</button>
-      <small id="studio-role-hint" class="studio-muted" role="status"></small>
+      <div class="studio-skill-suggestion">
+        <button type="button" class="studio-secondary" id="studio-apply-prompt">스킬 추천</button>
+        <small id="studio-role-hint" role="status"></small>
+      </div>
     </section>
     <fieldset class="studio-style-group"><legend>스킬 선택</legend><div id="studio-skill-picker"></div></fieldset>
     <fieldset class="studio-protection-picker"><legend>OpenShell protection</legend><label><input type="radio" name="protection" value="standard" checked><span><b>OpenShell off</b><small>도구가 이 컴퓨터의 파일을 읽고 수정할 수 있습니다.</small></span></label><label><input type="radio" name="protection" value="openshell"><span><b>OpenShell on</b><small>격리된 실행환경에서 파일과 인터넷 접근을 제한합니다.</small></span></label></fieldset>
@@ -1830,7 +1908,7 @@ body{margin:0;padding:0;width:100%;max-width:none}
     <div class="studio-passport-head"><span class="studio-kicker">YOUR CREW</span><span id="studio-crew-number" class="studio-muted"></span></div>
     <div class="studio-companion-name"><button type="button" id="studio-crew-portrait" class="studio-avatar small studio-identity-open" aria-label="View agent files" title="View agent files"><i aria-hidden="true"></i><i aria-hidden="true"></i></button><div><div class="studio-agent-title"><h3><button type="button" id="studio-crew-name" class="studio-identity-name" title="View agent files" aria-haspopup="dialog"></button></h3><div id="studio-crew-agent-actions" class="studio-agent-actions" hidden><button type="button" id="studio-crew-edit-agent" class="studio-secondary">Edit Agent</button><button type="button" id="studio-crew-instructions" class="studio-secondary" aria-haspopup="dialog">Instructions</button></div></div><div class="studio-crew-identity"><span id="studio-crew-role" class="studio-muted"></span><button type="button" id="studio-crew-model" class="studio-model-label" disabled hidden></button></div><div id="studio-crew-agent-skills" aria-label="Equipped skills" hidden></div></div></div>
     <button type="button" id="studio-crew-policy" class="studio-secondary studio-policy-link" aria-haspopup="dialog" hidden>◇ OpenShell Policy</button>
-    <section id="studio-crew-examples" hidden aria-label="작업 예제"><p id="studio-crew-goal-intro"></p><span class="studio-goal-caption">템플릿</span><div id="studio-crew-goal-choices" class="studio-goal-chips" role="group" aria-label="Fill in an example goal"></div></section>
+    <section id="studio-crew-examples" hidden aria-label="작업 예제"><p id="studio-crew-goal-intro"></p><div id="studio-crew-goal-choices" class="studio-goal-chips" role="group" aria-label="Fill in an example goal"></div></section>
     <section id="studio-crew-conversation" role="log" aria-live="polite" aria-label="Crew member conversation"></section>
     <section id="studio-crew-documents" class="studio-crew-documents" hidden></section><form id="studio-crew-chat"><p id="studio-crew-chat-connection" role="status" hidden></p><p id="studio-crew-chat-error" role="alert" hidden></p>
       <div class="studio-goal-toolbar"><span class="studio-team-caption">참여 범위</span><div id="studio-crew-hired-option" hidden><div id="studio-crew-team-mode" role="group" aria-label="Team"><button type="button" data-team-mode="hired" aria-pressed="true" title="Casey가 고용한 에이전트 안에서 팀을 구성합니다">고용한 에이전트만</button><button type="button" data-team-mode="mixed" aria-pressed="false" title="필요하면 대기 중인 전문가도 참여할 수 있습니다">고용 + 대기 에이전트</button></div><small id="studio-crew-team-hint" hidden></small></div></div>
@@ -1925,7 +2003,7 @@ body{margin:0;padding:0;width:100%;max-width:none}
 </style>
 <script>
 (() => {
-  window.BacCrewCatalog = Object.freeze(([{"name": "Casey", "role": "BaC Captain", "persona": "guide", "description": "Coordinates available agents for your /goal and brings their results together.", "id": "event-lead", "skills": [], "avatar": {"body": "classic", "color": "green", "accessory": "pirate"}, "collaboration": {"title": "Team captain", "description": "Describe a task. Casey assigns the team and brings the results together.", "scope": "Assign distinct specialist-sized tasks and judge each against its expected result. Do not implement specialist deliverables yourself or treat out-of-scope work as completion of another assignment.", "voice": "When speaking to the user, be warm, welcoming, helpful and lightly humorous, like a thoughtful teammate. Match the user's language and mood; use an occasional brief, natural playful aside when it fits, never a forced joke in every reply. Keep answers useful and concise. When reporting errors, blockers or incomplete work, be empathetic and direct, without joking about the user's frustration or obscuring limitations. When delegating to specialists, use precise, concise task instructions with scope, expected output and success criteria; omit banter from assignments. In structured decisions, apply this friendly voice only to user-facing summaries and answers; preserve the required JSON format and factual accuracy.", "summary": "Assigns specialists and brings their work together."}}, {"id": "retired-slot-1", "name": "", "role": "Retired slot 1", "persona": "guide", "description": "", "skills": [], "planEligible": false, "retired": true, "collaboration": {"title": "", "description": ""}}, {"id": "retired-slot-2", "name": "", "role": "Retired slot 2", "persona": "guide", "description": "", "skills": [], "planEligible": false, "retired": true, "collaboration": {"title": "", "description": ""}}, {"id": "retired-slot-3", "name": "", "role": "Retired slot 3", "persona": "guide", "description": "", "skills": [], "planEligible": false, "retired": true, "collaboration": {"title": "", "description": ""}}, {"name": "Vera", "role": "Audience & review", "persona": "analyst", "description": "Reviews the requested deliverables against the task and evidence.", "id": "audience-host", "skills": ["builder"], "collaboration": {"title": "Reviewer", "description": "Independently inspect supplied outputs, source files and assumptions; identify defects and missing requirements. Distinguish static review from executed tests.", "scope": "Review the supplied deliverable and report findings to Casey. Make minimal corrections only when assigned; do not replace missing implementation with a new application. Report static inspection, not executed tests, unless a tool actually ran each case. Trace parsing, defaults and validation together; do not infer correct behavior from HTML min/step attributes. Flag invalid inputs silently converted to valid values. Do not mark cases PASS based only on intended behavior. For HTML forms, inspect default submission and preventDefault, label association, input types, and whether user input reaches innerHTML instead of textContent. Browser named-element access can expose an element ID as a global: do not claim a guaranteed ReferenceError merely because no explicit variable is declared; distinguish brittle code from a demonstrated failure.", "summary": "Reviews the work for mistakes, gaps and unmet requirements."}}, {"name": "Cody", "role": "Programmer", "persona": "maker", "description": "Builds compact desktop webpages and small apps you can open and download.", "id": "event-web-developer", "skills": ["builder"], "collaboration": {"title": "Programmer", "description": "Implement small programs and self-contained HTML/CSS/JavaScript prototypes with file tools. No arbitrary code execution, package installation or deployment is available.", "scope": "Implement only the assigned desktop program or webpage using the supplied evidence and requirements. Prioritize a small usable demo with core functionality; omit mobile support and optional polish. Save the complete implementation and return once required behavior is covered, fixing only concrete defects. Preserve source limitations; do not invent research or claim unperformed execution.", "summary": "Builds webpages and small apps by writing code."}}, {"name": "Ada", "role": "Data analyst", "persona": "analyst", "id": "data-analyst", "skills": ["data-analysis"], "planOnly": true, "description": "Interpret supplied tables, CSV and JSON; compare options and explain trends, units and missing data. Produce small analysis tables or chart specifications. State when calculations are reasoned rather than executed; no arbitrary Python execution or spreadsheet engine is available.", "collaboration": {"title": "Data analyst", "description": "Interpret supplied tables, CSV and JSON; compare options and explain trends, units and missing data. Produce small analysis tables or chart specifications. State when calculations are reasoned rather than executed; no arbitrary Python execution or spreadsheet engine is available.", "scope": "Return the requested data analysis, tables and chart specifications to Casey. Do not implement the finished webpage or application.", "summary": "Analyzes tables and spreadsheets to explain patterns and findings."}}, {"name": "Iris", "role": "UX designer", "persona": "maker", "id": "ux-designer", "skills": ["interface-design"], "planOnly": true, "description": "Turn user requirements into clear screen flows, accessible layouts, interaction states and acceptance criteria. Specify a practical design for Cody to implement; do not claim usability studies or browser tests were performed.", "collaboration": {"title": "UX designer", "description": "Turn user requirements into clear screen flows, accessible layouts, interaction states and acceptance criteria. Specify a practical design for Cody to implement; do not claim usability studies or browser tests were performed.", "scope": "Return design specifications, flows and accessibility guidance to Casey for implementation. Do not build the finished webpage or application.", "summary": "Designs clear layouts and easy-to-use interfaces."}}, {"name": "Scout", "role": "Web Researcher", "persona": "analyst", "id": "general-researcher", "skills": ["web"], "protection": "standard", "planOnly": true, "description": "Research public web sources, compare evidence and cite findings for the current task.", "collaboration": {"title": "Web Researcher", "description": "Read public sources with available web tools and compare evidence. Cite source URLs, distinguish observations from inference, and report unavailable pages honestly. web_fetch is available for public HTTP(S) pages. No search API key is assumed. Without supplied URLs, start from a confidently known official homepage and follow links returned by it; search-engine search is optional and separate. OpenShell is off. Never claim a page was read without a successful tool result.", "scope": "Research only: read sources and return a cited evidence brief, dates, findings and limitations to Casey. Do not create HTML, implement a webpage/application, or perform the programmer or reviewer assignment. For a supplied-page summary, stay with that page; do not substitute another source unless the user permits it. Make at most two reads of the same URL. If relevant text is unavailable, save the observed limitation and return outcome partial, rather than expanding the search or inventing a summary. A page notice naming possible causes does not prove which cause occurred.", "summary": "Finds relevant web sources and summarizes them with citations."}}]).map(member => Object.freeze(member)));
+  window.BacCrewCatalog = Object.freeze(([{"name": "Casey", "role": "BaC Captain", "persona": "guide", "description": "Coordinates available agents for your /goal and brings their results together.", "id": "event-lead", "skills": [], "avatar": {"body": "classic", "color": "green", "accessory": "pirate"}, "collaboration": {"title": "Team captain", "description": "Set a task. Casey leads the team.", "scope": "Assign distinct specialist-sized tasks and judge each against its expected result. Do not implement specialist deliverables yourself or treat out-of-scope work as completion of another assignment.", "voice": "When speaking to the user, be warm, welcoming, helpful and lightly humorous, like a thoughtful teammate. Match the user's language and mood; use an occasional brief, natural playful aside when it fits, never a forced joke in every reply. Keep answers useful and concise. When reporting errors, blockers or incomplete work, be empathetic and direct, without joking about the user's frustration or obscuring limitations. When delegating to specialists, use precise, concise task instructions with scope, expected output and success criteria; omit banter from assignments. In structured decisions, apply this friendly voice only to user-facing summaries and answers; preserve the required JSON format and factual accuracy.", "summary": "Assigns specialists and brings their work together."}}, {"id": "retired-slot-1", "name": "", "role": "Retired slot 1", "persona": "guide", "description": "", "skills": [], "planEligible": false, "retired": true, "collaboration": {"title": "", "description": ""}}, {"id": "retired-slot-2", "name": "", "role": "Retired slot 2", "persona": "guide", "description": "", "skills": [], "planEligible": false, "retired": true, "collaboration": {"title": "", "description": ""}}, {"id": "retired-slot-3", "name": "", "role": "Retired slot 3", "persona": "guide", "description": "", "skills": [], "planEligible": false, "retired": true, "collaboration": {"title": "", "description": ""}}, {"name": "Vera", "role": "Audience & review", "persona": "analyst", "description": "Reviews the requested deliverables against the task and evidence.", "id": "audience-host", "skills": ["builder"], "collaboration": {"title": "Reviewer", "description": "Independently inspect supplied outputs, source files and assumptions; identify defects and missing requirements. Distinguish static review from executed tests.", "scope": "Review the supplied deliverable and report findings to Casey. Make minimal corrections only when assigned; do not replace missing implementation with a new application. Report static inspection, not executed tests, unless a tool actually ran each case. Trace parsing, defaults and validation together; do not infer correct behavior from HTML min/step attributes. Flag invalid inputs silently converted to valid values. Do not mark cases PASS based only on intended behavior. For HTML forms, inspect default submission and preventDefault, label association, input types, and whether user input reaches innerHTML instead of textContent. Browser named-element access can expose an element ID as a global: do not claim a guaranteed ReferenceError merely because no explicit variable is declared; distinguish brittle code from a demonstrated failure.", "summary": "Reviews the work for mistakes, gaps and unmet requirements."}}, {"name": "Cody", "role": "Programmer", "persona": "maker", "description": "Builds compact desktop webpages and small apps you can open and download.", "id": "event-web-developer", "skills": ["builder"], "collaboration": {"title": "Programmer", "description": "Implement small programs and self-contained HTML/CSS/JavaScript prototypes with file tools. No arbitrary code execution, package installation or deployment is available.", "scope": "Implement only the assigned desktop program or webpage using the supplied evidence and requirements. Prioritize a small usable demo with core functionality; omit mobile support and optional polish. Save the complete implementation and return once required behavior is covered, fixing only concrete defects. Preserve source limitations; do not invent research or claim unperformed execution.", "summary": "Builds webpages and small apps by writing code."}}, {"name": "Ada", "role": "Data analyst", "persona": "analyst", "id": "data-analyst", "skills": ["data-analysis"], "planOnly": true, "description": "Interpret supplied tables, CSV and JSON; compare options and explain trends, units and missing data. Produce small analysis tables or chart specifications. State when calculations are reasoned rather than executed; no arbitrary Python execution or spreadsheet engine is available.", "collaboration": {"title": "Data analyst", "description": "Interpret supplied tables, CSV and JSON; compare options and explain trends, units and missing data. Produce small analysis tables or chart specifications. State when calculations are reasoned rather than executed; no arbitrary Python execution or spreadsheet engine is available.", "scope": "Return the requested data analysis, tables and chart specifications to Casey. Do not implement the finished webpage or application.", "summary": "Analyzes tables and spreadsheets to explain patterns and findings."}}, {"name": "Iris", "role": "UX designer", "persona": "maker", "id": "ux-designer", "skills": ["interface-design"], "planOnly": true, "description": "Turn user requirements into clear screen flows, accessible layouts, interaction states and acceptance criteria. Specify a practical design for Cody to implement; do not claim usability studies or browser tests were performed.", "collaboration": {"title": "UX designer", "description": "Turn user requirements into clear screen flows, accessible layouts, interaction states and acceptance criteria. Specify a practical design for Cody to implement; do not claim usability studies or browser tests were performed.", "scope": "Return design specifications, flows and accessibility guidance to Casey for implementation. Do not build the finished webpage or application.", "summary": "Designs clear layouts and easy-to-use interfaces."}}, {"name": "Scout", "role": "Web Researcher", "persona": "analyst", "id": "general-researcher", "skills": ["web"], "protection": "standard", "planOnly": true, "description": "Research public web sources, compare evidence and cite findings for the current task.", "collaboration": {"title": "Web Researcher", "description": "Read public sources with available web tools and compare evidence. Cite source URLs, distinguish observations from inference, and report unavailable pages honestly. web_fetch is available for public HTTP(S) pages. No search API key is assumed. Without supplied URLs, start from a confidently known official homepage and follow links returned by it; search-engine search is optional and separate. OpenShell is off. Never claim a page was read without a successful tool result.", "scope": "Research only: read sources and return a cited evidence brief, dates, findings and limitations to Casey. Do not create HTML, implement a webpage/application, or perform the programmer or reviewer assignment. For a supplied-page summary, stay with that page; do not substitute another source unless the user permits it. Make at most two reads of the same URL. If relevant text is unavailable, save the observed limitation and return outcome partial, rather than expanding the search or inventing a summary. A page notice naming possible causes does not prove which cause occurred.", "summary": "Finds relevant web sources and summarizes them with citations."}}]).map(member => Object.freeze(member)));
   window.BacDemo = {
     snapshot: () => ({phase:-1,revision:0,brief:null,calc:null,gap:false,policy:null,selected:0,
       flow:['Your crew is ready','', ''], agents:window.BacCrewCatalog.map((member,i)=>({
@@ -79566,6 +79644,11 @@ const avatarDefaults=[{body:'classic',color:'green',accessory:'antenna'},{body:'
 const robotShape=new THREE.Shape();robotShape.moveTo(-.29,-.2);robotShape.lineTo(.29,-.2);robotShape.lineTo(.29,.2);robotShape.lineTo(-.29,.2);robotShape.closePath();
 const robotHeadGeometry=new THREE.ExtrudeGeometry(robotShape,{depth:.38,bevelEnabled:true,bevelThickness:.07,bevelSize:.065,bevelSegments:2,steps:1});robotHeadGeometry.translate(0,0,-.19);
 const robotSphereGeometry=new THREE.SphereGeometry(1,24,16),robotLensGeometry=new THREE.TorusGeometry(.1,.019,6,20);
+// Shared rounded toy parts avoid sharp slabs without adding per-frame work.
+const toyShape=new THREE.Shape();toyShape.moveTo(-.4,-.4);toyShape.lineTo(.4,-.4);toyShape.lineTo(.4,.4);toyShape.lineTo(-.4,.4);toyShape.closePath();
+const toyBoxGeometry=new THREE.ExtrudeGeometry(toyShape,{depth:.8,bevelEnabled:true,bevelThickness:.1,bevelSize:.1,bevelSegments:3,steps:1});toyBoxGeometry.translate(0,0,-.4);
+function toyBox(parent,x,y,z,w,h,d,tint,glow=false){const mesh=new THREE.Mesh(toyBoxGeometry,mat(tint,glow));mesh.position.set(x,y,z);mesh.scale.set(w,h,d);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;}
+function characterCurve(parent,points,radius,tint){const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,12,radius,6,false),mat(tint));parent.add(mesh);return mesh;}
 function createCharacter(avatar=avatarDefaults[0]){
   const appearance={...avatarDefaults[0],...avatar},palette=characterPalettes[appearance.color],color=palette?.accent??avatarColors[appearance.color]??avatarColors.green;
   const group=new THREE.Group(),body=new THREE.Group();group.add(body);
@@ -79576,21 +79659,27 @@ function createCharacter(avatar=avatarDefaults[0]){
   if(['fox-companion','bunny','panda'].includes(appearance.body))return createAnimal(appearance,color,group,body,palette);
   if(['cat','crab'].includes(appearance.body))return createCompanion(appearance,color,group,body,palette);
   const arms=[],legs=[];
-  box(body,0,.55,0,appearance.body==='rover'?.55:.4,.38,.3,palette?.light??0xcad4df);
+  const round=appearance.body==='round';
+  if(round){const torso=new THREE.Mesh(robotSphereGeometry,mat(palette?.light??0xcad4df));torso.position.y=.55;torso.scale.set(.24,.25,.19);torso.castShadow=true;body.add(torso);}
+  else toyBox(body,0,.55,0,appearance.body==='rover'?.55:.4,.38,.3,palette?.light??0xcad4df);
   let head;
   if(appearance.body==='round'){
     head=new THREE.Mesh(robotSphereGeometry,mat(palette?.base??0xe6edf5));head.scale.set(.41,.34,.32);
   }else{head=new THREE.Mesh(robotHeadGeometry,mat(palette?.base??0xe6edf5));if(appearance.body==='rover')head.scale.set(1.18,.78,1.02);}
   head.position.y=.99;head.castShadow=true;body.add(head);
-  const face=box(body,0,.99,appearance.body==='round'?.334:.26,appearance.body==='rover'?.61:.49,.25,.03,0x111c29);
+  let face;
+  if(round){face=new THREE.Mesh(robotSphereGeometry,mat(0x111c29));face.scale.set(.285,.15,.055);face.position.set(0,.99,.29);body.add(face);}
+  else face=toyBox(body,0,.99,.26,appearance.body==='rover'?.61:.49,.25,.03,0x111c29);
+  const eyeZ=round?.349:face.position.z+.026;
   for(const side of [-1,1]){
-    box(body,side*.125,1.005,face.position.z+.026,.062,.075,.023,color,true);
-    const arm=new THREE.Group();arm.position.set(side*(appearance.body==='rover'?.38:.29),.7,0);box(arm,0,-.15,0,.12,.3,.14,palette?.base??0xabbccc);body.add(arm);arms.push(arm);
+    const eye=new THREE.Mesh(robotSphereGeometry,mat(color,true));eye.position.set(side*.115,1.015,eyeZ);eye.scale.set(.030,.044,.012);body.add(eye);
+    const arm=new THREE.Group();arm.position.set(side*(appearance.body==='rover'?.38:.29),.7,0);toyBox(arm,0,-.15,0,.13,.28,.15,palette?.base??0xabbccc);body.add(arm);arms.push(arm);
     const leg=new THREE.Group();leg.position.set(side*.12,.34,0);body.add(leg);legs.push(leg);
-    if(appearance.body!=='rover'){box(leg,0,-.12,0,.14,.24,.15,palette?.light??0x788c9f);box(leg,0,-.25,.045,.18,.08,.24,palette?.dark??0x283b50);}
+    if(appearance.body!=='rover'){toyBox(leg,0,-.12,0,.15,.24,.16,palette?.light??0x788c9f);toyBox(leg,0,-.25,.045,.19,.10,.25,palette?.dark??0x283b50);}
     else{box(body,side*.28,.17,0,.2,.22,.57,0x172330);for(const z of [-.18,.18]){const wheel=cylinder(body,side*.39,.17,z,.12,.05,0x526777,12);wheel.rotation.z=Math.PI/2;}box(body,side*.4,.28,0,.02,.04,.4,color);}
   }
-  box(body,0,.54,.171,.23,.095,.025,color,true);
+  characterCurve(body,[[-.045,.951,eyeZ],[0,.938,eyeZ+.004],[.045,.951,eyeZ]],.007,color);
+  toyBox(body,0,.54,round?.19:.171,.20,.075,.025,color,true);
   equipCharacter(body,face,appearance,color,arms);
   return {group,body,arms,legs,appearance,color};
 }
@@ -79617,11 +79706,11 @@ function equipAccessory(body,face,appearance,color,arms){
     tiger:{top:1.39,eye:1.12,half:.36,neck:.79,chest:.67,back:.60},
     capybara:{top:1.34,eye:1.13,half:.35,neck:.78,chest:.66,back:.60},
     classic:{top:1.27,eye:1.005,half:.34,neck:.78,chest:.62,back:.57},
-    round:{top:1.34,eye:1.005,half:.4,neck:.78,chest:.62,back:.57},
+    round:{top:1.27,eye:1.005,half:.4,neck:.78,chest:.62,back:.57},
     rover:{top:1.23,eye:1.005,half:.38,neck:.78,chest:.62,back:.57},
     operative:{top:1.41,eye:1.16,half:.27,neck:.85,chest:.69,back:.67},
     cat:{top:1.34,eye:1.07,half:.35,neck:.79,chest:.68,back:.58,flower:[.26,1.43,.10]},
-    'fox-companion':{top:1.32,eye:1.08,half:.34,neck:.78,chest:.67,back:.59,flower:[.25,1.43,.08]},
+    'fox-companion':{top:1.32,eye:1.15,half:.34,neck:.78,chest:.67,back:.59,flower:[.25,1.43,.08]},
     bunny:{top:1.32,eye:1.07,half:.33,neck:.77,chest:.66,back:.58,flower:[.2,1.4,.10]},
     panda:{top:1.35,eye:1.08,half:.36,neck:.79,chest:.67,back:.58},
     claw:{top:1.30,eye:1.28,half:.32,neck:.77,chest:.72,back:.65},
@@ -79629,9 +79718,11 @@ function equipAccessory(body,face,appearance,color,arms){
   }[kind]||{top:1.27,eye:1.005,half:.34,neck:.78,chest:.62,back:.57};
   const outfit=new THREE.Group();outfit.name='avatar-accessory-'+id;body.add(outfit);
   const palette=characterPalettes[appearance.color];
-  // Large fabric surfaces follow the coat/suit, not its small indicator accent.
+  // Keep hats/bags close to the coat; small fabric pieces can use its muted accent.
   const cream=palette?.light??0xf3ead7,ink=palette?.dark??0x233547;
-  color=palette?(['scarf','bowtie','flag'].includes(id)?palette.dark:palette.base):color;
+  const fabric=palette?new THREE.Color(palette.accent).lerp(new THREE.Color(palette.dark),.2).getHex():color;
+  color=palette?(['scarf','bowtie','flag'].includes(id)?kind==='fox-companion'?palette.dark:fabric:palette.base):color;
+  if(id==='cap'&&palette&&kind!=='operative')color=palette.dark;
   const front=kind==='operative'?.18:kind==='crab'?.29:.29;
   const oval=(parent,x,y,z,sx,sy,sz,tint)=>{const mesh=new THREE.Mesh(robotSphereGeometry,mat(tint));mesh.position.set(x,y,z);mesh.scale.set(sx,sy,sz);mesh.castShadow=true;parent.add(mesh);return mesh;};
   if(id==='mandarin'){
@@ -79659,33 +79750,42 @@ function equipAccessory(body,face,appearance,color,arms){
   }else if(id==='headset'){
     if(kind==='round'){
       const band=new THREE.Mesh(new THREE.TorusGeometry(.43,.028,8,24,Math.PI),mat(ink));band.scale.y=.8;band.position.set(0,rig.eye,-.035);outfit.add(band);
-    }else box(outfit,0,rig.top+.025,-.035,rig.half*2+.08,.055,.24,ink);
-    for(const side of [-1,1])box(outfit,side*(rig.half+.04),rig.eye,-.015,.10,.23,.23,color);
+    }else{
+      characterCurve(outfit,[[-rig.half-.025,rig.eye,-.035],[-rig.half-.02,rig.top-.035,-.035],[0,rig.top+.035,-.035],[rig.half+.02,rig.top-.035,-.035],[rig.half+.025,rig.eye,-.035]],.027,ink);
+    }
+    for(const side of [-1,1]){toyBox(outfit,side*(rig.half+.015),rig.eye,-.015,.075,.21,.20,ink);toyBox(outfit,side*(rig.half+.055),rig.eye,-.015,.065,.19,.18,color);}
     box(outfit,rig.half+.03,rig.eye-.13,.15,.04,.04,.25,ink);
   }else if(id==='glasses'){
-    for(const side of [-1,1]){const lens=new THREE.Mesh(robotLensGeometry,mat(ink));lens.position.set(side*.13,rig.eye,face.position.z+.055);outfit.add(lens);}
-    box(outfit,0,rig.eye,face.position.z+.055,.065,.018,.018,ink);
+    const glasses=new THREE.Group(),fox=kind==='fox-companion',panda=kind==='panda';
+    glasses.position.set(0,rig.eye+(fox?.025:panda?.02:0),fox?.31:panda?.32:kind==='round'?.385:face.position.z+.055);
+    if(fox||panda)glasses.rotation.x=fox?-.32:-.20;
+    outfit.add(glasses);
+    const frame=kind==='panda'&&palette?new THREE.Color(ink).lerp(new THREE.Color(palette.accent),.5).getHex():ink;
+    for(const side of [-1,1]){const lens=new THREE.Mesh(robotLensGeometry,mat(frame));lens.position.set(side*.13,0,0);if(fox||panda)lens.scale.setScalar(fox?.8:.88);glasses.add(lens);}
+    box(glasses,0,0,0,fox?.10:.065,.018,.018,frame);
   }else if(id==='cap'){
-    const radius=rig.half+.015,depth=kind==='round'?.33:kind==='crab'?.30:.27;
+    const radius=kind==='round'?.375:rig.half+.015,depth=kind==='round'||kind==='crab'?.30:.27;
+    const base=kind==='round'?1.15:kind==='operative'?1.27:kind==='classic'?1.26:rig.top-.035;
     const crown=new THREE.Mesh(new THREE.SphereGeometry(1,24,12,0,Math.PI*2,0,Math.PI/2),mat(color));
-    crown.scale.set(radius,.22,depth);crown.position.set(0,rig.top-.035,-.02);crown.castShadow=true;outfit.add(crown);
+    crown.scale.set(radius,.22,depth);crown.position.set(0,base,-.02);crown.castShadow=true;outfit.add(crown);
     // A thin curved visor projects forward; it does not wrap around the head.
     const positions=[],indices=[],segments=24;
     for(let i=0;i<=segments;i++){
       const angle=-Math.PI/2+i*Math.PI/segments,x=Math.sin(angle),forward=Math.cos(angle);
-      positions.push(x*radius*.83,-.014,forward*depth*.8);
-      positions.push(x*radius*.96,-.035-.025*forward,forward*(depth+.22));
+      positions.push(x*radius*.83,.012,forward*depth*.8);
+      positions.push(x*radius*.96,.005+.015*forward,forward*(depth+.12));
       if(i<segments){const n=i*2;indices.push(n,n+1,n+2,n+1,n+3,n+2);}
     }
     const visorGeometry=new THREE.BufferGeometry();visorGeometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));visorGeometry.setIndex(indices);visorGeometry.computeVertexNormals();
     const visorMaterial=mat(color).clone();visorMaterial.side=THREE.DoubleSide;
-    const visor=new THREE.Mesh(visorGeometry,visorMaterial);visor.position.set(0,rig.top-.035,-.02);visor.castShadow=true;outfit.add(visor);
-    oval(outfit,0,rig.top+.188,-.02,.027,.018,.027,color);
+    const visor=new THREE.Mesh(visorGeometry,visorMaterial);visor.position.set(0,base,-.02);visor.castShadow=true;outfit.add(visor);
+    oval(outfit,0,base+.223,-.02,.027,.018,.027,color);
+    oval(outfit,0,base+.085,depth*.91-.02,.032,.033,.010,cream).castShadow=false;
   }else if(id==='antenna'){
     cylinder(outfit,0,rig.top+.13,-.04,.023,.23,0x72859a,8);
-    oval(outfit,0,rig.top+.27,-.04,.06,.06,.06,color);
+    oval(outfit,0,rig.top+.27,-.04,.06,.06,.06,palette?.accent??color);
   }else if(id==='pirate'){
-    const outline=new THREE.Shape();outline.moveTo(-.43,-.10);outline.quadraticCurveTo(-.38,.16,-.15,.34);outline.lineTo(0,.12);outline.lineTo(.15,.34);outline.quadraticCurveTo(.38,.16,.43,-.10);outline.quadraticCurveTo(0,-.18,-.43,-.10);outline.closePath();
+    const outline=new THREE.Shape();outline.moveTo(-.42,-.06);outline.quadraticCurveTo(-.49,.03,-.38,.12);outline.quadraticCurveTo(-.17,.05,-.15,.24);outline.quadraticCurveTo(0,.30,.15,.24);outline.quadraticCurveTo(.17,.05,.38,.12);outline.quadraticCurveTo(.49,.03,.42,-.06);outline.quadraticCurveTo(0,-.15,-.42,-.06);outline.closePath();
     const hat=new THREE.Mesh(new THREE.ExtrudeGeometry(outline,{depth:.08,bevelEnabled:true,bevelThickness:.012,bevelSize:.015,bevelSegments:1,steps:1}),mat(palette?.dark??0x101821));
     // Eyestalks remain in front of the hat on crustaceans.
     hat.position.set(0,rig.top,kind==='claw'||kind==='crab'?-.12:.05);hat.castShadow=true;outfit.add(hat);
@@ -79693,17 +79793,18 @@ function equipAccessory(body,face,appearance,color,arms){
     oval(hat,0,.055,.10,.06,.065,.012,cream);
     for(const side of [-1,1]){oval(hat,side*.023,.06,.115,.012,.015,.008,ink);const bone=box(hat,0,-.055,.11,.21,.02,.015,cream);bone.rotation.z=side*.5;}
   }else if(id==='backpack'){
-    box(outfit,0,rig.back,-.34,.39,.39,.20,color);
-    box(outfit,0,rig.back-.055,-.455,.29,.15,.04,ink);
-    for(const side of [-1,1])box(outfit,side*.17,rig.back+.02,-.20,.035,.39,.08,cream);
-    box(outfit,0,rig.back+.23,-.32,.13,.035,.07,ink);
+    toyBox(outfit,0,rig.back,-.34,.39,.39,.20,color);
+    toyBox(outfit,0,rig.back-.055,-.455,.29,.15,.04,ink);
+    const strapX=kind==='crab'?.35:['classic','rover','operative'].includes(kind)?.17:.21,strapZ=kind==='operative'?.18:kind==='classic'?.17:.22;
+    for(const side of [-1,1])characterCurve(outfit,[[side*strapX,rig.back-.12,-.22],[side*strapX,rig.back+.21,-.18],[side*strapX,rig.back+.23,.04],[side*strapX,rig.back+.08,strapZ],[side*strapX,rig.back-.12,strapZ]],.018,palette?.dark??cream);
+    characterCurve(outfit,[[-.065,rig.back+.19,-.32],[-.055,rig.back+.26,-.32],[.055,rig.back+.26,-.32],[.065,rig.back+.19,-.32]],.015,ink);
   }else if(id==='scarf'){
     const wrap=new THREE.Mesh(new THREE.TorusGeometry(.25,.065,8,24),mat(color));wrap.rotation.x=Math.PI/2;wrap.position.set(0,rig.neck,0);outfit.add(wrap);
-    const end=box(outfit,.11,rig.neck-.13,.28,.12,.30,.055,color);end.rotation.z=-.18;
+    const end=toyBox(outfit,.11,rig.neck-.13,.28,.12,.30,.055,color);end.rotation.z=-.18;
     box(outfit,.13,rig.neck-.24,.315,.105,.035,.008,cream);
   }else if(id==='bowtie'){
-    for(const side of [-1,1]){const wing=new THREE.Mesh(new THREE.ConeGeometry(.105,.15,3),mat(color));wing.rotation.z=-side*Math.PI/2;wing.position.set(side*.095,rig.chest+.05,front+.035);outfit.add(wing);}
-    oval(outfit,0,rig.chest+.05,front+.055,.045,.045,.04,cream);
+    for(const side of [-1,1]){const wing=oval(outfit,side*.075,rig.chest+.05,front+.035,.085,.057,.032,color);wing.rotation.z=side*.20;}
+    oval(outfit,0,rig.chest+.05,front+.055,.035,.037,.030,color);
   }else if(id==='flower'){
     const [x,y,z]=rig.flower||[.27,rig.top,.08];
     for(let i=0;i<5;i++){const a=i*Math.PI*2/5;oval(outfit,x+Math.cos(a)*.075,y+Math.sin(a)*.075,z,.055,.06,.023,palette?.light??0xffa5b7);}
@@ -79743,28 +79844,30 @@ function equipAccessory(body,face,appearance,color,arms){
 function createOperative(appearance,color,group,body,palette){
   const arms=[],legs=[];
   function oval(parent,x,y,z,sx,sy,sz,tint){const mesh=new THREE.Mesh(robotSphereGeometry,mat(tint));mesh.position.set(x,y,z);mesh.scale.set(sx,sy,sz);mesh.castShadow=true;parent.add(mesh);return mesh;}
-  box(body,0,.67,0,.46,.55,.27,palette?.base??0x121820);
+  toyBox(body,0,.67,0,.46,.55,.27,palette?.base??0x121820);
   box(body,0,.68,.151,.16,.43,.025,palette?.light??0xf1f3f4);
   const lapel=new THREE.Shape();lapel.moveTo(-.17,.2);lapel.lineTo(0,-.02);lapel.lineTo(.17,.2);lapel.lineTo(.11,-.18);lapel.lineTo(-.11,-.18);lapel.closePath();
   const jacket=new THREE.Mesh(new THREE.ExtrudeGeometry(lapel,{depth:.025,bevelEnabled:false}),mat(palette?.dark??0x080b0f));jacket.position.set(0,.72,.165);body.add(jacket);
   const tie=box(body,0,.70,.205,.045,.30,.025,0x050607);tie.rotation.z=0;
   oval(body,0,1.12,0,.27,.30,.24,0xd4ad92);
-  box(body,0,1.34,-.055,.51,.12,.34,0x171b1f);
+  const hair=new THREE.Mesh(new THREE.SphereGeometry(1,24,12,0,Math.PI*2,0,1.16),mat(0x171b1f));hair.scale.set(.278,.31,.248);hair.position.set(0,1.12,0);hair.castShadow=true;body.add(hair);
+  for(const side of [-1,1]){oval(body,side*.258,1.11,0,.038,.06,.05,0xd4ad92);oval(body,side*.242,1.22,-.035,.025,.085,.105,0x171b1f);}
   // A single dark visor reads as sunglasses from every camera distance.
   for(const side of [-1,1])box(body,side*.115,1.16,.226,.205,.095,.035,0x06090c);
   box(body,0,1.16,.229,.055,.025,.038,0x06090c);
+  characterCurve(body,[[-.055,1.038,.235],[0,1.025,.241],[.045,1.038,.235]],.006,0x795b4d);
   for(const side of [-1,1]){
     const arm=new THREE.Group();arm.position.set(side*.34,.78,0);body.add(arm);arms.push(arm);
-    box(arm,0,-.16,0,.14,.38,.17,palette?.base??0x11171e);
+    toyBox(arm,0,-.16,0,.14,.38,.17,palette?.base??0x11171e);
     const wrist=oval(arm,0,-.39,.035,.09,.10,.09,palette?.light??color);
     wrist.rotation.z=side*.18;
     for(const tip of [-1,1]){
-      const claw=oval(arm,side*tip*.075,-.50,.07,.075,.18,.065,palette?.light??color);
+      const claw=oval(arm,side*tip*.065,-.48,.07,.065,.15,.06,palette?.light??color);
       claw.rotation.z=side*tip*.48;
     }
     const leg=new THREE.Group();leg.position.set(side*.13,.39,0);body.add(leg);legs.push(leg);
     box(leg,0,-.17,0,.18,.34,.20,palette?.base??0x0d1218);
-    box(leg,0,-.36,.07,.20,.09,.31,0x080b0f);
+    toyBox(leg,0,-.36,.07,.20,.09,.31,palette?.dark??0x080b0f);
   }
   equipCharacter(body,{position:{z:.22}},{...appearance,accessory:appearance.accessory==='glasses'?'none':appearance.accessory},color,arms);
   return {group,body,arms,legs,appearance,color};
@@ -79781,10 +79884,14 @@ function createCompanion(appearance,color,group,body,palette){
     oval(body,0,.56,.225,.16,.23,.055,light);
     for(const side of [-1,1]){
       const ear=new THREE.Mesh(new THREE.ConeGeometry(.14,.32,4),mat(fur));ear.position.set(side*.245,1.34,0);ear.rotation.z=-side*.17;body.add(ear);
-      const inner=new THREE.Mesh(new THREE.ConeGeometry(.082,.22,4),mat(0xffabb9));inner.position.set(side*.245,1.36,.07);body.add(inner);
+      const inner=new THREE.Mesh(new THREE.ConeGeometry(.082,.22,4),mat(0xd9a6a0));inner.position.set(side*.245,1.36,.07);inner.rotation.z=-side*.17;body.add(inner);
       oval(body,side*.105,.94,.286,.13,.085,.085,light);
     }
     oval(body,0,.98,.36,.042,.033,.035,0x172330);
+    for(const side of [-1,1]){
+      characterCurve(body,[[0,.958,.355],[side*.035,.935,.354],[side*.064,.943,.345]],.0055,0x4a4140);
+      for(const offset of [-1,1])characterCurve(body,[[side*.19,.956+offset*.013,.341],[side*.26,.96+offset*.025,.319],[side*.33,.965+offset*.036,.285]],.0045,dark);
+    }
     const tail=new THREE.Group();tail.position.set(0,.42,-.19);body.add(tail);
     const plume=oval(tail,.18,.2,-.26,.07,.32,.11,fur);plume.rotation.z=-.5;
     oval(tail,.32,.46,-.26,.065,.12,.085,light);
@@ -79793,17 +79900,22 @@ function createCompanion(appearance,color,group,body,palette){
   for(const side of [-1,1]){
     if(crab){cylinder(body,side*.16,.96,.15,.035,.3,dark,10);oval(body,side*.16,1.1,.15,.09,.1,.08,0xe6edf5);}
     oval(body,side*(crab?.16:.135),crab?1.11:1.07,crab?.224:.296,.036,.052,.025,0x101b29);
-    if(palette&&!crab)oval(body,side*.135-.008,1.085,.318,.010,.014,.008,0xffffff);
+    oval(body,side*(crab?.16:.135)-.008,crab?1.13:1.085,crab?.244:.318,.008,.011,.006,0xffffff).castShadow=false;
     const arm=new THREE.Group();arm.position.set(side*(crab?.43:.25),crab?.72:.72,0);body.add(arm);arms.push(arm);
     if(crab){
       oval(arm,side*.14,.07,.05,.2,.075,.08,fur);
       for(const tip of [-1,1]){const claw=oval(arm,side*.30,.18,.06+tip*.09,.12,.18,.06,dark);claw.rotation.z=-side*.4;}
-      for(let i=0;i<3;i++){const limb=new THREE.Group();limb.position.set(side*.35,.47,(i-1)*.18);body.add(limb);legs.push(limb);const foot=box(limb,side*.16,-.15,0,.32,.085,.08,dark);foot.rotation.z=side*.55;}
+      for(let i=0;i<3;i++){
+        const limb=new THREE.Group();limb.position.set(side*.28,.50,(i-1)*.17);body.add(limb);legs.push(limb);
+        characterCurve(limb,[[0,0,0],[side*.19,-.06,.015],[side*.29,-.25,.04],[side*.33,-.43,.07]],.043,dark);
+        oval(limb,side*.33,-.43,.07,.072,.045,.075,dark);
+      }
     }else{
       oval(arm,side*.02,-.13,.01,.085,.20,.09,fur);oval(arm,side*.02,-.29,.045,.09,.07,.10,light);
       const leg=new THREE.Group();leg.position.set(side*.14,.28,0);body.add(leg);legs.push(leg);oval(leg,0,-.12,.065,.115,.14,.16,dark);
     }
   }
+  if(crab)characterCurve(body,[[-.075,.645,.266],[0,.621,.278],[.075,.645,.266]],.008,0x4d3430);
   equipCharacter(body,face,appearance,color,arms);
   return {group,body,arms,legs,appearance,color};
 }
@@ -79824,6 +79936,7 @@ function createClaw(appearance,color,group,body,palette){
     cylinder(body,side*.13,1.20,.17,.029,.15,shell,8);
     oval(body,side*.13,1.28,.20,.074,.085,.065,0xe6edf5);
     oval(body,side*.13,1.28,.258,.032,.043,.02,0x111c29);
+    oval(body,side*.13-.008,1.295,.277,.008,.011,.005,0xffffff).castShadow=false;
     const arm=new THREE.Group();arm.position.set(side*.29,.67,0);body.add(arm);arms.push(arm);
     const forearm=oval(arm,side*.14,.015,.10,.19,.08,.09);forearm.rotation.z=side*.35;
     const outline=new THREE.Shape();outline.moveTo(-.10,0);outline.quadraticCurveTo(-.31,.23,-.18,.48);outline.lineTo(-.05,.31);outline.lineTo(0,.20);outline.lineTo(.055,.32);outline.lineTo(.18,.48);outline.quadraticCurveTo(.31,.23,.10,0);outline.closePath();
@@ -79831,7 +79944,7 @@ function createClaw(appearance,color,group,body,palette){
     pincer.position.set(side*.26,.04,.12);pincer.rotation.z=-side*.22;pincer.castShadow=true;arm.add(pincer);
     for(let i=0;i<2;i++){const leg=new THREE.Group();leg.position.set(side*.19,.34,-i*.15);body.add(leg);legs.push(leg);const foot=box(leg,side*.09,-.15,.06,.12,.26,.12,palette?.dark??0x526777);foot.rotation.z=side*.22;}
   }
-  box(body,0,.91,.285,.12,.025,.025,0x111c29);
+  characterCurve(body,[[-.06,.93,.288],[0,.912,.294],[.06,.93,.288]],.008,0x29313b);
   equipCharacter(body,{position:{z:.28}},appearance,color,arms);
   return {group,body,arms,legs,appearance,color};
 }
@@ -79855,11 +79968,26 @@ function createAnimal(appearance,color,group,body,palette){
       oval(body,side*.09,.97,.265,.095,.07,.065,cream);
     }else{
       oval(body,side*.27,1.30,-.035,.12,.13,.085,dark);
-      const patch=oval(body,side*.14,1.08,.252,.105,.12,.045,dark);patch.rotation.z=-side*.22;
+      // Flatten the markings against the face so they read as fur, not goggles.
+      const patch=oval(body,side*.14,1.08,.263,.102,.12,.023,dark);patch.rotation.z=-side*.22;
+      oval(body,side*.075,.975,.278,.09,.066,.045,cream);
     }
-    const eyeX=side*.135,eyeZ=fox?.307:bunny?.285:.296;
-    oval(body,eyeX,1.08,eyeZ,.031,.046,.021,palette?0x25313b:dark);
-    oval(body,eyeX-.008,1.095,eyeZ+.018,.010,.014,.008,0xffffff);
+    if(fox){
+      // Keep the eyes above the cheek patches, following the rounded head
+      // surface so the muzzle cannot clip them into uneven crescents.
+      const eye=new THREE.Group(),x=side*.135,y=.10;
+      const z=.29*Math.sqrt(1-(x/.36)**2-(y/.30)**2);
+      eye.position.set(x,1.05+y,z);
+      eye.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),new THREE.Vector3(x/.36**2,y/.30**2,z/.29**2).normalize());
+      body.add(eye);
+      oval(eye,0,0,.006,.030,.039,.016,0x25313b).castShadow=false;
+      oval(eye,-.007,.012,.020,.006,.008,.004,0xffffff).castShadow=false;
+    }else{
+      const eyeX=side*.135,eyeZ=bunny?.285:.296;
+      if(!bunny)oval(body,eyeX,1.085,.291,.041,.049,.012,cream).castShadow=false;
+      oval(body,eyeX,1.08,eyeZ,bunny?.031:.026,bunny?.046:.034,.016,0x25313b).castShadow=false;
+      oval(body,eyeX-.007,1.092,eyeZ+.014,.007,.010,.004,0xffffff).castShadow=false;
+    }
     const arm=new THREE.Group();arm.position.set(side*.28,.73,0);body.add(arm);arms.push(arm);
     oval(arm,side*.025,-.16,0,.09,.20,.095,fox||bunny?fur:dark);
     oval(arm,side*.025,-.31,.035,.095,.07,.10,fox?dark:bunny?cream:dark);
@@ -79867,6 +79995,7 @@ function createAnimal(appearance,color,group,body,palette){
     oval(leg,0,-.12,.07,.12,.14,.17,fox||!bunny?dark:fur);
   }
   oval(body,0,.99,fox?.345:.305,.04,.029,.028,bunny?0xd98f9a:dark);
+  if(!fox)for(const side of [-1,1])characterCurve(body,[[0,.97,.323],[side*.026,.948,.317],[side*.05,.955,.310]],.0055,bunny?0x9c7374:dark);
   if(fox){
     const tail=new THREE.Group();tail.position.set(.03,.35,-.22);tail.rotation.z=-.55;body.add(tail);
     const plume=oval(tail,.18,.18,-.23,.14,.37,.15,fur);plume.rotation.x=-.42;
@@ -80395,7 +80524,8 @@ function placeResident(r){
   r.node.style.left=THREE.MathUtils.clamp(x,half+12,w-half-12)+'px';
   if(loungeSpeaker===r){
     // Leave navigation and the map unobstructed; the bubble replaces its own name tag.
-    const top=Math.min(h-104,Math.max(114+r.node.offsetHeight,y));r.node.style.top=top+'px';
+    const compact=innerWidth<=560;
+    const top=Math.min(h-(compact?80:104),Math.max((compact?154:114)+r.node.offsetHeight,y));r.node.style.top=top+'px';
     r.node.style.setProperty('--speech-tail',THREE.MathUtils.clamp(x-parseFloat(r.node.style.left)+half,18,r.node.offsetWidth-18)+'px');
   }
 }
@@ -80602,7 +80732,7 @@ const navigationLayer=document.createElement('div');navigationLayer.className='w
 navigationLayer.dataset.scenarioDensity=scenarioFloors.length>2?'compact':'normal';
 const overviewControl=document.createElement('div');overviewControl.className='world-overview-control';navigationLayer.append(overviewControl);
 const overviewButton=document.createElement('button');overviewButton.type='button';overviewButton.className='world-overview-button';overviewButton.dataset.worldOverview='';overviewButton.textContent='• See the whole studio';overviewButton.setAttribute('aria-pressed','false');overviewControl.append(overviewButton);
-const studioVersion=document.createElement('span');studioVersion.className='world-build-version';studioVersion.textContent='v'+("0.2.3");overviewControl.append(studioVersion);
+const studioVersion=document.createElement('span');studioVersion.className='world-build-version';studioVersion.textContent='v'+("0.2.4");overviewControl.append(studioVersion);
 const journeyNote=document.createElement('div');journeyNote.className='world-journey';journeyNote.setAttribute('role','status');journeyNote.setAttribute('aria-live','polite');journeyNote.hidden=true;navigationLayer.append(journeyNote);
 const roomMap=document.createElement('nav');roomMap.className='world-room-map';roomMap.setAttribute('aria-label','Connected studio rooms');
 roomMap.classList.add('world-scenario-map');
@@ -80790,7 +80920,15 @@ termOverview.onkeydown=e=>{
   if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeTermOverview();}
   else if(e.key==='Tab'){e.preventDefault();termOverview.querySelector('.world-room-paper-close').focus();}
 };
-root.addEventListener('pointerdown',e=>{if(!roomPaper.hidden&&!e.target.closest('.world-room-paper,.world-term-overview,[data-room-info]'))closeRoomInfo(false);},true);
+root.addEventListener('pointerdown',event=>{
+  if(event.button!==0||event.target.closest('dialog[open]'))return;
+  // Dismiss only the top information layer, preserving the page beneath it.
+  if(!termOverview.hidden){
+    if(!termOverview.contains(event.target)&&!event.target.closest('[data-term-overview]'))closeTermOverview(false);
+  }else if(!termPaper.hidden){
+    if(!termPaper.contains(event.target)&&!event.target.closest('[data-paper-term]'))closeTermInfo(false);
+  }else if(!roomPaper.hidden&&!roomPaper.contains(event.target)&&!event.target.closest('[data-room-info]'))closeRoomInfo(false);
+},true);
 const roomInfoMarkers=Object.keys(roomGuides).map(id=>{
   const node=document.createElement('button');node.type='button';node.className='world-room-info';node.dataset.roomInfo=id;
   node.textContent='i';node.setAttribute('aria-label','About '+studioRooms[id].title);node.title='About '+studioRooms[id].title;
@@ -81379,7 +81517,9 @@ function syncVisitorTeam(){
     }
     v.job=assigned?job.id:null;v.role=member.role;v.name=member.name;v.title=member.taskTitle;
     v.working=assigned&&(job.activeStages||[]).includes(member.role);
-    v.node.querySelector('b').textContent=v.name;v.node.setAttribute('aria-label','Select '+v.name);
+    const label=v.node.querySelector('b');if(label.textContent!==v.name)label.textContent=v.name;
+    const accessibleName='Select '+v.name+(v.phase==='working'&&v.working?', working':'');
+    if(v.node.getAttribute('aria-label')!==accessibleName)v.node.setAttribute('aria-label',accessibleName);
   }
   syncVisitorResidents();
 }
@@ -81400,9 +81540,13 @@ function animateVisitors(dt){
     v.legs.forEach((leg,j)=>leg.rotation.x=seated?-Math.PI/2:stepping?Math.sin(clock*9+j*Math.PI)*.4:0);
     v.arms.forEach((arm,j)=>arm.rotation.x=seated?-.35:stepping?Math.sin(clock*9+j*Math.PI)*.3:working?-.7:0);
     const status=v.node.querySelector('small');
-    if(working)status.innerHTML='<span class="crew-working-badge"><span aria-hidden="true" class="crew-working-dot"></span>Working</span><span class="crew-working-role">'+escape(v.title)+'</span>';
-    else status.textContent=v.phase==='returning'?'Returning to Lounge':v.phase==='entering'?(v.destination==='seated'?'Joining Open Task':'Taking a workbench'):seated?'Standby':v.title;
-    v.node.setAttribute('aria-label','Select '+v.name+(working?', working':''));
+    const statusText=working?'<span class="crew-working-badge"><span aria-hidden="true" class="crew-working-dot"></span>Working</span><span class="crew-working-role">'+escape(v.title)+'</span>':v.phase==='returning'?'Returning to Lounge':v.phase==='entering'?(v.destination==='seated'?'Joining Open Task':'Taking a workbench'):seated?'Standby':v.title;
+    if(v.statusText!==statusText||v.statusWorking!==working){
+      if(working)status.innerHTML=statusText;else status.textContent=statusText;
+      v.statusText=statusText;v.statusWorking=working;
+    }
+    const accessibleName='Select '+v.name+(working?', working':'');
+    if(v.node.getAttribute('aria-label')!==accessibleName)v.node.setAttribute('aria-label',accessibleName);
     v.node.classList.toggle('visitor-waiting',seated);v.node.classList.toggle('working',working);v.node.classList.toggle('selected',activeScenario==='plan'&&(state.selectedVisitorKey===v.key||v.role!==null&&activeSelection===v.role));
     v.node.hidden=!(overview||journey||room==='mission'&&activeScenario==='plan'||room==='lounge'&&stepping);
     positionLabel(v.node,v.group.position.clone().add(new THREE.Vector3(0,2.2,0)));
@@ -81451,11 +81595,10 @@ function visitorTravelInfo(){return [...visitorTravel.values()].map(v=>{const po
 
   // Both directions require native OpenShell policy evidence, never an approval click.
 const protectionSeen=new Set(),protectionHits=new Map(),protectionCooldown=new Map();
-const protectionReplies=new Map();
 const externalActivitySeen=new Set(),externalActivityPrimed=new Set(),nativeAllowSeen=new Map();
-function protectionReplyDelay(owner,role=null){
-  const key=owner+':'+(role===null?'personal':role),hold=protectionReplies.get(key);
-  if(hold&&performance.now()<hold.until)return hold;
+function protectionReplyDelay(){
+  // Keep the chat/bubble interface while showing completed replies alongside
+  // the shield animation. Native verification and event timing are unchanged.
   return null;
 }
 let protectionPrimed=false;
@@ -81463,6 +81606,26 @@ const protectionLayer=document.createElement('div');protectionLayer.className='w
 function protectionTarget(event){return event.role===null?(visitorTravel.get(event.owner)?.group||residents.find(r=>r.key===event.owner)?.group):robots[event.role]?.robot;}
 function protectionVisible(event){
   return !overview&&!journey&&(event.role!==null?room==='mission':visitorTravel.has(event.owner)?room==='mission'&&activeScenario==='plan':room==='lounge');
+}
+function placeProtectionNotice(hit,point){
+  const speaker=room==='lounge'&&hit.event.role===null
+    ?residents.find(r=>r.key===hit.event.owner&&r.node.dataset.speaking==='true'):null;
+  if(speaker){
+    // A reply and its policy outcome share one readable card instead of
+    // competing for the same point above the character's head.
+    if(hit.label.parentNode!==speaker.node){
+      hit.label.dataset.inline='true';
+      speaker.node.insertBefore(hit.label,speaker.node.querySelector('.world-resident-speech'));
+      hit.label.style.removeProperty('left');hit.label.style.removeProperty('top');hit.label.style.removeProperty('display');
+      placeResident(speaker);
+    }
+    return;
+  }
+  if(hit.label.parentNode!==protectionLayer){delete hit.label.dataset.inline;protectionLayer.append(hit.label);}
+  positionLabel(hit.label,point);
+  const half=hit.label.offsetWidth/2;
+  hit.label.style.left=Math.max(half+8,Math.min(viewport.clientWidth-half-8,parseFloat(hit.label.style.left)))+'px';
+  hit.label.style.top=Math.max(hit.label.offsetHeight+8,Math.min(viewport.clientHeight-8,parseFloat(hit.label.style.top)))+'px';
 }
 function disposeProtection(hit){
   scene.remove(hit.group);hit.label.remove();
@@ -81543,11 +81706,7 @@ function animateExternalConnection(hit,age,duration){
   hit.packets.forEach((packet,i)=>{packet.visible=motion;packet.position.copy(hit.curve.getPoint(((age*.6+i*.5)%1)*.88));packet.material.opacity=fade;});
   hit.label.dataset.phase=hit.phase;hit.label.style.opacity=String(fade);
   hit.group.updateMatrixWorld(true);
-  positionLabel(hit.label,hit.group.localToWorld(hit.globe.position.clone().add(new THREE.Vector3(0,1.35,0))));
-  // Keep the notice readable when an agent is near a viewport edge or zoomed in.
-  const half=hit.label.offsetWidth/2;
-  hit.label.style.left=Math.max(half+8,Math.min(viewport.clientWidth-half-8,parseFloat(hit.label.style.left)))+'px';
-  hit.label.style.top=Math.max(hit.label.offsetHeight+8,Math.min(viewport.clientHeight-8,parseFloat(hit.label.style.top)))+'px';
+  placeProtectionNotice(hit,hit.group.localToWorld(hit.globe.position.clone().add(new THREE.Vector3(0,1.35,0))));
 }
 function queueExternalConnection(event){
   const key=event.owner+':'+(event.role===null?'personal':event.role),target=protectionTarget(event);
@@ -81598,10 +81757,6 @@ function observeProtection(events=[]){
     if(event.action==='allow'&&protectionHits.get(key)?.event.action==='deny')continue;
     if(event.action==='allow')nativeAllowSeen.set(key,performance.now());
     else protectionCooldown.set(cooldownKey,performance.now());
-    if(event.action==='deny'&&protectionVisible(event)){
-      const hold={time:event.time,until:performance.now()+3000};protectionReplies.set(key,hold);
-      setTimeout(()=>{if(protectionReplies.get(key)===hold){protectionReplies.delete(key);root.dispatchEvent(new Event('bac:protection-reveal'));}},3000);
-    }
     if(event.action==='allow'){queueExternalConnection(event);continue;}
     if(protectionHits.has(key)){disposeProtection(protectionHits.get(key));protectionHits.delete(key);}
     if(protectionHits.size>=3){const [oldKey,old]=protectionHits.entries().next().value;disposeProtection(old);protectionHits.delete(oldKey);}
@@ -81671,7 +81826,7 @@ function animateProtection(now){
       hit.packet.material.opacity=t<0?1:Math.max(0,1-t/.7);hit.glow.material.opacity=.25*hit.packet.material.opacity;hit.trail.material.opacity=.8*hit.packet.material.opacity;
     }
     hit.label.dataset.phase=hit.phase;hit.label.style.opacity=String(motion?(t<0?.5:fade):1);
-    positionLabel(hit.label,hit.group.position.clone().add(new THREE.Vector3(0,2.65,0)));
+    placeProtectionNotice(hit,hit.group.position.clone().add(new THREE.Vector3(0,2.65,0)));
   }
 }
 
@@ -81704,11 +81859,11 @@ function animateProtection(now){
     renderer.render(scene,camera);
   }
   setScenario('plan');motionButton();resize();update(snapshot,0);sceneReady=true;requestAnimationFrame(animate);root.dataset.renderer='webgl';
-  return {resize,update,setRoom,setScenario,setScenarioStatus,scenarios:showScenarios,setCollection,observeProtection,observeExternalActivity,protectionReplyDelay,setDraft,welcomeAgent,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',protectionHits:[...protectionHits.values()].map(h=>({id:h.event.id,owner:h.event.owner,role:h.event.role,action:h.event.action,source:h.event.source,globeRotation:h.earth?.rotation.y,visible:h.group.visible,animated:motion&&h.phase!=='blocked',phase:h.phase})),visitorTravel:visitorTravelInfo(),visitorSeating:{chairs:visitorBenches.children.length,positions:visitorBenches.children.map(chair=>chair.position.toArray())},roundtable:roundtableInfo(),arrival:arrival?{key:arrival.key,avatar:{...arrival.rig.appearance},phase:arrival.time<1.8?'loading':'walking',position:arrival.rig.group.position.toArray()}:null,room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,draftPreview:draftRig?{avatar:{...draftRig.appearance},visible:draftRig.group.visible&&draftRig.group.parent===workshopRoom}:null,draftShield:!!draftRig?.body.getObjectByName('openshell-shield'),crewExchange:robots.map((r,role)=>({role,visible:r.robot.visible,phase:r.exchange,wanted:r.wanted})),deskAssignments:[...deskAssignments],crewHomes:robots.map(r=>r.home.toArray()),selectedTeam:state.crewMission?.enabledRoles||[0],crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,captain:{position:robots[0].robot.position.toArray(),job:captainJob,received:[...receivedDocuments],assigned:[...assignedDocuments],pending:documentQueue.map(d=>({...d})),inFlight:documentFlight?{...documentFlight}:null},robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
+  return {resize,update,setRoom,setScenario,setScenarioStatus,scenarios:showScenarios,setCollection,observeProtection,observeExternalActivity,protectionReplyDelay,setDraft,welcomeAgent,finishArrival,overview:showOverview,inspect:()=>({sceneStyle:'connected-studio',protectionHits:[...protectionHits.values()].map(h=>({id:h.event.id,owner:h.event.owner,role:h.event.role,action:h.event.action,source:h.event.source,globeRotation:h.earth?.rotation.y,visible:h.group.visible,animated:motion&&h.phase!=='blocked',phase:h.phase})),visitorTravel:visitorTravelInfo(),visitorSeating:{chairs:visitorBenches.children.length,positions:visitorBenches.children.map(chair=>chair.position.toArray())},roundtable:roundtableInfo(),arrival:arrival?{key:arrival.key,avatar:{...arrival.rig.appearance},phase:arrival.time<1.8?'loading':'walking',position:arrival.rig.group.position.toArray()}:null,room,navigation:navigationInfo(),residents:residentInfo(),draft:draftProfile,draftPreview:draftRig?{avatar:{...draftRig.appearance},visible:draftRig.group.visible&&draftRig.group.parent===workshopRoom}:null,draftShield:!!draftRig?.body.getObjectByName('openshell-shield'),crewExchange:robots.map((r,role)=>({role,visible:r.robot.visible,phase:r.exchange,wanted:r.wanted})),deskAssignments:[...deskAssignments],crewHomes:robots.map(r=>r.home.toArray()),selectedTeam:state.crewMission?.enabledRoles||[0],crewAvatars:robots.map(r=>r.appearance),activeRole:lastActive,captain:{position:robots[0].robot.position.toArray(),job:captainJob,received:[...receivedDocuments],assigned:[...assignedDocuments],pending:documentQueue.map(d=>({...d})),inFlight:documentFlight?{...documentFlight}:null},robots:robots.map(r=>r.robot.position.toArray()),phase,motion,visible,lost,lastFrame,clock,rootHidden:root.hidden,documentHidden:document.hidden,camera:[azimuth,elevation,zoom],hotspots:hotspots.map(h=>h.id)})};
 }
 
 try {sceneView=createScene();}catch(error){el('fallback').hidden=false;root.dataset.renderer='fallback';console.warn('3D unavailable; accessible workflow controls remain available.',error.message);}
-window.BacCampus={setScenario:id=>sceneView?.setScenario(id),setScenarioStatus:(rows,busy)=>sceneView?.setScenarioStatus(rows,busy),scenarios:options=>sceneView?.scenarios(options),protectionReplyDelay:(owner,role)=>sceneView?.protectionReplyDelay(owner,role),observeProtection:events=>sceneView?.observeProtection(events),observeExternalActivity:(jobs,owner)=>sceneView?.observeExternalActivity(jobs,owner),welcomeAgent:key=>sceneView?.welcomeAgent(key),setRoom:(room,options)=>sceneView?.setRoom(room,options),overview:options=>sceneView?.overview(options),setCollection:(agents,key)=>sceneView?.setCollection(agents,key),setDraft:profile=>sceneView?.setDraft(profile),inspect:()=>sceneView?.inspect()||{fallback:true},setLive:next=>{snapshot=next;selected=next.selected;render();}};
+window.BacCampus={setScenario:id=>sceneView?.setScenario(id),setScenarioStatus:(rows,busy)=>sceneView?.setScenarioStatus(rows,busy),scenarios:options=>sceneView?.scenarios(options),protectionReplyDelay:(owner,role)=>sceneView?.protectionReplyDelay(owner,role),observeProtection:events=>sceneView?.observeProtection(events),observeExternalActivity:(jobs,owner)=>sceneView?.observeExternalActivity(jobs,owner),welcomeAgent:key=>sceneView?.welcomeAgent(key),finishArrival:()=>sceneView?.finishArrival(),setRoom:(room,options)=>sceneView?.setRoom(room,options),overview:options=>sceneView?.overview(options),setCollection:(agents,key)=>sceneView?.setCollection(agents,key),setDraft:profile=>sceneView?.setDraft(profile),inspect:()=>sceneView?.inspect()||{fallback:true},setLive:next=>{snapshot=next;selected=next.selected;render();}};
 render();
 
 })();</script>
@@ -81737,7 +81892,7 @@ render();
       if(selection){selection.removeAllRanges();for(const range of ranges)if(range.commonAncestorContainer.isConnected)selection.addRange(range);}
     }
   }
-  const buildInfo={"version": "0.2.3", "commit": "124ff9ab5974b2a36664804a0271c67baef18019", "branch": "bac/1109-korea", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
+  const buildInfo={"version": "0.2.4", "commit": "cc06d8fe334f3c6ca56043de83e7d8b42f33e7ad", "branch": "bac/1109-korea", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
   // Only codes and source locations are retained. Never retain Error.message, bodies or URLs.
 const browserDiagnostics=[];
 const diagnosticRoutes=new Set('session state runtime diagnostics telemetry settings settings/models settings/start settings/team-model settings/connections settings/connections/preferences settings/connections/check settings/connections/models settings/scenario-model settings/scenario-models credential-session agents onboard profile agent-model delete-agent agent-policy crew-policy jobs upload decision retry-reaction reset crew-chat-reset bac-reset heartbeat team-model telegram telegram/test file workspace-files agent-documents evidence security'.split(' '));
@@ -81913,7 +82068,7 @@ function bindDiagnosticActions(){
     const cacheKey=scenario+':'+target,conditional=path==='state'&&payload===undefined,cached=conditional?stateCache.get(cacheKey):null;
     if(cached)headers['If-None-Match']=cached.etag;
     const options = payload===undefined ? {headers} : {method:'POST',headers:{...headers,'Content-Type':'application/json','X-BaC-CSRF':csrf},body:JSON.stringify(payload)};
-    const readTimeout=payload===undefined?(['session','state'].includes(path)?30000:path.split('?')[0]==='diagnostics'?5000:/^(?:agent-policy|crew-policy)(?:\?|$)/.test(path)?45000:0):0;
+    const readTimeout=payload===undefined?(['session','state'].includes(path)?30000:['diagnostics','model-reasoning'].includes(path.split('?')[0])?5000:/^(?:agent-policy|crew-policy)(?:\?|$)/.test(path)?45000:0):0;
     const controller=readTimeout?new AbortController():null;
     const timeout=controller?setTimeout(()=>controller.abort(),readTimeout):null;
     if(controller)options.signal=controller.signal;
@@ -81950,6 +82105,9 @@ function bindDiagnosticActions(){
     // Keep the last click instead of rejecting it. Foreground writes still
     // finish in their original workspace before switching.
     while(pendingWrites||removingAgent||hiringArrival){
+      // An explicit selection may finish the visual arrival, but never skip
+      // the save/state binding that owns the new agent's workspace.
+      if(hiringArrival)window.BacCampus?.finishArrival();
       await new Promise(resolve=>setTimeout(resolve,50));
       if(version!==agentSwitchVersion)return;
     }
@@ -81980,10 +82138,28 @@ function bindDiagnosticActions(){
   }
   el('agent-list').onclick=e=>{const b=e.target.closest('[data-agent-key]');if(b)switchAgent(b.dataset.agentKey);};
   let dialogRevision=0;
-  function dialog(kicker, html) {dialogRevision++;el('dialog').classList.remove('studio-agent-documents','studio-agent-code');el('dialog').classList.toggle('studio-page-preview',['EVENT PAGE','WEBPAGE PREVIEW'].includes(kicker));el('dialog-kicker').textContent=kicker;el('dialog-body').innerHTML=html;if(kicker==='Settings')el('dialog-body').scrollTop=0;if(!el('dialog').open)el('dialog').showModal();}
+  function dialog(kicker, html) {dialogRevision++;el('dialog').classList.remove('studio-agent-documents','studio-agent-code','studio-delete-dialog');el('dialog').classList.toggle('studio-page-preview',['EVENT PAGE','WEBPAGE PREVIEW'].includes(kicker));el('dialog-kicker').textContent=kicker;el('dialog-body').innerHTML=html;if(kicker==='Settings')el('dialog-body').scrollTop=0;if(!el('dialog').open)el('dialog').showModal();}
   el('dialog').addEventListener('close',()=>{dialogRevision++;});
   el('dialog-close').onclick=()=>el('dialog').close();
-  el('dialog').addEventListener('click',e=>{if(e.target===el('dialog')&&!removingAgent){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
+  function dismissOnBackdrop(modal,canClose=()=>true){
+    let startedOutside=false;
+    const outside=event=>{
+      if(event.target!==modal)return false;
+      const r=modal.getBoundingClientRect();
+      return event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom;
+    };
+    modal.addEventListener('pointerdown',event=>{startedOutside=event.button===0&&outside(event);});
+    modal.addEventListener('pointercancel',()=>{startedOutside=false;});
+    modal.addEventListener('close',()=>{startedOutside=false;});
+    modal.addEventListener('click',event=>{
+      const dismiss=startedOutside&&event.button===0&&outside(event);startedOutside=false;
+      if(!dismiss||!modal.open||!canClose())return;
+      // Honor the same save/reset guards as Escape. Never treat a text drag
+      // ending outside the dialog as a request to close it.
+      if(modal.dispatchEvent(new Event('cancel',{cancelable:true}))&&modal.open)modal.close();
+    });
+  }
+  dismissOnBackdrop(el('dialog'),()=>!removingAgent);
   function setup() {
     dialog('CONNECTIONS',`<h3>Connections</h3><div class="studio-runtime-grid"><div><b>Model</b><small>${runtime.model?'Connected':'Not connected'}</small></div><div><b>OpenClaw</b><small>${gatewayLabel()}</small></div><div><b>OpenShell</b><small>${escape(runtime.openshell||'Not configured')}</small></div></div>`);
   }
@@ -82148,6 +82324,7 @@ function visitorAvailable(visitor){return !!visitor&&(data.agents||[]).some(agen
 // Each specialist has a durable direct conversation, separate from crew execution.
 const defaultCrewPrompt=role=>selectedScenario==='plan'&&role===0?'/goal ':'';
 const crewDrafts=new Map();let crewChatKey='',crewChatSignature='',crewChatSending=false,crewResetEpoch='';
+let crewComposerEditing=false,crewComposerPointer=false;
 // New tasks use hired agents only; an active job keeps its captured team mode.
 let openTaskTeamMode='hired';
 function taskTeamMode(job){return job?.payload.teamMode||(job?.payload.includeHiredAgents??!!job?.payload.roster?.length?'mixed':'builtin');}
@@ -82377,17 +82554,60 @@ function collaborationTimeMarkup(job){
  const label=collaborationTime(job);
  return label?'<p class="mission-plan-inputs" data-plan-total="'+escape(job.id)+'" title="From submission to completion, including queueing, planning, specialists and review.">'+escape(label)+'</p>':'';
 }
+function modelReasoningMarkup(job,role,revision=null){
+ const state=missionReasoningCache.get(job.id),report=state?.report;
+ const calls=(report?.calls||[]).filter(call=>Number(call.role)===Number(role)&&(revision===null||/^Revis/.test(call.phase)===revision));
+ const sections=calls.flatMap(call=>call.turns||[]).flatMap(turn=>turn.sections||[]);
+ const published=sections.some(section=>section.text);
+ const kinds=new Set(sections.filter(section=>section.text).map(section=>section.kind));
+ const label=kinds.size===1&&kinds.has('summary')?'Reasoning summary':'Model reasoning';
+ let body='';
+ if(!report){
+  body='<p class="mission-reasoning-empty" role="status">'+(state?.error?'Could not load reasoning. Close and reopen to retry.':'Loading saved reasoning…')+'</p>';
+ }else if(!calls.length){
+  body='<p class="mission-reasoning-empty">'+(report.active?'Reasoning will appear here if the model provides it.':report.recorded?'No reasoning was recorded for this step.':'Reasoning not available. This task has no saved provider trace.')+'</p>';
+ }else{
+  const latest=calls.findLast(call=>call.status==='collecting'||(call.turns||[]).some(turn=>turn.sections?.some(section=>section.text)))?.id;
+  body=calls.map(call=>{
+   const textTurns=(call.turns||[]).filter(turn=>turn.sections?.some(section=>section.text));
+   const model=[...new Set((call.turns||[]).map(turn=>turn.model).filter(Boolean))].map(model=>model.split('/').at(-1)).join(' · ');
+   const phase=/^Planning-captain-scope/.test(call.phase)?'Casey’s scope':/^Planning.*scope/.test(call.phase)?'Team capabilities':/^Planning/.test(call.phase)?'Planning':/^Checking/.test(call.phase)?'Checking progress':/^Review/.test(call.phase)?'Final review':/^Revis/.test(call.phase)?'Revision':/^Recover/.test(call.phase)?'Recovery':'Working';
+   const status=call.status==='collecting'?'Receiving':textTurns.length?'Saved':'Not provided';
+   const content=textTurns.length?textTurns.map(turn=>'<div class="mission-reasoning-turn"><small>Turn '+Number(turn.index)+(turn.status==='interrupted'?' · Interrupted':'')+'</small>'+turn.sections.filter(s=>s.text).map(section=>'<div class="mission-reasoning-text" data-reasoning-scroll="'+escape(call.id+':'+turn.index+':'+section.kind)+'">'+escape(section.text)+'</div>'+(section.truncated?'<small>Display limit reached.</small>':'')).join('')+'</div>').join(''):'<p class="mission-reasoning-empty">'+(call.status==='collecting'?'Waiting for provider-published text…':'Reasoning not available. The model or connection did not provide displayable text.')+'</p>';
+   return '<details class="mission-reasoning-call" data-trace-details="reasoning-'+escape(call.id)+'" '+(call.id===latest?'open':'')+'><summary><span>'+escape(phase)+'</span><small title="'+escape(model)+'">'+escape(model||'Model')+'</small><em>'+status+'</em></summary>'+content+'</details>';
+  }).join('');
+ }
+ return '<section class="mission-model-reasoning"><div class="mission-reasoning-heading"><strong>'+label+'</strong><span>'+(published?'Provider-published':'Availability varies by model')+'</span></div><p class="mission-reasoning-note">Text shared by the model provider. Opening this view does not run the model again.</p>'+body+(report?.truncated?'<small class="mission-reasoning-note">Some text is shortened to keep this view responsive.</small>':'')+'</section>';
+}
+async function loadModelReasoning(job){
+ if(!missionReasoningOpen||document.hidden||el('board').hidden||!el('board').getClientRects().length)return;
+ const old=missionReasoningCache.get(job.id),active=['queued','running','waiting','stopping'].includes(job.status);
+ if(old?.pending||old?.error||old?.loaded&&(!active&&!old.report?.active||Date.now()-old.loaded<1500))return;
+ const state={...old,pending:true};missionReasoningCache.set(job.id,state);
+ while(missionReasoningCache.size>2)missionReasoningCache.delete(missionReasoningCache.keys().next().value);
+ try{
+  const report=await api('model-reasoning?id='+encodeURIComponent(job.id));
+  if(missionReasoningCache.get(job.id)!==state)return;
+  state.report=report;state.loaded=Date.now();
+ }catch{state.error=true;}
+ finally{
+  state.pending=false;
+  if(missionReasoningOpen&&missionReasoningJob===job.id){
+   renderMissionControl();
+   clearTimeout(missionReasoningTimer);
+   if(!state.error&&(active||state.report?.active))missionReasoningTimer=setTimeout(()=>renderMissionControl(),1600);
+  }
+ }
+}
 function missionControlTraceMarkup(job,advanced=false){
  const defaultNames=planNames(job.payload.collaboration);
  const plan=job.payload.collaboration,active=['queued','running','waiting','stopping'].includes(job.status),tasks=plan.tasks||[],checks=plan.checks||[];
  let sequence=-1;
  const row=(kind,name,status,content,attrs='',recorded=true,state='')=>'<article class="mission-plan-step" data-trace-key="'+escape(kind+':'+attrs)+'" data-trace-kind="'+kind+'" data-step-state="'+state+'" '+attrs+'><header><small>'+(recorded?String(++sequence).padStart(2,'0')+' · '+({plan:'PLAN',contribution:'CONTRIBUTION',reasoning:'REASONING',review:'REVIEW',revision:'REVISION REQUEST','revision-work':'REVISION',response:'RESPONSE',stopped:'STOPPED'}[kind]||kind.toUpperCase()):kind==='skipped'?'NOT CALLED':'PLANNED')+'</small><h4>'+escape(name)+'</h4><span>'+escape(status)+'</span></header><div class="mission-plan-content">'+content+'</div></article>';
- const detail=(key,label,content)=>'<details class="mission-trace-detail" data-trace-details="'+key+'"><summary>'+escape(label)+'</summary><div class="chat-prose">'+content+'</div></details>';
- const reasoning=(name,task,output,attrs)=>row('reasoning',name,'Reasoning','<strong>Why selected</strong><div>'+messageMarkup(task.roleFit||'No separate role-fit rationale was recorded.')+'</div><strong>Planned approach</strong><div>'+messageMarkup(task.task||'No assignment was recorded.')+'</div><strong>Reported contribution</strong><div>'+messageMarkup(output?.answer||(output?'The contribution returned no separate summary.':'This agent has not delivered a contribution yet.'))+'</div><small class="mission-plan-inputs">Recorded rationale and result summary—not private model chain-of-thought.</small>',attrs,true,'reasoning');
+ const detail=(key,label,content)=>'<details class="mission-trace-detail" data-trace-details="'+key+'"'+(key==='response'?' open':'')+'><summary>'+escape(label)+'</summary><div class="chat-prose">'+content+'</div></details>';
  const question=String(plan.task||job.payload.prompt||'').replace(/^\s*\/(?:goals?|plans?)(?=\s|$)/i,'').trim();
  let markup=row('user','User','Submitted','<strong>Request</strong><div class="chat-prose">'+messageMarkup(question)+'</div>','',true,'done');
- markup+=row('plan','Casey',plan.summary?'Plan ready':active?'Planning':'No plan saved','<strong>Approach</strong><div>'+messageMarkup(plan.summary||(active?'Casey is deciding which expertise this request needs.':'No plan was saved before the work stopped.'))+'</div>'+declinedAssignmentsMarkup(job),'data-plan-role="0"',true,plan.summary?'done':active?'working':'');
- if(advanced)markup+=row('reasoning','Casey','Reasoning','<strong>Recorded planning rationale</strong><div>'+messageMarkup(plan.summary||'No planning rationale has been recorded yet.')+'</div><small class="mission-plan-inputs">Recorded rationale—not private model chain-of-thought.</small>','data-reasoning-role="0"',true,'reasoning');
+ markup+=row('plan','Casey',plan.summary?'Plan ready':active?'Planning':'No plan saved','<strong>Approach</strong><div>'+messageMarkup(plan.summary||(active?'Casey is deciding which expertise this request needs.':'No plan was saved before the work stopped.'))+'</div>'+declinedAssignmentsMarkup(job)+(advanced?modelReasoningMarkup(job,0):''),'data-plan-role="0"',true,plan.summary?'done':active?'working':'');
  const called=tasks.filter(task=>plan.handoffs?.[task.role]||plan.outputs?.[task.role]||plan.calledRoles?.includes(task.role));
  const calledOrder=collaborationRoleOrder(plan);
  called.sort((a,b)=>calledOrder.indexOf(Number(a.role))-calledOrder.indexOf(Number(b.role)));
@@ -82399,8 +82619,7 @@ function missionControlTraceMarkup(job,advanced=false){
   const expected=h?.expected||task.expected;
   const assignment='<strong>Casey’s assignment</strong><div>'+messageMarkup(h?.task||task.task)+'</div>'+assignmentFitMarkup(task)+(expected?'<div class="mission-expectation"><small>Expected result</small><div>'+messageMarkup(expected)+'</div></div>':'')+(h?'<small class="mission-plan-inputs">Received: '+escape(['Casey’s brief',...(h.receivedFrom||[]).map(i=>defaultNames[Number(i)]+"’s contribution")].join(' · '))+'</small>':'');
   const recoveryNote=recovery?'<p class="mission-plan-inputs">'+escape(recovery.status==='delivered'?'A missing handoff was saved and verified in one repair before continuing.':recovery.status==='working'?'Required files are missing. One repair is using the existing research; later specialists are waiting.':'The required handoff could not be recovered. Later specialists were not started.')+'</p>':'';
-  markup+=row('contribution',defaultNames[role],status,assignment+recoveryNote+(output?detail('output-'+role,defaultNames[role]+'’s result',messageMarkup(output.answer||'No response text was saved.')+webpageButtons(output.files,job.id)):''),'data-plan-role="'+role+'"',true,missing?(working?'working':''):output?'done':working?'working':'');
-  if(advanced)markup+=reasoning(defaultNames[role],task,output,'data-reasoning-role="'+role+'"');
+  markup+=row('contribution',defaultNames[role],status,assignment+recoveryNote+(output?detail('output-'+role,defaultNames[role]+'’s result',messageMarkup(output.answer||'No response text was saved.')+webpageButtons(output.files,job.id)):'')+(advanced?modelReasoningMarkup(job,role,false):''),'data-plan-role="'+role+'"',true,missing?(working?'working':''):output?'done':working?'working':'');
   const reviews=checks.filter(check=>!check.afterRevision&&Number(check.afterRole)===role);
   for(const check of reviews){
    const status=check.done?(check.outcome==='partial'?'Partial result':check.outcome==='unavailable'?'Capability unavailable':'Enough to finish'):'More work needed';
@@ -82416,8 +82635,7 @@ function missionControlTraceMarkup(job,advanced=false){
  if(plan.revision){
   const r=plan.revision,output=r.output,working=active&&r.status==='working';
   markup+=row('revision','Casey','One targeted revision','<strong>Why repair is needed</strong><div>'+messageMarkup(r.reason)+'</div><div>'+messageMarkup(r.issue)+'</div>','data-revision-request',true,'done');
-  markup+=row('revision-work',defaultNames[r.role],output?'Revised result delivered':working?'Revising':active&&r.status==='requested'?'Requested':r.status==='failed'?'Revision failed':'Not completed',collaborationRevisionBody(r,job.id),'data-revision-role="'+r.role+'"',true,output?'done':working?'working':'');
-  if(advanced)markup+=reasoning(defaultNames[r.role],r,output,'data-reasoning-revision-role="'+r.role+'"');
+  markup+=row('revision-work',defaultNames[r.role],output?'Revised result delivered':working?'Revising':active&&r.status==='requested'?'Requested':r.status==='failed'?'Revision failed':'Not completed',collaborationRevisionBody(r,job.id)+(advanced?modelReasoningMarkup(job,r.role,true):''),'data-revision-role="'+r.role+'"',true,output?'done':working?'working':'');
   for(const check of checks.filter(check=>check.afterRevision))
    markup+=row('review','Casey',check.outcome==='partial'?'Partial result':'Final verification','<div>'+messageMarkup(check.reason)+'</div><small>No further specialist calls.</small>','data-after-revision',true,'done');
   if(output&&!checks.some(check=>check.afterRevision)&&active&&!plan.responseReady)
@@ -82428,8 +82646,12 @@ function missionControlTraceMarkup(job,advanced=false){
  else if(!active)markup+=row('stopped','Casey',job.status==='cancelled'?'Stopped':'Error','<div>'+messageMarkup(job.result?.error||(job.status==='cancelled'?'The work stopped before a final response was ready.':'No final response was saved.'))+'</div>');
  return markup;
 }
-function updateMissionControlTrace(lanes,jobId,markup){
+function updateMissionControlTrace(lanes,jobId,markup,notify=true){
  const sameJob=lanes.dataset.traceJob===jobId;
+ const viewport=lanes.closest('#studio-surface-body'),scrollTop=viewport?.scrollTop;
+ const visible=!!viewport?.getClientRects().length;
+ if(!sameJob||!notify||!visible)lanes._traceUpdate=null;
+ syncMissionUpdateNotice(lanes);
  if(sameJob&&lanes._traceMarkup===markup)return;
  const template=document.createElement('template');template.innerHTML=markup;
  const incoming=[...template.content.children],keys=new Set(incoming.map(node=>node.dataset.traceKey));
@@ -82441,12 +82663,19 @@ function updateMissionControlTrace(lanes,jobId,markup){
  for(const fresh of incoming){
   const previous=old.get(fresh.dataset.traceKey),source=fresh.outerHTML;
   const node=previous?._traceMarkup===source?previous:fresh;
+  if(sameJob&&notify&&visible&&node!==previous&&fresh.dataset.traceKind!=='planned'&&previous?.textContent!==fresh.textContent){
+   const texts=new Map([...(previous?.querySelectorAll('[data-reasoning-scroll]')||[])].map(item=>[item.dataset.reasoningScroll,item.textContent]));
+   const changed=[...fresh.querySelectorAll('[data-reasoning-scroll]')].filter(item=>texts.get(item.dataset.reasoningScroll)!==item.textContent).at(-1);
+   lanes._traceUpdate={trace:fresh.dataset.traceKey,reasoning:changed?.dataset.reasoningScroll};
+  }
   if(previous&&node!==previous){
-   const expanded=new Set([...previous.querySelectorAll('[data-trace-details][open]')].map(item=>item.dataset.traceDetails));
-   for(const item of node.querySelectorAll('[data-trace-details]'))item.open=expanded.has(item.dataset.traceDetails);
+   const details=new Map([...previous.querySelectorAll('[data-trace-details]')].map(item=>[item.dataset.traceDetails,item.open]));
+   for(const item of node.querySelectorAll('[data-trace-details]'))if(details.has(item.dataset.traceDetails))item.open=details.get(item.dataset.traceDetails);
+   const positions=new Map([...previous.querySelectorAll('[data-reasoning-scroll]')].map(item=>[item.dataset.reasoningScroll,item.scrollTop]));
    // Replace in place so later unchanged cards never move through the DOM.
    if(cursor===previous)cursor=node;
    previous.replaceWith(node);
+   for(const item of node.querySelectorAll('[data-reasoning-scroll]'))if(positions.has(item.dataset.reasoningScroll))item.scrollTop=positions.get(item.dataset.reasoningScroll);
   }
   node._traceMarkup=source;
   // Retain unchanged cards, including their focused links/buttons and selection.
@@ -82455,8 +82684,47 @@ function updateMissionControlTrace(lanes,jobId,markup){
  }
  for(const node of [...lanes.children])if(!retained.has(node))node.remove();
  lanes.dataset.traceJob=jobId;lanes._traceMarkup=markup;
+ // Polling never moves the reader, including when an earlier card grows.
+ if(sameJob&&viewport)viewport.scrollTop=scrollTop;
+ syncMissionUpdateNotice(lanes);
+}
+function syncMissionUpdateNotice(lanes){
+ const notice=document.getElementById('studio-mission-updates'),viewport=lanes.closest('#studio-surface-body');
+ if(!notice||!viewport)return;
+ const target=()=>{
+  const pending=lanes._traceUpdate;
+  const row=pending&&[...lanes.children].find(node=>node.dataset.traceKey===pending.trace);
+  if(!row)return null;
+  return (pending.reasoning&&[...row.querySelectorAll('[data-reasoning-scroll]')].find(node=>node.dataset.reasoningScroll===pending.reasoning))||row.querySelector('.mission-trace-detail:last-of-type')||row;
+ };
+ const sync=()=>{
+  if(!viewport.contains(lanes))return;
+  const node=target(),bounds=viewport.getBoundingClientRect(),rect=node?.getBoundingClientRect();
+  let closed=false;
+  for(let item=node;item&&item!==lanes;item=item.parentElement)if(item.matches('details:not([open])'))closed=true;
+  const read=node&&!closed&&rect.height>0&&rect.top>=bounds.top&&rect.bottom<=bounds.bottom-8&&node.scrollHeight-node.clientHeight-node.scrollTop<12;
+  if(!node||read)lanes._traceUpdate=null;
+  notice.hidden=!lanes._traceUpdate;
+ };
+ // Capture also observes scrolls inside the bounded reasoning text boxes.
+ if(lanes._updateViewport!==viewport){
+  lanes._updateViewport?.removeEventListener('scroll',lanes._updateScroll,true);
+  lanes._updateViewport=viewport;lanes._updateScroll=()=>syncMissionUpdateNotice(lanes);
+  viewport.addEventListener('scroll',lanes._updateScroll,{capture:true,passive:true});
+ }
+ notice.querySelector('button').onclick=()=>{
+  const node=target();if(!node)return;
+  for(let item=node;item&&item!==lanes;item=item.parentElement)if(item.matches('details'))item.open=true;
+  if(node.matches('[data-reasoning-scroll]'))node.scrollTop=node.scrollHeight;
+  node.scrollIntoView({block:'center',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+  node.setAttribute('tabindex','-1');node.focus({preventScroll:true});
+  lanes._traceUpdate=null;notice.hidden=true;
+ };
+ sync();
 }
 let missionReasoningOpen=false,missionReasoningJob='';
+const missionReasoningCache=new Map();
+let missionReasoningTimer=0;
 function renderMissionControl(){
  const job=missionControlPlan(),intro=el('board').querySelector('.studio-board-intro');
  el('lanes').classList.toggle('studio-plan-control',!!job);
@@ -82465,15 +82733,22 @@ function renderMissionControl(){
  intro.querySelector('[data-mission-total]').textContent=job?collaborationTime(job):'';
  intro.querySelector('p').textContent=job?job.payload.collaboration.task:'Casey에게 /goal로 작업을 요청해보세요.';
  const reasoningButton=el('mission-reasoning');
- reasoningButton.onclick=()=>{missionReasoningOpen=!missionReasoningOpen;renderMissionControl();};
+ reasoningButton.onclick=()=>{missionReasoningOpen=!missionReasoningOpen;clearTimeout(missionReasoningTimer);if(missionReasoningCache.get(missionReasoningJob)?.error)missionReasoningCache.delete(missionReasoningJob);renderMissionControl();};
  if(!job){
   missionReasoningOpen=false;missionReasoningJob='';reasoningButton.hidden=true;
+  el('mission-updates').hidden=true;el('lanes')._traceUpdate=null;
   el('lanes').innerHTML='';delete el('lanes').dataset.traceJob;delete el('lanes')._traceMarkup;return;
  }
  if(missionReasoningJob!==job.id){missionReasoningJob=job.id;missionReasoningOpen=false;}
  reasoningButton.hidden=false;reasoningButton.setAttribute('aria-expanded',String(missionReasoningOpen));
- reasoningButton.textContent=missionReasoningOpen?'Hide advanced reasoning':'Show me advanced reasoning';
- updateMissionControlTrace(el('lanes'),job.id,missionControlTraceMarkup(job,missionReasoningOpen));
+ reasoningButton.textContent=missionReasoningOpen?'Hide advanced reasoning':'Advanced reasoning';
+ if(missionReasoningOpen)loadModelReasoning(job);
+ const lanes=el('lanes');
+ // Completion must not clear unread updates. Provider text can also arrive
+ // after the task ends; only changing views suppresses update notifications.
+ updateMissionControlTrace(lanes,job.id,missionControlTraceMarkup(job,missionReasoningOpen),
+  lanes._traceAdvanced===missionReasoningOpen);
+ lanes._traceAdvanced=missionReasoningOpen;
 }
 // /goal is a real Captain-led job; contributions come from completed model calls.
 function collaborationRevisionBody(revision,jobId){
@@ -82547,11 +82822,13 @@ function crewDocumentSelection(){
  if(!selection||selection.epoch!==epoch){selection={epoch,excluded:new Set(),uploaded:new Set(),example:'',lockedExample:''};crewDocumentSelections.set(selectedScenario,selection);}
  return selection;
 }
-function excludedCrewDocuments(){return crewDocumentSelection().excluded;}
 function renderCrewDocuments(){
- const files=data.crewDocuments||[],paths=new Set(files.map(f=>f.path)),selection=crewDocumentSelection(),excluded=selection.excluded;
+ const files=[...(data.crewDocuments||[])],paths=new Set(files.map(f=>f.path)),selection=crewDocumentSelection(),excluded=selection.excluded;
  if(selectedCrewRole===0&&!selectedOpenTaskVisitor&&/^\s*(?:\/(?:goals?|plans?)\s*)?$/i.test(el('crew-prompt').value)){selection.example='';selection.lockedExample='';}
- // Sample files stay saved for reuse, but belong only to their selected draft.
+ // Browsing templates only changes a local attachment draft. Save on submission.
+ const example=goalExamples.find(choice=>choice.document&&'inbox/'+choice.document===selection.example);
+ if(example&&!paths.has(selection.example))files.push({path:selection.example,pendingExample:example});
+ // Previously submitted samples remain saved, but only attach to their own draft.
  const docs=files.filter(f=>(!crewExampleDocuments.has(f.path)||selection.example===f.path||selection.uploaded.has(f.path))&&/\.(pdf|pptx|xlsx|txt|md|csv)$/i.test(f.path)&&!/^(?:plan-input|plan|chat)-[0-9a-f]{24}(?:-|\.)/.test(f.path.split('/').at(-1))&&!(/\.(pdf|pptx|xlsx)\.txt$/i.test(f.path)&&paths.has(f.path.slice(0,-4))));
  const box=el('crew-documents');box.hidden=selectedCrewRole!==0||(!docs.length&&!crewDocumentUpload);
  box.innerHTML=docs.map(f=>{const locked=selection.lockedExample===f.path;return '<div class="studio-attachment"><input type="checkbox" aria-label="Attach '+escape(f.path.slice(6))+'" data-crew-document="'+escape(f.path)+'" '+(excluded.has(f.path)?'':'checked')+' '+(crewDocumentUpload||locked?'disabled':'')+(locked?' title="Required for this example" data-required-example="true"':'')+'><button type="button" data-attachment-preview="'+escape(f.path)+'" title="Open file in a new tab">'+escape(f.path.slice(6))+'</button></div>';}).join('')+(crewDocumentUpload?'<small role="status">Adding document…</small>':'');
@@ -82560,11 +82837,15 @@ function renderCrewDocuments(){
 el('crew-documents').addEventListener('change',event=>{const path=event.target.dataset.crewDocument;if(path){const selection=crewDocumentSelection(),excluded=selection.excluded;if(selection.lockedExample===path){event.target.checked=true;excluded.delete(path);}else if(event.target.checked)excluded.delete(path);else excluded.add(path);}});
 el('crew-documents').addEventListener('click',event=>{
  const button=event.target.closest('[data-attachment-preview]');
- if(button)openAttachmentTab(button.dataset.attachmentPreview,'0');
+ if(button){
+  const path=button.dataset.attachmentPreview;
+  const sample=!data.crewDocuments?.some(file=>file.path===path)&&goalExamples.find(choice=>choice.document&&'inbox/'+choice.document===path);
+  openAttachmentTab(path,'0',sample?{content:sample.documentContent}:undefined);
+ }
 });
 el('crew-document-add').onclick=()=>el('crew-document-input').click();
 el('crew-document-input').onchange=async event=>{await uploadCrewDocuments([...event.target.files]);event.target.value='';};
-async function uploadCrewDocuments(files,{example=false}={}){
+async function uploadCrewDocuments(files){
  if(selectedCrewRole!==0||crewDocumentUpload||el('crew-document-add').disabled)return;
  const target=agentId,selection=crewDocumentSelection();crewDocumentUpload=true;syncCrewComposer();renderCrewDocuments();
  try{
@@ -82574,7 +82855,7 @@ async function uploadCrewDocuments(files,{example=false}={}){
    if(binary){const bytes=new Uint8Array(await file.arrayBuffer());let raw='';for(let i=0;i<bytes.length;i+=8192)raw+=String.fromCharCode(...bytes.subarray(i,i+8192));content=btoa(raw);}
    else content=await documentText(file);
    const result=await api('upload',{crewRole:0,name:file.name,content,...(binary?{encoding:'base64'}:{})},target);
-   if(!example)selection.uploaded.add(result.path);
+   selection.uploaded.add(result.path);
    selection.excluded.delete(result.path);
   }
   await refresh();return true;
@@ -82585,6 +82866,27 @@ for(const type of ['dragover','drop'])el('crew-chat').addEventListener(type,even
  if(![...event.dataTransfer.types].includes('Files')||selectedCrewRole!==0)return;
  event.preventDefault();if(type==='drop')uploadCrewDocuments([...event.dataTransfer.files]);
 });
+function syncCrewComposerSize(){
+ const form=el('crew-chat'),prompt=el('crew-prompt');
+ const hasHistory=(data.crewChats||[]).some(job=>job.payload?.crewRole===0||job.payload?.collaboration);
+ const hasDraft=!/^\s*(?:\/(?:goals?|plans?)\s*)?$/i.test(prompt.value);
+ const attachments=crewDocumentUpload||pendingImages(true).length||el('crew-documents').querySelector('input:checked');
+ form.classList.toggle('is-reading',selectedScenario==='plan'&&selectedCrewRole===0&&!selectedOpenTaskVisitor&&hasHistory&&!crewComposerEditing&&!hasDraft&&!attachments&&el('crew-chat-error').hidden);
+}
+el('crew-chat').addEventListener('focusin',()=>{crewComposerEditing=true;if(!crewComposerPointer)syncCrewComposerSize();});
+// Finish a pointer click before resizing so Team/attachment buttons do not
+// move out from under the pointer between pressing and releasing it.
+el('crew-chat').addEventListener('pointerdown',()=>{crewComposerPointer=true;});
+el('crew-chat').addEventListener('click',()=>{crewComposerPointer=false;crewComposerEditing=true;syncCrewComposerSize();});
+for(const type of ['pointerup','pointercancel'])document.addEventListener(type,()=>{
+ if(crewComposerPointer)setTimeout(()=>{crewComposerPointer=false;syncCrewComposerSize();},0);
+});
+el('crew-chat').addEventListener('focusout',event=>{
+ if(event.relatedTarget&&!el('crew-chat').contains(event.relatedTarget)){crewComposerEditing=false;syncCrewComposerSize();}
+});
+document.addEventListener('pointerdown',event=>{
+ if(!el('crew-chat').contains(event.target)){crewComposerEditing=false;syncCrewComposerSize();}
+},{capture:true});
 function syncCrewComposer(){
  el('crew-chat').hidden=!!selectedOpenTaskVisitor;
  if(selectedOpenTaskVisitor){el('crew-send').disabled=true;el('crew-documents').hidden=true;syncGoalExamples(true);return;}
@@ -82607,6 +82909,7 @@ function syncCrewComposer(){
  el('crew-team-hint').hidden=!noHires;el('crew-team-hint').textContent=noHires?'작업에 필요한 스킬을 가진 에이전트를 고용해주세요.':'';
  el('crew-chat-connection').hidden=!blocked;
  el('crew-chat-connection').textContent=visitorMissing?'This agent was removed. Start a new task with Casey.':visitor?.skills?.includes('radar')?'Tech Radar uses Heartbeat. Manual chat is disabled.':crewDocumentUpload?'Adding document…':resetInProgress?'Resetting…':data.bacResetting?'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…':captainPlanning?'Casey가 팀 작업을 진행하고 있어요. 완료 후 다시 메시지를 보낼 수 있습니다.':memberWorking?'작업 중입니다. 이 에이전트가 작업을 마치면 다시 메시지를 보낼 수 있습니다.':!(visitor?personalModel(visitor).connected:(teamRuntime().teamModel??runtime.model))?(visitor?personalModelNotice(visitor):'Model not connected. Enable Local or External Endpoint in Settings.'):'Run ./bac start on this computer to connect the team runtime.';
+ syncCrewComposerSize();
 }
 function renderCrewPassport(){
  syncFileButtons();
@@ -82639,7 +82942,7 @@ function renderCrewPassport(){
   crewChatSignature='';return;
  }
  const key=crewDraftKey(i),switched=key!==crewChatKey;
- if(switched){if(crewChatKey)crewDrafts.set(crewChatKey,el('crew-prompt').value);crewChatKey=key;el('crew-prompt').value=crewDrafts.get(key)??defaultCrewPrompt(i);el('crew-chat-error').hidden=true;}
+ if(switched){crewComposerEditing=false;if(crewChatKey)crewDrafts.set(crewChatKey,el('crew-prompt').value);crewChatKey=key;el('crew-prompt').value=crewDrafts.get(key)??defaultCrewPrompt(i);el('crew-chat-error').hidden=true;}
  renderImageDrafts(true);
  el('crew-prompt').placeholder=name+'에게 메시지 보내기'+(i===0?' · 팀 작업은 /goal로 시작하세요':'…');
  el('crew-prompt').dataset.planEnabled=String(i===0);syncCrewComposer();
@@ -82668,14 +82971,25 @@ el('crew-chat').onsubmit=async e=>{
   el('crew-chat-error').textContent=planLocationHint;
   el('crew-chat-error').hidden=false;return;
  }
- let requestPrompt=draft.prompt;
- if(index===0){const docs=renderCrewDocuments();if(docs.length)requestPrompt+='\n\nAttached documents (use these files):\n'+docs.map(f=>f.path.slice(6)).join('\n');}
- crewChatSending=true;syncCrewComposer();el('crew-chat-error').hidden=true;
- try{const visitor=assignedVisitor(index);const result=await api('jobs',visitor?{kind:'chat',prompt:requestPrompt,images:draft.images}:{kind:'crew-chat',crewRole:index,prompt:requestPrompt,images:draft.images,...(selectedScenario==='plan'&&index===0&&isPlanCommand(draft.prompt)?{teamMode:teamChoice}:{})},visitor?.key||owner);acknowledgeChatDraft(draft);if(visitor){await switchAgent(visitor.key);setRoom('lounge');}await refresh();if(result.collaboration)stageCollaboration(result);}
+ const docs=index===0?renderCrewDocuments():[],scenario=selectedScenario,visitor=assignedVisitor(index);
+ crewChatSending=true;crewDocumentUpload=docs.some(file=>file.pendingExample);syncCrewComposer();el('crew-chat-error').hidden=true;
+ try{
+  for(const file of docs){
+   if(!file.pendingExample)continue;
+   const sample=file.pendingExample;
+   const saved=await api('upload',{crewRole:0,name:sample.document,content:sample.documentContent},owner,scenario);
+   file.path=saved.path;
+  }
+  if(crewDocumentUpload)await refresh();
+  let requestPrompt=draft.prompt;
+  if(docs.length)requestPrompt+='\n\nAttached documents (use these files):\n'+docs.map(file=>file.path.slice(6)).join('\n');
+  const result=await api('jobs',visitor?{kind:'chat',prompt:requestPrompt,images:draft.images}:{kind:'crew-chat',crewRole:index,prompt:requestPrompt,images:draft.images,...(scenario==='plan'&&index===0&&isPlanCommand(draft.prompt)?{teamMode:teamChoice}:{})},visitor?.key||owner,scenario);
+  crewComposerEditing=false;acknowledgeChatDraft(draft);if(visitor){await switchAgent(visitor.key);setRoom('lounge');}await refresh();if(result.collaboration)stageCollaboration(result);
+ }
  catch(error){if(crewChatKey===key){el('crew-chat-error').textContent=error.message;el('crew-chat-error').hidden=false;}}
- finally{crewChatSending=false;syncCrewComposer();}
+ finally{crewChatSending=false;crewDocumentUpload=false;syncCrewComposer();}
 };
-el('crew-prompt').addEventListener('input',()=>{clearPlanLocationHint(true);syncCrewComposer();});
+el('crew-prompt').addEventListener('input',()=>{crewComposerEditing=true;clearPlanLocationHint(true);syncCrewComposer();});
 el('crew-prompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();if(!el('crew-send').disabled)el('crew-chat').requestSubmit(el('crew-send'));}});
 el('crew-conversation').onclick=async e=>{const file=e.target.closest('[data-plan-file]');if(file){await openFile(file.dataset.planFile,file.dataset.planJob);return;}const button=e.target.closest('[data-crew-chat-stop]');if(!button||button.disabled)return;await stopChat(button.dataset.crewChatStop,true);};
 
@@ -82694,7 +83008,30 @@ root.addEventListener('click',async event=>{
 
 el('crew-conversation').addEventListener('click',event=>{if(event.target.closest('[data-open-collaboration]'))showCollaboration();});
 
-  async function refresh(){if(changingAgent||removingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion&&target===agentId&&!changingAgent&&state!==data){data=state;render();}}catch(error){if(version===refreshVersion){if(error.status===401){connected=false;agentId='';stateCache.clear();personalDrafts.clear();crewDrafts.clear();chatImageDrafts.clear();el('dialog').close();await boot();if(connected){openAgentState(data);alert('Previous demo session cleared. Ready for a new demo.');}}else if(error.status===404){try{const state=await api('state',undefined,'');if(version===refreshVersion&&!changingAgent){el('dialog').close();openAgentState(state);alert('This agent was deleted in another tab. Your collection is up to date.');}}catch(recovery){alert(recovery.message,'error');}}else if(!document.hidden)alert(error.message,'error');}}finally{if(version===refreshVersion)busy=false;}}
+  async function refresh(){if(changingAgent||removingAgent||!connected)return;const version=++refreshVersion,target=agentId;busy=true;try{const state=await api('state',undefined,target);if(version===refreshVersion)statePollFailures=0;if(version===refreshVersion&&target===agentId&&!changingAgent&&state!==data){data=state;render();}}catch(error){if(version===refreshVersion){statePollFailures++;if(error.status===401){connected=false;agentId='';stateCache.clear();personalDrafts.clear();crewDrafts.clear();chatImageDrafts.clear();el('dialog').close();await boot();if(connected){openAgentState(data);alert('Previous demo session cleared. Ready for a new demo.');}}else if(error.status===404){try{const state=await api('state',undefined,'');if(version===refreshVersion&&!changingAgent){el('dialog').close();openAgentState(state);alert('This agent was deleted in another tab. Your collection is up to date.');}}catch(recovery){alert(recovery.message,'error');}}else if(!document.hidden)alert(error.message,'error');}}finally{if(version===refreshVersion)busy=false;scheduleStatePoll();}}
+  let statePollTimer=null,statePollFailures=0,statePollFastUntil=0;
+  function statePollDelay(){
+    if(statePollFailures)return Math.min(30000,3500*2**Math.min(statePollFailures-1,4));
+    const active=job=>['queued','running','stopping'].includes(job.status)&&(!job.due||job.due<=Date.now()/1000+1);
+    const working=pendingWrites||hiringArrival||(data.jobs||[]).some(active)||(data.crewChats||[]).some(active)
+      ||(data.agents||[]).some(agent=>agent.pending||['queued','running','stopping'].includes(agent.workspacePreparation));
+    // Native policy logs can arrive just after a job finishes. Keep a bounded
+    // tail of fast polls without prolonging the job or delaying its reply.
+    if(working)statePollFastUntil=Date.now()+8000;
+    return working||Date.now()<statePollFastUntil?650:3500;
+  }
+  function scheduleStatePoll(delay=statePollDelay()){
+    clearTimeout(statePollTimer);statePollTimer=null;
+    if(document.hidden||!connected)return;
+    // Schedule after completion so slow state requests never pile up.
+    statePollTimer=setTimeout(async()=>{
+      statePollTimer=null;
+      if(busy||changingAgent||removingAgent){scheduleStatePoll();return;}
+      await refresh();
+    },delay);
+  }
+  document.addEventListener('visibilitychange',()=>scheduleStatePoll(0));
+  window.addEventListener('focus',()=>scheduleStatePoll(0));
   el('equipped').onclick=e=>{const button=e.target.closest('[data-try-skill]');if(button)el('missions').querySelector('[data-studio-mission="'+button.dataset.trySkill+'"]')?.click();};
   el('missions').onclick=e=>{const button=e.target.closest('[data-studio-mission]');if(!button)return;const mission=missions.find(m=>m.id===button.dataset.studioMission);if(!data.profile){alert('Hire an agent first.');agentForm(true);el('name').focus();return;}if(!data.profile.skills.includes(mission.id)){
       let notice=el('mission-skill-notice');if(!notice){notice=document.createElement('div');notice.id='studio-mission-skill-notice';notice.className='studio-mission-skill-notice';el('missions').before(notice);}
@@ -82826,10 +83163,20 @@ async function openResultJson(path,title,jobId){
   worldViewport.addEventListener('keydown',e=>{
     if(e.target===worldViewport&&e.key==='Enter'&&!e.repeat){e.preventDefault();worldOpen?leaveWorld():enterWorld();}
   });
+  document.addEventListener('keydown',e=>{
+    if(!worldOpen||!e.shiftKey||e.ctrlKey||e.altKey||e.metaKey||e.repeat||e.isComposing||e.defaultPrevented||root.querySelector('dialog[open]'))return;
+    if(e.composedPath().some(node=>node instanceof Element&&(node.matches('input,textarea,select,[role="textbox"]')||node.isContentEditable)))return;
+    const selector={Digit1:'[data-world-room="workshop"]',Digit2:'[data-world-room="lounge"]',Digit3:'[data-world-scenario="plan"]'}[e.code];
+    const button=selector&&root.querySelector('.world-room-map '+selector);
+    if(!button||button.disabled)return;
+    e.preventDefault();button.click();worldViewport.focus({preventScroll:true});
+  });
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&worldOpen&&!root.querySelector('dialog[open]')){e.preventDefault();leaveWorld();}});
   document.addEventListener('fullscreenchange',()=>{if(document.fullscreenElement!==root)restoreWorld();});
 
-    const meter=document.createElement('details');meter.id='studio-telemetry';meter.innerHTML='<summary aria-label="Runtime usage">CPU — <span>RAM —</span><span>Context —</span></summary><div class="usage-panel"></div>';
+    const usageChevron='<svg class="usage-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 10 4-4 4 4"/></svg>';
+  const usageSummary=(cpu='—',ram='—',context='—')=>[['CPU',cpu],['RAM',ram],['Context',context]].map(([label,value])=>`<span class="usage-stat"><span class="usage-label">${label}</span> <span class="usage-value">${value}</span></span>`).join('')+usageChevron;
+  const meter=document.createElement('details');meter.id='studio-telemetry';meter.innerHTML=`<summary aria-label="Runtime usage" aria-controls="studio-usage-panel">${usageSummary()}</summary><div id="studio-usage-panel" class="usage-panel" role="region" aria-label="Runtime usage details"></div>`;
   root.querySelector('.campus-scene-bottom .row').prepend(meter);
   const count=n=>typeof n==='number'?Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:1}).format(n):'—';
   const percent=n=>typeof n==='number'?n.toFixed(1)+'%':'—';
@@ -82856,13 +83203,13 @@ async function openResultJson(path,title,jobId){
       const knownRecords=records.filter(a=>typeof a.context==='number'&&typeof a.limit==='number'&&a.limit>0);
       const highest=knownRecords.reduce((best,a)=>!best||a.context/a.limit>best.context/best.limit?a:best,null);
       const summary=meter.querySelector('summary');
-      summary.innerHTML=`CPU ${percent(snapshot.host.cpu)} <span>RAM ${percent(snapshot.host.memory)}</span><span>Context ${highest?percent(highest.context/highest.limit*100):'—'}</span>`;
+      summary.innerHTML=usageSummary(percent(snapshot.host.cpu),percent(snapshot.host.memory),highest?percent(highest.context/highest.limit*100):'—');
       summary.title=highest?`${highest.name}: ${count(highest.context)} / ${count(highest.limit)} tokens · last reported · highest agent utilization`:'Context usage has not been reported yet.';
-      meter.querySelector('.usage-panel').innerHTML=`<div class="spread"><strong>Context per agent</strong><span>Last reported · tokens</span></div>${records.length?records.map(a=>{
+      meter.querySelector('.usage-panel').innerHTML=`<div class="spread usage-heading"><strong>Context per agent</strong><span>Last reported</span></div>${records.length?records.map(a=>{
         const known=typeof a.context==='number'&&typeof a.limit==='number'&&a.limit>0;
         const p=known?a.context/a.limit*100:null;
         return `<div class="usage-agent" title="${escape([a.model,a.measuredAt?new Date(a.measuredAt*1000).toLocaleString():null].filter(Boolean).join(' · '))}"><div class="spread"><strong>${escape(a.name)}</strong><span>${a.status?escape(a.status)+' · ':''}${percent(p)}</span></div><div class="usage-track"><i style="width:${known?Math.min(100,p):0}%"></i></div><div class="spread"><span>${count(a.context)} / ${count(a.limit)} configured limit</span><span>${a.calls?count(a.total):'—'} cumulative</span></div><div class="spread" title="Output tokens / response time, including waiting and tools."><span>Avg output speed</span><span>${speed(a.outputTokensPerSecond)}</span></div></div>`;
-      }).join(''):'<p>Run an agent to see reported usage.</p>'}<div class="usage-total spread"><strong>Cumulative usage</strong><strong>${count(snapshot.total)}</strong></div><small>Totals include all recorded runs. ${room==='mission'?'Context and speed are for this mission.':'Context and speed use each agent’s latest response.'} ${snapshot.unreportedCalls?'Some usage is unreported.':''}</small><hr><div class="spread"><strong>App host</strong><span>CPU ${percent(snapshot.host.cpu)} · RAM ${percent(snapshot.host.memory)}</span></div><small>CPU and RAM on the app server.</small>`;
+      }).join(''):'<p class="usage-empty">Context appears after an agent runs.</p>'}<div class="usage-total spread"><span>Total tokens</span><strong>${count(snapshot.total)}</strong></div><small>Across all recorded runs. ${room==='mission'?'Context and speed are for this mission.':'Context and speed reflect each agent’s latest response.'} ${snapshot.unreportedCalls?'Some usage is unreported.':''}</small><hr><div class="spread usage-host"><strong>App host</strong><span>CPU ${percent(snapshot.host.cpu)} · RAM ${percent(snapshot.host.memory)}</span></div><small>CPU and RAM on the app server.</small>`;
   }
   async function updateTelemetry(){
     if(!connected||document.hidden||telemetryBusy)return;
@@ -82873,16 +83220,24 @@ async function openResultJson(path,title,jobId){
       if(!connected||document.hidden||requestedAgent!==agentId)return;
       telemetrySnapshot={agentId,snapshot};
       renderTelemetry(snapshot);
-    }catch{meter.querySelector('summary').removeAttribute('title');meter.querySelector('summary').textContent='Usage unavailable';meter.querySelector('.usage-panel').textContent='Usage unavailable. Reconnecting…';}
+    }catch{meter.querySelector('summary').removeAttribute('title');meter.querySelector('summary').innerHTML=`<span class="usage-unavailable">Usage unavailable</span>${usageChevron}`;meter.querySelector('.usage-panel').textContent='Usage unavailable. Reconnecting…';}
     finally{telemetryBusy=false;}
   }
   meter.addEventListener('toggle',()=>{if(meter.open)updateTelemetry();});
+  function dismissTelemetry(event){if(meter.open&&!meter.contains(event.target))meter.open=false;}
+  // Do not consume the outside interaction: the clicked control must still work.
+  document.addEventListener('pointerdown',dismissTelemetry,true);
+  document.addEventListener('click',dismissTelemetry,true);
+  document.addEventListener('focusin',dismissTelemetry);
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&meter.open){event.preventDefault();event.stopPropagation();meter.open=false;meter.querySelector('summary').focus({preventScroll:true});}
+  },true);
   function repaintTelemetry(){
     if(telemetrySnapshot?.agentId===agentId)renderTelemetry(telemetrySnapshot.snapshot);
     else renderTelemetry({agents:[],host:{},total:null});
   }
   root.addEventListener('bac:state-rendered',repaintTelemetry);
-  root.addEventListener('bac:world-room',()=>{repaintTelemetry();updateTelemetry();});
+  root.addEventListener('bac:world-room',()=>{meter.open=false;repaintTelemetry();updateTelemetry();});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateTelemetry();});
   setInterval(updateTelemetry,5000);
 
@@ -83090,6 +83445,7 @@ const surfaceStore=document.createElement('div');surfaceStore.id='studio-surface
 const surfaceDialog=document.createElement('dialog');surfaceDialog.id='studio-surface';surfaceDialog.setAttribute('aria-labelledby','studio-surface-title');
 surfaceDialog.innerHTML='<header><h2 id="studio-surface-title"></h2><button type="button" class="studio-secondary" id="studio-surface-close" aria-label="Close panel">×</button></header><div id="studio-surface-body"></div>';
 root.append(surfaceDialog);
+dismissOnBackdrop(surfaceDialog);
 let activeSurface=null;
 const planResults=document.createElement('section');planResults.id='studio-plan-results';planResults.className='studio-plan-results';planResults.hidden=true;surfaceStore.append(planResults);
 planResults.onclick=event=>{const file=event.target.closest('[data-plan-file]');if(file)openFile(file.dataset.planFile,file.dataset.planJob);};
@@ -83208,7 +83564,13 @@ function syncTeamTotalTime(){
   if(timer.textContent!==label)timer.textContent=label;
   timer.hidden=!label;
 }
-setInterval(()=>syncTeamTotalTime(),1000);
+setInterval(()=>{
+  syncTeamTotalTime();
+  if(!el('board').getClientRects().length)return;
+  const timer=el('board').querySelector('[data-mission-total]'),plan=missionControlPlan();
+  const label=plan?collaborationTime(plan):'';
+  if(timer.textContent!==label)timer.textContent=label;
+},1000);
 function syncSurface(){
   teamConnectionBar.dataset.connected=String(!!teamReady());
   el('team-connection-label').textContent=teamReady()?((data.teamConnection?.effectiveSource||data.teamConnection?.provider)==='local'?'Local model configured':'API connected'):teamRuntime().teamModel?'Runtime offline':'Model not connected';
@@ -83345,7 +83707,6 @@ function restorePersonalDraft(next,agents){
 }
 const imageKey=crew=>agentId+(crew?':crew:'+selectedScenario+':'+selectedCrewRole:':personal');
 function pendingImages(crew=false){return chatImageDrafts.get(imageKey(crew))||[];}
-function clearChatImages(crew=false){chatImageDrafts.delete(imageKey(crew));renderImageDrafts(crew);}
 // Acknowledgement clears only the submitted draft, not later typing or attachments.
 function captureChatDraft(crew=false){return {crew,crewRole:selectedCrewRole,key:imageKey(crew),roleKey:crewDraftKey(selectedCrewRole),prompt:el((crew?'crew-':'')+'prompt').value,images:pendingImages(crew).slice()};}
 function acknowledgeChatDraft(draft){
@@ -83777,11 +84138,12 @@ function syncRequiredRoleSkills(){
     card.querySelector('label').title=fixed?template.label+'의 기본 스킬':'';
   });
 }
-function selectRoleSkills(skills){
+function selectRoleSkills(skills,showHint=false){
   el('skill-picker').querySelectorAll('input').forEach(input=>input.checked=skills.includes(input.value));
-  el('role-hint').textContent=skills.length?'역할에 맞는 스킬을 선택했어요.':'추천할 스킬이 없어요. 스킬 없이도 계속할 수 있습니다.';
+  el('role-hint').textContent=showHint?(skills.length?'역할에 맞는 스킬을 선택했어요.':'추천할 스킬이 없어요.'):'';
   updateDraft();
 }
+el('skill-picker').addEventListener('change',()=>{el('role-hint').textContent='';});
 el('role-templates').onclick=e=>{const button=e.target.closest('[data-role-template]');if(!button)return;const template=roleTemplates[Number(button.dataset.roleTemplate)];writeCreatorPrompt(creatorPrompt().tonePrompt,template.purpose);el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));selectRoleSkills(template.skills);};
 el('purpose').addEventListener('input',()=>{el('role-templates').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed','false'));el('role-hint').textContent='';syncCreatorTone();updateDraft();});
 el('tone-prompt').addEventListener('input',()=>{syncCreatorTone();updateDraft();});
@@ -83790,9 +84152,9 @@ el('apply-prompt').onclick=()=>{
   const role=creatorPrompt().purpose.toLowerCase();
   // Preset wording mentions teammates and outputs too; it is not a request to equip their skills.
   const template=selectedRoleTemplate();
-  if(template){selectRoleSkills(template.requiredSkills?.length?[...new Set([...template.skills,...[...el('skill-picker').querySelectorAll('input:checked')].map(i=>i.value)])]:template.skills);return;}
+  if(template){selectRoleSkills(template.requiredSkills?.length?[...new Set([...template.skills,...[...el('skill-picker').querySelectorAll('input:checked')].map(i=>i.value)])]:template.skills,true);return;}
   const rules={radar:/heartbeat|tech radar|technical feeds|하트비트|기술.*소식/,weather:/weather|forecast|travel|trip|날씨|여행/,web:/research|paper|arxiv|논문|search|online|web|travel|trip|cafe|restaurant|리서치|조사|검색|웹|여행|맛집|카페/,documents:/takeaway|three points|meeting|notes|회의|메모|document|report|pdf|ppt|slides|deck|summar|요약|슬라이드|csv|spreadsheet|문서|보고서|자료|엑셀/,builder:/app|game|prototype|code|coding|programmer|programming|website|webpage|앱|게임|코딩|개발|웹사이트/,writer:/slack|announcement|공지|message|email|메시지|메일|writ|draft|content|invitation|social|campaign|marketing|copy|작성|글쓰기|초대|마케팅|콘텐츠/,memory:/remember|memor|preference|기억|선호/};
-  selectRoleSkills(Object.entries(rules).filter(([skill,rule])=>rule.test(role)).map(([skill])=>skill));
+  selectRoleSkills(Object.entries(rules).filter(([skill,rule])=>rule.test(role)).map(([skill])=>skill),true);
 };
 el('onboarding').querySelectorAll('[name=protection]').forEach(input=>input.onchange=updateDraft);
 el('tone-picker').onclick=e=>{const button=e.target.closest('[data-tone]');if(button){draftTone=button.dataset.tone;writeCreatorPrompt(tonePromptLabel(draftTone),creatorPrompt().purpose);updateDraft();}};
@@ -83826,7 +84188,8 @@ async function waitForAgentDeletion(target,name,onWaiting=()=>{}){
 el('delete-agent').onclick=()=>{
   if(!data.profile||pendingWrites||changingAgent||removingAgent)return;
   const target=agentId,name=data.profile.name;
-  dialog('YOUR COLLECTION',`<div class="studio-delete-identity">${avatarBadge(data.profile.avatar)}<span>REMOVE A TEAMMATE</span></div><h3>Delete ${escape(name)}?</h3><p>Permanently delete this agent, its chats, memory and files.</p><p class="studio-muted">Pending and scheduled tasks are cancelled; active tasks involving this agent stop.</p><p id="studio-delete-error" role="alert" hidden></p><div class="studio-delete-actions"><button class="studio-secondary" id="studio-delete-cancel" autofocus>Keep agent</button><button class="studio-danger" id="studio-delete-confirm">Delete ${escape(name)}</button></div>`);
+  dialog('REMOVE AGENT',`<div class="studio-delete-identity">${avatarBadge(data.profile.avatar)}<div><span class="studio-delete-speaker">${escape(name)}</span><h3>“You sure you won’t need me?”</h3></div></div><p>Deleting <strong>${escape(name)}</strong> permanently removes this agent’s chats, memory and files.</p><p class="studio-delete-note">Pending and scheduled tasks are cancelled. Active tasks involving this agent stop.</p><p id="studio-delete-error" role="alert" hidden></p><div class="studio-delete-actions"><button class="studio-secondary" id="studio-delete-cancel" autofocus>Keep ${escape(name)}</button><button class="studio-danger" id="studio-delete-confirm">Delete ${escape(name)}</button></div>`);
+  el('dialog').classList.add('studio-delete-dialog');
   el('delete-cancel').onclick=()=>el('dialog').close();el('delete-cancel').focus();
   el('delete-confirm').onclick=async()=>{
     if(target!==agentId)return;
@@ -83882,20 +84245,18 @@ window.BacAgentBlueprint=agentBlueprint;
 el('crew-goal-intro').textContent='원하는 작업을 알려주세요. Casey가 알맞은 팀을 구성하고 결과를 모아줍니다.';
 function goalHint(choice){return choice.detail;}
 function goalPrompt(choice){return choice.prompt.replaceAll('{{city}}',()=>runtime.location?.city||'Seoul');}
-el('crew-goal-choices').innerHTML=goalExamples.map(g=>`<button type="button" data-goal-example="${escape(g.id)}" data-goal-hint="${escape(goalHint(g))}" aria-pressed="false" title="${escape(goalHint(g))}" aria-controls="studio-crew-prompt">${escape(g.title)}</button>`).join('');
-function exampleDocument(choice){return choice.document&&(data.crewDocuments||[]).find(file=>file.path==='inbox/'+choice.document);}
+el('crew-goal-choices').innerHTML='<div class="studio-goal-options">'+goalExamples.map(g=>`<button type="button" data-goal-example="${escape(g.id)}" data-goal-hint="${escape(goalHint(g))}" aria-pressed="false" title="${escape(goalHint(g))}" aria-controls="studio-crew-prompt">${escape(g.title)}</button>`).join('')+'</div>';
 function syncGoalExamples(locked){
- const box=el('crew-examples');box.hidden=selectedScenario!=='plan'||selectedCrewRole!==0||!!selectedOpenTaskVisitor;
+ const box=el('crew-examples');box.hidden=locked||selectedScenario!=='plan'||selectedCrewRole!==0||!!selectedOpenTaskVisitor;
  box.querySelectorAll('[data-goal-example]').forEach(button=>{
   const choice=goalExamples.find(g=>g.id===button.dataset.goalExample);
-  const needsConnection=choice.document&&!exampleDocument(choice)&&el('crew-document-add').disabled;
-  button.disabled=locked||box.hidden||!!needsConnection;
+  button.disabled=locked||box.hidden;
   button.setAttribute('aria-pressed',String(el('crew-prompt').value===goalPrompt(choice)));
   button.dataset.goalHint=goalHint(choice);
-  button.title=goalHint(choice)+(needsConnection?' 예시 파일을 첨부하려면 모델을 연결해주세요.':'');
+  button.title=goalHint(choice);
  });
 }
-el('crew-goal-choices').onclick=async event=>{
+el('crew-goal-choices').onclick=event=>{
  const button=event.target.closest('[data-goal-example]');
  if(!button||button.disabled||selectedCrewRole!==0||selectedOpenTaskVisitor||selectedScenario!=='plan')return;
  syncCrewComposer();if(button.disabled)return;
@@ -83904,13 +84265,9 @@ el('crew-goal-choices').onclick=async event=>{
  const selection=crewDocumentSelection();
  selection.example=choice.document?'inbox/'+choice.document:'';
  selection.lockedExample=choice.requiredDocument?selection.example:'';
+ if(selection.example)selection.excluded.delete(selection.example);
  prompt.value=goalPrompt(choice);prompt.dispatchEvent(new Event('input',{bubbles:true}));
  prompt.focus({preventScroll:true});prompt.setSelectionRange(prompt.value.length,prompt.value.length);prompt.scrollTop=0;
- if(choice.document){
-  const existing=exampleDocument(choice);
-  if(existing){excludedCrewDocuments().delete(existing.path);renderCrewDocuments();}
-  else await uploadCrewDocuments([new File([choice.documentContent],choice.document,{type:choice.document.endsWith('.csv')?'text/csv':'text/plain'})],{example:true});
- }
 };
 function issueReportPanel(){return `<details id="studio-issue-report" class="studio-issue-report"><summary>Issue report</summary><div id="studio-issue-report-content">
  <header class="studio-issue-heading"><div><h3>AI Studio <span class="studio-issue-version">v${escape(buildInfo.version)}</span></h3></div></header>
@@ -84088,7 +84445,7 @@ function attachmentPreviewMarkup(name,text,extracted=false){
  }
  return '<h1>'+escape(name)+'</h1><p class="note">'+escape(note)+'</p>'+content;
 }
-async function openAttachmentTab(path,workspace){
+async function openAttachmentTab(path,workspace,localFile){
  const target=agentId,scenario=selectedScenario,name=path.split('/').pop();
  const tab=window.open('about:blank','_blank');
  if(!tab){alert('Allow pop-ups for this site to preview attachments.','error');return;}
@@ -84098,7 +84455,7 @@ async function openAttachmentTab(path,workspace){
  show('<h1>'+escape(name)+'</h1><p role="status">Loading file…</p>');
  const read=filePath=>api('file?path='+encodeURIComponent(filePath)+'&workspace='+encodeURIComponent(workspace),undefined,target,scenario);
  try{
-  const file=await read(path);if(tab.closed)return;
+  const file=localFile??await read(path);if(tab.closed)return;
   const binary=file.encoding==='base64';
   const readable=binary?await read(path+'.txt'):file;
   if(tab.closed)return;
@@ -84346,7 +84703,9 @@ async function resetStudio(scope,sourceButton=null,scenario=selectedScenario){
    clearTimeout(comparisonTimer);comparison=null;comparePanel.replaceChildren();delete comparePanel.dataset.batch;
    if(!changingAgent&&(agentId===originalSelection||agents.some(a=>a.key===agentId))){openAgentState(state);fillCreator(true);setRoom('workshop');}
   }
-  status.textContent=scope==='all'?'All stages reset.':scope==='bac'?(stageScenarios.find(s=>s.id===scenario)?.title||'Scenario')+' reset.':'Lounge agents reset.';
+  const confirmation=scope==='all'?'All stages reset.':scope==='bac'?(stageScenarios.find(s=>s.id===scenario)?.title||'Scenario')+' reset.':'Lounge agents reset.';
+  if(sourceButton){status.hidden=true;status.textContent='';alert(confirmation,'success');}
+  else status.textContent=confirmation;
   if(background)alert(completed+' agent'+(completed===1?'':'s')+' removed.','success');
  }catch(error){
   const message=(scope==='all'&&teamCleared?'Stage 3 was reset. ':'')+(completed?`${completed} / ${total} removed. `:'')+error.message;
@@ -84593,10 +84952,10 @@ async function openModelConnections(){
       root.dataset.boot='error';root.setAttribute('aria-busy','false');
       status.querySelector('span').textContent='Could not open the studio. Please try again.';
       status.querySelector('button').hidden=false;
-    }finally{booting=false;}
+    }finally{booting=false;scheduleStatePoll();}
   }
   root.querySelector('.studio-boot-status button').onclick=()=>boot();
-  boot();setInterval(()=>{if(!document.hidden&&!busy)refresh();},1500);setInterval(async()=>{if(connected&&!document.hidden){try{const nextRuntime=await api('runtime');if(runtime.instance&&nextRuntime.instance!==runtime.instance){if(!nextRuntime.model)alert('Server restarted. Your agents and results are saved; reconnect the model to continue.');}runtime=nextRuntime;runtimeBadge();}catch{}}},10000);
+  boot();setInterval(async()=>{if(connected&&!document.hidden){try{const nextRuntime=await api('runtime');if(runtime.instance&&nextRuntime.instance!==runtime.instance){if(!nextRuntime.model)alert('Server restarted. Your agents and results are saved; reconnect the model to continue.');}runtime=nextRuntime;runtimeBadge();}catch{}}},10000);
   window.BacStudio={refresh,inspect:()=>({profile:data.profile,agentId,agents:data.agents,jobs:data.jobs,runtime,board,room}),showBoard,setRoom};
 })();
 </script>

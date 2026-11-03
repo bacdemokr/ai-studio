@@ -1,4 +1,5 @@
 """Task-scoped input snapshots, never a blanket copy of a personal workspace."""
+import json
 import re
 
 
@@ -61,6 +62,13 @@ def input_manifest(inputs):
 def validate_assignments(tasks, available, has_images):
     from plan_handoff import required_files
     allowed = {item['id'] for item in available}
+    # Accept a bare filename only when it identifies one declared output in
+    # this plan. Include later outputs when checking ambiguity, but never make
+    # those outputs available early. This does not read or resolve any files.
+    output_names = {}
+    for task in tasks:
+        for path in required_files(task):
+            output_names.setdefault(path.rsplit('/', 1)[-1], []).append(path)
     earlier_outputs = set()
     for task in tasks:
         if 'inputs' not in task:
@@ -71,11 +79,20 @@ def validate_assignments(tasks, available, has_images):
             task['inputs'] = [item['id'] for item in available
                               if re.search(r'(?<![\w-])' + re.escape(item['id']) + r'(?![\w-])', text)]
         # Models sometimes put planned handoff paths in the upload selector.
-        # Only exact outputs declared by an EARLIER assignment are handoffs;
-        # never resolve arbitrary paths or inspect existing workspace files.
+        # Only declared EARLIER outputs (exact path or unique basename) are
+        # handoffs; never resolve arbitrary paths or inspect workspace files.
         selected = task.get('inputs', [])
-        if any(key not in allowed and key not in earlier_outputs for key in selected):
-            raise PlanInputError('The Captain selected an unavailable document. No specialist was started.')
+        def earlier_handoff(key):
+            if key in earlier_outputs:
+                return True
+            candidates = output_names.get(key, [])
+            return len(candidates) == 1 and candidates[0] in earlier_outputs
+        unknown = [key for key in selected if key not in allowed and not earlier_handoff(key)]
+        if unknown:
+            raise PlanInputError('The Captain selected an unavailable document. No specialist was started. '
+                                 'Invalid inputs: ' + json.dumps(unknown) + '. '
+                                 'Use only available document IDs or an earlier declared handoff; '
+                                 'otherwise use inputs:[]. Keep valid agent selections unchanged.')
         if task.get('useImages') and not has_images:
             raise RuntimeError('The Captain selected images that were not attached. No specialist was started.')
         task['inputs'] = [key for key in selected if key in allowed]

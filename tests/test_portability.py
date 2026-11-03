@@ -62,9 +62,9 @@ class PortabilityTests(unittest.TestCase):
             self.assertEqual(settings.models(profile)['models'][0]['id'], 'local-model:latest')
             settings.save(self.studio, {**profile, 'verifyConnection':True})
             config = common.read_json(runtime.config_path())['models']['providers']['bac-local']
-            self.assertEqual(config['baseUrl'], base)
+            self.assertTrue(vault.observes(config['baseUrl']))
             self.assertEqual(config['api'], 'openai-completions')
-            self.assertEqual(config['apiKey'], 'local-only')
+            self.assertEqual(config['apiKey'], 'session-only')
             settings.save(self.studio, {**profile, 'apiKey':'fixture-private-key', '_credentialSession':'local-wire'})
             config = common.read_json(runtime.config_path())['models']['providers']['bac-local']
             payload = {'model':'local-model:latest','stream':True,'messages':[{'role':'user','content':'Hello'}],

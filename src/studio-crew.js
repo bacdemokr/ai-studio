@@ -32,6 +32,7 @@ function visitorAvailable(visitor){return !!visitor&&(data.agents||[]).some(agen
 // Each specialist has a durable direct conversation, separate from crew execution.
 const defaultCrewPrompt=role=>selectedScenario==='plan'&&role===0?'/goal ':'';
 const crewDrafts=new Map();let crewChatKey='',crewChatSignature='',crewChatSending=false,crewResetEpoch='';
+let crewComposerEditing=false,crewComposerPointer=false;
 // New tasks use hired agents only; an active job keeps its captured team mode.
 let openTaskTeamMode='hired';
 function taskTeamMode(job){return job?.payload.teamMode||(job?.payload.includeHiredAgents??!!job?.payload.roster?.length?'mixed':'builtin');}
@@ -261,17 +262,60 @@ function collaborationTimeMarkup(job){
  const label=collaborationTime(job);
  return label?'<p class="mission-plan-inputs" data-plan-total="'+escape(job.id)+'" title="From submission to completion, including queueing, planning, specialists and review.">'+escape(label)+'</p>':'';
 }
+function modelReasoningMarkup(job,role,revision=null){
+ const state=missionReasoningCache.get(job.id),report=state?.report;
+ const calls=(report?.calls||[]).filter(call=>Number(call.role)===Number(role)&&(revision===null||/^Revis/.test(call.phase)===revision));
+ const sections=calls.flatMap(call=>call.turns||[]).flatMap(turn=>turn.sections||[]);
+ const published=sections.some(section=>section.text);
+ const kinds=new Set(sections.filter(section=>section.text).map(section=>section.kind));
+ const label=kinds.size===1&&kinds.has('summary')?'Reasoning summary':'Model reasoning';
+ let body='';
+ if(!report){
+  body='<p class="mission-reasoning-empty" role="status">'+(state?.error?'Could not load reasoning. Close and reopen to retry.':'Loading saved reasoning…')+'</p>';
+ }else if(!calls.length){
+  body='<p class="mission-reasoning-empty">'+(report.active?'Reasoning will appear here if the model provides it.':report.recorded?'No reasoning was recorded for this step.':'Reasoning not available. This task has no saved provider trace.')+'</p>';
+ }else{
+  const latest=calls.findLast(call=>call.status==='collecting'||(call.turns||[]).some(turn=>turn.sections?.some(section=>section.text)))?.id;
+  body=calls.map(call=>{
+   const textTurns=(call.turns||[]).filter(turn=>turn.sections?.some(section=>section.text));
+   const model=[...new Set((call.turns||[]).map(turn=>turn.model).filter(Boolean))].map(model=>model.split('/').at(-1)).join(' · ');
+   const phase=/^Planning-captain-scope/.test(call.phase)?'Casey’s scope':/^Planning.*scope/.test(call.phase)?'Team capabilities':/^Planning/.test(call.phase)?'Planning':/^Checking/.test(call.phase)?'Checking progress':/^Review/.test(call.phase)?'Final review':/^Revis/.test(call.phase)?'Revision':/^Recover/.test(call.phase)?'Recovery':'Working';
+   const status=call.status==='collecting'?'Receiving':textTurns.length?'Saved':'Not provided';
+   const content=textTurns.length?textTurns.map(turn=>'<div class="mission-reasoning-turn"><small>Turn '+Number(turn.index)+(turn.status==='interrupted'?' · Interrupted':'')+'</small>'+turn.sections.filter(s=>s.text).map(section=>'<div class="mission-reasoning-text" data-reasoning-scroll="'+escape(call.id+':'+turn.index+':'+section.kind)+'">'+escape(section.text)+'</div>'+(section.truncated?'<small>Display limit reached.</small>':'')).join('')+'</div>').join(''):'<p class="mission-reasoning-empty">'+(call.status==='collecting'?'Waiting for provider-published text…':'Reasoning not available. The model or connection did not provide displayable text.')+'</p>';
+   return '<details class="mission-reasoning-call" data-trace-details="reasoning-'+escape(call.id)+'" '+(call.id===latest?'open':'')+'><summary><span>'+escape(phase)+'</span><small title="'+escape(model)+'">'+escape(model||'Model')+'</small><em>'+status+'</em></summary>'+content+'</details>';
+  }).join('');
+ }
+ return '<section class="mission-model-reasoning"><div class="mission-reasoning-heading"><strong>'+label+'</strong><span>'+(published?'Provider-published':'Availability varies by model')+'</span></div><p class="mission-reasoning-note">Text shared by the model provider. Opening this view does not run the model again.</p>'+body+(report?.truncated?'<small class="mission-reasoning-note">Some text is shortened to keep this view responsive.</small>':'')+'</section>';
+}
+async function loadModelReasoning(job){
+ if(!missionReasoningOpen||document.hidden||el('board').hidden||!el('board').getClientRects().length)return;
+ const old=missionReasoningCache.get(job.id),active=['queued','running','waiting','stopping'].includes(job.status);
+ if(old?.pending||old?.error||old?.loaded&&(!active&&!old.report?.active||Date.now()-old.loaded<1500))return;
+ const state={...old,pending:true};missionReasoningCache.set(job.id,state);
+ while(missionReasoningCache.size>2)missionReasoningCache.delete(missionReasoningCache.keys().next().value);
+ try{
+  const report=await api('model-reasoning?id='+encodeURIComponent(job.id));
+  if(missionReasoningCache.get(job.id)!==state)return;
+  state.report=report;state.loaded=Date.now();
+ }catch{state.error=true;}
+ finally{
+  state.pending=false;
+  if(missionReasoningOpen&&missionReasoningJob===job.id){
+   renderMissionControl();
+   clearTimeout(missionReasoningTimer);
+   if(!state.error&&(active||state.report?.active))missionReasoningTimer=setTimeout(()=>renderMissionControl(),1600);
+  }
+ }
+}
 function missionControlTraceMarkup(job,advanced=false){
  const defaultNames=planNames(job.payload.collaboration);
  const plan=job.payload.collaboration,active=['queued','running','waiting','stopping'].includes(job.status),tasks=plan.tasks||[],checks=plan.checks||[];
  let sequence=-1;
  const row=(kind,name,status,content,attrs='',recorded=true,state='')=>'<article class="mission-plan-step" data-trace-key="'+escape(kind+':'+attrs)+'" data-trace-kind="'+kind+'" data-step-state="'+state+'" '+attrs+'><header><small>'+(recorded?String(++sequence).padStart(2,'0')+' · '+({plan:'PLAN',contribution:'CONTRIBUTION',reasoning:'REASONING',review:'REVIEW',revision:'REVISION REQUEST','revision-work':'REVISION',response:'RESPONSE',stopped:'STOPPED'}[kind]||kind.toUpperCase()):kind==='skipped'?'NOT CALLED':'PLANNED')+'</small><h4>'+escape(name)+'</h4><span>'+escape(status)+'</span></header><div class="mission-plan-content">'+content+'</div></article>';
- const detail=(key,label,content)=>'<details class="mission-trace-detail" data-trace-details="'+key+'"><summary>'+escape(label)+'</summary><div class="chat-prose">'+content+'</div></details>';
- const reasoning=(name,task,output,attrs)=>row('reasoning',name,'Reasoning','<strong>Why selected</strong><div>'+messageMarkup(task.roleFit||'No separate role-fit rationale was recorded.')+'</div><strong>Planned approach</strong><div>'+messageMarkup(task.task||'No assignment was recorded.')+'</div><strong>Reported contribution</strong><div>'+messageMarkup(output?.answer||(output?'The contribution returned no separate summary.':'This agent has not delivered a contribution yet.'))+'</div><small class="mission-plan-inputs">Recorded rationale and result summary—not private model chain-of-thought.</small>',attrs,true,'reasoning');
+ const detail=(key,label,content)=>'<details class="mission-trace-detail" data-trace-details="'+key+'"'+(key==='response'?' open':'')+'><summary>'+escape(label)+'</summary><div class="chat-prose">'+content+'</div></details>';
  const question=String(plan.task||job.payload.prompt||'').replace(/^\s*\/(?:goals?|plans?)(?=\s|$)/i,'').trim();
  let markup=row('user','User','Submitted','<strong>Request</strong><div class="chat-prose">'+messageMarkup(question)+'</div>','',true,'done');
- markup+=row('plan','Casey',plan.summary?'Plan ready':active?'Planning':'No plan saved','<strong>Approach</strong><div>'+messageMarkup(plan.summary||(active?'Casey is deciding which expertise this request needs.':'No plan was saved before the work stopped.'))+'</div>'+declinedAssignmentsMarkup(job),'data-plan-role="0"',true,plan.summary?'done':active?'working':'');
- if(advanced)markup+=row('reasoning','Casey','Reasoning','<strong>Recorded planning rationale</strong><div>'+messageMarkup(plan.summary||'No planning rationale has been recorded yet.')+'</div><small class="mission-plan-inputs">Recorded rationale—not private model chain-of-thought.</small>','data-reasoning-role="0"',true,'reasoning');
+ markup+=row('plan','Casey',plan.summary?'Plan ready':active?'Planning':'No plan saved','<strong>Approach</strong><div>'+messageMarkup(plan.summary||(active?'Casey is deciding which expertise this request needs.':'No plan was saved before the work stopped.'))+'</div>'+declinedAssignmentsMarkup(job)+(advanced?modelReasoningMarkup(job,0):''),'data-plan-role="0"',true,plan.summary?'done':active?'working':'');
  const called=tasks.filter(task=>plan.handoffs?.[task.role]||plan.outputs?.[task.role]||plan.calledRoles?.includes(task.role));
  const calledOrder=collaborationRoleOrder(plan);
  called.sort((a,b)=>calledOrder.indexOf(Number(a.role))-calledOrder.indexOf(Number(b.role)));
@@ -283,8 +327,7 @@ function missionControlTraceMarkup(job,advanced=false){
   const expected=h?.expected||task.expected;
   const assignment='<strong>Casey’s assignment</strong><div>'+messageMarkup(h?.task||task.task)+'</div>'+assignmentFitMarkup(task)+(expected?'<div class="mission-expectation"><small>Expected result</small><div>'+messageMarkup(expected)+'</div></div>':'')+(h?'<small class="mission-plan-inputs">Received: '+escape(['Casey’s brief',...(h.receivedFrom||[]).map(i=>defaultNames[Number(i)]+"’s contribution")].join(' · '))+'</small>':'');
   const recoveryNote=recovery?'<p class="mission-plan-inputs">'+escape(recovery.status==='delivered'?'A missing handoff was saved and verified in one repair before continuing.':recovery.status==='working'?'Required files are missing. One repair is using the existing research; later specialists are waiting.':'The required handoff could not be recovered. Later specialists were not started.')+'</p>':'';
-  markup+=row('contribution',defaultNames[role],status,assignment+recoveryNote+(output?detail('output-'+role,defaultNames[role]+'’s result',messageMarkup(output.answer||'No response text was saved.')+webpageButtons(output.files,job.id)):''),'data-plan-role="'+role+'"',true,missing?(working?'working':''):output?'done':working?'working':'');
-  if(advanced)markup+=reasoning(defaultNames[role],task,output,'data-reasoning-role="'+role+'"');
+  markup+=row('contribution',defaultNames[role],status,assignment+recoveryNote+(output?detail('output-'+role,defaultNames[role]+'’s result',messageMarkup(output.answer||'No response text was saved.')+webpageButtons(output.files,job.id)):'')+(advanced?modelReasoningMarkup(job,role,false):''),'data-plan-role="'+role+'"',true,missing?(working?'working':''):output?'done':working?'working':'');
   const reviews=checks.filter(check=>!check.afterRevision&&Number(check.afterRole)===role);
   for(const check of reviews){
    const status=check.done?(check.outcome==='partial'?'Partial result':check.outcome==='unavailable'?'Capability unavailable':'Enough to finish'):'More work needed';
@@ -300,8 +343,7 @@ function missionControlTraceMarkup(job,advanced=false){
  if(plan.revision){
   const r=plan.revision,output=r.output,working=active&&r.status==='working';
   markup+=row('revision','Casey','One targeted revision','<strong>Why repair is needed</strong><div>'+messageMarkup(r.reason)+'</div><div>'+messageMarkup(r.issue)+'</div>','data-revision-request',true,'done');
-  markup+=row('revision-work',defaultNames[r.role],output?'Revised result delivered':working?'Revising':active&&r.status==='requested'?'Requested':r.status==='failed'?'Revision failed':'Not completed',collaborationRevisionBody(r,job.id),'data-revision-role="'+r.role+'"',true,output?'done':working?'working':'');
-  if(advanced)markup+=reasoning(defaultNames[r.role],r,output,'data-reasoning-revision-role="'+r.role+'"');
+  markup+=row('revision-work',defaultNames[r.role],output?'Revised result delivered':working?'Revising':active&&r.status==='requested'?'Requested':r.status==='failed'?'Revision failed':'Not completed',collaborationRevisionBody(r,job.id)+(advanced?modelReasoningMarkup(job,r.role,true):''),'data-revision-role="'+r.role+'"',true,output?'done':working?'working':'');
   for(const check of checks.filter(check=>check.afterRevision))
    markup+=row('review','Casey',check.outcome==='partial'?'Partial result':'Final verification','<div>'+messageMarkup(check.reason)+'</div><small>No further specialist calls.</small>','data-after-revision',true,'done');
   if(output&&!checks.some(check=>check.afterRevision)&&active&&!plan.responseReady)
@@ -312,8 +354,12 @@ function missionControlTraceMarkup(job,advanced=false){
  else if(!active)markup+=row('stopped','Casey',job.status==='cancelled'?'Stopped':'Error','<div>'+messageMarkup(job.result?.error||(job.status==='cancelled'?'The work stopped before a final response was ready.':'No final response was saved.'))+'</div>');
  return markup;
 }
-function updateMissionControlTrace(lanes,jobId,markup){
+function updateMissionControlTrace(lanes,jobId,markup,notify=true){
  const sameJob=lanes.dataset.traceJob===jobId;
+ const viewport=lanes.closest('#studio-surface-body'),scrollTop=viewport?.scrollTop;
+ const visible=!!viewport?.getClientRects().length;
+ if(!sameJob||!notify||!visible)lanes._traceUpdate=null;
+ syncMissionUpdateNotice(lanes);
  if(sameJob&&lanes._traceMarkup===markup)return;
  const template=document.createElement('template');template.innerHTML=markup;
  const incoming=[...template.content.children],keys=new Set(incoming.map(node=>node.dataset.traceKey));
@@ -325,12 +371,19 @@ function updateMissionControlTrace(lanes,jobId,markup){
  for(const fresh of incoming){
   const previous=old.get(fresh.dataset.traceKey),source=fresh.outerHTML;
   const node=previous?._traceMarkup===source?previous:fresh;
+  if(sameJob&&notify&&visible&&node!==previous&&fresh.dataset.traceKind!=='planned'&&previous?.textContent!==fresh.textContent){
+   const texts=new Map([...(previous?.querySelectorAll('[data-reasoning-scroll]')||[])].map(item=>[item.dataset.reasoningScroll,item.textContent]));
+   const changed=[...fresh.querySelectorAll('[data-reasoning-scroll]')].filter(item=>texts.get(item.dataset.reasoningScroll)!==item.textContent).at(-1);
+   lanes._traceUpdate={trace:fresh.dataset.traceKey,reasoning:changed?.dataset.reasoningScroll};
+  }
   if(previous&&node!==previous){
-   const expanded=new Set([...previous.querySelectorAll('[data-trace-details][open]')].map(item=>item.dataset.traceDetails));
-   for(const item of node.querySelectorAll('[data-trace-details]'))item.open=expanded.has(item.dataset.traceDetails);
+   const details=new Map([...previous.querySelectorAll('[data-trace-details]')].map(item=>[item.dataset.traceDetails,item.open]));
+   for(const item of node.querySelectorAll('[data-trace-details]'))if(details.has(item.dataset.traceDetails))item.open=details.get(item.dataset.traceDetails);
+   const positions=new Map([...previous.querySelectorAll('[data-reasoning-scroll]')].map(item=>[item.dataset.reasoningScroll,item.scrollTop]));
    // Replace in place so later unchanged cards never move through the DOM.
    if(cursor===previous)cursor=node;
    previous.replaceWith(node);
+   for(const item of node.querySelectorAll('[data-reasoning-scroll]'))if(positions.has(item.dataset.reasoningScroll))item.scrollTop=positions.get(item.dataset.reasoningScroll);
   }
   node._traceMarkup=source;
   // Retain unchanged cards, including their focused links/buttons and selection.
@@ -339,8 +392,47 @@ function updateMissionControlTrace(lanes,jobId,markup){
  }
  for(const node of [...lanes.children])if(!retained.has(node))node.remove();
  lanes.dataset.traceJob=jobId;lanes._traceMarkup=markup;
+ // Polling never moves the reader, including when an earlier card grows.
+ if(sameJob&&viewport)viewport.scrollTop=scrollTop;
+ syncMissionUpdateNotice(lanes);
+}
+function syncMissionUpdateNotice(lanes){
+ const notice=document.getElementById('studio-mission-updates'),viewport=lanes.closest('#studio-surface-body');
+ if(!notice||!viewport)return;
+ const target=()=>{
+  const pending=lanes._traceUpdate;
+  const row=pending&&[...lanes.children].find(node=>node.dataset.traceKey===pending.trace);
+  if(!row)return null;
+  return (pending.reasoning&&[...row.querySelectorAll('[data-reasoning-scroll]')].find(node=>node.dataset.reasoningScroll===pending.reasoning))||row.querySelector('.mission-trace-detail:last-of-type')||row;
+ };
+ const sync=()=>{
+  if(!viewport.contains(lanes))return;
+  const node=target(),bounds=viewport.getBoundingClientRect(),rect=node?.getBoundingClientRect();
+  let closed=false;
+  for(let item=node;item&&item!==lanes;item=item.parentElement)if(item.matches('details:not([open])'))closed=true;
+  const read=node&&!closed&&rect.height>0&&rect.top>=bounds.top&&rect.bottom<=bounds.bottom-8&&node.scrollHeight-node.clientHeight-node.scrollTop<12;
+  if(!node||read)lanes._traceUpdate=null;
+  notice.hidden=!lanes._traceUpdate;
+ };
+ // Capture also observes scrolls inside the bounded reasoning text boxes.
+ if(lanes._updateViewport!==viewport){
+  lanes._updateViewport?.removeEventListener('scroll',lanes._updateScroll,true);
+  lanes._updateViewport=viewport;lanes._updateScroll=()=>syncMissionUpdateNotice(lanes);
+  viewport.addEventListener('scroll',lanes._updateScroll,{capture:true,passive:true});
+ }
+ notice.querySelector('button').onclick=()=>{
+  const node=target();if(!node)return;
+  for(let item=node;item&&item!==lanes;item=item.parentElement)if(item.matches('details'))item.open=true;
+  if(node.matches('[data-reasoning-scroll]'))node.scrollTop=node.scrollHeight;
+  node.scrollIntoView({block:'center',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+  node.setAttribute('tabindex','-1');node.focus({preventScroll:true});
+  lanes._traceUpdate=null;notice.hidden=true;
+ };
+ sync();
 }
 let missionReasoningOpen=false,missionReasoningJob='';
+const missionReasoningCache=new Map();
+let missionReasoningTimer=0;
 function renderMissionControl(){
  const job=missionControlPlan(),intro=el('board').querySelector('.studio-board-intro');
  el('lanes').classList.toggle('studio-plan-control',!!job);
@@ -349,15 +441,22 @@ function renderMissionControl(){
  intro.querySelector('[data-mission-total]').textContent=job?collaborationTime(job):'';
  intro.querySelector('p').textContent=job?job.payload.collaboration.task:'Casey에게 /goal로 작업을 요청해보세요.';
  const reasoningButton=el('mission-reasoning');
- reasoningButton.onclick=()=>{missionReasoningOpen=!missionReasoningOpen;renderMissionControl();};
+ reasoningButton.onclick=()=>{missionReasoningOpen=!missionReasoningOpen;clearTimeout(missionReasoningTimer);if(missionReasoningCache.get(missionReasoningJob)?.error)missionReasoningCache.delete(missionReasoningJob);renderMissionControl();};
  if(!job){
   missionReasoningOpen=false;missionReasoningJob='';reasoningButton.hidden=true;
+  el('mission-updates').hidden=true;el('lanes')._traceUpdate=null;
   el('lanes').innerHTML='';delete el('lanes').dataset.traceJob;delete el('lanes')._traceMarkup;return;
  }
  if(missionReasoningJob!==job.id){missionReasoningJob=job.id;missionReasoningOpen=false;}
  reasoningButton.hidden=false;reasoningButton.setAttribute('aria-expanded',String(missionReasoningOpen));
- reasoningButton.textContent=missionReasoningOpen?'Hide advanced reasoning':'Show me advanced reasoning';
- updateMissionControlTrace(el('lanes'),job.id,missionControlTraceMarkup(job,missionReasoningOpen));
+ reasoningButton.textContent=missionReasoningOpen?'Hide advanced reasoning':'Advanced reasoning';
+ if(missionReasoningOpen)loadModelReasoning(job);
+ const lanes=el('lanes');
+ // Completion must not clear unread updates. Provider text can also arrive
+ // after the task ends; only changing views suppresses update notifications.
+ updateMissionControlTrace(lanes,job.id,missionControlTraceMarkup(job,missionReasoningOpen),
+  lanes._traceAdvanced===missionReasoningOpen);
+ lanes._traceAdvanced=missionReasoningOpen;
 }
 // /goal is a real Captain-led job; contributions come from completed model calls.
 function collaborationRevisionBody(revision,jobId){
@@ -431,11 +530,13 @@ function crewDocumentSelection(){
  if(!selection||selection.epoch!==epoch){selection={epoch,excluded:new Set(),uploaded:new Set(),example:'',lockedExample:''};crewDocumentSelections.set(selectedScenario,selection);}
  return selection;
 }
-function excludedCrewDocuments(){return crewDocumentSelection().excluded;}
 function renderCrewDocuments(){
- const files=data.crewDocuments||[],paths=new Set(files.map(f=>f.path)),selection=crewDocumentSelection(),excluded=selection.excluded;
+ const files=[...(data.crewDocuments||[])],paths=new Set(files.map(f=>f.path)),selection=crewDocumentSelection(),excluded=selection.excluded;
  if(selectedCrewRole===0&&!selectedOpenTaskVisitor&&/^\s*(?:\/(?:goals?|plans?)\s*)?$/i.test(el('crew-prompt').value)){selection.example='';selection.lockedExample='';}
- // Sample files stay saved for reuse, but belong only to their selected draft.
+ // Browsing templates only changes a local attachment draft. Save on submission.
+ const example=goalExamples.find(choice=>choice.document&&'inbox/'+choice.document===selection.example);
+ if(example&&!paths.has(selection.example))files.push({path:selection.example,pendingExample:example});
+ // Previously submitted samples remain saved, but only attach to their own draft.
  const docs=files.filter(f=>(!crewExampleDocuments.has(f.path)||selection.example===f.path||selection.uploaded.has(f.path))&&/\.(pdf|pptx|xlsx|txt|md|csv)$/i.test(f.path)&&!/^(?:plan-input|plan|chat)-[0-9a-f]{24}(?:-|\.)/.test(f.path.split('/').at(-1))&&!(/\.(pdf|pptx|xlsx)\.txt$/i.test(f.path)&&paths.has(f.path.slice(0,-4))));
  const box=el('crew-documents');box.hidden=selectedCrewRole!==0||(!docs.length&&!crewDocumentUpload);
  box.innerHTML=docs.map(f=>{const locked=selection.lockedExample===f.path;return '<div class="studio-attachment"><input type="checkbox" aria-label="Attach '+escape(f.path.slice(6))+'" data-crew-document="'+escape(f.path)+'" '+(excluded.has(f.path)?'':'checked')+' '+(crewDocumentUpload||locked?'disabled':'')+(locked?' title="Required for this example" data-required-example="true"':'')+'><button type="button" data-attachment-preview="'+escape(f.path)+'" title="Open file in a new tab">'+escape(f.path.slice(6))+'</button></div>';}).join('')+(crewDocumentUpload?'<small role="status">Adding document…</small>':'');
@@ -444,11 +545,15 @@ function renderCrewDocuments(){
 el('crew-documents').addEventListener('change',event=>{const path=event.target.dataset.crewDocument;if(path){const selection=crewDocumentSelection(),excluded=selection.excluded;if(selection.lockedExample===path){event.target.checked=true;excluded.delete(path);}else if(event.target.checked)excluded.delete(path);else excluded.add(path);}});
 el('crew-documents').addEventListener('click',event=>{
  const button=event.target.closest('[data-attachment-preview]');
- if(button)openAttachmentTab(button.dataset.attachmentPreview,'0');
+ if(button){
+  const path=button.dataset.attachmentPreview;
+  const sample=!data.crewDocuments?.some(file=>file.path===path)&&goalExamples.find(choice=>choice.document&&'inbox/'+choice.document===path);
+  openAttachmentTab(path,'0',sample?{content:sample.documentContent}:undefined);
+ }
 });
 el('crew-document-add').onclick=()=>el('crew-document-input').click();
 el('crew-document-input').onchange=async event=>{await uploadCrewDocuments([...event.target.files]);event.target.value='';};
-async function uploadCrewDocuments(files,{example=false}={}){
+async function uploadCrewDocuments(files){
  if(selectedCrewRole!==0||crewDocumentUpload||el('crew-document-add').disabled)return;
  const target=agentId,selection=crewDocumentSelection();crewDocumentUpload=true;syncCrewComposer();renderCrewDocuments();
  try{
@@ -458,7 +563,7 @@ async function uploadCrewDocuments(files,{example=false}={}){
    if(binary){const bytes=new Uint8Array(await file.arrayBuffer());let raw='';for(let i=0;i<bytes.length;i+=8192)raw+=String.fromCharCode(...bytes.subarray(i,i+8192));content=btoa(raw);}
    else content=await documentText(file);
    const result=await api('upload',{crewRole:0,name:file.name,content,...(binary?{encoding:'base64'}:{})},target);
-   if(!example)selection.uploaded.add(result.path);
+   selection.uploaded.add(result.path);
    selection.excluded.delete(result.path);
   }
   await refresh();return true;
@@ -469,6 +574,27 @@ for(const type of ['dragover','drop'])el('crew-chat').addEventListener(type,even
  if(![...event.dataTransfer.types].includes('Files')||selectedCrewRole!==0)return;
  event.preventDefault();if(type==='drop')uploadCrewDocuments([...event.dataTransfer.files]);
 });
+function syncCrewComposerSize(){
+ const form=el('crew-chat'),prompt=el('crew-prompt');
+ const hasHistory=(data.crewChats||[]).some(job=>job.payload?.crewRole===0||job.payload?.collaboration);
+ const hasDraft=!/^\s*(?:\/(?:goals?|plans?)\s*)?$/i.test(prompt.value);
+ const attachments=crewDocumentUpload||pendingImages(true).length||el('crew-documents').querySelector('input:checked');
+ form.classList.toggle('is-reading',selectedScenario==='plan'&&selectedCrewRole===0&&!selectedOpenTaskVisitor&&hasHistory&&!crewComposerEditing&&!hasDraft&&!attachments&&el('crew-chat-error').hidden);
+}
+el('crew-chat').addEventListener('focusin',()=>{crewComposerEditing=true;if(!crewComposerPointer)syncCrewComposerSize();});
+// Finish a pointer click before resizing so Team/attachment buttons do not
+// move out from under the pointer between pressing and releasing it.
+el('crew-chat').addEventListener('pointerdown',()=>{crewComposerPointer=true;});
+el('crew-chat').addEventListener('click',()=>{crewComposerPointer=false;crewComposerEditing=true;syncCrewComposerSize();});
+for(const type of ['pointerup','pointercancel'])document.addEventListener(type,()=>{
+ if(crewComposerPointer)setTimeout(()=>{crewComposerPointer=false;syncCrewComposerSize();},0);
+});
+el('crew-chat').addEventListener('focusout',event=>{
+ if(event.relatedTarget&&!el('crew-chat').contains(event.relatedTarget)){crewComposerEditing=false;syncCrewComposerSize();}
+});
+document.addEventListener('pointerdown',event=>{
+ if(!el('crew-chat').contains(event.target)){crewComposerEditing=false;syncCrewComposerSize();}
+},{capture:true});
 function syncCrewComposer(){
  el('crew-chat').hidden=!!selectedOpenTaskVisitor;
  if(selectedOpenTaskVisitor){el('crew-send').disabled=true;el('crew-documents').hidden=true;syncGoalExamples(true);return;}
@@ -491,6 +617,7 @@ function syncCrewComposer(){
  el('crew-team-hint').hidden=!noHires;el('crew-team-hint').textContent=noHires?'작업에 필요한 스킬을 가진 에이전트를 고용해주세요.':'';
  el('crew-chat-connection').hidden=!blocked;
  el('crew-chat-connection').textContent=visitorMissing?'This agent was removed. Start a new task with Casey.':visitor?.skills?.includes('radar')?'Tech Radar uses Heartbeat. Manual chat is disabled.':crewDocumentUpload?'Adding document…':resetInProgress?'Resetting…':data.bacResetting?'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…':captainPlanning?'Casey가 팀 작업을 진행하고 있어요. 완료 후 다시 메시지를 보낼 수 있습니다.':memberWorking?'작업 중입니다. 이 에이전트가 작업을 마치면 다시 메시지를 보낼 수 있습니다.':!(visitor?personalModel(visitor).connected:(teamRuntime().teamModel??runtime.model))?(visitor?personalModelNotice(visitor):'Model not connected. Enable Local or External Endpoint in Settings.'):'Run ./bac start on this computer to connect the team runtime.';
+ syncCrewComposerSize();
 }
 function renderCrewPassport(){
  syncFileButtons();
@@ -523,7 +650,7 @@ function renderCrewPassport(){
   crewChatSignature='';return;
  }
  const key=crewDraftKey(i),switched=key!==crewChatKey;
- if(switched){if(crewChatKey)crewDrafts.set(crewChatKey,el('crew-prompt').value);crewChatKey=key;el('crew-prompt').value=crewDrafts.get(key)??defaultCrewPrompt(i);el('crew-chat-error').hidden=true;}
+ if(switched){crewComposerEditing=false;if(crewChatKey)crewDrafts.set(crewChatKey,el('crew-prompt').value);crewChatKey=key;el('crew-prompt').value=crewDrafts.get(key)??defaultCrewPrompt(i);el('crew-chat-error').hidden=true;}
  renderImageDrafts(true);
  el('crew-prompt').placeholder=name+'에게 메시지 보내기'+(i===0?' · 팀 작업은 /goal로 시작하세요':'…');
  el('crew-prompt').dataset.planEnabled=String(i===0);syncCrewComposer();
@@ -552,14 +679,25 @@ el('crew-chat').onsubmit=async e=>{
   el('crew-chat-error').textContent=planLocationHint;
   el('crew-chat-error').hidden=false;return;
  }
- let requestPrompt=draft.prompt;
- if(index===0){const docs=renderCrewDocuments();if(docs.length)requestPrompt+='\n\nAttached documents (use these files):\n'+docs.map(f=>f.path.slice(6)).join('\n');}
- crewChatSending=true;syncCrewComposer();el('crew-chat-error').hidden=true;
- try{const visitor=assignedVisitor(index);const result=await api('jobs',visitor?{kind:'chat',prompt:requestPrompt,images:draft.images}:{kind:'crew-chat',crewRole:index,prompt:requestPrompt,images:draft.images,...(selectedScenario==='plan'&&index===0&&isPlanCommand(draft.prompt)?{teamMode:teamChoice}:{})},visitor?.key||owner);acknowledgeChatDraft(draft);if(visitor){await switchAgent(visitor.key);setRoom('lounge');}await refresh();if(result.collaboration)stageCollaboration(result);}
+ const docs=index===0?renderCrewDocuments():[],scenario=selectedScenario,visitor=assignedVisitor(index);
+ crewChatSending=true;crewDocumentUpload=docs.some(file=>file.pendingExample);syncCrewComposer();el('crew-chat-error').hidden=true;
+ try{
+  for(const file of docs){
+   if(!file.pendingExample)continue;
+   const sample=file.pendingExample;
+   const saved=await api('upload',{crewRole:0,name:sample.document,content:sample.documentContent},owner,scenario);
+   file.path=saved.path;
+  }
+  if(crewDocumentUpload)await refresh();
+  let requestPrompt=draft.prompt;
+  if(docs.length)requestPrompt+='\n\nAttached documents (use these files):\n'+docs.map(file=>file.path.slice(6)).join('\n');
+  const result=await api('jobs',visitor?{kind:'chat',prompt:requestPrompt,images:draft.images}:{kind:'crew-chat',crewRole:index,prompt:requestPrompt,images:draft.images,...(scenario==='plan'&&index===0&&isPlanCommand(draft.prompt)?{teamMode:teamChoice}:{})},visitor?.key||owner,scenario);
+  crewComposerEditing=false;acknowledgeChatDraft(draft);if(visitor){await switchAgent(visitor.key);setRoom('lounge');}await refresh();if(result.collaboration)stageCollaboration(result);
+ }
  catch(error){if(crewChatKey===key){el('crew-chat-error').textContent=error.message;el('crew-chat-error').hidden=false;}}
- finally{crewChatSending=false;syncCrewComposer();}
+ finally{crewChatSending=false;crewDocumentUpload=false;syncCrewComposer();}
 };
-el('crew-prompt').addEventListener('input',()=>{clearPlanLocationHint(true);syncCrewComposer();});
+el('crew-prompt').addEventListener('input',()=>{crewComposerEditing=true;clearPlanLocationHint(true);syncCrewComposer();});
 el('crew-prompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();if(!el('crew-send').disabled)el('crew-chat').requestSubmit(el('crew-send'));}});
 el('crew-conversation').onclick=async e=>{const file=e.target.closest('[data-plan-file]');if(file){await openFile(file.dataset.planFile,file.dataset.planJob);return;}const button=e.target.closest('[data-crew-chat-stop]');if(!button||button.disabled)return;await stopChat(button.dataset.crewChatStop,true);};
 

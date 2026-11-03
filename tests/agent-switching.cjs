@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const source=fs.readFileSync('src/studio.js','utf8');
 function fixture(){
  const calls=[],timers=new Set(),alerts=[],opened=[];
- const context={Map,AbortController,JSON,performance,recordBrowserDiagnostic(){},agentId:'a',selectedScenario:'plan',credentialSession:'fixture',csrf:'fixture',
+ const context={window:{BacCampus:{finishArrival(){}}},Map,AbortController,JSON,performance,recordBrowserDiagnostic(){},agentId:'a',selectedScenario:'plan',credentialSession:'fixture',csrf:'fixture',
   changingAgent:false,pendingWrites:0,refreshVersion:0,busy:false,removingAgent:false,hiringArrival:false,
   setTimeout(fn,ms){const timer={fn,ms};timers.add(timer);return timer;},clearTimeout(timer){timers.delete(timer);},
   alert:message=>alerts.push(message),render(){},

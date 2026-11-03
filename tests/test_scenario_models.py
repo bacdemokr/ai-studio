@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 import scenario_models as models
 import team_models
+import session_secrets
 import runtime_settings
 from studio import Studio, Problem
 from test_studio import Adapter
@@ -47,7 +48,9 @@ class ScenarioModelsTests(unittest.TestCase):
         team_models.apply(config)
         self.assertEqual(config['agents']['entries'][agent['id']]['model'],agent['_teamModel'])
         provider=config['models']['providers'][team_models.local_provider(agent['id'])]
-        self.assertEqual(provider['baseUrl'],self.local['baseUrl'])
+        self.assertIn('/provider/local-',provider['baseUrl'])
+        route=provider['baseUrl'].split('/provider/',1)[1].split('/',1)[0]
+        self.assertEqual(session_secrets._local_routes[route],self.local['baseUrl'])
         self.assertNotIn('qwen/test',[m['id'] for m in config['models']['providers']['bac-team']['models']])
 
     def test_local_readiness_requires_gateway(self):

@@ -63,5 +63,13 @@
   worldViewport.addEventListener('keydown',e=>{
     if(e.target===worldViewport&&e.key==='Enter'&&!e.repeat){e.preventDefault();worldOpen?leaveWorld():enterWorld();}
   });
+  document.addEventListener('keydown',e=>{
+    if(!worldOpen||!e.shiftKey||e.ctrlKey||e.altKey||e.metaKey||e.repeat||e.isComposing||e.defaultPrevented||root.querySelector('dialog[open]'))return;
+    if(e.composedPath().some(node=>node instanceof Element&&(node.matches('input,textarea,select,[role="textbox"]')||node.isContentEditable)))return;
+    const selector={Digit1:'[data-world-room="workshop"]',Digit2:'[data-world-room="lounge"]',Digit3:'[data-world-scenario="plan"]'}[e.code];
+    const button=selector&&root.querySelector('.world-room-map '+selector);
+    if(!button||button.disabled)return;
+    e.preventDefault();button.click();worldViewport.focus({preventScroll:true});
+  });
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&worldOpen&&!root.querySelector('dialog[open]')){e.preventDefault();leaveWorld();}});
   document.addEventListener('fullscreenchange',()=>{if(document.fullscreenElement!==root)restoreWorld();});

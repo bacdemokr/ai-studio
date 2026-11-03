@@ -266,7 +266,8 @@ function placeResident(r){
   r.node.style.left=THREE.MathUtils.clamp(x,half+12,w-half-12)+'px';
   if(loungeSpeaker===r){
     // Leave navigation and the map unobstructed; the bubble replaces its own name tag.
-    const top=Math.min(h-104,Math.max(114+r.node.offsetHeight,y));r.node.style.top=top+'px';
+    const compact=innerWidth<=560;
+    const top=Math.min(h-(compact?80:104),Math.max((compact?154:114)+r.node.offsetHeight,y));r.node.style.top=top+'px';
     r.node.style.setProperty('--speech-tail',THREE.MathUtils.clamp(x-parseFloat(r.node.style.left)+half,18,r.node.offsetWidth-18)+'px');
   }
 }

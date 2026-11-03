@@ -25,6 +25,7 @@ from crew_ownership import CrewOwnership
 from studio_sessions import SessionLifecycle
 from collaboration_plan import CollaborationPlans, is_plan, plan_task
 from webpage_artifacts import DEMO_CODING_INSTRUCTIONS, PAGE_INSTRUCTIONS, html_files, collect_pages
+from role_boundaries import implementation_scope, scope_contract
 
 CREW_CATALOG = json.loads((Path(__file__).resolve().parents[1] / 'src/crew-catalog.json').read_text())
 ROLES = [(member['name'], member['role'], member['persona']) for member in CREW_CATALOG]
@@ -187,6 +188,8 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
                 CREATE TABLE IF NOT EXISTS event_surveys (token TEXT PRIMARY KEY, owner TEXT, job TEXT UNIQUE, definition TEXT, created REAL);
                 CREATE TABLE IF NOT EXISTS survey_responses (token TEXT, visitor TEXT, topic TEXT, experience TEXT, rating INTEGER, created REAL, PRIMARY KEY(token,visitor));
             ''')
+            import model_reasoning
+            model_reasoning.initialize(db)
             if 'role' not in {r['name'] for r in db.execute('PRAGMA table_info(agent_policies)')}:
                 db.executescript("""
                     BEGIN IMMEDIATE;
@@ -1354,8 +1357,10 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
         if protection_report:
             hosts = sorted({rule['host'] for rule in protection_report.get('rules', [])})
             prompt += '\n\nCurrent verified OpenShell access: ' + (', '.join(hosts) or 'no approved destinations') + '. Use sandbox tools to test permitted hosts when requested. Do not repeat earlier approval requests for these hosts; report actual tool results. HTTP 403 alone is not proof of an OpenShell denial. ENOENT, command launch failures and runtime disconnections are execution failures, not policy denials; report the execution problem without asking for website approval or claiming OpenShell blocked the request.'
-        prompt += PAGE_INSTRUCTIONS
-        pages_before = html_files(self.workspace(owner))
+        can_build = implementation_scope(profile) == 'allowed'
+        if can_build:
+            prompt += PAGE_INSTRUCTIONS
+        pages_before = html_files(self.workspace(owner)) if can_build else {}
         before = {x['path']: x['updated'] for x in self.files(owner)}
         if self.stop_checkpoint(job_id):
             return
@@ -1365,9 +1370,9 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
         self.record_usage(job_id, payload, answer, agent_id, profile['name'])
         # Displayed files are real workspace writes, never synthetic tool-call animations.
         html = re.search(r'```html\s*\n([\s\S]+?)```', answer, re.I)
-        if html and 'builder' in profile['skills'] and len(html.group(1)) < 500_000:
+        if html and can_build and len(html.group(1)) < 500_000:
             safe_file(self.workspace(owner), 'artifacts/app-' + job_id[:6] + '.html').write_text(html.group(1), encoding='utf-8')
-        pages = collect_pages(self, owner, job_id, None, pages_before, answer)
+        pages = collect_pages(self, owner, job_id, None, pages_before, answer) if can_build else []
         report = safe_file(self.workspace(owner), 'artifacts/reply-' + job_id[:6] + '.md')
         report.write_text(answer, encoding='utf-8')
         changed = [x['path'] for x in self.files(owner) if x['path'] not in before or x['updated'] > before[x['path']]]
@@ -1415,17 +1420,18 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
                   + member['purpose'] + '\nAnswer this direct message using your equipped skills. '
                   + 'Use the current message, selected files and supplied conversation context. Do not load unrelated prior tasks or transcripts. ' +
                   'This is a conversation, not a new crew mission. Do not claim other agents ran, '
-                  'or send invitations or publish anything on the user’s behalf.\n\n' + payload['prompt'])
+                  'or send invitations or publish anything on the user’s behalf.\n'
+                  + scope_contract(member) + '\n\n' + payload['prompt'])
         if role == 0:
             prompt += '\nCommunication style: ' + definition['collaboration'].get('voice', '')
         prompt += self.conversation_context(owner, role, row['created'], job_id, plans_only=True)
         session = self.crew_chat_session(owner, role) + ('-' + reset['epoch'] if reset['epoch'] else '')
-        prompt += PAGE_INSTRUCTIONS
-        if role == 5:
-            prompt += DEMO_CODING_INSTRUCTIONS
-        pages_before = html_files(self.workspace(owner, role))
+        can_build = implementation_scope(member) == 'allowed'
+        if can_build:
+            prompt += PAGE_INSTRUCTIONS + DEMO_CODING_INSTRUCTIONS
+        pages_before = html_files(self.workspace(owner, role)) if can_build else {}
         answer = self.respond_chat(agent_id, session, prompt, owner, payload)
-        pages = collect_pages(self, owner, job_id, role, pages_before, answer)
+        pages = collect_pages(self, owner, job_id, role, pages_before, answer) if can_build else []
         self.record_usage(job_id, payload, answer, agent_id, member['name'], role)
         # Direct Captain chat never starts a team project. Keep the reminder
         # deterministic rather than relying on the model to repeat it each turn.

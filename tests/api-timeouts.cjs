@@ -1,13 +1,13 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const calls=[],timers=[];
-const context={Map,AbortController,JSON,agentId:'test',selectedScenario:'plan',credentialSession:'fixture',csrf:'fixture',changingAgent:false,pendingWrites:0,
+const context={Map,AbortController,JSON,performance,recordBrowserDiagnostic(){},agentId:'test',selectedScenario:'plan',credentialSession:'fixture',csrf:'fixture',changingAgent:false,pendingWrites:0,
  setTimeout(fn,ms){const timer={fn,ms};timers.push(timer);return timer;},clearTimeout(timer){if(timer)timer.cleared=true;},
  fetch(url,options){return new Promise((resolve,reject)=>{calls.push({url,options,resolve});options.signal?.addEventListener('abort',()=>reject(Error('aborted')));})}};
 vm.createContext(context);
 const source=fs.readFileSync('src/studio.js','utf8');
 vm.runInContext(source.slice(source.indexOf('const stateCache='),source.indexOf('  function rememberSelection()')),context);
 (async()=>{
- for(const [path,delay] of [['session',30000],['state',30000],['agent-policy',45000],['crew-policy?role=1',45000]]){
+ for(const [path,delay] of [['session',30000],['state',30000],['agent-policy',45000],['crew-policy?role=1',45000],['model-reasoning?id=job',5000]]){
   const request=context.api(path);assert.equal(timers.at(-1).ms,delay);
   timers.at(-1).fn();await assert.rejects(request,/took too long/);assert(timers.at(-1).cleared);
  }

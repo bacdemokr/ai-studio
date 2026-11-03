@@ -1,99 +1,67 @@
 # Presenter runbook
 
-## Before the demo
+## Before presenting
 
-Use the intended branch on the target PC. This guide describes `preview/visitor-agent-teams`; `preview/stage3-scenarios` and the Zurich snapshot have different Open Task controls.
+Start the intended branch with `./bac start --keep-data` to retain your rehearsal data. Verify the enabled model connection in **Settings → Model**, set **Location**, and rehearse the chosen task on the presentation host. A model being connected does not guarantee task quality or speed.
 
-1. For local inference, start the installed model with `./bac vllm`, or use an already-running compatible server.
-2. Run `./bac start` for a clean demo, or `./bac start --keep-data` to retain agents and rehearsals. Studio does not start the model server automatically.
-3. Open `http://localhost:8080` on the host or `http://SPARK_IP:8080` over the trusted LAN. Both provide Settings and the same demo controls.
-4. In **Settings → Model**, configure Local and/or External Endpoint. A validated `api.cfg` supplies NVIDIA automatically; the file is optional.
-5. Hired agents default to connected Local, otherwise the configured External Endpoint model; choose another model in Hiring or Edit agent. Under **Models**, select the **Open Task** connection. The selector shows the connection currently used; saved choices remain in effect.
+## 1. Hiring
 
-Rehearse the selected tasks on the actual model and hardware. Use **Fullscreen** for presenting. Identify saved results as previous runs.
+Let attendees choose a character, tone, role and skills. Tone and Role have separate editable fields. **Suggest skills** selects suggested skills for review; it does not hire the agent. Presets retain their core skill, and Tech Radar's role is fixed to its scheduled behavior. Extra skills can be added.
 
-## 1 / 2. Hiring and Agent lounge
+Use the room's **i** for the short guide, agent concepts and OpenShell explanation. After hiring, click the agent's name or portrait to inspect and edit its Markdown files. **Instructions** presents the three main instruction files together. Changes apply to subsequent work.
 
-Let the audience choose a character, tone, role and skills. Use **How does an agent work?** for the component diagram and each skill’s **i** for its source instructions. The editable prompt is the saved tone and role; **Apply prompt & suggest skills** selects matching skills for the user to adjust.
+## 2. Agent Lounge
 
-- **Instructions:** read or copy AGENTS.md, IDENTITY.md and SOUL.md side by side. Click the agent name or portrait for the full saved-file viewer, including skills and memory.
-- **Files:** appears only when the selected agent has uploads or results. Open a file to preview or download it. Definition files use Copy instead of Download.
-- **OpenShell Policy:** approve a blocked website, then resend the request. DNS or source failures are not fixed by granting more permissions. Rehearse actual enforcement on the demo host.
+- Try a short chat, weather or document request. Substantial work requires a relevant equipped skill and permitted tools; a role name alone is not enough.
+- **OpenShell Policy** shows website requests and observed decisions. Approve access, then resend the request. See the walkthrough below.
+- **Tech Radar** demonstrates Heartbeat. Its first check waits at least 10 seconds, then checks run every 20 seconds when capacity is available. Preparation and model calls may delay delivery. Use Pause / Resume; manual chat is disabled while Tech Radar is equipped.
+- Periodic Lounge chatter excludes Heartbeat agents and selects an available hire roughly every 30 seconds. It is separate from an agent's scheduled work.
 
-For manual chat, try a short document, weather or research request. Supported document formats are PDF, PPTX, XLSX, TXT, Markdown and CSV, up to 10 MB per file. Documents stay with the selected agent.
-
-For autonomous behavior, equip **Tech Radar**. The first check waits at least 10 seconds; later checks run every 20 seconds. Model work or runtime preparation can delay a summary. Chat, attachments and scheduled tasks stay disabled while this skill is equipped, even alongside other skills or while paused. Use **Pause / Resume**, or remove the skill to restore chat. Telegram sends only these summaries.
+Documents stay with the selected agent. Supported uploads include PDF, PPTX, XLSX, TXT, Markdown and CSV, up to 10 MB per file. Extracted text does not imply the model inspected document images or layout.
 
 ## 3. Open Task
 
-Casey coordinates up to three specialists. Select a team before sending `/goal`:
+Send `/goal` in Casey's chat. Without it, you are talking directly to Casey. Choose the team before sending:
 
-- **Hired only** (default): at least one available hired agent is needed. Any role can participate; Casey matches the equipped skills, then checks permitted tools. Explicit names do not override a mismatch.
-- **Hired + Standby**: Casey can also use the backups below, even if no agents have been hired.
+- **Hired only** (default): use available hires with the required skills and tools.
+- **Hired + Standby**: Casey may also call Scout (research), Ada (data interpretation), Iris (UX planning), Cody (coding) and Vera (review).
 
-Name an agent to request its participation when its equipped skills fit. If neither fits, Casey explains the missing expertise rather than forcing the assignment. A Programmer and Web researcher are a useful research-and-build pairing, not mandatory roles. Missing tools remain a limitation; an assignment does not grant new permissions.
+Casey decides who and how many to use, with up to three specialist assignments. Meaningful collaboration is encouraged; a single specialist is valid when others add no useful work. The examples specify tasks and outputs, not a compulsory team.
 
-Idle hires follow you into the room and wait on benches. Assigned agents move to workbenches; movement alone does not run a model. The built-in backups are:
+The example buttons fill editable drafts. Travel guide and Event page use Settings → Location. GPU portfolio and Store email review stage sample files locally; selecting another example replaces the unsent sample, and upload happens only on Send. Manually attached or already submitted files are retained.
 
-| Specialist | Contribution |
-| --- | --- |
-| Scout | Public web research |
-| Ada | Supplied-data analysis |
-| Iris | UX design |
-| Cody | Webpages and small code prototypes |
-| Vera | Independent review |
+An attendee can deliberately try an incomplete team. If the core result is impossible with the available skills, Casey should explain the missing capability before dispatch. Runtime failures or evidence gaps after work begins can produce an honest partial result. Explicit requests to do only the feasible part permit reduced scope.
 
-Change an idle hired agent’s model by clicking its model badge. Hires retain their model, identity and policy in either mode. On NVIDIA, **Hired + Standby → Standby specialists** lists Casey and the backups with editable model choices. Return to Hired only before starting if that is your intended team. Local and other providers use the shared Open Task model for Casey and backups. **Models & connection** opens Settings.
+Idle hires follow into Open Task and wait on benches. Click an idle hire to edit its role, skills, instructions or model. Entering the room does not start a task; Heartbeat is paused there. Lounge returns hires together, and entering Open Task again restores their waiting seats.
 
-Start with `/goal` in Casey's chat (`/plan` remains an alias). For example, attach a table and send:
+Hires retain individual models. On NVIDIA, Casey and standby model badges are editable while idle. Local and other external providers use the configured Open Task model for the built-ins. **Models & connection** opens Settings.
 
-```text
-/goal Analyze this table and summarize the three most important findings.
-Add an independent review of the calculations and conclusions before finishing.
-```
+### Read the outcome
 
-Or try a compact coding request:
+- **Mission Control:** assignments, handoffs, recorded decisions and final response, expanded by default. Total elapsed time appears beside Execution trace and freezes as Total time after completion.
+- **Advanced reasoning:** provider-returned text or summaries, grouped by agent and call. It starts closed and adds no model request when opened. Availability depends on the model and connection. New updates offers an explicit jump to unseen content without moving the reader automatically.
+- **Results:** the answer and saved files, including usable partial output.
+- **Usage & time:** recorded tokens and elapsed time. Summed agent time may exceed elapsed time; it is not a billing statement.
 
-```text
-/goal Build a self-contained desktop HTML savings calculator. Include amount,
-interest rate and years, validate the inputs, and show the estimated total.
-```
+Read panels close on outside click or Escape. Nested information panels close from the top. Markdown drafts remain available when the editor is reopened.
 
-Use **Mission Control** for assignments and handoffs, **Results** for the answer and files, and **Usage & time** for recorded tokens and elapsed time. Agent time includes tools; parallel turns may sum to more than elapsed time. These are recorded responses, not provider billing totals.
-
-Independent review needs a different agent from the producer. In Hired only, hire a second suitable agent if you request this. Requested independent review must finish before the task can be complete. Reviews are static unless actual execution evidence exists. Open Task allows one shared recovery/repair attempt; incomplete work stays marked partial. Personal reactions from hired agents are opinions, not independent reviews.
-
-The team choice is locked during work. Changing it after completion retains previous results; Reset Open Task first for a clean rehearsal. Reload and reset default new tasks to Hired only.
-
-## Recovery and cleanup
-
-- **Waiting for model:** check that the selected connection is enabled and ready. **Waiting for runtime:** check OpenClaw. **Waiting for other agents:** foreground work is delaying Heartbeat.
-- **Partial result:** inspect saved work and the error before retrying. A new request can repeat writes. Neither a saved file nor its preview proves correctness.
-- **Context/output errors:** context defaults to 32K; output is capped at 16K per response and reduced for smaller contexts. These are demo settings, not a universal model limit. Narrow broad requests and keep inputs compact; see [model settings](runtime-settings.md#context-and-output-budgets).
-- **Reset Open Task:** stops and clears team work and restores Casey/standby default models. **Remove agents:** removes hired agents and their data. **Reset all:** clears Open Task and hired agents. Connection settings and hired-agent model choices remain. Empty resets are disabled.
-- `./bac stop` stops the app and preserves data. `./bac stop --all` also stops its managed model and resets the Compose stack, application data, and OpenShell policies. Model weights remain.
-
-- **Connection lost after a contribution:** saved files remain available as a partial result. Restore the connection before asking Casey to continue; completed work is not automatically repeated.
-
-[Example scenarios](../README_POSSIBLESCENARIOS.md) · [Installation and recovery](docker-setup.md) · [Model settings](runtime-settings.md) · [Visitor regression checklist](visitor-regression.md)
-
-## Presenter shortcuts and build identity
-
-- Click an **Example goals** chip below Casey’s introduction for one of seven editable examples. The store example attaches BB’s fictional email. Selection does not send a request or change the team mode.
-- In Casey’s chat or **Mission Control**, explain **Why this agent** and any **Not assigned** reasons. Scene bubbles only announce brief progress.
-- Use **Settings → Reset → Issue report → Copy diagnostics** when reporting a problem. Note whether the report says Local changes.
-- For OpenShell, expand **How OpenShell protection works** in Hiring. The nested runtime command is illustrative: the adapter selects `--detach -- sleep infinity` only when advertised, otherwise `-- true`. Show the actual policy decision and approval flow in the Lounge.
-- Include Heartbeat in Stage 2: Tech Radar checks automatically, may wait for runtime capacity, and should not claim a result without retrieved evidence.
-
-For an issue report, reproduce once, then use **Settings → Reset → Issue report → Copy diagnostics**. Include the steps and approximate time. Download provides a larger bounded report. See [diagnostics](diagnostics.md); do not attach raw gateway logs or the workspace database by default.
-
+Independent review, when requested, needs a different suitable agent and cannot be replaced by a personal reaction. Reviews are static unless actual execution evidence exists. The team has one shared recovery/repair allowance and a five-minute execution budget. Optional polish should not delay a usable core result; hardware and runtime setup can add time.
 
 ## OpenShell in the Lounge
 
-Use a protected Web researcher and send a normal chat request, such as “Read https://example.com.” Role, skills and tool restrictions still apply.
+Use a protected Web researcher and a normal request such as “Read https://example.com.”
 
-1. With no website grant, inspect the actual blocked request in **OpenShell Policy**.
-2. Approve `example.com` and resend the request. **Recent activity** identifies the destination, request method when available, outcome and time.
-3. Optionally revoke `example.com` and resend to demonstrate that the same agent now has less access.
+1. Inspect the actual blocked request in **OpenShell Policy**. A URL mentioned in chat may also appear as awaiting approval before a denial is observed.
+2. Approve the website and resend. Recent activity shows observed destinations, outcomes and methods when available.
+3. Revoke access and resend to demonstrate the change.
 
-A connection being allowed is not proof that a webpage was retrieved. DNS failures, timeouts and an agent's explanation are not policy-denial evidence. Saved files prove useful workspace output, not that every filesystem boundary was exercised. The UI's website approvals grant HTTPS reads through `/usr/bin/curl`; they do not grant host-file access or expand the agent's role. **How this policy works** includes the effective policy and raw, sanitized decisions for deeper explanation.
+An allowed connection does not prove retrieval succeeded. DNS failures, timeouts and model explanations are not policy-denial evidence. Website approvals grant HTTPS reads through the configured tool; they do not grant host-file access or expand skills. Rehearse native enforcement on the actual host.
+
+## Recovery and support
+
+- **Waiting:** check the selected model connection, runtime readiness and any active work.
+- **Partial result:** inspect saved output and stated limitations before retrying. Existing work is not replayed automatically.
+- **Reset Open Task:** stops and clears team work and restores built-in model defaults. **Remove agents** removes hires and their data. **Reset all** clears both. Connections remain.
+- **Issue report:** Settings → Reset → Issue report → Copy diagnostics. Include steps and time; Download includes a larger bounded history.
+
+[Installation](docker-setup.md) · [Model settings](runtime-settings.md) · [Examples](../README_POSSIBLESCENARIOS.md) · [Regression coverage](visitor-regression.md)

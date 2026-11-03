@@ -68,8 +68,9 @@ def instructions(members, unavailable=(), mode='mixed'):
                 **collaboration_capabilities(m)} for m in members]
     policy = ('HIRED AGENTS ONLY: Casey coordinates but cannot do specialist work. Assign every specialist task '
               'to an exact hired key below. Never use agent:"builtin" or invoke Scout, Cody, Vera, Ada or Iris. '
-              'Their role numbers are assignment types only, not available people. If no useful requested portion '
-              'is possible with the listed tools, return outcome:"unavailable" and explain the missing capability. Do not silently '
+              'Their role numbers are assignment types only, not available people. If the core requested result '
+              'is known to be impossible with this team, return tasks:[], outcome:"unavailable" and explain the missing capability, '
+              'unless the user explicitly permits reduced scope. Do not silently '
               'switch teams. One hire may deliver a combined small implementation, but may not independently review itself. '
               if mode == 'hired' else
               'MIXED TEAM PRIORITY: assign a suitable hired agent below before any built-in specialist with the same needed skill. '
@@ -98,7 +99,7 @@ def instructions(members, unavailable=(), mode='mixed'):
             'Explain each declined request in summary and the final answer, not only in JSON metadata. '
             'An independent reviewer must be a different agent. Keep assignments small and concrete: enough '
             'evidence for the requested result, a saved handoff, then stop. For research the shared ceiling is '
-            '150 seconds, two searches or five direct fetches; stop earlier once the required facts are supported. '
+            'two searches or five direct fetches within the whole-task time budget; leave time for implementation. '
             'No optional polish or repeated verification.\nHired agents:\n' + json.dumps(choices, ensure_ascii=False) +
             '\nUnavailable hired agents (context only, cannot be assigned):\n' + json.dumps(unavailable, ensure_ascii=False) + '\n')
 

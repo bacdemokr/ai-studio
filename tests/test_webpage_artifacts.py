@@ -1,7 +1,7 @@
 import json
 import test_collaboration_plan as collaboration
 from test_studio import Studio, Problem
-from webpage_artifacts import html_files, collect_pages
+from webpage_artifacts import PAGE_INSTRUCTIONS, html_files, collect_pages
 
 PAGE = '''<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:Arial;background:#f4f8f0;padding:32px}h1{font-size:42px}button{background:#76b900;padding:12px;border:0}</style></head><body><h1>Workshop preview</h1><p>Explore a practical AI workshop.</p><button id="demo" onclick="this.textContent='It works'">Try demo</button><script>try{parent.document.body.dataset.previewEscaped='yes'}catch(e){};fetch('/api/session').catch(()=>{});</script></body></html>'''
 
@@ -19,11 +19,11 @@ class WebpageAdapter(collaboration.PlanAdapter):
                 if task.get('task') == 'Check a practical sequence and constraints.':
                     task.update(role=7, task='Write the webpage copy for Wade.')
             return json.dumps(plan)
-        if 'WEBPAGE_FIXTURE' in prompt and (role in (None,5) or role == 7 and not session.startswith('bac-plan-')):
+        if 'WEBPAGE_FIXTURE' in prompt and (role in (None,5) or not session.startswith('bac-plan-')):
             path=self.agents[agent]/'artifacts'/'workshop.html'
             path.parent.mkdir(exist_ok=True)
             path.write_text(PAGE)
-            return 'The workshop webpage is saved in artifacts/workshop.html.'
+            return 'The workshop webpage is saved in artifacts/workshop.html.\n```html\n'+PAGE+'\n```'
         return answer
 
 # Reuse the small setup/helpers, not the full inherited regression cases.
@@ -39,17 +39,46 @@ class WebpageTests(unittest.TestCase):
 
     def test_personal_page_without_builder_skill(self):
         self.use_pages()
-        self.app.enqueue(self.owner,{'kind':'chat','prompt':'WEBPAGE_FIXTURE Build a page'})
+        for skills in ([], ['weather'], ['web'], ['writer'], ['data-analysis'], ['interface-design']):
+            with self.subTest(skills=skills):
+                self.owner=self.app.session()[0]['id']
+                self.app.onboard(self.owner,{'name':'Personal','skills':skills})
+                result=self.app.enqueue(self.owner,{'kind':'chat','prompt':'WEBPAGE_FIXTURE Build a page'})
+                self.app.execute(self.app.next_job())
+                job=next(j for j in self.app.state(self.owner)['jobs'] if j['id']==result['id'])
+                self.assertFalse(any(p.endswith('.html') for p in job['result']['files']))
+                self.assertNotIn(PAGE_INSTRUCTIONS,self.adapter.calls[-1][2])
+                self.assertIn('requires Coding',self.adapter.calls[-1][2])
+                # A deliberately noncompliant fixture must not trigger the app's
+                # fenced-HTML fallback or preview export. Do not delete evidence.
+                self.assertEqual((self.app.workspace(self.owner)/'artifacts/workshop.html').read_text(),PAGE)
+                self.assertFalse((self.app.workspace(self.owner)/('artifacts/app-'+result['id'][:6]+'.html')).exists())
+
+    def test_coding_equipped_weather_agent_can_create_a_page(self):
+        self.use_pages()
+        self.owner=self.app.session()[0]['id']
+        self.app.onboard(self.owner,{'name':'Weather buddy','skills':['weather','builder']})
+        result=self.app.enqueue(self.owner,{'kind':'chat','prompt':'WEBPAGE_FIXTURE Build a page'})
         self.app.execute(self.app.next_job())
-        job=self.app.state(self.owner)['jobs'][0]
+        job=next(j for j in self.app.state(self.owner)['jobs'] if j['id']==result['id'])
         pages=[p for p in job['result']['files'] if p.endswith('.html')]
         self.assertEqual(len(pages),1)
-        self.assertEqual(self.app.available_file(self.owner,pages[0]).read_text(),PAGE)
-        self.assertIn('self-contained HTML',self.adapter.calls[0][2])
+        self.assertEqual(self.app.available_file(self.owner,pages[0]).read_text().rstrip(),PAGE)
+        self.assertIn('self-contained HTML',self.adapter.calls[-1][2])
+
+    def test_direct_non_coding_specialists_do_not_get_page_delivery_instructions(self):
+        self.use_pages();team=self.app.crew_owner(self.owner)
+        for role in (0,6,7,8):
+            with self.subTest(role=role):
+                result=self.app.enqueue(team,{'kind':'crew-chat','crewRole':role,'prompt':'WEBPAGE_FIXTURE Build a page'})
+                self.app.execute(self.app.next_job())
+                self.assertEqual(self.job(result)['result']['files'],[])
+                self.assertNotIn(PAGE_INSTRUCTIONS,self.adapter.calls[-1][2])
+                self.assertIn('requires Coding',self.adapter.calls[-1][2])
 
     def test_direct_crew_page_is_exported_for_authenticated_download(self):
         self.use_pages();team=self.app.crew_owner(self.owner)
-        result=self.app.enqueue(team,{'kind':'crew-chat','crewRole':7,'prompt':'WEBPAGE_FIXTURE Build a page'})
+        result=self.app.enqueue(team,{'kind':'crew-chat','crewRole':5,'prompt':'WEBPAGE_FIXTURE Build a page'})
         self.app.execute(self.app.next_job());job=self.job(result)
         page=job['result']['files'][0]
         self.assertEqual(self.app.available_file(self.owner,page).read_text(),PAGE)

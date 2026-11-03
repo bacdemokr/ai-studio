@@ -8,6 +8,7 @@ import agent_runtime as runtime
 from research_recovery import recovered_sources, evidence_note
 from test_collaboration_plan import CollaborationTests
 from agent_runtime import GatewayError
+from plan_revision import PLAN_TIME_BUDGET_SECONDS
 
 
 class SourceRecoveryTests(unittest.TestCase):
@@ -136,7 +137,7 @@ class TimeoutPlanTests(CollaborationTests):
         plan=self.job(result)['payload']['collaboration']
         self.assertTrue(plan['researchTimedOut'])
         self.assertEqual(len(timeouts),1)
-        self.assertLessEqual(timeouts[0],150)
+        self.assertLessEqual(timeouts[0],PLAN_TIME_BUDGET_SECONDS)
         self.assertIn('artifacts/research-brief.md',plan['verifiedSources']['8'])
         files=plan['outputs']['8']['files']
         self.assertIn('SAVED_FINDING',(self.app.workspace(self.app.crew_owner(self.owner))/files[0]).read_text())
@@ -180,7 +181,7 @@ class TimeoutPlanTests(CollaborationTests):
         def respond(agent,session,prompt,**kwargs):
             if session.endswith('-working'):
                 self.assertIn('Save after each useful read',prompt)
-                self.assertIn('360 seconds',prompt)
+                self.assertIn(f'WHOLE task has {PLAN_TIME_BUDGET_SECONDS} seconds',prompt)
                 error=GatewayError('Research failed',reason)
                 error.recovered_sources=[{'url':'https://example.com/','text':'UNTRUSTED_SOURCE','truncated':False}]
                 raise error

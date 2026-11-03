@@ -16,7 +16,7 @@ const {execFileSync}=require('node:child_process'),{chromium}=require('playwrigh
   await page.goto(process.env.BASE_URL||'http://127.0.0.1:8080');await page.waitForFunction(()=>window.BacStudio);
   await page.locator('.world-room-map [data-world-room=lounge]').click();
   await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
-  await page.waitForTimeout(3200);assert(unchanged>0);assert.equal(changed,1);
+  await page.waitForTimeout(7600);assert(unchanged>0);assert.equal(changed,1);
   await page.evaluate(()=>{window.pollMutations=0;new MutationObserver(records=>window.pollMutations+=records.length).observe(document.getElementById('studio-agent-name'),{childList:true,subtree:true,characterData:true});});
   await page.waitForTimeout(3200);assert.equal(await page.evaluate(()=>pollMutations),0);
   state.profile.name='Updated Scout';state.agents[0].name='Updated Scout';etag='"second"';

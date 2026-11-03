@@ -8,11 +8,11 @@ COMMON_RULES = (
     'This is an explicit Open Task collaboration. Use the current task, supplied conversation context and '
     'handoffs. Do not read old event briefs, contracts, schedules, other conversations or personal '
     "agents' workspaces. Use your own skills and workspace when needed, within existing permissions. Do "
-    'not assume that event tools have a prepared contract for this task. DEMO DEFAULT: deliver a small '
-    'working prototype, not a production product. Do not build mobile layouts, mobile breakpoints, touch '
-    'controls or mobile tests for this desktop demo. Unless explicitly requested, omit elaborate '
-    'animations, sound, extra settings, multi-file architecture and optional features. Preserve the core '
-    'requested behavior and basic keyboard usability. Keep each specialist assignment focused and '
+    'not assume that event tools have a prepared contract for this task. DEMO DEFAULT: deliver the smallest '
+    'usable desktop result that meets the request. Mobile layouts, breakpoints, touch controls and mobile '
+    'tests are outside scope unless the user explicitly requests mobile support. Fitting the desktop preview '
+    'means a fluid width, not another device layout. Do not add optional features or production hardening. '
+    'Preserve requested behavior, readable presentation and basic keyboard usability. Keep assignments focused and '
     'handoffs brief. Context and output budgets are limited. Work only as deeply as your assignment '
     'requires; avoid exhaustive browsing, repeated reads and optional polish. Read relevant sections or '
     'bounded chunks of large files using available read limits, and expand only to resolve a specific '
@@ -47,8 +47,8 @@ RESEARCH_RULES = (
     'consume the entire excerpt. For broader public-web research, start with maxChars:3000 per web_fetch '
     'and make at most five fetch attempts for the initial brief, counting failed attempts too. Fetch at '
     'most two pages before assessing whether they answer your assignment; do not launch a broad batch of '
-    'guessed URLs. Scout has a total 150-second research budget, including searches, reading, writing and '
-    'retries. This is a ceiling, not a target. Save a short brief immediately after useful evidence '
+    'guessed URLs. Research shares the overall demo time budget with implementation and review. '
+    'Leave time for the requested deliverable; this is a ceiling, not a target. Save a short brief immediately after useful evidence '
     'arrives; stop when the required topics have evidence or the search budget is used. If no relevant '
     'evidence is found, say the search failed; never fabricate facts or keep trying for perfection. '
     'SEARCH-FIRST DEMO: when web_search is available, start with one focused search returning at most '
@@ -113,21 +113,38 @@ RESEARCH_RULES = (
 )
 
 CODING_RULES = (
-    'For new HTML demos, aim for one complete compact implementation with native write. About 6000 '
-    'characters is a soft target for simple pages, never a hard limit or reason to drop requested '
-    'features. Prefer one usable implementation over a skeleton followed by repeated expansion. Never '
-    'emit XML tool-call markup in ordinary text. A saved-file claim requires a successful native '
-    'write/edit result. File-writing tool arguments also consume output tokens: keep implementations '
-    'focused, use targeted edits or supported smaller writes for large changes, and leave saved files '
-    'syntactically complete. If the available budget prevents completion, return useful saved work and '
-    'explicitly state what remains. For code reviews, label findings Static inspection unless a tool '
-    'actually executed that exact case. Do not present inferred cases as tested or PASS. Trace the entire '
-    'input expression, including defaults such as ||, coercion, parsing and validation order; HTML '
-    'min/step alone does not enforce JavaScript validation. Check empty, zero, negative, fractional and '
-    'non-finite inputs against the requested behavior. Programmers must validate raw required inputs '
-    'before applying defaults; reject invalid counts rather than silently changing them. Keep inline '
-    'JavaScript in an IIFE or module; global declarations such as const top can collide with '
-    'browser-owned names and stop the entire script. '
+    'Keep code compact and complete; about 6000 characters is a soft target for simple pages, never a '
+    'reason to drop requested features. Use native write/edit, never XML tool-call markup in a reply. '
+    'For numeric controls, reject blank required text, convert the whole value with Number, and check '
+    'Number.isFinite on inputs/results and Number.isInteger on whole-count inputs before calculation. '
+    'Do not truncate invalid input with parseInt/parseFloat. Keep inline JavaScript in an IIFE or module. '
+    'Trace the initial interaction while composing: start ready to use or expose a visible, enabled '
+    'start control; never hide the only way to begin behind an inactive screen. '
+    'Follow that handler through the state change to the first visible update. For animation, start/resume '
+    'must schedule exactly one update loop; a reset-only handler does not start the activity. '
+    'Prefer a real Start/Restart button over a click-through overlay that can intercept the canvas. '
+    'Render source text with DOM textContent instead of hand-written HTML-escaping helpers and innerHTML interpolation. '
+    'For a new task, write its assigned output even when reusing existing code; an untouched previous file is not a new handoff. '
+    'Return after saving unless a concrete defect needs a targeted fix. '
+    'For a small data page, use one shared array to render the table and simple CSS bars; avoid a custom '
+    'chart framework or decorative SVG. Upstream briefs and datasets are already delivered: read their '
+    'mapped paths, but do not recreate them in your workspace. Save only your assigned deliverables. '
+    'Static inspection is not browser execution. State unperformed checks honestly. '
+)
+
+REVIEW_RULES = (
+    'Static review: check only the assigned requirements and concrete risks, using supplied readPath '
+    'copies. Read focused ranges of at most 120 lines, at most eight reads / 18000 source characters. '
+    'Do not repeat ranges or guess workspace paths. Report unread sections honestly. '
+    'Prioritize failure to load, broken primary controls, missing requested outputs and misleading '
+    'claims. Trace relevant input, state and output paths, not an exhaustive checklist for unrelated apps. '
+    'HTML min/step alone does not validate JavaScript; defaults and coercion can hide invalid inputs. '
+    'Check form submission and untrusted text handling where applicable. Named-element access on window '
+    'is not by itself a demonstrated ReferenceError. Separate observed defects from possible risks. '
+    'Do not require mobile support, optional features, cosmetic polish or refactoring. Note minor '
+    'non-blocking findings briefly without requesting another production pass. '
+    'Label findings Static inspection unless tools actually executed that exact case; do not claim PASS '
+    'from intended behavior. '
 )
 
 DESIGN_RULES = (
@@ -137,7 +154,7 @@ DESIGN_RULES = (
 )
 
 CAPTAIN_RESEARCH_LIMITS = (
-    'Research planning limits: Scout has 150 seconds including writing and retries. With web_search, use '
+    'Research planning limits: leave time for implementation within the shared demo budget. With web_search, use '
     'at most two focused searches (up to three results each); stop when required topics have evidence. If '
     'search is unavailable or rate-limited with no evidence, or no search tool exists, use at most five '
     'total fetch attempts including failures, within existing permissions. Do not retry a failed search '
@@ -157,6 +174,8 @@ def specialist_rules(member, role):
         rules.append(RESEARCH_RULES)
     if 'builder' in skills:
         rules.append(CODING_RULES)
+        if role == 4:
+            rules.append(REVIEW_RULES)
     if 'interface-design' in skills:
         rules.append(DESIGN_RULES)
     return '\n'.join(rules)

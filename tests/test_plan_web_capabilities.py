@@ -18,7 +18,7 @@ class PlanWebCapabilities(unittest.TestCase):
             self.start('/plan Research AMD and build a webpage.')
             self.app.execute(self.app.next_job())
         prompt = self.adapter.calls[0][2]
-        pool = json.JSONDecoder().raw_decode(prompt.split('available pool to match the current request: ', 1)[1])[0]
+        pool = json.JSONDecoder().raw_decode(prompt.split('Team capabilities (valid at every stage, not proof of successful execution):\n', 1)[1])[0]
         members = {member['name']: member for member in pool}
         self.assertIn('web_fetch', members['Scout']['tools'])
         self.assertNotIn('web_search', members['Scout']['tools'])
