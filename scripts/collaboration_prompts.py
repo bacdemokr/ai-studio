@@ -164,6 +164,26 @@ CAPTAIN_RESEARCH_LIMITS = (
 )
 
 
+def planning_output_contract(mode):
+    """One identity contract for initial plans and repairs, without sample assignees."""
+    identity = {
+        'hired': 'agent must be an exact available hired key. Never use "builtin" or an agent name.',
+        'mixed': 'agent must be an exact available hired key, or "builtin" for an available standby specialist. '
+                 'Follow the hired-priority rules; never use a display name as agent.',
+        'builtin': 'agent must be "builtin"; role identifies an available standby specialist.',
+    }[mode]
+    return (
+        '\nDecision output contract: return ONLY one JSON object with summary (string), reviewRequired (boolean), '
+        'requestedAgents and excludedAgents (identity arrays), declinedAgents (objects with agent and reason), '
+        'requestedFormats (extension array), unassignedRequirements (string array), and tasks (zero to three assignments). '
+        'Each assignment must include role (integer assignment slot), agent (string), task, expected, '
+        'roleFit (strings), inputs (available document ID array), and requiredFiles (artifacts/ output path array). '
+        + identity + ' Use only identities from the available pool; do not invent keys. '
+        'With tasks:[], include outcome (complete, partial or unavailable) and a nonempty answer with the actual result '
+        'or capability limitation. These are field/type instructions, not sample task values to copy. '
+    )
+
+
 def specialist_rules(member, role):
     """Select guidance only; actual skill/tool/mode validation stays elsewhere."""
     if role == 0:

@@ -100,10 +100,14 @@ class ReviewIdentityTests(unittest.TestCase):
     def test_requested_review_is_not_tied_to_a_standby_name(self):
         from plan_review import include_required_review
         plan={'reviewRequired':True,'summary':'Produce and review','tasks':[{'role':5,'agent':'hired-producer','task':'Build a counter'}]}
+        with self.assertRaisesRegex(ValueError, 'no reviewer is assigned'):
+            include_required_review(plan)
+        self.assertEqual(len(plan['tasks']),1)
+        plan['tasks'].append({'role':4,'agent':'hired-reviewer','task':'Independently check the counter'})
         include_required_review(plan)
         self.assertEqual([t['role'] for t in plan['tasks']],[5,4])
         self.assertNotIn('Vera',str(plan))
-        self.assertIn('independent',plan['summary'])
+        self.assertEqual(plan['tasks'][-1]['agent'],'hired-reviewer')
 
 
 class NativeDemoTimeoutTests(unittest.TestCase):

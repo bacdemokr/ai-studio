@@ -111,6 +111,7 @@ class CaptainControlsTests(unittest.TestCase):
             finally:runtime._expected_identity.pop(agent,None)
 
     def test_claimed_completion_cannot_skip_required_page_or_independent_review(self):
+        self.adapter.plan['reviewRequired'] = True
         self.adapter.plan['tasks'] = [{'role':6,'task':'Analyze'}, {'role':5,'task':'Build HTML'}, {'role':4,'task':'Review'}]
         original = self.adapter.respond
         def respond(agent,session,prompt,**kwargs):

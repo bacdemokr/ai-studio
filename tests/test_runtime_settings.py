@@ -125,6 +125,28 @@ class SettingsTests(unittest.TestCase):
                 self.assertEqual(req.get_header('X-api-key'),'test-not-a-real-key');self.assertIn('/v1/models',req.full_url)
             else:self.assertEqual(req.get_header('Authorization'),'Bearer test-not-a-real-key')
         self.assertIsNone(s.NoRedirect().redirect_request(None,None,None,None,None,None))
+
+    def test_provider_failures_classify_transience_without_changing_public_status(self):
+        import io
+        import socket
+        import ssl
+        import urllib.error
+        provider, profile = s.validate(self.data())
+        errors = [(urllib.error.HTTPError(profile['baseUrl'], code, 'fixture', {}, io.BytesIO(b'{}')), transient)
+                  for code, transient in [(401,False),(403,False),(404,False),(408,True),
+                                          (429,True),(500,True),(502,True),(503,True),(504,True)]]
+        errors += [(TimeoutError(),True), (ConnectionResetError(),True),
+                   (urllib.error.URLError(TimeoutError()),True),
+                   (socket.gaierror(socket.EAI_AGAIN,'temporary'),True),
+                   (ssl.SSLCertVerificationError('fixture'),False), (ValueError('invalid JSON'),False)]
+        for error, transient in errors:
+            with self.subTest(error=type(error).__name__, code=getattr(error,'code',None)), \
+                 patch.object(s, 'provider_opener') as opener:
+                opener.return_value.open.side_effect = error
+                with self.assertRaises(Problem) as caught:
+                    s.request(provider, profile, '/models')
+                self.assertEqual(caught.exception.status, 502)
+                self.assertEqual(caught.exception.transient, transient)
     def test_settings_available_on_supported_hosts_for_local_and_remote_clients(self):
         handler=object.__new__(Handler)
         for client in ('127.0.0.1','192.168.1.2','fd00::2'):

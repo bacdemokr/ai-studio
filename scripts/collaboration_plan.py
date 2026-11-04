@@ -5,14 +5,14 @@ import time
 import model_reasoning
 from time import monotonic
 from browser_capability import BROWSER_LIMIT
-from collaboration_prompts import COMMON_RULES, specialist_rules
+from collaboration_prompts import COMMON_RULES, planning_output_contract, specialist_rules
 from role_boundaries import ROLE_BOUNDARY, TEAM_ROLE_BOUNDARY, skill_scope
 from plan_artifacts import snapshot_files, collect_files, reusable_code, written_files
 from webpage_artifacts import DEMO_CODING_INSTRUCTIONS, PAGE_INSTRUCTIONS, html_files, collect_pages
 from plan_inputs import requested_inputs, input_manifest, validate_assignments, PlanInputError
 from plan_handoff import required_files, missing_files, PlanHandoffError
 from plan_revision import PLAN_TIME_BUDGET_SECONDS, PLAN_REVIEW_RESERVE_SECONDS, PLAN_REVISION_MIN_SECONDS, PlanBudgetExceeded, read_revision, effective_outputs, revision_instructions
-from plan_review import requested_review, include_required_review, review_finished
+from plan_review import include_required_review, review_finished
 from agent_activity import observed_access
 
 
@@ -278,8 +278,8 @@ class CollaborationPlans:
         from agent_runtime import collaboration_capabilities, GatewayError
         owner, job_id = row['owner'], row['id']
         plan = payload['collaboration']
-        explicit_review = requested_review(plan['task'])
-        plan['reviewRequired'] = explicit_review
+        # Participation intent belongs to Casey, not keyword matches in user text.
+        plan['reviewRequired'] = False
         deadline = monotonic() + PLAN_TIME_BUDGET_SECONDS
         research_deadline = None
         plan['timeBudgetSeconds'] = PLAN_TIME_BUDGET_SECONDS
@@ -348,8 +348,6 @@ class CollaborationPlans:
             'Document extraction may omit images, formulas and layout. Do not claim to have examined omitted content.')
 
         captain_context = (
-            ('\nMANDATORY: The user explicitly requested review. Include a different available, suitably skilled reviewer in slot 4 after the producer. '
-             'Do not waive this requirement because the analysis looks sufficient or its file was saved.\n' if explicit_review else '') +
             '\nCommunication style: ' + CREW_CATALOG[0]['collaboration'].get('voice', '') + '\n' +
             '\nThis run can call at most three specialists, once each in the initial plan. '
             'A final progress review may authorize one extra, targeted revision by an already participating specialist. '
@@ -358,8 +356,8 @@ class CollaborationPlans:
             'material risk warrants it. Prefer complementary production work over a review added just to involve another agent. '
             'Preserve required independent review, but keep it focused. '
             'For a follow-up that improves an existing webpage (plots, images, styling or interactions), '
-            'normally assign Cody alone to make the requested changes using the attached handoff and existing evidence. '
-            'Cody can choose practical layouts and implement accessible inline SVG/Canvas plots or illustrations. '
+            'normally assign a suitable Coding agent alone to make the requested changes using the attached handoff and existing evidence. '
+            'The selected programmer can choose practical layouts and implement accessible inline SVG/Canvas plots or illustrations. '
             'Do not commission a separate design specification or repeat research unless the user requests that work '
             'or a concrete missing fact requires it. Do not invent numeric chart data; use supported values or clearly '
             'label an explanatory diagram. Preserve existing working features and make a focused update. '
@@ -708,7 +706,7 @@ class CollaborationPlans:
                       '\nDecision output contract: return ONLY {"decisions":[{"agent":"exact key","allowed":true,"reason":"skill match"}]}, '
                       'one decision per scope candidate. Do not return a plan, summary, tasks or requestedFormats.'
                       if phase == 'Planning-scope-check' else
-                      '\nDecision output contract: return ONLY a JSON object with summary and tasks (integer role IDs) as specified above.'
+                      planning_output_contract(mode)
                       if phase.startswith('Planning') else
                       '\nDecision output contract: return ONLY a JSON object with done (boolean), reason (string), and answer when done=true. '
                       'When done=true, include outcome:"complete", "partial", or "unavailable". If any original requirement is unfinished, '
@@ -1014,31 +1012,35 @@ class CollaborationPlans:
                 'Each sequential handoff adds waiting time. Prefer complementary production work over a generic final review. '
                 'For a small prototype, have each producer check its own assigned work; add a separate reviewer when the user requests independent review or a concrete risk warrants it, not simply to fill a third slot. '
                 'One specialist remains appropriate when no useful complementary contribution is available. You decide the team size; this is a preference, not a minimum or a fixed sequence. Respect explicit participant and review requests. '
-                'If the user asks to add/include review, double-check the analysis, or involve a reviewer, '
-                'set reviewRequired:true and reserve review slot 4 for a different available agent with the relevant skill after the producing specialist(s). '
-                'This is mandatory requested work, not optional polish; saving a file or Casey inspecting it does not fulfill independent review. '
+                'Interpret review intent from the whole request, including negation, quoted content and who should check whose work. '
+                'Set reviewRequired:true only when the user requests an independent check by another agent, including an unmistakable request for a separate reviewer. '
+                'Product/customer reviews as page content and a producer checking its own work do not require another participant. '
+                'A request to check work does not by itself require a second agent. Otherwise set reviewRequired:false; optional review must not become mandatory. '
+                'When independent review is required, select a different available agent with the relevant skill in slot 4 after the producing specialist(s). '
+                'If no qualified reviewer is available, explain the missing capability before starting unless the user permits reduced scope. '
+                'Saving a file or Casey inspecting it does not fulfill requested independent review. '
                 'An analysis request with explicit review needs an analysis-skilled producer and a different qualified reviewer. Keep all necessary roles within three slots. '
                 'The tools listed for each specialist are configured for that specialist, not for your Captain session. '
-                'Your own missing web tools do not mean Scout lacks public-web access. web_fetch reads public HTTP(S) pages; '
+                'Your own missing web tools do not mean the selected researcher lacks public-web access. web_fetch reads public HTTP(S) pages; '
                 'web_search is a separate optional search-engine tool. Absence of web_search does not disable web_fetch. '
-                'Keep Scout assignments limited to the user’s required facts. Do not add multiple sources, extra topics or verification steps unless needed to answer the request. Stop as soon as those requirements have adequate evidence. '
-                'If Scout has web_search, assign one focused search and a brief of 2-3 relevant findings; allow one reformulated search only if the first misses the subject or date range; '
+                'Keep research assignments limited to the user’s required facts. Do not add multiple sources, extra topics or verification steps unless needed to answer the request. Stop as soon as those requirements have adequate evidence. '
+                'If the selected researcher has web_search, assign one focused search and a brief of 2-3 relevant findings; allow one reformulated search only if the first misses the subject or date range; '
                 'the second search may instead cover a different topic explicitly required by the user, such as tourism places after weather. Keep the total ceiling at two searches. '
                 'require an immediate native write once relevant evidence is available, then finish without optional searches or page reads. '
                 'Source excerpts suffice for this demo when labeled honestly. Include the current year or requested period in the query '
                 'and check publication dates and reporting periods. Accept fewer findings and report gaps instead of expanding research. '
-                'Without search and without supplied URLs, assign Scout to start from a confidently known '
+                'Without search and without supplied URLs, assign the researcher to start from a confidently known '
                 'source matching the requested subject and follow relevant returned links. Use product/solutions or documentation pages '
                 'for product comparisons, investor releases for financial results, and newsrooms for news. Do not substitute '
                 'employee profiles, internships or event announcements for evidence about product capabilities. '
                 'Prefer official sources, but allow reputable secondary reporting when official pages fail unless the user requires official-only sources. Cite only successful reads. Do not require the user '
-                'to supply URLs solely because no search provider is configured. Page reachability is unverified until Scout tries. '
-                'For research plus a webpage, assign the needed research and implementation stages, normally Scout then Cody. '
+                'to supply URLs solely because no search provider is configured. Page reachability is unverified until the researcher tries. '
+                'For research plus a webpage, assign the needed research and implementation stages, normally a researcher then a programmer. '
                 'A research brief alone does not satisfy a requested working webpage. '
                 'Do not promise authenticated access, browser interaction or exhaustive/current search-engine coverage. '
                 'If the current request explicitly requires opening or controlling a browser and no alternative was accepted, '
                 'return tasks:[], outcome:"unavailable" and an answer explaining that this demo cannot open or control '
-                'the PC browser. Offer a manual link or public-page research as an optional next step; do not call Scout '
+                'the PC browser. Offer a manual link or public-page research as an optional next step; do not call a researcher '
                 'to attempt the browser task through web_fetch. '
                 'First check whether this pool and its actual tools can fulfill the request. '
                 + (TEAM_ROLE_BOUNDARY if not include_hired else '') + ' '
@@ -1047,18 +1049,18 @@ class CollaborationPlans:
                 'If no useful portion is possible because a required specialist or capability is unavailable, return tasks:[], outcome:"unavailable", '
                 'and explain the missing expertise/tool and what would be needed. Do not pretend the request was completed. '
                 'Select only from the available pool, for capabilities rather than a fixed sequence. '
-                'For a working webpage or code prototype, select Cody. Give Cody a compact desktop assignment '
+                'For a working webpage or code prototype, select an available agent with Coding. Give it a compact desktop assignment '
                 'with the essential user-visible behavior and saved output. Do not impose a hard code-length limit, expand a simple request into a product spec '
                 'or add advanced standards, optional previews, mobile support or extra controls the user did not ask for. Review only '
                 'the original requirements, not invented extras. '
-                'Let Cody choose a straightforward layout without a separate design pass '
+                'Let the programmer choose a straightforward layout without a separate design pass '
                 'unless the user asks for design work or the task actually needs it. Stop after required work is delivered; '
                 'do not commission a second version just for polish. Preserve explicitly requested independent review. '
-                'For research choose Scout; '
+                'For research choose an available agent with Web research; '
                 'for independent checking use review slot 4 with an available, suitably skilled agent. Do not assign retired or unlisted agents. '
-                'Choose Ada for interpreting supplied data, comparisons and chart specifications; choose Iris for UX design, '
+                'Choose Data interpretation for interpreting supplied data, comparisons and chart specifications; choose UX design for layouts, '
                 'user flows and accessibility. Do not add either unless the requested outcome benefits from that expertise. '
-                'Ada can read tables and reason about data, not run a statistics engine; Iris designs but does not execute browser tests. '
+                'Data interpretation supports reading tables and reasoning, not a statistics engine; UX design does not provide browser execution. '
                 'Give each selected specialist distinct, useful work toward the requested result and concrete acceptance criteria within its role boundary. '
                 'Do not invent acceptance requirements or paper/source quotas absent from the user request. '
                 'For an unspecified research count, request up to three relevant supported examples, with honest evidence gaps. '
@@ -1075,7 +1077,7 @@ class CollaborationPlans:
                 'For webpages use artifacts/index.html, never index.html or an absolute workspace path. '
                 'Research used by another specialist must have a saved, cited Markdown brief in requiredFiles. '
                 'Use requiredFiles:[] for genuinely text-only answers or reviews. The app verifies these files before proceeding. '
-                'Explicitly tell Scout to research only and return an evidence brief to Casey; Cody implements that brief. '
+                'Explicitly tell the researcher to research only and return an evidence brief to Casey; the selected programmer implements that brief. '
                 'Never delegate the entire research-and-build request to the researcher. '
                 'For each assignment, provide task (what to do) and expected (the concrete deliverable and how to judge it). '
                 'Also include roleFit for every assigned agent: one short, user-facing sentence, ideally under 25 words, '
@@ -1096,18 +1098,14 @@ class CollaborationPlans:
                 'to a suitably equipped specialist using the selected inputs. A filename is not the document content. '
                 'With tasks:[], answer must contain the actual completed result, never a promise to read a file or do work later. '
                 'Keep expected concise and specific to this request; these expectations are shown in Mission Control and sent to the specialist. '
-                'Cody can read/write/edit source and produce self-contained HTML/JS previews, but cannot execute arbitrary programs '
-                'or install dependencies. Vera can inspect files and reason through cases; do not claim executed tests without tool evidence. '
+                'Coding agents can read/write/edit source and produce self-contained HTML/JS previews, but cannot execute arbitrary programs '
+                'or install dependencies. Reviewers can inspect files and reason through cases; do not claim executed tests without tool evidence. '
                 'Order assignments so each later specialist can use the earlier results. '
-                'Return ONLY JSON {"summary":"short plan explaining why this team fits","requestedAgents":[],"excludedAgents":[],"declinedAgents":[],"requestedFormats":["html"],"unassignedRequirements":[],"tasks":[{"role":5,"task":"specific implementation","expected":"working deliverable and acceptance criteria","inputs":[],"requiredFiles":["artifacts/index.html"],"roleFit":"Equipped Coding covers implementation."}]}. '
                 'Always include inputs for every task. Put the document IDs the specialist must read in that array, not only in the task prose. '
-                'Alternatively return {"summary":"why no delegation is necessary","requestedAgents":[],"excludedAgents":[],"declinedAgents":[],"tasks":[],"answer":"complete answer"}. '
-                'For unsupported work return {"summary":"which required expertise or tool is missing","requestedAgents":[],"excludedAgents":[],"declinedAgents":[],"tasks":[],"outcome":"unavailable","answer":"honest explanation of the limitation and next step"}. '
                 'Use each chosen role once. No invented agents or changes to the output schema.' +
-                (' Each task MUST also include agent:"exact hired key" or agent:"builtin". '
-                 'Interpret who should do what from the current request; preserve named people and their requested work. '
+                (' Interpret who should do what from the current request; preserve named people and their requested work. '
                  'Fill requestedAgents and excludedAgents from the request using the exact hired keys or standby names, '
-                 'including requested people who are unavailable. Do not copy the example empty arrays when the visitor '
+                 'including requested people who are unavailable. Do not leave these arrays empty when the visitor '
                  'has actually requested or excluded someone. Explain unassignable requests in declinedAgents. '
                  'The role number is the assignment type, not a fixed identity. A name in the summary alone is not an assignment.'
                  if include_hired else ''), 'Planning')
@@ -1166,7 +1164,6 @@ class CollaborationPlans:
                     raise
                 plan[recovery_key]['status'] = 'corrected'
             plan.update(selection)
-            plan['reviewRequired'] = explicit_review or plan.get('reviewRequired', False)
             try:
                 include_required_review(plan)
             except ValueError as error:
@@ -1175,7 +1172,12 @@ class CollaborationPlans:
                     'with no more than three tasks; no tools. Previous selection: ' + json.dumps(plan['tasks']), 'Planning-review-repair')
                 if corrected is None:
                     return
-                plan.update(read_plan(corrected))
+                corrected_plan = read_plan(corrected)
+                validate_input_work(corrected_plan, inputs)
+                validate_assignments(corrected_plan['tasks'], inputs, bool(payload.get('images')))
+                if not validate_captain_contribution(corrected_plan):
+                    return
+                plan.update(corrected_plan)
                 plan['reviewRequired'] = True
                 try:
                     include_required_review(plan)
@@ -1436,7 +1438,7 @@ class CollaborationPlans:
                         'A claim that a webpage exists is not enough: accepted files must include the actual implementation. '
                         'Do not skip the programmer because a researcher claims to have built a page or supplied code. '
                         'For this demo, incomplete research coverage and blocked source pages are expected. If relevant '
-                        'supported findings are available, continue to Cody with that smaller scope; do not request more '
+                        'supported findings are available, continue to the programmer with that smaller scope; do not request more '
                         'research merely to meet a source count or cover every planned topic. Build around the useful '
                         'findings, not an error report. Mention gaps once, briefly; do not invent missing facts or use '
                         'unrelated navigation content as a substitute. If no relevant evidence exists, say so and '
