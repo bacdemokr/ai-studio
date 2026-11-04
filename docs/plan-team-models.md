@@ -15,10 +15,10 @@ Idle hires follow you into Open Task and wait on benches. Assigned agents move t
 ## Choose models
 
 1. Configure Local and/or External Endpoint in **Settings → Model**. Select the **Open Task** connection.
-2. Hires use their individual **Model** choices from Hiring or Edit agent. While idle in Open Task, select a hire and click its model badge to search and change it. Unavailable connections are disabled; active or reserved hires cannot change models.
+2. Local hires automatically use the External Endpoint default in Open Task when available. Explicit hiring API choices stay unchanged. Select an idle hire's model badge to override its Open Task model (including Local), or choose **Automatic** to restore this rule. Returning to Lounge uses the original hiring choice. Active or reserved hires cannot change models.
 3. With an external NVIDIA connection, click Casey’s model badge in either mode. To configure backups, select **Hired + Standby** and expand **Standby specialists**. Choices save immediately for future work. Return to Hired only before starting if that is your intended team.
 
-NVIDIA defaults are **Nemotron 3 Ultra** for Casey (coordination), Ada (analysis) and Vera (review), and **Nemotron 3.5 Super VL** for Scout (research), Cody (programming) and Iris (UX design). Lightning remains available as a manual choice. Local and other external providers use the selected Open Task connection model for Casey and backups. Hires always keep their individual choices; changing a scenario connection does not switch them.
+NVIDIA defaults are **Nemotron 3 Ultra** for Casey (coordination), Ada (analysis) and Vera (review), and **Nemotron 3.5 Super VL** for Scout (research), Cody (programming) and Iris (UX design). Lightning remains available as a manual choice. Local and other external providers use the selected Open Task connection model for Casey and backups. Hired-agent routing uses the shared connections separately from these defaults.
 
 **Models & connection** opens the shared Settings panel. Team model choices are locked while work or a reset is in progress.
 

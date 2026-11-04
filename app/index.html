@@ -81892,7 +81892,7 @@ render();
       if(selection){selection.removeAllRanges();for(const range of ranges)if(range.commonAncestorContainer.isConnected)selection.addRange(range);}
     }
   }
-  const buildInfo={"version": "0.2.4", "commit": "cc06d8fe334f3c6ca56043de83e7d8b42f33e7ad", "branch": "bac/1109-korea", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
+  const buildInfo={"version": "0.2.4", "commit": "275505626415bd7edfeb328d555fd7864760cb1d", "branch": "", "modified": true, "runtime": {"node": "24.16.0", "openclaw": "2026.9.4", "openshell": "0.1.4"}};
   // Only codes and source locations are retained. Never retain Error.message, bodies or URLs.
 const browserDiagnostics=[];
 const diagnosticRoutes=new Set('session state runtime diagnostics telemetry settings settings/models settings/start settings/team-model settings/connections settings/connections/preferences settings/connections/check settings/connections/models settings/scenario-model settings/scenario-models credential-session agents onboard profile agent-model delete-agent agent-policy crew-policy jobs upload decision retry-reaction reset crew-chat-reset bac-reset heartbeat team-model telegram telegram/test file workspace-files agent-documents evidence security'.split(' '));
@@ -82418,7 +82418,9 @@ function renderCrewModel(model,visitor=null){
 }
 function modelPickerChoices(){
  if(!modelPickerVisitor)return runtime.teamModels||[];
- const rows=(runtime.personalModels?.models||[]).filter(row=>row.id!=='shared'||modelPickerDraft==='shared');
+ const visitor=(data.agents||[]).find(agent=>agent.key===modelPickerVisitor);
+ const automatic=personalModel({model:visitor?.model},'team');
+ const rows=[{id:'auto',label:'Automatic',source:'auto',connected:automatic.connected,description:automatic.label},...(runtime.personalModels?.models||[]).filter(row=>row.id!=='shared')];
  if(modelPickerDraft&&!rows.some(row=>row.id===modelPickerDraft))rows.push(personalModel({model:modelPickerDraft}));
  return rows;
 }
@@ -82433,7 +82435,7 @@ function renderModelResults(){
  const nemotron=model=>(model.label+' '+model.id).toLowerCase().includes('nemotron');
  models.sort((a,b)=>Number(nemotron(b))-Number(nemotron(a))||displayName(a).localeCompare(displayName(b))||a.id.localeCompare(b.id));
  teamModelDialog.querySelector('.team-model-count').textContent=models.length?(models.length>40?'Showing 40 of '+models.length+' models · Search to narrow the list.':models.length+' models'):'No matching models';
- const markup=models.slice(0,40).map(m=>'<button type="button" data-model-choice="'+escape(m.id)+'" title="'+escape(m.id)+'" aria-pressed="'+(m.id===selected)+'" '+(modelPickerSaving||locked||(modelPickerVisitor&&!m.connected)?'disabled':'')+'><span><strong>'+escape(displayName(m))+'</strong><small>'+escape(modelPickerVisitor?(m.source==='local'?m.label:m.source==='shared'?'Uses the shared connection':m.id.split('/').slice(2).join('/')):m.id)+'</small></span><span class="team-model-choice-state">'+(modelPickerVisitor&&!m.connected?'Not connected':m.id===selected?'Selected':!modelPickerVisitor||m.source==='api'?'External Endpoint':'')+'</span></button>').join('');
+ const markup=models.slice(0,40).map(m=>'<button type="button" data-model-choice="'+escape(m.id)+'" title="'+escape(m.id)+'" aria-pressed="'+(m.id===selected)+'" '+(modelPickerSaving||locked||(modelPickerVisitor&&!m.connected)?'disabled':'')+'><span><strong>'+escape(displayName(m))+'</strong><small>'+escape(modelPickerVisitor?(m.source==='auto'?m.description:m.source==='local'?m.label:m.source==='shared'?'Uses the shared connection':m.id.split('/').slice(2).join('/')):m.id)+'</small></span><span class="team-model-choice-state">'+(modelPickerVisitor&&!m.connected?'Not connected':m.id===selected?'Selected':!modelPickerVisitor||m.source==='api'?'External Endpoint':'')+'</span></button>').join('');
  const results=teamModelDialog.querySelector('.team-model-results');
  if(modelPickerMarkup!==markup){modelPickerMarkup=markup;results.innerHTML=markup;}
  teamModelDialog.querySelector('.team-model-count').textContent=locked||teamModelDialog.querySelector('.team-model-count').textContent;
@@ -82451,7 +82453,7 @@ function openCrewModelPicker(role,visitor=null){
  if(modelPickerSaving||!teamModelDialog.hidden)return;
  modelPickerRole=role;
  if(visitor?hiredModelLock(visitor.key):(!builtinModelEditable(role)||builtinModelLock(role)))return;
- modelPickerVisitor=visitor?.key||null;modelPickerOwner=agentId;modelPickerScenario=selectedScenario;modelPickerDraft=visitor?personalModel(visitor).id:teamModel(role)?.id;
+ modelPickerVisitor=visitor?.key||null;modelPickerOwner=agentId;modelPickerScenario=selectedScenario;modelPickerDraft=visitor?(visitor.taskModel||'auto'):teamModel(role)?.id;
  const name=visitor?.name||defaultNames[role];
  teamModelDialog.querySelector('#team-model-member').textContent=name;
  teamModelDialog.querySelector('input').value='';teamModelDialog.querySelector('.team-model-error').hidden=true;
@@ -82503,16 +82505,16 @@ async function applyTeamModel(){
  modelPickerSaving=true;
  if(!teamModelDialog.hidden)renderModelResults();
  try{
-  const result=await api(visitor?'agent-model':'team-model',visitor?{model}:{role,model},visitor||target,scenario);
+  const result=await api(visitor?'agent-model':'team-model',visitor?{model,stage:'team'}:{role,model},visitor||target,scenario);
   if(visitor)stateCache.clear();
   if(current()){
    // A poll started before this write must not restore the previous model.
    ++refreshVersion;stateCache.delete(target);busy=false;
-   data=visitor?{...data,agents:data.agents.map(agent=>agent.key===visitor?{...agent,...result}:agent),profile:agentId===visitor?result:data.profile}:{...data,teamSelections:result.teamSelections};render();
+   data=visitor?{...data,agents:data.agents.map(agent=>agent.key===visitor?{...agent,...result,taskModel:result.taskModel}:agent),profile:agentId===visitor?result:data.profile}:{...data,teamSelections:result.teamSelections};render();
   }
   return true;
  }catch(error){
-  if(current())modelPickerDraft=visitor?personalModel((data.agents||[]).find(agent=>agent.key===visitor)).id:teamModel(role)?.id;
+  if(current())modelPickerDraft=visitor?((data.agents||[]).find(agent=>agent.key===visitor)?.taskModel||'auto'):teamModel(role)?.id;
   if(current()&&!teamModelDialog.hidden){const notice=teamModelDialog.querySelector('.team-model-error');notice.textContent=error.message;notice.hidden=false;}
   else alert('Model changes could not be applied. '+error.message);
   return false;
@@ -82895,7 +82897,7 @@ function syncCrewComposer(){
  const visitor=assignedVisitor(selectedCrewRole);
  const visitorMissing=visitor&&!visitorAvailable(visitor);
  const memberWorking=!!visitor&&(data.agents||[]).some(a=>a.key===visitor.key&&a.pending>0)||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status)&&(j.payload?.collaboration?(['running','stopping'].includes(j.status)&&j.payload.collaboration.activeRole===selectedCrewRole):j.payload?.crewRole===selectedCrewRole));
- const blocked=resetInProgress||visitorMissing||(visitor?!personalReady(visitor):!teamReady())||!!visitor?.skills?.includes('radar')||!!data.bacResetting||captainPlanning||memberWorking||crewDocumentUpload;
+ const blocked=resetInProgress||visitorMissing||(visitor?!personalReady(visitor,'team'):!teamReady())||!!visitor?.skills?.includes('radar')||!!data.bacResetting||captainPlanning||memberWorking||crewDocumentUpload;
  el('crew-document-add').hidden=selectedCrewRole!==0;el('crew-document-add').disabled=blocked;
  renderCrewDocuments();
  const commandOnly=selectedScenario==='plan'&&selectedCrewRole===0&&/^\s*\/(?:goals?|plans?)\s*$/i.test(el('crew-prompt').value);
@@ -82908,7 +82910,7 @@ function syncCrewComposer(){
  const noHires=teamMode==='hired'&&!(data.agents||[]).some(a=>!a.deleting);
  el('crew-team-hint').hidden=!noHires;el('crew-team-hint').textContent=noHires?'작업에 필요한 스킬을 가진 에이전트를 고용해주세요.':'';
  el('crew-chat-connection').hidden=!blocked;
- el('crew-chat-connection').textContent=visitorMissing?'This agent was removed. Start a new task with Casey.':visitor?.skills?.includes('radar')?'Tech Radar uses Heartbeat. Manual chat is disabled.':crewDocumentUpload?'Adding document…':resetInProgress?'Resetting…':data.bacResetting?'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…':captainPlanning?'Casey가 팀 작업을 진행하고 있어요. 완료 후 다시 메시지를 보낼 수 있습니다.':memberWorking?'작업 중입니다. 이 에이전트가 작업을 마치면 다시 메시지를 보낼 수 있습니다.':!(visitor?personalModel(visitor).connected:(teamRuntime().teamModel??runtime.model))?(visitor?personalModelNotice(visitor):'Model not connected. Enable Local or External Endpoint in Settings.'):'Run ./bac start on this computer to connect the team runtime.';
+ el('crew-chat-connection').textContent=visitorMissing?'This agent was removed. Start a new task with Casey.':visitor?.skills?.includes('radar')?'Tech Radar uses Heartbeat. Manual chat is disabled.':crewDocumentUpload?'Adding document…':resetInProgress?'Resetting…':data.bacResetting?'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…':captainPlanning?'Casey가 팀 작업을 진행하고 있어요. 완료 후 다시 메시지를 보낼 수 있습니다.':memberWorking?'작업 중입니다. 이 에이전트가 작업을 마치면 다시 메시지를 보낼 수 있습니다.':!(visitor?personalModel(visitor,'team').connected:(teamRuntime().teamModel??runtime.model))?(visitor?personalModelNotice(visitor,'team'):'Model not connected. Enable Local or External Endpoint in Settings.'):'Run ./bac start on this computer to connect the team runtime.';
  syncCrewComposerSize();
 }
 function renderCrewPassport(){
@@ -82929,7 +82931,7 @@ function renderCrewPassport(){
  const avatar=visitor?.avatar||window.BacCampus?.inspect().crewAvatars?.[i]||{};
  el('crew-number').textContent=selectedOpenTaskVisitor?'Standby':String(i+1).padStart(2,'0')+' / '+roles.length;
  el('crew-name').textContent=name;syncTeamTotalTime();el('crew-role').textContent=role;
- const model=visitor?personalModel(visitor):teamModel(i);renderCrewModel(model,visitor);
+ const model=visitor?personalModel(visitor,'team'):teamModel(i);renderCrewModel(model,visitor);
  if(!teamModelDialog.hidden)renderModelResults();
  renderAvatarPortrait(el('crew-portrait'),avatar);
  el('crew-policy').hidden=(visitor&&!visitorAvailable(visitor))||(visitor?.protection||window.BacCrewCatalog[i].protection)!=='openshell';
@@ -82983,7 +82985,7 @@ el('crew-chat').onsubmit=async e=>{
   if(crewDocumentUpload)await refresh();
   let requestPrompt=draft.prompt;
   if(docs.length)requestPrompt+='\n\nAttached documents (use these files):\n'+docs.map(file=>file.path.slice(6)).join('\n');
-  const result=await api('jobs',visitor?{kind:'chat',prompt:requestPrompt,images:draft.images}:{kind:'crew-chat',crewRole:index,prompt:requestPrompt,images:draft.images,...(scenario==='plan'&&index===0&&isPlanCommand(draft.prompt)?{teamMode:teamChoice}:{})},visitor?.key||owner,scenario);
+  const result=await api('jobs',visitor?{kind:'chat',modelStage:'team',prompt:requestPrompt,images:draft.images}:{kind:'crew-chat',crewRole:index,prompt:requestPrompt,images:draft.images,...(scenario==='plan'&&index===0&&isPlanCommand(draft.prompt)?{teamMode:teamChoice}:{})},visitor?.key||owner,scenario);
   crewComposerEditing=false;acknowledgeChatDraft(draft);if(visitor){await switchAgent(visitor.key);setRoom('lounge');}await refresh();if(result.collaboration)stageCollaboration(result);
  }
  catch(error){if(crewChatKey===key){el('crew-chat-error').textContent=error.message;el('crew-chat-error').hidden=false;}}
@@ -83902,13 +83904,25 @@ for(const id of ['crew-prompt']){
 
   // Three places in one studio: creation, a growing personal collection, and crew work.
 let editingInPlace=false,hiringArrival=false,draftNameEdited=false,draftModel='',draftModelChosen=false,creatorModelMarkup='';
-function personalModel(profile){
+function personalModel(profile,stage='lounge'){
  profile=(profile?.key&&(data.agents||[]).find(row=>row.key===profile.key))||profile;
- const id=profile?.model||'shared',choice=runtime.personalModels?.models?.find(row=>row.id===id);
+ let id=profile?.model||'shared';
+ const states=runtime.modelConnections?.connections;
+ const explicitTask=stage==='team'&&profile?.taskModel;
+ if(explicitTask)id=profile.taskModel;
+ if(states&&!explicitTask&&((stage==='team'&&!id.startsWith('api/'))||id==='local'&&stage!=='team')){
+  const preferred=stage==='team'?'api':'local',other=preferred==='api'?'local':'api';
+  const source=states[preferred]?.ready?preferred:states[other]?.ready?other:null;
+  if(source)id=source==='local'?'local':`api/${states.api.provider}/${states.api.model}`;
+ }
+ const choice=runtime.personalModels?.models?.find(row=>row.id===id);
  return choice||{id,label:id==='local'?'Local':id==='shared'?'Shared default':id.split('/').slice(2).join('/'),connected:id==='shared'?!!runtime.model:id==='local'&&!runtime.personalModels?!!runtime.model:false};
 }
-function personalReady(profile){return !!runtime.gateway&&personalModel(profile).connected;}
-function personalModelNotice(profile){return profile?.model==='local'?'Local model is not connected. Connect Local in Settings or choose another model in Edit agent.':'This agent’s model is unavailable. Check Settings or choose another model in Edit agent.';}
+function personalReady(profile,stage='lounge'){return !!runtime.gateway&&personalModel(profile,stage).connected;}
+function personalModelNotice(profile,stage='lounge'){
+ if(stage==='team')return profile?.taskModel||profile?.model?.startsWith('api/')?'This agent’s Open Task model is unavailable. Check Settings or choose another model using its model badge.':'Connect Local or an External Endpoint in Settings.';
+ return profile?.model==='local'?'No model connection is available. Connect Local or an External Endpoint in Settings.':'This agent’s model is unavailable. Check Settings or choose another model in Edit agent.';
+}
 function creatorModelChoices(){
  const rows=runtime.personalModels?.models||[{id:'local',label:'Local',source:'local',connected:!!runtime.model},{id:'shared',label:'Shared default',source:'shared',connected:!!runtime.model}];
  const choices=rows.filter(row=>row.id!=='shared'||draftModel==='shared');
@@ -83944,7 +83958,7 @@ function renderCreatorModels(){
  // Replacing unchanged rows on each poll can interrupt clicks or keyboard selection.
  if(creatorModelMarkup!==html){creatorModelMarkup=html;results.innerHTML=html;if(focused)[...results.querySelectorAll('button')].find(button=>button.dataset.agentModelChoice===focused&&!button.disabled)?.focus({preventScroll:true});}
  const chosen=draftModel?personalModel({model:draftModel}):null,summary=el('agent-model-summary');
- summary.textContent=chosen?(draftModel==='local'?'Local':chosen.label.split('/').at(-1)):'Not connected';summary.title=chosen?.label||'';summary.dataset.ready=String(!!chosen?.connected);
+ summary.textContent=chosen?(chosen.id==='local'?'Local':chosen.label.split('/').at(-1)):'Not connected';summary.title=chosen?.label||'';summary.dataset.ready=String(!!chosen?.connected);
  const missing=!chosen?.connected;
  el('agent-model-note').textContent=!chosen?'Connect a model in Settings.':missing?'Selected model is not connected.':matches.length>40?'Showing 40 models. Refine your search.':'';
  el('agent-model-note').hidden=!el('agent-model-note').textContent;el('agent-model-settings').hidden=!missing;

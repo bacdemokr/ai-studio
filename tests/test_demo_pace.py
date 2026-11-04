@@ -73,7 +73,8 @@ class PersonalReactionBudgetTests(unittest.TestCase):
         members=[dict(key=k,id=k,name=k,skills=[],tone='kind',persona='guide',purpose='Friendly helper') for k in ('one','two')]
         payload={'collaboration':{'task':'A completed task','finalAnswer':'Saved result','outputs':{}},
                  'roundtable':{'members':members,'replies':{}}}
-        def prepare(key,member):
+        def prepare(key,member,*,model_stage):
+            self.assertEqual(model_stage, 'team')
             prepared.append(key);clock[0]+=preparation;return key
         def respond(agent,session,prompt,owner,**kwargs):
             calls.append(kwargs['timeout']);clock[0]+=11;return 'A short personal reaction.'

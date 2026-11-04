@@ -48,16 +48,14 @@ class PersonalModelTests(unittest.TestCase):
         added = self.app.add_agent(self.owner, {'name': name, 'skills': ['writer'], **extra})
         return self.app.profile(added['agentId'])
 
-    def test_default_is_local_even_when_only_external_is_ready(self):
+    def test_local_default_uses_only_available_api_without_overwriting_choice(self):
         self.connect('api')
         profile = self.hire()
         self.assertEqual(profile['model'], 'local')
-        self.assertFalse(personal_models.ready(profile, self.app.runtime_status()))
-        with self.assertRaisesRegex(Problem, 'Local model is not connected'):
-            self.app.enqueue(self.owner, {'prompt': 'Hello'})
-        with self.assertRaisesRegex(Problem, 'Local model is not connected'):
-            self.app.ensure_agent(self.owner, profile)
-        self.assertEqual(self.adapter.calls, [])
+        self.assertTrue(personal_models.ready(profile, self.app.runtime_status()))
+        self.app.ensure_agent(self.owner, profile)
+        self.assertEqual(self.adapter.profiles[profile['id']]['_connectionConfig']['models'][0]['id'], 'api-default')
+        self.assertEqual(self.app.profile(self.owner)['model'], 'local')
 
     def test_local_and_two_external_choices_route_independently(self):
         self.connect('local'); self.connect('api')
@@ -181,7 +179,7 @@ class PersonalModelTests(unittest.TestCase):
         for value in ({'apiKey': 'bad'}, None, 'https://example.com/key', 'api/nvidia/no-such-model', 'api/local/test', 'local\napi'):
             with self.subTest(value=value), self.assertRaises(Problem): self.hire(model=value)
 
-    def test_background_radar_waits_for_its_own_source(self):
+    def test_background_radar_uses_api_fallback_and_preserves_explicit_choice(self):
         self.connect('api')
         local = self.hire(skills=['radar'])
         api = self.hire('Radar Two', skills=['radar'], model='api/nvidia/other-model')
@@ -192,8 +190,9 @@ class PersonalModelTests(unittest.TestCase):
                 with self.app.db() as db: db.execute("UPDATE jobs SET status='error' WHERE id=?", (job['id'],))
         with self.app.db() as db: db.execute("UPDATE jobs SET created=created-30,updated=updated-90 WHERE kind='prepare-agent'")
         self.app.heartbeat.tick()
-        self.assertEqual(self.app.heartbeat.status(self.owner, local)['state'], 'waiting for model')
-        self.assertFalse(self.adapter.cadence[local['id']])
+        self.assertEqual(self.app.heartbeat.status(self.owner, local)['state'], 'watching')
+        self.assertTrue(self.adapter.cadence[local['id']])
+        self.assertEqual(self.adapter.profiles[local['id']]['_connectionConfig']['models'][0]['id'], 'api-default')
         self.assertTrue(self.adapter.cadence[api['id']])
         self.assertEqual(self.adapter.profiles[api['id']]['_connectionConfig']['models'][0]['id'], 'other-model')
 
@@ -203,13 +202,12 @@ class PersonalModelTests(unittest.TestCase):
         external = self.hire('Writer', model='api/nvidia/other-model')
         with self.app.db() as db:
             members, unavailable = visitor_teams.capture(self.app, db, self.owner)
-            self.assertEqual([row['name'] for row in members], ['Writer'])
-            self.assertEqual(unavailable[0]['name'], 'Pixel')
-            self.assertIn('Local model', unavailable[0]['reason'])
+            self.assertEqual([row['name'] for row in members], ['Pixel', 'Writer'])
+            self.assertEqual(unavailable, [])
         with self.app.db() as db:
             reaction = self.app.capture_roundtable(db, self.owner)
-            self.assertEqual([m['name'] for m in reaction['members']], ['Writer'])
-            self.assertEqual(reaction['skipped'][0]['name'], 'Pixel')
+            self.assertEqual([m['name'] for m in reaction['members']], ['Pixel', 'Writer'])
+            self.assertEqual(reaction['skipped'], [])
         self.app.ensure_agent(external['id'][4:], external)
         self.assertEqual(self.adapter.profiles[external['id']]['_connectionConfig']['models'][0]['id'], 'other-model')
 
@@ -217,3 +215,129 @@ class PersonalModelTests(unittest.TestCase):
         config = {'agents': {'defaults': {}, 'entries': {'bac-test': {'model': 'bac-connection-abc/chosen'}}}}
         settings.apply_to_config(config, 'local', {'apiKey': '', 'baseUrl': 'http://127.0.0.1:8000/v1', 'model': 'another', 'contextWindow': 32768})
         self.assertEqual(config['agents']['entries']['bac-test']['model'], 'bac-connection-abc/chosen')
+
+    def route(self, profile, stage):
+        self.app.ensure_agent(self.owner, profile, model_stage=stage)
+        return self.adapter.profiles[profile['id']]['_connectionConfig']['models'][0]['id']
+
+    def test_local_hire_switches_api_and_returns_local_without_profile_mutation(self):
+        self.connect('local'); self.connect('api')
+        profile = self.hire()
+        self.assertEqual(self.route(profile, 'lounge'), 'local-model')
+        self.assertEqual(self.route(profile, 'team'), 'api-default')
+        self.assertEqual(self.route(profile, 'lounge'), 'local-model')
+        self.assertEqual(self.app.profile(self.owner), profile)
+
+    def test_explicit_api_is_preserved_in_every_stage(self):
+        self.connect('local'); self.connect('api')
+        profile = self.hire(model='api/nvidia/other-model')
+        for stage in ('lounge', 'team', 'lounge'):
+            self.assertEqual(self.route(profile, stage), 'other-model')
+
+    def test_local_only_works_in_both_stages(self):
+        self.connect('local')
+        profile = self.hire()
+        for stage in ('lounge', 'team'):
+            self.assertEqual(self.route(profile, stage), 'local-model')
+
+    def test_open_task_explicit_local_and_reset_are_separate_from_lounge(self):
+        self.connect('local'); self.connect('api')
+        profile = self.hire(model='api/nvidia/other-model')
+        changed = self.app.select_agent_model(self.owner, {'model':'local', 'stage':'team'})
+        self.assertEqual(changed['model'], profile['model'])
+        self.assertEqual(self.route(changed, 'team'), 'local-model')
+        self.assertEqual(self.route(changed, 'lounge'), 'other-model')
+        edited = self.app.configure(self.owner, {**changed, 'name':'Renamed'})
+        self.assertEqual(edited['taskModel'], 'local')
+        restored = self.app.select_agent_model(self.owner, {'model':'auto', 'stage':'team'})
+        self.assertNotIn('taskModel', restored)
+        self.assertEqual(self.route(restored, 'team'), 'other-model')
+
+    def test_stage_choice_captured_in_direct_chat_not_current_room(self):
+        self.connect('local'); self.connect('api')
+        profile = self.hire()
+        job = self.app.enqueue(self.owner, {'prompt':'Hello', 'modelStage':'team'})
+        self.app.heartbeat.presence(self.owner, 'tab', open_task=False, revision=1)
+        self.app.execute(self.app.next_job())
+        self.assertEqual(self.adapter.profiles[profile['id']]['_connectionConfig']['models'][0]['id'], 'api-default')
+        self.app.enqueue(self.owner, {'prompt':'Hello from Lounge'})
+        self.app.execute(self.app.next_job())
+        self.assertEqual(self.adapter.profiles[profile['id']]['_connectionConfig']['models'][0]['id'], 'local-model')
+
+    def test_open_task_override_cannot_change_during_pending_work(self):
+        self.connect('local'); self.connect('api')
+        profile = self.hire()
+        self.app.enqueue(self.owner, {'prompt':'Hello', 'modelStage':'team'})
+        with self.assertRaises(Problem):
+            self.app.select_agent_model(self.owner, {'model':'local', 'stage':'team'})
+        self.assertEqual(self.app.profile(self.owner), profile)
+
+    def test_explicit_api_is_unavailable_in_team_instead_of_silently_falling_back(self):
+        self.connect('local'); self.connect('api', 'openai')
+        profile = self.hire(model='api/openai/other-model')
+        session_secrets.release(self.lease)
+        self.assertFalse(personal_models.ready(profile, self.app.runtime_status(), 'team'))
+        with self.assertRaises(Problem):
+            self.route(profile, 'team')
+
+    def test_api_only_stage_cycle_uses_default_without_mutating_local_preference(self):
+        self.connect('api')
+        profile = self.hire()
+        for stage in ('lounge', 'team', 'lounge'):
+            self.assertEqual(self.route(profile, stage), 'api-default')
+        self.assertEqual(self.app.profile(self.owner)['model'], 'local')
+
+    def test_task_dispatch_and_reactions_use_api_then_next_lounge_call_restores_local(self):
+        from test_visitor_teams import VisitorAdapter
+        self.adapter = VisitorAdapter()
+        self.app.adapter = self.adapter
+        self.connect('local'); self.connect('api')
+        profile = self.hire(skills=['builder'], purpose='Build small webpages.')
+        guest = self.hire('Guest', model='local')
+        manager = self.app.crew_owner(self.owner, 'plan')
+        seen = []
+        self.adapter.after = lambda agent, session: seen.append((agent, session, self.adapter.profiles[agent]['_connectionConfig']['models'][0]['id']))
+        import team_models
+        with patch.object(team_models, 'selections', return_value=[{'role':i,'id':'api-default'} for i in range(9)]):
+            submitted = self.app.enqueue(manager, {'kind':'crew-chat','crewRole':0,'teamMode':'hired','prompt':'/goal Build a counter.'})
+            self.app.heartbeat.presence(self.owner, 'tab', open_task=False, revision=2)
+            self.app.execute(self.app.next_job())
+        hired_calls = [x for x in seen if x[0] in (profile['id'], guest['id'])]
+        self.assertTrue(any('-working' in x[1] for x in hired_calls), seen)
+        self.assertTrue(any('roundtable' in x[1] for x in hired_calls), seen)
+        self.assertEqual({x[2] for x in hired_calls}, {'api-default'})
+        with self.app.db() as db:
+            job = self.app.public_job(db.execute('SELECT * FROM jobs WHERE id=?',(submitted['id'],)).fetchone())
+        self.assertEqual(job['status'], 'done')
+        self.assertEqual(self.app.profile(self.owner)['model'], 'local')
+        self.assertEqual(self.route(profile, 'lounge'), 'local-model')
+
+    def test_failed_reaction_retry_uses_updated_task_override(self):
+        from test_visitor_teams import VisitorAdapter
+        self.adapter = VisitorAdapter()
+        self.app.adapter = self.adapter
+        self.connect('local'); self.connect('api')
+        self.hire(skills=['builder'])
+        guest = self.hire('Guest', model='local')
+        guest_key = guest['id'][4:]
+        self.app.select_agent_model(guest_key, {'model':'api/nvidia/other-model', 'stage':'team'})
+        manager = self.app.crew_owner(self.owner, 'plan')
+        respond = self.adapter.respond
+        def fail_guest(agent, session, prompt, **kwargs):
+            if agent == guest['id'] and 'roundtable' in session:
+                raise RuntimeError('Simulated reaction failure')
+            return respond(agent, session, prompt, **kwargs)
+        self.adapter.respond = fail_guest
+        import team_models
+        with patch.object(team_models, 'selections', return_value=[{'role':i,'id':'api-default'} for i in range(9)]):
+            submitted = self.app.enqueue(manager, {'kind':'crew-chat','crewRole':0,'teamMode':'hired','prompt':'/goal Build a counter.'})
+            with self.assertLogs(level='ERROR'):
+                self.app.execute(self.app.next_job())
+        self.adapter.respond = respond
+        self.app.select_agent_model(guest_key, {'model':'local', 'stage':'team'})
+        self.app.retry_reaction(manager, {'id':submitted['id'], 'member':guest_key})
+        self.app.execute(self.app.next_job())
+        with self.app.db() as db:
+            row = db.execute('SELECT payload FROM jobs WHERE id=?', (submitted['id'],)).fetchone()
+        self.assertEqual(json.loads(row['payload'])['roundtable']['replies'][guest_key]['status'], 'done')
+        self.assertEqual(self.adapter.profiles[guest['id']]['_connectionConfig']['models'][0]['id'], 'local-model')

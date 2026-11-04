@@ -56,9 +56,9 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.getByRole('button',{name:'데이터 분석가',exact:true}).click();assert.equal(await summary.innerText(),'Local','Data analyst follows the same connected Local default as other hires');
   await page.evaluate(()=>BacStudio.setRoom('lounge'));await page.locator('#studio-edit-agent').click();assert.equal(await summary.innerText(),'fixture-b');await expand();await choice('local').waitFor();assert(await choice('local').isEnabled());
   await choose('local','Local');await page.locator('#studio-create').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.model==='local');
-  // Losing that connection preserves the selected model and allows unrelated edits.
+  // A Local preference falls back to the API while Local is unavailable, without rewriting the preference.
   await settings();await page.locator('[data-connection-enable=local]').uncheck();await page.waitForFunction(()=>document.querySelector('[data-connection-status=local]').textContent==='Disabled');await closeSettings();
-  await page.waitForFunction(()=>document.querySelector('#studio-send').disabled);
+  await page.waitForFunction(()=>!document.querySelector('#studio-send').disabled);
   assert.equal(await page.evaluate(()=>BacStudio.inspect().profile.model),'local');
   await page.locator('#studio-edit-agent').click();await expand();assert(await choice('local').isDisabled());assert.equal(await choice('local').getAttribute('aria-pressed'),'true');
   assert(await page.locator('#studio-create').isEnabled(),'Editing a saved offline model is still allowed');
@@ -77,10 +77,10 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await modelSearch.press('Enter');await picker.waitFor({state:'hidden'});
   await page.waitForFunction(()=>document.querySelector('#studio-crew-model').textContent==='fixture-a');
   assert.equal(await page.evaluate(()=>BacStudio.inspect().room),'mission');
-  assert.deepEqual(await page.evaluate(()=>BacStudio.inspect().profile),{...before,model:'api/nvidia/fixture-a'});
+  assert.deepEqual(await page.evaluate(()=>BacStudio.inspect().profile),{...before,taskModel:'api/nvidia/fixture-a'});
   assert.equal(await page.evaluate(async()=>{const state=await (await fetch('/api/state',{headers:{'X-BaC-Agent':BacStudio.inspect().agentId,'X-BaC-Scenario':'plan'}})).json();return state.crewChats.find(j=>j.payload.collaboration).payload.collaboration.visitorBindings[5].model;}),'api/nvidia/fixture-b','Completed plan snapshot stays historical');
   await page.screenshot({path:'/tmp/bac-visitor-model-badge.png'});
-  await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.model==='api/nvidia/fixture-a');
+  await page.reload();await page.waitForFunction(()=>window.BacStudio?.inspect().profile?.taskModel==='api/nvidia/fixture-a');
   await page.locator('.world-room-map [data-world-scenario="plan"]').click();await page.waitForFunction(()=>!BacCampus.inspect().navigation.travelling);
   await page.locator('[data-campus-agent="5"]').click();await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Pixel');assert.equal(await badge.innerText(),'fixture-a');
   // Race: a task captures Pixel after the picker opens but before the save reaches the server.
@@ -93,13 +93,13 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   },{times:1});
   await pick('api/nvidia/fixture-b').click();await picker.locator('.team-model-error').waitFor();
   assert.match(await picker.locator('.team-model-error').innerText(),/pending (?:crew )?missions?/);
-  assert.equal(await page.evaluate(()=>BacStudio.inspect().profile.model),'api/nvidia/fixture-a');
+  assert.equal(await page.evaluate(()=>BacStudio.inspect().profile.taskModel),'api/nvidia/fixture-a');
   await page.evaluate(()=>BacStudio.refresh());assert(await pick('api/nvidia/fixture-b').isDisabled(),'Reserved agent cannot be changed from an already open picker');
   await picker.locator('[data-model-close]').click();
   await page.waitForFunction(()=>BacStudio.inspect().agents.every(a=>!a.pending));
   await page.locator('[data-campus-agent="5"]').click();await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Pixel');assert(await badge.isEnabled());
   await badge.click();await modelSearch.fill('fixture-b');await modelSearch.press('Enter');await picker.waitFor({state:'hidden'});
-  await page.waitForFunction(()=>BacStudio.inspect().profile.model==='api/nvidia/fixture-b');
+  await page.waitForFunction(()=>BacStudio.inspect().profile.taskModel==='api/nvidia/fixture-b');
   // The selected team member need not be the currently open personal workspace.
   await page.evaluate(()=>BacStudio.setRoom('workshop'));await page.locator('#studio-name').fill('Orbit');await page.getByRole('button',{name:'웹 조사원',exact:true}).click();
   await page.locator('#studio-create').click();await page.waitForFunction(()=>BacStudio.inspect().profile?.name==='Orbit'&&BacStudio.inspect().room==='lounge');
@@ -108,8 +108,8 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.locator('[data-campus-agent="5"]').click();await page.waitForFunction(()=>document.querySelector('#studio-crew-name').textContent==='Pixel');
   await badge.click();await modelSearch.fill('model-089');await modelSearch.press('Enter');await picker.waitFor({state:'hidden'});
   assert.equal(await badge.innerText(),'example/model-089');assert.deepEqual(await page.evaluate(()=>BacStudio.inspect().profile),otherProfile,'Changing Pixel must not modify the open Orbit workspace');
-  assert.equal(await page.evaluate(()=>BacStudio.inspect().agents.find(a=>a.name==='Pixel').model),'api/nvidia/example/model-089');
+  assert.equal(await page.evaluate(()=>BacStudio.inspect().agents.find(a=>a.name==='Pixel').taskModel),'api/nvidia/example/model-089');
   await page.locator('.world-room-map [data-world-room="lounge"]').click();await page.waitForFunction(()=>BacStudio.inspect().room==='lounge'&&!BacCampus.inspect().navigation.travelling);assert.deepEqual(await page.evaluate(()=>BacStudio.inspect().profile),otherProfile,'Returning to Lounge preserves the selected personal workspace');
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,host,checks:['search with a 94-model catalogue','bounded list and no-match state','keyboard selection and Escape','query survives polling','connected Local first, otherwise configured API default','hire and chat without opening Model','neither connection ready blocks hiring','explicit choices and existing profiles preserved','connected Local can be selected','saved offline choice preserved during editing','own model retained in chat/reload/Open Task','idle Open Task badge changes model without changing rooms or persona','reload uses current model, not the completed plan snapshot','backend rejects task/save race; open picker locks reserved agents','retry succeeds after task completion','Lounge workspace remains independent','no browser errors']}));
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,host,checks:['search with a 94-model catalogue','bounded list and no-match state','keyboard selection and Escape','query survives polling','connected Local first, otherwise configured API default','hire and chat without opening Model','neither connection ready blocks hiring','explicit choices and existing profiles preserved','connected Local can be selected','saved offline choice preserved during editing','explicit API choice retained in chat/reload/Open Task','idle Open Task override preserves Lounge model and persona','reload uses current model, not the completed plan snapshot','backend rejects task/save race; open picker locks reserved agents','retry succeeds after task completion','Lounge workspace remains independent','no browser errors']}));
  }finally{if(browser)await browser.close();server.kill('SIGTERM');}
 })().catch(error=>{console.error(error);process.exitCode=1;});
