@@ -111,8 +111,8 @@ class RoundtableControls:
                     self.require_idle(db, member['key'])
                 except Problem:
                     reason = 'Busy with another task.'
-            if not reason and not personal_models.ready(member, runtime):
-                reason = personal_models.unavailable(member)
+            if not reason and not personal_models.ready(member, runtime, 'team'):
+                reason = personal_models.unavailable(member, 'team')
             if not reason and prepared_members is not None and prepared_members.get(member['key']) != member:
                 reason = previous_skips.get(member['key'], {}).get('detail', 'Not prepared for this event. Check again to include this agent.')
             if reason:
@@ -152,8 +152,11 @@ class RoundtableControls:
                 raise Problem('Only a failed reaction can be retried.', 409)
             current = json.loads(self.require_available(db, key)['profile'])
             member['model'] = current.get('model', 'shared')
-            if not personal_models.ready(member, self.runtime_status()):
-                raise Problem(personal_models.unavailable(member), 503)
+            member.pop('taskModel', None)
+            if current.get('taskModel'):
+                member['taskModel'] = current['taskModel']
+            if not personal_models.ready(member, self.runtime_status(), 'team'):
+                raise Problem(personal_models.unavailable(member, 'team'), 503)
             self.require_idle(db, owner)
             self.require_idle(db, key)
             meeting['replies'][key] = {'status': 'queued', 'attempt': meeting['replies'][key].get('attempt', 1) + 1}
@@ -208,7 +211,7 @@ class RoundtableControls:
             attempt = meeting['replies'].get(key, {}).get('attempt', 1)
             reply = meeting['replies'][key] = {'status':'running', 'started':time.time(), 'attempt': attempt}
             try:
-                agent = self.ensure_agent(key, member)
+                agent = self.ensure_agent(key, member, model_stage='team')
                 self.check_protected_run(key, member)
             except Exception as error:
                 import logging

@@ -537,11 +537,15 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
                 row = self.require_available(db, owner)
                 self.require_idle(db, owner)
                 profile = json.loads(row['profile'])
-            model = personal_models.validate(data.get('model'), previous=profile.get('model', 'shared'))
+            task_choice = data.get('stage') == 'team'
+            if task_choice and data.get('model') == 'auto':
+                return self.configure(owner, {**profile, 'taskModel': None})
+            field = 'taskModel' if task_choice else 'model'
+            model = personal_models.validate(data.get('model'), previous=profile.get(field, 'shared'))
             if not any(choice['id'] == model and choice['connected'] for choice in personal_models.public()['models']):
                 raise Problem('This model is not connected. Refresh the choices or check Settings.', 409)
             # configure rechecks reservations after native I/O, before committing.
-            return self.configure(owner, {**profile, 'model': model})
+            return self.configure(owner, {**profile, field: model})
 
     def configure(self, owner, data):
         profile = self.profile(owner)
@@ -549,6 +553,8 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
             raise Problem('Create your agent first.')
         if data.get('protection', profile.get('protection', 'standard')) != profile.get('protection', 'standard'):
             raise Problem('OpenShell protection is fixed when an agent is created.', 409)
+        previous_task_model = profile.get('taskModel')
+        task_model = data.get('taskModel', previous_task_model)
         profile = self.agent_profile(owner, {**data, 'avatar': data.get('avatar', profile['avatar']),
                     'purpose': data.get('purpose', profile.get('purpose', '')),
                     'tonePrompt': data.get('tonePrompt', profile.get('tonePrompt', '')),
@@ -556,6 +562,9 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
                     'protection': profile.get('protection', 'standard'),
                     'model': data.get('model', profile.get('model', 'shared'))},
                     previous_model=profile.get('model', 'shared'))
+        if task_model is not None:
+            import personal_models
+            profile['taskModel'] = personal_models.validate(task_model, previous=previous_task_model)
         # Perform native I/O before publishing the edit; then recheck whether
         # deletion or a new task won meanwhile. Never enqueue a retired identity.
         with self.heartbeat.lock:
@@ -959,6 +968,8 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
         if skill and skill not in profile['skills']:
             raise Problem('This agent has not equipped that skill.')
         payload = {'prompt': prompt, 'skill': skill, 'source': source}
+        if kind == 'chat' and data.get('modelStage') == 'team':
+            payload['modelStage'] = 'team'
         if kind == 'crew-chat':
             payload['crewRole'] = role
             if collaborative:
@@ -975,10 +986,10 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
         from scenario_models import readiness as team_readiness
         readiness = team_readiness(self, owner) if team_request else self.runtime_status()
         import personal_models
-        ready = readiness.get('teamReady', readiness.get('ready')) if team_request else personal_models.ready(profile, readiness)
+        ready = readiness.get('teamReady', readiness.get('ready')) if team_request else personal_models.ready(profile, readiness, payload.get('modelStage', 'lounge'))
         if kind != 'reminder' and not ready:
             if team_request:raise Problem('Check this scenario’s model connection and OpenClaw on the host.', 503)
-            raise Problem(personal_models.unavailable(profile) if readiness.get('gateway') else 'Agent runtime unavailable. Retry the connection to continue.', 503)
+            raise Problem(personal_models.unavailable(profile, payload.get('modelStage', 'lounge')) if readiness.get('gateway') else 'Agent runtime unavailable. Retry the connection to continue.', 503)
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
             if profile or not preset:
@@ -1244,7 +1255,7 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
             self.provisioned.discard(agent_id)
             raise
 
-    def ensure_agent(self, owner, profile, role=None):
+    def ensure_agent(self, owner, profile, role=None, *, model_stage='lounge'):
         role = None if role == 0 else role
         agent_id = profile['id'] if role is None else profile['id'] + '-r' + str(role)
         if role is not None:
@@ -1253,7 +1264,7 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
         else:
             import personal_models
             profile = dict(profile)
-            personal_models.prepare(self, profile)
+            personal_models.prepare(self, profile, model_stage)
             if agent_id in self.provisioned:return agent_id
             self.adapter.register(agent_id, self.workspace(owner), profile, None)
             self.provisioned.add(agent_id)
@@ -1342,7 +1353,7 @@ class Studio(CollaborationPlans, CrewOwnership, SessionLifecycle, PolicyControls
             return
         if profile.get('protection') == 'openshell':
             self.event(job_id, 'Preparing OpenShell', 'Checking the protected runtime and agent sandbox configuration.')
-        agent_id = self.ensure_agent(owner, profile)
+        agent_id = self.ensure_agent(owner, profile, model_stage=payload.get('modelStage', 'lounge'))
         protection_report = self.check_protected_run(owner, profile)
         self.event(job_id, profile['name'] + ' is working', 'OpenClaw agent run · selected model · ' + payload['source'])
         inbox = [x['path'] for x in self.files(owner)]

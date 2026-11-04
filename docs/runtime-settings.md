@@ -35,7 +35,7 @@ Local endpoints must be reachable from the app/OpenClaw host, not from the prese
 
 ## Scenario models
 
-- **03 Open Task:** Casey and the backups follow the scenario connection. On NVIDIA, choose **Hired + Standby** and expand **Standby specialists** to change Casey’s or a backup’s model. Return to Hired only before starting if needed. Local and other providers use the shared connection model for Casey and backups. Hires retain their individual choices in both modes.
+- **03 Open Task:** Casey and the backups follow the scenario connection. On NVIDIA, choose **Hired + Standby** and expand **Standby specialists** to change Casey’s or a backup’s model. Return to Hired only before starting if needed. Local and other providers use the shared connection model for Casey and backups. Hires follow the stage rules below in both modes.
 
 **Models & connection** opens these shared settings. Connection changes are blocked while queued or active work is present; per-agent choices are locked while the team is busy or resetting. See [Open Task models](plan-team-models.md).
 
@@ -43,11 +43,11 @@ Local endpoints must be reachable from the app/OpenClaw host, not from the prese
 
 Expand **Model** below **OpenShell protection**, then search by model or provider name. Results stay in a compact scrollable list; unavailable connections are disabled. New agents default to connected Local. If Local is unavailable, all roles, including Data analyst, use the configured External Endpoint default model. The collapsed summary shows the selected model, so presenters can hire without opening this section. If neither connection is ready, it shows **Not connected** and hiring waits for a connection. Explicit model choices and existing agents are preserved. The section starts closed and is available in **Edit agent** too.
 
-In Open Task, select an idle hired agent and click its model badge to open the same searchable choices. Changes affect only that agent’s future requests; saved plan records remain historical. Active or reserved agents cannot change models.
+In Open Task, Local hires use the connected External Endpoint default; hiring API choices stay unchanged. Select an idle hire's model badge to set an independent Open Task choice, including Local. **Automatic** restores the stage rule. Returning to Lounge restores the original hiring choice. Saved plan records remain historical; active or reserved agents cannot change models.
 
 An existing offline model remains selected. You can still edit that agent’s name or persona without changing its model; choosing a different model requires a ready connection.
 
-Each agent uses its choice for Lounge chat, Heartbeat and Open Task assignments. Explicit choices never fall back to another source. If Local is unavailable, connect it in Settings or select an external model. Agents created before this feature keep **Shared default** until explicitly changed. Model selection does not change tools, OpenShell protection.
+Automatic routing uses the available source when only one is ready. Explicit API choices and manual Open Task overrides never silently switch when unavailable. Lounge chat and Heartbeat use the hiring preference; tasks, result reactions and direct Open Task messages use the Open Task choice. The request's stage is retained during navigation. Model selection does not change tools or OpenShell protection.
 
 ## Context and output budgets
 

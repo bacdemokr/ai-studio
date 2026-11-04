@@ -46,8 +46,8 @@ def capture(studio, db, owner):
     members, unavailable = [], []
     for member in all_members:
         identity = {'key': member['key'], 'name': member['name']}
-        if not personal_models.ready(member, runtime):
-            unavailable.append({**identity, 'reason': personal_models.unavailable(member)})
+        if not personal_models.ready(member, runtime, 'team'):
+            unavailable.append({**identity, 'reason': personal_models.unavailable(member, 'team')})
             continue
         try:
             studio.require_available(db, member['key'])
@@ -220,6 +220,6 @@ def validate(studio, owner, member):
             raise Problem('The selected agent is no longer in this studio.', 409)
         studio.require_available(db, member['key'])
     current = json.loads(row['profile'])
-    if any(current.get(key) != member.get(key) for key in ('id', 'name', 'purpose', 'tonePrompt', 'skills', 'protection', 'model', 'avatar')):
+    if any(current.get(key) != member.get(key) for key in ('id', 'name', 'purpose', 'tonePrompt', 'skills', 'protection', 'model', 'taskModel', 'avatar')):
         raise Problem('The selected agent changed after the task was submitted. Start a new task.', 409)
     return current

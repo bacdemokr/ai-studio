@@ -1,12 +1,24 @@
 // Three places in one studio: creation, a growing personal collection, and crew work.
 let editingInPlace=false,hiringArrival=false,draftNameEdited=false,draftModel='',draftModelChosen=false,creatorModelMarkup='';
-function personalModel(profile){
+function personalModel(profile,stage='lounge'){
  profile=(profile?.key&&(data.agents||[]).find(row=>row.key===profile.key))||profile;
- const id=profile?.model||'shared',choice=runtime.personalModels?.models?.find(row=>row.id===id);
+ let id=profile?.model||'shared';
+ const states=runtime.modelConnections?.connections;
+ const explicitTask=stage==='team'&&profile?.taskModel;
+ if(explicitTask)id=profile.taskModel;
+ if(states&&!explicitTask&&((stage==='team'&&!id.startsWith('api/'))||id==='local'&&stage!=='team')){
+  const preferred=stage==='team'?'api':'local',other=preferred==='api'?'local':'api';
+  const source=states[preferred]?.ready?preferred:states[other]?.ready?other:null;
+  if(source)id=source==='local'?'local':`api/${states.api.provider}/${states.api.model}`;
+ }
+ const choice=runtime.personalModels?.models?.find(row=>row.id===id);
  return choice||{id,label:id==='local'?'Local':id==='shared'?'Shared default':id.split('/').slice(2).join('/'),connected:id==='shared'?!!runtime.model:id==='local'&&!runtime.personalModels?!!runtime.model:false};
 }
-function personalReady(profile){return !!runtime.gateway&&personalModel(profile).connected;}
-function personalModelNotice(profile){return profile?.model==='local'?'Local model is not connected. Connect Local in Settings or choose another model in Edit agent.':'This agent’s model is unavailable. Check Settings or choose another model in Edit agent.';}
+function personalReady(profile,stage='lounge'){return !!runtime.gateway&&personalModel(profile,stage).connected;}
+function personalModelNotice(profile,stage='lounge'){
+ if(stage==='team')return profile?.taskModel||profile?.model?.startsWith('api/')?'This agent’s Open Task model is unavailable. Check Settings or choose another model using its model badge.':'Connect Local or an External Endpoint in Settings.';
+ return profile?.model==='local'?'No model connection is available. Connect Local or an External Endpoint in Settings.':'This agent’s model is unavailable. Check Settings or choose another model in Edit agent.';
+}
 function creatorModelChoices(){
  const rows=runtime.personalModels?.models||[{id:'local',label:'Local',source:'local',connected:!!runtime.model},{id:'shared',label:'Shared default',source:'shared',connected:!!runtime.model}];
  const choices=rows.filter(row=>row.id!=='shared'||draftModel==='shared');
@@ -42,7 +54,7 @@ function renderCreatorModels(){
  // Replacing unchanged rows on each poll can interrupt clicks or keyboard selection.
  if(creatorModelMarkup!==html){creatorModelMarkup=html;results.innerHTML=html;if(focused)[...results.querySelectorAll('button')].find(button=>button.dataset.agentModelChoice===focused&&!button.disabled)?.focus({preventScroll:true});}
  const chosen=draftModel?personalModel({model:draftModel}):null,summary=el('agent-model-summary');
- summary.textContent=chosen?(draftModel==='local'?'Local':chosen.label.split('/').at(-1)):'Not connected';summary.title=chosen?.label||'';summary.dataset.ready=String(!!chosen?.connected);
+ summary.textContent=chosen?(chosen.id==='local'?'Local':chosen.label.split('/').at(-1)):'Not connected';summary.title=chosen?.label||'';summary.dataset.ready=String(!!chosen?.connected);
  const missing=!chosen?.connected;
  el('agent-model-note').textContent=!chosen?'Connect a model in Settings.':missing?'Selected model is not connected.':matches.length>40?'Showing 40 models. Refine your search.':'';
  el('agent-model-note').hidden=!el('agent-model-note').textContent;el('agent-model-settings').hidden=!missing;

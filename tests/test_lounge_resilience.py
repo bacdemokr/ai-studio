@@ -71,7 +71,7 @@ class LoungeResilienceTests(unittest.TestCase):
         self.assertEqual(session_secrets._local_routes[route.split('/provider/',1)[1].split('/',1)[0]],
                          settings.PROVIDERS['local']['baseUrl'])
 
-    def test_explicit_local_agent_waits_without_switching_to_api(self):
+    def test_local_preference_falls_back_to_api_then_recovers_without_overwriting_profile(self):
         self.app.execute(self.next_job()); self.tick()
         original = connections.status
         def api_only(source, refresh=False):
@@ -80,11 +80,16 @@ class LoungeResilienceTests(unittest.TestCase):
         with patch.object(connections, 'status', side_effect=api_only):
             self.tick()
             self.assertFalse(self.adapter.cadence[self.profile['id']])
-            self.assertIsNone(self.next_job())
-            self.assertEqual(self.app.heartbeat.status(self.owner,self.profile)['state'], 'waiting for model')
+            job = self.next_job(); self.assertIsNotNone(job)
+            self.app.execute(job); self.tick(30)
+            self.assertTrue(self.adapter.cadence[self.profile['id']])
+            self.assertIn('/provider/nvidia/', self.adapter.profiles[self.profile['id']]['_connectionConfig']['baseUrl'])
             self.assertEqual(self.app.profile(self.owner)['model'], 'local')
-        self.tick(30)
+        self.tick(31)
+        job = self.next_job(31); self.assertIsNotNone(job)
+        self.app.execute(job); self.tick(60)
         self.assertTrue(self.adapter.cadence[self.profile['id']])
+        self.assertIn('/provider/local-', self.adapter.profiles[self.profile['id']]['_connectionConfig']['baseUrl'])
         self.assertEqual(self.app.profile(self.owner)['model'], 'local')
 
     def test_api_ready_does_not_queue_preparation_when_gateway_is_down(self):

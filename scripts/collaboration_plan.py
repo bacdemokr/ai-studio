@@ -510,9 +510,9 @@ class CollaborationPlans:
             if member.get('key'):
                 profile = visitor_teams.validate(self, owner, member)
                 import personal_models
-                if not personal_models.ready(profile, self.runtime_status()):
-                    raise RuntimeError(member['name'] + ': ' + personal_models.unavailable(profile))
-                self.ensure_agent(member['key'], profile)
+                if not personal_models.ready(profile, self.runtime_status(), 'team'):
+                    raise RuntimeError(member['name'] + ': ' + personal_models.unavailable(profile, 'team'))
+                self.ensure_agent(member['key'], profile, model_stage='team')
                 self.check_protected_run(member['key'], profile)
                 if 'radar' in profile.get('skills', []):
                     # The native timer must stop before this assignment starts,

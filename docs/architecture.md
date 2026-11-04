@@ -8,7 +8,7 @@ Browser → Python API + SQLite queue → OpenClaw gateway → selected model en
                                    ↳ host tools, or OpenShell for protected personal agents
 ```
 
-The app owns accounts/agent selection, durable jobs, team orchestration, validation and rendering. OpenClaw owns native agent execution, file/tool calls and conversation sessions. Each hired agent can select its own model; the Open Task connection serves Casey and backups. Agent contexts remain separate; the scene visualizes observed app events rather than deciding task execution.
+The app owns accounts/agent selection, durable jobs, team orchestration, validation and rendering. OpenClaw owns native agent execution, file/tool calls and conversation sessions. Hires keep their Lounge model and optional Open Task override. Without an override, Open Task promotes Local to the connected API default and preserves hiring API choices. Routing follows the submitted request, not later navigation; Casey and backups use the scenario connection. Agent contexts remain separate; the scene visualizes observed app events rather than deciding task execution.
 
 ## Main code boundaries
 

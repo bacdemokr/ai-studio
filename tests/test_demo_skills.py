@@ -99,7 +99,7 @@ class DemoSkillsTests(unittest.TestCase):
                 if skill == 'builder':
                     self.assertIn('make targeted edits to the existing file', content)
                     self.assertIn('without creating files', content)
-                    self.assertIn('do not reread just to confirm saving', content)
+                    self.assertIn('Do not read your output back, even in slices, for save confirmation', content)
                 else:
                     self.assertIn('In the Lounge', content)
                     self.assertIn('collaboration research handoff', content)

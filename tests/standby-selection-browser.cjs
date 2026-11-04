@@ -19,11 +19,12 @@ const assert=require('node:assert/strict'),{spawn}=require('node:child_process')
   await page.waitForFunction(key=>document.querySelector('[data-visitor-agent="'+key+'"]').classList.contains('selected'),pixel);assert(!await page.locator('#studio-crew-chat').isVisible());
   await page.evaluate(()=>BacStudio.refresh());await selected('Pixel');assert.equal(jobs.length,0,'Selecting an idle visitor must not start work');
   await badge.click();await search.fill('fixture-b');await picker.locator('[data-model-choice="api/nvidia/fixture-b"]').click();await picker.waitFor({state:'hidden'});
-  assert.deepEqual(writes.at(-1),{target:pixel,model:'api/nvidia/fixture-b'});assert.equal(await badge.innerText(),'fixture-b');
+  assert.deepEqual(writes.at(-1),{target:pixel,model:'api/nvidia/fixture-b',stage:'team'});assert.equal(await badge.innerText(),'fixture-b');
+  assert.equal(await page.evaluate(key=>BacStudio.inspect().agents.find(a=>a.key===key).model,pixel),'api/nvidia/fixture-a','Open Task edits preserve the Lounge model');
   const documents=page.waitForRequest(r=>r.url().includes('/api/agent-documents'));
   await page.locator('#studio-crew-name').click();assert.equal((await documents).headers()['x-bac-agent'],pixel);await page.locator('#studio-identity-viewer').waitFor();assert.match(await page.locator('#studio-identity-viewer').innerText(),/Pixel/);await page.locator('#studio-dialog-close').click();await selected('Pixel');
   await label(orbit).focus();await page.keyboard.press('Enter');await selected('Orbit');assert.equal(await badge.innerText(),'fixture-a');
-  await badge.click();await search.fill('fixture');assert(await picker.locator('[data-model-choice="api/nvidia/fixture-a"]').getAttribute('aria-pressed')==='true');await page.keyboard.press('Escape');
+  await badge.click();await search.fill('Automatic');assert(await picker.locator('[data-model-choice="auto"]').getAttribute('aria-pressed')==='true');assert.match(await picker.locator('[data-model-choice="auto"]').innerText(),/fixture-a/);await page.keyboard.press('Escape');
   await page.locator('[data-campus-agent="0"]').click();await selected('Casey');assert(await page.locator('#studio-crew-chat').isVisible());assert(await badge.isEnabled());
   // Body meshes, not just labels, must be selectable before the first plan.
   const point=await page.evaluate(key=>BacCampus.inspect().visitorTravel.find(v=>v.key===key).screenCenter,pixel),canvas=await page.locator('#campus-viewport canvas').boundingBox();

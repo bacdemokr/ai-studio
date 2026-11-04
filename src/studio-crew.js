@@ -126,7 +126,9 @@ function renderCrewModel(model,visitor=null){
 }
 function modelPickerChoices(){
  if(!modelPickerVisitor)return runtime.teamModels||[];
- const rows=(runtime.personalModels?.models||[]).filter(row=>row.id!=='shared'||modelPickerDraft==='shared');
+ const visitor=(data.agents||[]).find(agent=>agent.key===modelPickerVisitor);
+ const automatic=personalModel({model:visitor?.model},'team');
+ const rows=[{id:'auto',label:'Automatic',source:'auto',connected:automatic.connected,description:automatic.label},...(runtime.personalModels?.models||[]).filter(row=>row.id!=='shared')];
  if(modelPickerDraft&&!rows.some(row=>row.id===modelPickerDraft))rows.push(personalModel({model:modelPickerDraft}));
  return rows;
 }
@@ -141,7 +143,7 @@ function renderModelResults(){
  const nemotron=model=>(model.label+' '+model.id).toLowerCase().includes('nemotron');
  models.sort((a,b)=>Number(nemotron(b))-Number(nemotron(a))||displayName(a).localeCompare(displayName(b))||a.id.localeCompare(b.id));
  teamModelDialog.querySelector('.team-model-count').textContent=models.length?(models.length>40?'Showing 40 of '+models.length+' models · Search to narrow the list.':models.length+' models'):'No matching models';
- const markup=models.slice(0,40).map(m=>'<button type="button" data-model-choice="'+escape(m.id)+'" title="'+escape(m.id)+'" aria-pressed="'+(m.id===selected)+'" '+(modelPickerSaving||locked||(modelPickerVisitor&&!m.connected)?'disabled':'')+'><span><strong>'+escape(displayName(m))+'</strong><small>'+escape(modelPickerVisitor?(m.source==='local'?m.label:m.source==='shared'?'Uses the shared connection':m.id.split('/').slice(2).join('/')):m.id)+'</small></span><span class="team-model-choice-state">'+(modelPickerVisitor&&!m.connected?'Not connected':m.id===selected?'Selected':!modelPickerVisitor||m.source==='api'?'External Endpoint':'')+'</span></button>').join('');
+ const markup=models.slice(0,40).map(m=>'<button type="button" data-model-choice="'+escape(m.id)+'" title="'+escape(m.id)+'" aria-pressed="'+(m.id===selected)+'" '+(modelPickerSaving||locked||(modelPickerVisitor&&!m.connected)?'disabled':'')+'><span><strong>'+escape(displayName(m))+'</strong><small>'+escape(modelPickerVisitor?(m.source==='auto'?m.description:m.source==='local'?m.label:m.source==='shared'?'Uses the shared connection':m.id.split('/').slice(2).join('/')):m.id)+'</small></span><span class="team-model-choice-state">'+(modelPickerVisitor&&!m.connected?'Not connected':m.id===selected?'Selected':!modelPickerVisitor||m.source==='api'?'External Endpoint':'')+'</span></button>').join('');
  const results=teamModelDialog.querySelector('.team-model-results');
  if(modelPickerMarkup!==markup){modelPickerMarkup=markup;results.innerHTML=markup;}
  teamModelDialog.querySelector('.team-model-count').textContent=locked||teamModelDialog.querySelector('.team-model-count').textContent;
@@ -159,7 +161,7 @@ function openCrewModelPicker(role,visitor=null){
  if(modelPickerSaving||!teamModelDialog.hidden)return;
  modelPickerRole=role;
  if(visitor?hiredModelLock(visitor.key):(!builtinModelEditable(role)||builtinModelLock(role)))return;
- modelPickerVisitor=visitor?.key||null;modelPickerOwner=agentId;modelPickerScenario=selectedScenario;modelPickerDraft=visitor?personalModel(visitor).id:teamModel(role)?.id;
+ modelPickerVisitor=visitor?.key||null;modelPickerOwner=agentId;modelPickerScenario=selectedScenario;modelPickerDraft=visitor?(visitor.taskModel||'auto'):teamModel(role)?.id;
  const name=visitor?.name||defaultNames[role];
  teamModelDialog.querySelector('#team-model-member').textContent=name;
  teamModelDialog.querySelector('input').value='';teamModelDialog.querySelector('.team-model-error').hidden=true;
@@ -211,16 +213,16 @@ async function applyTeamModel(){
  modelPickerSaving=true;
  if(!teamModelDialog.hidden)renderModelResults();
  try{
-  const result=await api(visitor?'agent-model':'team-model',visitor?{model}:{role,model},visitor||target,scenario);
+  const result=await api(visitor?'agent-model':'team-model',visitor?{model,stage:'team'}:{role,model},visitor||target,scenario);
   if(visitor)stateCache.clear();
   if(current()){
    // A poll started before this write must not restore the previous model.
    ++refreshVersion;stateCache.delete(target);busy=false;
-   data=visitor?{...data,agents:data.agents.map(agent=>agent.key===visitor?{...agent,...result}:agent),profile:agentId===visitor?result:data.profile}:{...data,teamSelections:result.teamSelections};render();
+   data=visitor?{...data,agents:data.agents.map(agent=>agent.key===visitor?{...agent,...result,taskModel:result.taskModel}:agent),profile:agentId===visitor?result:data.profile}:{...data,teamSelections:result.teamSelections};render();
   }
   return true;
  }catch(error){
-  if(current())modelPickerDraft=visitor?personalModel((data.agents||[]).find(agent=>agent.key===visitor)).id:teamModel(role)?.id;
+  if(current())modelPickerDraft=visitor?((data.agents||[]).find(agent=>agent.key===visitor)?.taskModel||'auto'):teamModel(role)?.id;
   if(current()&&!teamModelDialog.hidden){const notice=teamModelDialog.querySelector('.team-model-error');notice.textContent=error.message;notice.hidden=false;}
   else alert('Model changes could not be applied. '+error.message);
   return false;
@@ -603,7 +605,7 @@ function syncCrewComposer(){
  const visitor=assignedVisitor(selectedCrewRole);
  const visitorMissing=visitor&&!visitorAvailable(visitor);
  const memberWorking=!!visitor&&(data.agents||[]).some(a=>a.key===visitor.key&&a.pending>0)||(data.crewChats||[]).some(j=>['queued','running','waiting','stopping'].includes(j.status)&&(j.payload?.collaboration?(['running','stopping'].includes(j.status)&&j.payload.collaboration.activeRole===selectedCrewRole):j.payload?.crewRole===selectedCrewRole));
- const blocked=resetInProgress||visitorMissing||(visitor?!personalReady(visitor):!teamReady())||!!visitor?.skills?.includes('radar')||!!data.bacResetting||captainPlanning||memberWorking||crewDocumentUpload;
+ const blocked=resetInProgress||visitorMissing||(visitor?!personalReady(visitor,'team'):!teamReady())||!!visitor?.skills?.includes('radar')||!!data.bacResetting||captainPlanning||memberWorking||crewDocumentUpload;
  el('crew-document-add').hidden=selectedCrewRole!==0;el('crew-document-add').disabled=blocked;
  renderCrewDocuments();
  const commandOnly=selectedScenario==='plan'&&selectedCrewRole===0&&/^\s*\/(?:goals?|plans?)\s*$/i.test(el('crew-prompt').value);
@@ -616,7 +618,7 @@ function syncCrewComposer(){
  const noHires=teamMode==='hired'&&!(data.agents||[]).some(a=>!a.deleting);
  el('crew-team-hint').hidden=!noHires;el('crew-team-hint').textContent=noHires?'Hire agents with the skills your goal needs.':'';
  el('crew-chat-connection').hidden=!blocked;
- el('crew-chat-connection').textContent=visitorMissing?'This agent was removed. Start a new task with Casey.':visitor?.skills?.includes('radar')?'Tech Radar uses Heartbeat. Manual chat is disabled.':crewDocumentUpload?'Adding document…':resetInProgress?'Resetting…':data.bacResetting?'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(visitor?personalModel(visitor).connected:(teamRuntime().teamModel??runtime.model))?(visitor?personalModelNotice(visitor):'Model not connected. Enable Local or External Endpoint in Settings.'):'Run ./bac start on this computer to connect the team runtime.';
+ el('crew-chat-connection').textContent=visitorMissing?'This agent was removed. Start a new task with Casey.':visitor?.skills?.includes('radar')?'Tech Radar uses Heartbeat. Manual chat is disabled.':crewDocumentUpload?'Adding document…':resetInProgress?'Resetting…':data.bacResetting?'Stopping '+(stageScenarios.find(s=>s.id===selectedScenario)?.title||'the scenario')+' and resetting…':captainPlanning?'Plan in progress · Casey is coordinating the team. Messaging resumes when the plan ends.':memberWorking?'Task in progress · Messaging resumes when this agent finishes.':!(visitor?personalModel(visitor,'team').connected:(teamRuntime().teamModel??runtime.model))?(visitor?personalModelNotice(visitor,'team'):'Model not connected. Enable Local or External Endpoint in Settings.'):'Run ./bac start on this computer to connect the team runtime.';
  syncCrewComposerSize();
 }
 function renderCrewPassport(){
@@ -637,7 +639,7 @@ function renderCrewPassport(){
  const avatar=visitor?.avatar||window.BacCampus?.inspect().crewAvatars?.[i]||{};
  el('crew-number').textContent=selectedOpenTaskVisitor?'Standby':String(i+1).padStart(2,'0')+' / '+roles.length;
  el('crew-name').textContent=name;syncTeamTotalTime();el('crew-role').textContent=role;
- const model=visitor?personalModel(visitor):teamModel(i);renderCrewModel(model,visitor);
+ const model=visitor?personalModel(visitor,'team'):teamModel(i);renderCrewModel(model,visitor);
  if(!teamModelDialog.hidden)renderModelResults();
  renderAvatarPortrait(el('crew-portrait'),avatar);
  el('crew-policy').hidden=(visitor&&!visitorAvailable(visitor))||(visitor?.protection||window.BacCrewCatalog[i].protection)!=='openshell';
@@ -691,7 +693,7 @@ el('crew-chat').onsubmit=async e=>{
   if(crewDocumentUpload)await refresh();
   let requestPrompt=draft.prompt;
   if(docs.length)requestPrompt+='\n\nAttached documents (use these files):\n'+docs.map(file=>file.path.slice(6)).join('\n');
-  const result=await api('jobs',visitor?{kind:'chat',prompt:requestPrompt,images:draft.images}:{kind:'crew-chat',crewRole:index,prompt:requestPrompt,images:draft.images,...(scenario==='plan'&&index===0&&isPlanCommand(draft.prompt)?{teamMode:teamChoice}:{})},visitor?.key||owner,scenario);
+  const result=await api('jobs',visitor?{kind:'chat',modelStage:'team',prompt:requestPrompt,images:draft.images}:{kind:'crew-chat',crewRole:index,prompt:requestPrompt,images:draft.images,...(scenario==='plan'&&index===0&&isPlanCommand(draft.prompt)?{teamMode:teamChoice}:{})},visitor?.key||owner,scenario);
   crewComposerEditing=false;acknowledgeChatDraft(draft);if(visitor){await switchAgent(visitor.key);setRoom('lounge');}await refresh();if(result.collaboration)stageCollaboration(result);
  }
  catch(error){if(crewChatKey===key){el('crew-chat-error').textContent=error.message;el('crew-chat-error').hidden=false;}}
