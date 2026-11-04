@@ -375,7 +375,9 @@ class PlanInputs(unittest.TestCase):
                     if session.endswith('-planning-input-repair'):
                         self.assertTrue(agent.endswith('-r0'))
                         self.assertIn('Available document IDs: []',prompt)
-                        self.assertIn('Decision output contract: return ONLY a JSON object with summary and tasks', prompt)
+                        self.assertIn('reviewRequired (boolean)', prompt)
+                        self.assertIn('Each assignment must include role (integer assignment slot), agent (string)', prompt)
+                        self.assertIn('agent must be "builtin"', prompt)
                         self.assertNotIn('Decision output contract: return ONLY a JSON object with done', prompt)
                         self.assertIn('No tools are available during this decision.', prompt)
                         return json.dumps({'summary':'Summarize the provided task','tasks':[{'role':6,'task':'Summarize requirements','inputs':[]}]})

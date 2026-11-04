@@ -210,7 +210,9 @@ def request(provider, profile, suffix, payload=None, timeout=25):
         detail = provider_error_detail(error, profile.get('apiKey', ''))
         if detail:
             message += ' Provider: ' + detail
-        raise Problem(message,502) from None
+        problem = Problem(message,502)
+        problem.transient = error.code in (408, 429) or 500 <= error.code < 600
+        raise problem from None
     except (OSError, ValueError) as error:
         reason = error.reason if isinstance(error, urllib.error.URLError) else error
         host = urllib.parse.urlsplit(profile['baseUrl']).hostname
@@ -228,7 +230,10 @@ def request(provider, profile, suffix, payload=None, timeout=25):
             message = 'Connection to %s was refused.' % host
         else:
             message = 'Connection to %s failed (%s). Check the network or proxy.' % (host, type(reason).__name__)
-        raise Problem(message,502) from None
+        problem = Problem(message,502)
+        problem.transient = isinstance(reason, (TimeoutError, ConnectionError)) or (
+            isinstance(reason, socket.gaierror) and reason.errno == socket.EAI_AGAIN)
+        raise problem from None
 
 
 def models(data):

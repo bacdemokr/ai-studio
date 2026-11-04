@@ -137,7 +137,7 @@ class CollaborationTests(unittest.TestCase):
         self.assertTrue(plan['checks'][0]['done'])
 
     def test_explicit_code_review_still_runs_when_captain_tries_to_stop(self):
-        self.adapter.plan={'summary':'Build then review','tasks':[
+        self.adapter.plan={'summary':'Build then review','reviewRequired':True,'tasks':[
             {'role':5,'task':'Implement the game'}, {'role':4,'task':'Review startup and controls'}]}
         original=self.adapter.respond
         def respond(agent,session,prompt,**kwargs):

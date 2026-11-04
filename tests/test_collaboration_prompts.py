@@ -5,6 +5,7 @@ import unittest
 from studio import Studio
 from test_collaboration_plan import PlanAdapter
 from test_visitor_teams import VisitorAdapter
+from collaboration_prompts import planning_output_contract
 
 
 class CollaborationPromptTests(unittest.TestCase):
@@ -89,6 +90,32 @@ class CollaborationPromptTests(unittest.TestCase):
                 self.assertEqual('SEARCH-FIRST DEMO' in work[0], research)
                 self.assertIn('Number.isInteger on whole-count inputs', work[0])
                 self.assertIn('visible, enabled start control', work[0])
+
+    def test_hired_planning_has_one_complete_mode_specific_contract(self):
+        calls = self.run_plan(VisitorAdapter(), ['builder'], hired=True)
+        planning = next(p for s, p in calls if s.endswith('-planning'))
+        self.assertIn(planning_output_contract('hired'), planning)
+        self.assertEqual(planning.count('Decision output contract:'), 1)
+        self.assertIn('reviewRequired (boolean)', planning)
+        self.assertIn('role (integer assignment slot), agent (string)', planning)
+        self.assertIn('Never use "builtin" or an agent name.', planning)
+        self.assertNotIn('For a working webpage or code prototype, select Cody.', planning)
+        self.assertNotIn('normally assign Cody alone', planning)
+        self.assertNotIn('Return ONLY JSON {"summary":"short plan', planning)
+
+    def test_builtin_and_mixed_contracts_describe_the_available_identity_types(self):
+        calls = self.run_plan(PlanAdapter(), [])
+        planning = next(p for s, p in calls if s.endswith('-planning'))
+        self.assertIn(planning_output_contract('builtin'), planning)
+        self.assertIn('agent must be "builtin"', planning)
+        mixed = planning_output_contract('mixed')
+        self.assertIn('exact available hired key, or "builtin"', mixed)
+        for mode in ('builtin', 'mixed', 'hired'):
+            contract = planning_output_contract(mode)
+            for field in ('summary', 'reviewRequired', 'requestedAgents', 'excludedAgents',
+                          'declinedAgents', 'requestedFormats', 'unassignedRequirements', 'tasks',
+                          'roleFit', 'inputs', 'requiredFiles', 'outcome', 'nonempty answer'):
+                self.assertIn(field, contract)
 
 
 if __name__ == '__main__':

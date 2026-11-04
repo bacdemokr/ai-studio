@@ -101,6 +101,59 @@ class ConnectionTests(unittest.TestCase):
             with self.assertRaises(Problem):connections.configure(self.app,{'source':'api','provider':'openai','apiKey':'fixture-secret','model':'bad','contextWindow':32768})
         self.assertEqual(connections.public()['loungeSource'],'local')
 
+    def test_transient_catalogue_failure_preserves_only_recent_api_verification(self):
+        with patch.object(connections.time, 'monotonic', return_value=1000):
+            self.connect('api', 'openai')
+        value = connections.profile('api')
+        error = Problem('Provider timeout', 502)
+        error.transient = True
+        for now in (1030, 1060, 1089):
+            with patch.object(connections.time, 'monotonic', return_value=now), \
+                 patch.object(settings, 'request', side_effect=error):
+                self.assertTrue(connections.probe('api', value)['ready'])
+                source, selected = connections.resolve('api', 'team')
+                self.assertEqual(source, 'api')
+                self.assertEqual(selected['model'], 'test-model')
+        with patch.object(connections.time, 'monotonic', return_value=1090):
+            self.assertFalse(connections.status('api')['ready'])
+            with patch.object(settings, 'request', side_effect=error):
+                self.assertFalse(connections.probe('api', value)['ready'])
+            with patch.object(settings, 'request', return_value={'data':[{'id':'test-model'}]}):
+                self.assertTrue(connections.probe('api', value)['ready'])
+
+    def test_catalogue_grace_never_covers_authentication_or_missing_model(self):
+        for failure in (Problem('Authentication failed', 502), Problem('Access denied', 502),
+                        Problem('Invalid JSON', 502), ValueError('Malformed response')):
+            with self.subTest(failure=str(failure)):
+                self.connect('api', 'openai')
+                with patch.object(settings, 'request', side_effect=failure):
+                    self.assertFalse(connections.probe('api', connections.profile('api'))['ready'])
+        self.connect('api', 'openai')
+        with patch.object(settings, 'request', return_value={'data':[]}):
+            self.assertFalse(connections.probe('api', connections.profile('api'))['ready'])
+
+    def test_catalogue_grace_requires_identical_api_profile_and_does_not_override_disable(self):
+        self.connect('api', 'openai')
+        value = connections.profile('api')
+        error = Problem('Temporary outage', 502)
+        error.transient = True
+        with patch.object(settings, 'request', side_effect=error):
+            for change in ({'apiKey':'different-fixture-key'}, {'model':'other-model'},
+                           {'baseUrl':'https://other.example/v1'}, {'_provider':'nvidia'}):
+                with self.subTest(change=list(change)):
+                    self.assertFalse(connections.probe('api', {**value, **change})['ready'])
+            self.assertTrue(connections.probe('api', value)['ready'])
+        connections.persist({**connections.read(), 'disabled':['api']})
+        self.assertFalse(connections.status('api')['ready'])
+
+    def test_first_probe_and_local_outage_have_no_catalogue_grace(self):
+        self.connect()
+        error = Problem('Temporary outage', 502)
+        error.transient = True
+        with patch.object(settings, 'request', side_effect=error):
+            self.assertFalse(connections.probe('local', connections.profile('local'))['ready'])
+            self.assertFalse(connections.probe('api', connections.profile('api'))['ready'])
+
     def test_busy_changes_rejected_without_probe(self):
         with patch.object(connections,'idle',side_effect=Problem('Busy')),patch.object(settings,'request') as request:
             with self.assertRaises(Problem):connections.configure(self.app,{'source':'local'})

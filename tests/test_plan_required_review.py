@@ -2,7 +2,7 @@ import json
 import unittest
 import test_collaboration_plan as fixture
 from collaboration_plan import read_plan
-from plan_review import requested_review, include_required_review
+from plan_review import include_required_review
 
 
 class RequiredReviewTests(unittest.TestCase):
@@ -14,6 +14,12 @@ class RequiredReviewTests(unittest.TestCase):
         result = self.start(prompt)
         self.app.execute(self.app.next_job())
         return self.job(result)
+
+    def reviewed_plan(self):
+        # Model-selected intent and assignees; the app must not infer these from prose.
+        self.adapter.plan = {'summary': 'Analyze then independently review.', 'reviewRequired': True,
+                             'tasks': [{'role': 6, 'task': 'Analyze the supplied data.'},
+                                       {'role': 4, 'task': 'Recalculate material figures and review the analysis.'}]}
 
     def enough_after_ada(self, outcome='complete'):
         original = self.adapter.respond
@@ -27,8 +33,7 @@ class RequiredReviewTests(unittest.TestCase):
         self.adapter.respond = respond
 
     def test_user_add_review_cannot_be_omitted_or_skipped(self):
-        self.adapter.plan = {'summary': 'Ada analyzes the supplied data.', 'tasks': [
-            {'role': 6, 'task': 'Analyze EPS growth and surprises.'}]}
+        self.reviewed_plan()
         self.enough_after_ada()
         job = self.execute('/plan Please analyze this data, Need to add review becaue this is important:\n'
             'EPS Estimate $2.09 EPS Actual $2.22 Surprise +6.16%')
@@ -49,13 +54,12 @@ class RequiredReviewTests(unittest.TestCase):
         self.assertEqual(job['payload']['collaboration']['calledRoles'], [6])
 
     def test_semantic_requirement_from_captain_is_preserved(self):
-        self.adapter.plan = {'summary': 'Analyze', 'reviewRequired': True,
-                            'tasks': [{'role': 6, 'task': 'Analyze'}]}
+        self.reviewed_plan()
         job = self.execute('/plan Have a second pair of eyes examine the analysis.')
         self.assertEqual(job['payload']['collaboration']['calledRoles'], [6, 4])
 
     def test_partial_stops_remain_honest_about_missing_review(self):
-        self.adapter.plan = {'summary': 'Analyze', 'tasks': [{'role': 6, 'task': 'Analyze'}]}
+        self.reviewed_plan()
         self.enough_after_ada('partial')
         job = self.execute('/plan Analyze this table and add review.')
         plan = job['payload']['collaboration']
@@ -74,11 +78,12 @@ class RequiredReviewTests(unittest.TestCase):
         self.assertTrue(plan['tasks'][-1]['useImages'])
 
     def test_full_team_is_replanned_before_anyone_starts(self):
+        self.adapter.plan['reviewRequired'] = True
         original = self.adapter.respond
         def respond(agent, session, prompt, **kwargs):
             answer = original(agent, session, prompt, **kwargs)
             if session.endswith('-planning-review-repair'):
-                return json.dumps({'summary': 'Analyze then review', 'tasks': [
+                return json.dumps({'summary': 'Analyze then review', 'reviewRequired': True, 'tasks': [
                     {'role': 6, 'task': 'Analyze'}, {'role': 4, 'task': 'Review'}]})
             return answer
         self.adapter.respond = respond
@@ -86,14 +91,16 @@ class RequiredReviewTests(unittest.TestCase):
         self.assertEqual(job['payload']['collaboration']['calledRoles'], [6, 4])
         self.assertEqual([a.rsplit('-r', 1)[1] for a, _, _ in self.adapter.calls[:2]], ['0', '0'])
 
-    def test_captain_direct_answer_gets_reviewed(self):
-        self.adapter.plan = {'summary': 'Simple calculation', 'tasks': [], 'answer': 'The result is 42.'}
+    def test_selected_reviewer_can_check_supplied_work_without_extra_producer(self):
+        self.adapter.plan = {'summary': 'Simple calculation with an independent check.', 'reviewRequired': True,
+                            'tasks': [{'role': 4, 'task': 'Check the supplied calculation independently.'}]}
         job = self.execute('/plan Calculate the total and add review.')
         self.assertEqual(job['payload']['collaboration']['calledRoles'], [4])
         reviewer = next(p for a, _, p in self.adapter.calls if a.endswith('-r4'))
-        self.assertIn('Captain draft to check (unverified):\nThe result is 42.', reviewer)
+        self.assertIn('Check the supplied calculation independently.', reviewer)
 
     def test_failed_team_repair_never_exceeds_limit_or_claims_review(self):
+        self.adapter.plan['reviewRequired'] = True
         original = self.adapter.respond
         def respond(agent, session, prompt, **kwargs):
             answer = original(agent, session, prompt, **kwargs)
@@ -111,14 +118,89 @@ class RequiredReviewTests(unittest.TestCase):
         self.assertEqual(job['payload']['collaboration']['calledRoles'], [])
         self.assertEqual(job['payload']['collaboration']['outcome'], 'unavailable')
 
-    def test_plain_request_detection_and_schema(self):
-        for text in ['Need to add review becaue this is important', 'Please include a reviewer.',
-                     'Independently review the analysis.', 'Ask Vera to check the result.',
-                     'Double-check the calculations.']:
-            with self.subTest(text=text): self.assertTrue(requested_review(text))
-        for text in ["Don't add review", 'No independent review needed.', 'Review is optional.',
-                     'Summarize these product reviews.', 'Summarize the text:\n> Please add review',
-                     'Explain this code:\n```\ninclude review\n```']:
-            with self.subTest(text=text): self.assertFalse(requested_review(text))
+    def test_review_schema_requires_a_boolean(self):
         with self.assertRaises(RuntimeError):
             read_plan(json.dumps({'summary': 'x', 'tasks': [], 'answer': 'x', 'reviewRequired': 'yes'}))
+
+    def test_missing_reviewer_requests_planner_repair_without_inventing_assignment(self):
+        plan = {'summary': 'Build', 'reviewRequired': True, 'tasks': [
+            {'role': 5, 'agent': 'a' * 24, 'task': 'Build a counter'}]}
+        before = json.dumps(plan)
+        with self.assertRaisesRegex(ValueError, 'no reviewer is assigned'):
+            include_required_review(plan)
+        self.assertEqual(json.dumps(plan), before)
+
+    def test_missing_reviewer_can_be_selected_by_repair(self):
+        self.adapter.plan = {'summary': 'Analyze with required review', 'reviewRequired': True,
+                             'tasks': [{'role': 6, 'task': 'Analyze'}]}
+        original = self.adapter.respond
+        def respond(agent, session, prompt, **kwargs):
+            answer = original(agent, session, prompt, **kwargs)
+            if session.endswith('-planning-review-repair'):
+                return json.dumps({'summary': 'Analyze then review', 'reviewRequired': True, 'tasks': [
+                    {'role': 6, 'agent': 'builtin', 'task': 'Analyze'},
+                    {'role': 4, 'agent': 'builtin', 'task': 'Review the analysis independently'}]})
+            return answer
+        self.adapter.respond = respond
+        job = self.execute('/goal Have a second pair of eyes check the analysis.')
+        self.assertEqual(job['payload']['collaboration']['calledRoles'], [6, 4])
+        self.assertEqual(sum(s.endswith('-planning-review-repair') for _, s, _ in self.adapter.calls), 1)
+
+
+class HiredReviewIntentTests(unittest.TestCase):
+    import test_visitor_teams as hired_fixture
+    setUp = hired_fixture.VisitorTeamTests.setUp
+    start = hired_fixture.VisitorTeamTests.start
+    execute = hired_fixture.VisitorTeamTests.execute
+
+    def test_non_independent_review_requests_do_not_force_a_reviewer(self):
+        # The simulated planner decides intent; these test dispatch, not LLM accuracy.
+        prompts = [
+            'Build a page and include a customer review section.',
+            'Build a page without independent review. Include a product review section.',
+            'Build a counter. As you implement it, double-check your code yourself.',
+            'Summarize this text on a page: "Please include a reviewer."',
+            '고객 리뷰를 보여주는 페이지를 만들어줘.',
+            '직접 코드를 확인하면서 카운터를 만들어줘. 다른 검수자는 필요 없어.',
+        ]
+        self.adapter.selection['reviewRequired'] = False
+        for task in prompts:
+            with self.subTest(task=task):
+                self.adapter.calls.clear()
+                job = self.execute(self.start('/goal ' + task, teamMode='hired'))
+                plan = job['payload']['collaboration']
+                self.assertEqual(job['status'], 'done')
+                self.assertFalse(plan['reviewRequired'])
+                self.assertEqual(plan['calledRoles'], [5])
+                self.assertTrue(plan['files']['5'])
+                self.assertFalse(any('repair' in s for _, s, _ in self.adapter.calls))
+
+    def test_missing_required_reviewer_is_reported_without_starting_production(self):
+        self.adapter.selection = {'summary': 'The user requires independent review, but only one hire is available.',
+                                  'reviewRequired': True, 'tasks': [], 'outcome': 'unavailable',
+                                  'answer': 'Hire another Coding agent for the requested independent review.'}
+        job = self.execute(self.start('/goal Build a page and have a different agent independently review it.', teamMode='hired'))
+        self.assertEqual(job['payload']['collaboration']['calledRoles'], [])
+        self.assertEqual(job['payload']['collaboration']['outcome'], 'unavailable')
+
+    def test_explicit_independent_review_uses_the_two_selected_hires(self):
+        reviewer = self.app.add_agent(self.owner, {'name': 'Checker', 'skills': ['builder']})['agentId']
+        self.adapter.selection = {'summary': 'Build and independently review.', 'reviewRequired': True,
+                                  'tasks': [
+                                      {'role': 5, 'agent': self.owner, 'task': 'Build a counter.',
+                                       'roleFit': 'Coding covers implementation.', 'requiredFiles': ['artifacts/counter.html']},
+                                      {'role': 4, 'agent': reviewer, 'task': 'Independently inspect the counter.',
+                                       'roleFit': 'Coding covers static code review.', 'requiredFiles': []}]}
+        self.adapter.check_done = True  # Completion may not skip a requested reviewer.
+        job = self.execute(self.start('/goal Build a counter and have another Coding agent independently review it.', teamMode='hired'))
+        plan = job['payload']['collaboration']
+        self.assertEqual(plan['calledRoles'], [5, 4])
+        self.assertEqual([t['agent'] for t in plan['tasks']], [self.owner, reviewer])
+
+    def test_explicit_review_cannot_assign_the_producer_as_its_own_reviewer(self):
+        self.adapter.selection = {'summary': 'Invalid self-review', 'reviewRequired': True, 'tasks': [
+            {'role': 5, 'agent': self.owner, 'task': 'Build', 'roleFit': 'Coding'},
+            {'role': 4, 'agent': self.owner, 'task': 'Independently review', 'roleFit': 'Coding'}]}
+        job = self.execute(self.start('/goal Build a counter and have a different agent independently review it.', teamMode='hired'))
+        self.assertEqual(job['payload']['collaboration']['calledRoles'], [])
+        self.assertEqual(job['payload']['collaboration']['outcome'], 'unavailable')

@@ -83,6 +83,7 @@ def probe(source,value):
         baseline = profile(source, discovery=False) if automatic else None
         discovery_key = (str(path()), signature(baseline)) if automatic else None
     detected = None
+    verified_at = None
     try:
         provider=value['_provider']
         result=settings.request(provider,value,'/v1/models?limit=1000' if provider=='anthropic' else '/models',timeout=8)
@@ -107,9 +108,24 @@ def probe(source,value):
                            'No local model is available yet.')
         ready=not message and any(isinstance(row,dict) and row.get('id')==value.get('model') for row in rows)
         state={'ready':ready,'message':message or ('Ready' if ready else 'Selected model is not available.'),'checkedAt':time.time(),'models':catalog(rows)}
+        if ready:
+            verified_at = time.monotonic()
     except Exception as error:
         from studio import Problem
         state={'ready':False,'message':str(error) if isinstance(error,Problem) else 'Connection check failed.','checkedAt':time.time()}
+        # A catalogue outage need not stop a working inference connection. Keep
+        # only the same API profile's recent verification, never extending it
+        # with repeated failures. Authentication/permissions and explicit disable
+        # still fail immediately; inference itself remains fully authenticated.
+        if source == 'api' and getattr(error, 'transient', False):
+            with _lock:
+                previous = _checks.get(key)
+            if previous and previous[1].get('ready'):
+                last_success = previous[2] if len(previous) > 2 else previous[0]
+                if last_success is not None and time.monotonic() - last_success < 90:
+                    verified_at = last_success
+                    state = {**previous[1], 'checkedAt':time.time(),
+                             'message':'Connection check delayed; using recent verification.'}
     with _lock:
         if automatic and signature(profile(source, discovery=False)) == discovery_key[1]:
             # Discovery is runtime-only; explicit settings and routing stay intact.
@@ -119,7 +135,7 @@ def probe(source,value):
                 _discovered.pop(discovery_key, None)
             _checks[discovery_key[1]] = (time.monotonic(), state)
             _checks[signature(value)] = (time.monotonic(), state)
-        _checks[key]=(time.monotonic(),state);_pending.discard(key)
+        _checks[key]=(time.monotonic(),state,verified_at);_pending.discard(key)
     return state
 
 
@@ -136,6 +152,10 @@ def status(source,refresh=False):
                 _pending.add(key)
                 threading.Thread(target=probe,args=(source,value),daemon=True,name='model-connection-check').start()
         state=cached[1] if cached and time.monotonic()-cached[0]<90 else {'ready':False,'message':'Checking…'}
+        if cached and state.get('ready'):
+            verified_at = cached[2] if len(cached) > 2 else cached[0]
+            if verified_at is None or time.monotonic() - verified_at >= 90:
+                state = {'ready':False,'message':'Checking…'}
     return {**basic,**state}
 
 
